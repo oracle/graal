@@ -22,20 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.interpreter.ristretto;
+package com.oracle.svm.interpreter.ristretto.compile;
 
-import com.oracle.svm.core.option.HostedOptionKey;
+import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.AbstractDeoptimizeNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.phases.Phase;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.options.Option;
+/**
+ * Phase that analyzes the graph and throws a compilation bailout if {@link AbstractDeoptimizeNode}
+ * are found.
+ */
+public class RistrettoNoDeoptPhase extends Phase {
 
-public class RistrettoHostedOptions {
-    // TODO - GR-71501 - enable deopts in ristretto
-    @Option(help = "Use deoptimization for runtime compiled code optimizations.")//
-    public static final HostedOptionKey<Boolean> JITUseDeoptimization = new HostedOptionKey<>(false);
-
-    @Fold
-    public static boolean getJITUseDeoptimization() {
-        return JITUseDeoptimization.getValue();
+    @Override
+    protected void run(StructuredGraph graph) {
+        for (Node n : graph.getNodes()) {
+            if (n instanceof AbstractDeoptimizeNode deopt) {
+                /*
+                 * TODO GR-72047 - this will be a non permanent bailout until ristretto support
+                 * permanent bailouts
+                 */
+                throw new PermanentBailoutException("Ristretto must not use deoptimizations when -H:JITUseDeoptimization==false, but found node " + n);
+            }
+        }
     }
 }

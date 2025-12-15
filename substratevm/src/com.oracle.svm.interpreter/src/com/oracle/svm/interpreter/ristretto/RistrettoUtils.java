@@ -47,6 +47,7 @@ import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPhase;
+import com.oracle.svm.interpreter.ristretto.compile.RistrettoNoDeoptPhase;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileProvider;
 
@@ -225,7 +226,7 @@ public class RistrettoUtils {
                             graph.getGraphState().configureExplicitExceptionsNoDeopt();
                         }
                         assert graph != null;
-                        suites = RuntimeCompilationSupport.getMatchingSuitesForGraph(graph);
+                        suites = adaptSuitesForRistretto(RuntimeCompilationSupport.getMatchingSuitesForGraph(graph));
                         parseFromBytecode(graph, runtimeConfig);
                         if (TestingBackdoor.shouldRememberGraph()) {
                             // override the suites with graph capturing phases
@@ -257,6 +258,14 @@ public class RistrettoUtils {
                 System.exit(status);
             }
         }.run(initialDebug);
+    }
+
+    private static Suites adaptSuitesForRistretto(Suites suites) {
+        if (!RistrettoHostedOptions.getJITUseDeoptimization()) {
+            suites = suites.copy();
+            suites.getLowTier().appendPhase(new RistrettoNoDeoptPhase());
+        }
+        return suites;
     }
 
     private static void parseFromBytecode(StructuredGraph graph, RuntimeConfiguration runtimeConfig) {
