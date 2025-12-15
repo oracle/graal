@@ -129,7 +129,6 @@ import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import jdk.internal.reflect.Reflection;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.annotation.Annotated;
 
@@ -161,13 +160,14 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
     static class Factory implements ReflectionMetadataEncoderFactory {
         @Override
-        public RuntimeMetadataEncoder create(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders) {
-            return new RuntimeMetadataEncoderImpl(snippetReflection, encoders);
+        public RuntimeMetadataEncoder create(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders, HostedMetaAccess metaAccess) {
+            return new RuntimeMetadataEncoderImpl(snippetReflection, encoders, metaAccess);
         }
     }
 
     private final SnippetReflectionProvider snippetReflection;
     private final CodeInfoEncoder.Encoders encoders;
+    private final HostedMetaAccess metaAccess;
     private final ReflectionDataAccessors accessors;
     private final ReflectionDataBuilder dataBuilder;
     private final SymbolEncoder symbolEncoder = SymbolEncoder.singleton();
@@ -186,9 +186,10 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
     private EconomicSet<AccessibleObjectMetadata> heapData = EconomicSet.create();
 
-    public RuntimeMetadataEncoderImpl(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders) {
+    public RuntimeMetadataEncoderImpl(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders, HostedMetaAccess metaAccess) {
         this.snippetReflection = snippetReflection;
         this.encoders = encoders;
+        this.metaAccess = metaAccess;
         this.accessors = new ReflectionDataAccessors();
         this.dataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
 
@@ -209,9 +210,12 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         classData.put(type, metadata);
     }
 
+    private boolean buildingImageLayer() {
+        return layeredRuntimeMetadataSingleton != null;
+    }
+
     private void registerField(HostedType declaringType, Object field, FieldMetadata metadata) {
-        if (ImageLayerBuildingSupport.buildingImageLayer() &&
-                        !layeredRuntimeMetadataSingleton.shouldRegisterField(field, declaringType.getWrapped().getUniverse().getBigbang().getMetaAccess(), metadata)) {
+        if (buildingImageLayer() && !layeredRuntimeMetadataSingleton.shouldRegisterField(field, (AnalysisMetaAccess) metaAccess.getWrapped(), metadata)) {
             return;
         }
         addType(declaringType);
@@ -226,8 +230,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private void registerMethod(HostedType declaringType, Object method, MethodMetadata metadata) {
-        if (ImageLayerBuildingSupport.buildingImageLayer() &&
-                        !layeredRuntimeMetadataSingleton.shouldRegisterMethod(method, declaringType.getWrapped().getUniverse().getBigbang().getMetaAccess(), metadata)) {
+        if (buildingImageLayer() && !layeredRuntimeMetadataSingleton.shouldRegisterMethod(method, (AnalysisMetaAccess) metaAccess.getWrapped(), metadata)) {
             return;
         }
         addType(declaringType);
@@ -242,8 +245,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private void registerConstructor(HostedType declaringType, Object constructor, ConstructorMetadata metadata) {
-        if (ImageLayerBuildingSupport.buildingImageLayer() &&
-                        !layeredRuntimeMetadataSingleton.shouldRegisterMethod(constructor, declaringType.getWrapped().getUniverse().getBigbang().getMetaAccess(), metadata)) {
+        if (ImageLayerBuildingSupport.buildingImageLayer() && !layeredRuntimeMetadataSingleton.shouldRegisterMethod(constructor, (AnalysisMetaAccess) metaAccess.getWrapped(), metadata)) {
             return;
         }
         addType(declaringType);
@@ -278,12 +280,12 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     @Override
-    public void addClassMetadata(MetaAccessProvider metaAccess, HostedType type, Class<?>[] innerClasses) {
+    public void addClassMetadata(HostedType type, Class<?>[] innerClasses) {
         Class<?> javaClass = type.getHub().getHostedJavaClass();
         Object enclosingMethodInfo = getEnclosingMethodInfo(javaClass);
-        RecordComponentMetadata[] recordComponents = getRecordComponents(metaAccess, type, javaClass);
-        Class<?>[] permittedSubclasses = getPermittedSubclasses(metaAccess, javaClass);
-        Class<?>[] nestMembers = getNestMembers(metaAccess, javaClass);
+        RecordComponentMetadata[] recordComponents = getRecordComponents(type, javaClass);
+        Class<?>[] permittedSubclasses = getPermittedSubclasses(javaClass);
+        Class<?>[] nestMembers = getNestMembers(javaClass);
         Object[] signers = getSigners(javaClass);
         int classAccessFlags = Reflection.getClassAccessFlags(javaClass) & CLASS_ACCESS_FLAGS_MASK;
         int enabledQueries = dataBuilder.getEnabledReflectionQueries(javaClass);
@@ -297,9 +299,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         } else {
             registerEnclosingMethodInfo((Object[]) enclosingMethodInfo);
         }
-        HostedType[] innerTypes = registerClassValues(metaAccess, innerClasses);
-        HostedType[] permittedSubtypes = (permittedSubclasses != null) ? registerClassValues(metaAccess, permittedSubclasses) : null;
-        HostedType[] nestMemberTypes = (nestMembers != null) ? registerClassValues(metaAccess, nestMembers) : null;
+        HostedType[] innerTypes = registerClassValues(innerClasses);
+        HostedType[] permittedSubtypes = (permittedSubclasses != null) ? registerClassValues(permittedSubclasses) : null;
+        HostedType[] nestMemberTypes = (nestMembers != null) ? registerClassValues(nestMembers) : null;
         JavaConstant[] signerConstants = null;
         if (signers != null) {
             signerConstants = new JavaConstant[signers.length];
@@ -354,23 +356,23 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
     private static final Method getPermittedSubclasses = ReflectionUtil.lookupMethod(true, Class.class, "getPermittedSubclasses");
 
-    private Class<?>[] getPermittedSubclasses(MetaAccessProvider metaAccess, Class<?> clazz) {
+    private Class<?>[] getPermittedSubclasses(Class<?> clazz) {
         if ((dataBuilder.getEnabledReflectionQueries(clazz) & ALL_PERMITTED_SUBCLASSES_FLAG) == 0) {
             return null;
         }
         try {
             Class<?>[] permittedSubclasses = (Class<?>[]) getPermittedSubclasses.invoke(clazz);
-            return filterDeletedClasses(metaAccess, permittedSubclasses);
+            return filterDeletedClasses(permittedSubclasses);
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw VMError.shouldNotReachHere(e);
         }
     }
 
-    private Class<?>[] getNestMembers(MetaAccessProvider metaAccess, Class<?> clazz) {
+    private Class<?>[] getNestMembers(Class<?> clazz) {
         if ((dataBuilder.getEnabledReflectionQueries(clazz) & ALL_NEST_MEMBERS_FLAG) == 0) {
             return null;
         }
-        return filterDeletedClasses(metaAccess, clazz.getNestMembers());
+        return filterDeletedClasses(clazz.getNestMembers());
     }
 
     private Object[] getSigners(Class<?> clazz) {
@@ -380,7 +382,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return clazz.getSigners();
     }
 
-    private static Class<?>[] filterDeletedClasses(MetaAccessProvider metaAccess, Class<?>[] classes) {
+    private Class<?>[] filterDeletedClasses(Class<?>[] classes) {
         if (classes == null) {
             return null;
         }
@@ -400,7 +402,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     @Override
-    public void addReflectionFieldMetadata(MetaAccessProvider metaAccess, HostedField hostedField, ConditionalRuntimeValue<Field> conditionalReflectField) {
+    public void addReflectionFieldMetadata(HostedField hostedField, ConditionalRuntimeValue<Field> conditionalReflectField) {
         Field reflectField = conditionalReflectField.getValueUnconditionally();
         HostedType declaringType = hostedField.getDeclaringClass();
         String name = hostedField.getName();
@@ -431,7 +433,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     @Override
-    public void addReflectionExecutableMetadata(MetaAccessProvider metaAccess, HostedMethod hostedMethod, ConditionalRuntimeValue<Executable> conditionalMethod, Object accessor) {
+    public void addReflectionExecutableMetadata(HostedMethod hostedMethod, ConditionalRuntimeValue<Executable> conditionalMethod, Object accessor) {
         boolean isMethod = !hostedMethod.isConstructor();
         HostedType declaringType = hostedMethod.getDeclaringClass();
         String name = isMethod ? hostedMethod.getReflectionName() : null;
@@ -441,7 +443,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = conditionalMethod.getDynamicAccessMetadata();
         int modifiers = reflectMethod.getModifiers();
         HostedType returnType = hostedMethod.getSignature().getReturnType();
-        HostedType[] exceptionTypes = getExceptionTypes(metaAccess, reflectMethod);
+        HostedType[] exceptionTypes = getExceptionTypes(reflectMethod);
         String signature = getSignature(reflectMethod);
 
         /* Fill encoders with the necessary values. */
@@ -494,7 +496,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     @Override
-    public void addHeapAccessibleObjectMetadata(MetaAccessProvider metaAccess, WrappedElement hostedObject, AccessibleObject object, boolean registered) {
+    public void addHeapAccessibleObjectMetadata(WrappedElement hostedObject, AccessibleObject object, boolean registered) {
         boolean isExecutable = object instanceof Executable;
         boolean isMethod = object instanceof Method;
 
@@ -514,23 +516,23 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         RuntimeDynamicAccessMetadata alwaysSatisfied = RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata();
         if (isMethod) {
             metadata = new MethodMetadata(alwaysSatisfied, registered, heapObjectConstant, annotations, parameterAnnotations, annotationDefault, typeAnnotations, reflectParameters);
-            registerMethod((HostedType) metaAccess.lookupJavaType(((Method) object).getDeclaringClass()), holder, (MethodMetadata) metadata);
+            registerMethod(metaAccess.lookupJavaType(((Method) object).getDeclaringClass()), holder, (MethodMetadata) metadata);
         } else if (isExecutable) {
             metadata = new ConstructorMetadata(alwaysSatisfied, registered, heapObjectConstant, annotations, parameterAnnotations, typeAnnotations, reflectParameters);
-            registerConstructor((HostedType) metaAccess.lookupJavaType(((Constructor<?>) object).getDeclaringClass()), holder, (ConstructorMetadata) metadata);
+            registerConstructor(metaAccess.lookupJavaType(((Constructor<?>) object).getDeclaringClass()), holder, (ConstructorMetadata) metadata);
         } else {
             metadata = new FieldMetadata(alwaysSatisfied, registered, heapObjectConstant, annotations, typeAnnotations);
-            registerField((HostedType) metaAccess.lookupJavaType(((Field) object).getDeclaringClass()), holder, (FieldMetadata) metadata);
+            registerField(metaAccess.lookupJavaType(((Field) object).getDeclaringClass()), holder, (FieldMetadata) metadata);
         }
         heapData.add(metadata);
     }
 
-    private HostedType[] registerClassValues(MetaAccessProvider metaAccess, Class<?>[] classes) {
+    private HostedType[] registerClassValues(Class<?>[] classes) {
         Set<HostedType> includedClasses = new HashSet<>(); // noEconomicSet(temp)
         for (Class<?> clazz : classes) {
             HostedType type;
             try {
-                type = ((HostedMetaAccess) metaAccess).optionalLookupJavaType(clazz).orElse(null);
+                type = metaAccess.optionalLookupJavaType(clazz).orElse(null);
             } catch (DeletedElementException e) {
                 type = null;
             }
@@ -725,11 +727,11 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return parameterTypeNames;
     }
 
-    private static HostedType[] getExceptionTypes(MetaAccessProvider metaAccess, Executable reflectMethod) {
+    private HostedType[] getExceptionTypes(Executable reflectMethod) {
         Class<?>[] exceptionClasses = reflectMethod.getExceptionTypes();
         HostedType[] exceptionTypes = exceptionClasses.length == 0 ? HostedType.EMPTY_ARRAY : new HostedType[exceptionClasses.length];
         for (int i = 0; i < exceptionClasses.length; ++i) {
-            exceptionTypes[i] = (HostedType) metaAccess.lookupJavaType(exceptionClasses[i]);
+            exceptionTypes[i] = metaAccess.lookupJavaType(exceptionClasses[i]);
         }
         return exceptionTypes;
     }
@@ -756,7 +758,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return reflectParameters;
     }
 
-    private RecordComponentMetadata[] getRecordComponents(MetaAccessProvider metaAccess, HostedType declaringType, Class<?> clazz) {
+    private RecordComponentMetadata[] getRecordComponents(HostedType declaringType, Class<?> clazz) {
         RecordComponent[] recordComponents = ImageSingletons.lookup(ReflectionHostedSupport.class).getRecordComponents(clazz);
         if (recordComponents == null) {
             return null;
@@ -765,7 +767,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         for (int i = 0; i < recordComponents.length; ++i) {
             RecordComponent recordComponent = recordComponents[i];
             String name = recordComponent.getName();
-            HostedType type = (HostedType) metaAccess.lookupJavaType(recordComponent.getType());
+            HostedType type = metaAccess.lookupJavaType(recordComponent.getType());
             String signature = recordComponent.getGenericSignature();
 
             /* Fill encoders with the necessary values. */
@@ -1276,7 +1278,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             }
         }
 
-        public boolean shouldRegisterField(Object field, AnalysisMetaAccess metaAccess, AccessibleObjectMetadata metadata) {
+        public boolean shouldRegisterField(Object field, AnalysisMetaAccess metaAccess, FieldMetadata metadata) {
             int fieldId = switch (field) {
                 case AnalysisField analysisField -> analysisField.getId();
                 case HostedField hostedField -> hostedField.getWrapped().getId();
@@ -1288,8 +1290,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             }
 
             Boolean fieldData = previousLayerRegisteredFields.get(fieldId);
-            if (fieldData == null || (!fieldData && metadata.complete)) {
-                registeredFields.put(fieldId, metadata.complete);
+            boolean isComplete = metadata.complete && metadata.offset >= 0;
+            if (fieldData == null || (!fieldData && isComplete)) {
+                registeredFields.put(fieldId, isComplete);
                 return true;
             } else {
                 return false;
