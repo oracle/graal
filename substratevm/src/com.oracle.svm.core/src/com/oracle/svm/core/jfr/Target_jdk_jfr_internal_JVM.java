@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.jfr.Target_jdk_jfr_internal_JVM_Util.jfrNotSupportedException;
 
 import java.util.List;
@@ -39,6 +40,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.container.OperatingSystem;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
+import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.util.PlatformTimeUtils;
 
 import jdk.jfr.internal.JVM;
@@ -681,7 +683,10 @@ public final class Target_jdk_jfr_internal_JVM {
 }
 
 class Target_jdk_jfr_internal_JVM_Util {
+    private static final UnsupportedOperationException CACHED_EXCEPTION = new UnsupportedOperationException(VMInspectionOptions.getJfrNotSupportedMessage() + ' ' + ImplicitExceptions.NO_STACK_MSG);
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static UnsupportedOperationException jfrNotSupportedException() {
-        throw new UnsupportedOperationException(VMInspectionOptions.getJfrNotSupportedMessage());
+        throw CACHED_EXCEPTION;
     }
 }
