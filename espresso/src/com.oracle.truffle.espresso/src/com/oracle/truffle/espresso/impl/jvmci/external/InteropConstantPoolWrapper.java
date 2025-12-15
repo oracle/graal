@@ -84,6 +84,7 @@ public class InteropConstantPoolWrapper implements TruffleObject {
                         InvokeMember.LOOKUP_TYPE,
                         InvokeMember.LOOKUP_BOOTSTRAP_METHOD_INVOCATION,
                         InvokeMember.LOOKUP_INDY_BOOTSTRAP_METHOD_INVOCATION,
+                        InvokeMember.LOOKUP_UTF8,
         };
         String[] allMembers = new String[readableMembers.length + invocableMembers.length];
         System.arraycopy(readableMembers, 0, allMembers, 0, readableMembers.length);
@@ -143,6 +144,7 @@ public class InteropConstantPoolWrapper implements TruffleObject {
         static final String LOOKUP_TYPE = "lookupType";
         static final String LOOKUP_BOOTSTRAP_METHOD_INVOCATION = "lookupBootstrapMethodInvocation";
         static final String LOOKUP_INDY_BOOTSTRAP_METHOD_INVOCATION = "lookupIndyBootstrapMethodInvocation";
+        static final String LOOKUP_UTF8 = "lookupUtf8";
 
         @Specialization(guards = "LOAD_REFERENCED_TYPE.equals(member)")
         static boolean loadReferencedType(InteropConstantPoolWrapper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -510,6 +512,27 @@ public class InteropConstantPoolWrapper implements TruffleObject {
             JVMCIConstantPoolUtils.lookupBootstrapMethodInvocation(receiver.constantPool, indyCpi, INVOKEDYNAMIC, context, builder);
             assert builder.isInitialised();
             return builder;
+        }
+
+        @Specialization(guards = "LOOKUP_UTF8.equals(member)")
+        static Object lookupUtf8(InteropConstantPoolWrapper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Exclusive InlinedBranchProfile typeError,
+                        @Cached @Exclusive InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
+            if (arguments.length != 2) {
+                arityError.enter(node);
+                throw ArityException.create(2, 2, arguments.length);
+            }
+            if (!(arguments[0] instanceof Integer index)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments);
+            }
+            EspressoContext context = EspressoContext.get(node);
+            if (safeTagAt(receiver.constantPool, index, context.getMeta()) != ConstantPool.Tag.UTF8) {
+                throw context.getMeta().throwIllegalArgumentExceptionBoundary();
+            }
+            return TypeSymbols.nameToType(receiver.constantPool.utf8At(index)).toString();
         }
 
         @Fallback
