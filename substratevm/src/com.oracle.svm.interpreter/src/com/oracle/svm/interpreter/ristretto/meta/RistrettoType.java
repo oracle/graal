@@ -52,7 +52,7 @@ public final class RistrettoType extends SubstrateType {
         return interpreterType;
     }
 
-    private static final Function<InterpreterResolvedJavaType, ResolvedJavaType> RISTRETTO_TYPE_FUNCTION = RistrettoType::new;
+    public static final Function<InterpreterResolvedJavaType, ResolvedJavaType> RISTRETTO_TYPE_FUNCTION = RistrettoType::new;
 
     public static RistrettoType create(InterpreterResolvedJavaType interpreterType) {
         return (RistrettoType) interpreterType.getRistrettoType(RISTRETTO_TYPE_FUNCTION);

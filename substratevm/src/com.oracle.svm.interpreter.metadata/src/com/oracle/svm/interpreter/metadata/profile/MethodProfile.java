@@ -29,9 +29,11 @@ import static jdk.graal.compiler.bytecode.Bytecodes.END;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 
 import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.nodes.IfNode;
@@ -83,12 +85,12 @@ public final class MethodProfile {
 
     private boolean isMature;
 
-    public MethodProfile(ResolvedJavaMethod method) {
+    public MethodProfile(ResolvedJavaMethod method, Function<InterpreterResolvedJavaType, ResolvedJavaType> ristrettoTypeSupplier) {
         this.method = method;
-        this.profiles = buildProfiles(method);
+        this.profiles = buildProfiles(method, ristrettoTypeSupplier);
     }
 
-    private static InterpreterProfile[] buildProfiles(ResolvedJavaMethod method) {
+    private static InterpreterProfile[] buildProfiles(ResolvedJavaMethod method, Function<InterpreterResolvedJavaType, ResolvedJavaType> ristrettoTypeSupplier) {
         BytecodeStream stream = new BytecodeStream(method.getCode());
         stream.setBCI(0);
         List<InterpreterProfile> allProfiles = new ArrayList<>();
@@ -104,7 +106,7 @@ public final class MethodProfile {
                 allProfiles.add(new BranchProfile(bci));
             }
             if (Bytecodes.isTypeProfiled(opcode)) {
-                allProfiles.add(new TypeProfile(bci));
+                allProfiles.add(new TypeProfile(bci, ristrettoTypeSupplier));
             }
             // TODO GR-71799 - backedge / goto profiles
             stream.next();
@@ -317,11 +319,18 @@ public final class MethodProfile {
          */
         private final long[] counts;
 
-        public TypeProfile(int bci) {
+        /**
+         * We profile interpreter types but when we export it to the compiler as a type profile we
+         * want to use ristretto types.
+         */
+        private final Function<InterpreterResolvedJavaType, ResolvedJavaType> ristrettoTypeSupplier;
+
+        public TypeProfile(int bci, Function<InterpreterResolvedJavaType, ResolvedJavaType> ristrettoTypeSupplier) {
             super(bci);
             final int typeProfileWidth = InterpreterProfilingOptions.JITProfileTypeProfileWidth.getValue();
             types = new ResolvedJavaType[typeProfileWidth];
             counts = new long[typeProfileWidth];
+            this.ristrettoTypeSupplier = ristrettoTypeSupplier;
         }
 
         /**
@@ -411,7 +420,12 @@ public final class MethodProfile {
                 double p = counts[i];
                 p = p / counter;
                 totalProbability += p;
-                ptypes[i] = new JavaTypeProfile.ProfiledType(types[i], p);
+                /*
+                 * When we give the profile out we want it to be ristretto types only. Consumers,
+                 * especially the compiler, will require ristretto view of the JVMCI data.
+                 */
+                final ResolvedJavaType rType = ((InterpreterResolvedJavaType) types[i]).getRistrettoType(ristrettoTypeSupplier);
+                ptypes[i] = new JavaTypeProfile.ProfiledType(rType, p);
             }
             Arrays.sort(ptypes);
             double notRecordedTypeProbability = profiledTypeCount < types.length ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));

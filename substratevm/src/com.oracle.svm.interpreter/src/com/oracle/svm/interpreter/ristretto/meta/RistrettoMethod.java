@@ -116,7 +116,7 @@ public final class RistrettoMethod extends SubstrateMethod {
      */
     private synchronized void initializeProfile() {
         if (profile == null) {
-            MethodProfile newProfile = new MethodProfile(this);
+            MethodProfile newProfile = new MethodProfile(this, RistrettoType.RISTRETTO_TYPE_FUNCTION);
             // ensure everything is allocated and initialized before we signal the barrier
             // for the publishing write
             MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
