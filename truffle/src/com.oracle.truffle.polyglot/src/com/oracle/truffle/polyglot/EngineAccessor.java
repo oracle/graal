@@ -67,6 +67,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -2386,6 +2387,7 @@ final class EngineAccessor extends Accessor {
             return context.getHostContext();
         }
 
+        @Override
         public int findGuestToHostFrame(Object polyglotEngineImpl, StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
             PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngineImpl;
             if (engine.host == null) {

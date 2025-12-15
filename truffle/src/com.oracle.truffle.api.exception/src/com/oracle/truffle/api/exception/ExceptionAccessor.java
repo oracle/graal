@@ -147,6 +147,7 @@ final class ExceptionAccessor extends Accessor {
             return MergedHostGuestIterator.getExceptionStackTrace(receiver, polyglotContext, false, false);
         }
 
+        @Override
         public Object getEmbedderStackTrace(Object receiver, Object vmObject, boolean inHost) {
             return MergedHostGuestIterator.getExceptionStackTrace(receiver, vmObject, inHost, true);
         }

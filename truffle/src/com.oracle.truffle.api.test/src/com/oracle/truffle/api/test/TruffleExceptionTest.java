@@ -447,13 +447,45 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
+        @SuppressWarnings("static-method")
         boolean hasLanguageId() {
             return true;
         }
 
         @ExportMessage
+        @SuppressWarnings("static-method")
         String getLanguageId() {
             return ProxyLanguage.ID;
+        }
+
+        @ExportMessage
+        @SuppressWarnings({"unused", "static-method"})
+        @TruffleBoundary
+        Object toDisplayString(boolean allowSideEffects) {
+            if (allowSideEffects) {
+                StringBuilder builder = new StringBuilder();
+                builder.append("<").append(getLanguageId()).append("> ");
+                try {
+                    if (hasExecutableName()) {
+                        builder.append(getExecutableName());
+                    } else {
+                        builder.append("Unknown");
+                    }
+                    if (hasSourceLocation()) {
+                        SourceSection section = getSourceLocation();
+                        builder.append('(');
+                        builder.append(section.getSource().getName());
+                        builder.append(':');
+                        builder.append(section.getStartLine());
+                        builder.append(')');
+                    }
+                } catch (UnsupportedMessageException unsupportedMessage) {
+                    throw CompilerDirectives.shouldNotReachHere(unsupportedMessage);
+                }
+                return builder.toString();
+            } else {
+                return getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(this));
+            }
         }
 
         @ExportMessage
