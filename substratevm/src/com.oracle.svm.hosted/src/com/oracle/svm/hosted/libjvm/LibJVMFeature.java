@@ -32,6 +32,9 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
+
+import jdk.graal.compiler.vmaccess.ModuleSupport;
 
 final class LibJVMFeature extends JNIRegistrationUtil implements Feature {
 
@@ -49,6 +52,10 @@ final class LibJVMFeature extends JNIRegistrationUtil implements Feature {
         JVMCIRuntimeJNIAccess.register(fields(access, launcherHelper, "isStaticMain", "noArgMain"));
 
         JVMCIRuntimeJNIAccess.register(method(access, launcherHelper, "listModules"));
+
+        String sourceLauncherPackage = "com.sun.tools.javac.launcher";
+        JVMCIRuntimeReflection.register(method(access, sourceLauncherPackage + ".SourceLauncher", "main", String[].class));
+        ModuleSupport.addExports(LibJVMMainMethodWrappers.class.getModule(), "jdk.compiler", sourceLauncherPackage);
 
         // Workaround for GR-71358
         ImageSingletons.add(LibJVMMainMethodWrappers.class, new LibJVMMainMethodWrappers());

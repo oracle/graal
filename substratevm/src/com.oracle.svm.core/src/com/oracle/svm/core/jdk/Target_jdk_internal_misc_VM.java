@@ -54,6 +54,16 @@ public final class Target_jdk_internal_misc_VM {
         return StackTraceUtils.latestUserDefinedClassLoader(KnownIntrinsics.readCallerStackPointer());
     }
 
+    @Substitute
+    public static String[] getRuntimeArguments() {
+        /**
+         * This native method just calls JVM_GetVmArguments which SVM doesn't implement. It is
+         * called by SourceLauncher to find arguments that the java launcher usually gives to the
+         * JVM rather than the application (class path, module path, etc).
+         */
+        return new String[0];
+    }
+
     /*
      * Finalizers are not supported, but we still do not want to inherit any counters from the image
      * builder.

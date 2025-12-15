@@ -1104,6 +1104,22 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.libjvm": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+                "resources"
+            ],
+            "checkstyle": "com.oracle.svm.hosted",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javaCompliance" : "24+",
+            "jacoco" : "exclude",
+        },
+
         "com.oracle.svm.junit": {
             "subDir": "src",
             "sourceDirs": [
@@ -2331,6 +2347,15 @@ suite = {
             "maven": {
                 "tag": ["default", "public"],
             },
+        },
+
+        "SVM_LIBJVM" : {
+            "subDir": "src",
+            "description" : "SubstrateVM based libjvm",
+            "dependencies": [
+                "com.oracle.svm.libjvm",
+            ],
+            "maven": False,
         },
 
         "NATIVE_IMAGE_BASE": {
