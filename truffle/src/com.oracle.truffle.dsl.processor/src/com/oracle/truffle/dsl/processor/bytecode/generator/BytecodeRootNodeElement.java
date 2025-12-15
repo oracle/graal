@@ -4125,15 +4125,6 @@ final class BytecodeRootNodeElement extends AbstractElement {
                 }
             }
 
-            if (operation.kind == OperationKind.TAG) {
-                b.declaration(tagNode.asType(), "node", "new TagNode(encodedTags & this.tags, state.bci)");
-                b.startIf().string("state.tagNodes == null").end().startBlock();
-                b.statement("state.tagNodes = new ArrayList<>()");
-                b.end();
-                b.declaration(type(int.class), "nodeId", "state.tagNodes.size()");
-                b.statement("state.tagNodes.add(node)");
-            }
-
             switch (operation.kind) {
                 case ROOT:
                 case BLOCK:
@@ -4150,6 +4141,15 @@ final class BytecodeRootNodeElement extends AbstractElement {
 
             if (operation.kind != OperationKind.FINALLY_HANDLER) {
                 b.startStatement().startCall("beforeChild").end(2);
+            }
+
+            if (operation.kind == OperationKind.TAG) {
+                b.declaration(tagNode.asType(), "node", "new TagNode(encodedTags & this.tags, state.bci)");
+                b.startIf().string("state.tagNodes == null").end().startBlock();
+                b.statement("state.tagNodes = new ArrayList<>()");
+                b.end();
+                b.declaration(type(int.class), "nodeId", "state.tagNodes.size()");
+                b.statement("state.tagNodes.add(node)");
             }
 
             /*

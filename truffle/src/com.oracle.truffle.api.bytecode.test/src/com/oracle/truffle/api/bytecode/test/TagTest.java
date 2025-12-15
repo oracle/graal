@@ -2588,6 +2588,47 @@ public class TagTest extends AbstractInstructionTest {
         }
     }
 
+    @Test
+    public void testTagTreeRange() {
+        /*
+         * This is a regression test. Previously, the tag enter bci was set before calling
+         * beforeChild, which caused the tag tree to cover more instructions than it should have (in
+         * this test case, it included the preceding pop instruction).
+         */
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot();
+            b.beginBlock();
+
+            b.emitLoadNull();
+
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(42L);
+            b.endTag(ExpressionTag.class);
+
+            b.endBlock();
+            b.endRoot();
+        });
+
+        assertEquals(42L, node.getCallTarget().call());
+        attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class,
+                        StatementTag.class).build());
+
+        assertEquals(42L, node.getCallTarget().call());
+
+        assertInstructions(node,
+                        "load.null",
+                        "pop",
+                        "tag.enter",
+                        "load.constant",
+                        "tag.leave",
+                        "return");
+
+        TagTree tagTree = node.getBytecodeNode().getTagTree();
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        assertEquals(instructions.get(2).getBytecodeIndex(), tagTree.getEnterBytecodeIndex());
+        assertEquals(instructions.get(4).getBytecodeIndex(), tagTree.getReturnBytecodeIndex());
+    }
+
     @SuppressWarnings("serial")
     static class TestException extends AbstractTruffleException {
 
