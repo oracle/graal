@@ -25,21 +25,23 @@
 
 package com.oracle.svm.webimage.functionintrinsics;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.math.BigInteger;
+import java.util.Objects;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSBigInt;
 import org.graalvm.webimage.api.JSBoolean;
-import org.graalvm.webimage.api.ThrownFromJavaScript;
 import org.graalvm.webimage.api.JSNumber;
 import org.graalvm.webimage.api.JSObject;
 import org.graalvm.webimage.api.JSString;
 import org.graalvm.webimage.api.JSSymbol;
 import org.graalvm.webimage.api.JSUndefined;
 import org.graalvm.webimage.api.JSValue;
+import org.graalvm.webimage.api.ThrownFromJavaScript;
 
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.webimage.JSExceptionSupport;
@@ -103,6 +105,32 @@ public abstract class JSConversion {
         }
 
         return JavaKind.Object.ordinal();
+    }
+
+    @WasmExport(value = "object.getclass", comment = "Get Class from object")
+    @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
+    public static Class<?> getClass(Object o) {
+        return o.getClass();
+    }
+
+    @WasmExport(value = "class.superclass", comment = "Gets superclass of given non-primitive non-object class")
+    @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
+    public static Class<?> getSuperclass(Class<?> clazz) {
+        Class<?> superclass = clazz.getSuperclass();
+        assert superclass != null || clazz == Object.class : "Cannot get superclass of " + clazz + ". Only instance and array classes are allowed";
+        return superclass;
+    }
+
+    @WasmExport(value = "class.componenttype", comment = "The component type of the array class")
+    @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
+    public static Class<?> getComponentType(Class<?> clazz) {
+        return clazz.getComponentType();
+    }
+
+    @WasmExport(value = "class.getname", comment = "Get fully qualified class name")
+    @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
+    public static String getClassName(Class<?> clazz) {
+        return clazz.getTypeName();
     }
 
     // Creation of JSValue objects
@@ -206,6 +234,10 @@ public abstract class JSConversion {
     public abstract void setJavaScriptNativeImpl(JSValue self, Object jsNative);
 
     public static void setJavaScriptNative(JSValue self, Object jsNative) {
+        if (jsNative == null || JSFunctionIntrinsics.isUndefined(jsNative)) {
+            throw VMError.shouldNotReachHere("null and undefined cannot be used as the jsNative value for " + self.getClass());
+        }
+        Objects.requireNonNull(jsNative, "Cannot use null as jsNative value");
         instance().setJavaScriptNativeImpl(self, jsNative);
     }
 
@@ -376,122 +408,21 @@ public abstract class JSConversion {
         throw throwClassCastException(obj, "string");
     }
 
-    /**
-     * Coerces a Java array to the corresponding typed array.
-     *
-     * All other Java classes cannot be coerced. This method must not be called with {@link JSValue}
-     * subclasses -- only Java objects that become Java Proxies are valid arguments.
-     */
-    @WasmExport("convert.coerce.object")
-    @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
-    public static Object coerceToJavaScriptObject(Object obj) {
-        if (obj instanceof boolean[] || obj instanceof byte[] || obj instanceof char[] || obj instanceof short[] || obj instanceof int[] || obj instanceof float[] || obj instanceof long[] ||
-                        obj instanceof double[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "object");
-    }
-
-    /**
-     * Coerces a Java {@code boolean[]} object to a JavaScript Uint8Array.
-     */
-    public static Object coerceToJavaScriptUint8Array(Object obj) {
-        if (obj instanceof boolean[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "Uint8Array");
-    }
-
-    /**
-     * Coerces a Java {@code byte[]} object to a JavaScript Int8Array.
-     */
-    public static Object coerceToJavaScriptInt8Array(Object obj) {
-        if (obj instanceof byte[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "Int8Array");
-    }
-
-    /**
-     * Coerces a Java {@code char[]} object to a JavaScript Uint16Array.
-     */
-    public static Object coerceToJavaScriptUint16Array(Object obj) {
-        if (obj instanceof char[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "Uint16Array");
-    }
-
-    /**
-     * Coerces a Java {@code short[]} object to a JavaScript Int16Array.
-     */
-    public static Object coerceToJavaScriptInt16Array(Object obj) {
-        if (obj instanceof short[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "Int16Array");
-    }
-
-    /**
-     * Coerces a Java {@code int[]} object to a JavaScript Int32Array.
-     */
-    public static Object coerceToJavaScriptInt32Array(Object obj) {
-        if (obj instanceof int[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "Int32Array");
-    }
-
-    /**
-     * Coerces a Java {@code float[]} object to a JavaScript Float32Array.
-     */
-    public static Object coerceToJavaScriptFloat32Array(Object obj) {
-        if (obj instanceof float[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "Float32Array");
-    }
-
-    /**
-     * Coerces a Java {@code long[]} object to a JavaScript BigInt64Array.
-     */
-    public static Object coerceToJavaScriptBigInt64Array(Object obj) {
-        if (obj instanceof long[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "BigInt64Array");
-    }
-
     public static char[] createCharArray(int length) {
         return new char[length];
-    }
-
-    /**
-     * Coerces a Java {@code double[]} object to a JavaScript Float64Array.
-     */
-    public static Object coerceToJavaScriptFloat64Array(Object obj) {
-        if (obj instanceof double[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "Float64Array");
     }
 
     // Various other helper methods.
 
     /**
      * Returns the length of the specified array.
-     *
+     * <p>
      * This method is intended to be called from JavaScript.
      */
-    public static int lengthOf(Object[] array) {
-        return array.length;
-    }
-
-    /**
-     * Returns the hub of the specified object.
-     */
-    public static Class<?> hubOf(Object x) {
-        return x.getClass();
+    @WasmExport("convert.arraylength")
+    @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
+    public static int lengthOf(Object array) {
+        return Array.getLength(array);
     }
 
     /**
@@ -636,15 +567,6 @@ public abstract class JSConversion {
         // Step 6: check if the object is a character.
         if (x instanceof Character c) {
             return JSNumber.of(c);
-        }
-
-        // Step 7: check if the object is a primitive array.
-        Class<?> cls = x.getClass();
-        if (cls.isArray() && cls.getComponentType().isPrimitive()) {
-            // Note: in this case, x is also a valid JavaScript object, because Java primitive
-            // arrays are encoded as JavaScript typed arrays.
-            // TODO GR-60603 This is not the case for the WasmGC backend
-            return createJSObject(x);
         }
 
         // No coercion rule applies, return the original object.

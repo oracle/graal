@@ -25,8 +25,11 @@
 
 package com.oracle.svm.hosted.webimage.wasmgc.ast.id;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 
 import com.oracle.svm.hosted.webimage.wasm.ast.Export;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.KnownIds;
@@ -178,7 +181,7 @@ public class GCKnownIds extends KnownIds {
     public final WasmGCJSBodyTemplates.ExtractJSValue extractJSValueTemplate;
     public final WasmGCJSBodyTemplates.IsJavaObject isJavaObjectTemplate;
 
-    private final List<Export> functionExports;
+    private final List<Export> functionExports = new ArrayList<>();
 
     public GCKnownIds(WasmIdFactory idFactory) {
         super(idFactory);
@@ -250,18 +253,19 @@ public class GCKnownIds extends KnownIds {
         this.extractJSValueTemplate = new WasmGCJSBodyTemplates.ExtractJSValue(idFactory);
         this.isJavaObjectTemplate = new WasmGCJSBodyTemplates.IsJavaObject(idFactory);
 
-        functionExports = List.of(
-                        Export.forFunction(unsafeCreateTemplate.requestFunctionId(), "unsafe.create", "Create uninitialized instance of given class"),
-                        Export.forFunction(wrapExternTemplate.requestFunctionId(), "extern.wrap", "Wrap externref in WasmExtern"),
-                        Export.forFunction(toExternTemplate.requestFunctionId(), "extern.unwrap", "Unwrap Java object to externref"),
-                        Export.forFunction(toExternTemplate.requestFunctionId(), "extern.isjavaobject", "Check if reference is a Java Object"),
-                        Export.forFunction(arrayLoadTemplate.requestFunctionId(JavaKind.Char), "array.char.read", "Read element of char array"),
-                        Export.forFunction(arrayLoadTemplate.requestFunctionId(JavaKind.Object), "array.object.read", "Read element of Object array"),
-                        Export.forFunction(arrayLengthTemplate.requestFunctionId(), "array.length", "Length of a Java array"),
-                        Export.forFunction(arrayStoreTemplate.requestFunctionId(JavaKind.Char), "array.char.write", "Write element of char array"),
-                        Export.forFunction(arrayStoreTemplate.requestFunctionId(JavaKind.Object), "array.object.write", "Write element of Object array"),
-                        Export.forFunction(arrayCreateTemplate.requestFunctionId(char.class), "array.char.create", "Create char array"),
-                        Export.forFunction(arrayCreateTemplate.requestFunctionId(String.class), "array.string.create", "Create String array"));
+        this.functionExports.add(Export.forFunction(unsafeCreateTemplate.requestFunctionId(), "unsafe.create", "Create uninitialized instance of given class"));
+        this.functionExports.add(Export.forFunction(wrapExternTemplate.requestFunctionId(), "extern.wrap", "Wrap externref in WasmExtern"));
+        this.functionExports.add(Export.forFunction(toExternTemplate.requestFunctionId(), "extern.unwrap", "Unwrap Java object to externref"));
+        this.functionExports.add(Export.forFunction(toExternTemplate.requestFunctionId(), "extern.isjavaobject", "Check if reference is a Java Object"));
+        this.functionExports.add(Export.forFunction(arrayLengthTemplate.requestFunctionId(), "array.length", "Length of a Java array"));
+        this.functionExports.add(Export.forFunction(arrayCreateTemplate.requestFunctionId(char.class), "array.char.create", "Create char array"));
+        this.functionExports.add(Export.forFunction(arrayCreateTemplate.requestFunctionId(String.class), "array.string.create", "Create String array"));
+
+        for (JavaKind kind : arrayComponentKinds) {
+            String prefix = "array." + kind.name().toLowerCase(Locale.ROOT) + ".";
+            this.functionExports.add(Export.forFunction(arrayLoadTemplate.requestFunctionId(kind), prefix + "read", "Read element of " + kind + " array"));
+            this.functionExports.add(Export.forFunction(arrayStoreTemplate.requestFunctionId(kind), prefix + "write", "Write element of " + kind + " array"));
+        }
     }
 
     /**
@@ -306,6 +310,6 @@ public class GCKnownIds extends KnownIds {
 
     @Override
     public List<Export> getExports() {
-        return functionExports;
+        return Collections.unmodifiableList(functionExports);
     }
 }

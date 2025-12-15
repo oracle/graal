@@ -41,6 +41,7 @@ import org.junit.Assert;
 
 public class JavaProxyConversionTest {
     public static final String[] OUTPUT = {
+                    "passingProxies",
                     "Cell(10)",
                     "Cell(10)",
                     "Cell(10)",
@@ -71,10 +72,12 @@ public class JavaProxyConversionTest {
                     "1.125",
                     "1.0625",
                     "Guess who.",
+
+                    "proxyToBasicTypeConversion",
                     "JavaScript<boolean; true>",
                     "true",
                     "'true' cannot be coerced to a JavaScript 'function'.",
-                    "JavaScript<number; 121.0>",
+                    "JavaScript<number; 121>",
                     "121",
                     "'4141.0' cannot be coerced to a JavaScript 'string'.",
                     "JavaScript<bigint; 123456123456123456>",
@@ -82,20 +85,10 @@ public class JavaProxyConversionTest {
                     "JavaScript<bigint; 9876543210>",
                     "JavaScript<string; Go proxy!>",
                     "Go proxy!",
-                    "'Proxy power!' cannot be coerced to a JavaScript 'object'.",
-                    "true",
-                    "JavaScript<object; 3,0,0> cannot be coerced to 'double[]'.",
                     "Lambda call! Can't touch this.",
                     "It's raining proxies.",
-                    "true",
-                    "true",
-                    "true",
-                    "true",
-                    "true",
-                    "true",
-                    "true",
-                    "true",
-                    "cannot be coerced to a JavaScript 'Float32Array'.",
+
+                    "proxyCalls",
                     "Rock'n'roll",
                     "3",
                     "Rock'n'roll",
@@ -105,10 +98,16 @@ public class JavaProxyConversionTest {
                     "[717: Integer]",
                     "[717: Integer]",
                     "717",
+
+                    "proxyNewOperator",
                     "[]",
                     "[Great success!, For the win!]",
+
+                    "passingLambdaToVirtual",
                     "JavaScript<string; cell>",
                     "JavaScript<string; subcell(subcontent)>",
+
+                    "indexedAccessProxiedArray",
     };
 
     public static void main(String[] args) {
@@ -121,6 +120,7 @@ public class JavaProxyConversionTest {
     }
 
     private static void passingProxies() {
+        System.out.println("passingProxies");
         Cell cell = new Cell(10);
         logJavaProxy(cell);
         System.out.println(id(cell));
@@ -216,6 +216,7 @@ public class JavaProxyConversionTest {
     private static native double idDouble(double d);
 
     private static void proxyToBasicTypeConversion() {
+        System.out.println("proxyToBasicTypeConversion");
         JSBoolean trueValue = coerceToBoolean(true);
         System.out.println(trueValue);
         log(trueValue);
@@ -242,64 +243,12 @@ public class JavaProxyConversionTest {
         JSString string = coerceToString("Go proxy!");
         System.out.println(string);
         log(string);
-        try {
-            failedCoerceToString("Proxy power!");
-        } catch (ClassCastException e) {
-            System.out.println(e.getMessage());
-        }
-
-        byte[] bytes = new byte[3];
-        bytes[0] = 3;
-        byte[] bytes0 = coerceToObject(bytes).asByteArray();
-        System.out.println(bytes == bytes0);
-        try {
-            coerceToObject(bytes).asDoubleArray();
-        } catch (ClassCastException e) {
-            System.out.println(e.getMessage());
-        }
 
         JSObject fun = coerceRunnableToFunction(() -> System.out.println("Lambda call! Can't touch this."));
         fun.invoke();
 
         JSObject fun1 = coerceConsumerToFunction(x -> System.out.println("It's raining " + x + "."));
         fun1.invoke("proxies");
-
-        boolean[] booleans = new boolean[3];
-        booleans[0] = true;
-        boolean[] booleans1 = coerceToTypedArray(booleans).asBooleanArray();
-        System.out.println(booleans == booleans1);
-
-        byte[] bytes1 = coerceToTypedArray(bytes).asByteArray();
-        System.out.println(bytes == bytes1);
-
-        short[] shorts = new short[3];
-        short[] shorts1 = coerceToTypedArray(shorts).asShortArray();
-        System.out.println(shorts == shorts1);
-
-        char[] chars = new char[3];
-        char[] chars1 = coerceToTypedArray(chars).asCharArray();
-        System.out.println(chars == chars1);
-
-        int[] ints = new int[3];
-        int[] ints1 = coerceToTypedArray(ints).asIntArray();
-        System.out.println(ints == ints1);
-
-        float[] floats = new float[3];
-        float[] floats1 = coerceToTypedArray(floats).asFloatArray();
-        System.out.println(floats == floats1);
-
-        long[] longs = new long[3];
-        long[] longs1 = coerceToTypedArray(longs).asLongArray();
-        System.out.println(longs == longs1);
-
-        double[] doubles = new double[3];
-        double[] doubles1 = coerceToTypedArray(doubles).asDoubleArray();
-        System.out.println(doubles == doubles1);
-        try {
-            failedCoerceToTypedFloatArray(doubles);
-        } catch (ClassCastException e) {
-            System.out.println(e.getMessage().substring(e.getMessage().indexOf("cannot")));
-        }
     }
 
     @JS("console.log(x.toString());")
@@ -335,34 +284,8 @@ public class JavaProxyConversionTest {
     @JS("return r.$as('function');")
     private static native JSObject coerceConsumerToFunction(Consumer<String> r);
 
-    @JS("return booleans.$as(Uint8Array);")
-    private static native JSObject coerceToTypedArray(boolean[] booleans);
-
-    @JS("return bytes.$as(Int8Array);")
-    private static native JSObject coerceToTypedArray(byte[] bytes);
-
-    @JS("return shorts.$as(Int16Array);")
-    private static native JSObject coerceToTypedArray(short[] shorts);
-
-    @JS("return chars.$as(Uint16Array);")
-    private static native JSObject coerceToTypedArray(char[] chars);
-
-    @JS("return ints.$as(Int32Array);")
-    private static native JSObject coerceToTypedArray(int[] ints);
-
-    @JS("return floats.$as(Float32Array);")
-    private static native JSObject coerceToTypedArray(float[] floats);
-
-    @JS("return longs.$as(BigInt64Array);")
-    private static native JSObject coerceToTypedArray(long[] longs);
-
-    @JS("return doubles.$as(Float64Array);")
-    private static native JSObject coerceToTypedArray(double[] doubles);
-
-    @JS("return doubles.$as(Float32Array);")
-    private static native JSObject failedCoerceToTypedFloatArray(double[] doubles);
-
     private static void proxyCalls() {
+        System.out.println("proxyCalls");
         String text = "  Rock'n'roll  ";
         System.out.println(text.trim());
         System.out.println(text.indexOf("o", 0));
@@ -400,6 +323,7 @@ public class JavaProxyConversionTest {
     private static native Object get(SubCell cell);
 
     private static void proxyNewOperator() {
+        System.out.println("proxyNewOperator");
         System.out.println(new ArrayList<>());
         ArrayList<String> list = createArrayList(ArrayList.class);
         list.add("Great success!");
@@ -413,11 +337,13 @@ public class JavaProxyConversionTest {
     private static Cell[] cells = new Cell[]{new Cell("content"), new SubCell("subcontent")};
 
     private static void passingLambdaToVirtual() {
+        System.out.println("passingLambdaToVirtual");
         System.out.println(cells[0].jsName());
         System.out.println(cells[1].jsName());
     }
 
     private static void indexedAccessProxiedArray() {
+        System.out.println("indexedAccessProxiedArray");
         Object[] arr = new Object[]{"abc", 5};
         for (int i = 0; i < arr.length; i++) {
             Object result = getIndexedProxyArray(arr, JSNumber.of(i));

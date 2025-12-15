@@ -105,7 +105,15 @@ public abstract class JSValue {
 
     public abstract String typeof();
 
-    protected abstract String stringValue();
+    /**
+     * Returns the JS string representation of this value (by calling the JS {@code toString} method
+     * on it) and {@code "undefined"} for the JS {@code undefined} value.
+     *
+     * @since 25.1
+     */
+    @JS.Coerce
+    @JS("return this?.toString()?? 'undefined';")
+    public final native String stringValue();
 
     public Boolean asBoolean() {
         throw classCastError("Boolean");
@@ -147,38 +155,6 @@ public abstract class JSValue {
         throw classCastError("String");
     }
 
-    public boolean[] asBooleanArray() {
-        throw classCastError("boolean[]");
-    }
-
-    public byte[] asByteArray() {
-        throw classCastError("byte[]");
-    }
-
-    public short[] asShortArray() {
-        throw classCastError("short[]");
-    }
-
-    public char[] asCharArray() {
-        throw classCastError("char[]");
-    }
-
-    public int[] asIntArray() {
-        throw classCastError("int[]");
-    }
-
-    public float[] asFloatArray() {
-        throw classCastError("float[]");
-    }
-
-    public long[] asLongArray() {
-        throw classCastError("long[]");
-    }
-
-    public double[] asDoubleArray() {
-        throw classCastError("double[]");
-    }
-
     /**
      * Coerces this JavaScript value to the requested Java type. See {@link JS.Coerce} for the
      * JavaScript to Java coercion rules.
@@ -218,33 +194,6 @@ public abstract class JSValue {
         }
         if (String.class.equals(cls)) {
             return (T) asString();
-        }
-        if (cls.isArray() && cls.getComponentType().isPrimitive()) {
-            // Dispatch to primitive array casts.
-            if (int[].class.equals(cls)) {
-                return (T) asIntArray();
-            }
-            if (float[].class.equals(cls)) {
-                return (T) asFloatArray();
-            }
-            if (long[].class.equals(cls)) {
-                return (T) asLongArray();
-            }
-            if (double[].class.equals(cls)) {
-                return (T) asDoubleArray();
-            }
-            if (byte[].class.equals(cls)) {
-                return (T) asByteArray();
-            }
-            if (short[].class.equals(cls)) {
-                return (T) asShortArray();
-            }
-            if (char[].class.equals(cls)) {
-                return (T) asCharArray();
-            }
-            if (boolean[].class.equals(cls)) {
-                return (T) asBooleanArray();
-            }
         }
         if (Character.class.equals(cls)) {
             return (T) asChar();

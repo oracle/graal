@@ -261,25 +261,10 @@ class Runtime {
             },
         });
 
-        // Conversion-related functions and values.
-        // The following values are set or used by the jsconversion module.
-
         /**
          * The holder of JavaScript mirror class for JSObject subclasses.
          */
         this.mirrors = {};
-        /**
-         * Reference to the hub of the java.lang.Class class.
-         */
-        this.classHub = null;
-        /**
-         * Function that retrieves the hub of the specified Java object.
-         */
-        this.hubOf = null;
-        /**
-         * Function that checks if the first argument hub is the supertype or the same as the second argument hub.
-         */
-        this.isSupertype = null;
     }
 
     /**

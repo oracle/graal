@@ -25,13 +25,13 @@
 
 package com.oracle.svm.webimage.jtt.api;
 
-import org.graalvm.webimage.api.JSNumber;
-import org.graalvm.webimage.api.JSObject;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import org.graalvm.webimage.api.JSNumber;
+import org.graalvm.webimage.api.JSObject;
 
 public class JSNumberTest {
 
@@ -195,9 +195,9 @@ public class JSNumberTest {
         JSNumber pi = JSNumber.of(DOUBLE_SMALL);
         JSNumber neg = JSNumber.of(NEG_INT);
 
-        assertEquals("JavaScript<number; 255.0>", hex.toString());
+        assertEquals("JavaScript<number; 255>", hex.toString());
         assertEquals("JavaScript<number; 3.14159>", pi.toString());
-        assertEquals("JavaScript<number; -42.0>", neg.toString());
+        assertEquals("JavaScript<number; -42>", neg.toString());
         assertEquals("11111111", hex.toString(2));
         assertEquals("ff", hex.toString(16));
         assertEquals("377", hex.toString(8));
