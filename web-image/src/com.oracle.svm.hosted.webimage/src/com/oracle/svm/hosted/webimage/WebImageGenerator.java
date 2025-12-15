@@ -34,6 +34,9 @@ import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
+import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.ImageInfo;
@@ -138,8 +141,8 @@ public class WebImageGenerator extends NativeImageGenerator {
     }
 
     @Override
-    protected void createAbstractImage(AbstractImage.NativeImageKind k, List<HostedMethod> hostedEntryPoints, NativeImageHeap heap, HostedMetaAccess hMetaAccess,
-                    NativeImageCodeCache codeCache) {
+    protected void createAbstractImage(AbstractImage.NativeImageKind k, List<HostedMethod> hostedEntryPoints, NativeImageHeap heap,
+                    ImageHeapLayoutInfo heapLayout, HostedMetaAccess hMetaAccess, NativeImageCodeCache codeCache) {
         /*
          * For executable images, use the main entry point as provided by native image. Otherwise,
          * pass on the library initialization code as the main entry point.
@@ -148,8 +151,8 @@ public class WebImageGenerator extends NativeImageGenerator {
         this.image = switch (WebImageOptions.getBackend()) {
             // For now the WasmGC backend does not require its own specialized WebImage subclass and
             // WasmWebImage has linear-memory specific code
-            case JS -> new WebImage(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, loader, mainEntryPointMethod);
-            case WASM, WASMGC -> new WasmWebImage(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, loader, mainEntryPointMethod);
+            case JS -> new WebImage(k, hUniverse, hMetaAccess, nativeLibraries, heap, heapLayout, codeCache, hostedEntryPoints, loader, mainEntryPointMethod);
+            case WASM, WASMGC -> new WasmWebImage(k, hUniverse, hMetaAccess, nativeLibraries, heap, heapLayout, codeCache, hostedEntryPoints, loader, mainEntryPointMethod);
         };
     }
 
@@ -218,10 +221,17 @@ public class WebImageGenerator extends NativeImageGenerator {
      * we have a custom handling.
      */
     @Override
-    protected void buildNativeImageHeap(NativeImageHeap heap, NativeImageCodeCache codeCache) {
+    protected ImageHeapLayoutInfo buildNativeImageHeap(NativeImageHeap heap, NativeImageCodeCache codeCache) {
+        ImageHeapLayoutInfo layout = null;
         if (WebImageOptions.getBackend() != WebImageOptions.CompilerBackend.JS) {
-            super.buildNativeImageHeap(heap, codeCache);
+            layout = super.buildNativeImageHeap(heap, codeCache);
         }
+        return layout;
+    }
+
+    @Override
+    protected ImageHeapLayoutInfo layoutNativeImageHeap(NativeImageHeap heap) {
+        return heap.getLayouter().layout(heap, WasmUtil.PAGE_SIZE, ImageHeapLayouter.ImageHeapLayouterCallback.NONE);
     }
 
     @Override

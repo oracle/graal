@@ -37,7 +37,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TreeMap;
 
 import com.oracle.svm.core.BuildArtifacts;
@@ -108,8 +107,6 @@ public abstract class WebImageWasmCodeGen extends WebImageCodeGen {
      */
     protected final ActiveFunctionElements functionTableElements = new ActiveFunctionElements(0, WasmRefType.FUNCREF);
 
-    private ImageHeapLayoutInfo layout = null;
-
     /**
      * Name of the function calling the WASM entry point.
      * <p>
@@ -121,9 +118,9 @@ public abstract class WebImageWasmCodeGen extends WebImageCodeGen {
      */
     public static final JSFunctionDefinition ENTRY_POINT_FUN = new JSGenericFunctionDefinition("wasmRun", 1, false, null, false);
 
-    protected WebImageWasmCodeGen(WebImageCodeCache codeCache, List<HostedMethod> hostedEntryPoints, HostedMethod mainEntryPoint,
+    protected WebImageWasmCodeGen(WebImageCodeCache codeCache, ImageHeapLayoutInfo heapLayout, List<HostedMethod> hostedEntryPoints, HostedMethod mainEntryPoint,
                     WebImageProviders providers, DebugContext debug, WebImageHostedConfiguration config) {
-        super(codeCache, hostedEntryPoints, mainEntryPoint, providers, debug, config);
+        super(codeCache, heapLayout, hostedEntryPoints, mainEntryPoint, providers, debug, config);
 
         this.wasmFilename = this.filename + ".wasm";
         this.watFilename = this.filename + ".wat";
@@ -137,13 +134,7 @@ public abstract class WebImageWasmCodeGen extends WebImageCodeGen {
     }
 
     public ImageHeapLayoutInfo getLayout() {
-        assert layout != null : "Image heap layout not set yet";
-        return layout;
-    }
-
-    protected void setLayout(ImageHeapLayoutInfo layout) {
-        assert this.layout == null : "Image heap layout already set";
-        this.layout = Objects.requireNonNull(layout);
+        return heapLayout;
     }
 
     /**

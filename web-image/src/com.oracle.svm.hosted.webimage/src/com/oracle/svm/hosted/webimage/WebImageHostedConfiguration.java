@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import org.graalvm.collections.EconomicSet;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -136,12 +137,12 @@ public class WebImageHostedConfiguration extends HostedConfiguration {
         return new JSBootImageHeapLowerer(providers, jsLTools, identityMapping);
     }
 
-    public WebImageCodeGen createCodeGen(WebImageCodeCache codeCache, List<HostedMethod> hostedEntryPoints, HostedMethod mainEntryPoint,
+    public WebImageCodeGen createCodeGen(WebImageCodeCache codeCache, ImageHeapLayoutInfo heapLayout, List<HostedMethod> hostedEntryPoints, HostedMethod mainEntryPoint,
                     WebImageProviders providers, DebugContext debug, ImageClassLoader imageClassLoader) {
         return switch (getBackend()) {
             case JS -> new WebImageJSCodeGen(codeCache, hostedEntryPoints, mainEntryPoint, providers, debug, this, imageClassLoader);
-            case WASM -> new WebImageWasmLMCodeGen(codeCache, hostedEntryPoints, mainEntryPoint, providers, debug, this);
-            case WASMGC -> new WebImageWasmGCCodeGen(codeCache, hostedEntryPoints, mainEntryPoint, providers, debug, this);
+            case WASM -> new WebImageWasmLMCodeGen(codeCache, heapLayout, hostedEntryPoints, mainEntryPoint, providers, debug, this);
+            case WASMGC -> new WebImageWasmGCCodeGen(codeCache, heapLayout, hostedEntryPoints, mainEntryPoint, providers, debug, this);
         };
     }
 

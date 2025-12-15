@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import com.oracle.svm.core.LinkerInvocation;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -41,9 +42,9 @@ import jdk.graal.compiler.debug.DebugContext;
 
 public class ImageLayerViaCC extends NativeImageViaCC {
 
-    public ImageLayerViaCC(HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, ClassLoader imageLoader) {
-        super(NativeImageKind.IMAGE_LAYER, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageLoader);
+    public ImageLayerViaCC(HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, ImageHeapLayoutInfo heapLayout,
+                    NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ClassLoader imageLoader) {
+        super(NativeImageKind.IMAGE_LAYER, universe, metaAccess, nativeLibs, heap, heapLayout, codeCache, entryPoints, imageLoader);
     }
 
     @Override

@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.webimage.wasm.codegen;
 
 import java.util.List;
 
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
@@ -38,9 +39,9 @@ import com.oracle.svm.hosted.webimage.codegen.WebImage;
 
 public class WasmWebImage extends WebImage {
 
-    public WasmWebImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, ImageClassLoader imageClassLoader, HostedMethod mainEntryPoint) {
-        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader, mainEntryPoint);
+    public WasmWebImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
+                    ImageHeapLayoutInfo heapLayout, NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ImageClassLoader imageClassLoader, HostedMethod mainEntryPoint) {
+        super(k, universe, metaAccess, nativeLibs, heap, heapLayout, codeCache, entryPoints, imageClassLoader, mainEntryPoint);
     }
 
     @Override

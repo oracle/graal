@@ -47,7 +47,6 @@ import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.Hybrid;
-import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayouterCallback;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
@@ -92,7 +91,6 @@ import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCImageHeapLayoutInfo;
 import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCPartition;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmGCUtil;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
 import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -269,11 +267,7 @@ public class WasmGCHeapWriter {
         this.indexArray = providers.idFactory().newTemporaryVariable(indexArrayType.asNonNull());
         this.dispatchArrayType = providers.knownIds().accessDispatchFieldType;
         this.dispatchArray = providers.idFactory().newTemporaryVariable(dispatchArrayType.asNonNull());
-    }
-
-    public WasmGCImageHeapLayoutInfo layout() {
         collectObjectData();
-        return (WasmGCImageHeapLayoutInfo) heap.getLayouter().layout(heap, WasmUtil.PAGE_SIZE, ImageHeapLayouterCallback.NONE);
     }
 
     public void write(WasmGCImageHeapLayoutInfo layout, WasmModule module) {
