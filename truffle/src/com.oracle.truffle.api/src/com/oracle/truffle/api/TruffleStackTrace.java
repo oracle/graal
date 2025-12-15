@@ -108,12 +108,8 @@ public final class TruffleStackTrace extends Exception {
         if (this.materializedHostException == null) {
             Throwable base = null;
             boolean originatedInHostLanguage = true;
-            Object polyglotEngine = LanguageAccessor.ENGINE.getCurrentPolyglotEngine();
-            if (polyglotEngine != null) {
-                AbstractHostLanguageService hostService = LanguageAccessor.ENGINE.getHostService(polyglotEngine);
-                if (hostService != null && hostService.isHostException(throwable)) {
-                    base = hostService.unboxHostException(throwable);
-                }
+            if (LanguageAccessor.ENGINE.isHostException(throwable)) {
+                base = LanguageAccessor.ENGINE.asHostException(throwable);
             }
             if (base == null) {
                 base = new Exception();

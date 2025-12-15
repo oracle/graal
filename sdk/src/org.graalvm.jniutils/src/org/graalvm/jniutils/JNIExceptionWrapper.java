@@ -502,20 +502,6 @@ public final class JNIExceptionWrapper extends RuntimeException {
     }
 
     /**
-     * Gets the index of the first frame of JNI call to host method.
-     *
-     * @return {@code 0} if no caller found
-     */
-    private static int getIndexOfJNIHostCall(StackTraceElement[] stackTrace) {
-        for (int i = 0; i < stackTrace.length - 1; i++) {
-            if (isJNIAPICall(stackTrace[i]) && isJNIHostCall(stackTrace[i + 1])) {
-                return i;
-            }
-        }
-        return 0;
-    }
-
-    /**
      * Gets the index of the first frame denoting the native method call.
      *
      * @return {@code 0} if no caller found

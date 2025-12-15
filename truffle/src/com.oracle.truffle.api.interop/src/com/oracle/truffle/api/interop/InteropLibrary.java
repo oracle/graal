@@ -695,32 +695,6 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Determines whether the given receiver provides a language identifier. For example, a stack
-     * frame object may provide a language identifier to indicate the language of the method it
-     * represents. Calling this message does not produce any observable side effects. The default
-     * implementation returns {@code false}.
-     *
-     * @see #getLanguageId(Object)
-     * @since 26.0
-     */
-    @Abstract(ifExported = {"getLanguageId"})
-    public boolean hasLanguageId(Object receiver) {
-        return false;
-    }
-
-    /**
-     * Returns language id of the receiver. Throws {@code UnsupportedMessageException} when the
-     * receiver does not provide a {@link #hasLanguageId(Object) language id} or has no language id.
-     *
-     * @see #hasLanguageId(Object)
-     * @since 26.0
-     */
-    @Abstract(ifExported = {"hasLanguageId"})
-    public String getLanguageId(Object receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
-
-    /**
      * Determines whether the given receiver provides a bytecode index. For example, a stack frame
      * object may provide a bytecode index. Calling this message does not produce any observable
      * side effects. The default implementation returns {@code false}.
@@ -5801,13 +5775,13 @@ public abstract class InteropLibrary extends Library {
             }
         }
 
-        @Abstract(ifExported = {"getBytecodeIndex"})
+        @Override
         public boolean hasBytecodeIndex(Object receiver) {
             assert preCondition(receiver);
             return delegate.hasBytecodeIndex(receiver);
         }
 
-        @Abstract(ifExported = {"hasBytecodeIndex"})
+        @Override
         public int getBytecodeIndex(Object receiver) throws UnsupportedMessageException {
             if (CompilerDirectives.inCompiledCode()) {
                 return delegate.getBytecodeIndex(receiver);
@@ -5825,6 +5799,7 @@ public abstract class InteropLibrary extends Library {
             }
         }
 
+        @Override
         public boolean isInternal(Object receiver) {
             assert preCondition(receiver);
             return delegate.isInternal(receiver);
