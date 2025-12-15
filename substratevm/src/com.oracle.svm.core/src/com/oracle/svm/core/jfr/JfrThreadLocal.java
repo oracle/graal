@@ -123,7 +123,9 @@ public class JfrThreadLocal implements ThreadListener {
     }
 
     public void teardown() {
+        // At this point all native buffers should be freed already.
         getNativeBufferList().teardown();
+        // At this point Java buffers will be retired or freed.
         getJavaBufferList().teardown();
     }
 
@@ -161,10 +163,12 @@ public class JfrThreadLocal implements ThreadListener {
         flushToGlobalMemoryAndFreeBuffer(nb);
 
         JfrBuffer jb = javaBuffer.get(isolateThread);
-        javaBuffer.set(isolateThread, Word.nullPointer());
         if (freeJavaBuffer) {
+            javaBuffer.set(isolateThread, Word.nullPointer());
             flushToGlobalMemoryAndFreeBuffer(jb);
         } else {
+            // Do not reset the thread local since we may need it to reinstate the buffer in the
+            // next recording.
             flushToGlobalMemoryAndRetireBuffer(jb);
         }
 
@@ -213,7 +217,7 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private static void flushToGlobalMemoryAndRetireBuffer(JfrBuffer buffer) {
         assert VMOperation.isInProgressAtSafepoint();
-        if (buffer.isNull()) {
+        if (buffer.isNull() || JfrBufferAccess.isRetired(buffer)) {
             return;
         }
 

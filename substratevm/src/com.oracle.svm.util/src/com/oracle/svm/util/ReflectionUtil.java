@@ -30,7 +30,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Objects;
 
 /**
  * This class contains utility methods for commonly used reflection functionality. Note that lookups
@@ -241,16 +240,12 @@ public final class ReflectionUtil {
     }
 
     /**
-     * Counts the number of superclasses as returned by {@link Class#getSuperclass()}.
-     * {@link java.lang.Object} and all primitive types are at depth 0 and all interfaces are at
-     * depth 1.
+     * Helper method to indicate that a certain {@link Class#isAssignableFrom} check is ok, for
+     * example because it compares against class literals of SVM implementation classes. In general,
+     * we should not use <em>core reflection</em>, but
+     * {@link jdk.vm.ci.meta.ResolvedJavaType#isAssignableFrom} in hosted code.
      */
-    public static int getClassHierarchyDepth(Class<?> clazz) {
-        Objects.requireNonNull(clazz, "Must accept a non-null class argument");
-        int depth = 0;
-        for (var cur = clazz.getSuperclass(); cur != null; cur = cur.getSuperclass()) {
-            depth += 1;
-        }
-        return depth;
+    public static boolean isAssignableFrom(Class<?> clazz, Class<?> other) {
+        return clazz.isAssignableFrom(other);
     }
 }

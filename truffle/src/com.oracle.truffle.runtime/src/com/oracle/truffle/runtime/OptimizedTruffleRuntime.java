@@ -42,8 +42,11 @@ package com.oracle.truffle.runtime;
 
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.CompilerIdleDelay;
 
+import java.io.PrintStream;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.Buffer;
@@ -91,6 +94,7 @@ import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningRoot;
 import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -168,6 +172,50 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     private static final int JAVA_SPECIFICATION_VERSION = Runtime.version().feature();
 
+    private static final class Lazy {
+        /**
+         * True if the {@link InliningRoot} annotation is supported by the compiler.
+         */
+        private static final boolean INLINING_ROOT_SUPPORTED = findInliningRootSupported();
+        private static final MethodHandle GET_ANNOTATION = findGetAnnotation();
+
+        @SuppressWarnings("deprecation")
+        private static boolean findInliningRootSupported() {
+            try {
+                HostMethodInfo.class.getDeclaredConstructor(boolean.class, boolean.class, boolean.class, boolean.class, boolean.class);
+                return true;
+            } catch (NoSuchMethodException e) {
+                return false;
+            }
+        }
+
+        private static MethodHandle findGetAnnotation() {
+            /*
+             * In JDK versions prior to 25.1, ResolvedJavaType implemented AnnotatedElement, and the
+             * Graal compiler queried the Truffle runtime to retrieve annotation values.
+             *
+             * Starting with JDK 25.1, ResolvedJavaType no longer implements AnnotatedElement.
+             * Instead, the Graal compiler directly reads annotation values using the
+             * jdk.graal.compiler.annotation API.
+             *
+             * As a result, on JDK 25.1 and later, the Truffle runtime is never queried by the Graal
+             * compiler to obtain annotation values. For compatibility, getAnnotation is still
+             * supported when Truffle runs on GraalVM versions older than 25.1.
+             */
+            if (AnnotatedElement.class.isAssignableFrom(ResolvedJavaType.class)) {
+                try {
+                    Method method = AnnotatedElement.class.getDeclaredMethod("getAnnotation", Class.class);
+                    return MethodHandles.lookup().unreflect(method);
+                } catch (NoSuchMethodException | IllegalAccessException e) {
+                    throw new InternalError(e);
+                }
+            } else {
+                return null;
+            }
+        }
+
+    }
+
     /**
      * Used only to reset state for native image compilation.
      */
@@ -193,11 +241,11 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         return (OptimizedTruffleRuntime) Truffle.getRuntime();
     }
 
-    private final LoopNodeFactory loopNodeFactory;
     private EngineCacheSupport engineCacheSupport;
-    private final UnmodifiableEconomicMap<String, Class<?>> lookupTypes;
+    private final Iterable<Class<?>> extraLookupTypes;
+    private UnmodifiableEconomicMap<String, Class<?>> lookupTypes;
     private final FloodControlHandler floodControlHandler;
-    private final List<OptionDescriptors> runtimeOptionDescriptors;
+    private final List<OptionDescriptors> extensionOptionDescriptors;
     protected volatile OptionDescriptors engineOptions;
 
     protected final TruffleCompilationSupport compilationSupport;
@@ -206,24 +254,21 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     @SuppressWarnings("this-escape")
     public OptimizedTruffleRuntime(TruffleCompilationSupport compilationSupport, Iterable<Class<?>> extraLookupTypes) {
         this.compilationSupport = compilationSupport;
-        this.lookupTypes = initLookupTypes(extraLookupTypes);
+        this.extraLookupTypes = extraLookupTypes;
         List<OptionDescriptors> options = new ArrayList<>();
-        this.loopNodeFactory = loadGraalRuntimeServiceProvider(LoopNodeFactory.class, options, true);
         EngineCacheSupport support = loadEngineCacheSupport(options);
         this.engineCacheSupport = support == null ? new EngineCacheSupport.Disabled() : support;
         this.previousEngineCacheSupportOptions = engineCacheSupport.getEngineOptions();
-        options.add(OptimizedRuntimeOptions.getDescriptors());
-        options.add(new CompilerOptionsDescriptors());
-        this.runtimeOptionDescriptors = options;
+        this.extensionOptionDescriptors = options;
         this.floodControlHandler = loadGraalRuntimeServiceProvider(FloodControlHandler.class, null, false);
     }
 
     public final void initializeEngineCacheSupport(EngineCacheSupport support) {
-        this.runtimeOptionDescriptors.remove(this.previousEngineCacheSupportOptions);
+        this.extensionOptionDescriptors.remove(this.previousEngineCacheSupportOptions);
         this.engineCacheSupport = support;
         OptionDescriptors engineCacheOptions = support.getEngineOptions();
         this.previousEngineCacheSupportOptions = engineCacheOptions;
-        this.runtimeOptionDescriptors.add(engineCacheOptions);
+        this.extensionOptionDescriptors.add(engineCacheOptions);
     }
 
     protected EngineCacheSupport loadEngineCacheSupport(List<OptionDescriptors> options) {
@@ -249,7 +294,15 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
      * Returns a set of classes that need to be initialized before compilations can be performed.
      */
     public final Iterable<Class<?>> getLookupTypes() {
-        return lookupTypes.getValues();
+        return getLookupTypesMap().getValues();
+    }
+
+    private UnmodifiableEconomicMap<String, Class<?>> getLookupTypesMap() {
+        UnmodifiableEconomicMap<String, Class<?>> map = this.lookupTypes;
+        if (map == null) {
+            this.lookupTypes = map = initLookupTypes(extraLookupTypes);
+        }
+        return map;
     }
 
     /**
@@ -349,14 +402,15 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        if (field.isAnnotationPresent(Child.class)) {
+        if (getAnnotation(Child.class, field) != null) {
             return ConstantFieldInfo.CHILD;
         }
-        if (field.isAnnotationPresent(Children.class)) {
+        if (getAnnotation(Children.class, field) != null) {
             return ConstantFieldInfo.CHILDREN;
         }
-        CompilationFinal cf = field.getAnnotation(CompilationFinal.class);
+        CompilationFinal cf = getAnnotation(CompilationFinal.class, field);
         if (cf != null) {
             int dimensions = actualStableDimensions(field, cf.dimensions());
             return ConstantFieldInfo.forDimensions(dimensions);
@@ -394,6 +448,8 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         EconomicMap<String, Class<?>> m = EconomicMap.create();
         for (Class<?> c : new Class<?>[]{
                         Node.class,
+                        Node.Child.class,
+                        Node.Children.class,
                         RootNode.class,
                         UnexpectedResultException.class,
                         SlowPathException.class,
@@ -402,10 +458,15 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                         OptimizedAssumption.class,
                         HostCompilerDirectives.class,
                         CompilerDirectives.class,
+                        CompilerDirectives.CompilationFinal.class,
                         CompilerDirectives.TruffleBoundary.class,
+                        CompilerDirectives.ValueType.class,
+                        CompilerDirectives.EarlyInline.class,
+                        CompilerDirectives.EarlyEscapeAnalysis.class,
                         HostCompilerDirectives.BytecodeInterpreterSwitch.class,
                         HostCompilerDirectives.BytecodeInterpreterSwitchBoundary.class,
                         HostCompilerDirectives.InliningCutoff.class,
+                        HostCompilerDirectives.InliningRoot.class,
                         InlineDecision.class,
                         CompilerAsserts.class,
                         ExactMath.class,
@@ -442,6 +503,10 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                         InlineSupport.LongField.class,
                         InlineSupport.DoubleField.class,
                         InlineSupport.ReferenceField.class,
+                        ExplodeLoop.class,
+                        ExplodeLoop.LoopExplosionKind.class,
+                        Specialization.class,
+                        TruffleCallBoundary.class,
         }) {
             m.put(c.getName(), c);
         }
@@ -491,6 +556,13 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                 throw new NoClassDefFoundError(className);
             }
         }
+        String className = "jdk.internal.event.Event";
+        try {
+            Class<?> c = Class.forName(className);
+            m.put(className, c);
+        } catch (ClassNotFoundException e) {
+            // Ignored: jdk.internal.event.Event is optional
+        }
         return m;
     }
 
@@ -500,12 +572,13 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
      */
     @Override
     public ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required) {
-        Class<?> c = lookupTypes.get(className);
+        Class<?> c = getLookupTypesMap().get(className);
         if (c == null) {
             if (!required) {
                 return null;
             }
-            throw new NoClassDefFoundError(className);
+            String msg = String.format("%s (need to update %s.initLookupTypes?)", className, OptimizedTruffleRuntime.class.getName());
+            throw new NoClassDefFoundError(msg);
         }
         ResolvedJavaType type = metaAccess.lookupJavaType(c);
         // In some situations, we may need the class to be linked now, especially if we are
@@ -531,11 +604,20 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
-        return new HostMethodInfo(isTruffleBoundary(method),
-                        isBytecodeInterpreterSwitch(method),
-                        isBytecodeInterpreterSwitchBoundary(method),
-                        isInliningCutoff(method));
+        if (Lazy.INLINING_ROOT_SUPPORTED) {
+            return new HostMethodInfo(isTruffleBoundary(method),
+                            isBytecodeInterpreterSwitch(method),
+                            isBytecodeInterpreterSwitchBoundary(method),
+                            isInliningCutoff(method),
+                            isInliningRoot(method));
+        } else {
+            return new HostMethodInfo(isTruffleBoundary(method),
+                            isBytecodeInterpreterSwitch(method),
+                            isBytecodeInterpreterSwitchBoundary(method),
+                            isInliningCutoff(method));
+        }
     }
 
     private static boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod method) {
@@ -544,6 +626,10 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     private static boolean isInliningCutoff(ResolvedJavaMethod method) {
         return getAnnotation(InliningCutoff.class, method) != null;
+    }
+
+    private static boolean isInliningRoot(ResolvedJavaMethod method) {
+        return getAnnotation(InliningRoot.class, method) != null;
     }
 
     @SuppressWarnings("deprecation")
@@ -556,6 +642,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
         TruffleBoundary truffleBoundary = getAnnotation(TruffleBoundary.class, method);
         TruffleCallBoundary truffleCallBoundary = getAnnotation(TruffleCallBoundary.class, method);
@@ -633,11 +720,16 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         if (!(repeatingNode instanceof Node)) {
             throw new IllegalArgumentException("Repeating node must be of type Node.");
         }
-        return getLoopNodeFactory().create(repeatingNode);
+        return OptimizedOSRLoopNode.create(repeatingNode);
     }
 
+    /**
+     * @deprecated do not use just here for compatibility with older SubstrateTruffleRuntime.
+     */
+    @SuppressWarnings("static-method")
+    @Deprecated
     protected final LoopNodeFactory getLoopNodeFactory() {
-        return loopNodeFactory;
+        return null;
     }
 
     public final EngineCacheSupport getEngineCacheSupport() {
@@ -832,10 +924,25 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     private void shutdown() {
+        flushCompilations(null);
         getListener().onShutdown();
         TruffleCompiler tcp = truffleCompiler;
         if (tcp != null) {
             tcp.shutdown();
+        }
+    }
+
+    public final void shutdownCompilationForEngine(EngineData engine) {
+        Objects.requireNonNull(engine);
+        engine.ensureClosed();
+        flushCompilations(engine);
+    }
+
+    public void flushCompilations(EngineData engine) {
+        BackgroundCompileQueue queue = getCompileQueue();
+        // compile queue might be null if no call target was yet created
+        if (queue != null) {
+            queue.flush(engine);
         }
     }
 
@@ -1053,12 +1160,26 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         // The logger can be null if the engine is closed.
         if (logger != null) {
             logger.log(Level.INFO, message);
+        } else {
+            /*
+             * If you need to debug an issue with suppressed log messages enable this option.
+             */
+            if (Boolean.getBoolean("truffle.PrintSuppressedLogMessages")) {
+                // avoid findbugs warning, this is just a debug feature
+                PrintStream out = System.out;
+                out.println("Suppressed log [" + loggerId + "] " + message);
+            }
         }
     }
 
     @Override
     public boolean isSuppressedFailure(TruffleCompilable compilable, Supplier<String> serializedException) {
         return floodControlHandler != null && floodControlHandler.isSuppressedFailure(compilable, serializedException);
+    }
+
+    @Override
+    public final boolean isJavaInstrumentationActive() {
+        return JFRListener.isActive();
     }
 
     /**
@@ -1083,18 +1204,41 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     private static <T extends Annotation> T getAnnotation(Class<T> annotationClass, ResolvedJavaMethod method) {
+        validateLegacyJVMCI();
         try {
-            return annotationClass.cast(method.getAnnotation(annotationClass));
+            return annotationClass.cast(Lazy.GET_ANNOTATION.invoke(method, (AnnotatedElement) annotationClass));
         } catch (NoClassDefFoundError e) {
             throw handleAnnotationFailure(e, String.format("querying %s for presence of a %s annotation", method.format("%H.%n(%p)"), annotationClass.getName()));
+        } catch (Throwable t) {
+            throw new InternalError(t);
+        }
+    }
+
+    private static <T extends Annotation> T getAnnotation(Class<T> annotationClass, ResolvedJavaField field) {
+        validateLegacyJVMCI();
+        try {
+            return annotationClass.cast(Lazy.GET_ANNOTATION.invoke(field, (AnnotatedElement) annotationClass));
+        } catch (NoClassDefFoundError e) {
+            throw handleAnnotationFailure(e, String.format("querying %s for presence of a %s annotation", field.format("%H.%n(%p)"), annotationClass.getName()));
+        } catch (Throwable t) {
+            throw new InternalError(t);
         }
     }
 
     private static <T extends Annotation> T getAnnotation(Class<T> annotationClass, ResolvedJavaType type) {
+        validateLegacyJVMCI();
         try {
-            return annotationClass.cast(type.getAnnotation(annotationClass));
+            return annotationClass.cast(Lazy.GET_ANNOTATION.invoke(type, (AnnotatedElement) annotationClass));
         } catch (NoClassDefFoundError e) {
             throw handleAnnotationFailure(e, String.format("querying %s for presence of a %s annotation", type.toJavaName(), annotationClass.getName()));
+        } catch (Throwable t) {
+            throw new InternalError(t);
+        }
+    }
+
+    private static void validateLegacyJVMCI() {
+        if (Lazy.GET_ANNOTATION == null) {
+            throw new AssertionError("Must not be called on graalvm 25.1 or newer.");
         }
     }
 
@@ -1121,16 +1265,24 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     final OptionDescriptors getOptionDescriptors() {
-        // The engineOptions field needs to be initialized lazily because the
-        // OptimizedRuntimeAccessor
-        // cannot be used in the OptimizedTruffleRuntime constructor. The OptimizedTruffleRuntime
-        // must be
-        // fully initialized before using the accessor otherwise a NullPointerException will be
-        // thrown from the Accessor.Constants static initializer because the Truffle#getRuntime
-        // still returns null.
+        /*
+         * The engineOptions field needs to be initialized lazily because the
+         * OptimizedRuntimeAccessor cannot be used in the OptimizedTruffleRuntime constructor. The
+         * OptimizedTruffleRuntime must be fully initialized before using the accessor otherwise a
+         * NullPointerException will be thrown from the Accessor.Constants static initializer
+         * because the Truffle#getRuntime still returns null.
+         */
         OptionDescriptors res = engineOptions;
         if (res == null) {
-            res = OptimizedRuntimeAccessor.LANGUAGE.createOptionDescriptorsUnion(runtimeOptionDescriptors.toArray(new OptionDescriptors[runtimeOptionDescriptors.size()]));
+            List<OptionDescriptors> options = new ArrayList<>(extensionOptionDescriptors.size() + 2);
+            /*
+             * We initialize these options lazily so in case no engine options are used we don't
+             * need to load them.
+             */
+            options.addAll(extensionOptionDescriptors);
+            options.add(OptimizedRuntimeOptions.getDescriptors());
+            options.add(new CompilerOptionsDescriptors());
+            res = OptimizedRuntimeAccessor.LANGUAGE.createOptionDescriptorsUnion(options.toArray(OptionDescriptors[]::new));
             engineOptions = res;
         }
         return res;
@@ -1473,4 +1625,5 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     protected CompilationActivityMode getCompilationActivityMode() {
         return CompilationActivityMode.RUN_COMPILATION;
     }
+
 }

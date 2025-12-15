@@ -67,7 +67,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PropagateDeadFlagVisitor;
-import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class RegexASTPostProcessor {
 
@@ -130,7 +129,7 @@ public class RegexASTPostProcessor {
         return t.isCharacterClass() &&
                         (t.asCharacterClass().getCharSet().matchesSingleChar() || t.asCharacterClass().getCharSet().matches2CharsWith1BitDifference()) &&
                         ast.getEncoding().isFixedCodePointWidth(t.asCharacterClass().getCharSet()) &&
-                        !(ast.getEncoding() == Encodings.UTF_16 && t.asCharacterClass().getCharSet().intersects(Constants.SURROGATES));
+                        !(ast.getEncoding().isUTF16() && t.asCharacterClass().getCharSet().intersects(Constants.SURROGATES));
     }
 
     private static final class UnrollQuantifiersVisitor extends DepthFirstTraversalRegexASTVisitor {

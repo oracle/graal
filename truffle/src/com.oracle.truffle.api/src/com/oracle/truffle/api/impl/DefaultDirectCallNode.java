@@ -46,11 +46,11 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 /**
  * This is runtime specific API. Do not use in a guest language.
  */
-public final class DefaultDirectCallNode extends DirectCallNode {
+final class DefaultDirectCallNode extends DirectCallNode {
 
     private boolean inliningForced;
 
-    public DefaultDirectCallNode(CallTarget target) {
+    DefaultDirectCallNode(CallTarget target) {
         super(target);
     }
 

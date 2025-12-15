@@ -36,29 +36,40 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.NotNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
+import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
+import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.memory.address.IndexAddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
+import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.graal.compiler.vector.nodes.simd.LogicValueStamp;
 import jdk.graal.compiler.vector.nodes.simd.SimdBlendWithLogicMaskNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
+import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIMacroNode;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -160,6 +171,20 @@ public class VectorAPIBoxingUtils {
     }
 
     /**
+     * Determine if the given object is a non-null instance of a concrete Vector API vector type. If
+     * yes, return its type; return {@code null} otherwise.
+     */
+    public static VectorAPIType isBoxedVectorAPIObject(ValueNode value, CoreProviders providers) {
+        if (value.stamp(NodeView.DEFAULT) instanceof ObjectStamp objectStamp && objectStamp.nonNull() && objectStamp.isExactType()) {
+            ResolvedJavaType maybeVectorType = objectStamp.type();
+            if (maybeVectorType != null) {
+                return VectorAPIType.ofType(maybeVectorType, providers);
+            }
+        }
+        return null;
+    }
+
+    /**
      * Determine if the given object is a non-null instance of a concrete Vector API vector type
      * that we can unbox to a SIMD value. Such objects can occur as inputs to macro nodes via things
      * like non-final field reads.
@@ -170,39 +195,94 @@ public class VectorAPIBoxingUtils {
     static VectorAPIType asUnboxableVectorType(ValueNode value, CoreProviders providers) {
         /*
          * Unboxing an object involves placing fixed read nodes. Therefore the value must be fixed,
-         * or it must be a pi with a fixed guard so we have a valid insertion position.
+         * or it must be a phi or a pi with a fixed guard so we have a valid insertion position.
          */
-        if (!(value instanceof FixedWithNextNode || (value instanceof ValueProxy pi && pi.getGuard() != null && pi.getGuard() instanceof FixedWithNextNode))) {
+        if (!(value instanceof FixedWithNextNode || value instanceof VectorAPIMacroNode ||
+                        value instanceof ValuePhiNode ||
+                        (value instanceof ValueProxy pi && pi.getGuard() != null && pi.getGuard() instanceof FixedWithNextNode))) {
             return null;
         }
         /* Now check if this is a Vector API object we can do a SIMD read from. */
-        if (value.stamp(NodeView.DEFAULT) instanceof ObjectStamp objectStamp && objectStamp.nonNull() && objectStamp.isExactType()) {
-            ResolvedJavaType maybeVectorType = objectStamp.type();
-            if (maybeVectorType != null) {
-                VectorLoweringProvider vectorLowerer = (VectorLoweringProvider) providers.getLowerer();
-                VectorAPIType vectorType = VectorAPIType.ofType(maybeVectorType, providers);
-                if (vectorType != null && vectorType.vectorLength > 1) {
-                    VectorArchitecture vectorArch = vectorLowerer.getVectorArchitecture();
-                    Stamp elementStamp = vectorType.payloadStamp.getComponent(0);
-                    if (vectorType.isMask) {
-                        /*
-                         * The mask is represented as booleans in memory, to unbox it to a logic
-                         * vector we must be able to compare against zero.
-                         */
-                        if (!canConvertBooleansToLogic(vectorType, vectorArch)) {
-                            return null;
-                        }
-                        if (vectorArch.getSupportedVectorComparisonLength(elementStamp, CanonicalCondition.EQ, vectorType.vectorLength) != vectorType.vectorLength) {
-                            return null;
-                        }
-                    }
-                    if (vectorArch.getSupportedVectorMoveLength(elementStamp, vectorType.vectorLength) == vectorType.vectorLength) {
-                        return vectorType;
-                    }
+        VectorAPIType vectorType = isBoxedVectorAPIObject(value, providers);
+        if (vectorType != null && vectorType.vectorLength > 1) {
+            VectorLoweringProvider vectorLowerer = (VectorLoweringProvider) providers.getLowerer();
+            VectorArchitecture vectorArch = vectorLowerer.getVectorArchitecture();
+            Stamp elementStamp = vectorType.payloadStamp.getComponent(0);
+            if (vectorType.isMask) {
+                /*
+                 * The mask is represented as booleans in memory, to unbox it to a logic vector we
+                 * must be able to compare against zero.
+                 */
+                if (!canConvertBooleansToLogic(vectorType, vectorArch)) {
+                    return null;
                 }
+                if (vectorArch.getSupportedVectorComparisonLength(elementStamp, CanonicalCondition.EQ, vectorType.vectorLength) != vectorType.vectorLength) {
+                    return null;
+                }
+            }
+            if (vectorArch.getSupportedVectorMoveLength(elementStamp, vectorType.vectorLength) == vectorType.vectorLength) {
+                return vectorType;
             }
         }
         return null;
+    }
+
+    /**
+     * Box the given value by allocating an appropriate Java instance and storing the payload of the
+     * value into the {@code payload} field of the box instance. The allocation will be inserted
+     * before {@code successor}.
+     */
+    static ValueNode boxVector(ResolvedJavaType boxType, FixedNode successor, ValueNode vector, CoreProviders providers) {
+        VectorAPIType typeMeta = VectorAPIType.ofType(boxType, providers);
+        GraalError.guarantee(typeMeta != null, "unexpected vector type %s, vector %s", boxType, vector);
+        StructuredGraph graph = vector.graph();
+
+        // Allocate the payload array
+        ResolvedJavaType payloadElementType = providers.getMetaAccess().lookupJavaType(typeMeta.payloadKind.toJavaClass());
+        NewArrayNode payloadArray = graph.add(new NewArrayNode(payloadElementType, ConstantNode.forInt(typeMeta.vectorLength, graph), false));
+        graph.addBeforeFixed(successor, payloadArray);
+
+        // Store the value into the payload array
+        ValueNode payload;
+        if (typeMeta.isMask) {
+            payload = graph.addOrUniqueWithInputs(logicAsBooleans(vector, VectorAPIUtils.vectorArchitecture(providers)));
+        } else {
+            payload = vector;
+        }
+        AddressNode payloadArrayAddress = graph.addOrUnique(new IndexAddressNode(payloadArray, ConstantNode.forInt(0, graph), payloadElementType.getJavaKind()));
+        WriteNode storeToPayload = graph.add(new WriteNode(payloadArrayAddress, LocationIdentity.INIT_LOCATION, payload, BarrierType.NONE, MemoryOrderMode.PLAIN));
+        graph.addBeforeFixed(successor, storeToPayload);
+
+        // Publish the allocated array
+        graph.addBeforeFixed(successor, graph.add(MembarNode.forInitialization()));
+        PublishWritesNode publishedPayloadArray = graph.add(new PublishWritesNode(payloadArray));
+        graph.addBeforeFixed(successor, publishedPayloadArray);
+
+        // Allocate the box instance, fillContents must be true because the field is an oop
+        NewInstanceNode box = graph.add(new NewInstanceNode(boxType, true));
+        graph.addBeforeFixed(successor, box);
+
+        /*
+         * Store the allocated payload array into the corresponding field of the box instance. We
+         * use a lowered write instead of a StoreField because we want to use the init location.
+         */
+        ResolvedJavaField[] boxFields = boxType.getInstanceFields(true);
+        GraalError.guarantee(boxFields.length == 1, "unexpected field count in %s", boxType);
+        ResolvedJavaField payloadField = boxFields[0];
+        GraalError.guarantee(payloadField.getName().equals("payload"), "unexpected field %s %s in %s", payloadField.getDeclaringClass(), payloadField.getName(), boxType);
+        DefaultJavaLoweringProvider javaLowerer = ((VectorLoweringProvider) providers.getLowerer()).getBasicLoweringProvider();
+        int fieldOffset = javaLowerer.getBasicLoweringProvider().fieldOffset(payloadField);
+        AddressNode payloadFieldAddress = graph.addOrUnique(new OffsetAddressNode(box, ConstantNode.forLong(fieldOffset, graph)));
+        ValueNode compressedPayloadArray = javaLowerer.getBasicLoweringProvider().implicitStoreConvert(graph, JavaKind.Object, publishedPayloadArray);
+        BarrierType barrierType = providers.getLowerer().getBarrierSet().fieldWriteBarrierType(payloadField, JavaKind.Object);
+        WriteNode storeToBox = graph.add(new WriteNode(payloadFieldAddress, LocationIdentity.INIT_LOCATION, compressedPayloadArray, barrierType, MemoryOrderMode.PLAIN));
+        graph.addBeforeFixed(successor, storeToBox);
+
+        // Publish the allocated box instance
+        graph.addBeforeFixed(successor, graph.add(MembarNode.forInitialization()));
+        PublishWritesNode publishedBox = graph.add(new PublishWritesNode(box));
+        graph.addBeforeFixed(successor, publishedBox);
+        return publishedBox;
     }
 
     /**
@@ -222,6 +302,10 @@ public class VectorAPIBoxingUtils {
         FixedWithNextNode insertionPoint;
         if (value instanceof FixedWithNextNode fixed) {
             insertionPoint = fixed;
+        } else if (value instanceof VectorAPIMacroNode macro) {
+            insertionPoint = macro.next();
+        } else if (value instanceof ValuePhiNode phi) {
+            insertionPoint = phi.merge();
         } else {
             insertionPoint = (FixedWithNextNode) ((ValueProxy) value).getGuard();
         }

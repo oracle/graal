@@ -65,10 +65,10 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
         int toBlockFirstInstructionId = allocator.getFirstLirInstructionId(toBlock);
         int fromBlockLastInstructionId = allocator.getLastLirInstructionId(fromBlock) + 1;
         int numOperands = allocator.operandSize();
-        BitSet liveAtEdge = allocator.getBlockData(toBlock).liveIn;
+        SparseBitSet liveAtEdge = allocator.getBlockData(toBlock).liveIn;
 
         // visit all variables for which the liveAtEdge bit is set
-        for (int operandNum = liveAtEdge.nextSetBit(0); operandNum >= 0; operandNum = liveAtEdge.nextSetBit(operandNum + 1)) {
+        for (int operandNum = liveAtEdge.iterateValues(0); operandNum >= 0; operandNum = liveAtEdge.iterateValues(operandNum + 1)) {
             assert operandNum < numOperands : "live information set for not exisiting interval";
             assert allocator.getBlockData(fromBlock).liveOut.get(operandNum) && allocator.getBlockData(toBlock).liveIn.get(operandNum) : "interval not live at this edge";
 
@@ -103,7 +103,7 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
                 debug.log("inserting moves at beginning of toBlock B%d", toBlock.getId());
             }
 
-            if (allocator.detailedAsserts) {
+            if (allocator.isDetailedAsserts()) {
                 assert allocator.getLIR().getLIRforBlock(fromBlock).get(0) instanceof StandardOp.LabelOp : "block does not start with a label";
 
                 /*

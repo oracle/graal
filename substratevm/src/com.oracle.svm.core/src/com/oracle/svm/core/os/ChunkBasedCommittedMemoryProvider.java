@@ -37,6 +37,7 @@ import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.word.Word;
@@ -54,12 +55,8 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
 
     /** Returns a non-null value or throws a pre-allocated exception. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public Pointer allocateMetaspaceChunk(UnsignedWord nbytes, UnsignedWord alignment) {
-        Pointer result = allocate(nbytes, alignment, false, NmtCategory.Metaspace);
-        if (result.isNull()) {
-            throw METASPACE_CHUNK_COMMIT_FAILED;
-        }
-        return result;
+    public Pointer allocateMetaspaceChunk(@SuppressWarnings("unused") UnsignedWord nbytes, @SuppressWarnings("unused") UnsignedWord alignment) {
+        throw VMError.shouldNotReachHere("Metaspace is only supported if there is a contiguous address space.");
     }
 
     /** Returns a non-null value or throws a pre-allocated exception. */

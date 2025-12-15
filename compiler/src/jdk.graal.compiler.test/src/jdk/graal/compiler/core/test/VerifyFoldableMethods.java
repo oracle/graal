@@ -29,13 +29,13 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.PluginReplacementNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -85,13 +85,13 @@ public class VerifyFoldableMethods extends VerifyPhase<CoreProviders> {
     @Override
     protected void verify(StructuredGraph graph, CoreProviders context) {
         ResolvedJavaMethod method = graph.method();
-        if (method.getAnnotation(Fold.class) != null) {
+        if (AnnotationValueSupport.getAnnotationValue(method, Fold.class) != null) {
             foldableCallers.putIfAbsent(method, method);
         } else {
             if (!isGenerated(method, context)) {
                 for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
                     ResolvedJavaMethod callee = t.targetMethod();
-                    if (callee.getAnnotation(Fold.class) != null) {
+                    if (AnnotationValueSupport.getAnnotationValue(callee, Fold.class) != null) {
                         foldableCallers.put(callee, method);
                     }
                 }
@@ -99,6 +99,7 @@ public class VerifyFoldableMethods extends VerifyPhase<CoreProviders> {
         }
     }
 
+    @Override
     public void finish() {
         String uncalled = foldableCallers.entrySet().stream()//
                         .filter(e -> e.getValue() == e.getKey())//

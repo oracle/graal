@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
-import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -84,7 +84,6 @@ public class LambdaParser {
      * Create a {@link StructuredGraph} using {@link LambdaGraphBuilderPhase.LambdaBytecodeParser},
      * a simple {@link BytecodeParser}.
      */
-    @SuppressWarnings("try")
     public static StructuredGraph createMethodGraph(ResolvedJavaMethod method, OptionValues options) {
         GraphBuilderPhase lambdaParserPhase = new LambdaParser.LambdaGraphBuilderPhase();
         DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getName());
@@ -95,7 +94,7 @@ public class LambdaParser {
                         .method(method)
                         .recordInlinedMethods(false)
                         .build();
-        try (DebugContext.Scope ignored = debug.scope("ParsingToMaterializeLambdas")) {
+        try (DebugContext.Scope _ = debug.scope("ParsingToMaterializeLambdas")) {
             lambdaParserPhase.apply(graph, context);
         } catch (Throwable e) {
             throw debug.handle(e);

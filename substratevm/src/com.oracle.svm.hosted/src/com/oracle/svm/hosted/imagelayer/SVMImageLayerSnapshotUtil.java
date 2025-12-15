@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import static com.oracle.svm.hosted.methodhandles.InjectedInvokerRenamingSubstitutionProcessor.isInjectedInvokerType;
 import static com.oracle.svm.hosted.methodhandles.MethodHandleInvokerRenamingSubstitutionProcessor.isMethodHandleType;
 import static com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor.isProxyType;
@@ -43,12 +45,11 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -101,11 +102,14 @@ public class SVMImageLayerSnapshotUtil {
     public static final String CONSTRUCTOR_NAME = "<init>";
     public static final String CLASS_INIT_NAME = "<clinit>";
 
-    public static final String PERSISTED = "persisted";
+    public static final String PERSISTED = "Persisted in a previous layer.";
     public static final String TRACKED_REASON = "reachable from a graph";
+    public static final ScanReason PERSISTED_CONSTANT = new OtherReason("Constant persisted in a previous layer.");
 
     public static final int UNDEFINED_CONSTANT_ID = -1;
     public static final int UNDEFINED_FIELD_INDEX = -1;
+    public static final int UNDEFINED_KEY_STORE_ID = -1;
+    public static final int UNDEFINED_SINGLETON_OBJ_ID = -1;
 
     public static final String GENERATED_SERIALIZATION = "jdk.internal.reflect.GeneratedSerializationConstructorAccessor";
 
@@ -211,7 +215,7 @@ public class SVMImageLayerSnapshotUtil {
      * the given type.
      */
     public Set<Integer> getRelinkedFields(AnalysisType type, AnalysisMetaAccess metaAccess) {
-        Set<Integer> result = fieldsToRelink.computeIfAbsent(type, key -> {
+        Set<Integer> result = fieldsToRelink.computeIfAbsent(type, _ -> {
             Class<?> clazz = type.getJavaClass();
             if (clazz == Class.class) {
                 return getRelinkedFields(type, dynamicHubRelinkedFields, metaAccess);
@@ -299,7 +303,13 @@ public class SVMImageLayerSnapshotUtil {
         if (originalMethod != null) {
             return addModuleName(originalMethod.toString(), moduleName);
         }
-        return addModuleName(getQualifiedName(method), moduleName);
+        /*
+         * The wrapped qualified method is needed here as the AnalysisMethod replaces unresolved
+         * parameter or return types with java.lang.Object, potentially causing method descriptor
+         * duplication. The wrapped method signature preserves the original type information,
+         * preventing this issue.
+         */
+        return addModuleName(getWrappedQualifiedName(method), moduleName);
     }
 
     /*
@@ -326,9 +336,13 @@ public class SVMImageLayerSnapshotUtil {
         return method.getSignature().getReturnType().toJavaName(true) + " " + method.getQualifiedName();
     }
 
+    private static String getWrappedQualifiedName(AnalysisMethod method) {
+        return method.wrapped.format("%R %H.%n(%P)");
+    }
+
     public static void forcePersistConstant(ImageHeapConstant imageHeapConstant) {
         AnalysisUniverse universe = imageHeapConstant.getType().getUniverse();
-        universe.getHeapScanner().markReachable(imageHeapConstant, ObjectScanner.OtherReason.PERSISTED);
+        universe.getHeapScanner().markReachable(imageHeapConstant, PERSISTED_CONSTANT);
 
         imageHeapConstant.getType().registerAsTrackedAcrossLayers(imageHeapConstant);
         /* If this is a Class constant persist the corresponding type. */

@@ -42,7 +42,6 @@ package com.oracle.truffle.dsl.processor.bytecode.parser;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.getTypeElement;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isAssignable;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.typeEqualsAny;
 import static javax.lang.model.element.Modifier.ABSTRACT;
@@ -53,6 +52,7 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -99,6 +99,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
+import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
@@ -125,7 +126,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         dummyBytecodeClass.setEnclosingElement(new GeneratedPackageElement("dummy"));
         return new CustomOperationParser(
                         context,
-                        new BytecodeDSLModel(context, dummyBytecodeClass, null, null, null),
+                        new BytecodeDSLModel(context, dummyBytecodeClass, null, null),
                         context.getTypes().OperationProxy_Proxyable,
                         true);
     }
@@ -150,12 +151,12 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return false;
     }
 
+    /**
+     * This entrypoint is only invoked by the TruffleProcessor to validate Proxyable nodes. We
+     * directly invoke {@link #parseCustomRegularOperation} for code gen use cases.
+     */
     @Override
     protected CustomOperationModel parse(Element element, List<AnnotationMirror> annotationMirrors) {
-        /**
-         * This entrypoint is only invoked by the TruffleProcessor to validate Proxyable nodes. We
-         * directly invoke {@link parseCustomRegularOperation} for code gen use cases.
-         */
         if (!ElementUtils.typeEquals(annotationType, context.getTypes().OperationProxy_Proxyable)) {
             throw new AssertionError();
         }
@@ -178,8 +179,16 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         String name = getCustomOperationName(typeElement, explicitName);
         String javadoc = ElementUtils.getAnnotationValue(String.class, mirror, "javadoc");
-        boolean isInstrumentation = ElementUtils.typeEquals(mirror.getAnnotationType(), types.Instrumentation);
-        OperationKind kind = isInstrumentation ? OperationKind.CUSTOM_INSTRUMENTATION : OperationKind.CUSTOM;
+
+        OperationKind kind;
+        if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Instrumentation)) {
+            kind = OperationKind.CUSTOM_INSTRUMENTATION;
+        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Yield)) {
+            kind = OperationKind.CUSTOM_YIELD;
+        } else {
+            kind = OperationKind.CUSTOM;
+        }
+
         CustomOperationModel customOperation = parent.customRegularOperation(kind, name, javadoc, typeElement, mirror);
         if (customOperation == null) {
             return null;
@@ -217,6 +226,20 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             return customOperation;
         }
 
+        if (!isExternal(typeElement)) {
+            TypeElement superType = ElementUtils.getSuperType(generatedNode);
+            while (superType != null && !ElementUtils.isObject(superType.asType())) {
+                if (!ElementUtils.elementEquals(superType.getEnclosingElement(), this.parent.getTemplateType())) {
+                    customOperation.addError("All super types of operation classes must be declared as static nested classes of the operation root node. " +
+                                    "Modify the super class '%s' to be an inner class of type '%s' to resolve this or use @OperationProxy instead.",
+                                    getSimpleName(superType),
+                                    getSimpleName(parent.getTemplateType()));
+                    break;
+                }
+                superType = ElementUtils.getSuperType(superType);
+            }
+        }
+
         List<SpecializationSignature> signatures = parseSignatures(specializations, customOperation, constantOperands);
         if (customOperation.hasErrors()) {
             return customOperation;
@@ -230,12 +253,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             throw new AssertionError("Signature could not be computed, but no error was reported");
         }
 
-        produceConstantOperandWarnings(customOperation, signature, mirror);
-        List<String> constantOperandBeforeNames = mergeConstantOperandNames(customOperation, constantOperands.before(), signatures, 0);
-        List<String> constantOperandAfterNames = mergeConstantOperandNames(customOperation, constantOperands.after(), signatures,
-                        signature.constantOperandsBeforeCount + signature.dynamicOperandCount);
-        List<List<String>> dynamicOperandNames = collectDynamicOperandNames(signatures, signature);
-
         if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
             validateInstrumentationSignature(customOperation, signature);
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Prolog)) {
@@ -245,6 +262,10 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogExceptional)) {
             validateEpilogExceptionalSignature(customOperation, signature, specializations, signatures);
         } else {
+            if (operation.kind == OperationKind.CUSTOM_YIELD) {
+                validateYieldSignature(customOperation, signature);
+            }
+
             List<TypeMirror> tags = ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "tags");
             MessageContainer modelForErrors = customOperation.getModelForMessages();
             if (!tags.isEmpty()) {
@@ -274,7 +295,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         if (variadicReturn != null) {
             if (kind != OperationKind.CUSTOM) {
                 customOperation.addError(variadicReturn, null,
-                                "@%s can only be used on on @%s annotated classes.",
+                                "@%s can only be used on @%s classes.",
                                 getSimpleName(types.Variadic),
                                 getSimpleName(types.Operation));
             }
@@ -301,19 +322,121 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         operation.variadicOffset = signature.variadicOffset;
         operation.isVoid = signature.isVoid;
 
+        List<List<String>> dynamicOperandNames = collectDynamicOperandNames(signatures, signature);
         DynamicOperandModel[] dynamicOperands = new DynamicOperandModel[signature.dynamicOperandCount];
         for (int i = 0; i < dynamicOperands.length; i++) {
             dynamicOperands[i] = new DynamicOperandModel(dynamicOperandNames.get(i), false, signature.isVariadicParameter(i));
         }
         operation.dynamicOperands = dynamicOperands;
+
+        produceConstantOperandWarnings(customOperation, signature, mirror);
+        List<String> constantOperandBeforeNames = mergeConstantOperandNames(customOperation, constantOperands.before(), signatures, 0);
+        List<String> constantOperandAfterNames = mergeConstantOperandNames(customOperation, constantOperands.after(), signatures,
+                        signature.constantOperandsBeforeCount + signature.dynamicOperandCount);
         operation.constantOperandBeforeNames = constantOperandBeforeNames;
         operation.constantOperandAfterNames = constantOperandAfterNames;
         operation.operationBeginArguments = createOperationConstantArguments(constantOperands.before(), constantOperandBeforeNames);
         operation.operationEndArguments = createOperationConstantArguments(constantOperands.after(), constantOperandAfterNames);
 
-        operation.setInstruction(createCustomInstruction(customOperation, generatedNode, signature, name));
+        createCustomInstruction(customOperation, generatedNode, signature, name);
+
+        parseStoreBytecodeIndex(mirror, operation);
 
         return customOperation;
+    }
+
+    private boolean isExternal(TypeElement type) {
+        return !ElementUtils.isDeclaredIn(type, this.parent.getTemplateType());
+    }
+
+    private void parseStoreBytecodeIndex(AnnotationMirror mirror, OperationModel operation) {
+        if (!parent.storeBciInFrame) {
+            return;
+        }
+
+        CustomOperationModel custom = operation.customModel;
+        if (custom == null) {
+            return;
+        }
+
+        AnnotationMirror proxyableMirror = resolveProxyableAnnotationMirror(mirror);
+        custom.setStoreBytecodeIndex(ElementUtils.getAnnotationValue(Boolean.class, proxyableMirror, "storeBytecodeIndex", false));
+
+        if (operation.instruction.nodeData == null) {
+            return;
+        }
+
+        if (forProxyValidation && !custom.isStoreBytecodeIndexSet()) {
+            /*
+             * We do not know whether storeBytecodeIndexInFrame is set when we validate nodes
+             * for @OperationProxy.Proxyable. Hence we emit a warning for @OperationProxy if its not
+             * yet set but needed. We then only continue validation if
+             * OperationProxy.Proxyable(storeBytecodeIndex=true|false) is explictly set. This avoids
+             * emitting warnings for all nodes even if they are not used for a root node without
+             * storeBytecodeIndexInFrame.
+             */
+            return;
+        }
+
+        if (custom.inferStoreBytecodeIndex() && !custom.isStoreBytecodeIndexSet()) {
+            MessageContainer targetMessageContainer;
+            AnnotationMirror proxyMirror;
+            AnnotationValue proxyValue;
+            if (isExternal(custom.getTemplateType())) {
+                /*
+                 * It is important to emit this warning on the proxy of the parent model so we do
+                 * not accidently emit messages outside of the current compilation scope.
+                 */
+                targetMessageContainer = parent;
+                proxyMirror = mirror;
+                proxyValue = resolveProxyableAnnotationValue(mirror);
+            } else {
+                // for internal operations
+                targetMessageContainer = custom;
+                proxyMirror = null;
+                proxyValue = null;
+            }
+            String type = getSimpleName(this.annotationType);
+            String message = String.format("For this operation it is recommended to specify @%s(storeBytecodeIndex=true|false). " +
+                            "For example, the bytecode index may need to be stored for correct stack trace locations when guest level calls are performed. " +
+                            "By default the DSL assumes that if any node receiver is bound then the bytecode index needs to be stored. " +
+                            "To store the bytecode index only for a subset of specializations, set @%s(storeBytecodeIndex=false) and use the @%s annotation on the specialization method.",
+                            type,
+                            type,
+                            getSimpleName(ProcessorContext.types().StoreBytecodeIndex));
+            targetMessageContainer.addSuppressableWarning(TruffleSuppressedWarnings.INTERPRETED_PERFORMANCE, proxyMirror, proxyValue, message);
+        }
+
+        if (!forProxyValidation && isExternal(custom.getTemplateType())) {
+            // no further validation for external types to avoid messages on external elements
+            return;
+        }
+
+        if (custom.isStoreBytecodeIndexSet() && custom.isStoreBytecodeIndex() && !custom.inferStoreBytecodeIndex()) {
+            custom.addSuppressableWarning(
+                            TruffleSuppressedWarnings.INTERPRETED_PERFORMANCE,
+                            "The attribute @%s(storeBytecodeIndex=true) is set, but the DSL infers that this operation does need an updated bytecode index. Please suppress this warning if the DSL is wrong and the operation does need it.",
+                            getSimpleName(custom.getTemplateTypeAnnotation().getAnnotationType()));
+        }
+
+        for (SpecializationData s : operation.instruction.nodeData.getReachableSpecializations()) {
+            ExecutableElement method = s.getMethod();
+            if (method == null) {
+                continue;
+            }
+            AnnotationMirror storeBytecodeIndex = ElementUtils.findAnnotationMirror(method, types.StoreBytecodeIndex);
+            if (storeBytecodeIndex != null) {
+                if (custom.isStoreBytecodeIndex()) {
+                    s.addWarning(storeBytecodeIndex, null, "The annotation @%s has no effect on a specialization if @%s(storeBytecodeIndex=true) is kept default or set to true.",
+                                    getSimpleName(types.StoreBytecodeIndex),
+                                    getSimpleName(custom.getTemplateTypeAnnotation().getAnnotationType()));
+                } else if (!custom.inferStoreBytecodeIndex(s)) {
+                    s.addWarning(storeBytecodeIndex, null,
+                                    "The annotation @%s has no effect on a specialization if the DSL can infer that this specialization does not require a stored bytecode index. Remove the annotation to resolve this error.",
+                                    getSimpleName(types.StoreBytecodeIndex));
+                }
+            }
+        }
     }
 
     private static List<List<String>> collectDynamicOperandNames(List<SpecializationSignature> signatures, Signature signature) {
@@ -416,6 +539,15 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
     }
 
+    private void validateYieldSignature(CustomOperationModel customOperation, Signature signature) {
+        if (signature.isVoid) {
+            customOperation.addError("A @%s cannot be void. It must return a value, which becomes the result yielded to the caller.", getSimpleName(types.Yield));
+        }
+        if (signature.dynamicOperandCount > 1) {
+            customOperation.addError("A @%s must take zero or one dynamic operands.", getSimpleName(types.Yield));
+        }
+    }
+
     private void validatePrologSignature(CustomOperationModel customOperation, Signature signature) {
         if (signature.dynamicOperandCount > 0) {
             customOperation.addError(String.format("A @%s operation cannot have any dynamic operands. " +
@@ -471,7 +603,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     }
 
     private OperationArgument[] createOperationConstantArguments(List<ConstantOperandModel> operands, List<String> operandNames) {
-        assert operands.size() == operandNames.size();
+        if (operands.size() != operandNames.size()) {
+            throw new AssertionError("Operands and operand names have different sizes (%d vs. %d)".formatted(operands.size(), operandNames.size()));
+        }
         OperationArgument[] arguments = new OperationArgument[operandNames.size()];
         for (int i = 0; i < operandNames.size(); i++) {
             ConstantOperandModel constantOperand = operands.get(i);
@@ -487,11 +621,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                 encoding = OperationArgument.Encoding.LOCAL_ARRAY;
             } else {
                 builderType = constantOperand.type();
-                encoding = OperationArgument.Encoding.OBJECT;
+                encoding = OperationArgument.Encoding.CONSTANT;
             }
-            arguments[i] = new OperationArgument(builderType, constantOperand.type(), encoding,
-                            sanitizeConstantArgumentName(argumentName),
-                            constantOperand.doc());
+            arguments[i] = new OperationArgument(builderType, encoding, sanitizeConstantArgumentName(argumentName), constantOperand.doc(), Optional.of(constantOperand));
         }
         return arguments;
     }
@@ -535,6 +667,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         if (result == null) {
             result = CustomOperationParser.forCodeGeneration(parent, types.Operation).parseCustomRegularOperation(mirror, typeElement, null);
         }
+
         if (result == null || result.hasErrors()) {
             parent.addError(mirror, ElementUtils.getAnnotationValue(mirror, "booleanConverter"),
                             "Encountered errors using %s as a boolean converter. These errors must be resolved before the DSL can proceed.", getSimpleName(typeElement));
@@ -542,7 +675,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         List<ExecutableElement> specializations = findSpecializations(typeElement);
-        assert specializations.size() != 0;
+        if (specializations.isEmpty()) {
+            throw new AssertionError("Boolean converter should have at least one specialization if it parsed without error.");
+        }
 
         boolean returnsBoolean = true;
         for (ExecutableElement spec : specializations) {
@@ -580,7 +715,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         if (name.contains("_")) {
             customOperation.addError("Operation class name cannot contain underscores.");
         }
-
         boolean isNode = isAssignable(typeElement.asType(), types.NodeInterface);
         if (isNode) {
             if (isProxy()) {
@@ -593,36 +727,43 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                 }
             }
         } else {
-            // operation specification
             if (!typeElement.getModifiers().contains(Modifier.FINAL)) {
                 customOperation.addError("Operation class must be declared final. Inheritance in operation specifications is not supported.");
             }
-            if (typeElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !typeElement.getModifiers().contains(Modifier.STATIC)) {
-                customOperation.addError("Operation class must not be an inner class (non-static nested class). Declare the class as static.");
-            }
-            if (typeElement.getModifiers().contains(Modifier.PRIVATE)) {
-                customOperation.addError("Operation class must not be declared private. Remove the private modifier to make it visible.");
-            }
-            if (!ElementUtils.isObject(typeElement.getSuperclass()) || !typeElement.getInterfaces().isEmpty()) {
-                customOperation.addError("Operation class must not extend any classes or implement any interfaces. Inheritance in operation specifications is not supported.");
-            }
 
-            // Ensure all non-private methods are static.
-            for (Element el : typeElement.getEnclosedElements()) {
-                if (el.getModifiers().contains(Modifier.PRIVATE)) {
-                    continue;
+            TypeElement currentType = typeElement;
+            while (currentType != null && !ElementUtils.isObject(currentType.asType())) {
+                // operation specification
+
+                if (currentType.getEnclosingElement().getKind() != ElementKind.PACKAGE && !currentType.getModifiers().contains(Modifier.STATIC)) {
+                    customOperation.addError(currentType, "Operation class or super class must not be an inner class (non-static nested class). Declare the class as static.");
+                }
+                if (currentType.getModifiers().contains(Modifier.PRIVATE)) {
+                    customOperation.addError(currentType, "Operation class or super class must not be declared private. Remove the private modifier to make it visible.");
                 }
 
-                if (!el.getModifiers().contains(Modifier.STATIC)) {
-                    if (el.getKind() == ElementKind.CONSTRUCTOR && ((ExecutableElement) el).getParameters().size() == 0) {
-                        continue; // ignore the default constructor
+                // Ensure all non-private methods are static.
+                for (Element el : currentType.getEnclosedElements()) {
+                    if (el.getModifiers().contains(Modifier.PRIVATE)) {
+                        continue;
                     }
-                    if (el.getKind() == ElementKind.METHOD && isSpecialization((ExecutableElement) el)) {
-                        continue; // non-static specializations get a different message; see below
+
+                    if (!el.getModifiers().contains(Modifier.STATIC)) {
+                        if (el.getKind() == ElementKind.CONSTRUCTOR && ((ExecutableElement) el).getParameters().size() == 0) {
+                            continue; // ignore the default constructor
+                        }
+                        if (el.getKind() == ElementKind.METHOD && isSpecialization((ExecutableElement) el)) {
+                            continue; // non-static specializations get a different message; see
+                                      // below
+                        }
+                        customOperation.addError(el, "Operation class or super class must not contain non-static members.");
                     }
-                    customOperation.addError(el, "Operation class must not contain non-static members.");
                 }
+
+                currentType = ElementUtils.getSuperType(currentType);
+
             }
+
         }
 
         /**
@@ -664,7 +805,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         if (ElementUtils.typeEqualsAny(mirror.getAnnotationType(), types.EpilogReturn, types.EpilogExceptional)) {
             customOperation.addError("An @%s operation cannot declare constant operands.", getSimpleName(mirror.getAnnotationType()));
-            return null;
+            return ConstantOperandsModel.NONE;
         }
 
         List<ConstantOperandModel> before = new ArrayList<>();
@@ -672,11 +813,12 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         for (AnnotationMirror constantOperandMirror : constantOperands) {
             TypeMirror type = parseConstantOperandType(constantOperandMirror);
+            ImmediateKind kind = getConstantOperandEncoding(type);
             String operandName = ElementUtils.getAnnotationValue(String.class, constantOperandMirror, "name");
             String javadoc = ElementUtils.getAnnotationValue(String.class, constantOperandMirror, "javadoc");
             Boolean specifyAtEnd = ElementUtils.getAnnotationValue(Boolean.class, constantOperandMirror, "specifyAtEnd", false);
             int dimensions = ElementUtils.getAnnotationValue(Integer.class, constantOperandMirror, "dimensions");
-            ConstantOperandModel constantOperand = new ConstantOperandModel(type, operandName, javadoc, specifyAtEnd, dimensions, constantOperandMirror);
+            ConstantOperandModel constantOperand = new ConstantOperandModel(type, kind, operandName, javadoc, specifyAtEnd, dimensions, constantOperandMirror);
 
             if (ElementUtils.isAssignable(type, types.Node) && !ElementUtils.isAssignable(type, types.RootNode)) {
                 // It is probably a bug if the user tries to define a constant Node. It will not be
@@ -735,14 +877,30 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return true;
     }
 
+    private ImmediateKind getConstantOperandEncoding(TypeMirror constantOperandType) {
+        if (parent.inlinePrimitiveConstants && constantOperandType.getKind().isPrimitive()) {
+            return switch (constantOperandType.getKind()) {
+                case LONG -> ImmediateKind.CONSTANT_LONG;
+                case DOUBLE -> ImmediateKind.CONSTANT_DOUBLE;
+                case INT -> ImmediateKind.CONSTANT_INT;
+                case FLOAT -> ImmediateKind.CONSTANT_FLOAT;
+                case SHORT -> ImmediateKind.CONSTANT_SHORT;
+                case CHAR -> ImmediateKind.CONSTANT_CHAR;
+                case BYTE -> ImmediateKind.CONSTANT_BYTE;
+                case BOOLEAN -> ImmediateKind.CONSTANT_BOOL;
+                default -> throw new AssertionError("Unexpected constant operand type " + constantOperandType);
+            };
+        }
+        return ImmediateKind.CONSTANT;
+    }
+
     /*
      * Creates a placeholder Node from the type element that will be passed to FlatNodeGenFactory.
      * We remove any members that are not needed for code generation.
      */
     private CodeTypeElement createNodeForCustomInstruction(TypeElement typeElement) {
-        boolean isNode = isAssignable(typeElement.asType(), types.NodeInterface);
         CodeTypeElement nodeType;
-        if (isNode) {
+        if (isProxy()) {
             nodeType = cloneTypeHierarchy(typeElement, ct -> {
                 // Remove annotations that will cause {@link FlatNodeGenFactory} to generate
                 // unnecessary code. We programmatically add @NodeChildren later, so remove them
@@ -755,7 +913,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             });
         } else {
             nodeType = CodeTypeElement.cloneShallow(typeElement);
-            nodeType.setSuperClass(types.Node);
         }
         nodeType.getAnnotationMirrors().removeIf(m -> typeEqualsAny(m.getAnnotationType(), types.ExpectErrorTypes));
         return nodeType;
@@ -802,15 +959,16 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         List<AnnotationMirror> result = new ArrayList<>();
 
         OperationModel operation = customOperation.operation;
-        ConstantOperandsModel constantOperands = operation.constantOperands;
-        for (int i = 0; i < operation.numConstantOperandsBefore(); i++) {
-            result.add(createNodeChildAnnotation(operation.getConstantOperandBeforeName(i), constantOperands.before().get(i).type()));
+        List<ConstantOperandModel> before = operation.constantOperands.before();
+        for (int i = 0; i < before.size(); i++) {
+            result.add(createNodeChildAnnotation(operation.getConstantOperandBeforeName(i), before.get(i).type()));
         }
         for (int i = 0; i < signature.dynamicOperandCount; i++) {
-            result.add(createNodeChildAnnotation("child" + i, signature.getGenericType(i)));
+            result.add(createNodeChildAnnotation("child" + i, signature.getDynamicOperandType(i)));
         }
-        for (int i = 0; i < operation.numConstantOperandsAfter(); i++) {
-            result.add(createNodeChildAnnotation(operation.getConstantOperandAfterName(i), constantOperands.after().get(i).type()));
+        List<ConstantOperandModel> after = operation.constantOperands.after();
+        for (int i = 0; i < after.size(); i++) {
+            result.add(createNodeChildAnnotation(operation.getConstantOperandAfterName(i), after.get(i).type()));
         }
 
         return result;
@@ -868,15 +1026,16 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         if (uncached) {
             OperationModel operation = customOperation.operation;
-            ConstantOperandsModel constantOperands = operation.constantOperands;
-            for (int i = 0; i < operation.numConstantOperandsBefore(); i++) {
-                ex.addParameter(new CodeVariableElement(constantOperands.before().get(i).type(), operation.getConstantOperandBeforeName(i)));
+            List<ConstantOperandModel> before = operation.constantOperands.before();
+            for (int i = 0; i < before.size(); i++) {
+                ex.addParameter(new CodeVariableElement(before.get(i).type(), operation.getConstantOperandBeforeName(i)));
             }
             for (int i = 0; i < signature.dynamicOperandCount; i++) {
-                ex.addParameter(new CodeVariableElement(signature.getGenericType(i), "child" + i + "Value"));
+                ex.addParameter(new CodeVariableElement(signature.getDynamicOperandType(i), "child" + i + "Value"));
             }
-            for (int i = 0; i < operation.numConstantOperandsAfter(); i++) {
-                ex.addParameter(new CodeVariableElement(constantOperands.after().get(i).type(), operation.getConstantOperandAfterName(i)));
+            List<ConstantOperandModel> after = operation.constantOperands.after();
+            for (int i = 0; i < after.size(); i++) {
+                ex.addParameter(new CodeVariableElement(after.get(i).type(), operation.getConstantOperandAfterName(i)));
             }
 
         }
@@ -891,38 +1050,56 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
      * generate a {@link NodeData node model} that will later be used by {@link FlatNodeGenFactory
      * code generation} to generate code for the instruction.
      */
-    private InstructionModel createCustomInstruction(CustomOperationModel customOperation, CodeTypeElement generatedNode, Signature signature,
+    private void createCustomInstruction(CustomOperationModel customOperation, CodeTypeElement generatedNode, Signature signature,
                     String operationName) {
+
+        /*
+         * We erase all specialized types. Without boxing elimination we cannot specialize any of
+         * the signature types in the instruction. If we introduce the notion of static types in the
+         * future we might be able to use more of the type information.
+         */
+        Signature erasedSignature = signature;
+        for (int i = 0; i < erasedSignature.getDynamicOperandTypes().size(); i++) {
+            TypeMirror targetType;
+            if (erasedSignature.isVariadicParameter(i)) {
+                targetType = context.getType(Object[].class);
+            } else {
+                targetType = context.getType(Object.class);
+            }
+            erasedSignature = erasedSignature.specializeDynamicOperandType(i, targetType);
+        }
+
         String instructionName = "c." + operationName;
         InstructionModel instr;
         if (customOperation.isEpilogExceptional()) {
             // We don't emit bytecode for this operation. Allocate an InstructionModel but don't
             // register it as an instruction.
-            instr = new InstructionModel(InstructionKind.CUSTOM, instructionName, signature, null);
+            instr = new InstructionModel(InstructionKind.CUSTOM, instructionName, erasedSignature);
         } else {
-            instr = parent.instruction(InstructionKind.CUSTOM, instructionName, signature);
+            instr = parent.instruction(InstructionKind.CUSTOM, instructionName, erasedSignature);
         }
         instr.nodeType = generatedNode;
-        instr.nodeData = parseGeneratedNode(customOperation, generatedNode, signature);
+        instr.nodeData = parseGeneratedNode(customOperation, generatedNode, erasedSignature);
 
+        customOperation.operation.setInstruction(instr);
         if (customOperation.operation.variadicReturn) {
             instr.nonNull = true;
         }
 
         OperationModel operation = customOperation.operation;
-        for (int i = 0; i < operation.numConstantOperandsBefore(); i++) {
-            instr.addImmediate(ImmediateKind.CONSTANT, operation.getConstantOperandBeforeName(i));
+        List<ConstantOperandModel> constantOperandsBefore = operation.constantOperands.before();
+        for (int i = 0; i < constantOperandsBefore.size(); i++) {
+            instr.addConstantOperandImmediate(constantOperandsBefore.get(i), operation.getConstantOperandBeforeName(i));
+        }
+        List<ConstantOperandModel> constantOperandsAfter = operation.constantOperands.after();
+        for (int i = 0; i < constantOperandsAfter.size(); i++) {
+            instr.addConstantOperandImmediate(constantOperandsAfter.get(i), operation.getConstantOperandAfterName(i));
         }
 
-        for (int i = 0; i < operation.numConstantOperandsAfter(); i++) {
-            instr.addImmediate(ImmediateKind.CONSTANT, operation.getConstantOperandAfterName(i));
+        if (customOperation.isCustomYield()) {
+            // Index of continuation root node.
+            instr.addImmediate(ImmediateKind.CONSTANT, "location");
         }
-
-        if (!instr.canUseNodeSingleton()) {
-            instr.addImmediate(ImmediateKind.NODE_PROFILE, "node");
-        }
-
-        return instr;
     }
 
     /**
@@ -947,7 +1124,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         NodeData result;
         try {
-            NodeParser parser = NodeParser.createOperationParser(parent.getTemplateType());
+            NodeParser parser = NodeParser.createOperationParser(customOperation);
             result = parser.parse(generatedNode, false);
         } catch (Throwable ex) {
             StringWriter wr = new StringWriter();
@@ -1002,19 +1179,20 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     }
 
     private List<ExecutableElement> findSpecializations(TypeElement te) {
-        if (ElementUtils.isObject(te.asType())) {
-            return new ArrayList<>();
-        }
-
-        List<ExecutableElement> result = findSpecializations(getTypeElement((DeclaredType) te.getSuperclass()));
-
-        for (ExecutableElement ex : ElementFilter.methodsIn(te.getEnclosedElements())) {
-            if (isSpecialization(ex)) {
-                result.add(ex);
+        List<ExecutableElement> methods = new ArrayList<>();
+        TypeElement type = te;
+        while (type != null) {
+            if (ElementUtils.isObject(type.asType())) {
+                break;
             }
+            for (ExecutableElement method : ElementFilter.methodsIn(type.getEnclosedElements())) {
+                if (isSpecialization(method)) {
+                    methods.add(method);
+                }
+            }
+            type = ElementUtils.getSuperType(type);
         }
-
-        return result;
+        return methods;
     }
 
     private boolean isSpecialization(ExecutableElement ex) {
@@ -1050,14 +1228,30 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     }
 
     private boolean proxyableAllowsUncached(AnnotationMirror operationProxyMirror) {
-        if (!ElementUtils.typeEquals(operationProxyMirror.getAnnotationType(), types.OperationProxy)) {
-            throw new AssertionError();
+        return ElementUtils.getAnnotationValue(Boolean.class, resolveProxyableAnnotationMirror(operationProxyMirror), "allowUncached");
+    }
+
+    /**
+     * This returns the annotation mirror on the actual operation specification and not the proxy.
+     */
+    private AnnotationMirror resolveProxyableAnnotationMirror(AnnotationMirror mirror) {
+        AnnotationValue value = resolveProxyableAnnotationValue(mirror);
+        if (value != null) {
+            TypeMirror proxiedType = BytecodeDSLParser.getTypeMirror(context, value);
+            TypeElement proxiedElement = (TypeElement) ((DeclaredType) proxiedType).asElement();
+            return ElementUtils.findAnnotationMirror(proxiedElement, types.OperationProxy_Proxyable);
         }
-        AnnotationValue proxiedTypeValue = ElementUtils.getAnnotationValue(operationProxyMirror, "value");
-        TypeMirror proxiedType = BytecodeDSLParser.getTypeMirror(context, proxiedTypeValue);
-        TypeElement proxiedElement = (TypeElement) ((DeclaredType) proxiedType).asElement();
-        AnnotationMirror proxyableMirror = ElementUtils.findAnnotationMirror(proxiedElement, types.OperationProxy_Proxyable);
-        return ElementUtils.getAnnotationValue(Boolean.class, proxyableMirror, "allowUncached");
+        return mirror;
+    }
+
+    private AnnotationValue resolveProxyableAnnotationValue(AnnotationMirror mirror) {
+        if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.OperationProxy)) {
+            return ElementUtils.getAnnotationValue(mirror, "value");
+        } else if (ElementUtils.typeEquals(types.ShortCircuitOperation, mirror.getAnnotationType())) {
+            return ElementUtils.getAnnotationValue(mirror, "booleanConverter");
+        } else {
+            return null;
+        }
     }
 
     @Override

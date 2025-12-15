@@ -178,7 +178,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     private Iterator<TypeFlow<?>> flowsIterator() {
         return new Iterator<>() {
             final Deque<TypeFlow<?>> worklist = new ArrayDeque<>();
-            final Set<TypeFlow<?>> seen = new HashSet<>();
+            final Set<TypeFlow<?>> seen = new HashSet<>(); // noEconomicSet(null key is used)
             TypeFlow<?> next;
 
             {

@@ -45,15 +45,20 @@ import org.graalvm.nativeimage.ProcessProperties;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import sun.management.Util;
 
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     private final String managementSpecVersion;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    SubstrateRuntimeMXBean() {
+    public SubstrateRuntimeMXBean() {
         managementSpecVersion = ManagementFactory.getRuntimeMXBean().getManagementSpecVersion();
     }
 

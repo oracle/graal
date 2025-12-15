@@ -40,6 +40,7 @@ import org.graalvm.collections.Equivalence;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.runtime.GraalRuntime;
+import jdk.graal.compiler.core.CompilationPrinter;
 import jdk.graal.compiler.core.CompilationWrapper.ExceptionAction;
 import jdk.graal.compiler.core.Instrumentation;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
@@ -172,7 +173,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
                 throw new GraalError("No backend available for host architecture \"%s\"", hostArchitecture);
             }
             if (replayCompilationSupport != null) {
-                factory = replayCompilationSupport.decorateBackendFactory(factory);
+                factory = replayCompilationSupport.decorateBackendFactory(factory, jvmciRuntime);
             }
             hostBackend = registerBackend(factory.createBackend(this, compilerConfiguration, jvmciRuntime, null));
         }
@@ -232,19 +233,23 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         Serial("UseSerialGC"),
         Parallel("UseParallelGC"),
         G1("UseG1GC"),
-        Z(true, true, flagIsSet("UseZGC")),
-        Epsilon(true, true, flagIsSet("UseEpsilonGC")),
-
-        // Unsupported GCs
-        Shenandoah(false, true, flagIsSet("UseShenandoahGC"));
+        Epsilon("UseEpsilonGC"),
+        // GR-54355 ZGC and Shenandoah require extra work to support vectorization
+        Z("UseZGC", false),
+        Shenandoah("UseShenandoahGC", false);
 
         HotSpotGC(String flag) {
-            this(true, true, flagIsSet(flag));
+            this(true, true, true, flagIsSet(flag));
         }
 
-        HotSpotGC(boolean supported, boolean expectNamePresent, Predicate<GraalHotSpotVMConfig> predicate) {
+        HotSpotGC(String flag, boolean supportsVectorization) {
+            this(true, true, supportsVectorization, flagIsSet(flag));
+        }
+
+        HotSpotGC(boolean supported, boolean expectNamePresent, boolean supportsVectorization, Predicate<GraalHotSpotVMConfig> predicate) {
             this.supported = supported;
             this.expectNamePresent = expectNamePresent;
+            this.supportsVectorization = supportsVectorization;
             this.predicate = predicate;
         }
 
@@ -257,6 +262,15 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
          * Specifies if this GC is supported by Graal.
          */
         final boolean supported;
+
+        /**
+         * Specifies if this GC supports vectorization of objects.
+         */
+        final boolean supportsVectorization;
+
+        public boolean supportsVectorization() {
+            return supportsVectorization;
+        }
 
         /**
          * Specifies if {@link #name()} is expected to be present in the {@code CollectedHeap::Name}
@@ -400,17 +414,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private List<Runnable> shutdownHooks = new ArrayList<>();
 
     /**
-     * Take action related to entering a new execution phase.
-     *
-     * @param phase the execution phase being entered
-     */
-    void phaseTransition(String phase) {
-        if (CompilationStatistics.Options.UseCompilationStatistics.getValue(options)) {
-            CompilationStatistics.clear(phase);
-        }
-    }
-
-    /**
      * Adds a {@link Runnable} that will be run when this runtime is {@link #shutdown()}. The
      * runnable will be run on the same thread doing the shutdown. All the advice for regular
      * {@linkplain Runtime#addShutdownHook(Thread) shutdown hooks} also applies here but even more
@@ -435,8 +438,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         metricValues.print(options);
 
-        phaseTransition("final");
-
         if (snippetCounterGroups != null) {
             for (Group group : snippetCounterGroups) {
                 TTY.out().out().println(group);
@@ -445,6 +446,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         BenchmarkCounters.shutdown(runtime(), options, runtimeStartTime);
 
         outputDirectory.close();
+
+        CompilationPrinter.close();
 
         LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
         if (libgraal != null) {

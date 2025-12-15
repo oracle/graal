@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -134,6 +134,10 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         if (headArg.startsWith(BundleSupport.BUNDLE_OPTION)) {
+            // warning should be early, before any other output of the feature
+            if (nativeImage.bundleSupport == null) {
+                LogUtils.warning("Native Image Bundles are an experimental feature.");
+            }
             nativeImage.bundleSupport = BundleSupport.create(nativeImage, args.poll(), args);
             return true;
         }

@@ -40,10 +40,26 @@
  */
 package com.oracle.truffle.api.object;
 
+import static com.oracle.truffle.api.object.DebugCounters.propertyAssumptionsBlocked;
+import static com.oracle.truffle.api.object.DebugCounters.propertyAssumptionsCreated;
+import static com.oracle.truffle.api.object.DebugCounters.propertyAssumptionsRemoved;
+import static com.oracle.truffle.api.object.DebugCounters.shapeCacheHitCount;
+import static com.oracle.truffle.api.object.DebugCounters.shapeCacheMissCount;
+import static com.oracle.truffle.api.object.DebugCounters.shapeCount;
+import static com.oracle.truffle.api.object.DebugCounters.transitionMapsCreated;
+import static com.oracle.truffle.api.object.DebugCounters.transitionSingleEntriesCreated;
+
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.invoke.VarHandle;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.BiConsumer;
+import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
@@ -53,15 +69,20 @@ import org.graalvm.collections.Pair;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NonIdempotent;
+import com.oracle.truffle.api.impl.AbstractAssumption;
 
 /**
  * A Shape is an immutable descriptor of the current object "shape" of a DynamicObject, i.e., object
  * layout, metadata ({@linkplain Shape#getDynamicType() type}, {@linkplain Shape#getFlags() flags}),
  * and a mapping of {@linkplain Property properties} to storage locations. This allows cached
  * {@link DynamicObjectLibrary} to do a simple shape check to determine the contents of an object
- * and do fast, constant-time property accesses.
+ * and do fast, constant-time property accesses. Shape changes, like adding or removing a property,
+ * yield a new Shape derived from the old one.
  *
  * <p>
  * Shapes are shared between objects that assume the same shape if they follow the same shape
@@ -78,14 +99,86 @@ import com.oracle.truffle.api.dsl.NonIdempotent;
  * @see Property
  * @since 0.8 or earlier
  */
-public abstract sealed class Shape permits ShapeImpl {
+public final class Shape {
+
     static final int OBJECT_FLAGS_MASK = 0x0000_ffff;
     static final int OBJECT_FLAGS_SHIFT = 0;
-    static final int OBJECT_SHARED = 1 << 16;
-    static final int OBJECT_PROPERTY_ASSUMPTIONS = 1 << 17;
 
-    // keep in sync with Flags.java
-    static final int PUT_CONSTANT = 1 << 5;
+    /** Shared shape flag. */
+    static final int FLAG_SHARED_SHAPE = 1 << 16;
+    /** Flag that is set if {@link Shape.Builder#propertyAssumptions(boolean)} is true. */
+    static final int FLAG_ALLOW_PROPERTY_ASSUMPTIONS = 1 << 17;
+    /** Automatic flag that is set if the shape has instance properties. */
+    static final int FLAG_HAS_INSTANCE_PROPERTIES = 1 << 18;
+
+    /** Shape and object flags. */
+    final int flags;
+
+    final Object objectType;
+    final PropertyMap propertyMap;
+    private final LayoutImpl layout;
+    final Shape parent;
+    final Shape root;
+    final Object sharedData;
+
+    private final int objectArraySize;
+    private final int objectArrayCapacity;
+    private final int primitiveArraySize;
+    private final int primitiveArrayCapacity;
+    private final short objectFieldSize;
+    private final short primitiveFieldSize;
+
+    private final int depth;
+    private final int propertyCount;
+
+    private final AbstractAssumption validAssumption;
+    @CompilationFinal private volatile AbstractAssumption leafAssumption;
+
+    /**
+     * Shape transition map; lazily initialized. One of:
+     * <ol>
+     * <li>{@code null}: empty map
+     * <li>{@link StrongKeyWeakValueEntry}: immutable single entry map
+     * <li>{@link TransitionMap}: mutable multiple entry map
+     * </ol>
+     *
+     * @see #queryTransition(Transition)
+     * @see #addTransitionIfAbsentOrNull(Transition, Shape)
+     */
+    private volatile Object transitionMap;
+
+    private final Transition transitionFromParent;
+
+    private volatile PropertyAssumptions sharedPropertyAssumptions;
+
+    /**
+     * The successor shape if this shape is obsolete.
+     */
+    private volatile Shape successorShape;
+    /**
+     * This reference keeps shape transitions to obsolete shapes alive as long as the successor
+     * shape is reachable in order to ensure that no new shapes are created for those transitions.
+     * Otherwise, dead obsolete shapes might be recreated and then obsoleted again.
+     *
+     * Either null, a single Shape, or a copy-on-write Shape[] array.
+     */
+    private volatile Object predecessorShape;
+
+    private static final AtomicReferenceFieldUpdater<Shape, Object> TRANSITION_MAP_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Shape.class, Object.class, "transitionMap");
+    private static final AtomicReferenceFieldUpdater<Shape, AbstractAssumption> LEAF_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Shape.class, AbstractAssumption.class,
+                    "leafAssumption");
+    private static final AtomicReferenceFieldUpdater<Shape, PropertyAssumptions> PROPERTY_ASSUMPTIONS_UPDATER = //
+                    AtomicReferenceFieldUpdater.newUpdater(Shape.class, PropertyAssumptions.class, "sharedPropertyAssumptions");
+
+    private static final VarHandle PREDECESSOR_SHAPE_UPDATER;
+    static {
+        var lookup = MethodHandles.lookup();
+        try {
+            PREDECESSOR_SHAPE_UPDATER = lookup.findVarHandle(Shape.class, "predecessorShape", Object.class);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
 
     /**
      * Creates a new initial shape builder.
@@ -454,14 +547,14 @@ public abstract sealed class Shape permits ShapeImpl {
             CompilerAsserts.neverPartOfCompilation();
             int flags = shapeFlags;
             if (shared) {
-                flags = shapeFlags | OBJECT_SHARED;
+                flags = shapeFlags | FLAG_SHARED_SHAPE;
             }
             if (propertyAssumptions) {
-                flags = shapeFlags | OBJECT_PROPERTY_ASSUMPTIONS;
+                flags = shapeFlags | FLAG_ALLOW_PROPERTY_ASSUMPTIONS;
             }
 
-            int implicitCastFlags = (allowImplicitCastIntToDouble ? Layout.INT_TO_DOUBLE_FLAG : 0) | (allowImplicitCastIntToLong ? Layout.INT_TO_LONG_FLAG : 0);
-            Shape shape = Layout.getFactory().createShape(
+            int implicitCastFlags = (allowImplicitCastIntToDouble ? LayoutImpl.INT_TO_DOUBLE_FLAG : 0) | (allowImplicitCastIntToLong ? LayoutImpl.INT_TO_LONG_FLAG : 0);
+            Shape shape = LayoutImpl.createShape(
                             layoutClass,
                             implicitCastFlags,
                             dynamicType,
@@ -553,7 +646,6 @@ public abstract sealed class Shape permits ShapeImpl {
          * @see DynamicObjectLibrary#putConstant(DynamicObject, Object, Object, int)
          * @since 20.2.0
          */
-        @SuppressWarnings("deprecation")
         @Override
         public DerivedBuilder addConstantProperty(Object key, Object value, int flags) {
             CompilerAsserts.neverPartOfCompilation();
@@ -595,21 +687,22 @@ public abstract sealed class Shape permits ShapeImpl {
     }
 
     /**
-     * Constructor for subclasses.
-     *
-     * @since 0.8 or earlier
-     */
-    protected Shape() {
-    }
-
-    /**
      * Get a property entry by key.
      *
      * @param key the identifier to look up
      * @return a Property object, or {@code null} if not found
      * @since 0.8 or earlier
      */
-    public abstract Property getProperty(Object key);
+    @TruffleBoundary
+    public Property getProperty(Object key) {
+        return propertyMap.get(key);
+    }
+
+    @TruffleBoundary
+    Location getLocation(Object key) {
+        Property property = propertyMap.get(key);
+        return property == null ? null : property.getLocation();
+    }
 
     /**
      * Add a new property in the map, yielding a new or cached Shape object.
@@ -618,7 +711,10 @@ public abstract sealed class Shape permits ShapeImpl {
      * @return the new Shape
      * @since 0.8 or earlier
      */
-    protected abstract Shape addProperty(Property property);
+    @TruffleBoundary
+    protected Shape addProperty(Property property) {
+        return ObsolescenceStrategy.addProperty(this, property, true);
+    }
 
     /**
      * Add or change property in the map, yielding a new or cached Shape object.
@@ -629,7 +725,10 @@ public abstract sealed class Shape permits ShapeImpl {
      *             {@link DynamicObjectLibrary#putWithFlags(DynamicObject, Object, Object, int)}.
      */
     @Deprecated(since = "22.2")
-    public abstract Shape defineProperty(Object key, Object value, int propertyFlags);
+    @TruffleBoundary
+    public Shape defineProperty(Object key, Object value, int propertyFlags) {
+        return ObsolescenceStrategy.defineProperty(this, key, value, propertyFlags);
+    }
 
     /**
      * Add or change property in the map, yielding a new or cached Shape object.
@@ -637,15 +736,23 @@ public abstract sealed class Shape permits ShapeImpl {
      * @return the shape after defining the property
      * @since 24.1
      */
-    protected abstract Shape defineProperty(Object key, Object value, int propertyFlags, int putFlags);
+    @TruffleBoundary
+    protected Shape defineProperty(Object key, Object value, int propertyFlags, int putFlags) {
+        return ObsolescenceStrategy.defineProperty(this, key, value, propertyFlags, putFlags);
+    }
+
+    @TruffleBoundary
+    Shape defineProperty(Object key, Object value, int propertyFlags, int putFlags, Property existing) {
+        return ObsolescenceStrategy.defineProperty(this, key, value, propertyFlags, existing, putFlags);
+    }
 
     /**
      * Add or replace shape-constant property.
      *
      * @return the shape after defining the property
      */
-    final Shape defineConstantProperty(Object key, Object value, int propertyFlags) {
-        return defineProperty(key, value, propertyFlags, PUT_CONSTANT);
+    Shape defineConstantProperty(Object key, Object value, int propertyFlags) {
+        return defineProperty(key, value, propertyFlags, Flags.CONST);
     }
 
     /**
@@ -653,7 +760,9 @@ public abstract sealed class Shape permits ShapeImpl {
      *
      * @since 0.8 or earlier
      */
-    public abstract Iterable<Property> getProperties();
+    public Iterable<Property> getProperties() {
+        return getPropertyList();
+    }
 
     /**
      * Get a list of all properties that this Shape stores.
@@ -663,7 +772,23 @@ public abstract sealed class Shape permits ShapeImpl {
      * @return list of properties
      * @since 0.8 or earlier
      */
-    public abstract List<Property> getPropertyList();
+    @TruffleBoundary
+    public List<Property> getPropertyList() {
+        return Arrays.asList(getPropertyArray());
+    }
+
+    @TruffleBoundary
+    Property[] getPropertyArray() {
+        Property[] props = new Property[getPropertyCount()];
+        int i = props.length;
+        for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
+            Property currentProperty = it.next();
+            if (!currentProperty.isHidden()) {
+                props[--i] = currentProperty;
+            }
+        }
+        return props;
+    }
 
     /**
      * Returns all (also hidden) property objects in this shape.
@@ -672,24 +797,54 @@ public abstract sealed class Shape permits ShapeImpl {
      *            insertion order)
      * @since 0.8 or earlier
      */
-    public abstract List<Property> getPropertyListInternal(boolean ascending);
+    @TruffleBoundary
+    public List<Property> getPropertyListInternal(boolean ascending) {
+        Property[] props = new Property[this.propertyMap.size()];
+        int i = ascending ? props.length : 0;
+        for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
+            Property current = it.next();
+            if (ascending) {
+                props[--i] = current;
+            } else {
+                props[i++] = current;
+            }
+        }
+        return Arrays.asList(props);
+    }
 
     /**
      * Get a list of all property keys in insertion order.
-     *
      *
      * Properties with a {@link HiddenKey} are not included.
      *
      * @since 0.8 or earlier
      */
-    public abstract List<Object> getKeyList();
+    @TruffleBoundary
+    public List<Object> getKeyList() {
+        return Arrays.asList(getKeyArray());
+    }
+
+    @TruffleBoundary
+    Object[] getKeyArray() {
+        Object[] props = new Object[getPropertyCount()];
+        int i = props.length;
+        for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
+            Property currentProperty = it.next();
+            if (!currentProperty.isHidden()) {
+                props[--i] = currentProperty.getKey();
+            }
+        }
+        return props;
+    }
 
     /**
      * Get all property keys in insertion order.
      *
      * @since 0.8 or earlier
      */
-    public abstract Iterable<Object> getKeys();
+    public Iterable<Object> getKeys() {
+        return getKeyList();
+    }
 
     /**
      * Get an assumption that the shape is valid.
@@ -697,7 +852,14 @@ public abstract sealed class Shape permits ShapeImpl {
      * @since 0.8 or earlier
      */
     @Idempotent
-    public abstract Assumption getValidAssumption();
+    public Assumption getValidAssumption() {
+        return validAssumption;
+    }
+
+    @Idempotent
+    AbstractAssumption getValidAbstractAssumption() {
+        return validAssumption;
+    }
 
     /**
      * Check whether this shape is valid.
@@ -705,7 +867,9 @@ public abstract sealed class Shape permits ShapeImpl {
      * @since 0.8 or earlier
      */
     @NonIdempotent
-    public abstract boolean isValid();
+    public boolean isValid() {
+        return validAssumption.isValid();
+    }
 
     /**
      * Get an assumption that the shape is a leaf.
@@ -713,7 +877,26 @@ public abstract sealed class Shape permits ShapeImpl {
      * @since 0.8 or earlier
      */
     @NonIdempotent
-    public abstract Assumption getLeafAssumption();
+    public Assumption getLeafAssumption() {
+        AbstractAssumption assumption = leafAssumption;
+        if (assumption != null) {
+            return assumption;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            AbstractAssumption prev;
+            AbstractAssumption next;
+            do {
+                prev = LEAF_ASSUMPTION_UPDATER.get(this);
+                if (prev != null) {
+                    return prev;
+                } else {
+                    boolean isLeafShape = transitionMap == null;
+                    next = isLeafShape ? createLeafAssumption() : (AbstractAssumption) Assumption.NEVER_VALID;
+                }
+            } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, next));
+            return next;
+        }
+    }
 
     /**
      * Check whether this shape is a leaf in the transition graph, i.e. transitionless.
@@ -721,35 +904,68 @@ public abstract sealed class Shape permits ShapeImpl {
      * @since 0.8 or earlier
      */
     @NonIdempotent
-    public abstract boolean isLeaf();
+    @TruffleBoundary
+    public boolean isLeaf() {
+        AbstractAssumption assumption = leafAssumption;
+        return assumption == null || assumption.isValid();
+    }
 
     /**
      * Check whether the shape has a property with the given key.
      *
      * @since 0.8 or earlier
      */
-    public abstract boolean hasProperty(Object key);
+    public boolean hasProperty(Object name) {
+        return getProperty(name) != null;
+    }
 
     /**
      * Remove the given property from the shape.
      *
      * @since 0.8 or earlier
      */
-    protected abstract Shape removeProperty(Property property);
+    @TruffleBoundary
+    protected Shape removeProperty(Property property) {
+        return ObsolescenceStrategy.removeProperty(this, property);
+    }
 
     /**
      * Replace a property in the shape.
      *
      * @since 0.8 or earlier
      */
-    protected abstract Shape replaceProperty(Property oldProperty, Property newProperty);
+    protected Shape replaceProperty(Property oldProperty, Property newProperty) {
+        assert oldProperty.getKey().equals(newProperty.getKey());
+        return ObsolescenceStrategy.replaceProperty(this, oldProperty, newProperty);
+    }
+
+    @TruffleBoundary
+    Shape setPropertyFlags(Property oldProperty, int newFlags) {
+        if (oldProperty.getFlags() == newFlags) {
+            return this;
+        }
+        return replaceProperty(oldProperty, oldProperty.copyWithFlags(newFlags));
+    }
 
     /**
-     * Get the last property.
+     * Gets the last property.
      *
+     * @return the last property in the shape or {@code null} if empty
      * @since 0.8 or earlier
      */
-    public abstract Property getLastProperty();
+    public Property getLastProperty() {
+        return propertyMap.getLastProperty();
+    }
+
+    /**
+     * Gets the first property.
+     *
+     * @return the first property in the shape or {@code null} if empty
+     * @since 25.1
+     */
+    public Property getFirstProperty() {
+        return propertyMap.getFirstProperty();
+    }
 
     /**
      * Returns the language-specific shape flags previously set using
@@ -767,21 +983,37 @@ public abstract sealed class Shape permits ShapeImpl {
      */
     @Idempotent
     public int getFlags() {
-        CompilerAsserts.neverPartOfCompilation();
-        throw CompilerDirectives.shouldNotReachHere();
+        return getObjectFlags(flags);
+    }
+
+    int getFlagsInternal() {
+        return flags;
     }
 
     /**
      * Returns a copy of the shape, with the shape flags set to {@code newFlags}.
      *
-     * @param newFlags the new shape flags; an int value in the range from 0 to 65535 (inclusive)
+     * @param objectFlags the new shape flags; an int value in the range from 0 to 65535 (inclusive)
      * @throws IllegalArgumentException if the flags value is not in the supported range
      * @see Shape.Builder#shapeFlags(int)
      * @since 20.2.0
      */
-    protected Shape setFlags(int newFlags) {
-        CompilerAsserts.neverPartOfCompilation();
-        throw CompilerDirectives.shouldNotReachHere();
+    @TruffleBoundary
+    protected Shape setFlags(int objectFlags) {
+        checkObjectFlags(objectFlags);
+        if (getFlags() == objectFlags) {
+            return this;
+        }
+
+        Transition.ObjectFlagsTransition transition = new Transition.ObjectFlagsTransition(objectFlags);
+        Shape cachedShape = queryTransition(transition);
+        if (cachedShape != null) {
+            return cachedShape;
+        }
+
+        int newFlags = objectFlags | (this.flags & ~OBJECT_FLAGS_MASK);
+        Shape newShape = this.createShapeWithSameSize(objectType, sharedData, propertyMap, transition, newFlags);
+        return addDirectTransition(transition, newShape);
     }
 
     /**
@@ -789,7 +1021,9 @@ public abstract sealed class Shape permits ShapeImpl {
      *
      * @since 0.8 or earlier
      */
-    public abstract int getPropertyCount();
+    public int getPropertyCount() {
+        return propertyCount;
+    }
 
     /**
      * Get the shape's dynamic object type identifier.
@@ -797,8 +1031,7 @@ public abstract sealed class Shape permits ShapeImpl {
      * @since 20.2.0
      */
     public Object getDynamicType() {
-        CompilerAsserts.neverPartOfCompilation();
-        throw CompilerDirectives.shouldNotReachHere();
+        return objectType;
     }
 
     /**
@@ -810,10 +1043,20 @@ public abstract sealed class Shape permits ShapeImpl {
      * @see Shape.Builder#dynamicType(Object)
      * @since 20.2.0
      */
+    @TruffleBoundary
     protected Shape setDynamicType(Object dynamicType) {
-        CompilerAsserts.neverPartOfCompilation();
-        Objects.requireNonNull(dynamicType);
-        throw CompilerDirectives.shouldNotReachHere();
+        Objects.requireNonNull(dynamicType, "dynamicType");
+        if (getDynamicType() == dynamicType) {
+            return this;
+        }
+        Transition.ObjectTypeTransition transition = new Transition.ObjectTypeTransition(dynamicType);
+        Shape cachedShape = queryTransition(transition);
+        if (cachedShape != null) {
+            return cachedShape;
+        }
+
+        Shape newShape = this.createShapeWithSameSize(dynamicType, sharedData, propertyMap, transition, flags);
+        return addDirectTransition(transition, newShape);
     }
 
     /**
@@ -823,14 +1066,18 @@ public abstract sealed class Shape permits ShapeImpl {
      *
      * @since 0.8 or earlier
      */
-    public abstract Shape getRoot();
+    public Shape getRoot() {
+        return UnsafeAccess.unsafeCast(root, Shape.class, true, true, false);
+    }
 
     /**
      * Checks whether the given object's shape is identical to this shape.
      *
      * @since 0.8 or earlier
      */
-    public abstract boolean check(DynamicObject subject);
+    public boolean check(DynamicObject subject) {
+        return subject.getShape() == this;
+    }
 
     /**
      * Get the shape's layout class.
@@ -839,7 +1086,7 @@ public abstract sealed class Shape permits ShapeImpl {
      * @since 21.1
      */
     public Class<? extends DynamicObject> getLayoutClass() {
-        throw CompilerDirectives.shouldNotReachHere();
+        return layout.clazz;
     }
 
     /**
@@ -848,7 +1095,9 @@ public abstract sealed class Shape permits ShapeImpl {
      * @see Shape.Builder#sharedData(Object)
      * @since 0.8 or earlier
      */
-    public abstract Object getSharedData();
+    public Object getSharedData() {
+        return sharedData;
+    }
 
     /**
      * Try to merge two related shapes to a more general shape that has the same properties and can
@@ -857,7 +1106,14 @@ public abstract sealed class Shape permits ShapeImpl {
      * @return this, other, or a new shape that is compatible with both shapes
      * @since 0.8 or earlier
      */
-    public abstract Shape tryMerge(Shape other);
+    @TruffleBoundary
+    public Shape tryMerge(Shape other) {
+        // double-checked locking is safe since isValid() boils down to a volatile field load.
+        if (this != other && this.isValid() && other.isValid()) {
+            return Obsolescence.tryObsoleteDowncast(this, other);
+        }
+        return null;
+    }
 
     /**
      * Returns {@code true} if this shape is marked as shared.
@@ -869,7 +1125,7 @@ public abstract sealed class Shape permits ShapeImpl {
      */
     @Idempotent
     public boolean isShared() {
-        return false;
+        return (flags & FLAG_SHARED_SHAPE) != 0;
     }
 
     /**
@@ -886,9 +1142,20 @@ public abstract sealed class Shape permits ShapeImpl {
      * @see DynamicObjectLibrary#markShared(DynamicObject)
      * @since 0.18
      */
+    @TruffleBoundary
     public Shape makeSharedShape() {
-        CompilerAsserts.neverPartOfCompilation();
-        throw CompilerDirectives.shouldNotReachHere();
+        if (isShared()) {
+            throw new UnsupportedOperationException("makeSharedShape() can only be called on non-shared shapes.");
+        }
+
+        Transition transition = new Transition.ShareShapeTransition();
+        Shape cachedShape = queryTransition(transition);
+        if (cachedShape != null) {
+            return cachedShape;
+        }
+
+        Shape newShape = this.createShapeWithSameSize(objectType, sharedData, propertyMap, transition, flags | FLAG_SHARED_SHAPE);
+        return addDirectTransition(transition, newShape);
     }
 
     /**
@@ -898,7 +1165,7 @@ public abstract sealed class Shape permits ShapeImpl {
      */
     @Idempotent
     protected boolean hasInstanceProperties() {
-        return true;
+        return (flags & FLAG_HAS_INSTANCE_PROPERTIES) != 0;
     }
 
     /**
@@ -917,7 +1184,18 @@ public abstract sealed class Shape permits ShapeImpl {
      * @see Shape.Builder#propertyAssumptions(boolean)
      * @since 20.2.0
      */
+    @TruffleBoundary
     public Assumption getPropertyAssumption(Object key) {
+        if (allowPropertyAssumptions()) {
+            // Deny new property assumptions from being made if shape is already obsolete.
+            if (!this.isValid()) {
+                return Assumption.NEVER_VALID;
+            }
+            Assumption propertyAssumption = getOrCreatePropertyAssumptions().getPropertyAssumption(key);
+            if (propertyAssumption != null && propertyAssumption.isValid()) {
+                return propertyAssumption;
+            }
+        }
         return Assumption.NEVER_VALID;
     }
 
@@ -929,9 +1207,27 @@ public abstract sealed class Shape permits ShapeImpl {
      * @return {@code true} if the all properties match the predicate, else {@code false}
      * @since 20.2.0
      */
-    public boolean allPropertiesMatch(@SuppressWarnings("unused") Predicate<Property> predicate) {
-        CompilerAsserts.neverPartOfCompilation();
-        throw CompilerDirectives.shouldNotReachHere();
+    @TruffleBoundary
+    public boolean allPropertiesMatch(Predicate<Property> predicate) {
+        for (Property p : getProperties()) {
+            if (predicate.test(p)) {
+                continue;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    boolean testPropertyFlags(IntPredicate predicate) {
+        for (Property p : getProperties()) {
+            if (predicate.test(p.getFlags())) {
+                continue;
+            } else {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -945,7 +1241,7 @@ public abstract sealed class Shape permits ShapeImpl {
      * @return a {@link PropertyGetter}, or {@code null} if the property was not found in this shape
      * @since 22.2
      */
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public PropertyGetter makePropertyGetter(Object key) {
         Property property = getProperty(key);
         if (property == null) {
@@ -953,4 +1249,642 @@ public abstract sealed class Shape permits ShapeImpl {
         }
         return new PropertyGetter(this, property);
     }
+
+    /**
+     * Private constructor.
+     *
+     * @param parent predecessor shape
+     * @param transitionFromParent direct transition from parent shape
+     */
+    @SuppressWarnings("this-escape")
+    private Shape(LayoutImpl layout, Shape parent, Object objectType, Object sharedData, PropertyMap propertyMap, int flags, Transition transitionFromParent,
+                    int objectArraySize, int objectFieldSize, int primitiveArraySize, int primitiveFieldSize, Assumption singleContextAssumption) {
+        this.layout = layout;
+        this.objectType = Objects.requireNonNull(objectType);
+        this.propertyMap = Objects.requireNonNull(propertyMap);
+        this.root = parent != null ? parent.getRoot() : this;
+        this.parent = parent;
+
+        this.objectArraySize = objectArraySize;
+        this.objectArrayCapacity = capacityFromSize(objectArraySize);
+        this.primitiveArraySize = primitiveArraySize;
+        this.primitiveArrayCapacity = capacityFromSize(primitiveArraySize);
+        assert objectFieldSize <= ExtLocations.MAX_DYNAMIC_FIELDS && primitiveFieldSize <= ExtLocations.MAX_DYNAMIC_FIELDS;
+        this.objectFieldSize = (short) objectFieldSize;
+        this.primitiveFieldSize = (short) primitiveFieldSize;
+
+        if (parent != null) {
+            this.propertyCount = makePropertyCount(parent, propertyMap, transitionFromParent);
+            this.depth = parent.depth + 1;
+        } else {
+            this.propertyCount = 0;
+            this.depth = 0;
+        }
+
+        this.validAssumption = createValidAssumption();
+
+        int allFlags = flags;
+        if ((allFlags & FLAG_HAS_INSTANCE_PROPERTIES) == 0) {
+            if (objectFieldSize != 0 || objectArraySize != 0 || primitiveFieldSize != 0 || primitiveArraySize != 0) {
+                allFlags |= FLAG_HAS_INSTANCE_PROPERTIES;
+            }
+        }
+
+        this.flags = allFlags;
+        this.transitionFromParent = transitionFromParent;
+        this.sharedData = sharedData;
+        assert parent == null || this.sharedData == parent.sharedData;
+
+        this.sharedPropertyAssumptions = parent == null && (flags & FLAG_ALLOW_PROPERTY_ASSUMPTIONS) != 0 && singleContextAssumption != null
+                        ? new PropertyAssumptions()
+                        : null;
+
+        shapeCount.inc();
+        if (ObjectStorageOptions.DumpShapes) {
+            Debug.trackShape(this);
+        }
+    }
+
+    Shape(LayoutImpl layout, Object dynamicType, Object sharedData, int flags, Assumption constantObjectAssumption) {
+        this(layout, null, dynamicType, sharedData, PropertyMap.empty(), flags, null, 0, 0, 0, 0, constantObjectAssumption);
+    }
+
+    @SuppressWarnings("hiding")
+    Shape createShape(Object dynamicType, Object sharedData, PropertyMap propertyMap,
+                    Transition transition, BaseAllocator allocator, int flags) {
+        return new Shape(this.getLayout(), this, dynamicType, sharedData, propertyMap, flags, transition,
+                        allocator.objectArraySize, allocator.objectFieldSize, allocator.primitiveArraySize, allocator.primitiveFieldSize, null);
+    }
+
+    @SuppressWarnings("hiding")
+    Shape createShapeWithSameSize(Object dynamicType, Object sharedData, PropertyMap propertyMap, Transition transition, int flags) {
+        assert !(transition instanceof Transition.PropertyTransition) : transition;
+        return new Shape(this.getLayout(), this, dynamicType, sharedData, propertyMap, flags, transition,
+                        this.objectArraySize, this.objectFieldSize, this.primitiveArraySize, this.primitiveFieldSize, null);
+    }
+
+    private static int makePropertyCount(Shape parent, PropertyMap propertyMap, Transition transitionFromParent) {
+        int thisSize = propertyMap.size();
+        int parentSize = parent.propertyMap.size();
+        if (thisSize > parentSize) {
+            Property lastProperty = propertyMap.getLastProperty();
+            if (!lastProperty.isHidden()) {
+                return parent.propertyCount + 1;
+            }
+        } else if (thisSize < parentSize && transitionFromParent instanceof Transition.RemovePropertyTransition) {
+            if (!(((Transition.RemovePropertyTransition) transitionFromParent).getPropertyKey() instanceof HiddenKey)) {
+                return parent.propertyCount - 1;
+            }
+        }
+        return parent.propertyCount;
+    }
+
+    /**
+     * Calculate array size for the given number of elements.
+     */
+    private static int capacityFromSize(int size) {
+        if (size == 0) {
+            return 0;
+        } else if (size <= 4) {
+            return 4;
+        } else if (size <= 8) {
+            return 8;
+        } else {
+            // round up to (3/2) * highestOneBit or the next power of 2, alternately;
+            // i.e., the next in the sequence: 8, 12, 16, 24, 32, 48, 64, 96, 128, ...
+            int hi = Integer.highestOneBit(size);
+            int cap = hi;
+            if (cap < size) {
+                cap = hi + (hi >>> 1);
+                if (cap < size) {
+                    cap = hi << 1;
+                    if (cap < size) {
+                        // handle potential overflow
+                        cap = size;
+                    }
+                }
+            }
+            return cap;
+        }
+    }
+
+    int getObjectArraySize() {
+        return objectArraySize;
+    }
+
+    int getObjectFieldSize() {
+        return objectFieldSize;
+    }
+
+    int getPrimitiveFieldSize() {
+        return primitiveFieldSize;
+    }
+
+    int getObjectArrayCapacity() {
+        return objectArrayCapacity;
+    }
+
+    int getPrimitiveArrayCapacity() {
+        return primitiveArrayCapacity;
+    }
+
+    int getPrimitiveArraySize() {
+        return primitiveArraySize;
+    }
+
+    boolean hasPrimitiveArray() {
+        return getLayout().hasPrimitiveExtensionArray();
+    }
+
+    PropertyMap getPropertyMap() {
+        return propertyMap;
+    }
+
+    Shape addDirectTransition(Transition transition, Shape next) {
+        return addTransitionIfAbsentOrGet(transition, next);
+    }
+
+    Shape addIndirectTransition(Transition transition, Shape next) {
+        return addTransitionIfAbsentOrGet(transition, next);
+    }
+
+    Shape addTransitionIfAbsentOrGet(Transition transition, Shape successor) {
+        Shape existing = addTransitionIfAbsentOrNull(transition, successor);
+        if (existing != null) {
+            return existing;
+        } else {
+            return successor;
+        }
+    }
+
+    /**
+     * Adds a new shape transition if not the transition is not already in the cache.
+     *
+     * @return {@code null} or an existing cached shape for this transition.
+     */
+    Shape addTransitionIfAbsentOrNull(Transition transition, Shape successor) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert transition.isDirect() == (successor.getParent() == this);
+        assert !isShared() || transition.isDirect();
+
+        // Type is either single entry or transition map.
+        Object prev;
+        Object next;
+        do {
+            prev = TRANSITION_MAP_UPDATER.get(this);
+            if (prev == null) {
+                invalidateLeafAssumption();
+                next = newSingleEntry(transition, successor);
+            } else if (isSingleEntry(prev)) {
+                StrongKeyWeakValueEntry<Object, Shape> entry = asSingleEntry(prev);
+                Transition existingTransition;
+                Shape existingSuccessor = entry.getValue();
+                if (existingSuccessor != null && (existingTransition = unwrapKey(entry.getKey())) != null) {
+                    if (existingTransition.equals(transition)) {
+                        return existingSuccessor;
+                    } else {
+                        next = newTransitionMap(existingTransition, existingSuccessor, transition, successor);
+                    }
+                } else {
+                    next = newSingleEntry(transition, successor);
+                }
+            } else {
+                Shape existingSuccessor = addToTransitionMap(transition, successor, asTransitionMap(prev));
+                if (existingSuccessor != null) {
+                    return existingSuccessor;
+                } else {
+                    next = prev;
+                }
+            }
+            if (prev == next) {
+                return null;
+            }
+        } while (!TRANSITION_MAP_UPDATER.compareAndSet(this, prev, next));
+
+        return null;
+    }
+
+    private static Object newTransitionMap(Transition firstTransition, Shape firstShape, Transition secondTransition, Shape secondShape) {
+        TransitionMap<Transition, Shape> map = newTransitionMap();
+        addToTransitionMap(firstTransition, firstShape, map);
+        addToTransitionMap(secondTransition, secondShape, map);
+        return map;
+    }
+
+    private static Shape addToTransitionMap(Transition transition, Shape successor, TransitionMap<Transition, Shape> map) {
+        if (transition.isWeak()) {
+            return map.putWeakKeyIfAbsent(transition, successor);
+        } else {
+            return map.putIfAbsent(transition, successor);
+        }
+    }
+
+    private static TransitionMap<Transition, Shape> newTransitionMap() {
+        transitionMapsCreated.inc();
+        return TransitionMap.create();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Transition unwrapKey(Object key) {
+        if (key instanceof WeakKey<?>) {
+            return ((WeakKey<Transition>) key).get();
+        }
+        return (Transition) key;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static TransitionMap<Transition, Shape> asTransitionMap(Object map) {
+        return (TransitionMap<Transition, Shape>) map;
+    }
+
+    private static boolean isTransitionMap(Object trans) {
+        return trans instanceof TransitionMap<?, ?>;
+    }
+
+    private static Object newSingleEntry(Transition transition, Shape successor) {
+        transitionSingleEntriesCreated.inc();
+        Object key = transition;
+        if (transition.isWeak()) {
+            key = new WeakKey<>(transition);
+        }
+        return new StrongKeyWeakValueEntry<>(key, successor);
+    }
+
+    private static boolean isSingleEntry(Object trans) {
+        return trans instanceof StrongKeyWeakValueEntry;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static StrongKeyWeakValueEntry<Object, Shape> asSingleEntry(Object trans) {
+        return (StrongKeyWeakValueEntry<Object, Shape>) trans;
+    }
+
+    void forEachTransition(BiConsumer<Transition, Shape> consumer) {
+        Object trans = transitionMap;
+        if (trans == null) {
+            return;
+        } else if (isSingleEntry(trans)) {
+            StrongKeyWeakValueEntry<Object, Shape> entry = asSingleEntry(trans);
+            Shape shape = entry.getValue();
+            if (shape != null) {
+                Transition key = unwrapKey(entry.getKey());
+                if (key != null) {
+                    consumer.accept(key, shape);
+                }
+            }
+        } else {
+            assert isTransitionMap(trans);
+            TransitionMap<Transition, Shape> map = asTransitionMap(trans);
+            map.forEach(consumer);
+        }
+    }
+
+    private Shape queryTransitionImpl(Transition transition) {
+        Object trans = transitionMap;
+        if (trans == null) {
+            return null;
+        } else if (isSingleEntry(trans)) {
+            StrongKeyWeakValueEntry<Object, Shape> entry = asSingleEntry(trans);
+            Shape shape = entry.getValue();
+            if (shape != null) {
+                Transition key = unwrapKey(entry.getKey());
+                if (key != null && transition.equals(key)) {
+                    return shape;
+                }
+            }
+            return null;
+        } else {
+            assert isTransitionMap(trans);
+            TransitionMap<Transition, Shape> map = asTransitionMap(trans);
+            return map.get(transition);
+        }
+    }
+
+    Shape queryTransition(Transition transition) {
+        Shape cachedShape = queryTransitionImpl(transition);
+        if (cachedShape != null) {
+            shapeCacheHitCount.inc();
+            return cachedShape;
+        }
+        shapeCacheMissCount.inc();
+
+        return null;
+    }
+
+    void onPropertyTransition(Transition.PropertyTransition propertyTransition) {
+        if (allowPropertyAssumptions()) {
+            invalidatePropertyAssumption(propertyTransition.getPropertyKey(), propertyTransition.isDirect());
+        }
+    }
+
+    private void invalidatePropertyAssumption(Object propertyKey, boolean onlyExisting) {
+        PropertyAssumptions propertyAssumptions = onlyExisting
+                        ? getPropertyAssumptions()
+                        : getOrCreatePropertyAssumptions();
+        if (propertyAssumptions != null) {
+            propertyAssumptions.invalidatePropertyAssumption(propertyKey, onlyExisting);
+        }
+    }
+
+    Transition getTransitionFromParent() {
+        return transitionFromParent;
+    }
+
+    /**
+     * Create a new shape that adds a property to the parent shape.
+     *
+     */
+    static Shape makeShapeWithAddedProperty(Shape parent, Transition.AddPropertyTransition addTransition) {
+        Property addend = addTransition.getProperty();
+        var allocator = parent.allocator().addLocation(addend.getLocation());
+
+        PropertyMap newPropertyMap = parent.propertyMap.putCopy(addend);
+
+        Shape newShape = parent.createShape(parent.objectType, parent.sharedData, newPropertyMap, addTransition, allocator, parent.flags);
+        assert newShape.hasPrimitiveArray() || addend.getLocation().primitiveArrayCount() == 0;
+        assert newShape.depth == allocator.depth;
+        return newShape;
+    }
+
+    /**
+     * Are these two shapes related, i.e. do they have the same root?
+     *
+     * @param other Shape to compare to
+     * @return true if one shape is an upcast of the other, or the Shapes are equal
+     */
+    boolean isRelated(Shape other) {
+        if (this == other) {
+            return true;
+        }
+        return this.getRoot() == other.getRoot();
+    }
+
+    private static AbstractAssumption createValidAssumption() {
+        return (AbstractAssumption) Truffle.getRuntime().createAssumption("valid shape");
+    }
+
+    void invalidateValidAssumption() {
+        validAssumption.invalidate();
+    }
+
+    private static AbstractAssumption createLeafAssumption() {
+        return (AbstractAssumption) Truffle.getRuntime().createAssumption("leaf shape");
+    }
+
+    @TruffleBoundary
+    void invalidateLeafAssumption() {
+        AbstractAssumption prev;
+        do {
+            prev = LEAF_ASSUMPTION_UPDATER.get(this);
+            if (prev == Assumption.NEVER_VALID) {
+                break;
+            }
+            if (prev != null) {
+                prev.invalidate();
+            }
+        } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, (AbstractAssumption) Assumption.NEVER_VALID));
+    }
+
+    /**
+     * {@return a string representation of the object}
+     *
+     * @since 25.1
+     */
+    @Override
+    public String toString() {
+        return toStringLimit(Integer.MAX_VALUE);
+    }
+
+    @TruffleBoundary
+    String toStringLimit(int limit) {
+        StringBuilder sb = new StringBuilder();
+        sb.append('@');
+        sb.append(Integer.toHexString(hashCode()));
+        if (!isValid()) {
+            sb.append('!');
+        }
+
+        sb.append("{");
+        boolean first = true;
+        for (Iterator<Property> iterator = propertyMap.reverseOrderedValueIterator(); iterator.hasNext();) {
+            Property p = iterator.next();
+            if (first) {
+                first = false;
+            } else {
+                sb.append("\n");
+            }
+            sb.append(p);
+            if (iterator.hasNext()) {
+                sb.append(",");
+            }
+            if (sb.length() >= limit) {
+                sb.append("...");
+                break;
+            }
+        }
+        sb.append("}");
+
+        return sb.toString();
+    }
+
+    Shape getParent() {
+        return parent;
+    }
+
+    int getDepth() {
+        return depth;
+    }
+
+    BaseAllocator allocator() {
+        return ObsolescenceStrategy.createAllocator(this);
+    }
+
+    /**
+     * Find lowest common ancestor of two related shapes.
+     */
+    static Shape findCommonAncestor(Shape left, Shape right) {
+        if (!left.isRelated(right)) {
+            throw new IllegalArgumentException("shapes must have the same root");
+        } else if (left == right) {
+            return left;
+        }
+        int leftLength = left.depth;
+        int rightLength = right.depth;
+        Shape leftPtr = left;
+        Shape rightPtr = right;
+        while (leftLength > rightLength) {
+            leftPtr = leftPtr.parent;
+            leftLength--;
+        }
+        while (rightLength > leftLength) {
+            rightPtr = rightPtr.parent;
+            rightLength--;
+        }
+        while (leftPtr != rightPtr) {
+            leftPtr = leftPtr.parent;
+            rightPtr = rightPtr.parent;
+        }
+        return leftPtr;
+    }
+
+    /**
+     * Find difference between two shapes.
+     */
+    static List<Property> diff(Shape oldShape, Shape newShape) {
+        List<Property> oldList = oldShape.getPropertyListInternal(false);
+        List<Property> newList = newShape.getPropertyListInternal(false);
+
+        List<Property> diff = new ArrayList<>(oldList);
+        diff.addAll(newList);
+        List<Property> intersection = new ArrayList<>(oldList);
+        intersection.retainAll(newList);
+        diff.removeAll(intersection);
+        return diff;
+    }
+
+    LayoutImpl getLayout() {
+        return layout;
+    }
+
+    boolean allowPropertyAssumptions() {
+        return (flags & FLAG_ALLOW_PROPERTY_ASSUMPTIONS) != 0;
+    }
+
+    private PropertyAssumptions getOrCreatePropertyAssumptions() {
+        CompilerAsserts.neverPartOfCompilation();
+        assert allowPropertyAssumptions();
+        PropertyAssumptions ass = root.sharedPropertyAssumptions;
+        if (ass == null) {
+            ass = new PropertyAssumptions();
+            if (!PROPERTY_ASSUMPTIONS_UPDATER.compareAndSet(root, null, ass)) {
+                ass = getPropertyAssumptions();
+            }
+        }
+        assert ass != null;
+        return ass;
+    }
+
+    private PropertyAssumptions getPropertyAssumptions() {
+        CompilerAsserts.neverPartOfCompilation();
+        assert allowPropertyAssumptions();
+        return root.sharedPropertyAssumptions;
+    }
+
+    @TruffleBoundary
+    void invalidateAllPropertyAssumptions() {
+        assert allowPropertyAssumptions();
+        PropertyAssumptions propertyAssumptions = getPropertyAssumptions();
+        if (propertyAssumptions != null) {
+            propertyAssumptions.invalidateAllPropertyAssumptions();
+        }
+    }
+
+    Object getMutex() {
+        return getRoot();
+    }
+
+    void setSuccessorShape(Shape successorShape) {
+        this.successorShape = successorShape;
+    }
+
+    Shape getSuccessorShape() {
+        return successorShape;
+    }
+
+    void addPredecessorShape(Shape nextShape) {
+        Object prev;
+        Object next;
+        do {
+            prev = predecessorShape;
+            if (prev == null) {
+                next = nextShape;
+            } else if (prev instanceof Shape prevShape) {
+                if (prevShape == nextShape) {
+                    break;
+                }
+                next = new Shape[]{prevShape, nextShape};
+            } else {
+                Shape[] prevArray = (Shape[]) prev;
+                for (Shape prevShape : prevArray) {
+                    if (prevShape == nextShape) {
+                        break;
+                    }
+                }
+                Shape[] nextArray = Arrays.copyOf(prevArray, prevArray.length + 1);
+                nextArray[prevArray.length] = nextShape;
+                next = nextArray;
+            }
+        } while (!PREDECESSOR_SHAPE_UPDATER.compareAndSet(this, prev, next));
+    }
+
+    private static int getObjectFlags(int flags) {
+        return ((flags & OBJECT_FLAGS_MASK) >>> OBJECT_FLAGS_SHIFT);
+    }
+
+    private static int checkObjectFlags(int flags) {
+        if ((flags & ~OBJECT_FLAGS_MASK) != 0) {
+            throw new IllegalArgumentException("flags must be in the range [0, 0xffff]");
+        }
+        return flags;
+    }
+
+}
+
+final class PropertyAssumptions {
+    private final EconomicMap<Object, Assumption> stablePropertyAssumptions;
+
+    PropertyAssumptions() {
+        this.stablePropertyAssumptions = EconomicMap.create();
+    }
+
+    synchronized Assumption getPropertyAssumption(Object propertyName) {
+        CompilerAsserts.neverPartOfCompilation();
+        EconomicMap<Object, Assumption> map = stablePropertyAssumptions;
+        Assumption assumption = map.get(propertyName);
+        if (assumption != null) {
+            return assumption;
+        }
+        assumption = Truffle.getRuntime().createAssumption(propertyName.toString());
+        map.put(propertyName, assumption);
+        propertyAssumptionsCreated.inc();
+        return assumption;
+    }
+
+    synchronized void invalidatePropertyAssumption(Object propertyName, boolean onlyExisting) {
+        CompilerAsserts.neverPartOfCompilation();
+        EconomicMap<Object, Assumption> map = stablePropertyAssumptions;
+        Assumption assumption = map.get(propertyName);
+        if (assumption == Assumption.NEVER_VALID) {
+            return;
+        }
+        if (assumption != null) {
+            assumption.invalidate("invalidatePropertyAssumption");
+        }
+        /*
+         * Direct property transitions can happen only once per object as they always lead to new
+         * shapes, so we only need to invalidate already registered assumptions.
+         *
+         * Indirect property transitions, OTOH, can form transition cycles in the shape tree that
+         * may cause toggling between existing shapes for the same object, and since already cached
+         * shape transitions fly under the radar of future property assumptions, we have to block
+         * any future assumptions from being registered for this property.
+         */
+        if (assumption != null || !onlyExisting) {
+            map.put(propertyName, Assumption.NEVER_VALID);
+            if (assumption != null) {
+                propertyAssumptionsRemoved.inc();
+            } else {
+                propertyAssumptionsBlocked.inc();
+            }
+        }
+    }
+
+    synchronized void invalidateAllPropertyAssumptions() {
+        CompilerAsserts.neverPartOfCompilation();
+        for (Assumption assumption : stablePropertyAssumptions.getValues()) {
+            assumption.invalidate("invalidateAllPropertyAssumptions");
+        }
+        stablePropertyAssumptions.clear();
+    }
+
 }

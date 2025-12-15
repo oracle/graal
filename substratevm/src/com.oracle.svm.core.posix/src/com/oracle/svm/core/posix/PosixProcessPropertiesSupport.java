@@ -41,7 +41,7 @@ import org.graalvm.word.PointerBase;
 import com.oracle.svm.core.BaseProcessPropertiesSupport;
 import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Stdlib;
@@ -105,7 +105,7 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
         try {
             return CTypeConversion.toJavaString(realpath);
         } finally {
-            UntrackedNullableNativeMemory.free(realpath);
+            LibC.free(realpath);
         }
     }
 
@@ -165,11 +165,13 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
             if (realpath.isNull()) {
                 /* Failure to find a real path. */
                 return null;
-            } else {
+            }
+
+            try {
                 /* Success */
-                String result = CTypeConversion.toJavaString(realpath);
-                UntrackedNullableNativeMemory.free(realpath);
-                return result;
+                return CTypeConversion.toJavaString(realpath);
+            } finally {
+                LibC.free(realpath);
             }
         }
     }

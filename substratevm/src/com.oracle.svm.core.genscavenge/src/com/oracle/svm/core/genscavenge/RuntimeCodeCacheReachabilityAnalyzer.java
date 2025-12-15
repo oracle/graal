@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.io.Serial;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
@@ -52,6 +56,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
     }
 
     @Override
+    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
     public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
         Pointer pos = firstObjRef;
         Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
@@ -61,6 +66,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void visitObjectReference(Pointer ptrPtrToObject, boolean compressed) {
         Pointer ptrToObj = ReferenceAccess.singleton().readObjectAsUntrackedPointer(ptrPtrToObject, compressed);
         if (ptrToObj.isNonNull() && !isReachable(ptrToObj)) {
@@ -68,6 +74,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isReachable(Pointer ptrToObj) {
         assert ptrToObj.isNonNull();
         if (HeapImpl.getHeapImpl().isInImageHeap(ptrToObj)) {
@@ -93,7 +100,9 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
         return isAssumedReachable(clazz);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean isAssumedReachable(Class<?> clazz) {
+        SubstrateUtil.guaranteeRuntimeOnly();
         Class<?>[] classesAssumedReachable = RuntimeCodeCacheCleaner.CLASSES_ASSUMED_REACHABLE;
         for (Class<?> aClass : classesAssumedReachable) {
             if (aClass.isAssignableFrom(clazz)) {

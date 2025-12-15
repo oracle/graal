@@ -29,7 +29,9 @@ import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 import jdk.graal.compiler.hotspot.HotSpotCompilationIdentifier;
 import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
+import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.meta.JavaMethod;
 
 /**
  * A {@link HotSpotCompilationIdentifier} for Truffle compilations.
@@ -73,5 +75,10 @@ public final class HotSpotTruffleCompilationIdentifier extends HotSpotCompilatio
     @Override
     public long getTruffleCompilationId() {
         return getRequest().getId();
+    }
+
+    @Override
+    public JavaMethod asJavaMethod() {
+        return new TruffleDebugJavaMethod(getTask(), getCompilable());
     }
 }

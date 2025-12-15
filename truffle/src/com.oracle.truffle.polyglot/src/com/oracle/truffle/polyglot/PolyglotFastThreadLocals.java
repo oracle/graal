@@ -267,7 +267,10 @@ final class PolyglotFastThreadLocals {
         if (CompilerDirectives.inCompiledCode()) {
             PolyglotSharingLayer layer = resolveLayer(node);
             if (layer != null) {
-                return layer.getSingleConstantContext();
+                PolyglotContextImpl context = layer.getSingleConstantContext();
+                if (context != null) {
+                    return context;
+                }
             }
         }
         return IMPL.fastGet(CONTEXT_INDEX, PolyglotContextImpl.class, true, false);
@@ -299,6 +302,21 @@ final class PolyglotFastThreadLocals {
             contextClass = findContextClass(node, index);
         }
         return IMPL.fastGet(index, contextClass, true, false);
+    }
+
+    public static PolyglotEngineImpl getEngine(Node node) {
+        assert validSharing(node);
+        if (CompilerDirectives.inCompiledCode()) {
+            PolyglotEngineImpl instance = resolveEngine(node);
+            if (instance != null) {
+                return instance;
+            }
+        }
+        PolyglotContextImpl c = IMPL.fastGet(CONTEXT_INDEX, PolyglotContextImpl.class, true, false);
+        if (c == null) {
+            return null;
+        }
+        return c.engine;
     }
 
     private static boolean validSharing(Node node) {

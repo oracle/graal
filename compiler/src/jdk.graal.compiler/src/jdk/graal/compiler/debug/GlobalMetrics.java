@@ -89,7 +89,14 @@ public class GlobalMetrics {
         }
     }
 
-    static Path generateFileName(String nameTemplate) {
+    /**
+     * Substitutes {@code %p} in the given filename template with the execution ID and appends the
+     * isolate ID if this is an isolate-aware runtime.
+     *
+     * @param nameTemplate the filename template, which may contain {@code %p}
+     * @return the substituted filename template
+     */
+    public static Path generateFileName(String nameTemplate) {
         String metricsFile = nameTemplate;
         if (metricsFile.contains("%p")) {
             metricsFile = metricsFile.replace("%p", GraalServices.getExecutionID());

@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.ffi;
 
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAllocationException;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ReadOnlyBufferException;
@@ -39,104 +41,88 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
+import com.oracle.truffle.espresso.ffi.memory.MemoryBuffer;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 
 @ExportLibrary(InteropLibrary.class)
-public final class TruffleByteBuffer implements TruffleObject {
+public final class TruffleByteBuffer implements TruffleObject, AutoCloseable {
 
-    private final ByteBuffer byteBuffer;
+    private final MemoryBuffer byteBufferRecord;
 
-    private TruffleByteBuffer(@Pointer TruffleObject addressPtr, long byteCapacity) {
-        if (byteCapacity < 0) {
-            throw new IllegalArgumentException("negative requested capacity");
-        }
-        this.byteBuffer = NativeUtils.directByteBuffer(NativeUtils.interopAsPointer(addressPtr), byteCapacity);
-    }
-
-    private TruffleByteBuffer(ByteBuffer byteBuffer) {
-        this.byteBuffer = Objects.requireNonNull(byteBuffer);
-    }
-
-    public static @Buffer TruffleObject create(ByteBuffer byteBuffer) {
-        return new TruffleByteBuffer(byteBuffer);
-    }
-
-    public static @Buffer TruffleObject create(@Pointer TruffleObject addressPtr, long size, JavaKind kind) {
-        long byteCapacity = Math.multiplyExact(size, kind.getByteCount());
-        return new TruffleByteBuffer(addressPtr, byteCapacity);
-    }
-
-    @TruffleBoundary
-    public static @Buffer TruffleObject allocateDirectStringUTF8(String string) {
-        return allocateDirectString(string, StandardCharsets.UTF_8);
-    }
-
-    @TruffleBoundary
-    public static @Buffer TruffleObject allocateDirectString(String string, Charset charset) {
-        byte[] bytes = string.getBytes(charset);
-        ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length + 1);
-        buffer.put(bytes);
-        buffer.put((byte) 0);
-        return create(buffer);
+    private TruffleByteBuffer(MemoryBuffer memoryBuffer) {
+        this.byteBufferRecord = Objects.requireNonNull(memoryBuffer);
     }
 
     /**
-     * Allocates a managed ByteBuffer, the returned TruffleBuffer is <b>not</b> an
-     * {@link InteropLibrary#isPointer(Object) interop pointer}.
-     *
-     * <p>
-     * The returned object is managed by the GC, along with its native resources and cannot be
-     * de-allocated explicitly.
+     * Creates a TruffleByteBuffer from the given MemoryBuffer. The returned TruffleByteBuffer must
+     * be explicitly closed to avoid leaking resources.
+     */
+    public static TruffleByteBuffer create(MemoryBuffer memoryBuffer) {
+        return new TruffleByteBuffer(memoryBuffer);
+    }
+
+    /**
+     * Creates a TruffleByteBuffer containing the UTF8 encoded bytes of the given string. The
+     * returned TruffleByteBuffer must be explicitly closed to avoid leaking resources.
      * 
-     * @param byteCapacity buffer size in bytes
-     * @throws IllegalArgumentException if the supplied capacity is negative
-     * @throws OutOfMemoryError if the buffer cannot be allocated
+     * @param string the string to be buffered.
+     * @param nativeMemory the nativeMemory where the TruffleByteBuffer is allocated.
+     * @return a TruffleByteBuffer containing the UTF-8 bytes of the string
      */
-    public static @Buffer TruffleObject allocate(int byteCapacity) {
-        return create(ByteBuffer.allocate(byteCapacity));
+    @TruffleBoundary
+    public static TruffleByteBuffer allocateDirectStringUTF8(String string, NativeMemory nativeMemory) throws MemoryAllocationException {
+        return allocateDirectString(string, StandardCharsets.UTF_8, nativeMemory);
     }
 
-    /**
-     * Allocates a managed direct/native buffer, the returned TruffleBuffer is an
-     * {@link InteropLibrary#isPointer(Object) interop pointer}.
-     *
-     * <p>
-     * The returned object is managed by the GC, along with its native resources and cannot be
-     * de-allocated explicitly.
-     * 
-     * @param byteCapacity buffer size in bytes
-     * @throws IllegalArgumentException if the supplied capacity is negative
-     * @throws OutOfMemoryError if the buffer cannot be allocated
-     */
-    public static @Buffer TruffleObject allocateDirect(int byteCapacity) {
-        return create(ByteBuffer.allocateDirect(byteCapacity));
+    @Override
+    public void close() {
+        this.byteBufferRecord.close();
     }
 
-    /**
-     * Creates an unmanaged, native TruffleBuffer wrapping a of native memory. The returned
-     * TruffleBuffer is an {@link InteropLibrary#isPointer(Object) interop pointer}.
-     */
-    public static @Buffer TruffleObject wrap(@Pointer TruffleObject address, int byteCapacity) {
-        assert InteropLibrary.getUncached().isPointer(address);
-        return create(NativeUtils.directByteBuffer(address, byteCapacity));
-    }
-
-    public static @Buffer TruffleObject wrap(@Pointer TruffleObject addressPtr, int elemCount, JavaKind kind) {
-        return wrap(addressPtr, Math.multiplyExact(elemCount, kind.getByteCount()));
-    }
-
+    @SuppressWarnings("static-method")
     @ExportMessage
     boolean isPointer() {
-        return this.byteBuffer.isDirect();
+        return true;
     }
 
+    /**
+     * Creates a TruffleByteBuffer containing bytes of the given string encoded with the charset.
+     * The returned TruffleByteBuffer must be explicitly closed to avoid leaking resources.
+     *
+     * @param string the string to be buffered.
+     * @param charset the charset used for encoding
+     * @param nativeMemory the nativeMemory where the TruffleByteBuffer is allocated.
+     * @return a TruffleByteBuffer containing the UTF-8 bytes of the string
+     */
+    @TruffleBoundary
+    public static TruffleByteBuffer allocateDirectString(String string, Charset charset, NativeMemory nativeMemory) throws MemoryAllocationException {
+        byte[] bytes = string.getBytes(charset);
+        MemoryBuffer memoryBuffer = nativeMemory.allocateMemoryBuffer(bytes.length + 1);
+        ByteBuffer buffer = memoryBuffer.buffer();
+        buffer.put(bytes);
+        buffer.put((byte) 0);
+        return create(memoryBuffer);
+    }
+
+    /**
+     * There is no guarantee that the address actually corresponds to a host-native-address. It
+     * should correspond to one of the following:
+     * <ul>
+     * <li>A {@link NativeMemory} address</li>
+     * <li>A handle, such as in
+     * {@link com.oracle.truffle.espresso.vm.VM#JVM_LoadLibrary(String, boolean)}</li>
+     * <li>A special value, such as:
+     * <ul>
+     * <li>The NULL pointer in {@link RawPointer}</li>
+     * <li>The sentinelPointer in
+     * {@link com.oracle.truffle.espresso.libs.libjvm.impl.LibJVMSubstitutions}</li>
+     * </ul>
+     * </li>
+     * </ul>
+     */
     @ExportMessage
-    long asPointer() throws UnsupportedMessageException {
-        if (!isPointer()) {
-            throw UnsupportedMessageException.create();
-        }
-        return NativeUtils.byteBufferAddress(this.byteBuffer);
+    long asPointer() {
+        return byteBufferRecord.address();
     }
 
     @SuppressWarnings("static-method")
@@ -147,20 +133,20 @@ public final class TruffleByteBuffer implements TruffleObject {
 
     @ExportMessage
     long getBufferSize() {
-        return byteBuffer.capacity();
+        return byteBufferRecord.buffer().capacity();
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean isBufferWritable() {
-        return !byteBuffer.isReadOnly();
+        return !byteBufferRecord.buffer().isReadOnly();
     }
 
     @ExportMessage
     byte readBufferByte(long byteOffset, @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
-            return readByte(this.byteBuffer, index);
+            return readByte(this.byteBufferRecord.buffer(), index);
         } catch (ArithmeticException | IndexOutOfBoundsException e) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, getBufferSize());
@@ -175,7 +161,7 @@ public final class TruffleByteBuffer implements TruffleObject {
         }
         try {
             int index = Math.toIntExact(byteOffset);
-            readBytes(this.byteBuffer, index, destination, destinationOffset, length);
+            readBytes(this.byteBufferRecord.buffer(), index, destination, destinationOffset, length);
         } catch (ArithmeticException | IndexOutOfBoundsException e) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, length);
@@ -186,7 +172,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     void writeBufferByte(long byteOffset, byte value, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
-            writeByte(this.byteBuffer, index, value);
+            writeByte(this.byteBufferRecord.buffer(), index, value);
         } catch (ArithmeticException | IndexOutOfBoundsException e) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, getBufferSize());
@@ -200,7 +186,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     short readBufferShort(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
-            return readShort(this.byteBuffer, order, index);
+            return readShort(this.byteBufferRecord.buffer(), order, index);
         } catch (ArithmeticException | IndexOutOfBoundsException e) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, getBufferSize());
@@ -211,7 +197,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     void writeBufferShort(ByteOrder order, long byteOffset, short value, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
-            writeShort(this.byteBuffer, order, index, value);
+            writeShort(this.byteBufferRecord.buffer(), order, index, value);
         } catch (ArithmeticException | IndexOutOfBoundsException e) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, getBufferSize());
@@ -225,7 +211,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     int readBufferInt(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
-            return readInt(this.byteBuffer, order, index);
+            return readInt(this.byteBufferRecord.buffer(), order, index);
         } catch (ArithmeticException | IndexOutOfBoundsException e) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, getBufferSize());
@@ -236,7 +222,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     void writeBufferInt(ByteOrder order, long byteOffset, int value, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
-            writeInt(this.byteBuffer, order, index, value);
+            writeInt(this.byteBufferRecord.buffer(), order, index, value);
         } catch (ArithmeticException | IndexOutOfBoundsException e) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, getBufferSize());
@@ -250,7 +236,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     long readBufferLong(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
-            return readLong(this.byteBuffer, order, index);
+            return readLong(this.byteBufferRecord.buffer(), order, index);
         } catch (ArithmeticException | IndexOutOfBoundsException e) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, getBufferSize());
@@ -261,7 +247,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     void writeBufferLong(ByteOrder order, long byteOffset, long value, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
-            writeLong(this.byteBuffer, order, index, value);
+            writeLong(this.byteBufferRecord.buffer(), order, index, value);
         } catch (ArithmeticException | IndexOutOfBoundsException e) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, getBufferSize());
@@ -275,7 +261,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     float readBufferFloat(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
-            return readFloat(this.byteBuffer, order, index);
+            return readFloat(this.byteBufferRecord.buffer(), order, index);
         } catch (ArithmeticException | IndexOutOfBoundsException e) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, getBufferSize());
@@ -286,7 +272,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     void writeBufferFloat(ByteOrder order, long byteOffset, float value, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
-            writeFloat(this.byteBuffer, order, index, value);
+            writeFloat(this.byteBufferRecord.buffer(), order, index, value);
         } catch (ArithmeticException | IndexOutOfBoundsException e) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, getBufferSize());
@@ -300,7 +286,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     double readBufferDouble(ByteOrder order, long byteOffset, @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
-            return readDouble(this.byteBuffer, order, index);
+            return readDouble(this.byteBufferRecord.buffer(), order, index);
         } catch (ArithmeticException | IndexOutOfBoundsException e) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, getBufferSize());
@@ -311,7 +297,7 @@ public final class TruffleByteBuffer implements TruffleObject {
     void writeBufferDouble(ByteOrder order, long byteOffset, double value, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
-            writeDouble(this.byteBuffer, order, index, value);
+            writeDouble(this.byteBufferRecord.buffer(), order, index, value);
         } catch (ArithmeticException | IndexOutOfBoundsException e) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, getBufferSize());

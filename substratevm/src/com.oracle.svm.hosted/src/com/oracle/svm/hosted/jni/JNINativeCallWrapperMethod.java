@@ -30,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -44,7 +46,6 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
-import com.oracle.svm.hosted.heap.SVMImageHeapScanner;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -113,7 +114,9 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
             Function<String, CGlobalDataInfo> createSymbol = symbolName -> CGlobalDataFeature.singleton().registerAsAccessedOrGet(CGlobalDataFactory.forSymbol(symbolName));
             CGlobalDataInfo builtinAddress = linkage.getOrCreateBuiltInAddress(createSymbol);
             callAddress = kit.unique(new CGlobalDataLoadAddressNode(builtinAddress));
-            SVMImageHeapScanner.instance().rescanField(linkage, linkageBuiltInAddressField);
+
+            ScanReason reason = new ObjectScanner.OtherReason("Manual rescan triggered for " + method.getQualifiedName());
+            method.getUniverse().getHeapScanner().rescanField(linkage, linkageBuiltInAddressField, reason);
         } else {
             callAddress = kit.invokeNativeCallAddress(kit.createObject(linkage));
         }

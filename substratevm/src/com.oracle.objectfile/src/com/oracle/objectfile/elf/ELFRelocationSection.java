@@ -30,10 +30,8 @@ import static java.lang.Math.toIntExact;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Function;
 
@@ -51,6 +49,7 @@ import com.oracle.objectfile.elf.ELFObjectFile.ELFSectionFlag;
 import com.oracle.objectfile.elf.ELFObjectFile.SectionType;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
+import org.graalvm.collections.EconomicSet;
 
 public class ELFRelocationSection extends ELFSection {
 
@@ -227,7 +226,7 @@ public class ELFRelocationSection extends ELFSection {
     @Override
     public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
         /* We use minimal deps because our size doesn't depend on our bytewise content. */
-        HashSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
+        EconomicSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
         /*
          * Our content depends on the content of our symtab. WHY? it's only the abstract content,
          * not the physical content. Try removing this one.
@@ -247,7 +246,7 @@ public class ELFRelocationSection extends ELFSection {
         }
 
         if (isDynamic()) {
-            Set<ELFSection> referenced = new HashSet<>();
+            EconomicSet<ELFSection> referenced = EconomicSet.create();
             for (Entry ent : entries.keySet()) {
                 referenced.add(ent.section);
             }

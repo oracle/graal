@@ -53,7 +53,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class SubstrateCardTableBarrierSet extends CardTableBarrierSet {
     public SubstrateCardTableBarrierSet(ResolvedJavaType objectArrayType) {
-        super(objectArrayType);
+        super(objectArrayType, true);
     }
 
     @Override

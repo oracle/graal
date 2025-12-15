@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import jdk.graal.compiler.lir.StandardOp;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 
@@ -558,7 +559,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     @Override
     public void visitEndNode(AbstractEndNode end) {
         AbstractMergeNode merge = end.merge();
-        JumpOp jump = newJumpOp(getLIRBlock(merge));
+        JumpOp jump = new JumpOp(getLIRBlock(merge), end instanceof LoopEndNode loopEndNode && loopEndNode.loopBegin().mayEmitThreadedCode());
         jump.setPhiValues(createPhiOut(merge, end));
         append(jump);
     }
@@ -568,10 +569,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
      */
     @Override
     public void visitLoopEnd(LoopEndNode x) {
-    }
-
-    protected JumpOp newJumpOp(LabelRef ref) {
-        return new JumpOp(ref);
     }
 
     protected LIRKind getPhiKind(PhiNode phi) {
@@ -744,8 +741,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 LIRKind kind = gen.getLIRKind(x.value().stamp(NodeView.DEFAULT));
                 Value key = gen.emitConstant(kind, x.keyAt(0));
                 gen.emitCompareBranch(kind.getPlatformKind(), value, key, Condition.EQ, false, getLIRBlock(x.keySuccessor(0)), defaultTarget, probability);
-            } else if (x instanceof IntegerSwitchNode && x.isSorted()) {
-                IntegerSwitchNode intSwitch = (IntegerSwitchNode) x;
+            } else if (x instanceof IntegerSwitchNode intSwitch && x.isSorted()) {
                 LabelRef[] keyTargets = new LabelRef[keyCount];
                 JavaConstant[] keyConstants = new JavaConstant[keyCount];
                 double[] keyProbabilities = new double[keyCount];
@@ -756,7 +752,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                     keyProbabilities[i] = intSwitch.keyProbability(i);
                     assert keyConstants[i].getJavaKind() == keyKind : Assertions.errorMessage(keyConstants, keyKind);
                 }
-                gen.emitStrategySwitch(keyConstants, keyProbabilities, keyTargets, defaultTarget, value);
+                gen.emitStrategySwitch(keyConstants, keyProbabilities, keyTargets, defaultTarget, value, intSwitch.inputMayBeOutOfRange(), intSwitch.mayEmitThreadedCode());
             } else {
                 // keyKind != JavaKind.Int || !x.isSorted()
                 LabelRef[] keyTargets = new LabelRef[keyCount];
@@ -863,5 +859,10 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                         LIRKind.fromJavaKind(lirGenTool.target().arch, node.getStackKind()));
         lirGenTool.emitIncomingValues(new Value[]{returnRegister});
         setResult(node, lirGenTool.emitMove(returnRegister));
+    }
+
+    @Override
+    public void emitStartRecordingThreadedSwitch() {
+        append(new StandardOp.StartRecordingThreadedSwitchOp());
     }
 }

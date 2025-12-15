@@ -13,11 +13,10 @@
     spec_suites:: unique_suites([$.specjvm2008, $.specjbb2015]),
     jmh_micros_suites:: unique_suites([$.micros_graal_dist]),
     graal_internals_suites:: unique_suites([$.micros_graal_whitebox]),
-    special_suites:: unique_suites([$.dacapo_size_variants, $.scala_dacapo_size_variants]),
     microservice_suites:: unique_suites([$.microservice_benchmarks]),
 
     main_suites:: unique_suites([$.specjvm2008] + self.open_suites),
-    all_suites:: unique_suites(self.main_suites + self.spec_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites),
+    all_suites:: unique_suites(self.main_suites + self.spec_suites + self.jmh_micros_suites + self.microservice_suites),
 
     weekly_forks_suites:: self.main_suites + self.microservice_suites,
     all_but_main_suites:: std.setDiff(self.all_suites, self.main_suites, keyF=_suite_key),
@@ -30,7 +29,7 @@
     run+: [
       self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args
     ],
-    timelimit: "30:00",
+    timelimit: "1:00:00",
     forks_batches:: null,
     forks_timelimit:: null,
     min_jdk_version:: 8,
@@ -61,22 +60,6 @@
     max_jdk_version:: null
   },
 
-  dacapo_size_variants: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
-    suite:: "dacapo-size-variants",
-    run+: [
-      self.benchmark_cmd + ["dacapo-small:*", "--"] + self.extra_vm_args,
-      self._bench_upload(),
-      self.benchmark_cmd + ["dacapo-large:*", "--"] + self.extra_vm_args,
-      self._bench_upload(),
-      self.benchmark_cmd + ["dacapo-huge:*", "--"] + self.extra_vm_args
-    ],
-    timelimit: "04:30:00",
-    forks_batches:: null,
-    forks_timelimit:: null,
-    min_jdk_version:: 8,
-    max_jdk_version:: null
-  },
-
   scala_dacapo: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "scala-dacapo",
     run+: [
@@ -86,27 +69,6 @@
     forks_batches:: 2,
     bench_forks_per_batch:: 3,
     forks_timelimit:: "02:30:00",
-    min_jdk_version:: 8,
-    max_jdk_version:: null
-  },
-
-  scala_dacapo_size_variants: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
-    suite:: "scala-dacapo-size-variants",
-    run+: [
-      self.benchmark_cmd + ["scala-dacapo-tiny:*", "--"] + self.extra_vm_args,
-      self._bench_upload(),
-      self.benchmark_cmd + ["scala-dacapo-small:*", "--"] + self.extra_vm_args,
-      self._bench_upload(),
-      self.benchmark_cmd + ["scala-dacapo-large:*", "--"] + self.extra_vm_args,
-      self._bench_upload(),
-      self.benchmark_cmd + ["scala-dacapo-huge:*", "--"] + self.extra_vm_args,
-      // Disabling the 'gargantuan' sizes since they require a lot of compute time for little added value
-      //self._bench_upload(),
-      //self.benchmark_cmd + ["scala-dacapo-gargantuan:*", "--"] + self.extra_vm_args
-    ],
-    timelimit: "03:00:00",
-    forks_batches:: null, # weekly forks disabled
-    forks_timelimit:: null,
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
@@ -129,7 +91,7 @@
 
   barista_template(suite_version=null, suite_name="barista", max_jdk_version=null, cmd_app_prefix=["hwloc-bind --cpubind node:0.core:0-3.pu:0 --membind node:0"], non_prefix_barista_args=[]):: cc.compiler_benchmark + {
     suite:: suite_name,
-    local barista_version = "v0.4.7",
+    local barista_version = "0.6.0",
     local suite_version_args = if suite_version != null then ["--bench-suite-version=" + suite_version] else [],
     local prefix_barista_arg = if std.length(cmd_app_prefix) > 0 then [std.format("--cmd-app-prefix=%s", std.join(" ", cmd_app_prefix))] else [],
     local all_barista_args = prefix_barista_arg + non_prefix_barista_args,
@@ -137,7 +99,7 @@
     downloads+: {
       "WRK": { "name": "wrk", "version": "a211dd5", platformspecific: true},
       "WRK2": { "name": "wrk2", "version": "2.1", platformspecific: true},
-      "BARISTA_BENCHMARKS": { "name": "barista", "version": "0.4.7"}
+      "BARISTA_BENCHMARKS": { "name": "barista", "version": "0.5.1"}
     },
     packages+: {
       maven: "==3.8.6",

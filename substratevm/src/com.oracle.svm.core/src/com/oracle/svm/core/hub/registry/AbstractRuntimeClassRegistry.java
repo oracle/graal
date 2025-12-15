@@ -24,17 +24,11 @@
  */
 package com.oracle.svm.core.hub.registry;
 
-import static com.oracle.svm.espresso.classfile.Constants.ACC_SUPER;
-import static com.oracle.svm.espresso.classfile.Constants.ACC_VALUE_BASED;
-import static com.oracle.svm.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
-
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -42,34 +36,25 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.graalvm.nativeimage.impl.ClassLoading;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.graal.meta.KnownOffsets;
-import com.oracle.svm.core.hub.CremaSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SVMSymbols.SVMTypes;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ClassfileParser;
 import com.oracle.svm.espresso.classfile.ClassfileStream;
-import com.oracle.svm.espresso.classfile.ParserConstantPool;
 import com.oracle.svm.espresso.classfile.ParserException;
-import com.oracle.svm.espresso.classfile.ParserField;
 import com.oracle.svm.espresso.classfile.ParserKlass;
-import com.oracle.svm.espresso.classfile.ParserMethod;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
-import com.oracle.svm.espresso.classfile.attributes.InnerClassesAttribute;
-import com.oracle.svm.espresso.classfile.attributes.NestHostAttribute;
-import com.oracle.svm.espresso.classfile.attributes.PermittedSubclassesAttribute;
-import com.oracle.svm.espresso.classfile.attributes.RecordAttribute;
-import com.oracle.svm.espresso.classfile.attributes.SignatureAttribute;
-import com.oracle.svm.espresso.classfile.attributes.SourceFileAttribute;
-import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.ValidationException;
+import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.loader.ClassLoaders;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -96,8 +81,14 @@ import jdk.vm.ci.meta.MetaUtil;
  * {@linkplain UserDefinedClassRegistry all other class loaders}.
  */
 public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassRegistry permits BootClassRegistry, UserDefinedClassRegistry {
+    public static final Object UNINITIALIZED_DECLARING_CLASS_SENTINEL = new Object();
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
+    private static final ClassLoader bootLoader;
+    static {
+        Method method = ReflectionUtil.lookupMethod(ClassLoaders.class, "bootLoader");
+        bootLoader = ReflectionUtil.invokeMethod(method, null);
+    }
     /**
      * Strong hidden classes must be referenced by the class loader data to prevent them from being
      * reclaimed, while not appearing in the actual registry. This field simply keeps those hidden
@@ -167,20 +158,17 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
     protected abstract boolean loaderIsBootOrPlatform();
 
     public final Class<?> defineClass(Symbol<Type> typeOrNull, byte[] b, int off, int len, ClassDefinitionInfo info) {
-        if (isParallelClassLoader()) {
+        // GR-62338: for parallel class loaders this synchronization should be skipped.
+        Object syncObject = getClassLoader();
+        if (syncObject == null) {
+            syncObject = this;
+        }
+        synchronized (syncObject) {
             return defineClassInner(typeOrNull, b, off, len, info);
-        } else {
-            synchronized (getClassLoader()) {
-                return defineClassInner(typeOrNull, b, off, len, info);
-            }
         }
     }
 
     private Class<?> defineClassInner(Symbol<Type> typeOrNull, byte[] b, int off, int len, ClassDefinitionInfo info) {
-        if (isParallelClassLoader() || getClassLoader() == null) {
-            // GR-62338
-            throw VMError.unimplemented("Parallel class loading:" + getClassLoader());
-        }
         byte[] data = b;
         if (off != 0 || b.length != len) {
             if (len < 0) {
@@ -193,7 +181,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         }
         ParserKlass parsed = parseClass(typeOrNull, info, data);
         Symbol<Type> type = typeOrNull == null ? parsed.getType() : typeOrNull;
-        assert typeOrNull == null || type == parsed.getType();
+        assert typeOrNull == null || type == parsed.getType() : typeOrNull + " vs. " + parsed.getType();
         if (info.addedToRegistry() && findLoadedClass(type) != null) {
             String kind;
             if (Modifier.isInterface(parsed.getFlags())) {
@@ -206,9 +194,13 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             String externalName = getExternalName(parsed, info);
             throw new LinkageError("Loader " + ClassRegistries.loaderNameAndId(getClassLoader()) + " attempted duplicate " + kind + " definition for " + externalName + ".");
         }
+        int typeID = TypeIDs.singleton().nextTypeId();
+        if (info.isHidden) {
+            parsed = ParserKlass.forHiddenClass(parsed, typeOrNull, typeID, ClassRegistries.getParsingContext());
+        }
         Class<?> clazz;
         try {
-            clazz = createClass(parsed, info, type);
+            clazz = createClass(parsed, info, type, typeID);
         } catch (ParserException.ClassFormatError error) {
             throw new ClassFormatError(error.getMessage());
         }
@@ -236,31 +228,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         }
     }
 
-    private static List<Class<?>> transitiveSuperInterfaces(Class<?> superClass, Class<?>[] superInterfaces) {
-        HashSet<Class<?>> result = new HashSet<>();
-        Class<?> current = superClass;
-        while (current != null) {
-            for (Class<?> interfaceClass : current.getInterfaces()) {
-                collectInterfaces(interfaceClass, result);
-            }
-            current = current.getSuperclass();
-        }
-        for (Class<?> interfaceClass : superInterfaces) {
-            collectInterfaces(interfaceClass, result);
-        }
-        return new ArrayList<>(result);
-    }
-
-    private static void collectInterfaces(Class<?> interfaceClass, HashSet<Class<?>> result) {
-        // note that this is and must be called only _after_ class circularity detection
-        if (result.add(interfaceClass)) {
-            for (Class<?> superInterface : interfaceClass.getInterfaces()) {
-                collectInterfaces(superInterface, result);
-            }
-        }
-    }
-
-    private Class<?> createClass(ParserKlass parsed, ClassDefinitionInfo info, Symbol<Type> type) {
+    private Class<?> createClass(ParserKlass parsed, ClassDefinitionInfo info, Symbol<Type> type, int typeID) {
         Symbol<Type> superKlassType = parsed.getSuperKlass();
         assert superKlassType != null; // j.l.Object is always AOT
         // Load direct super interfaces
@@ -282,143 +250,19 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         }
         // GR-62339: Perform super class and interfaces access checks
 
-        String externalName = getExternalName(parsed, info);
-        String simpleBinaryName = getSimpleBinaryName(parsed);
-        String sourceFile = getSourceFile(parsed);
-        Class<?> nestHost = getNestHost(parsed);
-        Class<?> enclosingClass = getEnclosingClass(parsed);
-        String classSignature = getClassSignature(parsed);
-
-        int modifiers = getClassModifiers(parsed);
-        int classFileAccessFlags = parsed.getFlags();
-
-        boolean isInterface = Modifier.isInterface(modifiers);
-        boolean isRecord = Modifier.isFinal(modifiers) && superClass == Record.class && parsed.getAttribute(RecordAttribute.NAME) != null;
-        // GR-62320 This should be set based on build-time and run-time arguments.
-        boolean assertionsEnabled = true;
-        boolean isSealed = isSealed(parsed);
-
-        Object interfacesEncoding = null;
-        if (superInterfaces.length == 1) {
-            interfacesEncoding = DynamicHub.fromClass(superInterfaces[0]);
-        } else if (superInterfaces.length > 1) {
-            DynamicHub[] superHubs = new DynamicHub[superInterfaces.length];
-            for (int i = 0; i < superHubs.length; ++i) {
-                superHubs[i] = DynamicHub.fromClass(superInterfaces[i]);
-            }
-            interfacesEncoding = superHubs;
-        }
-
-        List<Class<?>> transitiveSuperInterfaces = transitiveSuperInterfaces(superClass, superInterfaces);
-        transitiveSuperInterfaces.sort(Comparator.comparing(c -> DynamicHub.fromClass(c).getTypeID()));
-
-        CremaSupport.CremaDispatchTable dispatchTable = CremaSupport.singleton().getDispatchTable(parsed, superClass, transitiveSuperInterfaces);
-
-        boolean declaresDefaultMethods = isInterface && declaresDefaultMethods(parsed);
-        boolean hasDefaultMethods = declaresDefaultMethods || hasInheritedDefaultMethods(superClass, superInterfaces);
-
-        boolean isLambdaFormHidden = false;
-        boolean isProxyClass = false;
-        short flags = DynamicHub.makeFlags(false, isInterface, info.isHidden(), isRecord, assertionsEnabled, hasDefaultMethods, declaresDefaultMethods, isSealed, false, isLambdaFormHidden, false,
-                        isProxyClass);
-
-        /*
-         * The dispatch table will look like:
-         * @formatter:off
-         * [vtable..., itable(I1)..., itable(I2)...]
-         *             ^ idx1         ^ idx2
-         * @formatter:on
-         * First compute idx* in interfaceIndices
-         */
-        int dispatchTableLength = dispatchTable.vtableLength();
-        int[] interfaceIndices = new int[transitiveSuperInterfaces.size()];
-        int i = 0;
-        for (Class<?> iface : transitiveSuperInterfaces) {
-            interfaceIndices[i++] = dispatchTableLength;
-            dispatchTableLength += dispatchTable.itableLength(iface);
-        }
-        /*
-         * Compute the type check slots depending on the kind of type
-         * @formatter:off
-         * ## Instance types
-         * [Object.id, Super1.id, ..., Current.id, I1.id, off1, I2.id, off2, ...]
-         * - display with all super classes from Object to self (included)
-         * - followed by transitive interfaces (ordered by type id)
-         * - each interface is followed by its itable offset
-         * ## Interface types
-         * [Object.id, I1.id, bad, I2.id, bad]
-         * - display with Object
-         * - followed by transitive interfaces (ordered by type id, including self)
-         * - using 0xBADD0D1DL as interface starting index
-         * @formatter:on
-         */
-        DynamicHub superHub = DynamicHub.fromClass(superClass);
-        int typeID = TypeIDs.singleton().nextTypeId();
-        short numInterfacesTypes = (short) transitiveSuperInterfaces.size();
-        short numClassTypes;
-        short typeIDDepth;
-        if (isInterface) {
-            assert superHub.getNumClassTypes() == 1;
-            typeIDDepth = -1;
-            numClassTypes = 1;
-        } else {
-            int intDepth = superHub.getTypeIDDepth() + 1;
-            int intNumClassTypes = superHub.getNumClassTypes() + 1;
-            VMError.guarantee(intDepth == (short) intDepth, "Type depth overflow");
-            VMError.guarantee(intNumClassTypes == (short) intNumClassTypes, "Num class types overflow");
-            typeIDDepth = (short) intDepth;
-            numClassTypes = (short) intNumClassTypes;
-        }
-        int[] openTypeWorldTypeCheckSlots = new int[numClassTypes + (numInterfacesTypes * 2)];
-        int[] superOpenTypeWorldTypeCheckSlots = superHub.getOpenTypeWorldTypeCheckSlots();
-        System.arraycopy(superOpenTypeWorldTypeCheckSlots, 0, openTypeWorldTypeCheckSlots, 0, superHub.getNumClassTypes());
-        if (!isInterface) {
-            openTypeWorldTypeCheckSlots[numClassTypes - 1] = typeID;
-        }
-
-        i = 0;
-        long vTableBaseOffset = KnownOffsets.singleton().getVTableBaseOffset();
-        long vTableEntrySize = KnownOffsets.singleton().getVTableEntrySize();
-        for (Class<?> superInterface : transitiveSuperInterfaces) {
-            openTypeWorldTypeCheckSlots[i * 2 + numClassTypes] = DynamicHub.fromClass(superInterface).getTypeID();
-            int offset;
-            if (isInterface) {
-                offset = 0xBADD0D1D;
-            } else {
-                offset = Math.toIntExact(vTableBaseOffset + interfaceIndices[i] * vTableEntrySize);
-            }
-            openTypeWorldTypeCheckSlots[i * 2 + numClassTypes + 1] = offset;
-            i += 1;
-        }
-
-        int afterFieldsOffset;
-        if (isInterface) {
-            afterFieldsOffset = 0;
-        } else {
-            int superAfterFieldsOffset = CremaSupport.singleton().getAfterFieldsOffset(superHub);
-            // GR-60069: field layout
-            int numDeclaredInstanceFields = 0;
-            for (ParserField field : parsed.getFields()) {
-                if (!field.isStatic()) {
-                    numDeclaredInstanceFields += 1;
-                }
-            }
-            assert numDeclaredInstanceFields == 0;
-            afterFieldsOffset = Math.toIntExact(superAfterFieldsOffset);
-        }
-        boolean isValueBased = (parsed.getFlags() & ACC_VALUE_BASED) != 0;
-
-        // GR-62339
-        Module module = getClassLoader().getUnnamedModule();
-
         checkNotHybrid(parsed);
 
-        DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
-                        sourceFile, modifiers, classFileAccessFlags, flags, getClassLoader(), nestHost, simpleBinaryName, module, enclosingClass, classSignature,
-                        typeID, numClassTypes, typeIDDepth, numInterfacesTypes, openTypeWorldTypeCheckSlots, dispatchTableLength, afterFieldsOffset, isValueBased);
+        // GR-62339
+        Module module;
+        ClassLoader classLoader = getClassLoader();
+        if (classLoader == null) {
+            module = bootLoader.getUnnamedModule();
+        } else {
+            module = classLoader.getUnnamedModule();
+        }
 
-        CremaSupport.singleton().fillDynamicHubInfo(hub, dispatchTable, transitiveSuperInterfaces, interfaceIndices);
-
+        String externalName = getExternalName(parsed, info);
+        DynamicHub hub = CremaSupport.singleton().createHub(parsed, info, typeID, externalName, module, classLoader, superClass, superInterfaces);
         return DynamicHub.toClass(hub);
     }
 
@@ -439,62 +283,6 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
 
     }
 
-    private static boolean declaresDefaultMethods(ParserKlass parsed) {
-        for (ParserMethod method : parsed.getMethods()) {
-            int flags = method.getFlags();
-            if (!Modifier.isAbstract(flags) && !Modifier.isStatic(flags)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isSealed(ParserKlass parsed) {
-        PermittedSubclassesAttribute permittedSubclasses = (PermittedSubclassesAttribute) parsed.getAttribute(PermittedSubclassesAttribute.NAME);
-        return permittedSubclasses != null && permittedSubclasses.getClasses().length > 0;
-    }
-
-    private static boolean hasInheritedDefaultMethods(Class<?> superClass, Class<?>[] superInterfaces) {
-        if (DynamicHub.fromClass(superClass).hasDefaultMethods()) {
-            return true;
-        }
-        for (Class<?> superInterface : superInterfaces) {
-            if (DynamicHub.fromClass(superInterface).hasDefaultMethods()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static int getClassModifiers(ParserKlass parsed) {
-        int modifiers = parsed.getFlags();
-        InnerClassesAttribute innerClassesAttribute = (InnerClassesAttribute) parsed.getAttribute(InnerClassesAttribute.NAME);
-        if (innerClassesAttribute != null) {
-            ParserConstantPool pool = parsed.getConstantPool();
-            for (int i = 0; i < innerClassesAttribute.entryCount(); i++) {
-                InnerClassesAttribute.Entry entry = innerClassesAttribute.entryAt(i);
-                if (entry.innerClassIndex != 0) {
-                    Symbol<Name> innerClassName = pool.className(entry.innerClassIndex);
-                    if (innerClassName.equals(parsed.getName())) {
-                        modifiers = entry.innerClassAccessFlags;
-                        break;
-                    }
-                }
-            }
-        }
-        return modifiers & ~ACC_SUPER & JVM_ACC_WRITTEN_FLAGS;
-    }
-
-    private static Class<?> getNestHost(ParserKlass parsed) {
-        Class<?> nestHost = null;
-        NestHostAttribute nestHostAttribute = (NestHostAttribute) parsed.getAttribute(NestHostAttribute.NAME);
-        if (nestHostAttribute != null) {
-            // must be lazy, should move to companion
-            throw VMError.unimplemented("nest host is not supported yet");
-        }
-        return nestHost;
-    }
-
     private static String getExternalName(ParserKlass parsed, ClassDefinitionInfo info) {
         String externalName = MetaUtil.internalNameToJava(parsed.getType().toString(), true, true);
         if (info.isHidden()) {
@@ -506,56 +294,6 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         return externalName;
     }
 
-    private static Class<?> getEnclosingClass(ParserKlass parsed) {
-        InnerClassesAttribute innerClassesAttribute = (InnerClassesAttribute) parsed.getAttribute(InnerClassesAttribute.NAME);
-        if (innerClassesAttribute == null) {
-            return null;
-        }
-        throw VMError.unimplemented("enclosing class is not supported yet");
-    }
-
-    private static String getSimpleBinaryName(ParserKlass parsed) {
-        InnerClassesAttribute innerClassesAttribute = (InnerClassesAttribute) parsed.getAttribute(InnerClassesAttribute.NAME);
-        if (innerClassesAttribute == null) {
-            return null;
-        }
-        ParserConstantPool pool = parsed.getConstantPool();
-        for (int i = 0; i < innerClassesAttribute.entryCount(); i++) {
-            InnerClassesAttribute.Entry entry = innerClassesAttribute.entryAt(i);
-            int innerClassIndex = entry.innerClassIndex;
-            if (innerClassIndex != 0) {
-                if (pool.className(innerClassIndex) == parsed.getName()) {
-                    if (entry.innerNameIndex == 0) {
-                        break;
-                    } else {
-                        Symbol<?> innerName = pool.utf8At(entry.innerNameIndex, "inner class name");
-                        return innerName.toString();
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    private static String getSourceFile(ParserKlass parsed) {
-        String sourceFile = null;
-        SourceFileAttribute sourceFileAttribute = (SourceFileAttribute) parsed.getAttribute(ParserNames.SourceFile);
-        if (sourceFileAttribute != null) {
-            sourceFile = parsed.getConstantPool().utf8At(sourceFileAttribute.getSourceFileIndex()).toString();
-        }
-        return sourceFile;
-    }
-
-    private static String getClassSignature(ParserKlass parsed) {
-        String sourceFile = null;
-        SignatureAttribute signatureAttribute = (SignatureAttribute) parsed.getAttribute(ParserNames.Signature);
-        if (signatureAttribute != null) {
-            sourceFile = parsed.getConstantPool().utf8At(signatureAttribute.getSignatureIndex()).toString();
-        }
-        return sourceFile;
-    }
-
-    @SuppressWarnings("try")
     public final Class<?> loadSuperType(Symbol<Type> name, Symbol<Type> superName) {
         Placeholder placeholder = new Placeholder();
         var prev = runtimeClasses.putIfAbsent(name, placeholder);
@@ -566,7 +304,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             otherPlaceHolder.addSuperProbingThread();
         }
         assert prev == null : prev;
-        try (var scope = ClassLoading.allowArbitraryClassLoading()) {
+        try (var _ = ClassLoading.allowArbitraryClassLoading()) {
             return loadClass(superName);
         } catch (ClassNotFoundException e) {
             NoClassDefFoundError error = new NoClassDefFoundError(superName.toString());

@@ -42,10 +42,11 @@ package com.oracle.truffle.regex.tregex;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.PrimitiveIterator;
-
 import org.junit.Test;
 
+import com.oracle.truffle.api.strings.TruffleStringIterator;
+import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.tregex.string.StringBufferUTF16;
 import com.oracle.truffle.regex.tregex.string.StringBufferUTF32;
 import com.oracle.truffle.regex.tregex.string.StringBufferUTF8;
@@ -54,29 +55,31 @@ public class StringTest {
 
     @Test
     public void testEncodings() {
-        testEncodingsRange(Character.MIN_CODE_POINT, Character.MAX_HIGH_SURROGATE);
-        testEncodingsRange(Character.MIN_LOW_SURROGATE, Character.MAX_CODE_POINT);
+        testEncodingsRange(Character.MIN_CODE_POINT, Character.MIN_HIGH_SURROGATE - 1);
+        testEncodingsRange(Character.MAX_LOW_SURROGATE + 1, Character.MAX_CODE_POINT);
     }
 
     static void testEncodingsRange(int lo, int hi) {
-        StringBufferUTF8 sb8 = new StringBufferUTF8();
-        StringBufferUTF16 sb16 = new StringBufferUTF16();
-        StringBufferUTF32 sb32 = new StringBufferUTF32();
+        int capacity = hi - lo + 1;
+        AbstractStringBuffer[] sbs = {
+                        new StringBufferUTF8(capacity),
+                        new StringBufferUTF16(capacity, Encoding.UTF_16),
+                        new StringBufferUTF16(capacity, Encoding.UTF_16BE),
+                        new StringBufferUTF32(capacity, Encoding.UTF_32),
+                        new StringBufferUTF32(capacity, Encoding.UTF_32BE)
+        };
 
-        for (int i = lo; i <= hi; i++) {
-            sb8.append(i);
-            sb16.append(i);
-            sb32.append(i);
+        for (AbstractStringBuffer sb : sbs) {
+            for (int i = lo; i <= hi; i++) {
+                sb.append(i);
+            }
         }
 
-        PrimitiveIterator.OfInt it8 = sb8.materialize().iterator();
-        PrimitiveIterator.OfInt it16 = sb16.materialize().iterator();
-        PrimitiveIterator.OfInt it32 = sb32.materialize().iterator();
-
-        for (int i = lo; i <= hi; i++) {
-            assertEquals(i, it8.nextInt());
-            assertEquals(i, it16.nextInt());
-            assertEquals(i, it32.nextInt());
+        for (AbstractStringBuffer sb : sbs) {
+            TruffleStringIterator it = sb.asTString().createCodePointIteratorUncached(sb.getEncoding().getTStringEncoding());
+            for (int i = lo; i <= hi; i++) {
+                assertEquals(i, it.nextUncached(sb.getEncoding().getTStringEncoding()));
+            }
         }
     }
 }

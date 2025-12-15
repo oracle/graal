@@ -30,6 +30,7 @@ import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 
+import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
@@ -42,6 +43,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 
@@ -59,9 +61,16 @@ public final class Target_java_lang_reflect_Constructor {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = ParameterAnnotationsComputer.class)//
     byte[] parameterAnnotations;
 
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) //
+    public int modifiers;
+
+    /**
+     * Value of the accessor when `this` is in the image heap. `null` for run-time constructed
+     * constructors.
+     */
     @Alias //
     @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableAccessorComputer.class) //
-    Target_jdk_internal_reflect_ConstructorAccessor constructorAccessor;
+    public Target_jdk_internal_reflect_ConstructorAccessor constructorAccessor;
 
     /**
      * We need this indirection to use {@link #acquireConstructorAccessor()} for checking if
@@ -69,7 +78,7 @@ public final class Target_java_lang_reflect_Constructor {
      */
     @Inject //
     @RecomputeFieldValue(kind = Kind.Reset) //
-    Target_jdk_internal_reflect_ConstructorAccessor constructorAccessorFromMetadata;
+    public Target_jdk_internal_reflect_ConstructorAccessor constructorAccessorFromMetadata;
 
     @Alias
     @TargetElement(name = CONSTRUCTOR_NAME)
@@ -85,10 +94,18 @@ public final class Target_java_lang_reflect_Constructor {
         if (MetadataTracer.enabled()) {
             ConstructorUtil.traceConstructorAccess(SubstrateUtil.cast(this, Executable.class));
         }
-        if (constructorAccessorFromMetadata == null) {
+
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata;
+        assert constructorAccessor == null : "acquireConstructorAccessor() method must not be called if instance is in image heap.";
+        if (constructorAccessorFromMetadata == null || !dynamicAccessMetadata.satisfied()) {
             throw MissingReflectionRegistrationUtils.reportInvokedExecutable(SubstrateUtil.cast(this, Executable.class));
         }
         return constructorAccessorFromMetadata;
+    }
+
+    @Substitute
+    public int getModifiers() {
+        return RuntimeMetadataDecoderImpl.clearInternalModifiers(modifiers);
     }
 
     static class AnnotationsComputer extends ReflectionMetadataComputer {

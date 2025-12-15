@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,13 +29,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.options.OptionValues;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeStateUtils;
+
+import jdk.graal.compiler.options.OptionValues;
 
 public class AnalysisReporter {
     public static void printAnalysisReports(String imageName, OptionValues options, String reportsPath, BigBang bb) {
@@ -55,7 +55,7 @@ public class AnalysisReporter {
                 AnalysisHeapHistogramPrinter.print(bb, reportsPath, baseImageName);
             }
 
-            if (PointstoOptions.PrintPointsToStatistics.getValue(options)) {
+            if (PointstoOptions.PrintPointsToStatistics.getValue(options) || PointstoOptions.PrintTypeStateMemoryFootprint.getValue(options)) {
                 PointsToStats.report(bb, baseImageName);
             }
 

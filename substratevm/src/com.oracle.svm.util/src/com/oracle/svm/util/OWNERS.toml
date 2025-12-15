@@ -1,0 +1,7 @@
+[[rule]]
+files = "GlobUtils.java"
+all = [
+    "vojin.jovanovic@oracle.com"
+]
+any = [
+]

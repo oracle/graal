@@ -24,7 +24,6 @@
  */
 package com.oracle.objectfile.macho;
 
-import java.util.HashSet;
 import java.util.Map;
 
 import com.oracle.objectfile.BuildDependency;
@@ -34,6 +33,7 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.io.OutputAssembler;
 import com.oracle.objectfile.macho.MachOObjectFile.LoadCommandKind;
+import org.graalvm.collections.EconomicSet;
 
 class DyLdInfoCommand extends MachOObjectFile.LoadCommand {
 
@@ -49,7 +49,7 @@ class DyLdInfoCommand extends MachOObjectFile.LoadCommand {
 
     @Override
     public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
-        HashSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
+        EconomicSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
         // our size is fixed;
         // our content depends on the offset and size of the ExportTrieElement
         LayoutDecision ourContent = decisions.get(this).getDecision(LayoutDecision.Kind.CONTENT);

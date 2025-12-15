@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,44 +41,58 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
+
+import java.util.BitSet;
 
 /**
  * Represents the scope of a block structure during module validation.
  */
 public abstract class ControlFrame {
-    private final byte[] paramTypes;
-    private final byte[] resultTypes;
+    private final int[] paramTypes;
+    private final int[] resultTypes;
+    private final SymbolTable symbolTable;
 
     private final int initialStackSize;
     private boolean unreachable;
     private final int commonResultType;
+    protected BitSet initializedLocals;
 
     /**
      * @param paramTypes The parameter value types of the block structure.
      * @param resultTypes The result value types of the block structure.
+     * @param symbolTable Necessary to look up the definitions of types in {@code paramTypes} and
+     *            {@code resultTypes}
      * @param initialStackSize The size of the value stack when entering this block structure.
-     * @param unreachable If the block structure should be declared unreachable.
+     * @param initializedLocals The set of locals which are already initialized at the start of this
+     *            function
      */
-    ControlFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable) {
+    ControlFrame(int[] paramTypes, int[] resultTypes, SymbolTable symbolTable, int initialStackSize, BitSet initializedLocals) {
         this.paramTypes = paramTypes;
         this.resultTypes = resultTypes;
+        this.symbolTable = symbolTable;
         this.initialStackSize = initialStackSize;
-        this.unreachable = unreachable;
+        this.unreachable = false;
         commonResultType = WasmType.getCommonValueType(resultTypes);
+        this.initializedLocals = (BitSet) initializedLocals.clone();
     }
 
-    protected byte[] paramTypes() {
+    protected int[] paramTypes() {
         return paramTypes;
     }
 
-    public byte[] resultTypes() {
+    public int[] resultTypes() {
         return resultTypes;
     }
 
     protected int resultTypeLength() {
         return resultTypes.length;
+    }
+
+    protected SymbolTable getSymbolTable() {
+        return symbolTable;
     }
 
     /**
@@ -91,7 +105,7 @@ public abstract class ControlFrame {
     /**
      * @return The types that must be on the value stack when branching to this frame.
      */
-    abstract byte[] labelTypes();
+    abstract int[] labelTypes();
 
     protected int labelTypeLength() {
         return labelTypes().length;
@@ -113,6 +127,14 @@ public abstract class ControlFrame {
         this.unreachable = false;
     }
 
+    boolean isLocalInitialized(int localIndex) {
+        return initializedLocals.get(localIndex);
+    }
+
+    void initializeLocal(int localIndex) {
+        initializedLocals.set(localIndex);
+    }
+
     /**
      * Performs checks and actions when entering an else branch.
      * 
@@ -129,28 +151,27 @@ public abstract class ControlFrame {
     abstract void exit(RuntimeBytecodeGen bytecode);
 
     /**
-     * Adds an unconditional branch targeting this control frame. Automatically patches the branch
-     * target as soon as it is available.
+     * Adds a branch targeting this control frame. Automatically patches the branch target as soon
+     * as it is available.
      * 
      * @param bytecode The bytecode of the current control frame.
      */
-    abstract void addBranch(RuntimeBytecodeGen bytecode);
+    abstract void addBranch(RuntimeBytecodeGen bytecode, RuntimeBytecodeGen.BranchOp branchOp);
 
     /**
-     * Adds a conditional branch targeting this control frame. Automatically patches the branch *
-     * target as soon as it is available.
-     * 
-     * @param bytecode The bytecode of the current control frame.
-     */
-
-    abstract void addBranchIf(RuntimeBytecodeGen bytecode);
-
-    /**
-     * Adds a branch table item targeting this control frame. Automatically patches the branch *
+     * Adds a branch table item targeting this control frame. Automatically patches the branch
      * target as soon as it is available.
      * 
      * @param bytecode The bytecode of the current control frame.
      */
 
     abstract void addBranchTableItem(RuntimeBytecodeGen bytecode);
+
+    /**
+     * Adds an exception handler targeting this control frame. Automatically patches the exception
+     * handler target as soon as it is available.
+     * 
+     * @param handler The exception handler that targets the frame.
+     */
+    abstract void addExceptionHandler(ExceptionHandler handler);
 }

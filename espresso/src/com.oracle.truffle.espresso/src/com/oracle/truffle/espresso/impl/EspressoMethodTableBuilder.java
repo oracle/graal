@@ -31,6 +31,7 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
@@ -189,7 +190,7 @@ public final class EspressoMethodTableBuilder {
             // Poison pill handling is done in Miranda translation.
             if (m.isSelectionFailure()) {
                 assert entry.isProxy();
-                entry.setPoisonPill();
+                entry = entry.forFailing();
             }
             vtable[vtableIndex] = entry.getMethodVersion();
             vtableIndex++;
@@ -220,7 +221,7 @@ public final class EspressoMethodTableBuilder {
         for (PartialMethod<Klass, Method, Field> m : table) {
             Method entry = m.asMethodAccess();
             if (m.isSelectionFailure()) {
-                entry = new Method(entry).setPoisonPill();
+                entry = entry.forFailing();
             }
             itable[itableIndex] = entry.getMethodVersion();
             itableIndex++;
@@ -285,7 +286,7 @@ public final class EspressoMethodTableBuilder {
         }
 
         @Override
-        public EconomicMap<Klass, List<Method>> getInterfacesData() {
+        public UnmodifiableEconomicMap<Klass, List<Method>> getInterfacesData() {
             return interfacesData;
         }
 

@@ -38,7 +38,6 @@ import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.BasePhase;
-import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.graal.compiler.phases.common.InitMemoryVerificationPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
@@ -99,7 +98,7 @@ public class InitMemoryVerificationTest extends GraalCompilerTest {
         try (DebugContext.Scope _ = getDebugContext().disable()) {
             new InitMemoryVerificationPhase().apply(g, getDefaultLowTierContext());
             throw new GraalError("Should fail init memory verification");
-        } catch (VerifyPhase.VerificationError e) {
+        } catch (AssertionError e) {
             Assert.assertTrue(e.getMessage().contains("unpublished allocations"));
         }
     }
@@ -126,7 +125,7 @@ public class InitMemoryVerificationTest extends GraalCompilerTest {
         try (DebugContext.Scope _ = getDebugContext().disable()) {
             new InitMemoryVerificationPhase().apply(g, getDefaultLowTierContext());
             throw new GraalError("Should fail init memory verification");
-        } catch (VerifyPhase.VerificationError e) {
+        } catch (AssertionError e) {
             Assert.assertTrue(e.getMessage().contains("writes to init memory not guarded by an init barrier"));
         }
     }

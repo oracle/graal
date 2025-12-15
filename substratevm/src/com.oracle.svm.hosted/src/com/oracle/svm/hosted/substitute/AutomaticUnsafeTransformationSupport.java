@@ -35,19 +35,19 @@ import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.Inlin
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.nodes.calc.NarrowNode;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
-import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -136,8 +136,8 @@ public class AutomaticUnsafeTransformationSupport {
     private final ResolvedJavaMethod unsafeArrayIndexScaleMethod;
     private final ResolvedJavaMethod integerNumberOfLeadingZerosMethod;
 
-    private final HashSet<ResolvedJavaMethod> neverInlineSet = new HashSet<>();
-    private final HashSet<ResolvedJavaMethod> noCheckedExceptionsSet = new HashSet<>();
+    private final EconomicSet<ResolvedJavaMethod> neverInlineSet = EconomicSet.create();
+    private final EconomicSet<ResolvedJavaMethod> noCheckedExceptionsSet = EconomicSet.create();
 
     private final Plugins plugins;
 
@@ -269,7 +269,6 @@ public class AutomaticUnsafeTransformationSupport {
         suppressWarnings = List.of(originalMetaAccess.lookupJavaType(ReflectionUtil.lookupClass(false, "sun.security.provider.ByteArrayAccess")));
     }
 
-    @SuppressWarnings("try")
     public void computeTransformations(BigBang bb, SVMHost hostVM, ResolvedJavaType hostType) {
         if (hostType.isArray()) {
             return;
@@ -305,7 +304,7 @@ public class AutomaticUnsafeTransformationSupport {
              * should already be linked and clinit should be available.
              */
             DebugContext debug = new Builder(options).build();
-            try (DebugContext.Scope s = debug.scope("Field offset computation", clinit)) {
+            try (DebugContext.Scope _ = debug.scope("Field offset computation", clinit)) {
                 StructuredGraph clinitGraph = getStaticInitializerGraph(clinit, debug);
 
                 for (Invoke invoke : clinitGraph.getInvokes()) {
@@ -934,7 +933,7 @@ public class AutomaticUnsafeTransformationSupport {
             }
 
             if (kind == FieldOffset) {
-                bb.postTask(debugContext -> bb.getMetaAccess().lookupJavaField(targetField).registerAsUnsafeAccessed(field));
+                bb.postTask(_ -> bb.getMetaAccess().lookupJavaField(targetField).registerAsUnsafeAccessed(field));
             }
             FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(field, newTransformer);
             return true;
@@ -1100,9 +1099,9 @@ public class AutomaticUnsafeTransformationSupport {
         static final int maxDepth = 1;
         static final int maxCodeSize = 500;
 
-        private final HashSet<ResolvedJavaMethod> neverInline;
+        private final EconomicSet<ResolvedJavaMethod> neverInline;
 
-        StaticInitializerInlineInvokePlugin(HashSet<ResolvedJavaMethod> neverInline) {
+        StaticInitializerInlineInvokePlugin(EconomicSet<ResolvedJavaMethod> neverInline) {
             this.neverInline = neverInline;
         }
 

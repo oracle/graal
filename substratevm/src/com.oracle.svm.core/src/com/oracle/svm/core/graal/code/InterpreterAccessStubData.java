@@ -24,27 +24,50 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import jdk.vm.ci.meta.AllocatableValue;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.word.Pointer;
+
+import com.oracle.svm.core.Uninterruptible;
 
 /* Helper class to set ABI specific data */
 public interface InterpreterAccessStubData {
+    String REASON_RAW_POINTER = "raw pointer to object";
+
     void setSp(Pointer data, int stackSize, Pointer stackBuffer);
 
-    long getGpArgumentAt(AllocatableValue ccArg, Pointer data, int pos);
+    @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
+    long getGpArgumentAt(PreparedArgumentType cArgType, Pointer data, int pos);
 
-    long setGpArgumentAt(AllocatableValue ccArg, Pointer data, int pos, long val);
+    @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
+    default void setGpArgumentAtOutgoing(PreparedArgumentType cArgType, Pointer data, int pos, long val) {
+        setGpArgumentAt(cArgType, data, pos, val, false);
+    }
 
-    long getFpArgumentAt(AllocatableValue ccArg, Pointer data, int pos);
+    @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
+    default void setGpArgumentAtIncoming(PreparedArgumentType cArgType, Pointer data, int pos, long val) {
+        setGpArgumentAt(cArgType, data, pos, val, true);
+    }
 
-    void setFpArgumentAt(AllocatableValue ccArg, Pointer data, int pos, long val);
+    @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
+    void setGpArgumentAt(PreparedArgumentType cArgType, Pointer data, int pos, long val, boolean incoming);
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    long getFpArgumentAt(PreparedArgumentType cArgType, Pointer data, int pos);
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void setFpArgumentAt(PreparedArgumentType cArgType, Pointer data, int pos, long val);
+
+    @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
     long getGpReturn(Pointer data);
 
+    @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
     void setGpReturn(Pointer data, long gpReturn);
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     long getFpReturn(Pointer data);
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setFpReturn(Pointer data, long fpReturn);
 
     int allocateStubDataSize();

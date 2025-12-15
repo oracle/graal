@@ -32,6 +32,9 @@ public interface ImageHeapPartition {
     /** Returns the name of the partition. */
     String getName();
 
+    /** Returns true if the partition is writable. */
+    boolean isWritable();
+
     /** Returns the offset at which this partition is allocated. */
     long getStartOffset();
 

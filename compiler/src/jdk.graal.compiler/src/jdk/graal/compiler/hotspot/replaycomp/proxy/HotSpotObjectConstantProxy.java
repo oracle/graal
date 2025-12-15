@@ -31,31 +31,13 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-//JaCoCo Exclude
-
-public final class HotSpotObjectConstantProxy extends CompilationProxyBase implements HotSpotObjectConstant {
+public final class HotSpotObjectConstantProxy extends HotSpotConstantProxy implements HotSpotObjectConstant {
     HotSpotObjectConstantProxy(InvocationHandler handler) {
         super(handler);
     }
 
     private static SymbolicMethod method(String name, Class<?>... params) {
         return new SymbolicMethod(HotSpotObjectConstant.class, name, params);
-    }
-
-    public static final SymbolicMethod compressMethod = method("compress");
-    private static final InvokableMethod compressInvokable = (receiver, args) -> ((HotSpotObjectConstant) receiver).compress();
-
-    @Override
-    public JavaConstant compress() {
-        return (JavaConstant) handle(compressMethod, compressInvokable);
-    }
-
-    public static final SymbolicMethod uncompressMethod = method("uncompress");
-    private static final InvokableMethod uncompressInvokable = (receiver, args) -> ((HotSpotObjectConstant) receiver).uncompress();
-
-    @Override
-    public JavaConstant uncompress() {
-        return (JavaConstant) handle(uncompressMethod, uncompressInvokable);
     }
 
     public static final SymbolicMethod getTypeMethod = method("getType");
@@ -72,6 +54,14 @@ public final class HotSpotObjectConstantProxy extends CompilationProxyBase imple
     @Override
     public int getIdentityHashCode() {
         return (int) handle(getIdentityHashCodeMethod, getIdentityHashCodeInvokable);
+    }
+
+    private static final SymbolicMethod makeIdentityHashCodeMethod = method("makeIdentityHashCode", int.class);
+    private static final InvokableMethod makeIdentityHashCodeInvokable = (receiver, args) -> ((HotSpotObjectConstant) receiver).makeIdentityHashCode((int) args[0]);
+
+    @Override
+    public int makeIdentityHashCode(int requestedValue) {
+        return (int) handle(makeIdentityHashCodeMethod, makeIdentityHashCodeInvokable, requestedValue);
     }
 
     private static final SymbolicMethod getCallSiteTargetMethod = method("getCallSiteTarget");
@@ -172,35 +162,13 @@ public final class HotSpotObjectConstantProxy extends CompilationProxyBase imple
         return (double) handle(asDoubleMethod, asDoubleInvokable);
     }
 
-    public static final SymbolicMethod isCompressedMethod = method("isCompressed");
-    public static final InvokableMethod isCompressedInvokable = (receiver, args) -> ((HotSpotObjectConstant) receiver).isCompressed();
-
     @Override
-    public boolean isCompressed() {
-        return (boolean) handle(isCompressedMethod, isCompressedInvokable);
+    public JavaConstant compress() {
+        return (JavaConstant) super.compress();
     }
 
-    private static final SymbolicMethod isCompressibleMethod = method("isCompressible");
-    private static final InvokableMethod isCompressibleInvokable = (receiver, args) -> ((HotSpotObjectConstant) receiver).isCompressible();
-
     @Override
-    public boolean isCompressible() {
-        return (boolean) handle(isCompressibleMethod, isCompressibleInvokable);
-    }
-
-    private static final SymbolicMethod isDefaultForKindMethod = method("isDefaultForKind");
-    private static final InvokableMethod isDefaultForKindInvokable = (receiver, args) -> ((HotSpotObjectConstant) receiver).isDefaultForKind();
-
-    @Override
-    public boolean isDefaultForKind() {
-        return (boolean) handle(isDefaultForKindMethod, isDefaultForKindInvokable);
-    }
-
-    public static final SymbolicMethod toValueStringMethod = method("toValueString");
-    public static final InvokableMethod toValueStringInvokable = (receiver, args) -> ((HotSpotObjectConstant) receiver).toValueString();
-
-    @Override
-    public String toValueString() {
-        return (String) handle(toValueStringMethod, toValueStringInvokable);
+    public JavaConstant uncompress() {
+        return (JavaConstant) super.uncompress();
     }
 }

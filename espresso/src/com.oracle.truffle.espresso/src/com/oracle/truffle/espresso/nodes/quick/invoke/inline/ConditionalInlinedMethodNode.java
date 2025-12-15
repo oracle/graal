@@ -48,7 +48,7 @@ public class ConditionalInlinedMethodNode extends InlinedMethodNode {
     private final InlinedMethodPredicate condition;
 
     public ConditionalInlinedMethodNode(ResolvedCall<Klass, Method, Field> resolvedCall, int top, int opcode, int callerBCI, int statementIndex, Recipes recipes, InlinedMethodPredicate condition) {
-        super(resolvedCall.getResolvedMethod().getMethodVersion(), top, opcode, callerBCI, statementIndex, null);
+        super(resolvedCall, top, opcode, callerBCI, statementIndex, null);
         this.fallbackNode = getFallback(resolvedCall, top, callerBCI);
         this.condition = condition;
         this.recipes = recipes;
@@ -59,7 +59,7 @@ public class ConditionalInlinedMethodNode extends InlinedMethodNode {
         preludeChecks(frame);
         if (condition.isValid(getContext(), method, frame, this)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            InlinedMethodNode replacement = getDefinitiveNode(recipes, inlinedMethod(), top, opcode, getCallerBCI(), statementIndex);
+            InlinedMethodNode replacement = getDefinitiveNode(recipes, getResolvedCall(), top, opcode, getCallerBCI(), statementIndex);
             return getBytecodeNode().replaceQuickAt(frame, opcode, getCallerBCI(), this,
                             replacement);
         } else {
@@ -67,15 +67,14 @@ public class ConditionalInlinedMethodNode extends InlinedMethodNode {
         }
     }
 
-    public static InlinedMethodNode getDefinitiveNode(Recipes recipes,
-                    Method.MethodVersion inlinedMethod, int top, int opcode, int callerBci, int statementIndex) {
+    public static InlinedMethodNode getDefinitiveNode(Recipes recipes, ResolvedCall<Klass, Method, Field> inlinedCall, int top, int opcode, int callerBci, int statementIndex) {
         BodyNode newBody = recipes.cookBody();
         InlinedMethodPredicate guard = recipes.cookGuard();
         InlinedMethodNode replacement;
         if (guard == null) {
-            replacement = new InlinedMethodNode(inlinedMethod, top, opcode, callerBci, statementIndex, newBody);
+            replacement = new InlinedMethodNode(inlinedCall, top, opcode, callerBci, statementIndex, newBody);
         } else {
-            replacement = new GuardedInlinedMethodNode(inlinedMethod, top, opcode, callerBci, statementIndex, newBody, guard);
+            replacement = new GuardedInlinedMethodNode(inlinedCall, top, opcode, callerBci, statementIndex, newBody, guard);
         }
         return replacement;
     }

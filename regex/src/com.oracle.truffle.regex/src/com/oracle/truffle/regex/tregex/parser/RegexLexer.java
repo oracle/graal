@@ -60,8 +60,7 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.util.JavaStringUtil;
 import com.oracle.truffle.regex.util.TBitSet;
 
@@ -1467,7 +1466,7 @@ public abstract class RegexLexer {
     }
 
     private int toCodePoint(char c) {
-        if (encoding != Encodings.UTF_16_RAW && Character.isHighSurrogate(c)) {
+        if (encoding != Encoding.UTF_16_RAW && Character.isHighSurrogate(c)) {
             return finishSurrogatePair(c);
         }
         return c;

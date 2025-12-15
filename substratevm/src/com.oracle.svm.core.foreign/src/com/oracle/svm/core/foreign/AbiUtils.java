@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,17 +48,18 @@ import java.util.stream.Stream;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
+import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.foreign.AbiUtils.Adapter.Adaptation;
 import com.oracle.svm.core.graal.code.AssignedLocation;
-import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.headers.WindowsAPIs;
+import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.util.BasedOnJDKClass;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
@@ -69,8 +70,8 @@ import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
-import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
@@ -521,7 +522,6 @@ public abstract class AbiUtils {
      * This method re-implements a part of the logic from the JDK so that we can get the callee-type
      * (i.e. the ABI low-level type) of a function from its descriptor.
      */
-    @Platforms(HOSTED_ONLY.class)
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L99")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/DowncallLinker.java#L71-L85")
     public final NativeEntryPointInfo makeNativeEntrypoint(FunctionDescriptor desc, LinkerOptions linkerOptions) {
@@ -654,7 +654,6 @@ public abstract class AbiUtils {
         return adaptations;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public abstract void checkLibrarySupport();
 
     /**
@@ -671,11 +670,40 @@ public abstract class AbiUtils {
 
     public abstract int trampolineSize();
 
-    record TrampolineTemplate(byte[] assemblyTemplate, int isolateOffset, int methodHandleOffset, int stubOffset) {
+    public static class TrampolineTemplate {
+
+        private final byte[] assemblyTemplate;
+
+        /*
+         * These fields will only be filled after the analysis, when an assembler is available.
+         * Prevent optimizations that constant-fold these fields already during analysis.
+         */
+
+        @UnknownPrimitiveField(availability = AfterAnalysis.class) //
+        private int isolateOffset;
+        @UnknownPrimitiveField(availability = AfterAnalysis.class) //
+        private int methodHandleOffset;
+        @UnknownPrimitiveField(availability = AfterAnalysis.class) //
+        private int stubOffset;
+
+        public TrampolineTemplate(byte[] assemblyTemplate) {
+            this.assemblyTemplate = assemblyTemplate;
+        }
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public void setTemplate(byte[] code, int isolateOff, int methodHandleOff, int stubOff) {
+            assert code.length == this.assemblyTemplate.length;
+            System.arraycopy(code, 0, this.assemblyTemplate, 0, this.assemblyTemplate.length);
+            this.isolateOffset = isolateOff;
+            this.methodHandleOffset = methodHandleOff;
+            this.stubOffset = stubOff;
+        }
+
         public Pointer write(Pointer at, Isolate isolate, Word methodHandle, Word stubPointer) {
             for (int i = 0; i < assemblyTemplate.length; ++i) {
                 at.writeByte(i, assemblyTemplate[i]);
             }
+
             at.writeWord(isolateOffset, isolate);
             at.writeWord(methodHandleOffset, methodHandle);
             at.writeWord(stubOffset, stubPointer);
@@ -685,10 +713,13 @@ public abstract class AbiUtils {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    abstract TrampolineTemplate generateTrampolineTemplate();
+    abstract void generateTrampolineTemplate(SubstrateBackendWithAssembler<?> backend, TrampolineTemplate template);
 }
 
 class ABIs {
+
+    public static final String REQUIRES_LIB_C_SUPPORT = "Capturing call state requires libc support";
+
     static final class Unsupported extends AbiUtils {
         private final String name;
 
@@ -740,8 +771,8 @@ class ABIs {
         }
 
         @Override
-        public TrampolineTemplate generateTrampolineTemplate() {
-            return null;
+        public void generateTrampolineTemplate(SubstrateBackendWithAssembler<?> backend, TrampolineTemplate template) {
+            fail();
         }
 
         @Override
@@ -812,8 +843,8 @@ class ABIs {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         @Override
-        public TrampolineTemplate generateTrampolineTemplate() {
-            AArch64MacroAssembler masm = new SubstrateAArch64MacroAssembler(ConfigurationValues.getTarget());
+        public void generateTrampolineTemplate(SubstrateBackendWithAssembler<?> backend, TrampolineTemplate template) {
+            AArch64MacroAssembler masm = (AArch64MacroAssembler) backend.createAssemblerNoOptions();
 
             Register mhRegister = upcallSpecialArgumentsRegisters().methodHandle();
             Register isolateRegister = upcallSpecialArgumentsRegisters().isolate();
@@ -849,12 +880,11 @@ class ABIs {
             masm.jmp(scratch);
 
             assert trampolineSize() >= masm.position();
-            masm.align(trampolineSize());
 
-            byte[] assembly = masm.close(true);
+            byte[] assembly = masm.closeAligned(true, trampolineSize());
             assert assembly.length == trampolineSize();
 
-            return new TrampolineTemplate(assembly, posIsolate, posMHArray, posCallTarget);
+            template.setTemplate(assembly, posIsolate, posMHArray, posCallTarget);
         }
 
         @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/aarch64/CallArranger.java#L195")
@@ -880,8 +910,7 @@ class ABIs {
 
         @Override
         public void checkLibrarySupport() {
-            String name = "Linux AArch64";
-            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on %s", name);
+            VMError.guarantee(ForeignFunctionsRuntime.isLibcSupported(), REQUIRES_LIB_C_SUPPORT);
         }
     }
 
@@ -896,8 +925,7 @@ class ABIs {
 
         @Override
         public void checkLibrarySupport() {
-            String name = "Darwin AArch64";
-            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on %s", name);
+            VMError.guarantee(ForeignFunctionsRuntime.isLibcSupported(), REQUIRES_LIB_C_SUPPORT);
         }
     }
 
@@ -974,9 +1002,9 @@ class ABIs {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         @Override
-        public TrampolineTemplate generateTrampolineTemplate() {
+        public void generateTrampolineTemplate(SubstrateBackendWithAssembler<?> backend, TrampolineTemplate template) {
             // Generate the trampoline
-            AMD64Assembler asm = new AMD64Assembler(ConfigurationValues.getTarget());
+            AMD64MacroAssembler asm = (AMD64MacroAssembler) backend.createAssemblerNoOptions();
             var odas = new ArrayList<AMD64BaseAssembler.OperandDataAnnotation>(3);
             // Collect the positions of the address in the movq instructions.
             asm.setCodePatchingAnnotationConsumer(ca -> {
@@ -988,6 +1016,7 @@ class ABIs {
             Register mhRegister = upcallSpecialArgumentsRegisters().methodHandle();
             Register isolateRegister = upcallSpecialArgumentsRegisters().isolate();
 
+            asm.maybeEmitIndirectTargetMarker();
             /* Store isolate in the assigned register */
             asm.movq(isolateRegister, 0L, true);
             /* r10 points in the mh array */
@@ -997,17 +1026,21 @@ class ABIs {
             /* rax contains the stub address */
             asm.movq(rax, 0L, true);
             /* executes the stub */
-            asm.jmp(new AMD64Address(rax, 0));
+            if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
+                asm.movq(rax, new AMD64Address(rax, 0));
+                asm.jmp(rax);
+            } else {
+                asm.jmp(new AMD64Address(rax, 0));
+            }
 
             assert trampolineSize() - asm.position() >= 0;
-            asm.nop(trampolineSize() - asm.position());
 
-            byte[] assembly = asm.close(true);
+            byte[] assembly = asm.closeAligned(true, trampolineSize());
             assert assembly.length == trampolineSize();
             assert odas.size() == 3;
             assert odas.stream().allMatch(oda -> oda.operandSize == 8);
 
-            return new TrampolineTemplate(assembly, odas.get(0).operandPosition, odas.get(1).operandPosition, odas.get(2).operandPosition);
+            template.setTemplate(assembly, odas.get(0).operandPosition, odas.get(1).operandPosition, odas.get(2).operandPosition);
         }
     }
 
@@ -1050,10 +1083,8 @@ class ABIs {
         }
 
         @Override
-        @Platforms(Platform.HOSTED_ONLY.class)
         public void checkLibrarySupport() {
-            String name = "SystemV (Linux AMD64)";
-            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on %s", name);
+            VMError.guarantee(ForeignFunctionsRuntime.isLibcSupported(), REQUIRES_LIB_C_SUPPORT);
         }
 
         @Override
@@ -1121,11 +1152,9 @@ class ABIs {
         }
 
         @Override
-        @Platforms(Platform.HOSTED_ONLY.class)
         public void checkLibrarySupport() {
-            String name = "Win64 (Windows AMD64)";
-            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on %s", name);
-            VMError.guarantee(WindowsAPIs.isSupported(), "Foreign functions feature requires Windows APIs support on %s", name);
+            VMError.guarantee(ForeignFunctionsRuntime.isLibcSupported(), REQUIRES_LIB_C_SUPPORT);
+            VMError.guarantee(ForeignFunctionsRuntime.isWindowsApiSupported(), "Capturing call state requires Windows API support");
         }
 
         @Override

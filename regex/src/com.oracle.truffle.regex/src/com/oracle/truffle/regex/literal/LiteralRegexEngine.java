@@ -112,7 +112,7 @@ public final class LiteralRegexEngine {
         if (ast.getFlags().isSticky()) {
             return LiteralRegexExecNode.create(language, ast, LiteralRegexExecNodeGen.RegionMatchesNodeGen.create(preCalcResultVisitor));
         }
-        if (preCalcResultVisitor.getLiteral().encodedLength() <= 64) {
+        if (preCalcResultVisitor.getLiteral().length() <= 64) {
             return LiteralRegexExecNode.create(language, ast, LiteralRegexExecNodeGen.IndexOfStringNodeGen.create(preCalcResultVisitor));
         }
         return null;

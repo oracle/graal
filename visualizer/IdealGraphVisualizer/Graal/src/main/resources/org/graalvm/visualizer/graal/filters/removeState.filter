@@ -1,1 +1,3 @@
-remove("category", "state");
+// Removing orphans also removes any nodes which no longer have any uses.
+// This cleans up Constants which were only referenced by FrameStates
+removeIncludingOrphans("category", "state")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -229,6 +229,14 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
     @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
+        if (createFloatingReads) {
+            /*
+             * This is required so that FloatingReadNode.create can check it's ok to introduce
+             * FloatingReadNodes.
+             */
+            graph.getGraphState().setDuringStage(StageFlag.FLOATING_READS);
+        }
+
         EconomicSet<ValueNode> initMemory = EconomicSet.create(Equivalence.IDENTITY);
 
         EconomicMap<LoopBeginNode, EconomicSet<LocationIdentity>> modifiedInLoops = null;
@@ -259,6 +267,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
         super.updateGraphState(graphState);
         if (createFloatingReads) {
             graphState.setAfterStage(StageFlag.FLOATING_READS);
+            graphState.addFutureStageRequirement(StageFlag.FIXED_READS);
         }
     }
 

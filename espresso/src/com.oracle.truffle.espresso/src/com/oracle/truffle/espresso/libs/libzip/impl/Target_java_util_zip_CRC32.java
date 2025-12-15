@@ -25,64 +25,64 @@ package com.oracle.truffle.espresso.libs.libzip.impl;
 import java.util.zip.CRC32;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.libs.libzip.LibZip;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
-@EspressoSubstitutions(value = CRC32.class, group = LibZip.class)
+@EspressoSubstitutions(group = LibZip.class)
 public final class Target_java_util_zip_CRC32 {
-    private static CRC32 getHostCRC32(StaticObject crc, Meta meta) {
+    private static CRC32 getHostCRC32(StaticObject crc, LibsMeta lMeta) {
         if (StaticObject.isNull(crc)) {
-            throw meta.throwNullPointerException();
+            throw lMeta.getMeta().throwNullPointerException();
         }
-        Object hostCRC = meta.HIDDEN_CRC32.getHiddenObject(crc);
+        Object hostCRC = lMeta.HIDDEN_CRC32.getHiddenObject(crc);
         assert hostCRC != null;
         return (CRC32) hostCRC;
     }
 
     @Substitution
     public static void init(@JavaType(CRC32.class) StaticObject crc,
-                    @Inject Meta meta) {
-        meta.HIDDEN_CRC32.setHiddenObject(crc, new CRC32());
+                    @Inject LibsMeta lMeta) {
+        lMeta.HIDDEN_CRC32.setHiddenObject(crc, new CRC32());
     }
 
     @Substitution
     public static void update0(@JavaType(CRC32.class) StaticObject crc, int b,
-                    @Inject Meta meta) {
+                    @Inject LibsMeta lMeta) {
         try {
-            getHostCRC32(crc, meta).update(b);
+            getHostCRC32(crc, lMeta).update(b);
         } catch (IndexOutOfBoundsException e) {
-            meta.throwExceptionWithMessage(meta.java_lang_IndexOutOfBoundsException, e.getMessage());
+            lMeta.getMeta().throwExceptionWithMessage(lMeta.getMeta().java_lang_IndexOutOfBoundsException, e.getMessage());
         }
     }
 
     @Substitution
     public static void updateBytes0(@JavaType(CRC32.class) StaticObject crc, @JavaType(byte[].class) StaticObject b, int off, int len,
-                    @Inject Meta meta, @Inject EspressoLanguage lang) {
+                    @Inject LibsMeta lMeta, @Inject EspressoLanguage lang) {
         if (StaticObject.isNull(b)) {
-            throw meta.throwNullPointerException();
+            throw lMeta.getMeta().throwNullPointerException();
         }
         assert b.isArray();
         try {
-            getHostCRC32(crc, meta).update(b.unwrap(lang), off, len);
+            getHostCRC32(crc, lMeta).update(b.unwrap(lang), off, len);
         } catch (IndexOutOfBoundsException e) {
-            meta.throwExceptionWithMessage(meta.java_lang_IndexOutOfBoundsException, e.getMessage());
+            lMeta.getMeta().throwExceptionWithMessage(lMeta.getMeta().java_lang_IndexOutOfBoundsException, e.getMessage());
         }
     }
 
     @Substitution
     public static long getValue0(@JavaType(CRC32.class) StaticObject crc,
-                    @Inject Meta meta) {
-        return getHostCRC32(crc, meta).getValue();
+                    @Inject LibsMeta lMeta) {
+        return getHostCRC32(crc, lMeta).getValue();
     }
 
     @Substitution
     public static void reset0(@JavaType(CRC32.class) StaticObject crc,
-                    @Inject Meta meta) {
-        getHostCRC32(crc, meta).reset();
+                    @Inject LibsMeta lMeta) {
+        getHostCRC32(crc, lMeta).reset();
     }
 }

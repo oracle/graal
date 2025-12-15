@@ -42,6 +42,7 @@ package com.oracle.truffle.api.object;
 
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -55,7 +56,10 @@ final class FieldInfo extends DynamicObjectFieldLocation implements Comparable<F
     private static final boolean JDK21 = Runtime.version().feature() == 21;
     private static final int UNUSED_OFFSET = 0;
 
-    /** Field offset. Used by AtomicFieldUpdaterOffset recomputation. Do not rename! */
+    /**
+     * Field offset. Used by AtomicFieldUpdaterOffset recomputation. Do not rename! On JDK21 this is
+     * 0, so always use {@link #offset()} instead of this field directly.
+     */
     private final long offset;
     /** Declaring class. Used by AtomicFieldUpdaterOffset recomputation. Do not rename! */
     private final Class<? extends DynamicObject> tclass;
@@ -68,7 +72,7 @@ final class FieldInfo extends DynamicObjectFieldLocation implements Comparable<F
 
     FieldInfo(Class<?> type, String name, long offset, Class<? extends DynamicObject> declaringClass, VarHandle varHandle) {
         super(JDK21 ? offset : UNUSED_OFFSET, declaringClass);
-        if (type != Object.class && type != int.class && type != long.class) {
+        if (type != Object.class && type != long.class) {
             throw new IllegalArgumentException(type.getName());
         }
         this.offset = JDK21 ? UNUSED_OFFSET : offset;
@@ -114,29 +118,21 @@ final class FieldInfo extends DynamicObjectFieldLocation implements Comparable<F
         return name;
     }
 
-    public int getBytes() {
-        if (type == long.class) {
-            return Long.BYTES;
-        }
-        assert type == int.class;
-        return Integer.BYTES;
-    }
-
     @Override
     public String toString() {
-        return name + ":" + offset;
+        return name + ":" + offset();
     }
 
     @Override
     public int compareTo(FieldInfo other) {
-        return Long.compare(this.offset, other.offset);
+        return Long.compare(this.offset(), other.offset());
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + Long.hashCode(offset);
+        result = prime * result + Long.hashCode(offset());
         result = prime * result + tclass.hashCode();
         return result;
     }
@@ -149,7 +145,7 @@ final class FieldInfo extends DynamicObjectFieldLocation implements Comparable<F
         if (!(obj instanceof FieldInfo other)) {
             return false;
         }
-        return this.offset == other.offset && this.tclass == other.tclass;
+        return this.offset() == other.offset() && this.tclass == other.tclass;
     }
 
     void receiverCheck(DynamicObject store) {
@@ -162,5 +158,13 @@ final class FieldInfo extends DynamicObjectFieldLocation implements Comparable<F
     private IllegalArgumentException illegalReceiver(DynamicObject store) {
         CompilerAsserts.neverPartOfCompilation();
         return new IllegalArgumentException("Invalid receiver type (expected " + getDeclaringClass() + ", was " + (store == null ? null : store.getClass()) + ")");
+    }
+
+    DynamicObject unsafeReceiverCast(DynamicObject store) {
+        if (ObjectStorageOptions.ReceiverCheck) {
+            return Objects.requireNonNull(tclass.cast(store));
+        } else {
+            return store;
+        }
     }
 }

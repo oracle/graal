@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.hosted.c;
 
-import java.util.Collection;
-import java.util.HashSet;
-
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.c.CContext;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -39,23 +37,23 @@ public class NativeCodeContext {
     private final CContext.Directives directives;
     private final boolean inConfiguration;
 
-    private final Collection<ResolvedJavaMethod> constantAccessors;
-    private final Collection<ResolvedJavaType> structTypes;
-    private final Collection<ResolvedJavaType> rawStructTypes;
-    private final Collection<ResolvedJavaType> cPointerToTypes;
-    private final Collection<ResolvedJavaType> rawPointerToTypes;
-    private final Collection<ResolvedJavaType> enumTypes;
+    private final EconomicSet<ResolvedJavaMethod> constantAccessors;
+    private final EconomicSet<ResolvedJavaType> structTypes;
+    private final EconomicSet<ResolvedJavaType> rawStructTypes;
+    private final EconomicSet<ResolvedJavaType> cPointerToTypes;
+    private final EconomicSet<ResolvedJavaType> rawPointerToTypes;
+    private final EconomicSet<ResolvedJavaType> enumTypes;
 
     NativeCodeContext(CContext.Directives directives) {
         this.inConfiguration = directives.isInConfiguration();
 
         if (inConfiguration) {
-            this.constantAccessors = new HashSet<>();
-            this.structTypes = new HashSet<>();
-            this.rawStructTypes = new HashSet<>();
-            this.cPointerToTypes = new HashSet<>();
-            this.rawPointerToTypes = new HashSet<>();
-            this.enumTypes = new HashSet<>();
+            this.constantAccessors = EconomicSet.create();
+            this.structTypes = EconomicSet.create();
+            this.rawStructTypes = EconomicSet.create();
+            this.cPointerToTypes = EconomicSet.create();
+            this.rawPointerToTypes = EconomicSet.create();
+            this.enumTypes = EconomicSet.create();
             this.directives = directives;
         } else {
             this.constantAccessors = null;
@@ -100,27 +98,27 @@ public class NativeCodeContext {
         enumTypes.add(type);
     }
 
-    public Collection<ResolvedJavaMethod> getConstantAccessors() {
+    public EconomicSet<ResolvedJavaMethod> getConstantAccessors() {
         return constantAccessors;
     }
 
-    public Collection<ResolvedJavaType> getStructTypes() {
+    public EconomicSet<ResolvedJavaType> getStructTypes() {
         return structTypes;
     }
 
-    public Collection<ResolvedJavaType> getRawStructTypes() {
+    public EconomicSet<ResolvedJavaType> getRawStructTypes() {
         return rawStructTypes;
     }
 
-    public Collection<ResolvedJavaType> getCPointerToTypes() {
+    public EconomicSet<ResolvedJavaType> getCPointerToTypes() {
         return cPointerToTypes;
     }
 
-    public Collection<ResolvedJavaType> getRawPointerToTypes() {
+    public EconomicSet<ResolvedJavaType> getRawPointerToTypes() {
         return rawPointerToTypes;
     }
 
-    public Collection<ResolvedJavaType> getEnumTypes() {
+    public EconomicSet<ResolvedJavaType> getEnumTypes() {
         return enumTypes;
     }
 

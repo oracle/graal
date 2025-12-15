@@ -33,6 +33,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Enumeration;
@@ -43,16 +44,16 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
-import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
+import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.configure.ReflectionConfigurationParser;
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -63,9 +64,9 @@ import jdk.graal.compiler.util.json.JsonParserException;
 
 public final class ConfigurationParserUtils {
 
-    public static ReflectionConfigurationParser<ConfigurationCondition, Class<?>> create(ConfigurationFile configurationKind, boolean combinedFileSchema,
-                    ConfigurationConditionResolver<ConfigurationCondition> conditionResolver, ReflectionRegistry registry, RuntimeProxyCreationSupport proxyRegistry,
-                    RuntimeSerializationSupport<ConfigurationCondition> serializationSupport, RuntimeJNIAccessSupport jniSupport, ImageClassLoader imageClassLoader) {
+    public static ReflectionConfigurationParser<AccessCondition, Class<?>> create(ConfigurationFile configurationKind, boolean combinedFileSchema,
+                    AccessConditionResolver<AccessCondition> conditionResolver, ReflectionRegistry registry, RuntimeProxyRegistrySupport proxyRegistry,
+                    RuntimeSerializationSupport<AccessCondition> serializationSupport, RuntimeJNIAccessSupport jniSupport, ImageClassLoader imageClassLoader) {
         var additionalParserOptions = configurationKind == ConfigurationFile.JNI ? EnumSet.of(JNI_PARSER) : null;
         return ReflectionConfigurationParser.create(combinedFileSchema, conditionResolver, RegistryAdapter.create(registry, proxyRegistry, serializationSupport, jniSupport, imageClassLoader),
                         ConfigurationFiles.Options.getConfigurationParserOptions(additionalParserOptions, null));
@@ -78,9 +79,9 @@ public final class ConfigurationParserUtils {
      *
      * @param featureName name of the feature using the configuration (e.g., "JNI")
      * @param directoryFileName file name for searches via {@link ConfigurationFiles}.
-     * @return the total number of successfully parsed configuration files and resources.
+     * @return a list of successfully parsed configuration files and resources.
      */
-    public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader, String featureName,
+    public static List<String> parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader, String featureName,
                     HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> configFilesOption, HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> configResourcesOption,
                     String directoryFileName) {
 
@@ -89,25 +90,25 @@ public final class ConfigurationParserUtils {
         return parseAndRegisterConfigurations(parser, classLoader, featureName, directoryFileName, paths, resourceValues);
     }
 
-    public static int parseAndRegisterConfigurationsFromCombinedFile(ConfigurationParser parser, ImageClassLoader classLoader, String featureName) {
+    public static List<String> parseAndRegisterConfigurationsFromCombinedFile(ConfigurationParser parser, ImageClassLoader classLoader, String featureName) {
         return parseAndRegisterConfigurations(parser, classLoader, featureName, ConfigurationFile.REACHABILITY_METADATA.getFileName(), Collections.emptyList(),
                         ReachabilityMetadataResources.getValue().values());
     }
 
-    public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader,
+    public static List<String> parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader,
                     String featureName,
                     String directoryFileName, List<Path> paths,
                     List<String> resourceValues) {
-        int parsedCount = 0;
+        List<String> parsedCount = new ArrayList<>();
         Stream<Path> files = Stream.concat(paths.stream(),
                         ConfigurationFiles.findConfigurationFiles(directoryFileName).stream());
-        parsedCount += files.map(Path::toAbsolutePath).mapToInt(path -> {
+        files.map(Path::toAbsolutePath).map(path -> {
             if (!Files.exists(path)) {
                 throw UserError.abort("The %s configuration file \"%s\" does not exist.", featureName, path);
             }
             doParseAndRegister(parser, featureName, path);
-            return 1;
-        }).sum();
+            return path.toString();
+        }).forEach(parsedCount::add);
 
         Stream<URL> configResourcesFromOption = resourceValues.stream().flatMap(s -> {
             Enumeration<URL> urls;
@@ -131,10 +132,10 @@ public final class ConfigurationParserUtils {
             }, false);
         });
         Stream<URL> resources = Stream.concat(configResourcesFromOption, ConfigurationFiles.findConfigurationResources(directoryFileName, classLoader.getClassLoader()).stream());
-        parsedCount += resources.mapToInt(url -> {
+        resources.map(url -> {
             doParseAndRegister(parser, featureName, url);
-            return 1;
-        }).sum();
+            return url.toString();
+        }).forEach(parsedCount::add);
         return parsedCount;
     }
 

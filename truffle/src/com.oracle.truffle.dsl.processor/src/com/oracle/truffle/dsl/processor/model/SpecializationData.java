@@ -175,13 +175,17 @@ public final class SpecializationData extends TemplateMethod {
         }
         int signatureIndex = 0;
         List<TypeGuard> implicitTypeChecks = new ArrayList<>();
-        for (Parameter p : getDynamicParameters()) {
+        for (Parameter p : getSignatureParameters()) {
             if (typeSystem.hasImplicitSourceTypes(p.getType())) {
                 implicitTypeChecks.add(new TypeGuard(typeSystem, p.getType(), signatureIndex));
             }
             signatureIndex++;
         }
         return implicitTypeChecks;
+    }
+
+    public boolean isImplicitTypeGuard(TypeGuard typeGuard) {
+        return getNode().getTypeSystem().hasImplicitSourceTypes(typeGuard.getType());
     }
 
     public boolean isNodeReceiverVariable(VariableElement var) {
@@ -440,6 +444,15 @@ public final class SpecializationData extends TemplateMethod {
         return reachesFallback;
     }
 
+    public boolean isAnyGuardBoundWithCache() {
+        for (GuardExpression guard : guards) {
+            if (isGuardBoundWithCache(guard)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean isGuardBoundWithCache(GuardExpression guardExpression) {
         for (CacheExpression cache : getBoundCaches(guardExpression.getExpression(), false)) {
             if (cache.isAlwaysInitialized()) {
@@ -682,79 +695,105 @@ public final class SpecializationData extends TemplateMethod {
         return sinks;
     }
 
-    public boolean needsState(ProcessorContext context) {
-        if (needsRewrite(context)) {
-            /*
-             * If there is a rewrite we need at least one state bit. This covers most cases for
-             * state.
-             */
-            return true;
-        }
-        if (!getCaches().isEmpty()) {
-            for (CacheExpression cache : getCaches()) {
-                if (!cache.isAlwaysInitialized()) { // @Bind
-                    return true;
-                }
-                /*
-                 * This is reachable typically for inlined cached values. They do not require a
-                 * rewrite, but need state.
-                 */
-            }
-        }
-        return false;
-    }
-
-    public boolean needsRewrite(ProcessorContext context) {
-        if (!getExceptions().isEmpty()) {
-            return true;
-        }
-        if (!getGuards().isEmpty()) {
-            return true;
-        }
+    /**
+     * Returns <code>true</code> if this specialization needs lazy initialization of cached fields.
+     */
+    boolean needsSpecialize() {
         if (!getAssumptionExpressions().isEmpty()) {
             return true;
         }
+
         if (!getCaches().isEmpty()) {
             for (CacheExpression cache : getCaches()) {
-                if (cache.isEagerInitialize()) {
-                    continue;
+                if (cache.isAlwaysInitialized()) {
+                    continue; // @Bind
                 }
                 if (cache.getInlinedNode() != null) {
-                    continue;
+                    continue; // @Cached but inlined so no init state needed
                 }
-                if (!cache.isAlwaysInitialized()) {
+                return true;
+            }
+        }
+
+        if (hasMultipleInstances()) {
+            // guard needs initialization
+            return true;
+        }
+
+        List<TypeGuard> implicitTypeGuards = getImplicitTypeGuards();
+        if (!implicitTypeGuards.isEmpty()) {
+            for (TypeGuard guard : implicitTypeGuards) {
+                if (isImplicitTypeGuardUsed(guard)) {
                     return true;
                 }
             }
         }
 
-        int signatureIndex = 0;
-        for (Parameter parameter : getSignatureParameters()) {
-            for (ExecutableTypeData executableType : node.getExecutableTypes()) {
-                List<TypeMirror> evaluatedParameters = executableType.getEvaluatedParameters();
-                if (signatureIndex < evaluatedParameters.size()) {
-                    TypeMirror evaluatedParameterType = evaluatedParameters.get(signatureIndex);
-                    if (ElementUtils.needsCastTo(evaluatedParameterType, parameter.getType())) {
-                        return true;
-                    }
-                }
-            }
+        return FlatNodeGenFactory.useSpecializationClass(this);
+    }
 
-            NodeChildData child = parameter.getSpecification().getExecution().getChild();
-            if (child != null) {
-                ExecutableTypeData type = child.findExecutableType(parameter.getType());
-                if (type == null) {
-                    type = child.findAnyGenericExecutableType(context);
+    boolean needsState() {
+        if (!getAssumptionExpressions().isEmpty()) {
+            return true;
+        }
+
+        if (!getCaches().isEmpty()) {
+            for (CacheExpression cache : getCaches()) {
+                if (cache.isAlwaysInitialized()) {
+                    continue; // @Bind
                 }
-                if (type.hasUnexpectedValue()) {
+                return true;
+            }
+        }
+
+        if (hasMultipleInstances()) {
+            // guard needs initialization
+            return true;
+        }
+
+        List<TypeGuard> implicitTypeGuards = getImplicitTypeGuards();
+        if (!implicitTypeGuards.isEmpty()) {
+            for (TypeGuard guard : implicitTypeGuards) {
+                if (isImplicitTypeGuardUsed(guard)) {
                     return true;
                 }
-                if (ElementUtils.needsCastTo(type.getReturnType(), parameter.getType())) {
-                    return true;
-                }
             }
+        }
 
-            signatureIndex++;
+        return FlatNodeGenFactory.useSpecializationClass(this);
+    }
+
+    public boolean isImplicitTypeGuardUsed(TypeGuard guard, ExecutableTypeData inExecutable) {
+        if (!isImplicitTypeGuard(guard)) {
+            return false;
+        }
+        int signatureIndex = guard.getSignatureIndex();
+        List<Parameter> specializationSignature = getSignatureParameters();
+        if (signatureIndex >= specializationSignature.size()) {
+            return false;
+        }
+
+        TypeMirror specializationType = specializationSignature.get(signatureIndex).getType();
+        if (!ElementUtils.typeEquals(guard.getType(), specializationType)) {
+            return false;
+        }
+
+        List<TypeMirror> parameters = inExecutable.getSignatureParameters();
+        if (signatureIndex >= parameters.size()) {
+            return true;
+        }
+        TypeMirror evaluatedParameter = parameters.get(signatureIndex);
+        if (ElementUtils.typeEquals(evaluatedParameter, specializationType)) {
+            return false;
+        }
+        return true;
+    }
+
+    public boolean isImplicitTypeGuardUsed(TypeGuard guard) {
+        for (ExecutableTypeData executable : node.getExecutableTypes()) {
+            if (isImplicitTypeGuardUsed(guard, executable)) {
+                return true;
+            }
         }
         return false;
     }
@@ -856,6 +895,11 @@ public final class SpecializationData extends TemplateMethod {
                 }
             }
         }
+        for (CacheExpression cache : getCaches()) {
+            if (cache.isRequiresFrame()) {
+                return true;
+            }
+        }
         return false;
     }
 
@@ -877,6 +921,36 @@ public final class SpecializationData extends TemplateMethod {
 
     public boolean hasMultipleInstances() {
         return getMaximumNumberOfInstances() > 1;
+    }
+
+    /**
+     * Returns <code>true</code> if this specialization binds the node, else <code>false</code>.
+     */
+    public boolean isNodeBound() {
+        if (node.isGenerateInline()) {
+            /*
+             * For inlined nodes we need pass down the inlineTarget Node even for shared nodes using
+             * the first specialization parameter.
+             */
+            for (Parameter p : getSignatureParameters()) {
+                return p.isDeclared();
+            }
+            return false;
+        } else {
+            /*
+             * For exported message we need to use @Bind("$node") always even for any inlined cache
+             * as the "this" receiver refers to the library receiver.
+             *
+             * For regular cached nodes @Bind("this") must be used if a specialization data class is
+             * in use. If all inlined caches are shared we can use this and avoid the warning.
+             */
+            for (CacheExpression cache : getCaches()) {
+                if (cache.isBind() && isNodeReceiverBound(cache.getDefaultExpression())) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     public boolean isGuardBindsExclusiveCache() {
@@ -903,7 +977,13 @@ public final class SpecializationData extends TemplateMethod {
                 continue;
             } else if (guard.isWeakReferenceGuard() && cache.isWeakReference()) {
                 continue;
-            } else if (cache.getSharedGroup() != null) {
+            } else if (cache.getSharedGroup() != null || cache.getDisabledSharingGroup() != null) {
+                /*
+                 * If a cache was shared, but sharing was disabled automatically then we need to
+                 * keep treating the cache as shared in order to avoid triggering changes in the
+                 * number of specialization instances. These changes could cause follow-up errors,
+                 * for example with a Fallback specialization following after this specialization.
+                 */
                 continue;
             }
             return true;
@@ -930,6 +1010,7 @@ public final class SpecializationData extends TemplateMethod {
 
     public int getMaximumNumberOfInstances() {
         if (isGuardBindsExclusiveCache()) {
+
             DSLExpression expression = getLimitExpression();
             if (expression == null) {
                 return 3; // default limit
@@ -1191,6 +1272,15 @@ public final class SpecializationData extends TemplateMethod {
             return specializationData.getReturnType().getType();
         }
 
+    }
+
+    public boolean isStatic() {
+        ExecutableElement e = getMethod();
+        if (e != null) {
+            return e.getModifiers().contains(Modifier.STATIC);
+        } else {
+            return true;
+        }
     }
 
 }

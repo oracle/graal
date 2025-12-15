@@ -31,14 +31,18 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.DeferredCommonPool;
-import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 
 import jdk.vm.ci.meta.JavaConstant;
 
 @AutomaticallyRegisteredFeature
-class ForkJoinPoolFeature implements InternalFeature, FeatureSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+class ForkJoinPoolFeature implements InternalFeature {
 
     private static final String KEY_NAME = "ForkJoinPool#commonPool";
 

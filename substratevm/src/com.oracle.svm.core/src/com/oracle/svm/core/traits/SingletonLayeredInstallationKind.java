@@ -26,6 +26,7 @@ package com.oracle.svm.core.traits;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.graal.nodes.LoadImageSingletonNode;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredAllowNullEntries;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -59,14 +60,19 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
          */
         INITIAL_LAYER_ONLY(EmptyMetadata.class),
 
-        /*
-         * GR-66794, GR-66795, : switch from using interfaces to traits for implementing the
-         * following behaviors.
-         */
-
         /**
          * This singleton can only be installed in the app layer. All references to this singleton
          * in all code compiled across all layers refer to the singleton installed in the app layer.
+         * <p>
+         * When this trait is linked to a singleton, the singleton's key class is expected to match
+         * the singleton's implementation key. In addition, a singleton with this trait can only be
+         * installed in the application layer. Finally, {@link ImageSingletons#add} must be called
+         * before the analysis phase (i.e. these image singletons cannot be added at a later point).
+         * <p>
+         * Referring to fields of an app layer singleton from a code compiled in a shared layer,
+         * i.e., even before the value of the field can be known, is safe. This is because, instead
+         * of being constant-folded in a shared layer, it is instead implemented via
+         * {@link LoadImageSingletonNode} and lowered into a singleton table read.
          */
         APP_LAYER_ONLY(EmptyMetadata.class),
 
@@ -87,6 +93,12 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
          * Calling {@link MultiLayeredImageSingleton#getAllLayers} during a traditional build
          * requires the singleton to be installed in the build and will return an array of length 1
          * * containing that singleton.
+         *
+         * <p>
+         * When this trait is linked to a singleton, the singleton's key class is expected to match
+         * the singleton's implementation key. In addition, {@link ImageSingletons#add} must be
+         * called before the analysis phase (i.e. these image singletons cannot be added at a later
+         * point).
          */
         MULTI_LAYER(EmptyMetadata.class);
 
@@ -128,13 +140,33 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
         }
     }
 
-    static final SingletonTrait INITIAL_LAYER_ONLY = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
+    public static final SingletonTrait INITIAL_LAYER_ONLY = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
                     new SingletonLayeredInstallationKind(InstallationKind.INITIAL_LAYER_ONLY, EmptyMetadata.EMPTY));
 
     public static final class InitialLayerOnly extends SingletonLayeredInstallationKindSupplier {
         @Override
         public SingletonTrait getLayeredInstallationKindTrait() {
             return INITIAL_LAYER_ONLY;
+        }
+    }
+
+    public static final SingletonTrait APP_LAYER_ONLY = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
+                    new SingletonLayeredInstallationKind(InstallationKind.APP_LAYER_ONLY, EmptyMetadata.EMPTY));
+
+    public static final class ApplicationLayerOnly extends SingletonLayeredInstallationKindSupplier {
+        @Override
+        public SingletonTrait getLayeredInstallationKindTrait() {
+            return APP_LAYER_ONLY;
+        }
+    }
+
+    public static final SingletonTrait MULTI_LAYER = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
+                    new SingletonLayeredInstallationKind(InstallationKind.MULTI_LAYER, EmptyMetadata.EMPTY));
+
+    public static final class MultiLayer extends SingletonLayeredInstallationKindSupplier {
+        @Override
+        public SingletonTrait getLayeredInstallationKindTrait() {
+            return MULTI_LAYER;
         }
     }
 }

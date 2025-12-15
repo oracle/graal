@@ -90,7 +90,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.Object
-hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,jfrTracing,serialVersionUID,stackTrace,suppressedExceptions
 hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
 
 CLSS public abstract interface java.lang.annotation.Annotation
@@ -185,6 +185,7 @@ meth public org.graalvm.polyglot.Context$Builder engine(org.graalvm.polyglot.Eng
 meth public org.graalvm.polyglot.Context$Builder environment(java.lang.String,java.lang.String)
 meth public org.graalvm.polyglot.Context$Builder environment(java.util.Map<java.lang.String,java.lang.String>)
 meth public org.graalvm.polyglot.Context$Builder err(java.io.OutputStream)
+meth public org.graalvm.polyglot.Context$Builder exceptionHandler(java.util.function.Consumer<org.graalvm.polyglot.PolyglotException>)
 meth public org.graalvm.polyglot.Context$Builder extendHostAccess(org.graalvm.polyglot.HostAccess,java.util.function.Consumer<org.graalvm.polyglot.HostAccess$Builder>)
 meth public org.graalvm.polyglot.Context$Builder extendIO(org.graalvm.polyglot.io.IOAccess,java.util.function.Consumer<org.graalvm.polyglot.io.IOAccess$Builder>)
 meth public org.graalvm.polyglot.Context$Builder fileSystem(org.graalvm.polyglot.io.FileSystem)
@@ -205,7 +206,7 @@ meth public org.graalvm.polyglot.Context$Builder serverTransport(org.graalvm.pol
 meth public org.graalvm.polyglot.Context$Builder timeZone(java.time.ZoneId)
 meth public org.graalvm.polyglot.Context$Builder useSystemExit(boolean)
 supr java.lang.Object
-hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowInnerContextOptions,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,ioAccess,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sandboxPolicy,sharedEngine,useSystemExit,zone
+hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowInnerContextOptions,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,exceptionHandler,hostAccess,hostClassFilter,hostClassLoader,in,ioAccess,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sandboxPolicy,sharedEngine,useSystemExit,zone
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder
@@ -235,6 +236,7 @@ CLSS public final org.graalvm.polyglot.Engine$Builder
 meth public org.graalvm.polyglot.Engine build()
 meth public org.graalvm.polyglot.Engine$Builder allowExperimentalOptions(boolean)
 meth public org.graalvm.polyglot.Engine$Builder err(java.io.OutputStream)
+meth public org.graalvm.polyglot.Engine$Builder exceptionHandler(java.util.function.Consumer<org.graalvm.polyglot.PolyglotException>)
 meth public org.graalvm.polyglot.Engine$Builder in(java.io.InputStream)
 meth public org.graalvm.polyglot.Engine$Builder logHandler(java.io.OutputStream)
 meth public org.graalvm.polyglot.Engine$Builder logHandler(java.util.logging.Handler)
@@ -245,7 +247,7 @@ meth public org.graalvm.polyglot.Engine$Builder sandbox(org.graalvm.polyglot.San
 meth public org.graalvm.polyglot.Engine$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 meth public org.graalvm.polyglot.Engine$Builder useSystemProperties(boolean)
 supr java.lang.Object
-hfds allowExperimentalOptionSystemPropertyValue,allowExperimentalOptions,boundEngine,customLogHandler,err,in,messageTransport,options,out,permittedLanguages,sandboxPolicy,useSystemProperties
+hfds allowExperimentalOptionSystemPropertyValue,allowExperimentalOptions,boundEngine,customLogHandler,err,exceptionHandler,in,messageTransport,options,out,permittedLanguages,sandboxPolicy,useSystemProperties
 
 CLSS public final org.graalvm.polyglot.EnvironmentAccess
 fld public final static org.graalvm.polyglot.EnvironmentAccess INHERIT
@@ -593,6 +595,7 @@ meth public boolean hasIteratorNextElement()
 meth public boolean hasMember(java.lang.String)
 meth public boolean hasMembers()
 meth public boolean hasMetaParents()
+meth public boolean hasStaticScope()
 meth public boolean isBoolean()
 meth public boolean isBufferWritable()
 meth public boolean isDate()
@@ -654,6 +657,7 @@ meth public org.graalvm.polyglot.Value getIteratorNextElement()
 meth public org.graalvm.polyglot.Value getMember(java.lang.String)
 meth public org.graalvm.polyglot.Value getMetaObject()
 meth public org.graalvm.polyglot.Value getMetaParents()
+meth public org.graalvm.polyglot.Value getStaticScope()
 meth public short asShort()
 meth public short readBufferShort(java.nio.ByteOrder,long)
 meth public static org.graalvm.polyglot.Value asValue(java.lang.Object)

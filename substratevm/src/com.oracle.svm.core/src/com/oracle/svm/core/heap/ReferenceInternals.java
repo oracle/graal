@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
+import static com.oracle.svm.core.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -127,6 +129,7 @@ public final class ReferenceInternals {
     }
 
     /** Read {@link Target_java_lang_ref_Reference#discovered}. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static <T> Reference<?> getNextDiscovered(Reference<T> instance) {
         return uncast(cast(instance).discovered);
     }
@@ -179,12 +182,12 @@ public final class ReferenceInternals {
         MonitorSupport.singleton().ensureInitialized(processPendingLock);
     }
 
-    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     public static void waitForPendingReferences() throws InterruptedException {
         Heap.getHeap().waitForReferencePendingList();
     }
 
-    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     @SuppressFBWarnings(value = "NN_NAKED_NOTIFY", justification = "Notifies on progress, not a specific state change.")
     public static void processPendingReferences() {
         /*
@@ -216,7 +219,24 @@ public final class ReferenceInternals {
                 Target_java_lang_ref_Reference<?> ref = pendingList;
                 pendingList = ref.discovered;
                 ref.discovered = null;
-                ref.enqueueFromPending();
+
+                if (Target_jdk_internal_ref_Cleaner.class.isInstance(ref)) {
+                    Target_jdk_internal_ref_Cleaner cleaner = Target_jdk_internal_ref_Cleaner.class.cast(ref);
+                    // Cleaner catches all exceptions, cannot be overridden due to private c'tor
+                    cleaner.clean();
+                    synchronized (processPendingLock) {
+                        // Notify any waiters that progress has been made. This improves latency
+                        // for nio.Bits waiters, which are the only important ones.
+                        processPendingLock.notifyAll();
+                    }
+                } else {
+                    @SuppressWarnings("unchecked")
+                    Target_java_lang_ref_ReferenceQueue<? super Object> queue = SubstrateUtil.cast(ref.queue, Target_java_lang_ref_ReferenceQueue.class);
+                    if (queue != Target_java_lang_ref_ReferenceQueue.NULL_QUEUE) {
+                        // Enqueues, avoiding the potentially overridden Reference.enqueue().
+                        queue.enqueue(ref);
+                    }
+                }
             }
 
             synchronized (processPendingLock) {

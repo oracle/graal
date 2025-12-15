@@ -68,6 +68,9 @@ emcc_dir = mx.get_env("EMCC_DIR", None)
 gcc_dir = mx.get_env("GCC_DIR", "")
 wabt_dir = mx.get_env("WABT_DIR", "")
 
+wat2wasm_cmd = os.path.join(wabt_dir, mx.exe_suffix("wat2wasm"))
+wasm2wat_cmd = os.path.join(wabt_dir, mx.exe_suffix("wasm2wat"))
+
 NODE_BENCH_DIR = "node"
 NATIVE_BENCH_DIR = "native"
 
@@ -131,7 +134,7 @@ def wabt_test_args():
     if not wabt_dir:
         mx.warn("No WABT_DIR specified")
         return []
-    return ["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, mx.exe_suffix("wat2wasm")), "-Dwasmtest.watToWasmVerbose=true"]
+    return ["-Dwasmtest.watToWasmExecutable=" + wat2wasm_cmd, "-Dwasmtest.watToWasmVerbose=true"]
 
 
 def graal_wasm_gate_runner(args, tasks):
@@ -220,7 +223,6 @@ benchmark_methods = [
     "_benchmarkSetupEach",
     "_benchmarkTeardownEach",
     "_benchmarkRun",
-    "_main"
 ]
 
 
@@ -281,6 +283,7 @@ class GraalWasmBuildTask(mx.ProjectBuildTask):
 
         return (False, "Build outputs are up-to-date.")
 
+
 class WatProject(GraalWasmProject):
     def __init__(self, suite, name, deps, workingSets, subDir, theLicense, **args):
         GraalWasmProject.__init__(self, suite, name, deps, workingSets, subDir, theLicense, **args)
@@ -320,23 +323,7 @@ class WatBuildTask(GraalWasmBuildTask):
         source_dir = self.subject.getSourceDir()
         output_dir = self.subject.getOutputDir()
 
-        wat2wasm_cmd = os.path.join(wabt_dir, "wat2wasm")
-        out = mx.OutputCapture()
-        bulk_memory_option = None
-        if mx.run([wat2wasm_cmd, "--version"], nonZeroIsFatal=False, out=out) != 0:
-            if not wabt_dir:
-                mx.warn("No WABT_DIR specified.")
-            mx.abort("Could not check the wat2wasm version.")
-
-        try:
-            wat2wasm_version = re.match(r'^(\d+)\.(\d+)(?:\.(\d+))?', str(out.data)).groups()
-
-            major, minor, build = wat2wasm_version
-            if int(major) == 1 and int(minor) == 0 and int(build) <= 24:
-                bulk_memory_option = "--enable-bulk-memory"
-        except:
-            mx.warn(f"Could not parse wat2wasm version. Output: '{out.data}'")
-
+        wat2wasm_options = get_wat2wasm_options()
         mx.log("Building files from the source dir: " + source_dir)
         for root, filename in self.subject.getProgramSources():
             subdir = os.path.relpath(root, self.subject.getSourceDir())
@@ -351,9 +338,7 @@ class WatBuildTask(GraalWasmBuildTask):
             must_rebuild = timestamped_source.isNewerThan(timestamped_output) or not timestamped_output.exists()
 
             if must_rebuild:
-                build_cmd_line = [wat2wasm_cmd] + [source_path, "-o", output_wasm_path]
-                if bulk_memory_option is not None:
-                    build_cmd_line += [bulk_memory_option]
+                build_cmd_line = [wat2wasm_cmd] + [source_path, "-o", output_wasm_path] + wat2wasm_options
                 if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                     mx.abort("Could not build the wasm binary of '" + filename + "' with wat2wasm.")
                 shutil.copyfile(source_path, output_wat_path)
@@ -368,6 +353,24 @@ class WatBuildTask(GraalWasmBuildTask):
                     os.remove(output_wasm.path)
         else:
             mx.rmtree(self.subject.output_dir(), ignore_errors=True)
+
+def get_wat2wasm_options():
+    wat2wasm_options = ["--enable-exceptions"]
+
+    out = mx.OutputCapture()
+    if mx.run([wat2wasm_cmd, "--version"], nonZeroIsFatal=False, out=out) != 0:
+        if not wabt_dir:
+            mx.warn("No WABT_DIR specified.")
+        mx.abort("Could not check the wat2wasm version.")
+    try:
+        wat2wasm_version = re.match(r'^(\d+)\.(\d+)(?:\.(\d+))?', str(out.data)).groups()
+        major, minor, build = wat2wasm_version
+        if int(major) == 1 and int(minor) == 0 and int(build) <= 24:
+            wat2wasm_options += ["--enable-bulk-memory"]
+    except:
+        mx.warn(f"Could not parse wat2wasm version. Output: '{out.data}'")
+
+    return wat2wasm_options
 
 
 class EmscriptenProject(GraalWasmProject):
@@ -446,6 +449,17 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
     def benchmark_methods(self):
         return benchmark_methods
 
+    def test_methods(self, opts_path):
+        if not os.path.isfile(opts_path):
+            return []
+        with open(opts_path) as opts_file:
+            for line in opts_file:
+                line = line.strip()
+                if line.startswith("entry-point"):
+                    _, value = line.split("=", 1)
+                    return ['_' + value.strip()]
+        return []
+
     def build(self):
         source_dir = self.subject.getSourceDir()
         output_dir = self.subject.getOutputDir()
@@ -453,25 +467,18 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
             mx.abort("No EMCC_DIR specified - the source programs will not be compiled to .wasm.")
         emcc_cmd = os.path.join(emcc_dir, "emcc")
         gcc_cmd = os.path.join(gcc_dir, "gcc")
-        wat2wasm_cmd = os.path.join(wabt_dir, "wat2wasm")
-        wasm2wat_cmd = os.path.join(wabt_dir, "wasm2wat")
         if mx.run([emcc_cmd, "-v"], nonZeroIsFatal=False) != 0:
             mx.abort("Could not check the emcc version.")
         if mx.run([gcc_cmd, "--version"], nonZeroIsFatal=False) != 0:
             mx.abort("Could not check the gcc version.")
-        if mx.run([wat2wasm_cmd, "--version"], nonZeroIsFatal=False) != 0:
-            if not wabt_dir:
-                mx.warn("No WABT_DIR specified.")
-            mx.abort("Could not check the wat2wasm version.")
+        wat2wasm_options = get_wat2wasm_options()
 
         mx.log("Building files from the source dir: " + source_dir)
         cc_flags = ["-g2", "-O3"]
         include_flags = []
         if hasattr(self.project, "includeset"):
             include_flags = ["-I", os.path.join(_suite.dir, "includes", self.project.includeset)]
-        emcc_flags = ["-s", "EXIT_RUNTIME=1", "-s", "STANDALONE_WASM", "-s", "WASM_BIGINT"] + cc_flags
-        if self.project.isBenchmarkProject():
-            emcc_flags = emcc_flags + ["-s", "EXPORTED_FUNCTIONS=" + str(self.benchmark_methods()).replace("'", "\"") + ""]
+        emcc_flags = ["-s", "STANDALONE_WASM", "-s", "WASM_BIGINT"] + cc_flags
         subdir_program_names = defaultdict(lambda: [])
         for root, filename in self.subject.getProgramSources():
             if filename.startswith("_"):
@@ -489,17 +496,32 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
             timestampedOutput = mx.TimeStampFile(output_wasm_path)
             mustRebuild = timestampedSource.isNewerThan(timestampedOutput) or not timestampedOutput.exists()
 
+            source_cc_flags = []
+            native_bench = True
+            if filename.endswith(".c"):
+                with open(source_path) as f:
+                    source_file = f.read()
+                    for flags in re.findall(r'//\s*CFLAGS\s*=\s*(.*)\n', source_file):
+                        source_cc_flags.extend(flags.split())
+                    native_bench_option = re.search(r'//\s*NATIVE_BENCH\s*=\s*(.*)\n', source_file)
+                    if native_bench_option:
+                        native_bench = native_bench_option.group(1).lower() == "true"
+
             # Step 1: build the .wasm binary.
             if mustRebuild:
                 if filename.endswith(".c"):
+                    if self.project.isBenchmarkProject():
+                        emcc_export_flags = ["-s", "EXPORTED_FUNCTIONS=" + str(self.benchmark_methods()).replace("'", "\"") + ""]
+                    else:
+                        emcc_export_flags = ["-s", "EXPORTED_FUNCTIONS=" + str(self.test_methods(os.path.join(root, basename + ".opts"))).replace("'", "\"") + ""]
                     # This generates both a js file and a wasm file.
                     # See https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone
-                    build_cmd_line = [emcc_cmd] + emcc_flags + [source_path, "-o", output_js_path] + include_flags
+                    build_cmd_line = [emcc_cmd] + emcc_flags + emcc_export_flags + source_cc_flags + [source_path, "-o", output_js_path] + include_flags
                     if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not build the wasm-only output of " + filename + " with emcc.")
                 elif filename.endswith(".wat"):
                     # Step 1: compile the .wat file to .wasm.
-                    build_cmd_line = [wat2wasm_cmd, "-o", output_wasm_path, source_path]
+                    build_cmd_line = [wat2wasm_cmd] + [source_path, "-o", output_wasm_path] + wat2wasm_options
                     if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not translate " + filename + " to binary format.")
                 elif filename.endswith(".wasm"):
@@ -533,11 +555,11 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
 
             # Step 5: if this is a benchmark project, create native binaries too.
             if mustRebuild:
-                if filename.endswith(".c"):
+                if filename.endswith(".c") and native_bench:
                     mx_util.ensure_dir_exists(os.path.join(output_dir, subdir, NATIVE_BENCH_DIR))
                     output_path = os.path.join(output_dir, subdir, NATIVE_BENCH_DIR, mx.exe_suffix(basename))
                     link_flags = ["-lm"]
-                    gcc_cmd_line = [gcc_cmd] + cc_flags + [source_path, "-o", output_path] + include_flags + link_flags
+                    gcc_cmd_line = [gcc_cmd] + cc_flags + source_cc_flags + [source_path, "-o", output_path] + include_flags + link_flags
                     if mx.run(gcc_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not build the native binary of " + filename + ".")
                     os.chmod(output_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
@@ -642,10 +664,10 @@ def emscripten_init(args):
     config_path = os.path.join(os.getcwd(), args.config_path)
     emsdk_path = args.emsdk_path
 
-    llvm_root = os.path.join(emsdk_path, "llvm", "git", "build_master_64", "bin")
-    binaryen_root = os.path.join(emsdk_path, "binaryen", "master_64bit_binaryen")
-    emscripten_root = os.path.join(emsdk_path, "emscripten", "master")
-    node_js = os.path.join(emsdk_path, "node", "12.9.1_64bit", "bin", "node")
+    llvm_root = os.path.join(emsdk_path, "upstream", "bin")
+    binaryen_root = os.path.join(emsdk_path, "binaryen", "main_64bit_binaryen")
+    emscripten_root = os.path.join(emsdk_path, "upstream", "emscripten")
+    node_js = os.path.join(emsdk_path, "node", "22.16.0_64bit", "bin", "node")
 
     def find_executable(exe_name):
         for root, _, files in os.walk(args.emsdk_path):
@@ -666,7 +688,7 @@ def emscripten_init(args):
         llvm_root = os.path.join(emsdk_path, "upstream", "bin")
         binaryen_root = os.path.join(emsdk_path, "upstream", "lib")
         emscripten_root = os.path.join(emsdk_path, "upstream", "emscripten")
-        node_js = os.path.join(emsdk_path, "node", "14.15.5_64bit", "bin", "node")
+        node_js = os.path.join(emsdk_path, "node", "22.16.0_64bit", "bin", "node")
 
     mx.log("Generating Emscripten configuration...")
     mx.log("Config file path:    " + str(config_path))

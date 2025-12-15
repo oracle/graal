@@ -65,7 +65,7 @@ public class BytecodeDSLBuiltins {
 
     public static void addBuiltins(BytecodeDSLModel m, TruffleTypes types, ProcessorContext context) {
         m.popInstruction = m.instruction(InstructionKind.POP, "pop", m.signature(void.class, Object.class));
-        m.dupInstruction = m.instruction(InstructionKind.DUP, "dup", m.signature(void.class));
+        m.dupInstruction = m.instruction(InstructionKind.DUP, "dup", m.signature(Object.class));
         m.returnInstruction = m.instruction(InstructionKind.RETURN, "return", m.signature(void.class, Object.class));
         m.branchInstruction = m.instruction(InstructionKind.BRANCH, "branch", m.signature(void.class)) //
                         .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
@@ -208,7 +208,7 @@ public class BytecodeDSLBuiltins {
         m.loadConstantOperation = m.operation(OperationKind.LOAD_CONSTANT, "LoadConstant", """
                         LoadConstant produces {@code constant}. The constant should be immutable, since it may be shared across multiple LoadConstant operations.
                         """) //
-                        .setOperationBeginArguments(new OperationArgument(context.getType(Object.class), Encoding.OBJECT, "constant", "the constant value to load")) //
+                        .setOperationBeginArguments(new OperationArgument(context.getType(Object.class), Encoding.CONSTANT, "constant", "the constant value to load")) //
                         .setInstruction(m.loadConstantInstruction);
 
         m.loadNullOperation = m.operation(OperationKind.LOAD_NULL, "LoadNull", """
@@ -245,6 +245,8 @@ public class BytecodeDSLBuiltins {
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to store to")) //
                         .setDynamicOperands(child("value")) //
                         .setInstruction(m.storeLocalInstruction);
+        m.clearLocalInstruction = m.instruction(InstructionKind.CLEAR_LOCAL, "clear.local", m.signature(void.class))//
+                        .addImmediate(ImmediateKind.FRAME_INDEX, "frame_index");
         if (m.enableMaterializedLocalAccesses) {
             m.loadLocalMaterializedOperation = m.operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized",
                             String.format("""
@@ -278,7 +280,7 @@ public class BytecodeDSLBuiltins {
                         .setDynamicOperands(child("result")) //
                         .setInstruction(m.returnInstruction);
         if (m.enableYield) {
-            m.yieldInstruction = m.instruction(InstructionKind.YIELD, "yield", m.signature(void.class, Object.class)).addImmediate(ImmediateKind.CONSTANT, "location");
+            m.yieldInstruction = m.instruction(InstructionKind.YIELD, "yield", m.signature(Object.class, Object.class)).addImmediate(ImmediateKind.CONSTANT, "location");
             m.operation(OperationKind.YIELD, "Yield", """
                             Yield executes {@code value} and suspends execution at the given location, returning a {@link com.oracle.truffle.api.bytecode.ContinuationResult} containing the result.
                             The caller can resume the continuation, which continues execution after the Yield. When resuming, the caller passes a value that becomes the value produced by the Yield.
@@ -290,7 +292,7 @@ public class BytecodeDSLBuiltins {
                         """) //
                         .setTransparent(true) //
                         .setVariadic(true, 0) //
-                        .setOperationBeginArguments(new OperationArgument(types.Source, Encoding.OBJECT, "source", "the source object to associate with the enclosed operations")) //
+                        .setOperationBeginArguments(new OperationArgument(types.Source, Encoding.CONSTANT, "source", "the source object to associate with the enclosed operations")) //
                         .setDynamicOperands(transparentOperationChild());
 
         String sourceDoc = """
@@ -326,7 +328,7 @@ public class BytecodeDSLBuiltins {
             m.tagEnterInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
             m.tagLeaveValueInstruction = m.instruction(InstructionKind.TAG_LEAVE, "tag.leave", m.signature(Object.class, Object.class));
             m.tagLeaveValueInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
-            m.tagLeaveVoidInstruction = m.instruction(InstructionKind.TAG_LEAVE_VOID, "tag.leaveVoid", m.signature(Object.class));
+            m.tagLeaveVoidInstruction = m.instruction(InstructionKind.TAG_LEAVE_VOID, "tag.leaveVoid", m.signature(void.class));
             m.tagLeaveVoidInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
             m.tagOperation = m.operation(OperationKind.TAG, "Tag",
                             """
@@ -344,26 +346,18 @@ public class BytecodeDSLBuiltins {
                                                             "the tags to associate with the enclosed operations"))//
                             .setInstruction(m.tagLeaveValueInstruction);
 
-            if (m.enableYield) {
-                m.tagYieldInstruction = m.instruction(InstructionKind.TAG_YIELD, "tag.yield", m.signature(Object.class, Object.class));
-                m.tagYieldInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
-
-                m.tagResumeInstruction = m.instruction(InstructionKind.TAG_RESUME, "tag.resume", m.signature(void.class));
-                m.tagResumeInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
-            }
         }
-
-        m.clearLocalInstruction = m.instruction(InstructionKind.CLEAR_LOCAL, "clear.local", m.signature(void.class));
-        m.clearLocalInstruction.addImmediate(ImmediateKind.FRAME_INDEX, "frame_index");
 
         m.sortInstructionsByKind();
     }
 
     /*
      * Invoked when instructions are being finalized. Allows to conditionally add builtin
-     * instructions depending on the almost final model.
+     * instructions/operations depending on the almost final model.
      */
-    public static void addBuiltinsOnFinalize(BytecodeDSLModel m) {
+    public static void addBuiltinsOnFinalize(BytecodeDSLModel m, TruffleTypes types) {
+        addBackwardCompatibleOperations(m, types);
+
         if (m.hasCustomVariadic) {
             m.loadVariadicInstruction = m.instruction(InstructionKind.LOAD_VARIADIC, "load.variadic", m.signature(void.class, Object.class));
             m.createVariadicInstruction = m.instruction(InstructionKind.CREATE_VARIADIC, "create.variadic", m.signature(Object.class, Object.class));
@@ -387,6 +381,27 @@ public class BytecodeDSLBuiltins {
             }
         }
 
+        if (m.enableTagInstrumentation && m.hasYieldOperation()) {
+            m.tagYieldInstruction = m.instruction(InstructionKind.TAG_YIELD, "tag.yield", m.signature(Object.class, Object.class));
+            m.tagYieldInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
+
+            for (OperationModel yieldOperation : m.getCustomYieldOperations()) {
+                if (yieldOperation.instruction.signature.dynamicOperandCount == 0) {
+                    m.tagYieldNullInstruction = m.instruction(InstructionKind.TAG_YIELD_NULL, "tag.yieldNull", m.signature(void.class));
+                    m.tagYieldNullInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
+                    break;
+                }
+            }
+
+            m.tagResumeInstruction = m.instruction(InstructionKind.TAG_RESUME, "tag.resume", m.signature(void.class));
+            m.tagResumeInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
+        }
+
+        if (m.enableInstructionTracing) {
+            m.traceInstruction = m.instruction(InstructionKind.TRACE_INSTRUCTION, "trace.instruction", m.signature(void.class));
+            m.traceInstructionInstrumentationIndex = m.getInstrumentations().size();
+        }
+
         // invalidate instructions should be the last instructions to add as it they depend on the
         // length of all other instructions
         if (m.isBytecodeUpdatable()) {
@@ -404,6 +419,23 @@ public class BytecodeDSLBuiltins {
                 }
                 m.invalidateInstructions[i] = model;
             }
+        }
+    }
+
+    /**
+     * Built-in operations introduced after the initial release of the Bytecode DSL can potentially
+     * conflict with existing user-defined operations. We add such operations after parsing the
+     * specification only if an operation with the same name is not already defined.
+     */
+    private static void addBackwardCompatibleOperations(BytecodeDSLModel m, TruffleTypes types) {
+        OperationModel clearLocalOperation = m.operation(OperationKind.CLEAR_LOCAL, "ClearLocal", String.format("""
+                        ClearLocal clears {@code local} in the current frame.
+                        Until a value is written to the local, a subsequent LoadLocal %s.
+                        """, loadLocalUndefinedBehaviour(m)), "ClearLocal", true);
+        if (clearLocalOperation != null) {
+            clearLocalOperation.setVoid(true)//
+                            .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to clear"))//
+                            .setInstruction(m.clearLocalInstruction);
         }
     }
 

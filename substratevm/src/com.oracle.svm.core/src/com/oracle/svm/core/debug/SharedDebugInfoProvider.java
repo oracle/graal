@@ -294,8 +294,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      */
     private final ClassEntry foreignMethodListClassEntry = new ClassEntry(FOREIGN_METHOD_LIST_TYPE, -1, -1, -1, -1, -1, null, null, NULL_LOADER_ENTRY);
 
-    public SharedDebugInfoProvider(DebugContext debug, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess) {
-        this.runtimeConfiguration = runtimeConfiguration;
+    public SharedDebugInfoProvider(DebugContext debug, RuntimeConfiguration runtimeConfig, MetaAccessProvider metaAccess) {
+        this.runtimeConfiguration = runtimeConfig;
         this.metaAccess = metaAccess;
 
         /*
@@ -450,14 +450,13 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * parallel.
      */
     @Override
-    @SuppressWarnings("try")
     public final void installDebugInfo() {
         // we can only meaningfully provide logging if debug info is produced sequentially
         Stream<SharedType> typeStream = debug.isLogEnabledForMethod() ? typeInfo() : typeInfo().parallel();
         Stream<Pair<SharedMethod, CompilationResult>> codeStream = debug.isLogEnabledForMethod() ? codeInfo() : codeInfo().parallel();
         Stream<Object> dataStream = debug.isLogEnabledForMethod() ? dataInfo() : dataInfo().parallel();
 
-        try (DebugContext.Scope s = debug.scope("DebugInfoProvider")) {
+        try (DebugContext.Scope _ = debug.scope("DebugInfoProvider")) {
             // Create and index an empty dir with index 0 for null paths.
             lookupDirEntry(EMPTY_PATH);
 
@@ -528,10 +527,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param compilation The {@code CompilationResult} to process
      */
     private void handleCodeInfo(SharedMethod method, CompilationResult compilation) {
-        // First make sure the underlying MethodEntry exists.
-        MethodEntry methodEntry = lookupMethodEntry(method);
-        // Then process the compilation.
-        lookupCompiledMethodEntry(methodEntry, method, compilation);
+        // Process the compilation.
+        lookupCompiledMethodEntry(method, compilation);
     }
 
     @Fold
@@ -608,8 +605,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         // A call nodes in the frame tree will be stored as call ranges and leaf nodes as
         // leaf ranges
         final CompilationResultFrameTree.CallNode root = new CompilationResultFrameTree.Builder(debug, compilation.getTargetCodeSize(), maxDepth, useSourceMappings,
-                        true)
-                        .build(compilation);
+                        true).build(compilation);
         if (root == null) {
             return;
         }
@@ -638,9 +634,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param compilation the given {@code CompilationResult}
      * @return the fully processed {@code CompiledMethodEntry} for the compilation.
      */
-    @SuppressWarnings("try")
     private CompiledMethodEntry installCompilationInfo(MethodEntry methodEntry, SharedMethod method, CompilationResult compilation) {
-        try (DebugContext.Scope s = debug.scope("DebugInfoCompilation")) {
+        try (DebugContext.Scope _ = debug.scope("DebugInfoCompilation")) {
             if (debug.isLogEnabled()) {
                 debug.log(DebugContext.INFO_LEVEL, "Register compilation %s ", compilation.getName());
             }
@@ -701,7 +696,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param method the {@code SharedMethod} to process
      * @return the corresponding {@code MethodEntry}
      */
-    @SuppressWarnings("try")
     private MethodEntry createMethodEntry(SharedMethod method) {
         FileEntry fileEntry = lookupFileEntry(method);
 
@@ -733,10 +727,11 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         boolean isOverride = isOverride(method);
         boolean isDeopt = method.isDeoptTarget();
         boolean isConstructor = method.isConstructor();
+        boolean isCompiledInPriorLayer = isCompiledInPriorLayer(method);
 
         return new MethodEntry(fileEntry, line, methodName, ownerType,
                         valueType, modifiers, params, symbolName, isDeopt, isOverride, isConstructor,
-                        vTableOffset, lastParamSlot);
+                        isCompiledInPriorLayer, vTableOffset, lastParamSlot);
     }
 
     /**
@@ -745,7 +740,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param method the given method
      * @param methodEntry the {@code MethodEntry} to process
      */
-    @SuppressWarnings("try")
     private void processMethodEntry(SharedMethod method, MethodEntry methodEntry) {
         methodEntry.getOwnerType().addMethod(methodEntry);
         // look for locals in the methods local variable table
@@ -758,9 +752,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param method the {@code SharedMethod} to process
      * @return the corresponding {@code MethodEntry}
      */
-    @SuppressWarnings("try")
     private MethodEntry installMethodEntry(SharedMethod method) {
-        try (DebugContext.Scope s = debug.scope("DebugInfoMethod")) {
+        try (DebugContext.Scope _ = debug.scope("DebugInfoMethod")) {
             if (debug.isLogEnabled()) {
                 debug.log(DebugContext.INFO_LEVEL, "Register method %s of class %s", getMethodName(method), method.getDeclaringClass().getName());
             }
@@ -789,9 +782,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param type the {@code SharedType} to process
      * @return a fully processed {@code TypeEntry}
      */
-    @SuppressWarnings("try")
     private TypeEntry installTypeEntry(SharedType type) {
-        try (DebugContext.Scope s = debug.scope("DebugInfoType")) {
+        try (DebugContext.Scope _ = debug.scope("DebugInfoType")) {
             if (debug.isLogEnabled()) {
                 debug.log(DebugContext.INFO_LEVEL, "Register type %s ", type.getName());
             }
@@ -1010,6 +1002,10 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         return false;
     }
 
+    public boolean isCompiledInPriorLayer(@SuppressWarnings("unused") SharedMethod method) {
+        return false;
+    }
+
     public boolean isVirtual(@SuppressWarnings("unused") SharedMethod method) {
         return false;
     }
@@ -1055,15 +1051,17 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * Lookup a {@code CompiledMethodEntry} for a {@code CompilationResult}. If the
      * {@code CompiledMethodEntry} does not exist yet, it is installed.
      *
-     * @param methodEntry the {@code MethodEntry} of the method param
      * @param method the {@code SharedMethod} of this compilation
      * @param compilation the given {@code CompilationResult}
      * @return the corresponding {@code CompiledMethodEntry}
      */
-    protected CompiledMethodEntry lookupCompiledMethodEntry(MethodEntry methodEntry, SharedMethod method, CompilationResult compilation) {
+    public CompiledMethodEntry lookupCompiledMethodEntry(SharedMethod method, CompilationResult compilation) {
         if (method == null) {
             return null;
         }
+        // First make sure the underlying MethodEntry exists.
+        MethodEntry methodEntry = lookupMethodEntry(method);
+
         CompiledMethodEntry compiledMethodEntry = synchronizedGet(compiledMethodIndex, compilation.getCompilationId());
         if (compiledMethodEntry == null) {
             compiledMethodEntry = installCompilationInfo(methodEntry, method, compilation);
@@ -1174,7 +1172,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         DirEntry dirEntry = lookupDirEntry(dirPath);
 
         /* Reuse any existing entry if available. */
-        FileEntry fileEntry = synchronizedComputeIfAbsent(fileIndex, fullFilePath, path -> new FileEntry(fileName.toString(), dirEntry));
+        FileEntry fileEntry = synchronizedComputeIfAbsent(fileIndex, fullFilePath, _ -> new FileEntry(fileName.toString(), dirEntry));
         assert dirPath == null || fileEntry.dirEntry() != null && fileEntry.dirEntry().path().equals(dirPath);
         return fileEntry;
     }
@@ -1217,7 +1215,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     /**
      * Lookup a {@code LocalValueEntry}. This can either be a register, stack, constant value. This
      * allows to reuse the same entries for multiple ranges.
-     * 
+     *
      * @param localValueEntry the {@code LocalValueEntry} to lookup
      * @return the {@code LocalValueEntry} from the lookup map
      */
@@ -1403,7 +1401,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                 debug.log(DebugContext.DETAILED_LEVEL, "local[%d] %s type %s slot %d", paramIdx + 1, param.name(), param.type().getTypeName(), param.slot());
                 debug.log(DebugContext.DETAILED_LEVEL, "  =>  %s", value);
             }
-            LocalValueEntry localValueEntry = createLocalValueEntry(value, PRE_EXTEND_FRAME_SIZE);
+            LocalValueEntry localValueEntry = createLocalValueEntry(value, PRE_EXTEND_FRAME_SIZE, true);
             if (localValueEntry != null) {
                 localValueInfos.put(param, localValueEntry);
             }
@@ -1565,7 +1563,13 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             LineNumberTable lineNumberTable = method.getLineNumberTable();
             int line = lineNumberTable == null ? -1 : lineNumberTable.getLineNumber(pos.getBCI());
 
-            Map<LocalEntry, LocalValueEntry> localValueInfos = initLocalInfoList(pos, methodEntry, frameSize);
+            /*
+             * Locals are stored in both leaf ranges and call ranges. However, for call ranges we do
+             * not want to store register values as registers may be overwritten in callee ranges.
+             * Thus, a debugger is still able to process stack values and constants for stack
+             * traces.
+             */
+            Map<LocalEntry, LocalValueEntry> localValueInfos = initLocalInfoList(pos, methodEntry, frameSize, isLeaf);
             Range locationInfo = Range.createSubrange(primary, methodEntry, localValueInfos, node.getStartPos(), node.getEndPos() + 1, line, callerInfo, isLeaf);
 
             if (debug.isLogEnabled()) {
@@ -1585,9 +1589,10 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param pos the bytecode position of the location info
      * @param methodEntry the {@code MethodEntry} corresponding to the bytecode position
      * @param frameSize the current frame size
+     * @param isLeaf whether the range to create this value for is a leaf range
      * @return a mapping from {@code LocalEntry} to {@code LocalValueEntry}
      */
-    protected Map<LocalEntry, LocalValueEntry> initLocalInfoList(BytecodePosition pos, MethodEntry methodEntry, int frameSize) {
+    protected Map<LocalEntry, LocalValueEntry> initLocalInfoList(BytecodePosition pos, MethodEntry methodEntry, int frameSize, boolean isLeaf) {
         Map<LocalEntry, LocalValueEntry> localInfos = new HashMap<>();
 
         if (pos instanceof BytecodeFrame frame && frame.numLocals > 0) {
@@ -1688,7 +1693,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                      * upfront from the local variable table, the LocalEntry already exists.
                      */
                     LocalEntry localEntry = methodEntry.getOrAddLocalEntry(lookupLocalEntry(name, typeEntry, slot), line);
-                    LocalValueEntry localValueEntry = createLocalValueEntry(value, frameSize);
+                    LocalValueEntry localValueEntry = createLocalValueEntry(value, frameSize, isLeaf);
                     if (localEntry != null && localValueEntry != null) {
                         localInfos.put(localEntry, localValueEntry);
                     }
@@ -1703,16 +1708,24 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
     /**
      * Creates a {@code LocalValueEntry} for a given {@code JavaValue}. This processes register
-     * values, stack values, primitive constants and constant in the heap.
+     * values, stack values, primitive constants and constant in the heap. Register values are only
+     * added for leaf frames, as register may be overwritten within callee frames of a call range.
+     * But, stack values and constants also work for call ranges.
      * 
      * @param value the given {@code JavaValue}
      * @param frameSize the frame size for stack values
+     * @param isLeaf whether the range to create this value for is a leaf range
      * @return the {@code LocalValueEntry} or {@code null} if the value can't be processed
      */
-    private LocalValueEntry createLocalValueEntry(JavaValue value, int frameSize) {
+    private LocalValueEntry createLocalValueEntry(JavaValue value, int frameSize, boolean isLeaf) {
         switch (value) {
             case RegisterValue registerValue -> {
-                return lookupLocalValueEntry(new RegisterValueEntry(registerValue.getRegister().number));
+                /*
+                 * We only want to create register entries for leaf nodes. Thus, they are only valid
+                 * within a leaf range but not over a whole call range where the register value is
+                 * potentially overwritten.
+                 */
+                return isLeaf ? lookupLocalValueEntry(new RegisterValueEntry(registerValue.getRegister().number)) : null;
             }
             case StackSlot stackValue -> {
                 int stackSlot = frameSize == 0 ? stackValue.getRawOffset() : stackValue.getOffset(frameSize);
@@ -1800,7 +1813,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      */
     private static boolean hasChildren(CompilationResultFrameTree.CallNode callNode) {
         Object[] result = new Object[]{false};
-        callNode.visitChildren((node, args) -> args[0] = true, result);
+        callNode.visitChildren((_, args) -> args[0] = true, result);
         return (boolean) result[0];
     }
 
@@ -1827,7 +1840,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         LineNumberTable lineNumberTable = method.getLineNumberTable();
         int line = lineNumberTable == null ? -1 : lineNumberTable.getLineNumber(pos.getBCI());
 
-        Map<LocalEntry, LocalValueEntry> localValueInfos = initLocalInfoList(pos, methodEntry, frameSize);
+        Map<LocalEntry, LocalValueEntry> localValueInfos = initLocalInfoList(pos, methodEntry, frameSize, true);
         Range locationInfo = Range.createSubrange(primary, methodEntry, localValueInfos, startPos, endPos, line, callerLocation, true);
 
         if (debug.isLogEnabled()) {
@@ -1881,7 +1894,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * at native image build-time while still having comparable performance (for most of the index
      * maps). The most performance critical maps that see more traffic will use the less memory
      * efficient ConcurrentHashMaps instead.
-     * 
+     *
      * @param map the {@code EconomicMap} to perform {@code computeIfAbsent} on
      * @param key the key to look for
      * @param mappingFunction the function producing the value for a given key

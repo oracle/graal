@@ -49,6 +49,8 @@ fld public final static double LIKELY_PROBABILITY = 0.75
 fld public final static double SLOWPATH_PROBABILITY = 1.0E-4
 fld public final static double UNLIKELY_PROBABILITY = 0.25
 innr public abstract interface static !annotation CompilationFinal
+innr public abstract interface static !annotation EarlyEscapeAnalysis
+innr public abstract interface static !annotation EarlyInline
 innr public abstract interface static !annotation TruffleBoundary
 innr public abstract interface static !annotation ValueType
 meth public static <%0 extends java.lang.Object> {%%0} castExact(java.lang.Object,java.lang.Class<{%%0}>)
@@ -91,6 +93,18 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.Compile
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[FIELD])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault int dimensions()
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.CompilerDirectives$EarlyEscapeAnalysis
+ outer com.oracle.truffle.api.CompilerDirectives
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, CONSTRUCTOR])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.CompilerDirectives$EarlyInline
+ outer com.oracle.truffle.api.CompilerDirectives
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, CONSTRUCTOR])
+intf java.lang.annotation.Annotation
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.CompilerDirectives$TruffleBoundary
  outer com.oracle.truffle.api.CompilerDirectives
@@ -139,7 +153,9 @@ CLSS public final com.oracle.truffle.api.HostCompilerDirectives
 innr public abstract interface static !annotation BytecodeInterpreterSwitch
 innr public abstract interface static !annotation BytecodeInterpreterSwitchBoundary
 innr public abstract interface static !annotation InliningCutoff
+innr public abstract interface static !annotation InliningRoot
 meth public static boolean inInterpreterFastPath()
+meth public static int markThreadedSwitch(int)
 supr java.lang.Object
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch
@@ -156,6 +172,12 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCom
 intf java.lang.annotation.Annotation
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$InliningCutoff
+ outer com.oracle.truffle.api.HostCompilerDirectives
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, CONSTRUCTOR])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$InliningRoot
  outer com.oracle.truffle.api.HostCompilerDirectives
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, CONSTRUCTOR])
@@ -556,10 +578,14 @@ meth public boolean isCreateProcessAllowed()
 meth public boolean isCreateThreadAllowed()
 meth public boolean isFileIOAllowed()
 meth public boolean isHostException(java.lang.Throwable)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 meth public boolean isHostFunction(java.lang.Object)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 meth public boolean isHostLookupAllowed()
 meth public boolean isHostObject(java.lang.Object)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 meth public boolean isHostSymbol(java.lang.Object)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 meth public boolean isIOAllowed()
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="23.0")
 meth public boolean isInnerContextOptionsAllowed()
@@ -594,6 +620,7 @@ meth public java.io.OutputStream out()
 meth public java.lang.Object asBoxedGuestValue(java.lang.Object)
 meth public java.lang.Object asGuestValue(java.lang.Object)
 meth public java.lang.Object asHostObject(java.lang.Object)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 meth public java.lang.Object asHostSymbol(java.lang.Class<?>)
 meth public java.lang.Object createHostAdapter(java.lang.Object[])
 meth public java.lang.Object createHostAdapterClass(java.lang.Class<?>[])
@@ -621,6 +648,7 @@ meth public java.lang.Thread createThread(java.lang.Runnable,com.oracle.truffle.
 meth public java.lang.Thread createThread(java.lang.Runnable,com.oracle.truffle.api.TruffleContext,java.lang.ThreadGroup,long)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public java.lang.Throwable asHostException(java.lang.Throwable)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 meth public java.time.ZoneId getTimeZone()
 meth public java.util.Map<java.lang.String,com.oracle.truffle.api.InstrumentInfo> getInstruments()
 meth public java.util.Map<java.lang.String,com.oracle.truffle.api.nodes.LanguageInfo> getInternalLanguages()

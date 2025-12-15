@@ -53,6 +53,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
@@ -212,6 +213,7 @@ import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 import jdk.graal.compiler.replacements.nodes.ProfileBooleanNode;
 import jdk.graal.compiler.replacements.nodes.ReverseBitsNode;
 import jdk.graal.compiler.replacements.nodes.ReverseBytesNode;
+import jdk.graal.compiler.replacements.nodes.ThreadedSwitchNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 import jdk.graal.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
@@ -348,30 +350,33 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerStringPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean supportsStubBasedPlugins) {
         final Registration r = new Registration(plugins, String.class);
-        r.register(new InvocationPlugin("hashCode", Receiver.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                String s = asConstantObject(b, String.class, receiver.get(false));
-                if (s != null) {
-                    b.addPush(JavaKind.Int, b.add(ConstantNode.forInt(s.hashCode())));
-                    return true;
+        if (!LibGraalSupport.inLibGraalRuntime()) {
+            // These intrinsics require converting constants to String objects in
+            // the current heap which is not not supported on libgraal.
+            r.register(new InvocationPlugin("hashCode", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    String s = asConstantObject(b, String.class, receiver.get(false));
+                    if (s != null) {
+                        b.addPush(JavaKind.Int, b.add(ConstantNode.forInt(s.hashCode())));
+                        return true;
+                    }
+                    return false;
                 }
-                return false;
-            }
-        });
-        r.register(new InvocationPlugin("intern", Receiver.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                String s = asConstantObject(b, String.class, receiver.get(false));
-                if (s != null) {
-                    JavaConstant interned = snippetReflection.forObject(s.intern());
-                    b.addPush(JavaKind.Object, b.add(ConstantNode.forConstant(interned, b.getMetaAccess(), b.getGraph())));
-                    return true;
+            });
+            r.register(new InvocationPlugin("intern", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    String s = asConstantObject(b, String.class, receiver.get(false));
+                    if (s != null) {
+                        JavaConstant interned = snippetReflection.forObject(s.intern());
+                        b.addPush(JavaKind.Object, b.add(ConstantNode.forConstant(interned, b.getMetaAccess(), b.getGraph())));
+                        return true;
+                    }
+                    return false;
                 }
-                return false;
-            }
-        });
-
+            });
+        }
         if (supportsStubBasedPlugins) {
             r.register(new StringEqualsInvocationPlugin());
         }
@@ -1787,6 +1792,13 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(new RequiredInlineOnlyInvocationPlugin("controlFlowAnchor", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode condition) {
+                b.add(new ControlFlowAnchorNode(condition));
+                return true;
+            }
+        });
         r.register(new RequiredInlineOnlyInvocationPlugin("neverStripMine") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -1869,11 +1881,12 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+
         r.register(new RequiredInlineOnlyInvocationPlugin("injectIterationCount", double.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode iterations, ValueNode condition) {
-                // This directive has an actual definition that only works well if the bytecode
-                // parser inlines it, so also provide this plugin equivalent to its definition:
+                // This directive is empty as it should never use a branch probability if it is root
+                // compiled. The code below resembles the following formula
                 // injectBranchProbability(1. - 1. / iterations, condition)
                 if (iterations.isJavaConstant()) {
                     double iterationsConstant;
@@ -2044,7 +2057,14 @@ public class StandardGraphBuilderPlugins {
                 return false;
             }
         });
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("markThreadedSwitch", int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input) {
+                ThreadedSwitchNode threadedSwitchNode = b.add(new ThreadedSwitchNode(input));
+                b.push(input.getStackKind(), threadedSwitchNode);
+                return true;
+            }
+        });
     }
 
     public static void registerEnsureAllocatedHereIntrinsic(GraphBuilderContext b, ValueNode object) {

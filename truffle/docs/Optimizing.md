@@ -4,6 +4,7 @@ toc_group: truffle
 link_title: Optimizing Truffle Interpreters
 permalink: /graalvm-as-a-platform/language-implementation-framework/Optimizing/
 ---
+
 # Optimizing Truffle Interpreters
 
 This document discusses tools for optimizing or debugging Truffle interpreters for peak temporal performance.
@@ -49,14 +50,14 @@ The `--engine.TraceCompilation` command prints a line each time a method is comp
 Here is a quick overview of the information provided in these logs:
 - `engine` - Unique identifier of the engine the compilation is done for.
 - `id` - Unique identifier of the call target.
-- `Tier` - For which compilation tier was the targed scheduled.
+- `Tier` - For which compilation tier was the target scheduled.
 - `Time` - How long did the compilation last, with separation between the Truffle tier (mainly partial evaluation) and the Graal Tiers.
 - `AST` - The targets non-trivial node count.
 - `Inlined` - How many calls were inlined and how many remained calls after inlining.
 - `IR` - Graal node count after partial evaluation and after compilation.
 - `CodeSize` - The size of the code generated for the call target.
 - `Addr` - The address of the compiled code.
-- `CompId` - VM specific compilation id of the compilation.
+- `CompId` - VM specific compilation ID of the compilation.
 - `UTC` - The time when the event happened.
 - `Src` - Abbreviated source section of the call target and the hash code of the source.
 
@@ -75,14 +76,14 @@ The `--engine.TraceCompilationDetails` command prints a line when compilation is
 [engine] opt queued engine=2  id=208   OrderedCollection.size                             |Tier 2|Count/Thres      10000/    10000|Queue: Size   19 Change +1  Load  1,00 Time     0us                                   |UTC 2025-07-08T08:25:20.274|Src octane-deltablue.js:71 0xb0b56c7b
 [engine] opt queued engine=2  id=206   BinaryConstraint.output                            |Tier 2|Count/Thres      10000/    10000|Queue: Size   20 Change +1  Load  1,00 Time     0us                                   |UTC 2025-07-08T08:25:20.277|Src octane-deltablue.js:416 0xb0b56c7b
 [engine] opt done   engine=2  id=214   Planner.addConstraintsConsumingTo                  |Tier 1|Time    90(  68+22  )ms|AST   79|Inlined   0Y   5N|IR    467/   841|CodeSize    3515|Addr 0x782dd1f74e80|CompId 23040  |UTC 2025-07-08T08:25:20.293|Src octane-deltablue.js:743 0xb0b56c7b
-[engine] opt start  engine=2  id=205   BinaryConstraint.input                             |Tier 1|Priority   4087953|Rate 0,000111|Queue: Size   19 Change -1  Load  1,00 Time    25us                                   |UTC 2025-07-08T08:25:20.294|Src octane-deltablue.js:409 0xb0b56c7b|Bonuses first tier 
+[engine] opt start  engine=2  id=205   BinaryConstraint.input                             |Tier 1|Priority   4087953|Rate 0,000111|Queue: Size   19 Change -1  Load  1,00 Time    25us                                   |UTC 2025-07-08T08:25:20.294|Src octane-deltablue.js:409 0xb0b56c7b|Bonuses first tier
 ... more log ...
 [engine] opt done   engine=2  id=215   OrderedCollection.at                               |Tier 2|Time     5(   2+2   )ms|AST   23|Inlined   0Y   0N|IR     49/    94|CodeSize     485|Addr 0x782dd23b7980|CompId 26009  |UTC 2025-07-08T08:25:21.228|Src octane-deltablue.js:67 0xb0b56c7b
-[engine] opt start  engine=2  id=206   BinaryConstraint.output                            |Tier 2|Priority   1723949|Rate 0,003724|Queue: Size   82 Change -1  Load  1,00 Time    25us                                   |UTC 2025-07-08T08:25:21.228|Src octane-deltablue.js:416 0xb0b56c7b|Bonuses 
+[engine] opt start  engine=2  id=206   BinaryConstraint.output                            |Tier 2|Priority   1723949|Rate 0,003724|Queue: Size   82 Change -1  Load  1,00 Time    25us                                   |UTC 2025-07-08T08:25:21.228|Src octane-deltablue.js:416 0xb0b56c7b|Bonuses
 [engine] opt done   engine=2  id=206   BinaryConstraint.output                            |Tier 2|Time     6(   3+2   )ms|AST   32|Inlined   0Y   0N|IR    100/   144|CodeSize     639|Addr 0x782dd23b8300|CompId 26014  |UTC 2025-07-08T08:25:21.234|Src octane-deltablue.js:416 0xb0b56c7b
-[engine] opt start  engine=2  id=240   Plan.size                                          |Tier 2|Priority   1565159|Rate 0,003621|Queue: Size   81 Change -1  Load  1,00 Time    23us                                   |UTC 2025-07-08T08:25:21.234|Src octane-deltablue.js:770 0xb0b56c7b|Bonuses 
+[engine] opt start  engine=2  id=240   Plan.size                                          |Tier 2|Priority   1565159|Rate 0,003621|Queue: Size   81 Change -1  Load  1,00 Time    23us                                   |UTC 2025-07-08T08:25:21.234|Src octane-deltablue.js:770 0xb0b56c7b|Bonuses
 [engine] opt done   engine=2  id=240   Plan.size                                          |Tier 2|Time     6(   4+2   )ms|AST   19|Inlined   1Y   0N|IR     43/   112|CodeSize     463|Addr 0x782dd23bdc00|CompId 26018  |UTC 2025-07-08T08:25:21.240|Src octane-deltablue.js:770 0xb0b56c7b
-[engine] opt start  engine=2  id=239   Plan.execute                                       |Tier 2|Priority   1591366|Rate 0,004334|Queue: Size   80 Change -1  Load  1,00 Time    27us                                   |UTC 2025-07-08T08:25:21.240|Src octane-deltablue.js:778 0xb0b56c7b|Bonuses 
+[engine] opt start  engine=2  id=239   Plan.execute                                       |Tier 2|Priority   1591366|Rate 0,004334|Queue: Size   80 Change -1  Load  1,00 Time    27us                                   |UTC 2025-07-08T08:25:21.240|Src octane-deltablue.js:778 0xb0b56c7b|Bonuses
 [engine] opt done   engine=2  id=239   Plan.execute                                       |Tier 2|Time    45(  28+17  )ms|AST   53|Inlined   9Y   0N|IR    609/   552|CodeSize    1583|Addr 0x782dd23c5d00|CompId 26052  |UTC 2025-07-08T08:25:21.285|Src octane-deltablue.js:778 0xb0b56c7b
 ... more log ...
 [engine] opt unque. engine=2  id=266   Date.prototype.valueOf                             |Tier 2|Count/Thres     145950/    10000|Queue: Size   15 Change  0  Load  1,00 Time     0us                                   |UTC 2025-07-08T08:25:26.409|Src <builtin>:1 0xe756ac41|Reason Target inlined into only caller
@@ -275,7 +276,7 @@ The `--engine.TraceSourceCache` command prints a line for each source cache miss
 [engine] source-cache-hit   0xb0b56c7b octane-deltablue.js                               |Hits            1|Engine 2 |Layer 1 |CallTarget 27   |Lang js        |Policy EXCLUSIVE|WEAK    |UTC 2025-07-08T08:25:19.280
 [engine] source-cache-evict 0xb0b56c7b octane-deltablue.js                               |Hits            7|Engine 2 |Layer 1 |CallTarget 27   |Lang js        |Policy EXCLUSIVE|WEAK    |UTC 2025-07-08T08:25:21.007
 ```
-Repeated source cache evictions of the same sources may lead to repeated parsing and compilation of the same sources under different call target ids. This usually points at a bug on the embedder size - missing or insufficient caching of sources.
+Repeated source cache evictions of the same sources may lead to repeated parsing and compilation of the same sources under different call target IDs. This usually points at a bug on the embedder size - missing or insufficient caching of sources.
 
 The `--engine.SourceCacheStatistics` command prints statistics on source cache for an engine when the engine is closed:
 
@@ -557,7 +558,7 @@ com.oracle.truffle.js.nodes.control.WhileNode$WhileDoRepeatingNode.executeRepeat
 The `--engine.SpecializationStatistics` command prints detailed histograms about Node classes and their usage of Truffle DSL specializations.
 See [`Specialization Statistics`](SpecializationHistogram.md) for a tutorial on how to use it.
 
-Note: Specialization statistics require a recompilation of the interpeter.
+Note: Specialization statistics require a recompilation of the interpreter.
 
 ```shell
  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -791,7 +792,7 @@ The sensitivity of the deoptimization cycle detection can be fine-tuned by the o
 
 After the number of successful compilations of a call target reaches `compiler.DeoptCycleDetectionThreshold`, the subsequent Truffle compilations of the call target execute an extra deoptimization cycle detection phase that adds information to the compilation framework which allows it to later detect that the exactly same compiled code was deoptimized at the exatly same location repeatedly. If that happens the compilation fails with a permanent bailout. If `compiler.DeoptCycleDetectionAllowedRepeats` is set to a higher value than the default `0`, the compilation will only fail after the same deopt is repeated more times than the allowed count.
 
-See [Deopt Cycle Pattens](./DeoptCyclePatterns.md) to learn about common patterns that cause deopt cycles and thus should be avoided.
+See [Deoptimization Cycle Patterns](./DeoptCyclePatterns.md) to learn about common patterns that cause deoptimization cycles and thus should be avoided.
 
 ## Debugging Invalidations
 
@@ -803,6 +804,53 @@ The most common causes are:
   Use `--engine.TraceAssumptions` to trace those with more details.
 
 The `--engine.TraceCompilation` option also shows CallTarget invalidations with an `[engine] opt inv.` prefix.
+
+## Uncovering Optimization Barriers: Compiler-Level Insights for Truffle Apps
+
+Once you are comfortable profiling Truffle applications and analyzing results (see [Profiling](Profiling.md)), you may reach a point where you wonder, “Why is this benchmark slower than expected?” 
+After determining that the majority of execution time is spent in compiled code, the next step is a deeper analysis of the generated machine code.
+
+Start by identifying “hot” compilation units and addressing any Truffle performance warnings (see Step 4 of this document). 
+However, you may still encounter limitations in performance even after resolving these.
+
+In such cases, reviewing compiler-level performance warnings can be insightful. 
+While in-depth knowledge of Graal compiler internals is not required here, some warnings surfaced at the compiler level can be actionable by Truffle developers.
+
+The Graal compiler offers a compiler analysis phase that emits performance warnings during code compilation. 
+These are similar to Truffle performance warnings but may surface later in the pipeline and are not always directly actionable.
+
+### Enabling Compiler-Level Metrics
+To enable reporting of these metrics, launch your application with:
+```
+--vm.Djdk.graal.ReportHotMetrics=<method filter>
+```
+This prints warnings and hot spots to `stdout` for all compilation units.
+
+To narrow the output to specific methods or functions, use known method names like `*wasm-function:5311*`:
+```
+--vm.Djdk.graal.ReportHotMetrics='*wasm-function:5311*'
+```
+To improve the quality of the generated data, run with node source position tracking `--vm.Djdk.graal.TrackNodeSourcePosition=true`.
+
+### Example Output
+```
+Reporting hot metrics before HighTierLoweringPhase during compilation of wasm-function:5311
+[Hot Code Warning] Unknown profile for 704|If with f=241.99984874999717 in hot loop Loop (depth=1) 4951258|LoopBegin, node source position is 
+        at org.graalvm.wasm.nodes.WasmFunctionNode.executeBodyFromOffset(WasmFunctionNode.java:363) [bci: 1654]
+        at org.graalvm.wasm.nodes.WasmFunctionNode.execute(WasmFunctionNode.java:241) [bci: 15]
+        [...cut for brevity...]
+        Potential Action Item: Add profile to the top-of-stack source location.
+```
+
+### Interpreting Results:
+* `[Hot Code Info]` lines highlight the hottest basic blocks and loops.
+  * “Local frequency” is the number of times the block is executed per loop iteration.
+  * “Global frequency” is across the entire method. A value of 1 means the basic block executes once per method invocation.
+* `[Hot Code Warning]` denotes locations or IR patterns that may inhibit optimization.
+  * Warnings include, for example, missing profile data in hot paths (for example, `unknown profile for 704|If …`), which is a common actionable warning.
+
+Some warnings may be actionable, while others are for informational purposes. If you encounter frequent or unexplained compiler warnings in your hottest methods and are unsure how to proceed, please reach out to the Truffle community via our Slack channels for advice.
+
 
 ## Ideal Graph Visualizer
 

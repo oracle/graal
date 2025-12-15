@@ -31,10 +31,6 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
-import jdk.graal.compiler.vector.architecture.VectorArchitecture;
-import jdk.graal.compiler.vector.nodes.simd.SimdBroadcastNode;
-import jdk.graal.compiler.vector.nodes.simd.SimdPermuteWithVectorIndicesNode;
-
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
@@ -52,7 +48,10 @@ import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.nodes.simd.SimdBroadcastNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
+import jdk.graal.compiler.vector.nodes.simd.SimdPermuteWithVectorIndicesNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
@@ -86,7 +85,7 @@ public class VectorAPIRearrangeOpNode extends VectorAPIMacroNode implements Cano
 
     protected VectorAPIRearrangeOpNode(MacroParams macroParams, SimdStamp vectorStamp, SimdConstant constantValue, FrameState stateAfter) {
         super(TYPE, macroParams, constantValue);
-        this.vectorStamp = vectorStamp;
+        this.vectorStamp = maybeConstantVectorStamp(vectorStamp, constantValue);
         this.stateAfter = stateAfter;
     }
 
@@ -131,7 +130,7 @@ public class VectorAPIRearrangeOpNode extends VectorAPIMacroNode implements Cano
         GraalError.guarantee(CodeUtil.isPowerOf2(v.getVectorLength()), "vector length must be power of 2: %s", v.getVectorLength());
         int indexMask = v.getVectorLength() - 1;
         for (int i = 0; i < v.getVectorLength(); i++) {
-            int shuffledIndex = ((JavaConstant) sh.getValue(i)).asInt() & indexMask;
+            int shuffledIndex = (int) ((JavaConstant) sh.getValue(i)).asLong() & indexMask;
             newValues[i] = v.getValue(shuffledIndex);
         }
         return new SimdConstant(newValues);

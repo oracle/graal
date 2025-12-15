@@ -40,8 +40,11 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameSourceInfo;
+import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.log.Log;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -64,22 +67,30 @@ public abstract class InterpreterSupport {
         return ImageSingletons.lookup(InterpreterSupport.class);
     }
 
-    /*
-     * Check if a given argument matches the inner class Interpreter.Root (holder of the interpreter
-     * dispatch loop).
+    /**
+     * Check if a given frame should be processed by {@link #getInterpretedMethodFrameInfo}.
      */
-    public abstract boolean isInterpreterRoot(Class<?> clazz);
+    public abstract boolean isInterpreterRoot(FrameInfoQueryResult frameInfo);
 
     /**
-     * Transforms an interpreter (root) frame into a frame of the interpreted method. The passed
-     * frame must be an interpreter root e.g. {@code isInterpreterRoot(frameInfo.getSourceClass())}
-     * otherwise a fatal exception is thrown.
+     * Transforms an interpreter (root) frame into a frame of the interpreted method. An error is
+     * thrown if the passed frame is not an {@link #isInterpreterRoot interpreter root}.
      *
      * @param frameInfo interpreter root frame
      * @param sp stack pointer of the interpreter frame
      * @return a frame representing the interpreted method
      */
     public abstract FrameSourceInfo getInterpretedMethodFrameInfo(FrameInfoQueryResult frameInfo, Pointer sp);
+
+    /**
+     * Make a best-effort attempt at logging helpful information about the
+     * {@linkplain #isInterpreterRoot interpreter frame}. Avoiding allocations or anything risky
+     * during crash logging.
+     */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used for crash log")
+    public abstract void logInterpreterFrame(Log log, FrameInfoQueryResult frameInfo, Pointer sp);
+
+    public abstract PreparedSignature prepareSignature(ResolvedJavaMethod method);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void setLeaveStubPointer(CFunctionPointer leaveStubPointer, int length) {

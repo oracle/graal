@@ -26,14 +26,17 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.debugentry.ClassEntry;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static com.oracle.objectfile.pecoff.cv.CVDebugConstants.S_BLOCK32;
+
+import com.oracle.objectfile.debugentry.ClassEntry;
+
+import jdk.graal.compiler.serviceprovider.GraalServices;
+
 
 /*
  * A CVSymbolSubrecord is a record in a DEBUG_S_SYMBOL record within a .debug$S section within a PECOFF file.
@@ -202,7 +205,7 @@ abstract class CVSymbolSubrecord {
             super(cvDebugInfo, CVDebugConstants.S_ENVBLOCK);
 
             /* Current directory. */
-            map.put("cwd", System.getProperty("user.dir"));
+            map.put("cwd", GraalServices.getSystemProperties("user.dir is not available via GraalServices.getSavedProperties()").getProperty("user.dir"));
 
             /*
              * Define the primary source file - ideally, the source file containing main(). (Note

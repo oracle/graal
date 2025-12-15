@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import static com.oracle.svm.core.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.graal.nodes.WriteCodeBaseNode.writeCurrentVMCodeBase;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
@@ -34,6 +35,7 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import java.util.Map;
 
+import com.oracle.svm.core.JavaMainWrapper;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -59,7 +61,6 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.CGlobalData;
@@ -385,7 +386,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
     }
 
-    @NeverInline("GR-24649")
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     private static int initializeIsolateInterruptibly1(CEntryPointCreateIsolateParameters parameters) {
         /* Initialize the isolate id (the id is needed for isolate teardown). */
         long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();
@@ -451,7 +452,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 exitWhenArgumentParsingFails = parameters.getExitWhenArgumentParsingFails();
             }
 
-            String[] args = SubstrateUtil.convertCToJavaArgs(parameters.getArgc(), parameters.getArgv());
+            String[] args = JavaMainWrapper.ArgsSupport.convertCToJavaArgs(parameters.getArgc(), parameters.getArgv());
             try {
                 args = RuntimeOptionParser.parseAndConsumeAllOptions(args, ignoreUnrecognized);
             } catch (IllegalArgumentException e) {
@@ -716,7 +717,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             VMThreads.singleton().freeCurrentIsolateThread();
             return CEntryPointErrors.NO_ERROR;
         } catch (Throwable t) {
-            return reportException(t);
+            return CEntryPointErrors.UNCAUGHT_EXCEPTION;
         }
     }
 

@@ -12,6 +12,7 @@ using MethodId = Int32;
 using FieldId = Int32;
 using ConstantId = Int32;
 using SingletonObjId = Int32;
+using KeyStoreId = Int32;
 using HostedMethodIndex = Int32;
 
 struct PersistedAnalysisType {
@@ -45,7 +46,7 @@ struct PersistedAnalysisType {
   instanceFieldIds @22 :List(FieldId);
   instanceFieldIdsWithSuper @23 :List(FieldId);
   staticFieldIds @24 :List(FieldId);
-  annotationList @25 :List(Annotation);
+  annotationList @25 :List(PersistedAnnotation);
   classInitializationInfo @26 :ClassInitializationInfo;
   hasArrayType @27 :Bool;
   hasClassInitInfo @28 :Bool;
@@ -62,19 +63,17 @@ struct PersistedAnalysisType {
     }
     proxyType @35 :Void;
   }
+  isRecord @36 :Bool;
 }
 
 struct ClassInitializationInfo {
-  isNoInitializerNoTracking @0 :Bool;
-  isInitializedNoTracking @1 :Bool;
-  isFailedNoTracking @2 :Bool;
-  isInitialized @3 :Bool;
-  isInErrorState @4 :Bool;
-  isLinked @5 :Bool;
-  hasInitializer @6 :Bool;
-  isBuildTimeInitialized @7 :Bool;
-  isTracked @8 :Bool;
-  initializerMethodId @9 :MethodId;
+  isInitialized @0 :Bool;
+  isInErrorState @1 :Bool;
+  isLinked @2 :Bool;
+  hasInitializer @3 :Bool;
+  isBuildTimeInitialized @4 :Bool;
+  isTracked @5 :Bool;
+  initializerMethodId @6 :MethodId;
 }
 
 struct PersistedAnalysisMethod {
@@ -98,7 +97,7 @@ struct PersistedAnalysisMethod {
   isImplementationInvoked @17 :Bool;
   isIntrinsicMethod @18 :Bool;
   methodHandleIntrinsicName @19 :Text;
-  annotationList @20 :List(Annotation);
+  annotationList @20 :List(PersistedAnnotation);
   isVarArgs @21 :Bool;
   isBridge @22 :Bool;
   isDeclared @23 :Bool;
@@ -153,11 +152,12 @@ struct PersistedAnalysisField {
   isUnsafeAccessed @12 :Bool;
   isStatic @13 :Bool;
   isSynthetic @14 :Bool;
-  annotationList @15 :List(Annotation);
+  annotationList @15 :List(PersistedAnnotation);
   name @16 :Text;
   priorInstalledLayerNum @17 :Int32;
   assignmentStatus @18 :Int32;
   simulatedFieldValue @19 :ConstantReference;
+  updatableReceivers @20 :List(ConstantId);
 }
 
 struct CEntryPointLiteralReference {
@@ -243,23 +243,27 @@ struct ImageSingletonKey {
   objectId @2 :SingletonObjId;
   constantId @3 :ConstantId;
   isInitialLayerOnly @4 :Bool;
+  keyStoreId @5 :KeyStoreId;
 }
 
 struct ImageSingletonObject {
   id @0 :SingletonObjId;
   className @1 :Text;
-  store @2 :List(KeyStoreEntry);
-  recreateClass @3 :Text;
-  # GR-66792 remove once no custom persist actions exist
-  recreateMethod @4 :Text;
+  keyStoreId @2 :KeyStoreId;
+  singletonInstantiatorClass @3 :Text;
 }
 
-struct Annotation {
+struct KeyStoreInstance {
+  id @0 :KeyStoreId;
+  keyStore @1 :List(KeyStoreEntry);
+}
+
+struct PersistedAnnotation {
   typeName @0 :Text;
-  values @1 :List(AnnotationValue);
+  values @1 :List(PersistedAnnotationElement);
 }
 
-struct AnnotationValue {
+struct PersistedAnnotationElement {
   name @0 :Text;
   union {
     string @1 :Text;
@@ -270,10 +274,10 @@ struct AnnotationValue {
       name @5 :Text;
     }
     className @6 :Text;
-    annotation @7 :Annotation;
+    annotation @7 :PersistedAnnotation;
     members :group {
       className @8 :Text;
-      memberValues @9 :List(AnnotationValue);
+      memberValues @9 :List(PersistedAnnotationElement);
     }
   }
 }
@@ -303,6 +307,7 @@ struct SharedLayerSnapshot {
   sharedLayerBootLayerModules @21 :List(Text);
   layeredModule @22 :LayeredModule;
   cGlobals @23 :List(CGlobalDataInfo);
+  keyStoreInstances @24 :List(KeyStoreInstance);
 }
 
 struct StaticFinalFieldFoldingSingleton {
@@ -393,8 +398,9 @@ struct DynamicHubInfo {
     installed @1 :Bool;
     typecheckId @2 :Int32;
     numClassTypes @3 :Int32;
-    numInterfaceTypes @4 :Int32;
+    numIterableInterfaceTypes @4 :Int32;
     typecheckSlotValues @5 :List(Int32);
     locallyDeclaredSlotsHostedMethodIndexes @6 :List(HostedMethodIndex);
     dispatchTableSlotValues @7 :List(DispatchSlotInfo);
+    interfaceId @8 :Int32;
 }

@@ -1,0 +1,3 @@
+com.oracle.truffle.espresso.ffi.memory.TruffleByteArrayChunkedMemoryImpl$Provider
+com.oracle.truffle.espresso.ffi.memory.UnsafeByteArrayChunkedMemoryImpl$Provider
+com.oracle.truffle.espresso.ffi.memory.UnsafeNativeMemory$Provider

@@ -47,6 +47,7 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.SymbolicJVMCIReference;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -250,12 +251,14 @@ public class EncodedSnippets {
             declaringClass = replacements.getProviders().getMetaAccess().lookupJavaType(Object.class);
         }
         /*
-         * If this is a recorded/replayed compilation, we must not mutate the snippet objects. This
-         * ensures we record all relevant operations during recording and no proxies are stored in
-         * the snippet objects during replay.
+         * If there is a possibility of a recorded/replayed compilation, we must not mutate the
+         * snippet objects. During recording, this ensures that we record all relevant operations
+         * and the cached objects are resolved to proxies. During replay, this ensures that no
+         * proxies are stored in the snippet objects.
          */
         boolean allowCacheReplacements = replacements.getProviders().getReplayCompilationSupport() == null &&
-                        GraalCompilerOptions.CompilationFailureAction.getValue(options) != CompilationWrapper.ExceptionAction.Diagnose;
+                        GraalCompilerOptions.CompilationFailureAction.getValue(options) != CompilationWrapper.ExceptionAction.Diagnose &&
+                        !DebugOptions.RecordForReplay.hasBeenSet(options);
         SymbolicEncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, startOffset, snippetObjects, allowCacheReplacements,
                         snippetNodeClasses, data.originalMethod, declaringClass);
         return decodeSnippetGraph(encodedGraph, method, original, replacements, args, allowAssumptions, options, true);
@@ -346,7 +349,7 @@ public class EncodedSnippets {
             nodePlugins = new NodePlugin[]{new SnippetCounterFoldingPlugin()};
         }
 
-        try (DebugContext debug = replacements.openDebugContext("LibGraal", method, options)) {
+        try (DebugContext debug = replacements.openSnippetDebugContext("LibGraal", method, options)) {
             // @formatter:off
             boolean isSubstitution = true;
             StructuredGraph result = new StructuredGraph.Builder(options, debug, allowAssumptions)
@@ -390,7 +393,7 @@ public class EncodedSnippets {
                     replacement = result.unique(replacement);
                     constant.replace(result, replacement);
                 } else {
-                    throw new InternalError(constant.toString(Verbosity.Debugger));
+                    throw new InternalError(constant.toString(Verbosity.All));
                 }
             }
         }

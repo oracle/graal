@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.webimage.codegen.heap;
 
-import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.jdk.StringInternSupport;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -44,7 +44,7 @@ import com.oracle.svm.webimage.object.ObjectInspector;
 import com.oracle.svm.webimage.object.ObjectInspector.ObjectType;
 
 import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -184,7 +184,7 @@ public class ConstantMap {
                         imageInternedStringsFieldIndex)).isNull() : "The ImageInternedStrings singleton must have the 'imageInternedStrings' field set to null";
 
         /* Manually snapshot the interned strings array. */
-        ((AnalysisMetaAccess) metaAccess.getWrapped()).getUniverse().getHeapScanner().rescanObject(internedStrings, ObjectScanner.OtherReason.LATE_SCAN);
+        ((AnalysisMetaAccess) metaAccess.getWrapped()).getUniverse().getHeapScanner().rescanObject(internedStrings, ImageHeapScanner.LATE_SCAN);
 
         JavaConstant internedStringsConstant = providers.getSnippetReflection().forObject(internedStrings);
         ObjectInspector.ArrayType<?> internedStringsNew = (ObjectInspector.ArrayType<?>) saveConstantObject(internedStringsConstant);
@@ -193,7 +193,7 @@ public class ConstantMap {
 
     /**
      * Function for generating the code that emits the properties on each object, each object was
-     * identified using {@link IdentityHashCodeProvider}.
+     * identified using {@link ConstantReflectionProvider}.
      */
     public static final JSGenericFunctionDefinition WEB_IMAGE_CONST_PROPERTY_INIT_F_NAME = new JSGenericFunctionDefinition("generateConstantProperties", 0, false, null, false);
 

@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.meta;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -58,14 +57,18 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.Stage;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
+import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.NodeSourcePosition;
@@ -126,10 +129,16 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public final ResolvedJavaMethod wrapped;
 
+    /**
+     * Unique id assigned to each {@link AnalysisMethod}. This id is consistent across layers and
+     * can be used to load or match a method in an extension layer.
+     */
     private final int id;
+    /** True when the current layer built is a shared layer. */
     private final boolean buildingSharedLayer;
-    /** Marks a method loaded from a base layer. */
-    private final boolean isInBaseLayer;
+    /** Marks a method loaded from a shared layer. */
+    private final boolean isInSharedLayer;
+    /** Marks a method analyzed in a prior layer. */
     private final boolean analyzedInPriorLayer;
     private final boolean hasNeverInlineDirective;
     private final ExceptionHandler[] exceptionHandlers;
@@ -198,7 +207,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     private boolean hasOpaqueReturn;
 
-    private CompilationBehavior compilationBehavior = CompilationBehavior.DEFAULT;
+    private LayeredCompilationBehavior.Behavior compilationBehavior;
 
     @SuppressWarnings({"this-escape", "unchecked"})
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
@@ -225,24 +234,24 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         modifiers = wrapped.getModifiers();
 
         buildingSharedLayer = hostVM.buildingSharedLayer();
-        if (hostVM.buildingExtensionLayer() && declaringClass.isInBaseLayer()) {
+        if (hostVM.buildingExtensionLayer() && declaringClass.isInSharedLayer()) {
             int mid = universe.getImageLayerLoader().lookupHostedMethodInBaseLayer(this);
             if (mid != -1) {
                 /*
-                 * This id is the actual link between the corresponding method from the base layer
+                 * This id is the actual link between the corresponding method from the shared layer
                  * and this new method.
                  */
                 id = mid;
-                isInBaseLayer = true;
+                isInSharedLayer = true;
             } else {
                 id = universe.computeNextMethodId();
-                isInBaseLayer = false;
+                isInSharedLayer = false;
             }
         } else {
             id = universe.computeNextMethodId();
-            isInBaseLayer = false;
+            isInSharedLayer = false;
         }
-        analyzedInPriorLayer = isInBaseLayer && hostVM.analyzedInPriorLayer(this);
+        analyzedInPriorLayer = isInSharedLayer && hostVM.analyzedInPriorLayer(this);
 
         ExceptionHandler[] original = wrapped.getExceptionHandlers();
         exceptionHandlers = new ExceptionHandler[original.length];
@@ -280,6 +289,18 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         parsingContextMaxDepth = universe.analysisPolicy().parsingContextMaxDepth();
 
         this.enableReachableInCurrentLayer = universe.hostVM.enableReachableInCurrentLayer();
+        compilationBehavior = LayeredCompilationBehavior.Behavior.DEFAULT;
+        if (universe.hostVM.buildingImageLayer()) {
+            LayeredCompilationBehavior behavior = AnnotationUtil.getAnnotation(wrapped, LayeredCompilationBehavior.class);
+            if (behavior != null) {
+                compilationBehavior = behavior.value();
+                if (compilationBehavior == LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER && universe.hostVM.buildingExtensionLayer() && !isInSharedLayer) {
+                    var errorMessage = String.format("User methods with layered compilation behavior %s must be registered via %s in the initial layer",
+                                    LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER, LayeredCompilationSupport.class);
+                    throw AnalysisError.userError(errorMessage);
+                }
+            }
+        }
     }
 
     @SuppressWarnings("this-escape")
@@ -288,7 +309,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         wrapped = original.wrapped;
         id = original.id;
         buildingSharedLayer = original.buildingSharedLayer;
-        isInBaseLayer = original.isInBaseLayer;
+        isInSharedLayer = original.isInSharedLayer;
         analyzedInPriorLayer = original.analyzedInPriorLayer;
         declaringClass = original.declaringClass;
         signature = original.signature;
@@ -313,11 +334,22 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         this.enableReachableInCurrentLayer = original.enableReachableInCurrentLayer;
     }
 
-    public void setCompilationBehavior(CompilationBehavior compilationBehavior) {
+    /**
+     * This method should not be used directly, except to set the {@link Behavior} from a previous
+     * layer. To set a new {@link Behavior}, please use the associated setter.
+     */
+    public void setCompilationBehavior(LayeredCompilationBehavior.Behavior compilationBehavior) {
+        assert getUniverse().getBigbang().getHostVM().buildingImageLayer() : "The method compilation behavior can only be set in layered images";
         this.compilationBehavior = compilationBehavior;
     }
 
-    public CompilationBehavior getCompilationBehavior() {
+    private void setNewCompilationBehavior(LayeredCompilationBehavior.Behavior compilationBehavior) {
+        assert (!isInSharedLayer && this.compilationBehavior == LayeredCompilationBehavior.Behavior.DEFAULT) || this.compilationBehavior == compilationBehavior : "The method was already assigned " +
+                        this.compilationBehavior + ", but trying to assign " + compilationBehavior;
+        setCompilationBehavior(compilationBehavior);
+    }
+
+    public LayeredCompilationBehavior.Behavior getCompilationBehavior() {
         return compilationBehavior;
     }
 
@@ -327,11 +359,11 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     public void setFullyDelayedToApplicationLayer() {
         HostVM hostVM = getUniverse().getBigbang().getHostVM();
-        AnalysisError.guarantee(hostVM.buildingImageLayer(), "Methods can only be delayed in layered images");
+        AnalysisError.guarantee(hostVM.buildingImageLayer(), "Methods can only be delayed in layered images: %s", this);
         AnalysisError.guarantee(parsedGraphCacheState.get() == GraphCacheEntry.UNPARSED, "The method %s was marked as delayed to the application layer but was already parsed", this);
         AnalysisError.guarantee(!hostVM.hasAlwaysInlineDirective(this), "Method %s with an always inline directive cannot be delayed to the application layer as such methods cannot be inlined", this);
         AnalysisError.guarantee(isConcrete(), "Method %s is not concrete and cannot be delayed to the application layer", this);
-        this.compilationBehavior = CompilationBehavior.FULLY_DELAYED_TO_APPLICATION_LAYER;
+        setNewCompilationBehavior(LayeredCompilationBehavior.Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER);
     }
 
     /**
@@ -339,7 +371,27 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * layer is a shared layer.
      */
     public boolean isDelayed() {
-        return compilationBehavior == CompilationBehavior.FULLY_DELAYED_TO_APPLICATION_LAYER && buildingSharedLayer;
+        return compilationBehavior == LayeredCompilationBehavior.Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER && buildingSharedLayer;
+    }
+
+    /**
+     * Ensures this method is compiled in the initial layer. See
+     * {@link Behavior#PINNED_TO_INITIAL_LAYER} for more details.
+     */
+    public void setPinnedToInitialLayer() {
+        BigBang bigbang = getUniverse().getBigbang();
+        AnalysisError.guarantee(bigbang.getHostVM().buildingInitialLayer(), "Methods can only be pinned to the initial layer: %s", this);
+        boolean nonAbstractInstanceClass = !declaringClass.isArray() && declaringClass.isInstanceClass() && !declaringClass.isAbstract();
+        AnalysisError.guarantee(nonAbstractInstanceClass, "Only methods from non abstract instance class can be pinned: %s", this);
+        bigbang.forcedAddRootMethod(this, true, "pinned to initial layer");
+        if (!isStatic()) {
+            declaringClass.registerAsInstantiated("declared method " + this.format("%H.%n(%p)") + " is pinned to initial layer");
+        }
+        setNewCompilationBehavior(LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER);
+    }
+
+    public boolean isPinnedToInitialLayer() {
+        return compilationBehavior == LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER;
     }
 
     private static String createName(ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey) {
@@ -414,7 +466,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         Object curr = getParsingReason();
 
         while (curr != null) {
-            if (!(curr instanceof BytecodePosition)) {
+            if (!(curr instanceof BytecodePosition position)) {
                 AnalysisError.guarantee(curr instanceof String, "Parsing reason should be a BytecodePosition or String: %s", curr);
                 trace.add(ReportUtils.rootMethodSentinel((String) curr));
                 break;
@@ -423,7 +475,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
                 trace.add(ReportUtils.truncatedStackTraceSentinel(this));
                 break;
             }
-            BytecodePosition position = (BytecodePosition) curr;
             AnalysisMethod caller = (AnalysisMethod) position.getMethod();
             trace.add(caller.asStackTraceElement(position.getBCI()));
             curr = caller.getParsingReason();
@@ -435,8 +486,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return id;
     }
 
-    public boolean isInBaseLayer() {
-        return isInBaseLayer;
+    public boolean isInSharedLayer() {
+        return isInSharedLayer;
     }
 
     public boolean analyzedInPriorLayer() {
@@ -549,6 +600,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     /** Get the list of all invoke locations for this method, as inferred by the static analysis. */
     public abstract List<BytecodePosition> getInvokeLocations();
+
+    /** Get the node markers used to store per-node mappings to metadata for encoded nodes. */
+    public abstract Iterable<EncodedGraph.EncodedNodeReference> getEncodedNodeReferences();
 
     /**
      * Returns true if this method is a native entrypoint, i.e. it may be called from the host
@@ -836,7 +890,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             return includeOurselfs ? Set.of(this) : Set.of();
         }
 
-        Set<AnalysisMethod> result = new HashSet<>(allImplementationsSize + 1);
+        Set<AnalysisMethod> result = new HashSet<>(allImplementationsSize + 1); // noEconomicSet(streaming)
         if (includeOurselfs) {
             result.add(this);
         }
@@ -869,11 +923,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     @Override
     public ConstantPool getConstantPool() {
         return getUniverse().lookup(wrapped.getConstantPool(), wrapped.getDeclaringClass());
-    }
-
-    @Override
-    public Annotation[][] getParameterAnnotations() {
-        return wrapped.getParameterAnnotations();
     }
 
     @Override
@@ -1126,7 +1175,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
             if (curState.isUnparsed(stage) || (forceReparse && curState.isStageParsed(stage))) {
                 AnalysisParsedGraph graph;
-                if (isInBaseLayer && getUniverse().getImageLayerLoader().hasAnalysisParsedGraph(this)) {
+                if (isInSharedLayer && getUniverse().getImageLayerLoader().hasAnalysisParsedGraph(this)) {
                     graph = getBaseLayerGraph(bb, curState);
                 } else {
                     graph = createAnalysisParsedGraph(bb, stage, curState, forceReparse);
@@ -1398,40 +1447,4 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     protected abstract AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey);
-
-    /**
-     * This state represents how a method should be compiled in layered images. The state of a
-     * method can only be decided in the first layer if it is marked as tracked across layers. The
-     * state has to stay the same across all the extension layers. If not specified, the state of a
-     * method will be {@link CompilationBehavior#DEFAULT}.
-     */
-    public enum CompilationBehavior {
-
-        /**
-         * Method remains unanalyzed until the application layer and any inlining in a shared layer
-         * is prevented. A call to the method in a shared layer will be replaced by an indirect
-         * call. The compilation of those methods is then forced in the application layer and the
-         * corresponding symbol is declared as global.
-         *
-         * A delayed method that is not referenced in any shared layer is treated as a
-         * {@link CompilationBehavior#DEFAULT} method in the application layer and does not have to
-         * be compiled. If it is only referenced in the application layer, it might be inlined and
-         * not compiled at all.
-         */
-        FULLY_DELAYED_TO_APPLICATION_LAYER,
-
-        /**
-         * Method can be inlined into other methods, both before analysis and during compilation,
-         * and will be compiled as a distinct compilation unit as stipulated by the normal native
-         * image generation process (i.e., the method is installed as a root and/or a reference to
-         * the method exists via a call and/or an explicit MethodReference).
-         */
-        DEFAULT,
-
-        /**
-         * Method is pinned to a specific shared layer, meaning it has to be analyzed and compiled
-         * in this specific layer. A method can only be pinned to a shared layer.
-         */
-        PINNED_TO_SHARED_LAYER,
-    }
 }

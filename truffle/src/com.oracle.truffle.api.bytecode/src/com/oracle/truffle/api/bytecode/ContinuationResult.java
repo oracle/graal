@@ -106,6 +106,19 @@ public final class ContinuationResult implements TruffleObject {
     }
 
     /**
+     * Public API for creating a continuation result.
+     * <p>
+     * This method is mainly useful when using {@link Yield custom yield operations} since the
+     * {@link GenerateBytecode#enableYield() built-in yield} creates continuation results
+     * automatically.
+     *
+     * @since 25.1
+     */
+    public static ContinuationResult create(ContinuationRootNode rootNode, MaterializedFrame frame, Object result) {
+        return new ContinuationResult(rootNode, frame, result);
+    }
+
+    /**
      * Resumes the continuation.
      * <p>
      * This method should generally not be used on compiled code paths. Each yield produces a unique

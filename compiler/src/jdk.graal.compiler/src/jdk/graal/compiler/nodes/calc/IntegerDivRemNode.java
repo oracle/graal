@@ -25,7 +25,7 @@
 package jdk.graal.compiler.nodes.calc;
 
 import static jdk.graal.compiler.nodeinfo.InputType.Guard;
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_32;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_16;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -42,7 +42,10 @@ import jdk.graal.compiler.nodes.spi.Lowerable;
 
 import jdk.vm.ci.meta.JavaConstant;
 
-@NodeInfo(allowedUsageTypes = Guard, cycles = CYCLES_32, size = SIZE_1)
+/**
+ * Integer division remainder node.
+ */
+@NodeInfo(allowedUsageTypes = Guard, cycles = CYCLES_16, size = SIZE_1, cyclesRationale = "The node cycle estimate is taken from Agner Fog's instruction tables (https://www.agner.org/optimize/instruction_tables.pdf).")
 public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lowerable, IterableNodeType, GuardingNode {
 
     public static final NodeClass<IntegerDivRemNode> TYPE = NodeClass.create(IntegerDivRemNode.class);

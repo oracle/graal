@@ -30,15 +30,15 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
 
@@ -56,8 +56,8 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
 
     private static void registerReflectionClasses(FeatureImpl.DuringAnalysisAccessImpl access, List<String> parserClasses) {
         for (String className : parserClasses) {
-            RuntimeReflection.register(clazz(access, className));
-            RuntimeReflection.register(constructor(access, className));
+            JVMCIRuntimeReflection.register(type(access, className));
+            JVMCIRuntimeReflection.register(constructor(access, className));
         }
     }
 
@@ -123,29 +123,28 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
     static class TransformerClassesAndResources extends XMLParsersRegistration {
 
         @Override
-        @SuppressWarnings("try")
         void registerResources() {
             /*
              * To allow register new resource bundle classes during analysis phase
              */
             ClassInitializationSupport classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
             classInitializationSupport.withUnsealedConfiguration(() -> {
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.serializer.utils.SerializerMessages");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xalan.internal.xsltc.compiler.util.ErrorMessages");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.serializer.Encodings");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.serializer.HTMLEntities");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.serializer.XMLEntities");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.xpath.regex.message");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.DOMMessages");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.DatatypeMessages");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.JAXPValidationMessages");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.SAXMessages");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XIncludeMessages");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XMLMessages");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XMLSchemaMessages");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XMLSerializerMessages");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XPointerMessages");
-                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xalan.internal.res.XSLTInfo");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xml.internal.serializer.utils.SerializerMessages");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xalan.internal.xsltc.compiler.util.ErrorMessages");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xml.internal.serializer.Encodings");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xml.internal.serializer.HTMLEntities");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xml.internal.serializer.XMLEntities");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xerces.internal.impl.xpath.regex.message");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xerces.internal.impl.msg.DOMMessages");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xerces.internal.impl.msg.DatatypeMessages");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xerces.internal.impl.msg.JAXPValidationMessages");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xerces.internal.impl.msg.SAXMessages");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xerces.internal.impl.msg.XIncludeMessages");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xerces.internal.impl.msg.XMLMessages");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xerces.internal.impl.msg.XMLSchemaMessages");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xerces.internal.impl.msg.XMLSerializerMessages");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xerces.internal.impl.msg.XPointerMessages");
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xalan.internal.res.XSLTInfo");
             });
         }
 

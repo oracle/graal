@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+
 import java.lang.reflect.Field;
 import java.security.CodeSource;
 
@@ -31,9 +33,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
@@ -74,7 +76,8 @@ final class ProtectionDomainFeature implements InternalFeature {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         ProtectionDomainSupport.enableCodeSource();
         if (access != null) {
-            access.rescanField(ImageSingletons.lookup(ProtectionDomainSupport.class), executableURLSupplierField);
+            OtherReason reason = new OtherReason("Manual rescan triggered from " + ProtectionDomainFeature.class);
+            access.rescanField(ImageSingletons.lookup(ProtectionDomainSupport.class), executableURLSupplierField, reason);
         }
     }
 }

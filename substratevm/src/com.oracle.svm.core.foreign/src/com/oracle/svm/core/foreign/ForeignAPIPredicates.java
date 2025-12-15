@@ -48,20 +48,6 @@ public final class ForeignAPIPredicates {
         }
     }
 
-    public static final class FunctionCallsSupported implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return SubstrateOptions.isForeignAPIEnabled() && ForeignFunctionsRuntime.areFunctionCallsSupported();
-        }
-    }
-
-    public static final class FunctionCallsUnsupported implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return SubstrateOptions.isForeignAPIEnabled() && !ForeignFunctionsRuntime.areFunctionCallsSupported();
-        }
-    }
-
     public static final class SharedArenasEnabled implements BooleanSupplier {
         private static final String VECTOR_API_SUPPORT_OPTION_NAME = SubstrateOptionsParser.commandArgument(SubstrateOptions.VectorAPISupport, "-");
         private static final String SHARED_ARENA_SUPPORT_OPTION_NAME = SubstrateOptionsParser.commandArgument(SubstrateOptions.SharedArenaSupport, "-");

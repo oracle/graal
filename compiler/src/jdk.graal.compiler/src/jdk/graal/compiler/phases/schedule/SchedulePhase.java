@@ -98,12 +98,88 @@ import jdk.graal.compiler.phases.tiers.LowTierContext;
 
 public final class SchedulePhase extends BasePhase<CoreProviders> {
 
+    /**
+     * Defines the strategies for scheduling nodes in the compiler's intermediate representation.
+     * The chosen strategy affects the order in which nodes are executed, impacting performance and
+     * potentially the effectiveness of other optimizations.
+     */
     public enum SchedulingStrategy {
-        EARLIEST_WITH_GUARD_ORDER,
+
+        /**
+         * Schedules nodes in the earliest possible block. This minimizes the distance between a
+         * node's definition and its usage, reducing register pressure. It can also move nodes out
+         * of loops, decreasing the number of times they are executed. However, if a node is moved
+         * out of a conditional execution (e.g. an if) into the dominating block, it will always be
+         * executed, even if the condition is not satisfied, thereby increasing the number of times
+         * it is executed. In general this effect seems to be greater than the efficiency gains, by
+         * scheduling nodes out of loops.
+         */
         EARLIEST,
+
+        /**
+         * Similar to {@link #EARLIEST}, but preserves the original order of guards. This ensures
+         * that guard-related nodes are not reordered, maintaining the original guarding behavior.
+         */
+        EARLIEST_WITH_GUARD_ORDER,
+
+        /**
+         * Schedules nodes in the latest possible block to minimize unnecessary executions, thereby
+         * reducing register pressure and the number of node executions. However, when sinking a
+         * usage into a loop, this may lead to increased executions and register pressure.
+         *
+         * <p>
+         * Example:
+         * </p>
+         *
+         * <pre>
+         *     b = some calculation
+         *     if (a) {
+         *         some calculation using b
+         *     }
+         *     // no further usages of b
+         * </pre>
+         *
+         * <p>
+         * In this example, deferring the calculation of 'b' until it's actually needed reduces its
+         * execution frequency, resulting in improved performance.
+         * </p>
+         */
         LATEST,
+
+        /**
+         * Similar to {@link #LATEST}, but ensures that nodes are not scheduled into loops. This
+         * balances the benefits of early and late scheduling.
+         */
         LATEST_OUT_OF_LOOPS,
-        LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS;
+
+        /**
+         * Extends {@link #LATEST_OUT_OF_LOOPS} by actively preserving implicit null checks, to
+         * reduce memory access.
+         *
+         * <p>
+         * An implicit null check occurs when a null check is folded into a memory access operation.
+         * For example, accessing a field on a potentially null object reference implicitly checks
+         * for null and throws a NullPointerException if the object is null.
+         *
+         * <pre>
+         *     Consider the following example:
+         *     (1) read(a.length) // implicit null check of 'a'
+         *     (2) read(a.sth) // requires 'a' to be non-null
+         *
+         *     Preserving implicit null checks ensures that (1) remains before (2) in the execution order.
+         *     If (2) is reordered before (1), an additional explicit null check is required before (2).
+         * </pre>
+         *
+         * <p>
+         * This optimization helps reduce the number of null checks required.
+         */
+        LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS,
+
+        /**
+         * This scheduling is run after {@link FinalSchedulePhase} to reduce register pressure or
+         * latency by reordering the nodes within a {@link HIRBlock}.
+         */
+        BASIC_BLOCK_LOCAL_SCHEDULING;
 
         public boolean isEarliest() {
             return this == EARLIEST || this == EARLIEST_WITH_GUARD_ORDER;
@@ -111,6 +187,10 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
         public boolean isLatest() {
             return !isEarliest();
+        }
+
+        public boolean isBasicBlockLocalScheduling() {
+            return this == BASIC_BLOCK_LOCAL_SCHEDULING;
         }
 
         public boolean scheduleOutOfLoops() {
@@ -126,6 +206,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
     private final boolean immutableGraph;
 
+    private final boolean verifyProxies;
+
     public SchedulePhase(OptionValues options) {
         this(false, options);
     }
@@ -139,8 +221,13 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
     }
 
     public SchedulePhase(SchedulingStrategy strategy, boolean immutableGraph) {
+        this(strategy, immutableGraph, true);
+    }
+
+    public SchedulePhase(SchedulingStrategy strategy, boolean immutableGraph, boolean verifyProxies) {
         this.selectedStrategy = strategy;
         this.immutableGraph = immutableGraph;
+        this.verifyProxies = verifyProxies;
     }
 
     /**
@@ -207,6 +294,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
     protected void run(StructuredGraph graph, CoreProviders context) {
         try (NodeEventScope scope = verifyImmutableGraph(graph)) {
             Instance inst = new Instance(context.getLowerer().supportsImplicitNullChecks());
+            inst.verifyProxies = verifyProxies;
             inst.run(graph, selectedStrategy, immutableGraph);
         }
     }
@@ -235,6 +323,14 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         }
     }
 
+    public static void runWithoutContextOptimizations(StructuredGraph graph, SchedulingStrategy strategy, ControlFlowGraph cfg, boolean immutable, boolean verifyProxies) {
+        if (shouldApply(graph, strategy)) {
+            Instance inst = new Instance(cfg, false);
+            inst.verifyProxies = verifyProxies;
+            inst.run(graph, strategy, immutable);
+        }
+    }
+
     public static void run(StructuredGraph graph, SchedulingStrategy strategy, ControlFlowGraph cfg, CoreProviders context, boolean immutable) {
         if (shouldApply(graph, strategy)) {
             Instance inst = new Instance(cfg, context.getLowerer().supportsImplicitNullChecks());
@@ -252,6 +348,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         protected BlockMap<List<Node>> blockToNodesMap;
         protected NodeMap<HIRBlock> nodeToBlockMap;
         protected boolean supportsImplicitNullChecks;
+        private boolean verifyProxies;
 
         public Instance(boolean supportsImplicitNullChecks) {
             this(null, supportsImplicitNullChecks);
@@ -292,7 +389,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
                 assert verifySchedule(cfg, latestBlockToNodesMap, currentNodeMap);
                 assert (!Assertions.detailedAssertionsEnabled(graph.getOptions())) ||
-                                ScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap, currentNodeMap);
+                                ScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap, currentNodeMap, verifyProxies);
 
                 this.blockToNodesMap = latestBlockToNodesMap;
 
@@ -1036,7 +1133,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                 }
             }
 
-            assert (!Assertions.detailedAssertionsEnabled(cfg.graph.getOptions())) || ScheduleVerification.check(cfg.getStartBlock(), blockToNodes, nodeToBlock);
+            assert (!Assertions.detailedAssertionsEnabled(cfg.graph.getOptions())) || ScheduleVerification.check(cfg.getStartBlock(), blockToNodes, nodeToBlock, verifyProxies);
         }
 
         private static void processNodes(NodeBitMap visited, NodeMap<MicroBlock> entries, NodeStack stack, MicroBlock startBlock, Iterable<? extends Node> nodes) {

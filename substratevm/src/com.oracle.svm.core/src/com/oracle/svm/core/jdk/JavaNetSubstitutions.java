@@ -31,12 +31,10 @@ import java.net.URLStreamHandler;
 import java.net.URLStreamHandlerFactory;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
-import java.util.Set;
 
-import jdk.graal.compiler.word.Word;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -55,12 +53,20 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.word.Word;
 import sun.net.NetProperties;
 
 @TargetClass(java.net.URL.class)
@@ -132,12 +138,18 @@ final class DefaultProxySelectorSystemProxiesAccessor {
     }
 }
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 class JavaNetFeature implements InternalFeature {
 
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess access) {
-        Set<String> disabledURLProtocols = new HashSet<>(SubstrateOptions.DisableURLProtocols.getValue().values());
+        EconomicSet<String> disabledURLProtocols = EconomicSet.create(SubstrateOptions.DisableURLProtocols.getValue().values());
 
         JavaNetSubstitutions.defaultProtocols.forEach(protocol -> {
             if (!disabledURLProtocols.contains(protocol)) {
@@ -167,6 +179,7 @@ class JavaNetFeature implements InternalFeature {
 
 }
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 @AutomaticallyRegisteredImageSingleton
 class URLProtocolsSupport {
 

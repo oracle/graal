@@ -33,11 +33,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.nodes.NodeClassMap;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.word.LocationIdentity;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -55,6 +55,7 @@ import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.SVMHost;
@@ -71,6 +72,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
@@ -83,6 +85,7 @@ import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphDecoder;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.NodeClassMap;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -103,7 +106,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
 import jdk.graal.compiler.replacements.nodes.MacroWithExceptionNode;
-import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
+import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaConstant;
@@ -134,13 +137,18 @@ public class RuntimeCompiledMethodSupport {
                     Set<AnalysisMethod> registeredRuntimeCompilations) {
     }
 
-    public static void onCompileQueueCreation(BigBang bb, HostedUniverse hUniverse, CompileQueue compileQueue, HostedProviders hostedProviders,
+    @Fold
+    public static RuntimeCompiledMethodSupport singleton() {
+        return ImageSingletons.lookup(RuntimeCompiledMethodSupport.class);
+    }
+
+    public void onCompileQueueCreation(BigBang bb, HostedUniverse hUniverse, CompileQueue compileQueue, HostedProviders hostedProviders,
                     Function<ConstantFieldProvider, ConstantFieldProvider> constantFieldProviderWrapper,
                     GraalGraphObjectReplacer objectReplacer, Set<AnalysisMethod> registeredRuntimeCompilations, Stream<HostedMethod> methodsToCompile) {
 
         ImageHeapScanner imageScanner = bb.getUniverse().getHeapScanner();
 
-        GraphEncoder graphEncoder = new RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, imageScanner);
+        GraphEncoder graphEncoder = createGraphEncoder(ConfigurationValues.getTarget().arch, imageScanner);
         HostedProviders runtimeCompilationProviders = hostedProviders //
                         .copyWith(constantFieldProviderWrapper.apply(new RuntimeCompilationFieldProvider(hostedProviders.getMetaAccess(), hUniverse))) //
                         .copyWith(new RuntimeCompilationReflectionProvider(bb, hUniverse.hostVM().getClassInitializationSupport()));
@@ -191,6 +199,23 @@ public class RuntimeCompiledMethodSupport {
 
     }
 
+    @SuppressWarnings("unused")
+    protected DeoptimizeOnExceptionPhase getDeoptOnExceptionPhase(Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate) {
+        return null;
+    }
+
+    protected RuntimeCompilationGraphEncoder createGraphEncoder(Architecture architecture, ImageHeapScanner heapScanner) {
+        return new RuntimeCompilationGraphEncoder(architecture, heapScanner);
+    }
+
+    protected RuntimeCompilationGraphDecoder createDecoder(Architecture architecture, StructuredGraph graph, ImageHeapScanner heapScanner) {
+        return new RuntimeCompilationGraphDecoder(architecture, graph, heapScanner);
+    }
+
+    @SuppressWarnings("unused")
+    protected void applyParsingHookPhases(DebugContext debug, StructuredGraph graph, Function<ResolvedJavaMethod, StructuredGraph> buildGraph, CanonicalizerPhase canonicalizer, Providers providers) {
+    }
+
     private static class RuntimeCompileTask implements CompletionExecutor.DebugContextRunnable {
         final HostedMethod method;
         final CompilationState compilationState;
@@ -210,7 +235,6 @@ public class RuntimeCompiledMethodSupport {
             compileRuntimeCompiledMethod(debug);
         }
 
-        @SuppressWarnings("try")
         private void compileRuntimeCompiledMethod(DebugContext debug) {
             assert method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
 
@@ -222,7 +246,7 @@ public class RuntimeCompiledMethodSupport {
 
             AnalysisMethod aMethod = method.getWrapped();
             StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, trackNodeSourcePosition, false,
-                            (arch, analyzedGraph) -> new RuntimeCompilationGraphDecoder(arch, analyzedGraph, compilationState.heapScanner));
+                            (arch, analyzedGraph) -> RuntimeCompiledMethodSupport.singleton().createDecoder(arch, analyzedGraph, compilationState.heapScanner));
             if (graph == null) {
                 throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)"));
             }
@@ -243,7 +267,7 @@ public class RuntimeCompiledMethodSupport {
                 }
             }
 
-            try (DebugContext.Scope s = debug.scope("RuntimeOptimize", graph, method, this)) {
+            try (DebugContext.Scope _ = debug.scope("RuntimeOptimize", graph, method, this)) {
                 CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
                 canonicalizer.apply(graph, compilationState.runtimeCompilationProviders);
 
@@ -276,7 +300,7 @@ public class RuntimeCompiledMethodSupport {
                                 return deoptMethod;
                             }));
 
-            assert verifyNodes(graph);
+            assert RuntimeCompiledMethodSupport.singleton().verifyNodes(graph);
             var previous = compilationState.runtimeGraphs.put(method, graph);
             assert previous == null;
 
@@ -291,7 +315,7 @@ public class RuntimeCompiledMethodSupport {
      * Checks if any illegal nodes are present within the graph. Runtime Compiled methods should
      * never have explicit BytecodeExceptions; instead they should have deoptimizations.
      */
-    static boolean verifyNodes(StructuredGraph graph) {
+    boolean verifyNodes(StructuredGraph graph) {
         for (var node : graph.getNodes()) {
             boolean invalidNodeKind = node instanceof BytecodeExceptionNode || node instanceof ThrowBytecodeExceptionNode;
             assert !invalidNodeKind : "illegal node in graph: " + node + " method: " + graph.method();
@@ -299,7 +323,6 @@ public class RuntimeCompiledMethodSupport {
         return true;
     }
 
-    @SuppressWarnings("try")
     private static void encodeRuntimeCompiledMethods(HostedUniverse hUniverse, CompilationState compilationState) {
         compilationState.graphEncoder.finishPrepare();
 
@@ -311,8 +334,8 @@ public class RuntimeCompiledMethodSupport {
             var method = runtimeInfo.getKey();
             DebugContext debug = new DebugContext.Builder(graph.getOptions(), new GraalDebugHandlersFactory(compilationState.runtimeCompilationProviders.getSnippetReflection())).build();
             graph.resetDebug(debug);
-            try (DebugContext.Scope s = debug.scope("Graph Encoding", graph);
-                            DebugContext.Activation a = debug.activate()) {
+            try (DebugContext.Scope _ = debug.scope("Graph Encoding", graph);
+                            DebugContext.Activation _ = debug.activate()) {
                 long startOffset = compilationState.graphEncoder.encode(graph);
                 compilationState.objectReplacer.createMethod(method).setEncodedGraphStartOffset(startOffset);
             } catch (Throwable ex) {
@@ -321,7 +344,7 @@ public class RuntimeCompiledMethodSupport {
         }
 
         HeapBreakdownProvider.singleton().setGraphEncodingByteLength(compilationState.graphEncoder.getEncoding().length);
-        com.oracle.svm.graal.TruffleRuntimeCompilationSupport.setGraphEncoding(null, compilationState.graphEncoder.getEncoding(), compilationState.graphEncoder.getObjects(),
+        RuntimeCompilationSupport.setGraphEncoding(null, compilationState.graphEncoder.getEncoding(), compilationState.graphEncoder.getObjects(),
                         compilationState.graphEncoder.getNodeClasses());
 
         compilationState.objectReplacer.setMethodsImplementations(hUniverse);
@@ -380,48 +403,34 @@ public class RuntimeCompiledMethodSupport {
     public static class RuntimeCompilationGraphEncoder extends GraphEncoder {
         public static final NodeClassMap RUNTIME_NODE_CLASS_MAP = new NodeClassMap();
 
-        private final ImageHeapScanner heapScanner;
-        /**
-         * Cache already converted location identity objects to avoid creating multiple new
-         * instances for the same underlying location identity.
-         */
-        private final Map<ImageHeapConstant, LocationIdentity> locationIdentityCache;
+        protected final ImageHeapScanner heapScanner;
 
         public RuntimeCompilationGraphEncoder(Architecture architecture, ImageHeapScanner heapScanner) {
             super(architecture, null, RUNTIME_NODE_CLASS_MAP);
             this.heapScanner = heapScanner;
-            this.locationIdentityCache = new ConcurrentHashMap<>();
         }
 
         @Override
         protected GraphDecoder graphDecoderForVerification(StructuredGraph decodedGraph) {
-            return new RuntimeCompilationGraphDecoder(architecture, decodedGraph, heapScanner);
+            return RuntimeCompiledMethodSupport.singleton().createDecoder(architecture, decodedGraph, heapScanner);
         }
 
         @Override
         protected Object replaceObjectForEncoding(Object object) {
             if (object instanceof ImageHeapConstant heapConstant) {
                 return SubstrateGraalUtils.hostedToRuntime(heapConstant, heapScanner.getConstantReflection());
-            } else if (object instanceof ObjectLocationIdentity oli && oli.getObject() instanceof ImageHeapConstant heapConstant) {
-                return locationIdentityCache.computeIfAbsent(heapConstant, (hc) -> ObjectLocationIdentity.create(SubstrateGraalUtils.hostedToRuntime(hc, heapScanner.getConstantReflection())));
             }
             return object;
         }
     }
 
-    static class RuntimeCompilationGraphDecoder extends GraphDecoder {
+    public static class RuntimeCompilationGraphDecoder extends GraphDecoder {
 
-        private final ImageHeapScanner heapScanner;
-        /**
-         * Cache already converted location identity objects to avoid creating multiple new
-         * instances for the same underlying location identity.
-         */
-        private final Map<JavaConstant, LocationIdentity> locationIdentityCache;
+        protected final ImageHeapScanner heapScanner;
 
-        RuntimeCompilationGraphDecoder(Architecture architecture, StructuredGraph graph, ImageHeapScanner heapScanner) {
+        public RuntimeCompilationGraphDecoder(Architecture architecture, StructuredGraph graph, ImageHeapScanner heapScanner) {
             super(architecture, graph);
             this.heapScanner = heapScanner;
-            this.locationIdentityCache = new ConcurrentHashMap<>();
         }
 
         @Override
@@ -429,8 +438,6 @@ public class RuntimeCompiledMethodSupport {
             Object object = super.readObject(methodScope);
             if (object instanceof JavaConstant constant) {
                 return SubstrateGraalUtils.runtimeToHosted(constant, heapScanner);
-            } else if (object instanceof ObjectLocationIdentity oli) {
-                return locationIdentityCache.computeIfAbsent(oli.getObject(), (constant) -> ObjectLocationIdentity.create(SubstrateGraalUtils.runtimeToHosted(constant, heapScanner)));
             }
             return object;
         }
@@ -476,6 +483,11 @@ public class RuntimeCompiledMethodSupport {
         @Override
         protected boolean shouldVerifyFrameStates() {
             return Options.VerifyRuntimeCompilationFrameStates.getValue();
+        }
+
+        @Override
+        protected boolean strictDynamicAccessInferenceIsApplicable() {
+            return false;
         }
     }
 

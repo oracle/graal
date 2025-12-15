@@ -81,6 +81,10 @@ import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
@@ -105,6 +109,7 @@ import jdk.graal.compiler.word.Word;
  * The implementation avoids dirtying the pages of the original, and only referencing what is
  * strictly required.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
     /** Magic value to verify that a located image file matches our loaded image. */
     public static final CGlobalData<Pointer> MAGIC = CGlobalDataFactory.createWord(Word.<Word> signed(ThreadLocalRandom.current().nextLong()));
@@ -229,7 +234,9 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             offset = applyLayerCodePointerPatches(data, offset, layerHeapRelocs, negativeCodeBase);
 
             /* Patch references in the image heap. */
-            applyLayerImageHeapRefPatches(data.add(offset), initialLayerImageHeap);
+            offset = applyLayerImageHeapRefPatches(data, offset, initialLayerImageHeap);
+
+            applyLayerImageHeapFieldUpdatePatches(data, offset, initialLayerImageHeap);
 
             layerSection = layerSection.readWord(ImageLayerSection.getEntryOffset(NEXT_SECTION));
         }
@@ -282,12 +289,17 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         return offset;
     }
 
+    /**
+     * See {@code CrossLayerConstantRegistryFeature#generateRelocationPatchArray} for more details
+     * about the layout.
+     */
     @Uninterruptible(reason = "Thread state not yet set up.")
-    private static void applyLayerImageHeapRefPatches(Pointer patches, Pointer layerImageHeap) {
+    private static int applyLayerImageHeapRefPatches(Pointer patches, int startOffset, Pointer layerImageHeap) {
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-        long countAsLong = patches.readLong(0);
+        int offset = startOffset;
+        long countAsLong = patches.readLong(offset);
         int count = UninterruptibleUtils.NumUtil.safeToInt(countAsLong);
-        int offset = Long.BYTES;
+        offset += Long.BYTES;
         int endOffset = offset + count * Integer.BYTES;
         while (offset < endOffset) {
             int heapOffset = patches.readInt(offset);
@@ -299,6 +311,62 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                 layerImageHeap.writeLong(heapOffset, referenceEncoding);
             }
         }
+        return endOffset;
+    }
+
+    /**
+     * See {@code CrossLayerUpdaterFeature#generateUpdatePatchArray} for more details about the
+     * layout.
+     */
+    @Uninterruptible(reason = "Thread state not yet set up.")
+    private static int applyLayerImageHeapFieldUpdatePatches(Pointer patches, int startOffset, Pointer layerImageHeap) {
+        long countAsLong = patches.readLong(startOffset);
+        if (countAsLong == 0) {
+            // empty - nothing to do
+            return startOffset + Long.BYTES;
+        }
+
+        int headerSize = patches.readInt(startOffset + Long.BYTES);
+
+        int headerOffset = startOffset + Long.BYTES + Integer.BYTES;
+        int headerEndOffset = headerOffset + headerSize;
+
+        // calculate entry offset start
+        int entryOffset = headerEndOffset;
+
+        /* Now update values. */
+        while (headerOffset < headerEndOffset) {
+            // read appropriate slot of header
+            int valueSize = patches.readInt(headerOffset);
+            headerOffset += Integer.BYTES;
+            int numEntries = patches.readInt(headerOffset);
+            headerOffset += Integer.BYTES;
+            for (int j = 0; j < numEntries; j++) {
+                int heapOffset = patches.readInt(entryOffset);
+                entryOffset += Integer.BYTES;
+                switch (valueSize) {
+                    case 1 -> {
+                        byte value = patches.readByte(entryOffset);
+                        layerImageHeap.writeByte(heapOffset, value);
+                        entryOffset += Byte.BYTES;
+                    }
+                    case 4 -> {
+                        int value = patches.readInt(entryOffset);
+                        layerImageHeap.writeInt(heapOffset, value);
+                        entryOffset += Integer.BYTES;
+                    }
+                    case 8 -> {
+                        long value = patches.readLong(entryOffset);
+                        layerImageHeap.writeLong(heapOffset, value);
+                        entryOffset += Long.BYTES;
+                    }
+                    default -> throw VMError.shouldNotReachHereAtRuntime();
+                }
+            }
+        }
+
+        VMError.guarantee((startOffset + Long.BYTES + Integer.BYTES + countAsLong) == entryOffset);
+        return entryOffset;
     }
 
     @Override

@@ -57,7 +57,7 @@ public class InitialLayerCGlobalTracking {
     }
 
     public void registerCGlobal(CGlobalDataImpl<?> data) {
-        toPersistEncodedDataIdx.computeIfAbsent(data, key -> nextIdx.getAndIncrement());
+        toPersistEncodedDataIdx.computeIfAbsent(data, _ -> nextIdx.getAndIncrement());
     }
 
     public int getEncodedIndex(CGlobalDataImpl<?> data) {

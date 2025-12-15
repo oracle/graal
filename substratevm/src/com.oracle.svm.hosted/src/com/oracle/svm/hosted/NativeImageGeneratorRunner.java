@@ -52,7 +52,6 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisError.ParsingError;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.ParallelExecutionException;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
@@ -60,8 +59,10 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
+import com.oracle.svm.core.JavaVersionUtil;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.BasedOnJDKFile;
@@ -75,13 +76,12 @@ import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.graal.compiler.options.OptionValues;
-import com.oracle.svm.core.JavaVersionUtil;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -90,8 +90,10 @@ import jdk.vm.ci.runtime.JVMCI;
 
 public class NativeImageGeneratorRunner {
 
-    private volatile NativeImageGenerator generator;
+    public static final String NATIVE_IMAGE_MODULE_PREFIX = "org.graalvm.nativeimage.";
     public static final String IMAGE_BUILDER_ARG_FILE_OPTION = "--image-args-file=";
+
+    private volatile NativeImageGenerator generator;
 
     public enum BuildOutcome {
         SUCCESSFUL,
@@ -189,11 +191,7 @@ public class NativeImageGeneratorRunner {
 
     private static void checkBootModuleDependencies(boolean verbose) {
         Set<Module> allModules = ModuleLayer.boot().modules();
-        List<Module> builderModules = allModules.stream().filter(m -> m.isNamed() && m.getName().startsWith("org.graalvm.nativeimage.")).toList();
-        Set<Module> transitiveBuilderModules = new LinkedHashSet<>();
-        for (Module svmModule : builderModules) {
-            transitiveReaders(svmModule, allModules, transitiveBuilderModules);
-        }
+        Set<Module> transitiveBuilderModules = getNativeImageBuilderModules();
         if (verbose) {
             System.out.println(transitiveBuilderModules.stream()
                             .map(Module::getName)
@@ -232,6 +230,28 @@ public class NativeImageGeneratorRunner {
         if (!unexpectedBuilderDependencies.isEmpty()) {
             throw VMError.shouldNotReachHere("Unexpected image builder module-dependencies: " + String.join(", ", unexpectedBuilderDependencies));
         }
+    }
+
+    /**
+     * Returns what are considered native-image builder modules: those are the modules with prefix
+     * {@value NativeImageGeneratorRunner#NATIVE_IMAGE_MODULE_PREFIX} and their reader modules.
+     */
+    public static Set<Module> getNativeImageBuilderModules() {
+        final var allModules = ModuleLayer.boot().modules();
+        List<Module> builderModules = new ArrayList<>(allModules.size());
+        for (Module m : allModules) {
+            if (m.isNamed()) {
+                if (m.getName().startsWith(NATIVE_IMAGE_MODULE_PREFIX)) {
+                    builderModules.add(m);
+                }
+            }
+        }
+
+        Set<Module> transitiveBuilderModules = new LinkedHashSet<>();
+        for (Module svmModule : builderModules) {
+            transitiveReaders(svmModule, allModules, transitiveBuilderModules);
+        }
+        return transitiveBuilderModules;
     }
 
     public static void transitiveReaders(Module readModule, Set<Module> potentialReaders, Set<Module> actualReaders) {
@@ -386,7 +406,6 @@ public class NativeImageGeneratorRunner {
         return OS.LINUX.isCurrent() || OS.DARWIN.isCurrent() || OS.WINDOWS.isCurrent();
     }
 
-    @SuppressWarnings("try")
     private int buildImage(ImageClassLoader classLoader) {
         if (!verifyValidJavaVersionAndPlatform()) {
             return ExitStatus.BUILDER_ERROR.getValue();
@@ -407,9 +426,9 @@ public class NativeImageGeneratorRunner {
         ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
         Throwable unhandledThrowable = null;
         BuildOutcome buildOutcome = BuildOutcome.FAILED;
-        try (StopTimer ignored = totalTimer.start()) {
+        try (StopTimer _ = totalTimer.start()) {
             Timer classlistTimer = timerCollection.get(TimerCollection.Registry.CLASSLIST);
-            try (StopTimer ignored1 = classlistTimer.start()) {
+            try (StopTimer _ = classlistTimer.start()) {
                 classLoader.loadAllClasses();
             }
             if (imageName.length() == 0) {
@@ -427,9 +446,9 @@ public class NativeImageGeneratorRunner {
                 if (isStaticExecutable && isSharedLibrary) {
                     reportConflictingOptions(SubstrateOptions.SharedLibrary, SubstrateOptions.StaticExecutable);
                 } else if (isStaticExecutable && layerCreateOptionEnabled) {
-                    reportConflictingOptions(SubstrateOptions.StaticExecutable, SubstrateOptions.LayerCreate);
+                    reportConflictingOptions(SubstrateOptions.StaticExecutable, LayeredImageOptions.LayerCreate);
                 } else if (isSharedLibrary && layerCreateOptionEnabled) {
-                    reportConflictingOptions(SubstrateOptions.SharedLibrary, SubstrateOptions.LayerCreate);
+                    reportConflictingOptions(SubstrateOptions.SharedLibrary, LayeredImageOptions.LayerCreate);
                 } else if (isSharedLibrary) {
                     imageKind = NativeImageKind.SHARED_LIBRARY;
                 } else if (layerCreateOptionEnabled) {
@@ -587,15 +606,9 @@ public class NativeImageGeneratorRunner {
                     hasUserError = true;
                 }
             }
-            if (hasUserError) {
-                return ExitStatus.BUILDER_ERROR.getValue();
-            }
 
-            if (pee.getExceptions().size() > 1) {
-                System.out.println(pee.getExceptions().size() + " fatal errors detected:");
-            }
-            for (Throwable exception : pee.getExceptions()) {
-                NativeImageGeneratorRunner.reportFatalError(exception);
+            if (!hasUserError) {
+                unhandledThrowable = pee;
             }
             return ExitStatus.BUILDER_ERROR.getValue();
         } catch (Throwable e) {
@@ -759,41 +772,5 @@ public class NativeImageGeneratorRunner {
 
     public int build(ImageClassLoader imageClassLoader) {
         return buildImage(imageClassLoader);
-    }
-
-    /**
-     * Command line entry point when running on JDK9+. This is required to dynamically export Graal
-     * to SVM and it requires {@code --add-exports=java.base/jdk.internal.module=ALL-UNNAMED} to be
-     * on the VM command line.
-     *
-     * Note: This is a workaround until GR-16855 is resolved.
-     */
-    public static class JDK9Plus {
-
-        public static void main(String[] args) {
-            setModuleAccesses();
-            NativeImageGeneratorRunner.main(args);
-        }
-
-        public static void setModuleAccesses() {
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.word");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.nativeimage");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.collections");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.polyglot");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.truffle");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.ci");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.graal.compiler");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "jdk.graal.compiler.management");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "com.oracle.graal.graal_enterprise");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.loader");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.misc");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.text.spi");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.reflect.annotation");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.security.jca");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.jdeps", "com.sun.tools.classfile");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.truffle.runtime");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.truffle.compiler");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "com.oracle.truffle.enterprise");
-        }
     }
 }

@@ -282,6 +282,11 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
     public abstract boolean isLoopHeader();
 
     /**
+     * This basic block is marked as a candidate for threaded switch optimization.
+     */
+    public abstract boolean mayEmitThreadedCode();
+
+    /**
      * If this block {@linkplain #isLoopHeader() is a loop header}, returns the number of the loop's
      * backedges. Note that due to control flow optimizations after computing loops this value may
      * differ from that computed via {@link #getLoop()}. Returns -1 if this is not a loop header.

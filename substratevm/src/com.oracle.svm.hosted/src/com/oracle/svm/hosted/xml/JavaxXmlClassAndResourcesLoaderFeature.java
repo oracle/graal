@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
@@ -79,7 +80,7 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
      * XMLSecurityManager#prepareCatalog (JDK-8350189).
      */
     private static void initializeJdkCatalog() {
-        if (ModuleLayer.boot().findModule("java.xml").isPresent()) {
+        if (JVMCIReflectionUtil.bootModuleLayer().findModule("java.xml").isPresent()) {
             // Ensure the JdkXmlConfig$CatalogHolder#catalog field is initialized.
             Class<?> xmlSecurityManager = ReflectionUtil.lookupClass(false, "jdk.xml.internal.JdkXmlConfig$CatalogHolder");
             // The constructor call prepareCatalog which will call JdkCatalog#init.

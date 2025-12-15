@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -38,24 +38,49 @@
 ;; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ;; SOFTWARE.
 ;;
-(module
+(module $fibonacci.wasm
   (type (;0;) (func (param i32)))
   (type (;1;) (func))
-  (type (;2;) (func (param i32) (result i32)))
-  (type (;3;) (func (result i32)))
+  (type (;2;) (func (result f64)))
+  (type (;3;) (func (param i32) (result i32)))
+  (type (;4;) (func (result i32)))
   (import "wasi_snapshot_preview1" "proc_exit" (func $__imported_wasi_snapshot_preview1_proc_exit (type 0)))
+  (func $__wasm_call_ctors (type 1))
   (func $_start (type 1)
     (local i32)
     block  ;; label = @1
-      call $__original_main
-      local.tee 0
-      i32.eqz
-      br_if 0 (;@1;)
-      local.get 0
-      call $exit
+      block  ;; label = @2
+        global.get $GOT.data.internal.__memory_base
+        i32.const 1028
+        i32.add
+        i32.load
+        br_if 0 (;@2;)
+        global.get $GOT.data.internal.__memory_base
+        i32.const 1028
+        i32.add
+        i32.const 1
+        i32.store
+        call $__wasi_init_tp
+        call $__wasm_call_ctors
+        call $__original_main
+        local.set 0
+        call $__wasm_call_dtors
+        local.get 0
+        br_if 1 (;@1;)
+        return
+      end
       unreachable
-    end)
-  (func $fibonacci (type 2) (param i32) (result i32)
+    end
+    local.get 0
+    call $__wasi_proc_exit
+    unreachable)
+  (func $OutlierRemovalAverageSummary (type 1))
+  (func $OutlierRemovalAverageSummaryLowerThreshold (type 2) (result f64)
+    f64.const 0x0p+0 (;=0;))
+  (func $OutlierRemovalAverageSummaryUpperThreshold (type 2) (result f64)
+    f64.const 0x1.999999999999ap-2 (;=0.4;))
+  (func $setup (type 1))
+  (func $fibonacci (type 3) (param i32) (result i32)
     (local i32)
     i32.const 1
     local.set 1
@@ -96,12 +121,12 @@
       local.set 1
     end
     local.get 1)
-  (func $run (type 3) (result i32)
+  (func $run (type 4) (result i32)
     i32.const 31
     call $fibonacci
     i32.const 1346269
     i32.ne)
-  (func $__original_main (type 3) (result i32)
+  (func $__original_main (type 4) (result i32)
     i32.const 31
     call $fibonacci
     i32.const 1346269
@@ -110,29 +135,82 @@
     local.get 0
     call $__imported_wasi_snapshot_preview1_proc_exit
     unreachable)
-  (func $_Exit (type 0) (param i32)
+  (func $__wasi_init_tp (type 1)
+    (local i32 i32)
+    i32.const 0
+    i32.const 1036
+    i32.store offset=1036
+    i32.const 66688
+    local.set 0
+    block  ;; label = @1
+      block  ;; label = @2
+        i32.const 66688
+        i32.eqz
+        br_if 0 (;@2;)
+        i32.const 66688
+        i32.const 1152
+        i32.sub
+        local.set 1
+        br 1 (;@1;)
+      end
+      global.get $__stack_pointer
+      local.set 1
+      i32.const 66688
+      i32.const 1144
+      i32.sub
+      i32.const 1024
+      local.get 1
+      i32.const 1024
+      i32.gt_u
+      local.tee 0
+      select
+      local.set 1
+      i32.const 66688
+      i32.const 1024
+      local.get 0
+      select
+      local.set 0
+    end
+    i32.const 56
+    i32.const 0
+    i32.store offset=1036
+    i32.const 52
+    local.get 1
+    i32.store offset=1036
+    i32.const 48
     local.get 0
-    call $__wasi_proc_exit
-    unreachable)
+    i32.store offset=1036
+    i32.const 8
+    i32.const 1036
+    i32.store offset=1036
+    i32.const 4
+    i32.const 1036
+    i32.store offset=1036
+    i32.const 12
+    i32.const 0
+    i32.load offset=1032
+    i32.store offset=1036
+    i32.const 0
+    local.get 1
+    i32.const 8388608
+    local.get 1
+    i32.const 8388608
+    i32.lt_u
+    select
+    i32.store offset=1024)
   (func $dummy (type 1))
   (func $__wasm_call_dtors (type 1)
     call $dummy
     call $dummy)
-  (func $exit (type 0) (param i32)
-    call $dummy
-    call $dummy
-    local.get 0
-    call $_Exit
-    unreachable)
-  (func $_start.command_export (type 1)
-    call $_start
-    call $__wasm_call_dtors)
-  (func $run.command_export (type 3) (result i32)
-    call $run
-    call $__wasm_call_dtors)
   (table (;0;) 1 1 funcref)
   (memory (;0;) 2)
-  (global $__stack_pointer (mut i32) (i32.const 66560))
+  (global $__stack_pointer (mut i32) (i32.const 66688))
+  (global $GOT.data.internal.__memory_base i32 (i32.const 0))
   (export "memory" (memory 0))
-  (export "_start" (func $_start.command_export))
-  (export "run" (func $run.command_export)))
+  (export "_start" (func $_start))
+  (export "OutlierRemovalAverageSummary" (func $OutlierRemovalAverageSummary))
+  (export "OutlierRemovalAverageSummaryLowerThreshold" (func $OutlierRemovalAverageSummaryLowerThreshold))
+  (export "OutlierRemovalAverageSummaryUpperThreshold" (func $OutlierRemovalAverageSummaryUpperThreshold))
+  (export "setup" (func $setup))
+  (export "run" (func $run))
+  (data $.data (i32.const 1024) "\00\00\02\00"))

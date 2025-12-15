@@ -50,7 +50,6 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.reports.ReportUtils;
@@ -62,8 +61,10 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.core.common.ContextClassLoaderScope;
 import jdk.graal.compiler.java.LambdaUtils;
@@ -107,7 +108,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * build-time initialized class reference image heap values that were copied from the corresponding
  * fields in the hosting VM.
  */
-public class ClassInitializationSupport implements RuntimeClassInitializationSupport {
+public class ClassInitializationSupport implements JVMCIRuntimeClassInitializationSupport {
 
     /**
      * Setup for class initialization: configured through features and command line input. It
@@ -266,17 +267,27 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
     }
 
     /**
+     * Returns {@code true} if the provided type is registered to be initialized at build time.
+     * <p>
+     * In contrast to {@link #maybeInitializeAtBuildTime}, this method <b>does not</b> perform the
+     * class initialization as a side effect, which makes it useful in cases where one wants to only
+     * check the configuration without performing the actual initialization.
+     */
+    public boolean shouldInitializeAtBuildTime(ResolvedJavaType type) {
+        return specifiedInitKindFor(OriginalClassProvider.getJavaClass(type)) == InitKind.BUILD_TIME;
+    }
+
+    /**
      * Ensure class is initialized. Report class initialization errors in a user-friendly way if
      * class initialization fails.
      */
-    @SuppressWarnings("try")
     InitKind ensureClassInitialized(Class<?> clazz, boolean allowErrors) {
         ClassLoader libGraalLoader = (ClassLoader) loader.classLoaderSupport.getLibGraalLoader();
         ClassLoader cl = clazz.getClassLoader();
         // Graal and JVMCI make use of ServiceLoader which uses the
         // context class loader so it needs to be the libgraal loader.
         ClassLoader libGraalCCL = libGraalLoader == cl ? cl : null;
-        try (var ignore = new ContextClassLoaderScope(libGraalCCL)) {
+        try (var _ = new ContextClassLoaderScope(libGraalCCL)) {
             loader.watchdog.recordActivity();
             /*
              * This can run arbitrary user code, i.e., it can deadlock or get stuck in an endless
@@ -336,6 +347,12 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
     }
 
     @Override
+    public void initializeAtRunTime(ResolvedJavaType aType, String reason) {
+        // GR-71807: reverse this so that the Class variant calls the ResolvedJavaType version
+        initializeAtRunTime(OriginalClassProvider.getJavaClass(aType), reason);
+    }
+
+    @Override
     public void initializeAtRunTime(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
         Class<?> clazz = loader.findClass(name).get();
@@ -345,6 +362,12 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
         } else {
             classInitializationConfiguration.insert(name, InitKind.RUN_TIME, reason, false);
         }
+    }
+
+    @Override
+    public void initializeAtBuildTime(ResolvedJavaType aType, String reason) {
+        // GR-71807: reverse this so that the Class variant calls the ResolvedJavaType version
+        initializeAtBuildTime(OriginalClassProvider.getJavaClass(aType), reason);
     }
 
     @Override

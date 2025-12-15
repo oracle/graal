@@ -53,6 +53,11 @@ CLSS public abstract interface java.util.function.Consumer<%0 extends java.lang.
 meth public abstract void accept({java.util.function.Consumer%0})
 meth public java.util.function.Consumer<{java.util.function.Consumer%0}> andThen(java.util.function.Consumer<? super {java.util.function.Consumer%0}>)
 
+CLSS public abstract interface !annotation jdk.internal.vm.annotation.AOTSafeClassInitializer
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+
 CLSS public final org.graalvm.polyglot.tck.InlineSnippet
 innr public final static Builder
 meth public java.lang.CharSequence getCode()

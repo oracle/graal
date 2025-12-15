@@ -47,8 +47,8 @@ import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.nodes.amd64.IntegerToOpMaskNode;
 import jdk.graal.compiler.vector.nodes.amd64.OpMaskToIntegerNode;
 import jdk.graal.compiler.vector.nodes.simd.LogicValueStamp;
-import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
 import jdk.graal.compiler.vector.nodes.simd.SimdCompressNode;
+import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
 import jdk.graal.compiler.vector.nodes.simd.SimdExpandNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIOperations;
@@ -85,7 +85,7 @@ public class VectorAPICompressExpandOpNode extends VectorAPIMacroNode implements
 
     protected VectorAPICompressExpandOpNode(MacroParams macroParams, SimdStamp vectorStamp, SimdConstant constantValue, FrameState stateAfter) {
         super(TYPE, macroParams, constantValue);
-        this.vectorStamp = vectorStamp;
+        this.vectorStamp = maybeConstantVectorStamp(vectorStamp, constantValue);
         this.stateAfter = stateAfter;
     }
 

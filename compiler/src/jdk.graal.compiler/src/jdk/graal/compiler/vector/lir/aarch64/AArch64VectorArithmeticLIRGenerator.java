@@ -344,33 +344,41 @@ public class AArch64VectorArithmeticLIRGenerator extends AArch64ArithmeticLIRGen
     }
 
     @Override
-    public Value emitMathMax(Value a, Value b) {
+    public Value emitMathMax(LIRKind cmpKind, Value a, Value b) {
         if (isVectorKind(a)) {
             return emitVectorBinary(isVectorNumericInteger(a) ? SMAX : FMAX, a, b);
         } else {
-            return super.emitMathMax(a, b);
+            return super.emitMathMax(cmpKind, a, b);
         }
     }
 
     @Override
-    public Value emitMathMin(Value a, Value b) {
+    public Value emitMathMin(LIRKind cmpKind, Value a, Value b) {
         if (isVectorKind(a)) {
             return emitVectorBinary(isVectorNumericInteger(a) ? SMIN : FMIN, a, b);
         } else {
-            return super.emitMathMin(a, b);
+            return super.emitMathMin(cmpKind, a, b);
         }
     }
 
     @Override
-    public Value emitMathUnsignedMax(Value a, Value b) {
-        GraalError.guarantee(isVectorKind(a) && isVectorNumericInteger(a), "unsigned max only supported on integer vectors");
-        return emitVectorBinary(UMAX, a, b);
+    public Value emitMathUnsignedMax(LIRKind cmpKind, Value a, Value b) {
+        if (isVectorKind(a)) {
+            GraalError.guarantee(isVectorKind(a) && isVectorNumericInteger(a), "unsigned max only supported on integer vectors");
+            return emitVectorBinary(UMAX, a, b);
+        } else {
+            return super.emitMathUnsignedMax(cmpKind, a, b);
+        }
     }
 
     @Override
-    public Value emitMathUnsignedMin(Value a, Value b) {
-        GraalError.guarantee(isVectorKind(a) && isVectorNumericInteger(a), "unsigned min only supported on integer vectors");
-        return emitVectorBinary(UMIN, a, b);
+    public Value emitMathUnsignedMin(LIRKind cmpKind, Value a, Value b) {
+        if (isVectorKind(a)) {
+            GraalError.guarantee(isVectorKind(a) && isVectorNumericInteger(a), "unsigned min only supported on integer vectors");
+            return emitVectorBinary(UMIN, a, b);
+        } else {
+            return super.emitMathUnsignedMin(cmpKind, a, b);
+        }
     }
 
     @Override
@@ -678,9 +686,19 @@ public class AArch64VectorArithmeticLIRGenerator extends AArch64ArithmeticLIRGen
     }
 
     @Override
-    public Value emitVectorToBitMask(LIRKind resultKind, Value vector) {
+    public Value emitVectorToBitMask(LIRKind resultKind, Value vector, boolean inputIsMask) {
         Variable result = getLIRGen().newVariable(resultKind);
-        getLIRGen().append(new AArch64ASIMDMove.VectorToBitMask(getLIRGen(), result, asAllocatable(vector)));
+        AllocatableValue maskVector;
+        if (!inputIsMask) {
+            /* Turn it into a mask by copying the sign bit to all bits. */
+            AArch64Kind vecKind = (AArch64Kind) vector.getPlatformKind();
+            ElementSize eSize = ElementSize.fromKind(vecKind.getScalar());
+            maskVector = getLIRGen().newVariable(vector.getValueKind());
+            getLIRGen().append(new AArch64ArithmeticOp.ASIMDBinaryConstOp(ASR, maskVector, asAllocatable(vector), JavaConstant.forLong(eSize.bits() - 1)));
+        } else {
+            maskVector = asAllocatable(vector);
+        }
+        getLIRGen().append(new AArch64ASIMDMove.VectorToBitMask(getLIRGen(), result, maskVector));
         return result;
     }
 

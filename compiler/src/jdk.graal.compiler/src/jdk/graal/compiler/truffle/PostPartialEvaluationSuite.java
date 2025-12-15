@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,19 @@
  */
 package jdk.graal.compiler.truffle;
 
+import java.util.Optional;
+
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.Phase;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
+import jdk.graal.compiler.phases.common.InsertProxyPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.truffle.phases.FrameAccessVerificationPhase;
 import jdk.graal.compiler.truffle.phases.PhiTransformPhase;
@@ -39,9 +44,38 @@ import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 
 public class PostPartialEvaluationSuite extends PhaseSuite<TruffleTierContext> {
 
+    static class PEMarkingPhase extends Phase {
+
+        @Override
+        public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+            return ALWAYS_APPLICABLE;
+        }
+
+        @Override
+        protected void run(StructuredGraph graph) {
+            // nothing to do
+        }
+
+        @Override
+        public void updateGraphState(GraphState graphState) {
+            if (graphState.isBeforeStage(GraphState.StageFlag.PARTIAL_EVALUATION)) {
+                graphState.setAfterStage(GraphState.StageFlag.PARTIAL_EVALUATION);
+            }
+        }
+
+        @Override
+        public CharSequence getName() {
+            return "PEMarkingPhase";
+        }
+    }
+
+    private static final PEMarkingPhase MARKING_PHASE = new PEMarkingPhase();
+
     @SuppressWarnings("this-escape")
     public PostPartialEvaluationSuite(OptionValues optionValues, boolean iterativePartialEscape) {
+        appendPhase(MARKING_PHASE);
         CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
+        appendPhase(new InsertProxyPhase());
         appendPhase(new ConvertDeoptimizeToGuardPhase(canonicalizerPhase));
         appendPhase(new InlineReplacementsPhase());
         appendPhase(canonicalizerPhase);

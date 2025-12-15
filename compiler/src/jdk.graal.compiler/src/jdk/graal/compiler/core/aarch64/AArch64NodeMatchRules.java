@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,6 @@ import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
-import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.gen.NodeMatchRules;
 import jdk.graal.compiler.core.match.ComplexMatchResult;
 import jdk.graal.compiler.core.match.MatchRule;
@@ -58,7 +57,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.BinaryNode;
-import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
@@ -890,19 +888,6 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         if (y.isJavaConstant() && (0 == y.asJavaConstant().asLong()) && lessNode.condition().equals(CanonicalCondition.LT)) {
             return emitBitTestAndBranch(root.falseSuccessor(), root.trueSuccessor(), x,
                             1.0 - root.getTrueSuccessorProbability(), x.getStackKind().getBitCount() - 1);
-        }
-        return null;
-    }
-
-    /**
-     * Goal: Use directly AArch64's single-precision fsqrt op.
-     */
-    @MatchRule("(FloatConvert=a (Sqrt (FloatConvert=b c)))")
-    public final ComplexMatchResult floatSqrt(FloatConvertNode a, FloatConvertNode b, ValueNode c) {
-        if (isNumericFloat(a, c)) {
-            if (a.getFloatConvert() == FloatConvert.D2F && b.getFloatConvert() == FloatConvert.F2D) {
-                return builder -> getArithmeticLIRGenerator().emitMathSqrt(operand(c));
-            }
         }
         return null;
     }

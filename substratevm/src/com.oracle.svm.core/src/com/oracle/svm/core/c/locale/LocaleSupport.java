@@ -36,10 +36,21 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.c.locale.LocaleSupport.LayeredCallbacks;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.UserSystemProperty;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
@@ -61,8 +72,11 @@ import jdk.graal.compiler.word.Word;
  * Note that the JavaDoc of {@link java.util.Locale} explains commonly used terms such as script,
  * display, format, variant, and extensions.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredImageSingleton
 public class LocaleSupport {
+    private static final String LOCALE = "locale";
+
     private static final CGlobalData<Pointer> STATE = CGlobalDataFactory.createWord(State.UNINITIALIZED);
 
     private LocaleData locale;
@@ -198,5 +212,31 @@ public class LocaleSupport {
         static final UnsignedWord INITIALIZING = Word.unsigned(1);
         static final UnsignedWord SUCCESS = Word.unsigned(2);
         static final UnsignedWord OUT_OF_MEMORY = Word.unsigned(3);
+    }
+
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            var action = new SingletonLayeredCallbacks<LocaleSupport>() {
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LocaleSupport singleton) {
+                    writer.writeString(LOCALE, getLocaleString(singleton.locale));
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
+                }
+
+                @Override
+                public void onSingletonRegistration(ImageSingletonLoader loader, LocaleSupport singleton) {
+                    String previousLocale = loader.readString(LOCALE);
+                    String currentLocale = getLocaleString(singleton.locale);
+                    VMError.guarantee(currentLocale.equals(previousLocale),
+                                    "The locale data should be consistent across layers. The previous layer locale data were %s, but the locale data are %s", previousLocale, currentLocale);
+                }
+
+                private static String getLocaleString(LocaleData localeData) {
+                    return localeData == null ? "null" : localeData.toString();
+                }
+            };
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+        }
     }
 }

@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "7.55.2",
+    "mxversion": "7.65.0",
     "name": "web-image",
     "versionConflictResolution": "latest",
     "version": "1.0",
@@ -13,6 +13,7 @@ suite = {
             },
         ]
     },
+    "capture_suite_commit_info": False,
     "libraries": {
         # ------------- Libraries -------------
         "GOOGLE_CLOSURE": {
@@ -100,13 +101,20 @@ suite = {
                 "java.base": [
                     "sun.nio.ch",
                     "sun.security.provider",
+                    "sun.util.calendar",
                     "jdk.internal.misc",
                     "jdk.internal.util",
                 ],
-                "jdk.internal.vm.ci": ["jdk.vm.ci.code.site", "jdk.vm.ci.code", "jdk.vm.ci.common", "jdk.vm.ci.meta"],
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.code.site",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.common",
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
+                ],
             },
             "javaCompliance": "21+",
-            "spotbugs": "true",
+            "spotbugs": "false",  # depends on SVM which has compliance level 24 which SpotBugs does not support
             "workingSets": "web-image",
             "checkstyleVersion": "10.21.0",
             "annotationProcessors": [
@@ -125,7 +133,7 @@ suite = {
             "dependencies": [],
             "requires": ["jdk.httpserver"],
             "javaCompliance": "21+",
-            "spotbugs": "true",
+            "spotbugs": "false",  # depends on SVM which has compliance level 24 which SpotBugs does not support
             "workingSets": "web-image",
             "annotationProcessors": ["compiler:GRAAL_PROCESSOR"],
             "checkstyle": "com.oracle.svm.webimage",
@@ -138,7 +146,7 @@ suite = {
                 "substratevm:SVM_DRIVER",
             ],
             "javaCompliance": "21+",
-            "spotbugs": "true",
+            "spotbugs": "false",  # depends on SVM which has compliance level 24 which SpotBugs does not support
             "workingSets": "web-image",
             "annotationProcessors": ["compiler:GRAAL_PROCESSOR"],
             "checkstyle": "com.oracle.svm.webimage",
@@ -162,7 +170,7 @@ suite = {
                 ],
             },
             "javaCompliance": "21+",
-            "spotbugs": "false",
+            "spotbugs": "false",  # depends on SVM which has compliance level 24 which SpotBugs does not support
             "workingSets": "web-image",
             "testProject": True,
             "checkstyle": "com.oracle.svm.webimage",
@@ -185,15 +193,17 @@ suite = {
                 "java.compiler",
             ],
             "requiresConcealed": {
-                "java.base": [
-                    "sun.nio.ch",
-                    "sun.security.provider",
-                    "jdk.internal.reflect",
+                "java.base": ["sun.nio.ch", "sun.security.provider", "jdk.internal.reflect"],
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.code.site",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.common",
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ],
-                "jdk.internal.vm.ci": ["jdk.vm.ci.code.site", "jdk.vm.ci.code", "jdk.vm.ci.common", "jdk.vm.ci.meta"],
             },
             "javaCompliance": "21+",
-            "spotbugs": "true",
+            "spotbugs": "false",  # depends on SVM which has compliance level 24 which SpotBugs does not support
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "substratevm:SVM_PROCESSOR",
@@ -213,7 +223,7 @@ suite = {
                 "java.logging",
             ],
             "javaCompliance": "21+",
-            "spotbugs": "true",
+            "spotbugs": "false",  # depends on SVM which has compliance level 24 which SpotBugs does not support
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "substratevm:SVM_PROCESSOR",
@@ -252,11 +262,12 @@ suite = {
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ],
             },
             "javaCompliance": "21+",
             "workingSets": "web-image",
-            "spotbugs": "true",
+            "spotbugs": "false",  # depends on SVM which has compliance level 24 which SpotBugs does not support
             "checkstyle": "com.oracle.svm.hosted",
             "checkPackagePrefix": False,
         },

@@ -34,8 +34,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.Predicate;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -65,6 +66,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 /**
  * This abstract class defines the functionality that the hosting VM must support.
@@ -96,7 +98,7 @@ public abstract class HostVM {
 
     /**
      * Check if the provided object is a relocated pointer.
-     * 
+     *
      * @param constant the constant to check
      */
     public boolean isRelocatedPointer(JavaConstant constant) {
@@ -105,7 +107,7 @@ public abstract class HostVM {
 
     /**
      * Hook for handling foreign calls.
-     * 
+     *
      * @param foreignCallDescriptor the foreign call descriptor
      * @param foreignCallsProvider the foreign calls provider
      * @return the {@link AnalysisMethod} modeling the foreign call, if supported
@@ -140,7 +142,7 @@ public abstract class HostVM {
 
     /**
      * Register newly created type.
-     * 
+     *
      * @param newValue the type to register
      */
     public void registerType(AnalysisType newValue) {
@@ -157,7 +159,7 @@ public abstract class HostVM {
 
     /**
      * Run additional checks on a type before the corresponding {@link AnalysisType} is created.
-     * 
+     *
      * @param type the hosted type
      * @param universe the analysis universe
      */
@@ -166,7 +168,7 @@ public abstract class HostVM {
 
     /**
      * Run initialization tasks for a newly created {@link AnalysisType}.
-     * 
+     *
      * @param newValue the type to initialize
      */
     public abstract void onTypeReachable(BigBang bb, AnalysisType newValue);
@@ -180,7 +182,7 @@ public abstract class HostVM {
     public void onTypeInstantiated(BigBang bb, AnalysisType type) {
     }
 
-    public boolean isCoreType(@SuppressWarnings("unused") AnalysisType type) {
+    public boolean isCoreType(@SuppressWarnings("unused") ResolvedJavaType type) {
         return false;
     }
 
@@ -196,7 +198,7 @@ public abstract class HostVM {
     /**
      * Hook to change the {@link GraphBuilderConfiguration} used for parsing a method during
      * analysis.
-     * 
+     *
      * @param config The default configuration used by the static analysis.
      * @param method The method that is going to be parsed with the returned configuration.
      * @return The updated configuration for the method.
@@ -306,15 +308,20 @@ public abstract class HostVM {
 
     /**
      * Check if the element is supported on current platform.
-     * 
+     *
      * @param element the {@link AnnotatedElement} to check
      */
     public boolean platformSupported(AnnotatedElement element) {
         return true;
     }
 
-    public boolean sortFields() {
-        return false;
+    /**
+     * Check if the element is supported on current platform.
+     *
+     * @param element the {@link Annotated} to check
+     */
+    public boolean platformSupported(Annotated element) {
+        return true;
     }
 
     public void clearInThread() {
@@ -422,6 +429,11 @@ public abstract class HostVM {
         return true;
     }
 
+    /** Returns true for fields that should be always closed, even in an open-world analysis. */
+    public boolean isAlwaysClosedField(@SuppressWarnings("unused") ResolvedJavaField field) {
+        return true;
+    }
+
     public boolean isClosedTypeWorld() {
         return true;
     }
@@ -435,6 +447,10 @@ public abstract class HostVM {
     }
 
     public boolean buildingImageLayer() {
+        return false;
+    }
+
+    public boolean buildingInitialLayer() {
         return false;
     }
 
@@ -454,6 +470,24 @@ public abstract class HostVM {
     @SuppressWarnings("unused")
     public boolean preventConstantFolding(AnalysisField aField) {
         return false;
+    }
+
+    public EconomicSet<Module> getSharedLayerForbiddenModules() {
+        return EconomicSet.create();
+    }
+
+    public abstract String loaderName(AnalysisType type);
+
+    public static String loaderName(ClassLoader loader) {
+        if (loader == null) {
+            return "null";
+        }
+        var loaderName = loader.getName();
+        if (loaderName == null || loaderName.isBlank()) {
+            return loader.getClass().getName();
+        } else {
+            return loaderName;
+        }
     }
 
     /**
@@ -550,8 +584,8 @@ public abstract class HostVM {
     /**
      * Returns the function Strengthen Graphs should use to improve types based on analysis results.
      */
-    public Function<AnalysisType, ResolvedJavaType> getStrengthenGraphsToTargetFunction(@SuppressWarnings("unused") MultiMethod.MultiMethodKey key) {
-        return (t) -> t;
+    public Predicate<AnalysisType> getStrengthenGraphsTypePredicate(@SuppressWarnings("unused") MultiMethod.MultiMethodKey key) {
+        return (t) -> true;
     }
 
     public boolean allowConstantFolding(AnalysisMethod method) {

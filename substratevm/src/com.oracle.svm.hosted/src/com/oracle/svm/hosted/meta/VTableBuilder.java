@@ -28,12 +28,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -63,10 +62,10 @@ public final class VTableBuilder {
         VTableBuilder builder = new VTableBuilder(hUniverse, hMetaAccess);
         if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
             builder.buildClosedTypeWorldVTables();
-            hUniverse.methods.forEach((k, v) -> v.finalizeIndirectCallVTableIndex());
+            hUniverse.methods.forEach((_, v) -> v.finalizeIndirectCallVTableIndex());
         } else {
             builder.buildOpenTypeWorldDispatchTables();
-            hUniverse.methods.forEach((k, v) -> v.finalizeIndirectCallVTableIndex());
+            hUniverse.methods.forEach((_, v) -> v.finalizeIndirectCallVTableIndex());
             assert builder.verifyOpenTypeWorldDispatchTables();
         }
     }
@@ -75,6 +74,7 @@ public final class VTableBuilder {
         private final boolean closedTypeWorld;
         private final boolean registerTrackedTypes;
         private final boolean registerAllTypes;
+        private final OpenTypeWorldFeature otwFeature = OpenTypeWorldFeature.singleton();
 
         OpenTypeWorldHubLayoutUtils(HostedUniverse hUniverse) {
             closedTypeWorld = SubstrateOptions.useClosedTypeWorld();
@@ -94,18 +94,18 @@ public final class VTableBuilder {
          * See generateDispatchTable for the use of this filter.
          */
         private boolean filterVTableMethods(HostedType type) {
-            return closedTypeWorld && !type.getWrapped().isInBaseLayer();
+            return closedTypeWorld && !type.getWrapped().isInSharedLayer();
         }
 
         private boolean shouldIncludeType(HostedType type) {
             if (closedTypeWorld) {
-                if (type.getWrapped().isInBaseLayer()) {
+                if (type.getWrapped().isInSharedLayer()) {
                     /*
                      * This check will be later removed.
                      *
                      * GR-60010 - We are currently loading base analysis types too late.
                      */
-                    return type.getWrapped().isOpenTypeWorldDispatchTableMethodsCalculated();
+                    return otwFeature.isOpenTypeWorldDispatchTableMethodsCalculated(type.getWrapped());
                 }
 
                 /*
@@ -113,13 +113,13 @@ public final class VTableBuilder {
                  * removed via graph strengthening. It is also always possible to see base layer
                  * types.
                  */
-                return type.getWrapped().isReachable() || type.getWrapped().isInBaseLayer();
+                return type.getWrapped().isReachable() || type.getWrapped().isInSharedLayer();
             } else {
                 /*
                  * When using the open type world we are conservative and calculate metadata for all
                  * types seen during analysis.
                  */
-                return type.getWrapped().isOpenTypeWorldDispatchTableMethodsCalculated();
+                return otwFeature.isOpenTypeWorldDispatchTableMethodsCalculated(type.getWrapped());
             }
         }
 
@@ -156,11 +156,11 @@ public final class VTableBuilder {
 
                 // retrieve method from open world
                 if (slotMethod.getDeclaringClass().isInterface()) {
-                    int interfaceTypeID = slotMethod.getDeclaringClass().getTypeID();
+                    int interfaceID = slotMethod.getDeclaringClass().getInterfaceID();
                     int[] typeCheckSlots = type.getOpenTypeWorldTypeCheckSlots();
                     boolean found = false;
                     for (int itableIdx = 0; itableIdx < type.getNumInterfaceTypes(); itableIdx++) {
-                        if (typeCheckSlots[type.getNumClassTypes() + itableIdx] == interfaceTypeID) {
+                        if (typeCheckSlots[type.getNumClassTypes() + itableIdx] == interfaceID) {
                             HostedMethod dispatchResult = type.openTypeWorldDispatchTables[type.itableStartingOffsets[itableIdx] + slotMethod.getVTableIndex()];
                             assert dispatchResult.equals(resolvedMethod) : Assertions.errorMessage(slotMethod, dispatchResult, resolvedMethod);
                             found = true;
@@ -186,22 +186,6 @@ public final class VTableBuilder {
         return generateDispatchTable(type, List.of());
     }
 
-    /**
-     * Tries to find an existing parent slot with an identical signature. If successful, this
-     * method's index can be assigned to the same slot and no new dispatch slot is needed.
-     */
-    private static boolean findAndLinkToParentSlot(HostedMethod hMethod, List<HostedMethod> parentSlots) {
-        for (int i = 0; i < parentSlots.size(); i++) {
-            HostedMethod candidate = parentSlots.get(i);
-            if (OpenTypeWorldFeature.matchingSignature(hMethod, candidate)) {
-                assert candidate.computedVTableIndex == i : candidate.computedVTableIndex;
-                installVTableIndex(hMethod, candidate.computedVTableIndex);
-                return true;
-            }
-        }
-        return false;
-    }
-
     private static void installVTableIndex(HostedMethod hMethod, int index) {
         assert hMethod.computedVTableIndex == HostedMethod.MISSING_VTABLE_IDX : hMethod.computedVTableIndex;
         hMethod.computedVTableIndex = index;
@@ -213,10 +197,6 @@ public final class VTableBuilder {
             // include only methods which will be indirect calls
             includeMethod = m -> {
                 assert !m.isConstructor() : Assertions.errorMessage("Constructors should never be in dispatch tables", m);
-                if (findAndLinkToParentSlot(m, parentClassTable)) {
-                    // a prior slot has been found
-                    return false;
-                }
                 if (m.implementations.length > 1) {
                     return true;
                 } else {
@@ -230,10 +210,6 @@ public final class VTableBuilder {
         } else {
             includeMethod = m -> {
                 assert !m.isConstructor() : Assertions.errorMessage("Constructors should never be in dispatch tables", m);
-                if (findAndLinkToParentSlot(m, parentClassTable)) {
-                    // a prior slot has been found
-                    return false;
-                }
                 /*
                  * We have to use the analysis method's canBeStaticallyBound implementation because
                  * within HostedMethod we sometimes do additional pruning when operating under the
@@ -242,7 +218,8 @@ public final class VTableBuilder {
                 return !m.getWrapped().canBeStaticallyBound();
             };
         }
-        var table = type.getWrapped().getOpenTypeWorldDispatchTableMethods().stream().map(hUniverse::lookup).filter(includeMethod).sorted(HostedUniverse.METHOD_COMPARATOR).toList();
+        var table = openHubUtils.otwFeature.getOpenTypeWorldDispatchTableMethods(type.getWrapped()).stream().map(hUniverse::lookup).filter(includeMethod).sorted(HostedUniverse.METHOD_COMPARATOR)
+                        .toList();
 
         int index = parentClassTable.size();
         for (HostedMethod typeMethod : table) {
@@ -293,7 +270,6 @@ public final class VTableBuilder {
             type.openTypeWorldDispatchTableSlotTargets = aggregatedTable.toArray(HostedMethod[]::new);
 
             boolean[] validTarget = new boolean[aggregatedTable.size()];
-            Set<HostedMethod> seenResolvedMethods = SubstrateUtil.assertionsEnabled() ? new HashSet<>() : null;
             for (int i = 0; i < aggregatedTable.size(); i++) {
                 HostedMethod method = aggregatedTable.get(i);
                 /*
@@ -306,13 +282,6 @@ public final class VTableBuilder {
                     if (resolvedMethod != null) {
                         targetMethod = resolvedMethod;
                         validTarget[i] = true;
-                        if (seenResolvedMethods != null && i < classTableMethods.size()) {
-                            /*
-                             * Check that each resolved method within the class table is unique
-                             */
-                            var added = seenResolvedMethods.add(resolvedMethod);
-                            assert added : Assertions.errorMessage("Multiple slots with same resolution method", resolvedMethod);
-                        }
                     }
                 }
 
@@ -441,7 +410,7 @@ public final class VTableBuilder {
          * multiple vtable slots. The assignment algorithm uses this table to find out if a suitable
          * vtable index already exists for a method.
          */
-        Map<HostedMethod, Set<Integer>> vtablesSlots = new HashMap<>();
+        Map<HostedMethod, EconomicSet<Integer>> vtablesSlots = new HashMap<>();
 
         for (HostedType type : hUniverse.getTypes()) {
             vtablesMap.put(type, new ArrayList<>());
@@ -473,7 +442,7 @@ public final class VTableBuilder {
                  * an interface, i.e., an interface that declares many methods does not lead to more
                  * filler slots than an interface that defines only one method.
                  */
-                int importance = collectSubtypes(type, new HashSet<>()).size();
+                int importance = collectSubtypes(type, EconomicSet.create()).size();
                 interfaces.add(Pair.create(type, importance));
             }
         }
@@ -522,7 +491,7 @@ public final class VTableBuilder {
     }
 
     /** Collects all subtypes of the provided type in the provided set. */
-    private static Set<HostedType> collectSubtypes(HostedType type, Set<HostedType> allSubtypes) {
+    private static EconomicSet<HostedType> collectSubtypes(HostedType type, EconomicSet<HostedType> allSubtypes) {
         if (allSubtypes.add(type)) {
             for (HostedType subtype : type.subTypes) {
                 collectSubtypes(subtype, allSubtypes);
@@ -531,9 +500,13 @@ public final class VTableBuilder {
         return allSubtypes;
     }
 
-    private void buildVTable(HostedClass clazz, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, Set<Integer>> vtablesSlots) {
+    private void assignImplementationsAndBuildVTable(HostedClass clazz, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap,
+                    Map<HostedMethod, EconomicSet<Integer>> vtablesSlots) {
         assignImplementations(clazz, vtablesMap, usedSlotsMap, vtablesSlots);
+        buildVTable(clazz, vtablesMap, usedSlotsMap, vtablesSlots);
+    }
 
+    private void buildVTable(HostedClass clazz, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, EconomicSet<Integer>> vtablesSlots) {
         ArrayList<HostedMethod> vtable = vtablesMap.get(clazz);
         HostedMethod[] vtableArray = vtable.toArray(new HostedMethod[vtable.size()]);
         assert vtableArray.length == 0 || vtableArray[vtableArray.length - 1] != null : "Unnecessary entry at end of vtable";
@@ -541,12 +514,13 @@ public final class VTableBuilder {
 
         for (HostedType subClass : clazz.subTypes) {
             if (!subClass.isInterface() && !subClass.isArray()) {
-                buildVTable((HostedClass) subClass, vtablesMap, usedSlotsMap, vtablesSlots);
+                assignImplementationsAndBuildVTable((HostedClass) subClass, vtablesMap, usedSlotsMap, vtablesSlots);
             }
         }
     }
 
-    private void assignImplementations(HostedType type, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, Set<Integer>> vtablesSlots) {
+    private void assignImplementations(HostedType type, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap,
+                    Map<HostedMethod, EconomicSet<Integer>> vtablesSlots) {
         /*
          * Methods with 1 implementation do not need a vtable because invokes can be done as direct
          * calls without the need for a vtable. Methods with 0 implementations are unreachable.
@@ -577,7 +551,7 @@ public final class VTableBuilder {
                      * assignments into account.
                      */
                     int slot = findSlot(method, vtablesMap, usedSlotsMap, vtablesSlots);
-                    method.computedVTableIndex = slot;
+                    installVTableIndex(method, slot);
 
                     /* Assign the vtable slot for the type and all subtypes. */
                     assignImplementations(method.getDeclaringClass(), method, slot, vtablesMap);
@@ -604,7 +578,6 @@ public final class VTableBuilder {
                     assert vtable.get(slot) == null;
                     vtable.set(slot, resolvedMethod);
                 }
-                resolvedMethod.computedVTableIndex = slot;
             }
         }
 
@@ -632,16 +605,16 @@ public final class VTableBuilder {
         }
     }
 
-    private int findSlot(HostedMethod method, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, Set<Integer>> vtablesSlots) {
+    private int findSlot(HostedMethod method, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, EconomicSet<Integer>> vtablesSlots) {
         /*
          * Check if all implementation methods already have a common slot assigned. Each
          * implementation method can have multiple slots because of interfaces. We compute the
          * intersection of the slot sets for all implementation methods.
          */
         if (method.implementations.length > 0) {
-            Set<Integer> resultSlots = vtablesSlots.get(method.implementations[0]);
+            EconomicSet<Integer> resultSlots = vtablesSlots.get(method.implementations[0]);
             for (HostedMethod impl : method.implementations) {
-                Set<Integer> implSlots = vtablesSlots.get(impl);
+                EconomicSet<Integer> implSlots = vtablesSlots.get(impl);
                 if (implSlots == null) {
                     resultSlots = null;
                     break;
@@ -681,7 +654,7 @@ public final class VTableBuilder {
         for (HostedMethod impl : method.implementations) {
             markSlotAsUsed(resultSlot, impl.getDeclaringClass(), vtablesMap, usedSlotsMap);
 
-            vtablesSlots.computeIfAbsent(impl, k -> new HashSet<>()).add(resultSlot);
+            vtablesSlots.computeIfAbsent(impl, _ -> EconomicSet.create()).add(resultSlot);
         }
 
         return resultSlot;

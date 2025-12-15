@@ -114,7 +114,6 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
-import org.graalvm.polyglot.proxy.Proxy;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyDate;
 import org.graalvm.polyglot.proxy.ProxyDuration;
@@ -596,6 +595,7 @@ public final class Engine implements AutoCloseable {
         private boolean useSystemProperties = true;
         private boolean boundEngine;
         private MessageTransport messageTransport;
+        private Consumer<PolyglotException> exceptionHandler;
         private Object customLogHandler;
         private String[] permittedLanguages;
         private SandboxPolicy sandboxPolicy;
@@ -760,6 +760,72 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
+         * Sets an exception handler that is invoked whenever a {@link PolyglotException} is about
+         * to be thrown from a engine bound value back to the host. The configured custom exception
+         * handler gets inherited by all contexts created with this engine.
+         * <p>
+         * The handler is called on the host thread that performs the polyglot operation, for
+         * example when invoking {@link Value} methods, executing guest code, or initializing a
+         * language. It receives the {@link PolyglotException} that would normally be thrown to the
+         * caller.
+         * <p>
+         * The handler can inspect the exception, perform additional logging or metrics, or
+         * translate the {@link PolyglotException} into a different exception type. If the handler
+         * throws an exception, that exception is propagated to the caller instead of the original
+         * {@link PolyglotException}. If the handler returns normally, the original
+         * {@link PolyglotException} is thrown as usual.
+         * <p>
+         * A common use case is to unwrap and rethrow host runtime exceptions so that calling code
+         * can handle them directly:
+         *
+         * <pre>
+         * static void rethrowHostRuntimeException(PolyglotException e) {
+         *     if (e.isHostException()) {
+         *         Throwable t = e.asHostException();
+         *         if (t instanceof RuntimeException rt) {
+         *             // rethrow the original host runtime exception
+         *             throw rt;
+         *         }
+         *     }
+         *     // fall through, the PolyglotException will be thrown
+         * }
+         *
+         * try (Context c = Context.newBuilder()
+         *                 .exceptionHandler(MyHost::rethrowHostRuntimeException)
+         *                 .build()) {
+         *     try {
+         *         // Without an exception handler, this would throw a PolyglotException
+         *         // wrapping the IllegalStateException as a host exception.
+         *         c.asValue(new IllegalStateException("test")).throwException();
+         *     } catch (IllegalStateException e) {
+         *         // The handler rethrew the original host exception.
+         *         assert "test".equals(e.getMessage());
+         *     }
+         * }
+         * </pre>
+         *
+         * In this example, {@link Value#throwException()} would normally throw a
+         * {@link PolyglotException}. Because the handler rethrows the underlying host
+         * {@link RuntimeException}, the caller observes {@code IllegalStateException} directly
+         * instead of {@link PolyglotException}.
+         * <p>
+         * Handlers should be written carefully, because any host call into the context can then
+         * appear to throw additional exception types. In particular, translating guest exceptions
+         * into unrelated runtime exceptions can make APIs harder to reason about and should only be
+         * done with care.
+         *
+         * @param handler the handler to invoke before a {@link PolyglotException} is thrown to the
+         *            host, or {@code null} to disable custom handling
+         *
+         * @see Context.Builder#exceptionHandler(Consumer)
+         * @since 25.1
+         */
+        public Builder exceptionHandler(Consumer<PolyglotException> handler) {
+            this.exceptionHandler = handler;
+            return this;
+        }
+
+        /**
          * Installs a new logging {@link Handler}. The logger's {@link Level} configuration is done
          * using the {@link #options(java.util.Map) Engine's options}. The level option key has the
          * following format: {@code log.languageId.loggerName.level} or
@@ -841,7 +907,7 @@ public final class Engine implements AutoCloseable {
             Map<String, String> useOptions = useSystemProperties ? readOptionsFromSystemProperties(options) : options;
             boolean useAllowExperimentalOptions = allowExperimentalOptions || readAllowExperimentalOptionsFromSystemProperties();
             Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, useIn, useOptions, useAllowExperimentalOptions,
-                            boundEngine, messageTransport, logHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null);
+                            boundEngine, messageTransport, logHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null, exceptionHandler);
             return engine;
         }
 
@@ -942,21 +1008,6 @@ public final class Engine implements AutoCloseable {
     static class APIAccessImpl extends AbstractPolyglotImpl.APIAccess {
 
         private static final APIAccessImpl INSTANCE = new APIAccessImpl();
-
-        private static final ProxyArray EMPTY = new ProxyArray() {
-
-            public void set(long index, Value value) {
-                throw new ArrayIndexOutOfBoundsException();
-            }
-
-            public long getSize() {
-                return 0;
-            }
-
-            public Object get(long index) {
-                throw new ArrayIndexOutOfBoundsException();
-            }
-        };
 
         APIAccessImpl() {
         }
@@ -1158,7 +1209,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public RuntimeException newLanguageException(String message, AbstractExceptionDispatch dispatch, Object receiver, Object anchor) {
+        public PolyglotException newLanguageException(String message, AbstractExceptionDispatch dispatch, Object receiver, Object anchor) {
             return new PolyglotException(message, dispatch, receiver, anchor);
         }
 
@@ -1388,146 +1439,6 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public boolean isProxyArray(Object proxy) {
-            return proxy instanceof ProxyArray;
-        }
-
-        @Override
-        public boolean isProxyDate(Object proxy) {
-            return proxy instanceof ProxyDate;
-        }
-
-        @Override
-        public boolean isProxyDuration(Object proxy) {
-            return proxy instanceof ProxyDuration;
-        }
-
-        @Override
-        public boolean isProxyExecutable(Object proxy) {
-            return proxy instanceof ProxyExecutable;
-        }
-
-        @Override
-        public boolean isProxyHashMap(Object proxy) {
-            return proxy instanceof ProxyHashMap;
-        }
-
-        @Override
-        public boolean isProxyInstant(Object proxy) {
-            return proxy instanceof ProxyInstant;
-        }
-
-        @Override
-        public boolean isProxyInstantiable(Object proxy) {
-            return proxy instanceof ProxyInstantiable;
-        }
-
-        @Override
-        public boolean isProxyIterable(Object proxy) {
-            return proxy instanceof ProxyIterable;
-        }
-
-        @Override
-        public boolean isProxyIterator(Object proxy) {
-            return proxy instanceof ProxyIterator;
-        }
-
-        @Override
-        public boolean isProxyNativeObject(Object proxy) {
-            return proxy instanceof ProxyNativeObject;
-        }
-
-        @Override
-        public boolean isProxyObject(Object proxy) {
-            return proxy instanceof ProxyObject;
-        }
-
-        @Override
-        public boolean isProxyTime(Object proxy) {
-            return proxy instanceof ProxyTime;
-        }
-
-        @Override
-        public boolean isProxyTimeZone(Object proxy) {
-            return proxy instanceof ProxyTimeZone;
-        }
-
-        @Override
-        public boolean isProxy(Object proxy) {
-            return proxy instanceof Proxy;
-        }
-
-        @Override
-        public Class<?> getProxyArrayClass() {
-            return ProxyArray.class;
-        }
-
-        @Override
-        public Class<?> getProxyDateClass() {
-            return ProxyDate.class;
-        }
-
-        @Override
-        public Class<?> getProxyDurationClass() {
-            return ProxyDuration.class;
-        }
-
-        @Override
-        public Class<?> getProxyExecutableClass() {
-            return ProxyExecutable.class;
-        }
-
-        @Override
-        public Class<?> getProxyHashMapClass() {
-            return ProxyHashMap.class;
-        }
-
-        @Override
-        public Class<?> getProxyInstantClass() {
-            return ProxyInstant.class;
-        }
-
-        @Override
-        public Class<?> getProxyInstantiableClass() {
-            return ProxyInstantiable.class;
-        }
-
-        @Override
-        public Class<?> getProxyIterableClass() {
-            return ProxyIterable.class;
-        }
-
-        @Override
-        public Class<?> getProxyIteratorClass() {
-            return ProxyIterator.class;
-        }
-
-        @Override
-        public Class<?> getProxyNativeObjectClass() {
-            return ProxyNativeObject.class;
-        }
-
-        @Override
-        public Class<?> getProxyObjectClass() {
-            return ProxyObject.class;
-        }
-
-        @Override
-        public Class<?> getProxyTimeClass() {
-            return ProxyTime.class;
-        }
-
-        @Override
-        public Class<?> getProxyTimeZoneClass() {
-            return ProxyTimeZone.class;
-        }
-
-        @Override
-        public Class<?> getProxyClass() {
-            return Proxy.class;
-        }
-
-        @Override
         public Object callProxyExecutableExecute(Object proxy, Object[] objects) {
             return ((ProxyExecutable) proxy).execute((Value[]) objects);
         }
@@ -1562,11 +1473,26 @@ public final class Engine implements AutoCloseable {
             return ((ProxyArray) proxy).getSize();
         }
 
+        private static final ProxyArray EMPTY_PROXY_ARRAY = new ProxyArray() {
+
+            public void set(long index, Value value) {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+
+            public long getSize() {
+                return 0;
+            }
+
+            public Object get(long index) {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+        };
+
         @Override
         public Object callProxyObjectMemberKeys(Object proxy) {
             Object result = ((ProxyObject) proxy).getMemberKeys();
             if (result == null) {
-                result = EMPTY;
+                result = EMPTY_PROXY_ARRAY;
             }
             return result;
         }
@@ -1968,7 +1894,7 @@ public final class Engine implements AutoCloseable {
         @Override
         public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments,
                         boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
-                        boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService) {
+                        boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService, Consumer<PolyglotException> exceptionHandler) {
             throw noPolyglotImplementationFound();
         }
 

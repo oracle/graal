@@ -664,6 +664,11 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
     public Value emitFloatConvert(FloatConvert op, Value inputVal, boolean canBeNaN, boolean canOverflow) {
         AMD64Kind kind = (AMD64Kind) inputVal.getPlatformKind();
         int length = kind.getVectorLength();
+        /*
+         * If narrow == true, the conversion operation must be encoded with the input size rather
+         * than the result size.
+         */
+        boolean narrow = op.isNarrowing();
         if (length > 1) {
             AMD64Kind baseKind = kind.getScalar();
 
@@ -672,22 +677,22 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
                     assert baseKind == AMD64Kind.DOUBLE : baseKind;
                     // when input length is 4 doubles or less we store the result in a 128
                     // bit/XMM register otherwise we use a YMM register
-                    return emitConvertOp(AVXKind.getAVXKind(AMD64Kind.SINGLE, Math.max(length, 4)), EVCVTPD2PS, inputVal, true);
+                    return emitConvertOp(AVXKind.getAVXKind(AMD64Kind.SINGLE, Math.max(length, 4)), EVCVTPD2PS, inputVal, narrow);
                 case D2I:
                     assert baseKind == AMD64Kind.DOUBLE : baseKind;
-                    return emitConvertOp(AVXKind.getAVXKind(AMD64Kind.DWORD, length), EVCVTTPD2DQ, inputVal, true);
+                    return emitVectorFloatConvertWithFixup(AVXKind.getAVXKind(AMD64Kind.DWORD, length), EVCVTTPD2DQ, inputVal, canBeNaN, canOverflow, narrow, op.signedness());
                 case D2L:
                     assert baseKind == AMD64Kind.DOUBLE : baseKind;
-                    return emitConvertOp(AVXKind.getAVXKind(AMD64Kind.QWORD, length), EVCVTTPD2QQ, inputVal);
+                    return emitVectorFloatConvertWithFixup(AVXKind.getAVXKind(AMD64Kind.QWORD, length), EVCVTTPD2QQ, inputVal, canBeNaN, canOverflow, narrow, op.signedness());
                 case F2D:
                     assert baseKind == AMD64Kind.SINGLE : baseKind;
                     return emitConvertOp(AVXKind.getAVXKind(AMD64Kind.DOUBLE, length), EVCVTPS2PD, inputVal);
                 case F2I:
                     assert baseKind == AMD64Kind.SINGLE : baseKind;
-                    return emitConvertOp(AVXKind.getAVXKind(AMD64Kind.DWORD, length), EVCVTTPS2DQ, inputVal);
+                    return emitVectorFloatConvertWithFixup(AVXKind.getAVXKind(AMD64Kind.DWORD, length), EVCVTTPS2DQ, inputVal, canBeNaN, canOverflow, narrow, op.signedness());
                 case F2L:
                     assert baseKind == AMD64Kind.SINGLE : baseKind;
-                    return emitConvertOp(AVXKind.getAVXKind(AMD64Kind.QWORD, length), EVCVTTPS2QQ, inputVal);
+                    return emitVectorFloatConvertWithFixup(AVXKind.getAVXKind(AMD64Kind.QWORD, length), EVCVTTPS2QQ, inputVal, canBeNaN, canOverflow, narrow, op.signedness());
                 case I2D:
                     assert baseKind == AMD64Kind.DWORD : baseKind;
                     return emitConvertOp(AVXKind.getAVXKind(AMD64Kind.DOUBLE, length), EVCVTDQ2PD, inputVal);
@@ -706,7 +711,6 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
                     throw GraalError.unimplemented("unsupported vectorized convert " + op); // ExcludeFromJacocoGeneratedReport
             }
         } else {
-            boolean narrow = false;
             switch (op) {
                 case D2F:
                     assert kind == AMD64Kind.DOUBLE : kind;
@@ -1006,7 +1010,7 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
     }
 
     @Override
-    public Value emitVectorToBitMask(LIRKind resultKind, Value vector) {
+    public Value emitVectorToBitMask(LIRKind resultKind, Value vector, boolean inputIsMask) {
         throw GraalError.shouldNotReachHere("AVX512 should use opmask");
     }
 
@@ -1312,10 +1316,10 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
      * @see Math#min(float, float)
      */
     @Override
-    protected Value emitMathMinMax(Value a, Value b, AMD64MathMinMaxFloatOp minmaxop) {
+    protected Value emitMathMinMax(LIRKind cmpKind, Value a, Value b, AMD64MathMinMaxFloatOp minmaxop) {
         AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
         if (kind.getScalar().isInteger()) {
-            return emitIntegerMinMax(a, b, minmaxop, NumUtil.Signedness.SIGNED);
+            return emitIntegerMinMax(cmpKind, a, b, minmaxop, NumUtil.Signedness.SIGNED);
         }
 
         // vmin*/vmax*: if the values being compared are both 0.0 (of either sign), dst = src2.
@@ -1384,9 +1388,11 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
     }
 
     @Override
-    protected Value emitIntegerMinMax(Value a, Value b, AMD64MathMinMaxFloatOp minmaxop, NumUtil.Signedness signedness) {
+    protected Value emitIntegerMinMax(LIRKind cmpKind, Value a, Value b, AMD64MathMinMaxFloatOp minmaxop, NumUtil.Signedness signedness) {
         AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
-        GraalError.guarantee(kind.getVectorLength() > 1, "scalar integer min/max not supported");
+        if (kind.getVectorLength() == 1) {
+            return super.emitIntegerMinMax(cmpKind, a, b, minmaxop, signedness);
+        }
         GraalError.guarantee(kind.getScalar().isInteger(), "expected integer vector for integer min/max");
         LIRKind resultKind = LIRKind.combine(a, b);
         boolean min = (minmaxop == AMD64MathMinMaxFloatOp.Min);

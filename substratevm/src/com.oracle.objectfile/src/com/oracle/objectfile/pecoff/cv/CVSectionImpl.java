@@ -33,9 +33,9 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 
 import jdk.graal.compiler.debug.DebugContext;
+import org.graalvm.collections.EconomicSet;
 
 import java.util.Map;
-import java.util.Set;
 
 abstract class CVSectionImpl extends BasicProgbitsSectionImpl {
 
@@ -105,8 +105,8 @@ abstract class CVSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     @Override
-    public Set<BuildDependency> getDependencies(Map<ObjectFile.Element, LayoutDecisionMap> decisions) {
-        Set<BuildDependency> deps = super.getDependencies(decisions);
+    public EconomicSet<BuildDependency> getDependencies(Map<ObjectFile.Element, LayoutDecisionMap> decisions) {
+        EconomicSet<BuildDependency> deps = super.getDependencies(decisions);
         LayoutDecision ourContent = decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
         LayoutDecision ourSize = decisions.get(getElement()).getDecision(LayoutDecision.Kind.SIZE);
         /* Make our size depend on our content. */

@@ -49,6 +49,9 @@ public class WebImageWasmOptions {
                     "Has no effect on code size, the binary format does not have comments.")//
     public static final EnumOptionKey<CommentVerbosity> WasmComments = new EnumOptionKey<>(CommentVerbosity.NORMAL);
 
+    @Option(help = "Enable the legacy exception proposal using try-catch instead of try_table") //
+    public static final HostedOptionKey<Boolean> LegacyExceptions = new HostedOptionKey<>(false);
+
     @Option(help = "Assemble the Wasm binary file with debug names.")//
     public static final HostedOptionKey<Boolean> DebugNames = new HostedOptionKey<>(false) {
 

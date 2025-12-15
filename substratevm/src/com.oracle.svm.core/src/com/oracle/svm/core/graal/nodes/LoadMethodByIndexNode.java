@@ -43,13 +43,13 @@ public final class LoadMethodByIndexNode extends FixedWithNextNode implements Lo
 
     @Input protected ValueNode hub;
     @Input protected ValueNode vtableIndex;
-    @OptionalInput protected ValueNode interfaceTypeID;
+    @OptionalInput protected ValueNode interfaceID;
 
-    protected LoadMethodByIndexNode(@InjectedNodeParameter WordTypes wordTypes, ValueNode hub, ValueNode vtableIndex, ValueNode interfaceTypeID) {
+    protected LoadMethodByIndexNode(@InjectedNodeParameter WordTypes wordTypes, ValueNode hub, ValueNode vtableIndex, ValueNode interfaceID) {
         super(TYPE, StampFactory.forKind(wordTypes.getWordKind()));
         this.hub = hub;
         this.vtableIndex = vtableIndex;
-        this.interfaceTypeID = interfaceTypeID;
+        this.interfaceID = interfaceID;
     }
 
     public ValueNode getHub() {
@@ -60,10 +60,10 @@ public final class LoadMethodByIndexNode extends FixedWithNextNode implements Lo
         return vtableIndex;
     }
 
-    public ValueNode getInterfaceTypeID() {
-        return interfaceTypeID;
+    public ValueNode getInterfaceID() {
+        return interfaceID;
     }
 
     @NodeIntrinsic
-    public static native CodePointer loadMethodByIndex(Object hub, int vtableIndex, int interfaceTypeID);
+    public static native CodePointer loadMethodByIndex(Object hub, int vtableIndex, int interfaceID);
 }

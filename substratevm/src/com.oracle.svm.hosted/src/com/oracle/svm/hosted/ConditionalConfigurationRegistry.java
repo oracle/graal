@@ -32,9 +32,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 
+import com.oracle.svm.core.util.UserError;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -42,16 +44,17 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 public abstract class ConditionalConfigurationRegistry {
     private Feature.BeforeAnalysisAccess beforeAnalysisAccess;
     private SVMHost hostVM;
+    private boolean sealed = false;
     protected AnalysisUniverse universe;
     private final Map<Class<?>, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
     private final Set<ConditionalTask> pendingConditionalTasks = ConcurrentHashMap.newKeySet();
 
-    record ConditionalTask(ConfigurationCondition condition, Consumer<ConfigurationCondition> task) {
+    record ConditionalTask(AccessCondition condition, Consumer<AccessCondition> task) {
     }
 
-    protected void runConditionalTask(ConfigurationCondition condition, Consumer<ConfigurationCondition> task) {
+    protected void runConditionalTask(AccessCondition condition, Consumer<AccessCondition> task) {
         if (universe != null) {
-            registerConditionalConfiguration(condition, (cnd) -> universe.getBigbang().postTask(debugContext -> task.accept(cnd)));
+            registerConditionalConfiguration(condition, (cnd) -> universe.getBigbang().postTask(_ -> task.accept(cnd)));
         } else {
             pendingConditionalTasks.add(new ConditionalTask(condition, task));
             VMError.guarantee(universe == null, "There shouldn't be a race condition on Feature.duringSetup.");
@@ -61,37 +64,39 @@ public abstract class ConditionalConfigurationRegistry {
     protected void setUniverse(AnalysisUniverse analysisUniverse) {
         this.universe = analysisUniverse;
         for (var conditionalTask : pendingConditionalTasks) {
-            registerConditionalConfiguration(conditionalTask.condition, (cnd) -> universe.getBigbang().postTask(debug -> conditionalTask.task.accept(cnd)));
+            registerConditionalConfiguration(conditionalTask.condition, (cnd) -> universe.getBigbang().postTask(_ -> conditionalTask.task.accept(cnd)));
         }
         pendingConditionalTasks.clear();
     }
 
-    protected void registerConditionalConfiguration(ConfigurationCondition condition, Consumer<ConfigurationCondition> consumer) {
+    protected void registerConditionalConfiguration(AccessCondition condition, Consumer<AccessCondition> consumer) {
         Objects.requireNonNull(condition, "Cannot use null value as condition for conditional configuration. Please ensure that you register a non-null condition.");
         Objects.requireNonNull(consumer, "Cannot use null value as runnable for conditional configuration. Please ensure that you register a non-null runnable.");
-        if (condition.isRuntimeChecked() && !condition.isAlwaysTrue()) {
+        VMError.guarantee(condition instanceof TypeReachabilityCondition, "Condition must be TypeReachabilityCondition.");
+        TypeReachabilityCondition reachabilityCondition = (TypeReachabilityCondition) condition;
+        if (reachabilityCondition.isRuntimeChecked() && !reachabilityCondition.isAlwaysTrue()) {
             /*
              * We do this before the type is reached as the handler runs during analysis when it is
              * too late to register types for reached tracking. If the type is never reached, there
              * is no damage as subtypes will also never be reached.
              */
-            ClassInitializationSupport.singleton().addForTypeReachedTracking(condition.getType());
+            ClassInitializationSupport.singleton().addForTypeReachedTracking(reachabilityCondition.getType());
         }
-        if (ConfigurationCondition.alwaysTrue().equals(condition)) {
+        if (reachabilityCondition.isAlwaysTrue()) {
             /* analysis optimization to include new types as early as possible */
-            consumer.accept(ConfigurationCondition.alwaysTrue());
+            consumer.accept(AccessCondition.unconditional());
         } else {
-            ConfigurationCondition runtimeCondition;
-            if (condition.isRuntimeChecked()) {
+            AccessCondition runtimeCondition;
+            if (reachabilityCondition.isRuntimeChecked()) {
                 runtimeCondition = condition;
             } else {
-                runtimeCondition = ConfigurationCondition.alwaysTrue();
+                runtimeCondition = AccessCondition.unconditional();
             }
             if (beforeAnalysisAccess == null) {
-                Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getType(), key -> new ConcurrentLinkedQueue<>());
+                Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(reachabilityCondition.getType(), _ -> new ConcurrentLinkedQueue<>());
                 handlers.add(() -> consumer.accept(runtimeCondition));
             } else {
-                beforeAnalysisAccess.registerReachabilityHandler(access -> consumer.accept(runtimeCondition), condition.getType());
+                beforeAnalysisAccess.registerReachabilityHandler(_ -> consumer.accept(runtimeCondition), reachabilityCondition.getType());
             }
 
         }
@@ -102,9 +107,37 @@ public abstract class ConditionalConfigurationRegistry {
         VMError.guarantee(this.beforeAnalysisAccess == null, "Analysis access can be set only once.");
         this.beforeAnalysisAccess = Objects.requireNonNull(beforeAnalysisAccess);
         for (Map.Entry<Class<?>, Collection<Runnable>> reachabilityEntry : pendingReachabilityHandlers.entrySet()) {
-            this.beforeAnalysisAccess.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), reachabilityEntry.getKey());
+            this.beforeAnalysisAccess.registerReachabilityHandler(_ -> reachabilityEntry.getValue().forEach(Runnable::run), reachabilityEntry.getKey());
         }
         pendingReachabilityHandlers.clear();
+    }
+
+    protected void requireNonNull(Object[] values, String kind, String accessKind) {
+        for (Object value : values) {
+            Objects.requireNonNull(value, () -> nullErrorMessage(kind, accessKind));
+        }
+    }
+
+    protected String nullErrorMessage(String elementKind, String accessKind) {
+        return "Cannot register null value as " + elementKind + " for " + accessKind + ". Please ensure that all values you register are not null.";
+    }
+
+    public void sealed() {
+        sealed = true;
+    }
+
+    public boolean isSealed() {
+        return sealed;
+    }
+
+    public void abortIfSealed() {
+        /*
+         * The UserError needs a cause argument to print out the stack trace, so users can see
+         * exactly where the exception occurred.
+         */
+        if (sealed) {
+            throw UserError.abort(new IllegalStateException(), "All elements must be registered for runtime access before the analysis has completed.");
+        }
     }
 
     public void setHostVM(SVMHost hostVM) {
@@ -114,5 +147,4 @@ public abstract class ConditionalConfigurationRegistry {
     public SVMHost getHostVM() {
         return hostVM;
     }
-
 }

@@ -135,6 +135,16 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);
     public final boolean inline = getFlag("Inline", Boolean.class);
 
+    // There are 3 available locking modes:
+    // LM_MONITOR uses only heavy monitors for locking;
+    // LM_LEGACY uses stack-locking, with monitors as 2nd tier;
+    // LM_LIGHTWEIGHT uses thread-local space for storing locked objects. This avoids the overload
+    // of the mark word.
+    public final int lockingMode = getFlag("LockingMode", Integer.class);
+
+    public final int lockingModeStack = getConstant("LockingMode::LM_LEGACY", Integer.class);
+    public final int lockingModeLightweight = getConstant("LockingMode::LM_LIGHTWEIGHT", Integer.class);
+
     public final boolean foldStableValues = getFlag("FoldStableValues", Boolean.class);
     public final int maxVectorSize = getFlag("MaxVectorSize", Integer.class);
 
@@ -195,9 +205,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // Compressed Oops related values.
     public final boolean useCompressedOops = getFlag("UseCompressedOops", Boolean.class);
     public final boolean useCompressedClassPointers = getFlag("UseCompressedClassPointers", Boolean.class);
-
-    public final boolean useClassMetaspaceForAllClasses = getFlag("UseClassMetaspaceForAllClasses", Boolean.class);
-
     // JDK-8305895 allows storing the compressed class pointer in the upper 22 bits of the mark
     // word. This runtime optimization is guarded by the flag UseCompactObjectHeaders. It depends
     // on compressed class pointers, meaning that if useCompactObjectHeaders is true,
@@ -464,7 +471,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long deoptBlobUncommonTrap = getFieldValue("CompilerToVM::Data::SharedRuntime_deopt_blob_uncommon_trap", Long.class, "address");
 
     public final long updateBytesCRC32Stub = getFieldValue("StubRoutines::_updateBytesCRC32", Long.class, "address");
-    public final long crcTableAddress = getFieldValue("CompilerToVM::Data::crc_table_addr", Long.class, "address");
+    public final long crcTableAddress = getFieldValue("StubRoutines::_crc_table_adr", Long.class, "address");
 
     public final long md5ImplCompressMultiBlock = getFieldValue("StubRoutines::_md5_implCompressMB", Long.class, "address");
     public final long sha1ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha1_implCompressMB", Long.class, "address");
@@ -612,6 +619,44 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long zBarrierSetRuntimeLoadBarrierOnOopArray = getZGCAddressField("ZBarrierSetRuntime::load_barrier_on_oop_array");
     public final int zPointerLoadShift = getConstant("ZPointerLoadShift", Integer.class, -1, osArch.equals("aarch64"));
 
+    /*
+     * Shenandoah GC support.
+     */
+    /**
+     * Indicates whether or not the HotSpot VM has been built with Shenandoah support. If not, then
+     * we don't expect the Shenandoah symbols to be present in JVMCI.
+     */
+    public final boolean hasShenandoahGC = getStore().getConstants().containsKey("INCLUDE_SHENANDOAHGC") && getConstant("INCLUDE_SHENANDOAHGC", Boolean.class);
+
+    /*
+     * Various Shenandoah GC constants.
+     */
+    public final int shenandoahGCStateOffset = getConstant("ShenandoahThreadLocalData::gc_state_offset", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahSATBIndexOffset = getConstant("ShenandoahThreadLocalData::satb_mark_queue_index_offset", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahSATBBufferOffset = getConstant("ShenandoahThreadLocalData::satb_mark_queue_buffer_offset", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahCardTableOffset = getConstant("ShenandoahThreadLocalData::card_table_offset", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahGCRegionSizeBytesShift = getFieldValue("CompilerToVM::Data::shenandoah_region_size_bytes_shift", Integer.class, "int", -1, hasShenandoahGC);
+    public final long shenandoahGCCSetFastTestAddress = getFieldValue("CompilerToVM::Data::shenandoah_in_cset_fast_test_addr", Long.class, "address", -1L, hasShenandoahGC);
+
+    public final int shenandoahGCStateHasForwarded = getConstant("ShenandoahHeap::HAS_FORWARDED", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahGCStateMarking = getConstant("ShenandoahHeap::MARKING", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahGCStateEvacuation = getConstant("ShenandoahHeap::EVACUATION", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahGCStateUpdateRefs = getConstant("ShenandoahHeap::UPDATE_REFS", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahGCStateWeakRoots = getConstant("ShenandoahHeap::WEAK_ROOTS", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahGCStateYoungMarking = getConstant("ShenandoahHeap::YOUNG_MARKING", Integer.class, -1, hasShenandoahGC);
+    public final int shenandoahGCStateOldMarking = getConstant("ShenandoahHeap::OLD_MARKING", Integer.class, -1, hasShenandoahGC);
+
+    /*
+     * Shenandoah barrier slow-paths.
+     */
+    public final long shenandoahLoadBarrierStrong = getAddress("ShenandoahRuntime::load_reference_barrier_strong", -1L, hasShenandoahGC);
+    public final long shenandoahLoadBarrierStrongNarrow = getAddress("ShenandoahRuntime::load_reference_barrier_strong_narrow", -1L, hasShenandoahGC);
+    public final long shenandoahLoadBarrierWeak = getAddress("ShenandoahRuntime::load_reference_barrier_weak", -1L, hasShenandoahGC);
+    public final long shenandoahLoadBarrierWeakNarrow = getAddress("ShenandoahRuntime::load_reference_barrier_weak_narrow", -1L, hasShenandoahGC);
+    public final long shenandoahLoadBarrierPhantom = getAddress("ShenandoahRuntime::load_reference_barrier_phantom", -1L, hasShenandoahGC);
+    public final long shenandoahLoadBarrierPhantomNarrow = getAddress("ShenandoahRuntime::load_reference_barrier_phantom_narrow", -1L, hasShenandoahGC);
+    public final long shenandoahWriteBarrierPre = getAddress("ShenandoahRuntime::write_barrier_pre", -1L, hasShenandoahGC);
+
     // aarch64 specific nmethod entry barrier support
     // @formatter:off
     public final int BarrierSetAssembler_nmethod_patching_type = getFieldValue("CompilerToVM::Data::BarrierSetAssembler_nmethod_patching_type", Integer.class, "int", -1, osArch.equals("aarch64"));
@@ -656,6 +701,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long validateObject = getAddress("JVMCIRuntime::validate_object");
 
     public final long testDeoptimizeCallInt = getAddress("JVMCIRuntime::test_deoptimize_call_int");
+    public final long testDeoptimizeCallerOfCaller = getAddress("JVMCIRuntime::test_deoptimize_caller_of_caller");
 
     public final long registerFinalizerAddress = getAddress("SharedRuntime::register_finalizer");
     public final long exceptionHandlerForReturnAddressAddress = getAddress("SharedRuntime::exception_handler_for_return_address");
@@ -665,7 +711,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long javaTimeMillisAddress = getAddress("os::javaTimeMillis");
     public final long javaTimeNanosAddress = getAddress("os::javaTimeNanos");
     public final long arithmeticSinAddress = getFieldValue("CompilerToVM::Data::dsin", Long.class, "address");
-    public final long arithmeticSinhAddress = getFieldValue("CompilerToVM::Data::dsinh", Long.class, "address");
     public final long arithmeticCosAddress = getFieldValue("CompilerToVM::Data::dcos", Long.class, "address");
     public final long arithmeticTanAddress = getFieldValue("CompilerToVM::Data::dtan", Long.class, "address");
     public final long arithmeticTanhAddress = getFieldValue("CompilerToVM::Data::dtanh", Long.class, "address");

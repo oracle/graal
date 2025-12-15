@@ -49,6 +49,8 @@ public interface AuxiliaryImageHeap {
 
     void walkObjects(ObjectVisitor visitor);
 
+    void walkHeapChunks(HeapChunkVisitor visitor);
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void walkRegions(MemoryWalker.ImageHeapRegionVisitor visitor);
 

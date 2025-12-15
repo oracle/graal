@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+OpenIDE-Module: at.ssw.positionmanager
+OpenIDE-Module-Localizing-Bundle: at/ssw/positionmanager/Bundle.properties
+OpenIDE-Module-Specification-Version: 1.0
+

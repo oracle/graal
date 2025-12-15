@@ -32,12 +32,12 @@ import java.util.Optional;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.util.LogUtils;
 
 final class SerializationMetadataParser<C> extends SerializationConfigurationParser<C> {
 
-    SerializationMetadataParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, EnumSet<ConfigurationParserOption> parserOptions) {
+    SerializationMetadataParser(AccessConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, EnumSet<ConfigurationParserOption> parserOptions) {
         super(conditionResolver, serializationSupport, parserOptions);
     }
 
@@ -60,7 +60,7 @@ final class SerializationMetadataParser<C> extends SerializationConfigurationPar
             return;
         }
 
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, true);
+        UnresolvedAccessCondition unresolvedCondition = parseCondition(data, true);
         var condition = conditionResolver.resolveCondition(unresolvedCondition);
         if (!condition.isPresent()) {
             return;

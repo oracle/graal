@@ -142,8 +142,10 @@ public class TStringSwitchEncodingTest extends TStringTestBase {
                         : new TranscodingErrorHandler[]{TranscodingErrorHandler.DEFAULT}) {
             TruffleString b = node.execute(a, targetEncoding, errorHandler);
             MutableTruffleString bMutable = nodeMutable.execute(a, targetEncoding, errorHandler);
-            if (a instanceof TruffleString &&
-                            (encoding == targetEncoding || !isDebugStrictEncodingChecks() && codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(targetEncoding)) &&
+            if (a instanceof TruffleString && (encoding == targetEncoding || !isDebugStrictEncodingChecks() &&
+                            codeRange == TruffleString.CodeRange.ASCII &&
+                            isAsciiCompatible(encoding) &&
+                            isAsciiCompatible(targetEncoding)) &&
                             a.getStringCompactionLevelUncached(encoding).getLog2() <= getNaturalStride(targetEncoding)) {
                 Assert.assertSame(a, b);
             }

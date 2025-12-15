@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.foreign;
 
+import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
+
 import java.util.List;
 
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -42,12 +44,11 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.java.FrameStateBuilder;
@@ -67,7 +68,7 @@ import jdk.vm.ci.meta.Signature;
  * {@link ForeignFunctionsRuntime#linkToNative}) --- done by
  * {@link ForeignGraphKit#unboxArguments};</li>
  * <li>Further adapt arguments as to satisfy SubstrateVM's backends --- done by
- * {@link AbiUtils.adapt}</li>
+ * {@link AbiUtils#adapt}</li>
  * <li>Perform a C-function call:</li>
  * <ul>
  * <li>Setup the frame anchor and capture call state --- Implemented in
@@ -87,7 +88,7 @@ import jdk.vm.ci.meta.Signature;
 @SuppressWarnings("javadoc")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/prims/nativeEntryPoint.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/cpu/x86/downcallLinker_x86_64.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+3/src/hotspot/cpu/aarch64/downcallLinker_aarch64.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+17/src/hotspot/cpu/aarch64/downcallLinker_aarch64.cpp")
 class DowncallStub extends NonBytecodeMethod {
     public static Signature createSignature(MetaAccessProvider metaAccess) {
         return ResolvedSignature.fromKinds(new JavaKind[]{JavaKind.Object}, JavaKind.Object, metaAccess);
@@ -104,16 +105,13 @@ class DowncallStub extends NonBytecodeMethod {
         this.nep = nep;
     }
 
-    @Uninterruptible(reason = "See DowncallStub.getInjectedAnnotations.", calleeMustBe = false)
-    @SuppressWarnings("unused")
-    private static void uninterruptibleAnnotationForAllowHeapAccessHolder() {
-    }
-
-    private static final AnnotationValue[] INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
-                    Uninterruptible.Utils.getAnnotation(ReflectionUtil.lookupMethod(DowncallStub.class, "uninterruptibleAnnotationForAllowHeapAccessHolder")));
+    private static final List<AnnotationValue> INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS = List.of(
+                    newAnnotationValue(Uninterruptible.class,
+                                    "reason", "See DowncallStub.getInjectedAnnotations.",
+                                    "calleeMustBe", false));
 
     @Override
-    public AnnotationValue[] getInjectedAnnotations() {
+    public List<AnnotationValue> getInjectedAnnotations() {
         /*
          * When allowHeapAccess is enabled, a HeapMemorySegmentImpl may be passed to a downcall. In
          * that case, the downcall stub will generate a native pointer to the backing object. Thus,
@@ -123,7 +121,7 @@ class DowncallStub extends NonBytecodeMethod {
         if (nep.allowHeapAccess()) {
             return INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS;
         }
-        return null;
+        return List.of();
     }
 
     /**
@@ -132,6 +130,8 @@ class DowncallStub extends NonBytecodeMethod {
      */
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
+        AbiUtils abiUtils = AbiUtils.singleton();
+
         ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method);
         FrameStateBuilder state = kit.getFrameState();
         boolean deoptimizationTarget = SubstrateCompilationDirectives.isDeoptTarget(method);
@@ -142,7 +142,7 @@ class DowncallStub extends NonBytecodeMethod {
         arguments = argumentsAndNep.getLeft();
         ValueNode runtimeNep = argumentsAndNep.getRight();
 
-        AbiUtils.Adapter.Result.FullNativeAdaptation adapted = AbiUtils.singleton().adapt(kit.unboxArguments(arguments, this.nep.methodType()), this.nep);
+        AbiUtils.Adapter.Result.FullNativeAdaptation adapted = abiUtils.adapt(kit.unboxArguments(arguments, this.nep.methodType()), this.nep);
         for (var node : adapted.nodesToAppendToGraph()) {
             kit.append(node);
         }

@@ -27,8 +27,6 @@ package jdk.graal.compiler.hotspot.replaycomp.proxy;
 import jdk.graal.compiler.core.common.CompilerProfiler;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-//JaCoCo Exclude
-
 public final class CompilerProfilerProxy extends CompilationProxyBase implements CompilerProfiler {
     CompilerProfilerProxy(InvocationHandler handler) {
         super(handler);
@@ -57,15 +55,15 @@ public final class CompilerProfilerProxy extends CompilationProxyBase implements
         handle(notifyCompilerPhaseEventMethod, notifyCompilerPhaseEventInvokable, compileId, startTime, name, nestingLevel);
     }
 
-    public static final SymbolicMethod notifyCompilerInlingEventMethod = method("notifyCompilerInlingEvent", int.class, ResolvedJavaMethod.class, ResolvedJavaMethod.class, boolean.class,
+    public static final SymbolicMethod notifyCompilerInliningEventMethod = method("notifyCompilerInliningEvent", int.class, ResolvedJavaMethod.class, ResolvedJavaMethod.class, boolean.class,
                     String.class, int.class);
-    private static final InvokableMethod notifyCompilerInlingEventInvokable = (receiver, args) -> {
-        ((CompilerProfiler) receiver).notifyCompilerInlingEvent((int) args[0], (ResolvedJavaMethod) args[1], (ResolvedJavaMethod) args[2], (boolean) args[3], (String) args[4], (int) args[5]);
+    private static final InvokableMethod notifyCompilerInliningEventInvokable = (receiver, args) -> {
+        ((CompilerProfiler) receiver).notifyCompilerInliningEvent((int) args[0], (ResolvedJavaMethod) args[1], (ResolvedJavaMethod) args[2], (boolean) args[3], (String) args[4], (int) args[5]);
         return null;
     };
 
     @Override
-    public void notifyCompilerInlingEvent(int compileId, ResolvedJavaMethod caller, ResolvedJavaMethod callee, boolean succeeded, String message, int bci) {
-        handle(notifyCompilerInlingEventMethod, notifyCompilerInlingEventInvokable, compileId, caller, callee, succeeded, message, bci);
+    public void notifyCompilerInliningEvent(int compileId, ResolvedJavaMethod caller, ResolvedJavaMethod callee, boolean succeeded, String message, int bci) {
+        handle(notifyCompilerInliningEventMethod, notifyCompilerInliningEventInvokable, compileId, caller, callee, succeeded, message, bci);
     }
 }

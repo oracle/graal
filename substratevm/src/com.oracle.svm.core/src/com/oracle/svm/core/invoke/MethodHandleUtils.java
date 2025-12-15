@@ -29,6 +29,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.lang.invoke.MethodHandle;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 
 import sun.invoke.util.Wrapper;
 
@@ -126,5 +127,16 @@ public class MethodHandleUtils {
             default:
                 throw shouldNotReachHere("Unexpected type for unbox function");
         }
+    }
+
+    /**
+     * Returns the resolved member if runtime class loading is enabled. Otherwise, always returns
+     * {@code null}.
+     */
+    public static ResolvedMember getResolvedMember(Target_java_lang_invoke_MemberName memberName) {
+        if (RuntimeClassLoading.isSupported()) {
+            return memberName.resolved;
+        }
+        return null;
     }
 }

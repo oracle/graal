@@ -78,6 +78,8 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.library
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.String replacementMethod()
+meth public abstract !hasdefault java.lang.String replacementOf()
 meth public abstract !hasdefault java.lang.String[] ifExported()
 meth public abstract !hasdefault java.lang.String[] ifExportedAsWarning()
 
@@ -124,6 +126,8 @@ meth public abstract java.lang.Object readDelegateExport(java.lang.Object)
 
 CLSS public abstract com.oracle.truffle.api.library.LibraryFactory<%0 extends com.oracle.truffle.api.library.Library>
 cons protected init(java.lang.Class<{com.oracle.truffle.api.library.LibraryFactory%0}>,java.util.List<com.oracle.truffle.api.library.Message>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+cons protected init(java.lang.Class<{com.oracle.truffle.api.library.LibraryFactory%0}>,java.util.List<com.oracle.truffle.api.library.Message>,boolean)
 meth protected !varargs com.oracle.truffle.api.utilities.FinalBitSet createMessageBitSet(com.oracle.truffle.api.library.Message[])
 meth protected abstract java.lang.Class<?> getDefaultClass(java.lang.Object)
 meth protected abstract java.lang.Object genericDispatch(com.oracle.truffle.api.library.Library,java.lang.Object,com.oracle.truffle.api.library.Message,java.lang.Object[],int) throws java.lang.Exception
@@ -155,12 +159,12 @@ CLSS public abstract com.oracle.truffle.api.library.Message
 cons protected !varargs init(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String,int,boolean,java.lang.Class<?>,java.lang.Class<?>[])
 cons protected !varargs init(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String,int,java.lang.Class<?>,java.lang.Class<?>[])
 meth protected final java.lang.Object clone() throws java.lang.CloneNotSupportedException
-meth public final boolean equals(java.lang.Object)
+meth public !varargs static com.oracle.truffle.api.library.Message resolveExact(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String,boolean,java.lang.Class<?>[])
+meth public !varargs static com.oracle.truffle.api.library.Message resolveExact(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String,java.lang.Class<?>[])
 meth public final boolean isDeprecated()
 meth public final com.oracle.truffle.api.library.LibraryFactory<?> getFactory()
 meth public final int getId()
 meth public final int getParameterCount()
-meth public final int hashCode()
 meth public final java.lang.Class<? extends com.oracle.truffle.api.library.Library> getLibraryClass()
 meth public final java.lang.Class<?> getParameterType(int)
 meth public final java.lang.Class<?> getReceiverType()
@@ -171,9 +175,11 @@ meth public final java.lang.String getSimpleName()
 meth public final java.lang.String toString()
 meth public final java.util.List<java.lang.Class<?>> getParameterTypes()
 meth public static com.oracle.truffle.api.library.Message resolve(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 meth public static com.oracle.truffle.api.library.Message resolve(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String,boolean)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 supr java.lang.Object
-hfds deprecated,hash,id,library,libraryClass,parameterCount,parameterTypes,parameterTypesArray,qualifiedName,returnType,simpleName
+hfds deprecated,id,library,libraryClass,parameterCount,parameterTypesArray,qualifiedName,returnType,simpleName
 
 CLSS public abstract com.oracle.truffle.api.library.ReflectionLibrary
 cons protected init()

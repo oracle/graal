@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot;
 
+import java.io.Serial;
 import java.util.Collections;
 import java.util.Formatter;
 import java.util.LinkedHashMap;
@@ -56,23 +57,31 @@ public final class JVMCIVersionCheck {
      */
     // Checkstyle: stop stable iteration order check
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
-                    "26", Map.of(
-                                    "Oracle Corporation", createLabsJDKVersion("26+11", 1),
-                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("26+11", 1)));
+                    "25", Map.of(
+                                    "Oracle Corporation", createLabsJDKVersion("25.0.1+8", "25.1", 12),
+                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25.0.1+8", "25.1", 12)));
     // Checkstyle: resume stable iteration order check
 
     private static final int NA = 0;
     /**
      * Minimum Java release supported by Graal.
      */
-    private static final int JAVA_MIN_RELEASE = 26;
+    private static final int JAVA_MIN_RELEASE = 25;
 
     /**
-     * Convenience factory for the current version scheme that only uses the JDK version and the
-     * JVMCI build number.
+     * Convenience factory for the current version scheme that only uses the JDK version, a release
+     * name and the JVMCI build number.
      */
-    public static Version createLabsJDKVersion(String jdkVersionString, int jvmciBuild) {
-        return new Version(jdkVersionString, NA, NA, jvmciBuild, false, false);
+    public static Version createLabsJDKVersion(String jdkVersionString, String releaseName, int jvmciBuild) {
+        return new Version(jdkVersionString, Objects.requireNonNull(releaseName), jvmciBuild);
+    }
+
+    /**
+     * Convenience factory for the old version scheme used until GraalVM for JDK 25 (internal
+     * version 25.0) without a release name but only a JDK version and the JVMCI build number.
+     */
+    public static Version createLabsJDKVersionUntilGraalVmForJDK25(String jdkVersionString, int jvmciBuild) {
+        return new Version(jdkVersionString, null, jvmciBuild);
     }
 
     /**
@@ -81,39 +90,71 @@ public final class JVMCIVersionCheck {
      * custom LabsJDK build.
      */
     public static Version createOpenJDKVersion(String jdkVersionString) {
-        return new Version(jdkVersionString, NA, NA, NA, false, true);
+        return new Version(jdkVersionString, null, NA);
     }
 
     /**
-     * Legacy factory for versions without JDK version. This force sets {@link Version#jdkVersion}
-     * to {@code 21}. While this is not entirely correct, it works for our purposes.
+     * Denotes that two {@link Version} objects are not comparable. See subclasses for reasons.
      */
-    public static Version createLegacyVersion(int jvmciMajor, int jvmciMinor, int jvmciBuild) {
-        return new Version("21", jvmciMajor, jvmciMinor, jvmciBuild, true, false);
+    public abstract static class IncomparableVersionException extends Exception {
+        @Serial private static final long serialVersionUID = -3033077236154277911L;
+
+        protected IncomparableVersionException(String message) {
+            super(message);
+        }
+    }
+
+    /**
+     * Denotes that two {@link Version} objects are not comparable. This happens if the
+     * {@link Version#jdkVersion} is the same but the {@link Version#releaseName} is not. In this
+     * case, we cannot tell anything about the relation of the two version.
+     * {@link Version#isComparableRelease} can be used to determine whether two version are
+     * comparable in principle.
+     */
+    public static final class IncomparableReleaseException extends IncomparableVersionException {
+
+        @Serial private static final long serialVersionUID = 8413999811550577857L;
+
+        public IncomparableReleaseException(Version a, Version b) {
+            super("Incomparable versions for " + a + " and " + b + ". Release names do not match: " + a.releaseName + " and " + b.releaseName);
+        }
+    }
+
+    /**
+     * Denotes that two {@link Version} objects are not comparable. This happens if the
+     * {@link Version#jdkVersion} is the same but the {@link Version#releaseName} is not. In this
+     * case, we cannot tell anything about the relation of the two version.
+     * {@link Version#isComparableRelease} can be used to determine whether two version are
+     * comparable in principle.
+     */
+    public static final class IncomparableNonJVMCIException extends JVMCIVersionCheck.IncomparableVersionException {
+
+        @Serial private static final long serialVersionUID = 8413999811550577857L;
+
+        public IncomparableNonJVMCIException(Version nonJvmci, Version jvmci) {
+            super("Cannot compare JVMCI version " + jvmci + " with non-JVMCI version " + nonJvmci);
+            assert nonJvmci.isOpenJDK();
+            assert !jvmci.isOpenJDK();
+        }
     }
 
     public static final class Version {
         private final Runtime.Version jdkVersion;
-        private final int jvmciMajor;
-        private final int jvmciMinor;
+        private final String releaseName;
         private final int jvmciBuild;
-        private final boolean legacy;
-        private final boolean isOpenJDK;
 
         static Version parse(String vmVersion) {
-            Matcher m = Pattern.compile("(.+)-jvmci(-(\\d+)\\.(\\d+))?-b(\\d+).*").matcher(vmVersion);
+            Matcher m = Pattern.compile("(.+)-jvmci(-(.+))?-b(\\d+).*").matcher(vmVersion);
             if (m.matches()) {
                 try {
+                    String jdkVersion = m.group(1);
                     if (m.group(3) == null) {
-                        assert m.group(4) == null : "if jvmciMajor is null jvmciMinor must also be null";
-                        String jdkVersion = m.group(1);
-                        int jvmciBuild = Integer.parseInt(m.group(5));
-                        return createLabsJDKVersion(jdkVersion, jvmciBuild);
+                        int jvmciBuild = Integer.parseInt(m.group(4));
+                        return createLabsJDKVersionUntilGraalVmForJDK25(jdkVersion, jvmciBuild);
                     } else {
-                        int jvmciMajor = Integer.parseInt(m.group(3));
-                        int jvmciMinor = Integer.parseInt(m.group(4));
-                        int jvmciBuild = Integer.parseInt(m.group(5));
-                        return createLegacyVersion(jvmciMajor, jvmciMinor, jvmciBuild);
+                        String releaseName = m.group(3);
+                        int jvmciBuild = Integer.parseInt(m.group(4));
+                        return createLabsJDKVersion(jdkVersion, releaseName, jvmciBuild);
                     }
 
                 } catch (NumberFormatException e) {
@@ -145,88 +186,94 @@ public final class JVMCIVersionCheck {
             return sb.toString();
         }
 
-        private Version(String jdkVersionString, int jvmciMajor, int jvmciMinor, int jvmciBuild, boolean legacy, boolean isOpenJDK) {
-            this(Runtime.Version.parse(jdkVersionString), jvmciMajor, jvmciMinor, jvmciBuild, legacy, isOpenJDK);
+        private Version(String jdkVersionString, String releaseName, int jvmciBuild) {
+            this(Runtime.Version.parse(jdkVersionString), releaseName, jvmciBuild);
         }
 
-        private Version(Runtime.Version jdkVersion, int jvmciMajor, int jvmciMinor, int jvmciBuild, boolean legacy, boolean isOpenJDK) {
+        private Version(Runtime.Version jdkVersion, String releaseName, int jvmciBuild) {
             this.jdkVersion = jdkVersion;
-            this.jvmciMajor = jvmciMajor;
-            this.jvmciMinor = jvmciMinor;
+            this.releaseName = releaseName;
             this.jvmciBuild = jvmciBuild;
-            this.legacy = legacy;
-            this.isOpenJDK = isOpenJDK;
         }
 
-        boolean isGreaterThan(Version other) {
-            if (!isLessThan(other)) {
-                return !equals(other);
-            }
-            return false;
+        /**
+         * Checks whether {@code this} version is comparable to the {@code other} version, i.e., if
+         * both {@link #releaseName} members are {@linkplain Objects#equals equal}. Note that this
+         * does not make any assumption on {@link #jdkVersion}.
+         */
+        public boolean isComparableRelease(Version other) {
+            return Objects.equals(this.releaseName, other.releaseName);
         }
 
-        public boolean isLessThan(Version other) {
-            if (this.legacy && !other.legacy) {
+        public boolean isLessThan(Version other) throws IncomparableVersionException {
+            int compareTo = this.jdkVersion.compareToIgnoreOptional(other.jdkVersion);
+            if (compareTo < 0) {
                 return true;
             }
-            if (this.legacy == other.legacy) {
-                int compareTo = this.legacy ? 0 : this.jdkVersion.compareToIgnoreOptional(other.jdkVersion);
-                if (compareTo < 0) {
-                    return true;
+            if (compareTo == 0) {
+                if (this.isOpenJDK() != other.isOpenJDK()) {
+                    // comparing OpenJDK version with LabsJDK version.
+                    if (this.isOpenJDK()) {
+                        throw new IncomparableNonJVMCIException(this, other);
+                    } else {
+                        throw new IncomparableNonJVMCIException(other, this);
+                    }
                 }
-                if (compareTo == 0) {
-                    if (this.isOpenJDK != other.isOpenJDK) {
-                        // comparing OpenJDK version with LabsJDK version.
-                        return false;
-                    }
-                    if (this.jvmciMajor < other.jvmciMajor) {
-                        return true;
-                    }
-                    if (this.jvmciMajor == other.jvmciMajor) {
-                        if (this.jvmciMinor < other.jvmciMinor) {
-                            return true;
-                        }
-                        if (this.jvmciMinor == other.jvmciMinor && this.jvmciBuild < other.jvmciBuild) {
-                            return true;
-                        }
-                    }
+                if (!isComparableRelease(other)) {
+                    throw new IncomparableReleaseException(this, other);
+                }
+                if (this.jvmciBuild < other.jvmciBuild) {
+                    return true;
                 }
             }
             return false;
+        }
+
+        private boolean isOpenJDK() {
+            return jvmciBuild == NA;
         }
 
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof Version that) {
-                return this.jdkVersion.equals(that.jdkVersion) && this.jvmciMajor == that.jvmciMajor && this.jvmciMinor == that.jvmciMinor && this.jvmciBuild == that.jvmciBuild;
+                return this.jdkVersion.equals(that.jdkVersion) && Objects.equals(this.releaseName, that.releaseName) && this.jvmciBuild == that.jvmciBuild;
             }
             return false;
         }
 
         @Override
         public int hashCode() {
-            return this.jdkVersion.hashCode() ^ this.jvmciMajor ^ this.jvmciMinor ^ this.jvmciBuild;
+            return Objects.hashCode(this.jdkVersion) ^ Objects.hashCode(this.releaseName) ^ this.jvmciBuild;
         }
 
+        public static final String AS_TAG_FORMAT_RELEASE_NAME = "jvmci-%s-b%02d";
+        public static final String TO_STRING_FORMAT_RELEASE_NAME = "%s-jvmci-%s-b%02d";
         public static final String AS_TAG_FORMAT_22_AND_LATER = "%s-jvmci-b%02d";
-        public static final String AS_TAG_FORMAT_21_AND_EARLIER = "jvmci-%d.%d-b%02d";
 
         @Override
         public String toString() {
-            if (isOpenJDK) {
+            if (isOpenJDK()) {
                 return jdkVersion.toString();
             }
-            if (!legacy) {
-                return String.format(AS_TAG_FORMAT_22_AND_LATER, jdkVersion, jvmciBuild);
+            if (releaseName != null) {
+                return String.format(TO_STRING_FORMAT_RELEASE_NAME, jdkVersion, releaseName, jvmciBuild);
             } else {
-                return String.format(AS_TAG_FORMAT_21_AND_EARLIER, jvmciMajor, jvmciMinor, jvmciBuild);
+                return String.format(AS_TAG_FORMAT_22_AND_LATER, jdkVersion, jvmciBuild);
             }
         }
 
         public String printFormat(PrintFormat format) {
             return switch (format) {
-                case TUPLE -> String.format("%s,%d,%d,%d", jdkVersion, jvmciMajor, jvmciMinor, jvmciBuild);
-                case AS_TAG -> toString();
+                case TUPLE -> String.format("%s,%s,%d", jdkVersion, releaseName, jvmciBuild);
+                case AS_TAG -> {
+                    if (isOpenJDK()) {
+                        yield jdkVersion.toString();
+                    } else if (releaseName != null) {
+                        yield String.format(AS_TAG_FORMAT_RELEASE_NAME, releaseName, jvmciBuild);
+                    } else {
+                        yield String.format(AS_TAG_FORMAT_22_AND_LATER, jdkVersion, jvmciBuild);
+                    }
+                }
             };
         }
 
@@ -235,7 +282,7 @@ public final class JVMCIVersionCheck {
                 String version = jdkVersion.toString();
                 assert version.endsWith("-LTS");
                 String stripped = version.substring(0, version.length() - 4);
-                return new Version(stripped, jvmciMajor, jvmciMinor, jvmciBuild, legacy, isOpenJDK);
+                return new Version(stripped, releaseName, jvmciBuild);
             } else {
                 return this;
             }
@@ -394,8 +441,14 @@ public final class JVMCIVersionCheck {
                 if (format != null) {
                     System.out.println(v.stripLTS().printFormat(format));
                 }
-                if (v.isLessThan(minVersion)) {
-                    return String.format("The VM does not support the minimum JVMCI API version required by Graal: %s < %s.", v, minVersion);
+                try {
+                    if (v.isLessThan(minVersion)) {
+                        return String.format("The VM does not support the minimum JVMCI API version required by Graal: %s < %s.", v, minVersion);
+                    }
+                } catch (IncomparableReleaseException e) {
+                    return String.format("Graal expected a JVMCI release version of %s, but got %s.", minVersion.releaseName, v.releaseName);
+                } catch (IncomparableVersionException e) {
+                    return e.getMessage();
                 }
                 return null;
             }

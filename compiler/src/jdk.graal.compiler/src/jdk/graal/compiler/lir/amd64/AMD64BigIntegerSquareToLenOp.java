@@ -56,9 +56,9 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/b1fa1ecc988fb07f191892a459625c2c8f2de3b5/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L3254-L3299",
-          sha1 = "22858719e2e46ece16ee448ee90e3e1c4f54ddde")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/e6ac956a7ac613b916c0dbfda7e57856c1b8a83c/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6871-L7184",
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L3254-L3299",
+          sha1 = "b002fbc3aef7b27914cb3dbf66e27e94ffc2d8d9")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6868-L7181",
           sha1 = "2e4ea1436904cbd5a933eb8c687296d9bbefe4f0")
 // @formatter:on
 public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {

@@ -43,7 +43,6 @@ import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.RawPointerTo;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -71,9 +70,12 @@ import com.oracle.svm.core.debug.SharedDebugInfoProvider;
 import com.oracle.svm.core.debug.SubstrateDebugTypeEntrySupport;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.image.ImageHeapPartition;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
@@ -96,7 +98,9 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.InjectedFieldsType;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
@@ -120,10 +124,12 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     private final int primitiveStartOffset;
     private final int referenceStartOffset;
     private final Set<HostedMethod> allOverrides;
+    private final boolean buildingImageLayer;
+    private final int layerNumber;
 
     NativeImageDebugInfoProvider(DebugContext debug, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess,
-                    RuntimeConfiguration runtimeConfiguration) {
-        super(debug, runtimeConfiguration, metaAccess);
+                    RuntimeConfiguration runtimeConfig) {
+        super(debug, runtimeConfig, metaAccess);
         this.heap = heap;
         this.codeCache = codeCache;
         this.nativeLibs = nativeLibs;
@@ -141,6 +147,9 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                         .flatMap(m -> Arrays.stream(m.getImplementations())
                                         .filter(Predicate.not(m::equals)))
                         .collect(Collectors.toSet());
+
+        buildingImageLayer = ImageLayerBuildingSupport.buildingImageLayer();
+        layerNumber = DynamicImageLayerInfo.getCurrentLayerNumber();
     }
 
     @SuppressWarnings("unused")
@@ -204,11 +213,10 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
      * @param data the data info to process
      */
     @Override
-    @SuppressWarnings("try")
     protected void installDataInfo(Object data) {
         // log ObjectInfo data
         if (debug.isLogEnabled(DebugContext.INFO_LEVEL) && data instanceof NativeImageHeap.ObjectInfo objectInfo) {
-            try (DebugContext.Scope s = debug.scope("DebugDataInfo")) {
+            try (DebugContext.Scope _ = debug.scope("DebugDataInfo")) {
                 long offset = objectInfo.getOffset();
                 long size = objectInfo.getSize();
                 String typeName = objectInfo.getClazz().toJavaName();
@@ -497,6 +505,11 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     }
 
     @Override
+    public boolean isCompiledInPriorLayer(SharedMethod method) {
+        return method instanceof HostedMethod hostedMethod && hostedMethod.isCompiledInPriorLayer();
+    }
+
+    @Override
     public boolean isVirtual(SharedMethod method) {
         return method instanceof HostedMethod hostedMethod && hostedMethod.hasVTableIndex();
     }
@@ -582,8 +595,14 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         }
 
         for (ResolvedJavaField field : type.getStaticFields()) {
-            assert field instanceof HostedField;
-            structureTypeEntry.addField(createFieldEntry((HostedField) field, structureTypeEntry));
+            HostedField hField = (HostedField) field;
+            /*
+             * If we are in a layered build only add debug info for a static field if it is
+             * installed in the current layer.
+             */
+            if (!buildingImageLayer || (hField.hasInstalledLayerNum() && layerNumber == hField.getInstalledLayerNum())) {
+                structureTypeEntry.addField(createFieldEntry(hField, structureTypeEntry));
+            }
         }
     }
 
@@ -685,6 +704,9 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                      * image singleton.
                      */
                     TypeEntry foreignTypeEntry = SubstrateDebugTypeEntrySupport.singleton().getTypeEntry(typeSignature);
+                    if (foreignTypeEntry == null) {
+                        throw VMError.shouldNotReachHere("Missing TypeEntry for '" + typeName + "' from loader '" + loaderName + "' in SubstrateDebugTypeEntrySupport");
+                    }
 
                     // update class offset if the class object is in the heap
                     foreignTypeEntry.setClassOffset(classOffset);
@@ -737,7 +759,8 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         int size = elementSize(elementInfo);
         // We need the loader name here to match the type signature generated later for looking up
         // type entries.
-        String loaderName = UniqueShortNameProvider.singleton().uniqueShortLoaderName(type.getJavaClass().getClassLoader());
+        var runtimeLoader = ((SVMHost) type.getUniverse().hostVM()).dynamicHub(type).getClassLoader();
+        String loaderName = UniqueShortNameProvider.singleton().uniqueShortLoaderName(runtimeLoader);
         long typeSignature = getTypeSignature(typeName + loaderName);
 
         // Reuse already created type entries.
@@ -759,11 +782,11 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                      * RawPointerTo annotation
                      */
                     AnalysisType pointerTo = null;
-                    CPointerTo cPointerTo = type.getAnnotation(CPointerTo.class);
+                    CPointerTo cPointerTo = AnnotationUtil.getAnnotation(type, CPointerTo.class);
                     if (cPointerTo != null) {
                         pointerTo = metaAccess.lookupJavaType(cPointerTo.value());
                     }
-                    RawPointerTo rawPointerTo = type.getAnnotation(RawPointerTo.class);
+                    RawPointerTo rawPointerTo = AnnotationUtil.getAnnotation(type, RawPointerTo.class);
                     if (rawPointerTo != null) {
                         pointerTo = metaAccess.lookupJavaType(rawPointerTo.value());
                     }
@@ -987,10 +1010,9 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
      * @return the {@code FileEntry} for the type
      */
     @Override
-    @SuppressWarnings("try")
     public FileEntry lookupFileEntry(ResolvedJavaType type) {
         Class<?> clazz = OriginalClassProvider.getJavaClass(type);
-        try (DebugContext.Scope s = debug.scope("DebugFileInfo", type)) {
+        try (DebugContext.Scope _ = debug.scope("DebugFileInfo", type)) {
             Path filePath = debugInfoSourceManager.findAndCacheSource(type, clazz, debug);
             if (filePath != null) {
                 return lookupFileEntry(filePath);
@@ -1030,7 +1052,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                 /* Use the size of header common to all arrays of this type. */
                 return getObjectLayout().getArrayBaseOffset(hostedArrayClass.getComponentType().getStorageKind());
             }
-            case HostedInterface hostedInterface -> {
+            case HostedInterface _ -> {
                 /* Use the size of the header common to all implementors. */
                 return getObjectLayout().getFirstFieldOffset();
             }

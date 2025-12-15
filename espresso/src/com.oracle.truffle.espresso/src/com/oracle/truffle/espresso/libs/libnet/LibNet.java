@@ -22,12 +22,11 @@
  */
 package com.oracle.truffle.espresso.libs.libnet;
 
-import java.util.List;
-
 import com.oracle.truffle.espresso.libs.Lib;
 import com.oracle.truffle.espresso.libs.Libs;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.substitutions.Collect;
+import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 
 @Collect(Libs.class)
 public final class LibNet implements Lib.Factory {
@@ -38,6 +37,6 @@ public final class LibNet implements Lib.Factory {
 
     @Override
     public Lib create(EspressoContext ctx) {
-        return new Lib(ctx, List.of() /*- LibNetCollector.getInstances(JavaSubstitution.Factory.class) */, name());
+        return new Lib(ctx, LibNetCollector.getInstances(JavaSubstitution.Factory.class), name());
     }
 }

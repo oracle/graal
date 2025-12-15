@@ -140,7 +140,7 @@ public class ProgressReporterJsonHelper {
     @SuppressWarnings("unchecked")
     private static Map<String, Object> getOrCreateMap(Map<String, Object> object, String key) {
         Objects.requireNonNull(key, "JSON keys must not be 'null'");
-        return (Map<String, Object>) object.computeIfAbsent(key, k -> new HashMap<>());
+        return (Map<String, Object>) object.computeIfAbsent(key, _ -> new HashMap<>());
     }
 
     /**

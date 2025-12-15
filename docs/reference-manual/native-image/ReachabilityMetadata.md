@@ -21,10 +21,11 @@ Small binaries allow fast application startup and low memory footprint, however 
 To ensure inclusion of necessary dynamically-accessed elements into the native binary, the `native-image` builder requires **reachability metadata** (hereinafter referred to as *metadata*). 
 Providing the builder with correct and exhaustive reachability metadata guarantees application correctness and ensures compatibility with third-party libraries at runtime. 
 
-Metadata can be provided to the `native-image` builder in the following ways:
-- By [computing metadata in code](#computing-metadata-in-code) [when the native binary is built](NativeImageBasics.md#image-build-time-vs-image-run-time) and storing required elements into the [initial heap of the native binary](NativeImageBasics.md#native-image-heap).
-- By [providing the _reachability-metadata.json_ file(s)](#specifying-metadata-with-json) stored in the _META-INF/native-image/\<group.Id>\/\<artifactId>\/_ directory on the classpath. For more information about how to collect metadata for your application automatically, see [Collecting Metadata Automatically](AutomaticMetadataCollection.md).
-- For more advanced use cases, where classpath scanning or build-time initialization is needed, by using the [public API](#public-api).
+You can provide reachability metadata to the `native-image` builder using the following methods:
+- [Compute metadata in code](#computing-metadata-in-code) [when the native binary is built](NativeImageBasics.md#build-time-vs-run-time) and store the required elements in the [initial heap of the native binary](NativeImageBasics.md#native-image-heap).
+- Place one or more [_reachability-metadata.json_ files](#specifying-metadata-with-json) in the _META-INF/native-image/&lt;groupId&gt;/&lt;artifactId&gt;/_ directory on the classpath. For more information about how to collect metadata for your application automatically, see [Collecting Metadata Automatically](AutomaticMetadataCollection.md).
+- Use the `-H:Preserve=<classpath-selector>` flag. For detailed instructions, please refer to the `-H:Preserve=` [documentation](BuildOptions.md#preserving-packages-modules-or-classes).
+- Use the [Feature API](https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.nativeimage/src/org/graalvm/nativeimage/hosted/Feature.java) for advanced use cases where classpath scanning is necessary to compute correct metadata.
 
 > Note: Native Image is migrating to the more user-friendly implementation of reachability metadata that shows problems early on and allows easy debugging.
 >
@@ -124,7 +125,7 @@ Computing metadata in code can be achieved in two ways:
 ## Specifying Metadata with JSON
 
 All metadata specified in the _reachability-metadata.json_ file that is located in any of the classpath entries at _META-INF/native-image/\<group.Id>\/\<artifactId>\/_.
-The JSON schema for the reachability metadata is defined in [reachability-metadata-schema-v1.1.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.1.0.json).
+The JSON schema for the reachability metadata is defined in [reachability-metadata-schema-v1.2.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.2.0.json).
 
 A sample _reachability-metadata.json_ file can be found [in the sample section](#sample-reachability-metadata).
 The _reachability-metadata.json_ configuration contains a single object with one field for each type of metadata. Each field in the top-level object contains an array of *metadata entries*:

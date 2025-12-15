@@ -31,13 +31,6 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
-import jdk.graal.compiler.vector.architecture.VectorArchitecture;
-import jdk.graal.compiler.vector.nodes.simd.LogicValueStamp;
-import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
-import jdk.graal.compiler.vector.nodes.simd.SimdCutNode;
-import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
-import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIOperations;
-
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -61,6 +54,12 @@ import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.nodes.simd.LogicValueStamp;
+import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
+import jdk.graal.compiler.vector.nodes.simd.SimdCutNode;
+import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIOperations;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -119,7 +118,7 @@ public class VectorAPIConvertNode extends VectorAPIMacroNode implements Canonica
     protected VectorAPIConvertNode(MacroParams macroParams, SimdStamp fromStamp, SimdStamp toStamp, ConversionOp op, SimdConstant constantValue, FrameState stateAfter) {
         super(TYPE, macroParams, constantValue);
         this.fromStamp = fromStamp;
-        this.toStamp = toStamp;
+        this.toStamp = maybeConstantVectorStamp(toStamp, constantValue);
         this.op = op;
         this.stateAfter = stateAfter;
     }

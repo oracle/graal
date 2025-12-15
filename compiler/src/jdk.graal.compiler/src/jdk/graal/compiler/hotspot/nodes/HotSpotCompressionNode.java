@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo(nameTemplate = "{p#op/s}", cycles = CYCLES_2, size = SIZE_2)
 public final class HotSpotCompressionNode extends CompressionNode {
@@ -62,6 +63,14 @@ public final class HotSpotCompressionNode extends CompressionNode {
         return graph.unique(uncompress(input, encoding));
     }
 
+    public static HotSpotCompressionNode compressWithoutUnique(StructuredGraph graph, ValueNode input, CompressEncoding encoding) {
+        return graph.addWithoutUnique(compress(input, encoding));
+    }
+
+    public static CompressionNode uncompressWithoutUnique(StructuredGraph graph, ValueNode input, CompressEncoding encoding) {
+        return graph.addWithoutUnique(uncompress(input, encoding));
+    }
+
     private static HotSpotCompressionNode compress(ValueNode input, CompressEncoding encoding) {
         return new HotSpotCompressionNode(CompressionOp.Compress, input, encoding);
     }
@@ -73,7 +82,9 @@ public final class HotSpotCompressionNode extends CompressionNode {
     @Override
     public boolean isCompressible(Constant constant) {
         if (constant instanceof HotSpotMetaspaceConstant mc) {
-            return mc.isCompressible();
+            ResolvedJavaType type = mc.asResolvedJavaType();
+            // As of JDK-8338526, interface and abstract types are not compressible.
+            return type.isArray() || (!type.isAbstract() && !type.isInterface());
         }
         return true;
     }
@@ -100,10 +111,14 @@ public final class HotSpotCompressionNode extends CompressionNode {
 
     @Override
     public ValueNode reverse(ValueNode input) {
-        return switch (op) {
-            case Compress -> uncompress(input, encoding);
-            case Uncompress -> compress(input, encoding);
-        };
+        switch (op) {
+            case Compress:
+                return uncompress(input, encoding);
+            case Uncompress:
+                return compress(input, encoding);
+            default:
+                throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
+        }
     }
 
     @Override

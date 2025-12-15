@@ -1,0 +1,6 @@
+Manifest-Version: 1.0
+OpenIDE-Module: at.ssw.visualizer.ir.view
+OpenIDE-Module-Layer: at/ssw/visualizer/ir/view/layer.xml
+OpenIDE-Module-Localizing-Bundle: at/ssw/visualizer/ir/view/Bundle.properties
+OpenIDE-Module-Specification-Version: 1.0
+

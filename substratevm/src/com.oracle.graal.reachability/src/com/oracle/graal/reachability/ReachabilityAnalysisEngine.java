@@ -28,7 +28,7 @@ import java.lang.reflect.Executable;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
@@ -58,6 +58,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * Core class of the Reachability Analysis. Contains the crucial part: resolving virtual methods.
@@ -152,6 +153,15 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     public AnalysisType addRootField(AnalysisField analysisField) {
         analysisField.registerAsAccessed("root field");
         return analysisField.getType();
+    }
+
+    @Override
+    public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
+        assert aField.getStorageKind().isObject();
+        aField.registerAsAccessed("@UnknownObjectField annotated field.");
+        for (AnalysisType declaredType : customTypes) {
+            declaredType.registerAsReachable("injected field types for unknown annotated field " + aField.format("%H.%n"));
+        }
     }
 
     @Override
@@ -284,6 +294,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
 
     @Override
     public boolean finish() throws InterruptedException {
+        assert isInitialized();
         do {
             runReachability();
             assert executor.getPostedOperations() == 0 : executor.getPostedOperations();
@@ -312,7 +323,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
      * method.
      */
     private void computeCallers() {
-        Set<ReachabilityAnalysisMethod> seen = new HashSet<>();
+        EconomicSet<ReachabilityAnalysisMethod> seen = EconomicSet.create();
         Deque<ReachabilityAnalysisMethod> queue = new ArrayDeque<>();
 
         for (AnalysisMethod m : AnalysisUniverse.getCallTreeRoots(getUniverse())) {

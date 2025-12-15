@@ -57,8 +57,9 @@ import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public abstract class BinaryStreamParser {
-    protected static final int SINGLE_RESULT_VALUE = 0;
-    protected static final int MULTI_RESULT_VALUE = 1;
+    protected static final int BLOCK_TYPE_VOID = 0;
+    protected static final int BLOCK_TYPE_VALTYPE = 1;
+    protected static final int BLOCK_TYPE_TYPE_INDEX = 2;
 
     private static final VarHandle I16LE = MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.LITTLE_ENDIAN);
     private static final VarHandle I32LE = MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN);
@@ -204,7 +205,25 @@ public abstract class BinaryStreamParser {
         } else if (mut == GlobalModifier.MUTABLE) {
             return mut;
         } else {
-            throw Assert.fail(Failure.MALFORMED_MUTABILITY, "Invalid mutability flag: " + mut);
+            throw Assert.fail(Failure.MALFORMED_MUTABILITY, "Invalid mutability flag: 0x%02x", mut);
+        }
+    }
+
+    /**
+     * Reads the attribute of a tag (uint8).
+     */
+    protected byte readTagAttribute() {
+        final byte attribute = peekTagAttribute();
+        offset++;
+        return attribute;
+    }
+
+    protected byte peekTagAttribute() {
+        final byte attribute = peek1();
+        if (attribute == WasmTag.Attribute.EXCEPTION) {
+            return attribute;
+        } else {
+            throw Assert.fail(Failure.MALFORMED_TAG_ATTRIBUTE, "Invalid tag attribute: 0x%02x", attribute);
         }
     }
 
@@ -274,75 +293,6 @@ public abstract class BinaryStreamParser {
 
     protected int offset() {
         return offset;
-    }
-
-    /**
-     * Reads the block type at the current location. The result is provided as two values. The first
-     * is the actual value of the block type. The second is an indicator if it is a single result
-     * type or a multi-value result.
-     *
-     * @param result The array used for returning the result.
-     *
-     */
-    protected void readBlockType(int[] result, boolean allowRefTypes, boolean allowVecType) {
-        byte type = peek1(data, offset);
-        switch (type) {
-            case WasmType.VOID_TYPE:
-            case WasmType.I32_TYPE:
-            case WasmType.I64_TYPE:
-            case WasmType.F32_TYPE:
-            case WasmType.F64_TYPE:
-                offset++;
-                result[0] = type;
-                result[1] = SINGLE_RESULT_VALUE;
-                break;
-            case WasmType.V128_TYPE:
-                Assert.assertTrue(allowVecType, Failure.MALFORMED_VALUE_TYPE);
-                offset++;
-                result[0] = type;
-                result[1] = SINGLE_RESULT_VALUE;
-                break;
-            case WasmType.FUNCREF_TYPE:
-            case WasmType.EXTERNREF_TYPE:
-                Assert.assertTrue(allowRefTypes, Failure.MALFORMED_VALUE_TYPE);
-                offset++;
-                result[0] = type;
-                result[1] = SINGLE_RESULT_VALUE;
-                break;
-            default:
-                long valueAndLength = peekSignedInt32AndLength(data, offset);
-                result[0] = value(valueAndLength);
-                Assert.assertIntGreaterOrEqual(result[0], 0, Failure.UNSPECIFIED_MALFORMED);
-                result[1] = MULTI_RESULT_VALUE;
-                offset += length(valueAndLength);
-        }
-    }
-
-    protected static byte peekValueType(byte[] data, int offset, boolean allowRefTypes, boolean allowVecType) {
-        byte b = peek1(data, offset);
-        switch (b) {
-            case WasmType.I32_TYPE:
-            case WasmType.I64_TYPE:
-            case WasmType.F32_TYPE:
-            case WasmType.F64_TYPE:
-                break;
-            case WasmType.V128_TYPE:
-                Assert.assertTrue(allowVecType, Failure.MALFORMED_VALUE_TYPE);
-                break;
-            case WasmType.FUNCREF_TYPE:
-            case WasmType.EXTERNREF_TYPE:
-                Assert.assertTrue(allowRefTypes, Failure.MALFORMED_VALUE_TYPE);
-                break;
-            default:
-                Assert.fail(Failure.MALFORMED_VALUE_TYPE, "Invalid value type: 0x%02X", b);
-        }
-        return b;
-    }
-
-    protected byte readValueType(boolean allowRefTypes, boolean allowVecType) {
-        byte b = peekValueType(data, offset, allowRefTypes, allowVecType);
-        offset++;
-        return b;
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)

@@ -636,8 +636,8 @@ public class CountedLoopInfo {
             if (iv.isConstantInit() && isConstantMaxTripCount() && iv.isConstantStride()) {
                 try {
                     final int bits = IntegerStamp.getBits(iv.valueNode().stamp(NodeView.DEFAULT));
-                    long tripCountMinus1 = LoopUtility.subtractExact(bits, LoopUtility.tripCountSignedExact(this), 1);
-                    long stripTimesTripCount = LoopUtility.multiplyExact(bits, iv.constantStride(), tripCountMinus1);
+                    final long signedTripCount = LoopUtility.tripCountSignedExact(this);
+                    final long stripTimesTripCount = LoopUtility.multiplyExact(bits, iv.constantStride(), signedTripCount);
                     @SuppressWarnings("unused")
                     long extremum = LoopUtility.addExact(bits, stripTimesTripCount, iv.initNode().asJavaConstant().asLong());
                     return true;
@@ -747,6 +747,32 @@ public class CountedLoopInfo {
         }
     }
 
+    /**
+     * Creates an overflow guard condition, that is the condition such that if it is satisfied, the
+     * induction variable will overflow, and we have to treat the loop as a non-counted one.
+     * <p>
+     * For example, given this loop:
+     * {@snippet :
+     * for (int i = 0; i < limit; i += 2) {
+     * }
+     * }
+     * Most of the time, this loop will execute a limited amount of iterations, and the value of
+     * {@code i} inside the loop body will be in the interval {@code [0, limit)}. However, in the
+     * rare cases that {@code limit == Integer.MAX_VALUE}, the addition {@code i += 2} will
+     * overflow, and the loop would not terminate. In those cases, We cannot treat the loop as a
+     * counted loop. As a result, we insert a guard for those circumstances. The guard is
+     * conservative, that is it will catch all cases where the calculation of the induction variable
+     * overflows, and it may catch cases where the calculation does not actually overflow. In the
+     * example, the guard would be:
+     * {@snippet :
+     * if (limit > Integer.MAX_VALUE - 1) {
+     *     deoptimize();
+     * }
+     * }
+     * This method creates the aforementioned guard, it has the value {@code true} if the
+     * calculation may overflow, and {@code false} if it cannot, in such cases assumptions about
+     * counted loops hold.
+     */
     public LogicNode createOverflowGuardCondition() {
         StructuredGraph graph = getLimitCheckedIV().valueNode().graph();
         if (counterNeverOverflows()) {
@@ -757,18 +783,22 @@ public class CountedLoopInfo {
         LogicNode cond; // we use a negated guard with a < condition to achieve a >=
         ConstantNode one = ConstantNode.forIntegerStamp(stamp, 1, graph);
         if (getLimitCheckedIV().direction() == InductionVariable.Direction.Up) {
-            ValueNode v1 = BinaryArithmeticNode.sub(ConstantNode.forIntegerStamp(stamp, integerHelper.maxValue()), BinaryArithmeticNode.sub(getLimitCheckedIV().strideNode(), one));
-            if (isLimitIncluded) {
-                v1 = BinaryArithmeticNode.sub(v1, one);
+            // overflow ~ (tripCountLimit + stride) overflow ~ tripCountLimit > maxValue - stride
+            ValueNode maxValue = ConstantNode.forIntegerStamp(stamp, integerHelper.maxValue(), graph);
+            ValueNode maxNonOverflowLimitValue = BinaryArithmeticNode.sub(graph, maxValue, getLimitCheckedIV().strideNode(), NodeView.DEFAULT);
+            if (!isLimitIncluded) {
+                maxNonOverflowLimitValue = BinaryArithmeticNode.add(graph, maxNonOverflowLimitValue, one, NodeView.DEFAULT);
             }
-            cond = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(v1, getTripCountLimit(), NodeView.DEFAULT));
+            cond = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(maxNonOverflowLimitValue, getTripCountLimit(), NodeView.DEFAULT));
         } else {
             assert getLimitCheckedIV().direction() == Direction.Down : Assertions.errorMessage(getLimitCheckedIV());
-            ValueNode v1 = BinaryArithmeticNode.add(ConstantNode.forIntegerStamp(stamp, integerHelper.minValue()), BinaryArithmeticNode.sub(one, getLimitCheckedIV().strideNode()));
-            if (isLimitIncluded) {
-                v1 = BinaryArithmeticNode.add(v1, one);
+            // overflow ~ (tripCountLimit + stride) overflow ~ tripCountLimit < minValue - stride
+            ValueNode minValue = ConstantNode.forIntegerStamp(stamp, integerHelper.minValue(), graph);
+            ValueNode minNonOverflowLimitValue = BinaryArithmeticNode.sub(graph, minValue, getLimitCheckedIV().strideNode(), NodeView.DEFAULT);
+            if (!isLimitIncluded) {
+                minNonOverflowLimitValue = BinaryArithmeticNode.sub(graph, minNonOverflowLimitValue, one, NodeView.DEFAULT);
             }
-            cond = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(getTripCountLimit(), v1, NodeView.DEFAULT));
+            cond = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(getTripCountLimit(), minNonOverflowLimitValue, NodeView.DEFAULT));
         }
         return cond;
     }

@@ -65,6 +65,6 @@ public final class PinnedObjectSupportImpl extends AbstractPinnedObjectSupport {
             oldValue = pinnedObjectCount.readInt(0);
         } while (!pinnedObjectCount.logicCompareAndSwapInt(0, oldValue, oldValue + delta, NamedLocationIdentity.OFF_HEAP_LOCATION));
 
-        assert oldValue < Integer.MAX_VALUE;
+        assert oldValue >= 0 && oldValue < Integer.MAX_VALUE && oldValue + delta >= 0;
     }
 }

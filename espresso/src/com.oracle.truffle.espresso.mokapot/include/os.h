@@ -94,12 +94,12 @@ int os_set_sock_opt(int fd, int level, int optname,
 int os_get_host_name(char* name, int namelen);
 
 // dynamic library
-const char *os_current_library_path();
+const char *os_current_library_path(void);
 OS_DL_HANDLE os_dl_open(const char * path);
-const char *os_dl_error();
+const char *os_dl_error(void);
 void *os_dl_sym(OS_DL_HANDLE handle, const char *sym);
-OS_DL_HANDLE os_get_RTLD_DEFAULT();
-OS_DL_HANDLE os_get_ProcessHandle();
+OS_DL_HANDLE os_get_RTLD_DEFAULT(void);
+OS_DL_HANDLE os_get_ProcessHandle(void);
 
 // atomics
 void* os_atomic_load_ptr(void* OS_ATOMIC *ptr);

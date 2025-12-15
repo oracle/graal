@@ -23,17 +23,35 @@
 package com.oracle.truffle.espresso.libs.libjava.impl;
 
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
+import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(type = "Ljdk/internal/loader/BootLoader;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_jdk_internal_loader_BootLoader {
     @Substitution
     public static void setBootLoaderUnnamedModule0(@JavaType(Module.class) StaticObject module, @Inject EspressoContext ctx) {
         ctx.getVM().JVM_SetBootLoaderUnnamedModule(module);
+    }
+
+    @Substitution
+    public static @JavaType(String[].class) StaticObject getSystemPackageNames(@Inject VM vm, @Inject Meta meta) {
+        return vm.JVM_GetSystemPackages(meta);
+    }
+
+    /**
+     * Returns the location of the package of the given name, if defined by the boot loader;
+     * otherwise {@code null} is returned. The location may be a module from the runtime image or
+     * exploded image, or from the boot class append path (i.e. -Xbootclasspath/a or BOOT-CLASS-PATH
+     * attribute specified in java agent).
+     */
+    @Substitution
+    public static @JavaType(String.class) StaticObject getSystemPackageLocation(@JavaType(String[].class) StaticObject name, @Inject VM vm, @Inject Meta meta) {
+        return vm.JVM_GetSystemPackage(name, meta);
     }
 }

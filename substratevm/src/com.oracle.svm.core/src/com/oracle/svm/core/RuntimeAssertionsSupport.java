@@ -24,22 +24,35 @@
  */
 package com.oracle.svm.core;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.function.Function;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.option.APIOption;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.core.option.APIOption;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
 
 class RuntimeAssertionsOptionTransformer implements Function<Object, Object> {
 
@@ -77,8 +90,18 @@ class RuntimeAssertionsOptionTransformer implements Function<Object, Object> {
 }
 
 @AutomaticallyRegisteredImageSingleton
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = RuntimeAssertionsSupport.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class RuntimeAssertionsSupport {
+
+    private static final String PACKAGE = "package";
+    private static final String CLASS = "class";
+
+    private static final String ASSERTION_STATUS_KEYS = "AssertionStatusKeys";
+    private static final String ASSERTION_STATUS_VALUES = "AssertionStatusValues";
+
+    private static final String DEFAULT_ASSERTION_STATUS = "defaultAssertionStatus";
+    private static final String SYSTEM_ASSERTION_STATUS = "systemAssertionStatus";
 
     public static final char ENABLE_PREFIX = '+';
     public static final char DISABLE_PREFIX = '-';
@@ -192,5 +215,71 @@ public final class RuntimeAssertionsSupport {
 
     public boolean desiredAssertionStatus(Class<?> clazz) {
         return desiredAssertionStatusImpl(clazz.getName(), clazz.getClassLoader());
+    }
+
+    public boolean getDefaultAssertionStatus() {
+        return defaultAssertionStatus;
+    }
+
+    public boolean getDefaultSystemAssertionStatus() {
+        return systemAssertionStatus;
+    }
+
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            var action = new SingletonLayeredCallbacks<RuntimeAssertionsSupport>() {
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, RuntimeAssertionsSupport singleton) {
+                    persistAssertionStatus(writer, PACKAGE, singleton.packageAssertionStatus);
+                    persistAssertionStatus(writer, CLASS, singleton.classAssertionStatus);
+                    writer.writeInt(DEFAULT_ASSERTION_STATUS, singleton.defaultAssertionStatus ? 1 : 0);
+                    writer.writeInt(SYSTEM_ASSERTION_STATUS, singleton.systemAssertionStatus ? 1 : 0);
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
+                }
+
+                private void persistAssertionStatus(ImageSingletonWriter writer, String type, Map<String, Boolean> assertionStatus) {
+                    List<String> keys = new ArrayList<>();
+                    List<Boolean> values = new ArrayList<>();
+                    for (var entry : assertionStatus.entrySet()) {
+                        keys.add(entry.getKey());
+                        values.add(entry.getValue());
+                    }
+                    writer.writeStringList(type + ASSERTION_STATUS_KEYS, keys);
+                    writer.writeBoolList(type + ASSERTION_STATUS_VALUES, values);
+                }
+
+                @Override
+                public void onSingletonRegistration(ImageSingletonLoader loader, RuntimeAssertionsSupport singleton) {
+                    checkMaps(loadAssertionStatus(loader, PACKAGE), singleton.packageAssertionStatus);
+                    checkMaps(loadAssertionStatus(loader, CLASS), singleton.classAssertionStatus);
+                    checkBoolean(singleton.defaultAssertionStatus, loader, DEFAULT_ASSERTION_STATUS);
+                    checkBoolean(singleton.systemAssertionStatus, loader, SYSTEM_ASSERTION_STATUS);
+                }
+
+                private void checkBoolean(boolean currentLayerAssertionStatus, ImageSingletonLoader loader, String assertionStatusKey) {
+                    boolean previousLayerStatus = loader.readInt(assertionStatusKey) == 1;
+                    VMError.guarantee(currentLayerAssertionStatus == previousLayerStatus, "The assertion status is the previous layer was %s, but the assertion status in the current layer is %s",
+                                    currentLayerAssertionStatus, previousLayerStatus);
+                }
+
+                private Map<String, Boolean> loadAssertionStatus(ImageSingletonLoader loader, String type) {
+                    HashMap<String, Boolean> result = new HashMap<>();
+                    var keys = loader.readStringList(type + ASSERTION_STATUS_KEYS);
+                    var values = loader.readBoolList(type + ASSERTION_STATUS_VALUES);
+                    for (int i = 0; i < keys.size(); ++i) {
+                        result.put(keys.get(i), values.get(i));
+                    }
+                    return result;
+                }
+
+                public static <T, U> void checkMaps(Map<T, U> previousLayerMap, Map<T, U> currentLayerMap) {
+                    VMError.guarantee(previousLayerMap.equals(currentLayerMap),
+                                    "The assertion status maps should be the same across layers, but the map in previous layers is %s and the map in the current layer is %s",
+                                    previousLayerMap, currentLayerMap);
+                }
+            };
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+        }
     }
 }

@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.meta;
 
 import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.HOTSPOT;
-import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.ALL;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_17_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_19_OR_HIGHER;
@@ -34,7 +33,6 @@ import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VER
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_22_TO_23;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_24_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_25_OR_HIGHER;
-import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_26_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_TO_21;
@@ -109,7 +107,11 @@ public final class Meta extends ContextAccessImpl
         // Object and Class (+ Class fields) must be initialized before all other classes in order
         // to eagerly create the guest Class instances.
         java_lang_Object = knownKlass(Types.java_lang_Object);
-        HIDDEN_SYSTEM_IHASHCODE = context.getLanguage().isContinuumEnabled() ? java_lang_Object.requireHiddenField(Names.HIDDEN_SYSTEM_IHASHCODE) : null;
+        if (context.getLanguage().canSetCustomIdentityHashCode()) {
+            HIDDEN_SYSTEM_IHASHCODE = java_lang_Object.requireHiddenField(Names.HIDDEN_SYSTEM_IHASHCODE);
+        } else {
+            HIDDEN_SYSTEM_IHASHCODE = null;
+        }
         // Cloneable must be loaded before Serializable.
         java_lang_Cloneable = knownKlass(Types.java_lang_Cloneable);
         java_lang_Class = knownKlass(Types.java_lang_Class);
@@ -118,9 +120,6 @@ public final class Meta extends ContextAccessImpl
         java_lang_Class_classLoader = java_lang_Class.requireDeclaredField(Names.classLoader, Types.java_lang_ClassLoader);
         java_lang_Class_modifiers = diff() //
                         .field(VERSION_25_OR_HIGHER, Names.modifiers, Types._char) //
-                        .notRequiredField(java_lang_Class);
-        java_lang_Class_classFileAccessFlags = diff() //
-                        .field(VERSION_26_OR_HIGHER, Names.classFileAccessFlags, Types._char) //
                         .notRequiredField(java_lang_Class);
         java_lang_Class_primitive = diff() //
                         .field(VERSION_25_OR_HIGHER, Names.primitive, Types._boolean) //
@@ -436,35 +435,6 @@ public final class Meta extends ContextAccessImpl
         java_nio_file_NotDirectoryException = knownKlass(Types.java_nio_file_NotDirectoryException);
         java_nio_file_NotLinkException = knownKlass(Types.java_nio_file_NotLinkException);
 
-        if (context.getLanguage().useEspressoLibs()) {
-            java_util_zip_CRC32 = knownKlass(Types.java_util_zip_CRC32);
-            HIDDEN_CRC32 = diff().field(ALL, Names.HIDDEN_CRC32, Types._int).maybeHiddenfield(java_util_zip_CRC32);
-        } else {
-            java_util_zip_CRC32 = null;
-            HIDDEN_CRC32 = null;
-        }
-
-        java_util_zip_Inflater = knownKlass(Types.java_util_zip_Inflater);
-        if (getJavaVersion().java11OrLater()) {
-            java_util_zip_Inflater_inputConsumed = java_util_zip_Inflater.requireDeclaredField(Names.inputConsumed, Types._int);
-            java_util_zip_Inflater_outputConsumed = java_util_zip_Inflater.requireDeclaredField(Names.outputConsumed, Types._int);
-            java_util_zip_Inflater_buf = null;
-            java_util_zip_Inflater_len = null;
-            java_util_zip_Inflater_off = null;
-            java_util_zip_Inflater_needDict = null;
-            java_util_zip_Inflater_finished = null;
-        } else {
-            java_util_zip_Inflater_inputConsumed = null;
-            java_util_zip_Inflater_outputConsumed = null;
-            java_util_zip_Inflater_buf = java_util_zip_Inflater.requireDeclaredField(Names.buf, Types._byte_array);
-            java_util_zip_Inflater_len = java_util_zip_Inflater.requireDeclaredField(Names.len, Types._int);
-            java_util_zip_Inflater_off = java_util_zip_Inflater.requireDeclaredField(Names.off, Types._int);
-            java_util_zip_Inflater_needDict = java_util_zip_Inflater.requireDeclaredField(Names.needDict, Types._boolean);
-            java_util_zip_Inflater_finished = java_util_zip_Inflater.requireDeclaredField(Names.finished, Types._boolean);
-        }
-
-        java_util_zip_DataFormatException = knownKlass(Types.java_util_zip_DataFormatException);
-
         ObjectKlass nioNativeThreadKlass = knownKlass(Types.sun_nio_ch_NativeThread);
         sun_nio_ch_NativeThread_init = nioNativeThreadKlass.lookupDeclaredMethod(Names.init, Signatures._void);
         if (getJavaVersion().java21OrLater()) {
@@ -576,6 +546,11 @@ public final class Meta extends ContextAccessImpl
             HIDDEN_THREAD_SCOPED_VALUE_CACHE = java_lang_Thread.requireHiddenField(Names.HIDDEN_THREAD_SCOPED_VALUE_CACHE);
         } else {
             HIDDEN_THREAD_SCOPED_VALUE_CACHE = null;
+        }
+        if (getLanguage().needsInterruptedEvent()) {
+            HIDDEN_INTERRUPTED_EVENT = java_lang_Thread.requireHiddenField(Names.HIDDEN_INTERRUPTED_EVENT);
+        } else {
+            HIDDEN_INTERRUPTED_EVENT = null;
         }
 
         if (context.getEspressoEnv().EnableManagement) {
@@ -708,16 +683,7 @@ public final class Meta extends ContextAccessImpl
         java_lang_invoke_MemberName_flags = java_lang_invoke_MemberName.requireDeclaredField(Names.flags, Types._int);
 
         java_lang_invoke_MethodHandle = knownKlass(Types.java_lang_invoke_MethodHandle);
-        java_lang_invoke_MethodHandle_invokeExact = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.invokeExact, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_invoke = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.invoke, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_invokeBasic = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.invokeBasic, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_invokeWithArguments = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.invokeWithArguments, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToInterface = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.linkToInterface, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToSpecial = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.linkToSpecial, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToStatic = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.linkToStatic, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToVirtual = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.linkToVirtual, Signatures.Object_Object_array);
         java_lang_invoke_MethodHandle_asFixedArity = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.asFixedArity, Signatures.MethodHandle);
-        java_lang_invoke_MethodHandle_type = java_lang_invoke_MethodHandle.requireDeclaredField(Names.type, Types.java_lang_invoke_MethodType);
         java_lang_invoke_MethodHandle_form = java_lang_invoke_MethodHandle.requireDeclaredField(Names.form, Types.java_lang_invoke_LambdaForm);
 
         java_lang_invoke_MethodHandles = knownKlass(Types.java_lang_invoke_MethodHandles);
@@ -981,12 +947,15 @@ public final class Meta extends ContextAccessImpl
                         .klass();
         sun_reflect_ConstantPool_constantPoolOop = sun_reflect_ConstantPool.requireDeclaredField(Names.constantPoolOop, Types.java_lang_Object);
 
+        sun_misc_Cleaner = diff() //
+                        .klass(VERSION_8_OR_LOWER, Types.sun_misc_Cleaner) //
+                        .klass(VERSION_9_OR_HIGHER, Types.jdk_internal_ref_Cleaner) //
+                        .klass();
+
         if (getJavaVersion().java8OrEarlier()) {
             java_lang_ref_Reference_pending = java_lang_ref_Reference.requireDeclaredField(Names.pending, Types.java_lang_ref_Reference);
-            sun_misc_Cleaner = knownKlass(Types.sun_misc_Cleaner);
         } else {
             java_lang_ref_Reference_pending = null;
-            sun_misc_Cleaner = null;
         }
         java_lang_ref_Reference_lock = diff() //
                         .field(VERSION_8_OR_LOWER, Names.lock, Types.java_lang_ref_Reference$Lock) //
@@ -1042,14 +1011,8 @@ public final class Meta extends ContextAccessImpl
 
         java_time_LocalDate = knownKlass(Types.java_time_LocalDate);
         java_time_LocalDate_year = java_time_LocalDate.requireDeclaredField(Names.year, Types._int);
-        java_time_LocalDate_month = diff() //
-                        .field(VERSION_24_OR_LOWER, Names.month, Types._short) //
-                        .field(VERSION_25_OR_HIGHER, Names.month, Types._byte) //
-                        .field(java_time_LocalDate);
-        java_time_LocalDate_day = diff() //
-                        .field(VERSION_24_OR_LOWER, Names.day, Types._short) //
-                        .field(VERSION_25_OR_HIGHER, Names.day, Types._byte) //
-                        .field(java_time_LocalDate);
+        java_time_LocalDate_month = java_time_LocalDate.requireDeclaredField(Names.month, Types._short);
+        java_time_LocalDate_day = java_time_LocalDate.requireDeclaredField(Names.day, Types._short);
         java_time_LocalDate_of = java_time_LocalDate.requireDeclaredMethod(Names.of, Signatures.LocalDate_int_int_int);
 
         java_time_ZonedDateTime = knownKlass(Types.java_time_ZonedDateTime);
@@ -1380,8 +1343,7 @@ public final class Meta extends ContextAccessImpl
     public final ObjectKlass java_lang_Object;
     public final ArrayKlass java_lang_Object_array;
     /*
-     * Though only used when Continuum is enabled, the hashcode is used during VM initialization, so
-     * it cannot be put in the ContinuumSupport object.
+     * This is used by Continuum and JVMCI. This is used during VM initialization.
      */
     public final Field HIDDEN_SYSTEM_IHASHCODE;
 
@@ -1395,7 +1357,6 @@ public final class Meta extends ContextAccessImpl
     public final Field java_lang_Class_module;
     public final Field java_lang_Class_classLoader;
     public final Field java_lang_Class_modifiers;
-    public final Field java_lang_Class_classFileAccessFlags;
     public final Field java_lang_Class_primitive;
     public final Field sun_reflect_ConstantPool_constantPoolOop;
     public final ArrayKlass java_lang_Class_array;
@@ -1671,19 +1632,6 @@ public final class Meta extends ContextAccessImpl
     public final ObjectKlass java_nio_file_InvalidPathException;
     public final ObjectKlass java_nio_file_NotLinkException;
 
-    public final ObjectKlass java_util_zip_CRC32;
-    public final Field HIDDEN_CRC32;
-
-    public final ObjectKlass java_util_zip_Inflater;
-    public final Field java_util_zip_Inflater_inputConsumed;
-    public final Field java_util_zip_Inflater_outputConsumed;
-    public final Field java_util_zip_Inflater_buf;
-    public final Field java_util_zip_Inflater_len;
-    public final Field java_util_zip_Inflater_off;
-    public final Field java_util_zip_Inflater_needDict;
-    public final Field java_util_zip_Inflater_finished;
-    public final ObjectKlass java_util_zip_DataFormatException;
-
     public final Method sun_nio_ch_NativeThread_isNativeThread;
     public final Method sun_nio_ch_NativeThread_current0;
     public final Method sun_nio_ch_NativeThread_signal;
@@ -1752,6 +1700,7 @@ public final class Meta extends ContextAccessImpl
     public final Field HIDDEN_ESPRESSO_MANAGED;
     public final Field HIDDEN_TO_NATIVE_LOCK;
     public final Field HIDDEN_INTERRUPTED;
+    public final Field HIDDEN_INTERRUPTED_EVENT;
     public final Field HIDDEN_THREAD_UNPARK_SIGNALS;
     public final Field HIDDEN_THREAD_PARK_LOCK;
     public final Field HIDDEN_DEPRECATION_SUPPORT;
@@ -1824,16 +1773,7 @@ public final class Meta extends ContextAccessImpl
     public final Field java_lang_invoke_MemberName_flags;
 
     public final ObjectKlass java_lang_invoke_MethodHandle;
-    public final Method java_lang_invoke_MethodHandle_invoke;
-    public final Method java_lang_invoke_MethodHandle_invokeExact;
-    public final Method java_lang_invoke_MethodHandle_invokeBasic;
-    public final Method java_lang_invoke_MethodHandle_invokeWithArguments;
-    public final Method java_lang_invoke_MethodHandle_linkToInterface;
-    public final Method java_lang_invoke_MethodHandle_linkToSpecial;
-    public final Method java_lang_invoke_MethodHandle_linkToStatic;
-    public final Method java_lang_invoke_MethodHandle_linkToVirtual;
     public final Method java_lang_invoke_MethodHandle_asFixedArity;
-    public final Field java_lang_invoke_MethodHandle_type;
     public final Field java_lang_invoke_MethodHandle_form;
 
     public final ObjectKlass java_lang_invoke_DirectMethodHandle;
@@ -2266,6 +2206,10 @@ public final class Meta extends ContextAccessImpl
 
         public final ObjectKlass EspressoResolvedInstanceType;
         public final Method EspressoResolvedInstanceType_init;
+        public final int EspressoResolvedInstanceType_DECLARED_ANNOTATIONS;
+        public final int EspressoResolvedInstanceType_PARAMETER_ANNOTATIONS;
+        public final int EspressoResolvedInstanceType_TYPE_ANNOTATIONS;
+        public final int EspressoResolvedInstanceType_ANNOTATION_DEFAULT_VALUE;
         public final Field HIDDEN_OBJECTKLASS_MIRROR;
 
         public final ObjectKlass EspressoResolvedJavaField;
@@ -2276,6 +2220,9 @@ public final class Meta extends ContextAccessImpl
         public final Method EspressoResolvedJavaMethod_init;
         public final Field EspressoResolvedJavaMethod_holder;
         public final Field HIDDEN_METHOD_MIRROR;
+
+        public final ObjectKlass EspressoResolvedJavaRecordComponent;
+        public final Method EspressoResolvedJavaRecordComponent_init;
 
         public final ObjectKlass EspressoResolvedArrayType;
         public final Method EspressoResolvedArrayType_init;
@@ -2339,6 +2286,10 @@ public final class Meta extends ContextAccessImpl
             EspressoResolvedInstanceType = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType);
             EspressoResolvedInstanceType_init = EspressoResolvedInstanceType.requireDeclaredMethod(Names._init_, Signatures._void);
             HIDDEN_OBJECTKLASS_MIRROR = EspressoResolvedInstanceType.requireHiddenField(Names.HIDDEN_OBJECTKLASS_MIRROR);
+            EspressoResolvedInstanceType_DECLARED_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.DECLARED_ANNOTATIONS);
+            EspressoResolvedInstanceType_PARAMETER_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.PARAMETER_ANNOTATIONS);
+            EspressoResolvedInstanceType_TYPE_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.TYPE_ANNOTATIONS);
+            EspressoResolvedInstanceType_ANNOTATION_DEFAULT_VALUE = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.ANNOTATION_DEFAULT_VALUE);
 
             EspressoResolvedJavaField = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaField);
             EspressoResolvedJavaField_init = EspressoResolvedJavaField.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType);
@@ -2347,7 +2298,11 @@ public final class Meta extends ContextAccessImpl
             EspressoResolvedJavaMethod = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMethod);
             EspressoResolvedJavaMethod_init = EspressoResolvedJavaMethod.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType_boolean);
             HIDDEN_METHOD_MIRROR = EspressoResolvedJavaMethod.requireHiddenField(Names.HIDDEN_METHOD_MIRROR);
-            EspressoResolvedJavaMethod_holder = EspressoResolvedJavaMethod.requireDeclaredField(Names.holder, Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType);
+            EspressoResolvedJavaMethod_holder = EspressoResolvedJavaMethod.getSuperKlass().requireDeclaredField(Names.holder,
+                            Types.com_oracle_truffle_espresso_jvmci_meta_AbstractEspressoResolvedInstanceType);
+
+            EspressoResolvedJavaRecordComponent = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaRecordComponent);
+            EspressoResolvedJavaRecordComponent_init = EspressoResolvedJavaRecordComponent.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType_int_int_int);
 
             EspressoResolvedArrayType = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedArrayType);
             EspressoResolvedArrayType_init = EspressoResolvedArrayType.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedJavaType_int_Class);
@@ -2364,7 +2319,7 @@ public final class Meta extends ContextAccessImpl
 
             EspressoBootstrapMethodInvocation = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoBootstrapMethodInvocation);
             EspressoBootstrapMethodInvocation_init = EspressoBootstrapMethodInvocation.requireDeclaredMethod(Names._init_,
-                            Signatures._void_boolean_EspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array_int_EspressoConstantPool);
+                            Signatures._void_boolean_AbstractEspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array_int_AbstractEspressoConstantPool);
 
             Services = knownKlass(Types.jdk_vm_ci_services_Services);
             Services_openJVMCITo = Services.requireDeclaredMethod(Names.openJVMCITo, Signatures._void_Module);
@@ -2813,6 +2768,16 @@ public final class Meta extends ContextAccessImpl
     }
 
     @TruffleBoundary
+    public EspressoException throwInternalErrorBoundary(String message) {
+        throw throwExceptionWithMessage(java_lang_InternalError, message);
+    }
+
+    @TruffleBoundary
+    public EspressoException createInternalError(String message) {
+        return EspressoException.wrap(initExceptionWithMessage(java_lang_InternalError, message), this);
+    }
+
+    @TruffleBoundary
     public EspressoException throwIllegalArgumentExceptionBoundary(String message) {
         throw throwExceptionWithMessage(java_lang_IllegalArgumentException, message);
     }
@@ -3040,6 +3005,42 @@ public final class Meta extends ContextAccessImpl
         return klass;
     }
 
+    /**
+     * Works as specified by {@link Meta#getIntConstant(ObjectKlass, Symbol, boolean)} with
+     * allowClassInit set to true.
+     */
+    public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant) {
+        return getIntConstant(klass, constant, true);
+    }
+
+    /**
+     * Retrieves the int constant from the given guest class. Used for synchronizing constants
+     * between the host and guest world.
+     * </p>
+     * First the method tries to retrieve the constant from the constantPool (which does not trigger
+     * class initialization). If this fails and allowClassInit is true, it triggers class
+     * initialization and gets the constant from the loaded class.
+     *
+     * @param klass the guest class which has the constant as a field.
+     * @param constant the symbol of the int constant to retrieve.
+     * @param allowClassInit whether to allow class initialization
+     * @return the int constant
+     */
+    public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant, boolean allowClassInit) {
+        Field f = klass.lookupDeclaredField(constant, Types._int);
+        if (f == null || !f.isStatic() || !f.isFinalFlagSet()) {
+            throw EspressoError.fatal("Cannot find " + constant + " int constant in class " + klass.getName());
+        }
+        int constantValueIndex = f.getConstantValueIndex();
+        if (constantValueIndex != 0) {
+            return klass.getConstantPool().intAt(constantValueIndex);
+        }
+        if (!allowClassInit) {
+            throw EspressoError.shouldNotReachHere("Without classInit, cannot find " + constant + " int constant in class " + klass.getName());
+        }
+        return f.getInt(klass.tryInitializeAndGetStatics());
+    }
+
     public String toHostString(StaticObject str) {
         if (StaticObject.isNull(str)) {
             return null;
@@ -3127,10 +3128,6 @@ public final class Meta extends ContextAccessImpl
             return unboxGuest((StaticObject) object);
         }
         return object;
-    }
-
-    public static boolean isSignaturePolymorphicHolderType(Symbol<Type> type) {
-        return type == Types.java_lang_invoke_MethodHandle || type == Types.java_lang_invoke_VarHandle;
     }
 
     // region Guest Unboxing

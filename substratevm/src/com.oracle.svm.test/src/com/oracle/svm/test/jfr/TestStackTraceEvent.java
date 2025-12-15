@@ -30,11 +30,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import jdk.jfr.consumer.RecordedThread;
+import org.graalvm.collections.EconomicSet;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -83,7 +82,7 @@ public class TestStackTraceEvent extends JfrRecordingTest {
         List<RecordedFrame> frames = stackTrace.getFrames();
         assertFalse(frames.isEmpty());
 
-        Set<JfrSeenMethod> seenMethod = new HashSet<>();
+        EconomicSet<JfrSeenMethod> seenMethod = EconomicSet.create();
         for (RecordedFrame frame : frames) {
             RecordedMethod method = frame.getMethod();
             assertNotNull(method);

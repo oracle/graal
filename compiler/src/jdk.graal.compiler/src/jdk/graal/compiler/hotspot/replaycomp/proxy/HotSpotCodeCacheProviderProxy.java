@@ -43,8 +43,6 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
-//JaCoCo Exclude
-
 public final class HotSpotCodeCacheProviderProxy extends HotSpotCodeCacheProvider implements CompilationProxy {
     private final InvocationHandler handler;
 
@@ -113,7 +111,7 @@ public final class HotSpotCodeCacheProviderProxy extends HotSpotCodeCacheProvide
         return (SpeculationLog) handle(createSpeculationLogMethod, createSpeculationLogInvokable);
     }
 
-    private static final SymbolicMethod getMaxCallTargetOffsetMethod = method("getMaxCallTargetOffset", long.class);
+    public static final SymbolicMethod getMaxCallTargetOffsetMethod = method("getMaxCallTargetOffset", long.class);
     private static final InvokableMethod getMaxCallTargetOffsetInvokable = (receiver, args) -> ((HotSpotCodeCacheProvider) receiver).getMaxCallTargetOffset((long) args[0]);
 
     @Override

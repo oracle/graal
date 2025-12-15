@@ -22,7 +22,10 @@
  */
 package com.oracle.truffle.espresso.io;
 
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAccessMode;
 import static com.oracle.truffle.espresso.libs.libnio.impl.Target_sun_nio_ch_IOUtil.FD_LIMIT;
+import static com.oracle.truffle.espresso.substitutions.standard.Target_sun_misc_Unsafe.ADDRESS_SIZE;
 
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -30,17 +33,38 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.net.SocketOption;
+import java.net.StandardProtocolFamily;
+import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.Channel;
 import java.nio.channels.Channels;
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.DatagramChannel;
+import java.nio.channels.GatheringByteChannel;
+import java.nio.channels.NetworkChannel;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
+import java.nio.channels.Pipe;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.ScatteringByteChannel;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.SelectableChannel;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -51,25 +75,43 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.espresso.classfile.descriptors.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
- * This class manages the set of file descriptors of a context. File descriptors are associated with
- * {@link String} paths and {@link Channel}s, their capabilities depending on the kind of channel.
+ * Provides IO functionality in EspressoLibs mode (see
+ * {@link com.oracle.truffle.espresso.ffi.EspressoLibsNativeAccess}). This requires managing the set
+ * of file descriptors of a context.
+ * <p>
+ * This class plays a crucial role in EspressoLibs mode. Every guest channel gets associated with a
+ * FileDescriptors which links to the corresponding host channel here {@link TruffleIO#files}. In
+ * substitutions of native IO methods we receive the FileDescriptor as an argument which is then
+ * used to retrieve the corresponding host channel. Then we can easily implement the semantics of
+ * the guest channel's native methods using this host channel. For example see
+ * {@link TruffleIO#readBytes(int, ByteBuffer)}.
+ * <p>
+ * For file IO the host channels is created over the Truffle API
+ * {@link TruffleFile#newByteChannel(Set, FileAttribute[])} making this class practically a binding
+ * layer between the guest file system (see sun.nio.fs.TruffleFileSystemProvider) and Truffle's
+ * Virtual File System (see {@link org.graalvm.polyglot.io.FileSystem}).
+ * <p>
+ * For socket IO, file descriptors are associated with host network channels (see
+ * {@link #openSocket(boolean, boolean, boolean, boolean)}).
+ * <p>
  * Adapted from GraalPy's PosixResources.
  */
 public final class TruffleIO implements ContextAccess {
@@ -85,7 +127,14 @@ public final class TruffleIO implements ContextAccess {
 
     // Checkstyle: stop field name check
     public final ObjectKlass java_io_IOException;
+    public final ObjectKlass java_nio_file_NoSuchFileException;
+    public final ObjectKlass java_net_SocketException;
     public final ObjectKlass java_io_FileNotFoundException;
+    public final ObjectKlass java_nio_channels_ClosedByInterruptException;
+    public final ObjectKlass java_nio_channels_AsynchronousCloseException;
+    public final ObjectKlass java_nio_channels_ClosedChannelException;
+    public final ObjectKlass sun_net_ConnectionResetException;
+    public final ObjectKlass java_net_UnknownHostException;
     public final ObjectKlass java_io_FileDescriptor;
     public final Field java_io_FileDescriptor_fd;
     public final Field java_io_FileDescriptor_append;
@@ -113,14 +162,33 @@ public final class TruffleIO implements ContextAccess {
     public final ObjectKlass sun_nio_fs_DefaultFileSystemProvider;
     public final Method sun_nio_fs_DefaultFileSystemProvider_instance;
 
+    public final ObjectKlass sun_nio_fs_FileAttributeParser;
+    public final FileAttributeParser_Sync fileAttributeParserSync;
+
+    public final ObjectKlass sun_nio_ch_FileChannelImpl;
+    public final FileChannelImpl_Sync fileChannelImplSync;
+
+    public final ObjectKlass sun_nio_ch_IOStatus;
+    public final IOStatus_Sync ioStatusSync;
+
     public final ObjectKlass java_io_FileSystem;
     public final FileSystem_Sync fileSystemSync;
+
+    public final ObjectKlass java_net_spi_InetAddressResolver$LookupPolicy;
+    public final InetAddressResolver_LookupPolicy_Sync inetAddressResolverLookupPolicySync;
+
+    public final ObjectKlass sun_nio_ch_Net;
+    public final Net_ShutFlags_Sync netShutFlagsSync;
+
     // Checkstyle: resume field name check
 
     /**
      * Context-local file-descriptor mappings.
      */
     private final EspressoContext context;
+    /**
+     * The mapping between guest FileDescriptors and host channels.
+     */
     private final Map<Integer, ChannelWrapper> files;
 
     // 0, 1 and 2 are reserved for standard streams.
@@ -188,6 +256,351 @@ public final class TruffleIO implements ContextAccess {
      *
      * @param self A file descriptor holder.
      * @param fdAccess How to get the file descriptor from the holder.
+     * @param path The location where the file is opened.
+     * @param openOptions Options to open the file.
+     * @param attributes The file attributes atomically set when opening the file.
+     * @return The file descriptor associated with the file.
+     */
+    @TruffleBoundary
+    public int open(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess,
+                    TruffleFile path,
+                    Set<? extends OpenOption> openOptions,
+                    FileAttribute<?>... attributes) {
+        StaticObject fileDesc = getFileDesc(self, fdAccess);
+        int fd = open(path, openOptions, attributes);
+        boolean append = openOptions.contains(StandardOpenOption.APPEND);
+        updateFD(fileDesc, fd, append);
+        return fd;
+    }
+
+    /**
+     * Temporary Method to open a Socket with the given parameter and associate it with a generated
+     * fd. It will be replaced with a TruffleAPI as soon as one exists.
+     *
+     * @param preferIPv6 whether to prefer IPv6 over IPv4
+     * @param tcp if true, we use TCP and otherwise UDP
+     * @param reuse allows binding to an address even if in TIME_WAIT state
+     * @param server whether to open a server channel
+     * @return The file descriptor associated with the file.
+     */
+    @TruffleBoundary
+    public int openSocket(boolean preferIPv6, boolean tcp, boolean reuse, boolean server) {
+        context.getLibsState().net.checkNetworkEnabled();
+        // opening the channel
+        java.net.ProtocolFamily family = preferIPv6 ? StandardProtocolFamily.INET6 : StandardProtocolFamily.INET;
+        ChannelWrapper channelWrapper;
+        try {
+            NetworkChannel channel;
+            if (tcp) {
+                if (server) {
+                    // ServerSocketChannel
+                    channel = ServerSocketChannel.open(family);
+                    channelWrapper = new ServerTCPChannelWrapper(channel, 1);
+                } else {
+                    // SocketChannel
+                    channel = SocketChannel.open(family);
+                    channelWrapper = new ChannelWrapper(channel, 1);
+                }
+            } else {
+                // DatagramChannel
+                channel = DatagramChannel.open(StandardProtocolFamily.INET);
+                channelWrapper = new ChannelWrapper(channel, 1);
+            }
+            channel.setOption(StandardSocketOptions.SO_REUSEADDR, reuse);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+        return createFDforChannel(channelWrapper);
+    }
+
+    /**
+     * See {@link SelectableChannel#configureBlocking(boolean)}.
+     */
+    @TruffleBoundary
+    public void configureBlocking(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, boolean blocking) {
+        try {
+            getSelectableChannel(self, fdAccess).configureBlocking(blocking);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
+     * See {@link InputStream#available()}.
+     */
+    @TruffleBoundary
+    public int available(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        try {
+            return Channels.newInputStream(getReadableChannel(self, fdAccess)).available();
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
+     * Temporary Method to open a pipe (since we return a hostPipe here).
+     *
+     * @param blocking the blocking mode of the created pipe.
+     * @return Returns two file descriptors for a pipe encoded in a long. The read end of the pipe
+     *         is returned in the high 32 bits, while the write end is returned in the low 32 bits.
+     */
+    @TruffleBoundary
+    public long openPipe(boolean blocking) {
+        // opening the channel
+        try {
+            Pipe pipe = Pipe.open();
+            Pipe.SinkChannel sink = pipe.sink();
+            Pipe.SourceChannel source = pipe.source();
+            sink.configureBlocking(blocking);
+            source.configureBlocking(blocking);
+            ChannelWrapper channelWrapperSink = new ChannelWrapper(sink, 1);
+            ChannelWrapper channelWrapperSource = new ChannelWrapper(source, 1);
+            int sourceFd = createFDforChannel(channelWrapperSource);  // fd[0]
+            int sinkFd = createFDforChannel(channelWrapperSink);      // fd[1]
+            return ((long) sourceFd << 32) | (sinkFd & 0xFFFF_FFFFL);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    @TruffleBoundary
+    public void bind(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, boolean preferIPv6, @JavaType(InetAddress.class) StaticObject addr,
+                    int port, LibsState libsState) {
+        ChannelWrapper channelWrapper = files.getOrDefault(getFD(self, fdAccess), null);
+        Objects.requireNonNull(channelWrapper);
+        InetAddress inetAddress = libsState.net.fromGuestInetAddress(addr, preferIPv6);
+        if (channelWrapper instanceof ServerTCPChannelWrapper serverTcpChannelWrapper) {
+            /*
+             * We shouldn't call bind directly on the ServerSocketChannel since we lack the backlog
+             * parameter which will be provided by the listen method. Thus, we cache the arguments
+             * but wait with the bind.
+             */
+            serverTcpChannelWrapper.setTCPBindInformation(inetAddress, port);
+        } else {
+            // actually binds the network channel in this case.
+            try {
+                getNetworkChannel(channelWrapper.channel).bind(new InetSocketAddress(inetAddress, port));
+            } catch (IOException e) {
+                throw Throw.throwIOException(e, context);
+            }
+        }
+    }
+
+    /**
+     * Accepts a pending connection made to the server associated with the fd (if there is any). The
+     * socket channel for the new connection will be returned in the SocketAddress argument array.
+     *
+     * @param self A file descriptor holder.
+     * @param fdAccess How to get the file descriptor from the holder.
+     * @param newfd The FileDescriptor object of the SocketChannel for the new connection.
+     * @param ret The array where we return the SocketAddress of the new connection.
+     * @return 1 if everything went fine or {@link IOStatus_Sync#UNAVAILABLE} if there is no pending
+     *         connection.
+     */
+    @TruffleBoundary
+    public int accept(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, @JavaType(FileDescriptor.class) StaticObject newfd, SocketAddress[] ret) {
+        ServerSocketChannel serverSocketChannel = getServerSocketChannel(self, fdAccess);
+        try {
+            // accept the connection
+            // todo (GR-69946) add uninterruptible support
+            SocketChannel clientSocket = serverSocketChannel.accept();
+            if (clientSocket == null) {
+                return this.ioStatusSync.UNAVAILABLE;
+            }
+            // register the channel with a fd
+            int newfdVal = createFDforChannel(new ChannelWrapper(clientSocket, 1));
+            // set the value of the fd
+            java_io_FileDescriptor_fd.setInt(newfd, newfdVal);
+            // return the remoteAddress
+            ret[0] = clientSocket.getRemoteAddress();
+            return 1;
+        } catch (AsynchronousCloseException e) {
+            return ioStatusSync.UNAVAILABLE;
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
+     * Calls finishConnect on the underlying SocketChannel.
+     */
+    @TruffleBoundary
+    public boolean finishConnect(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        try {
+            // todo (GR-69946) add uninterruptible support
+            return getSocketChannel(self, fdAccess).finishConnect();
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /**
+     * See {@link NetworkChannel#getOption(SocketOption)}.
+     */
+    public <T> T getSocketOption(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, SocketOption<T> name) {
+        try {
+            return getNetworkChannel(self, fdAccess).getOption(name);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
+     * See {@link NetworkChannel#setOption(SocketOption, Object)}.
+     */
+    public <T> void setSocketOption(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, SocketOption<T> name, T value) {
+        try {
+            getNetworkChannel(self, fdAccess).setOption(name, value);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
+     * See {@link SocketChannel#connect(SocketAddress)}.
+     */
+    public boolean connect(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, SocketAddress remote) {
+        try {
+            // todo (GR-69946) add uninterruptible support
+            return getSocketChannel(self, fdAccess).connect(remote);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
+     * Shuts down the input and/or the output connection of the underlying socket channel.
+     */
+    public void shutdownSocketChannel(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, boolean input, boolean output) {
+        try {
+            SocketChannel socketChannel = getSocketChannel(self, fdAccess);
+            if (input) {
+                socketChannel.shutdownInput();
+            }
+            if (output) {
+                socketChannel.shutdownOutput();
+            }
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    private int createFDforChannel(ChannelWrapper channel) {
+        synchronized (files) {
+            int fd = nextFreeFd();
+            if (fd < 0) {
+                throw Throw.throwFileNotFoundException("Opened file limit reached.", context);
+            }
+            files.put(fd, channel);
+            return fd;
+        }
+    }
+
+    /**
+     * Actually binds the underlying ServerSocketChannel with the backlog argument and all the
+     * cached parameters from the previous call to
+     * {@link TruffleIO#bind(StaticObject, FDAccess, boolean, StaticObject, int, LibsState)}.
+     */
+    @TruffleBoundary
+    public void listen(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, int backlog) {
+
+        ServerTCPChannelWrapper tcpWrapper = getServerTCPChannelWrapper(self, fdAccess);
+        ServerSocketChannel channel = (ServerSocketChannel) tcpWrapper.channel;
+        try {
+            channel.bind(new InetSocketAddress(tcpWrapper.inetAddress, tcpWrapper.port), backlog);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+
+    }
+
+    /**
+     * Returns the local InetAddress to which underlying network channel is bound to.
+     *
+     * @param self A file descriptor holder.
+     * @param fdAccess How to get the file descriptor from the holder.
+     * @return the guest InetAddress representation of the local InetAddress of the networkChannel.
+     */
+    @TruffleBoundary
+    public @JavaType StaticObject getLocalAddress(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        try {
+            int fd = getFD(self, fdAccess);
+            NetworkChannel networkChannel = getNetworkChannel(fd);
+            InetSocketAddress socketAddress = (InetSocketAddress) networkChannel.getLocalAddress();
+            InetAddress inetAddress = null;
+            if (socketAddress != null) {
+                inetAddress = socketAddress.getAddress();
+            } else {
+                /*
+                 * The host socket is bound once listen is called. On the other hand, the guest
+                 * socket is bound by the call to bind (which proceeds the listen call. Thus, we
+                 * need to check if we have cached the bind information.
+                 */
+                ServerTCPChannelWrapper tcpSocket = boundServerTCPChannel(fd);
+                if (tcpSocket != null) {
+                    inetAddress = tcpSocket.inetAddress;
+                } else {
+                    throw Throw.throwIOException("Unbound Socket", context);
+                }
+            }
+            return context.getLibsState().net.convertInetAddr(inetAddress);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
+     * Returns the port number where the underlying network channel is bound to.
+     */
+    @TruffleBoundary
+    public int getPort(@JavaType(Object.class) StaticObject self, FDAccess fdAccess) {
+        try {
+            int fd = getFD(self, fdAccess);
+            InetSocketAddress socketAddress = (InetSocketAddress) getNetworkChannel(fd).getLocalAddress();
+            if (socketAddress != null) {
+                return socketAddress.getPort();
+            }
+            /*
+             * The host socket is bound once listen is called. On the other hand, the guest socket
+             * is bound by the call to bind (which proceeds the listen call. Thus, we need to check
+             * if we have cached the bind information.
+             */
+            ServerTCPChannelWrapper tcpSocket = boundServerTCPChannel(fd);
+            if (tcpSocket != null) {
+                return tcpSocket.port;
+            }
+            throw Throw.throwIOException("Unbound Socket", context);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    private ServerTCPChannelWrapper boundServerTCPChannel(int fd) {
+        if (files.getOrDefault(fd, null) instanceof ServerTCPChannelWrapper serverTcpChannelWrapper) {
+            if (serverTcpChannelWrapper.inetAddress != null) {
+                return serverTcpChannelWrapper;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Opens a file and associates it with the given file descriptor holder.
+     *
+     * @param self A file descriptor holder.
+     * @param fdAccess How to get the file descriptor from the holder.
      * @param name The name of the file.
      * @param openOptions Options to open the file.
      * @return The file descriptor associated with the file.
@@ -198,8 +611,8 @@ public final class TruffleIO implements ContextAccess {
                     String name,
                     Set<? extends OpenOption> openOptions) {
         StaticObject fileDesc = getFileDesc(self, fdAccess);
-        boolean append = openOptions.contains(StandardOpenOption.APPEND);
         int fd = open(name, openOptions);
+        boolean append = openOptions.contains(StandardOpenOption.APPEND);
         updateFD(fileDesc, fd, append);
         return fd;
     }
@@ -227,14 +640,13 @@ public final class TruffleIO implements ContextAccess {
 
     /**
      * Obtains the length of the file associated with the given file descriptor holder.
-     * 
+     *
      * @see RandomAccessFile#length()
      */
     @TruffleBoundary
     public long length(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        return length(getFD(fileDesc));
+        return length(getFD(self, fdAccess));
     }
 
     /**
@@ -242,11 +654,47 @@ public final class TruffleIO implements ContextAccess {
      */
     @TruffleBoundary
     public long length(int fd) {
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof SeekableByteChannel seekableChannel) {
-            return sizeImpl(seekableChannel, context);
+        return sizeImpl(getSeekableChannel(fd), context);
+    }
+
+    /**
+     * Writes buffered bytes to the file associated with the given file descriptor holder.
+     *
+     * @param self The file descriptor holder.
+     * @param fdAccess How to get the file descriptor from the holder.
+     * @param bytes The byte buffer containing the bytes to write.
+     * @return The number of bytes written, possibly zero. If the channel is in non-blocking mode
+     *         and the operation would block {@link IOStatus_Sync#UNAVAILABLE} is returned.
+     * @see WritableByteChannel#write(ByteBuffer)
+     */
+    @TruffleBoundary
+    public int writeBytes(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess,
+                    ByteBuffer bytes) {
+        return writeBytes(getFD(self, fdAccess), bytes);
+    }
+
+    /**
+     * Writes bytes from the address specified to the file associated with the given file descriptor
+     * holder in plain mode.
+     *
+     * @param self The file descriptor holder.
+     * @param fdAccess How to get the file descriptor from the holder.
+     * @param address The address containing the bytes to write.
+     * @param length the number of bytes to write.
+     * @return The number of bytes written, possibly zero. If the channel is in non-blocking mode
+     *         and the operation would block {@link IOStatus_Sync#UNAVAILABLE} is returned.
+     * @see java.io.FileOutputStream#write(byte[])
+     */
+    @TruffleBoundary
+    public int writeAddress(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess,
+                    long address, int length) {
+        try {
+            return writeBytes(self, fdAccess, context.getNativeAccess().nativeMemory().wrapNativeMemory(address, length));
+        } catch (IllegalMemoryAccessException e) {
+            throw Throw.throwIOException("Invalid memory access: Trying to access memory outside the allocated region", getContext());
         }
-        return 0; // unknown
     }
 
     /**
@@ -257,33 +705,106 @@ public final class TruffleIO implements ContextAccess {
      * @param bytes The byte array containing the bytes to write.
      * @param off The start of the byte sequence to write from {@code bytes}.
      * @param len The length of the byte sequence to write.
-     * @return The number of bytes written, possibly zero.
+     * @return The number of bytes written, possibly zero. If the channel is in non-blocking mode
+     *         and the operation would block {@link IOStatus_Sync#UNAVAILABLE} is returned.
      * @see java.io.FileOutputStream#write(byte[], int, int)
      */
     @TruffleBoundary
     public int writeBytes(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess,
-                    byte[] bytes,
-                    int off, int len) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        return writeBytes(getFD(fileDesc), bytes, off, len);
+                    byte[] bytes, int off, int len) {
+        try {
+            return writeBytes(self, fdAccess, ByteBuffer.wrap(bytes, off, len));
+        } catch (IndexOutOfBoundsException e) {
+            Meta meta = context.getMeta();
+            throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
+        }
     }
 
     /**
-     * Writes buffered bytes to the file associated with the given file descriptor.
-     *
-     * @see #writeBytes(StaticObject, FDAccess, byte[], int, int)
+     * @see TruffleIO#writeBytes(StaticObject, FDAccess, ByteBuffer)
      */
     @TruffleBoundary
     public int writeBytes(int fd,
-                    byte[] bytes,
-                    int off, int len) {
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof WritableByteChannel) {
-            return writeBytesImpl((WritableByteChannel) channel, bytes, off, len, context);
-        } else {
+                    ByteBuffer bytes) {
+        try {
+            WritableByteChannel writableChannel = getWritableChannel(fd);
+            return convertReturnVal(writableChannel.write(bytes), writableChannel);
+        } catch (ClosedByInterruptException e) {
+            // todo (GR-69946) add uninterruptible support
+            if (context.getThreadAccess().isGuestInterrupted(Thread.currentThread(), null)) {
+                throw Throw.throwIOException(e, context);
+            }
+            throw JavaSubstitution.unimplemented();
+        } catch (NonWritableChannelException e) {
             throw Throw.throwNonWritable(context);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
         }
+    }
+
+    /**
+     * Writes the content of the underlying "native" ByteBuffers to the file associated with the
+     * given file descriptor holder in the exact order of the ByteBuffers array.
+     *
+     * @param self The file descriptor holder.
+     * @param fdAccess How to get the file descriptor from the holder.
+     * @param address The base address of the continuous memory region, which contains addresses and
+     *            lengths for the ByteBuffers we write from.
+     * @param length the number of ByteBuffers to extract from address.
+     * @return The number of bytes written, possibly zero.
+     * @see java.nio.channels.GatheringByteChannel#write(ByteBuffer[])
+     */
+    @TruffleBoundary
+    public long writev(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess,
+                    long address, int length) {
+        NativeMemory nativeMemory = context.getNativeAccess().nativeMemory();
+        AddressLengthPair[] addressLengthPairs = extractAddressLengthPairs(address, length, nativeMemory);
+        StaticObject fileDesc = getFileDesc(self, fdAccess);
+        Channel channel = Checks.ensureOpen(getChannel(getFD(fileDesc)), getContext());
+        if (channel instanceof GatheringByteChannel gatheringByteChannel) {
+            try {
+                return gatheringByteChannel.write(asByteBuffer(addressLengthPairs, nativeMemory));
+            } catch (IOException e) {
+                throw Throw.throwIOException(e, context);
+            }
+        } else {
+            LibsState.getLogger().warning("No GatheringByteChannel for writev operation! You are using: " + channel.getClass());
+        }
+        return sequentialWritev(self, fdAccess, addressLengthPairs);
+    }
+
+    /**
+     * Reads the content of the file associated with the given file descriptor into the underlying
+     * "native" ByteBuffers.
+     *
+     * @param self The file descriptor holder.
+     * @param fdAccess How to get the file descriptor from the holder.
+     * @param address The base address of the continuous memory region, which contains addresses and
+     *            lengths for the ByteBuffers we read into.
+     * @param length the number of ByteBuffers to extract from address.
+     * @return The number of bytes written, possibly zero.
+     * @see java.nio.channels.ScatteringByteChannel#read(ByteBuffer)
+     */
+    @TruffleBoundary
+    public long readv(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess,
+                    long address, int length) {
+        NativeMemory nativeMemory = context.getNativeAccess().nativeMemory();
+        AddressLengthPair[] addressLengthPairs = extractAddressLengthPairs(address, length, nativeMemory);
+        StaticObject fileDesc = getFileDesc(self, fdAccess);
+        Channel channel = Checks.ensureOpen(getChannel(getFD(fileDesc)), getContext());
+        if (channel instanceof ScatteringByteChannel scatteringByteChannel) {
+            try {
+                return scatteringByteChannel.read(asByteBuffer(addressLengthPairs, nativeMemory));
+            } catch (IOException e) {
+                throw Throw.throwIOException(e, context);
+            }
+        } else {
+            LibsState.getLogger().warning("No ScatteringByteChannel for readv operation! You are using: " + channel.getClass());
+        }
+        return sequentialReadv(self, fdAccess, addressLengthPairs);
     }
 
     /**
@@ -291,14 +812,15 @@ public final class TruffleIO implements ContextAccess {
      *
      * @param self The file descriptor holder.
      * @param fdAccess How to get the file descriptor from the holder.
-     * @return The byte read, or {@code -1} if reading failed.
+     * @return The byte read, or -1 if the channel has reached end-of-stream. If the channel is in
+     *         non-blocking mode and no data is available {@link IOStatus_Sync#UNAVAILABLE} is
+     *         returned.
      * @see FileInputStream#read()
      */
     @TruffleBoundary
     public int readSingle(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        return readSingle(getFD(fileDesc));
+        return readSingle(getFD(self, fdAccess));
     }
 
     /**
@@ -308,11 +830,12 @@ public final class TruffleIO implements ContextAccess {
      */
     @TruffleBoundary
     public int readSingle(int fd) {
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof ReadableByteChannel readableByteChannel) {
-            return readSingleImpl(readableByteChannel, context);
+        byte[] b = new byte[1];
+        int bytesRead = readBytes(fd, ByteBuffer.wrap(b));
+        if (bytesRead == 1) {
+            return b[0] & 0xFF;
         } else {
-            throw Throw.throwNonReadable(context);
+            return bytesRead;
         }
     }
 
@@ -325,32 +848,78 @@ public final class TruffleIO implements ContextAccess {
      * @param off The start of the byte sequence to write to in {@code bytes}.
      * @param len The length of the byte sequence to read.
      * @return The number of bytes read, possibly zero, or -1 if the channel has reached
-     *         end-of-stream
-     * @see java.io.FileInputStream#read(byte[], int, int)
+     *         end-of-stream. If the channel is in non-blocking mode and no data is available
+     *         {@link IOStatus_Sync#UNAVAILABLE} is returned.
+     * @see ReadableByteChannel#read(ByteBuffer)
      */
     @TruffleBoundary
     public int readBytes(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess,
                     byte[] bytes,
                     int off, int len) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        return readBytes(getFD(fileDesc), bytes, off, len);
+        try {
+            return readBytes(self, fdAccess, ByteBuffer.wrap(bytes, off, len));
+        } catch (IndexOutOfBoundsException e) {
+            // The ByteBuffer.wrap may throw an IndexOutOfBoundsException. Since the byte array was
+            // provided by the guest, we will propagate the exception.
+            Meta meta = context.getMeta();
+            throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
+        }
     }
 
     /**
-     * Reads a byte sequence from the file associated with the given file descriptor.
+     * Reads a byte sequence from the file associated with the given file descriptor holder.
      *
-     * @see #readBytes(StaticObject, FDAccess, byte[], int, int)
+     * @param self The file descriptor holder.
+     * @param fdAccess How to get the file descriptor from the holder.
+     * @param buffer The ByteBuffer that will contain the bytes read.
+     * @return The number of bytes read, possibly zero, or -1 if the channel has reached
+     *         end-of-stream. If the channel is in non-blocking mode and no data is available
+     *         {@link IOStatus_Sync#UNAVAILABLE} is returned.
+     * @see java.io.FileInputStream#read(byte[], int, int)
+     */
+    @TruffleBoundary
+    public int readBytes(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess,
+                    ByteBuffer buffer) {
+        return readBytes(getFD(self, fdAccess), buffer);
+    }
+
+    /**
+     * @see TruffleIO#readBytes(StaticObject, FDAccess, byte[], int, int)
      */
     @TruffleBoundary
     public int readBytes(int fd,
-                    byte[] bytes,
-                    int off, int len) {
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof ReadableByteChannel readableByteChannel) {
-            return readBytesImpl(readableByteChannel, bytes, off, len, context);
-        } else {
+                    ByteBuffer buffer) {
+        try {
+            ReadableByteChannel readableChannel = getReadableChannel(fd);
+            return convertReturnVal(readableChannel.read(buffer), readableChannel);
+        } catch (NonReadableChannelException e) {
             throw Throw.throwNonReadable(context);
+        } catch (ClosedByInterruptException e) {
+            // todo (GR-69946) add uninterruptible support
+            throw JavaSubstitution.unimplemented();
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
+     * Reads a byte sequence from the file associated with the given file descriptor into the given
+     * memory address in plain mode.
+     *
+     * @param addr the address to read into
+     * @param length how many bytes to read
+     * @see #readBytes(StaticObject, FDAccess, byte[], int, int)
+     */
+    @TruffleBoundary
+    public int readAddress(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, long addr,
+                    int length) {
+        try {
+            return readBytes(self, fdAccess, context.getNativeAccess().nativeMemory().wrapNativeMemory(addr, length));
+        } catch (IllegalMemoryAccessException e) {
+            throw Throw.throwIOException("Invalid memory access: Trying to access memory outside the allocated region", getContext());
         }
     }
 
@@ -365,8 +934,7 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public boolean drain(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        return drain(getFD(fileDesc));
+        return drain(getFD(self, fdAccess));
     }
 
     /**
@@ -377,22 +945,18 @@ public final class TruffleIO implements ContextAccess {
      */
     @TruffleBoundary
     public boolean drain(int fd) {
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof ReadableByteChannel readableByteChannel) {
-            try {
-                ByteBuffer bytes = ByteBuffer.wrap(new byte[DRAIN_SEGMENT_COUNT]);
-                boolean discarded = false;
-                while ((readableByteChannel.read(bytes)) > 0) {
-                    discarded = true;
-                }
-                return discarded;
-            } catch (NonReadableChannelException e) {
-                throw Throw.throwNonReadable(context);
-            } catch (IOException e) {
-                throw Throw.throwIOException(e, context);
+        try {
+            ByteBuffer bytes = ByteBuffer.wrap(new byte[DRAIN_SEGMENT_COUNT]);
+            boolean discarded = false;
+            ReadableByteChannel readableByteChannel = getReadableChannel(fd);
+            while ((readableByteChannel.read(bytes)) > 0) {
+                discarded = true;
             }
-        } else {
+            return discarded;
+        } catch (NonReadableChannelException e) {
             throw Throw.throwNonReadable(context);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
         }
     }
 
@@ -407,8 +971,7 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public long position(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        return position(getFD(fileDesc));
+        return position(getFD(self, fdAccess));
     }
 
     /**
@@ -419,15 +982,11 @@ public final class TruffleIO implements ContextAccess {
      */
     @TruffleBoundary
     public long position(int fd) {
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof SeekableByteChannel seekableChannel) {
-            try {
-                return seekableChannel.position();
-            } catch (IOException e) {
-                throw Throw.throwIOException(e, context);
-            }
-        } else {
-            return 0; // unknown
+        SeekableByteChannel seekableChannel = getSeekableChannel(fd);
+        try {
+            return seekableChannel.position();
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
         }
     }
 
@@ -444,8 +1003,7 @@ public final class TruffleIO implements ContextAccess {
     public void seek(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess,
                     long pos) {
-        StaticObject fileDesc = getFileDesc(self, fdAccess);
-        seek(getFD(fileDesc), pos);
+        seek(getFD(self, fdAccess), pos);
     }
 
     /**
@@ -457,15 +1015,11 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public void seek(int fd,
                     long pos) {
-        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
-        if (channel instanceof SeekableByteChannel seekableChannel) {
-            try {
-                seekableChannel.position(pos);
-            } catch (IOException e) {
-                throw Throw.throwIOException(e, context);
-            }
-        } else {
-            Throw.throwNonSeekable(context);
+        SeekableByteChannel seekableChannel = getSeekableChannel(fd);
+        try {
+            seekableChannel.position(pos);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
         }
     }
 
@@ -494,6 +1048,10 @@ public final class TruffleIO implements ContextAccess {
             return null;
         }
         return getFileChannel(fd);
+    }
+
+    private int getFD(StaticObject self, FDAccess fdAccess) {
+        return getFD(getFileDesc(self, fdAccess));
     }
 
     private int getFD(@JavaType(FileDescriptor.class) StaticObject fileDescriptor) {
@@ -559,6 +1117,20 @@ public final class TruffleIO implements ContextAccess {
         }
     }
 
+    private static class ServerTCPChannelWrapper extends ChannelWrapper {
+        InetAddress inetAddress;
+        int port;
+
+        ServerTCPChannelWrapper(Channel channel, int cnt) {
+            super(channel, cnt, null);
+        }
+
+        void setTCPBindInformation(InetAddress inetAddress, int port) {
+            this.inetAddress = inetAddress;
+            this.port = port;
+        }
+    }
+
     public TruffleIO(EspressoContext context) {
         this.context = context;
 
@@ -580,6 +1152,8 @@ public final class TruffleIO implements ContextAccess {
         files.put(FD_STDOUT, stdout);
         files.put(FD_STDERR, stderr);
 
+        ensurePosixFileSystem();
+
         Meta meta = context.getMeta();
 
         java_io_FileDescriptor = meta.knownKlass(Types.java_io_FileDescriptor);
@@ -596,8 +1170,16 @@ public final class TruffleIO implements ContextAccess {
         java_io_RandomAccessFile_fd = java_io_RandomAccessFile.requireDeclaredField(Names.fd, Types.java_io_FileDescriptor);
         rafSync = new RAF_Sync(this);
 
+        // IOExceptions
         java_io_IOException = meta.knownKlass(Types.java_io_IOException);
-        java_io_FileNotFoundException = meta.knownKlass(Types.java_io_IOException);
+        java_io_FileNotFoundException = meta.knownKlass(Types.java_io_FileNotFoundException);
+        java_nio_channels_ClosedByInterruptException = meta.knownKlass(Types.java_nio_channels_ClosedByInterruptException);
+        java_nio_channels_AsynchronousCloseException = meta.knownKlass(Types.java_nio_channels_AsynchronousCloseException);
+        java_nio_channels_ClosedChannelException = meta.knownKlass(Types.java_nio_channels_ClosedChannelException);
+        java_nio_file_NoSuchFileException = meta.knownKlass(Types.java_nio_file_NoSuchFileException);
+        java_net_SocketException = meta.knownKlass(Types.java_net_SocketException);
+        sun_net_ConnectionResetException = meta.knownKlass(EspressoSymbols.Types.sun_net_ConnectionResetException);
+        java_net_UnknownHostException = meta.knownKlass(EspressoSymbols.Types.java_net_UnknownHostException);
 
         java_io_File = meta.knownKlass(Types.java_io_File);
         java_io_File_path = java_io_File.requireDeclaredField(Names.path, Types.java_lang_String);
@@ -611,11 +1193,26 @@ public final class TruffleIO implements ContextAccess {
         sun_nio_fs_DefaultFileSystemProvider = meta.knownKlass(Types.sun_nio_fs_DefaultFileSystemProvider);
         sun_nio_fs_DefaultFileSystemProvider_instance = sun_nio_fs_DefaultFileSystemProvider.requireDeclaredMethod(Names.instance, Signatures.sun_nio_fs_TruffleFileSystemProvider);
 
+        sun_nio_fs_FileAttributeParser = meta.knownKlass(EspressoSymbols.Types.sun_nio_fs_FileAttributeParser);
+        this.fileAttributeParserSync = new FileAttributeParser_Sync(this);
+
+        sun_nio_ch_IOStatus = meta.knownKlass(EspressoSymbols.Types.sun_nio_ch_IOStatus);
+        ioStatusSync = new IOStatus_Sync(this);
+
+        sun_nio_ch_FileChannelImpl = meta.knownKlass(EspressoSymbols.Types.sun_nio_ch_FileChannelImpl);
+        this.fileChannelImplSync = new FileChannelImpl_Sync(this);
+
         sun_nio_fs_TrufflePath = meta.knownKlass(Types.sun_nio_fs_TrufflePath);
         sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE = sun_nio_fs_TrufflePath.requireHiddenField(Names.HIDDEN_TRUFFLE_FILE);
 
         java_io_FileSystem = meta.knownKlass(Types.java_io_FileSystem);
         fileSystemSync = new FileSystem_Sync(this);
+
+        java_net_spi_InetAddressResolver$LookupPolicy = meta.knownKlass(Types.java_net_spi_InetAddressResolver$LookupPolicy);
+        inetAddressResolverLookupPolicySync = new InetAddressResolver_LookupPolicy_Sync(this);
+
+        sun_nio_ch_Net = meta.knownKlass(Types.sun_nio_ch_Net);
+        netShutFlagsSync = new Net_ShutFlags_Sync(this);
 
         setEnv(context.getEnv());
     }
@@ -625,6 +1222,32 @@ public final class TruffleIO implements ContextAccess {
             files.get(FD_STDIN).setNewChannel(new DetachOnCloseInputStream(env.in()));
             files.get(FD_STDOUT).setNewChannel(new DetachOnCloseOutputStream(env.out()));
             files.get(FD_STDERR).setNewChannel(new DetachOnCloseOutputStream(env.err()));
+        }
+    }
+
+    /**
+     * This method tries to ensure the underlying file system is a posix/unix file system and warns
+     * the user if not.
+     */
+    private void ensurePosixFileSystem() {
+        TruffleFile probe = null;
+        try {
+            probe = context.getEnv().createTempFile(null, null, null);
+            try {
+                probe.setPosixPermissions(Set.of(PosixFilePermission.values()));
+            } catch (UnsupportedOperationException noPosixPermissions) {
+                LibsState.getLogger().warning("The underlying fileSystem does not support PosixPermissions, which is assumed by EspressoLibs");
+            }
+        } catch (Exception e) {
+            LibsState.getLogger().warning("Could not verify that the underlying file system is a posix/unix file system");
+        } finally {
+            if (probe != null) {
+                try {
+                    probe.delete();
+                } catch (IOException e) {
+                    // ignore
+                }
+            }
         }
     }
 
@@ -677,13 +1300,18 @@ public final class TruffleIO implements ContextAccess {
         }
     }
 
-    private int open(TruffleFile path, Set<? extends OpenOption> options) {
+    private int open(TruffleFile path, Set<? extends OpenOption> options, FileAttribute<?>... attributes) {
         try {
-            Channel channel = path.newByteChannel(options);
+            Channel channel = path.newByteChannel(options, attributes);
             return open(path, channel);
-        } catch (IOException | UnsupportedOperationException | IllegalArgumentException | SecurityException e) {
-            // Guest code only ever expects FileNotFoundException.
-            throw Throw.throwFileNotFoundException(e, context);
+        } catch (IllegalArgumentException e) {
+            throw Throw.throwIllegalArgumentException(e.getMessage(), context);
+        } catch (UnsupportedOperationException e) {
+            throw Throw.throwUnsupported(e.getMessage(), context);
+        } catch (SecurityException e) {
+            throw Throw.throwSecurityException(e.getMessage(), context);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
         }
     }
 
@@ -708,50 +1336,210 @@ public final class TruffleIO implements ContextAccess {
         return nextFd;
     }
 
-    private static int readSingleImpl(ReadableByteChannel readableChannel, EspressoContext context) {
-        try {
-            byte[] b = new byte[1];
-            int bytesRead = readableChannel.read(ByteBuffer.wrap(b));
-            if (bytesRead == 1) {
-                return b[0] & 0xFF;
-            } else {
-                return -1; // EOF
+    private long sequentialWritev(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, AddressLengthPair[] addressLengthPairs) {
+        long ret = 0;
+        for (AddressLengthPair addressLengthPair : addressLengthPairs) {
+            long currAddr = addressLengthPair.address();
+            long currLength = addressLengthPair.length();
+            long currWritten = 0;
+            do {
+                long nextWrite = Math.min(Integer.MAX_VALUE, currLength - currWritten);
+                // unchecked cast is safe since nextWrite <= Integer.MAX_VALUE
+                int written = writeAddress(self, fdAccess, currAddr + currWritten, (int) nextWrite);
+                if (written <= 0 && currLength > currWritten) {
+                    /*
+                     * The writev() function shall always write a complete area before proceeding to
+                     * the next.
+                     */
+                    return ret + currWritten;
+                }
+                currWritten += written;
+            } while (currWritten < currLength);
+            ret += currWritten;
+        }
+        return ret;
+    }
+
+    private long sequentialReadv(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, AddressLengthPair[] addressLengthPairs) {
+        long ret = 0;
+        for (AddressLengthPair addressLengthPair : addressLengthPairs) {
+            long currAddr = addressLengthPair.address();
+            long currLength = addressLengthPair.length();
+            long currRead = 0;
+            do {
+                long nextRead = Math.min(Integer.MAX_VALUE, currLength - currRead);
+                // unchecked cast is safe since nextRead <= Integer.MAX_VALUE
+                int read = readAddress(self, fdAccess, currAddr + currRead, (int) nextRead);
+                if (read <= 0 && currRead < currLength) {
+                    /*
+                     * readv() completely fills iov[0] before proceeding to iov[1], and so on.
+                     */
+                    return ret + currRead;
+                }
+                currRead += read;
+            } while (currRead < currLength);
+            ret += currRead;
+        }
+        return ret;
+    }
+
+    @TruffleBoundary
+    private ByteBuffer[] asByteBuffer(AddressLengthPair[] addressLengthPairs, NativeMemory nativeMemory) {
+        List<ByteBuffer> buffs = new ArrayList<>(addressLengthPairs.length);
+        for (int i = 0; i < addressLengthPairs.length; i++) {
+            long bytesToWrap = addressLengthPairs[i].length;
+            long currAddr = addressLengthPairs[i].address();
+            long wrappedBytes = 0;
+            do {
+                long nextWrap = Math.min(Integer.MAX_VALUE, bytesToWrap - wrappedBytes);
+                // unchecked cast is safe as nextWrap <= Integer.MAX_VALUE
+                try {
+                    buffs.add(nativeMemory.wrapNativeMemory(currAddr + wrappedBytes, (int) nextWrap));
+                } catch (IllegalMemoryAccessException e) {
+                    throw Throw.throwIOException("Invalid memory access: Trying to access memory outside the allocated region", getContext());
+                }
+                wrappedBytes += nextWrap;
+            } while (wrappedBytes < bytesToWrap);
+        }
+        return buffs.toArray(new ByteBuffer[0]);
+    }
+
+    private record AddressLengthPair(long address, long length) {
+    }
+
+    private AddressLengthPair[] extractAddressLengthPairs(long address, int len, NativeMemory nativeMemory) {
+        int lenOffset = ADDRESS_SIZE;
+        int sizeOfIOVec = (short) (ADDRESS_SIZE * 2);
+        long curIOVecAddr = address;
+        long nextAddr;
+        long nextLen;
+        long fullLen = 0;
+        AddressLengthPair[] addressLengthPairs = new AddressLengthPair[len];
+        for (int i = 0; i < len; i++) {
+            try {
+                if (ADDRESS_SIZE == 4) {
+                    nextAddr = nativeMemory.getInt(curIOVecAddr, MemoryAccessMode.PLAIN);
+                    nextLen = nativeMemory.getInt(curIOVecAddr + lenOffset, MemoryAccessMode.PLAIN);
+                } else {
+                    nextAddr = nativeMemory.getLong(curIOVecAddr, MemoryAccessMode.PLAIN);
+                    nextLen = nativeMemory.getLong(curIOVecAddr + lenOffset, MemoryAccessMode.PLAIN);
+                }
+            } catch (IllegalMemoryAccessException e) {
+                throw Throw.throwIOException("Invalid memory access: Trying to access memory outside the allocated region", getContext());
             }
-        } catch (NonReadableChannelException e) {
-            throw Throw.throwNonReadable(context);
-        } catch (IOException e) {
-            throw Throw.throwIOException(e, context);
-        } catch (IndexOutOfBoundsException e) {
-            Meta meta = context.getMeta();
-            throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
+            fullLen = Math.addExact(fullLen, nextLen);
+            addressLengthPairs[i] = new AddressLengthPair(nextAddr, nextLen);
+            curIOVecAddr += sizeOfIOVec;
         }
+        return addressLengthPairs;
     }
 
-    private static int readBytesImpl(ReadableByteChannel readableChannel, byte[] b, int off, int len, EspressoContext context) {
-        try {
-            return readableChannel.read(ByteBuffer.wrap(b, off, len));
-        } catch (NonReadableChannelException e) {
-            throw Throw.throwNonReadable(context);
-        } catch (IOException e) {
-            throw Throw.throwIOException(e, context);
-        } catch (IndexOutOfBoundsException e) {
-            Meta meta = context.getMeta();
-            throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
-        }
+    private ReadableByteChannel getReadableChannel(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        return getReadableChannel(getFD(getFileDesc(self, fdAccess)));
     }
 
-    private static int writeBytesImpl(WritableByteChannel writableChannel, byte[] b, int off, int len,
-                    EspressoContext context) {
-        try {
-            return writableChannel.write(ByteBuffer.wrap(b, off, len));
-        } catch (NonWritableChannelException e) {
-            throw Throw.throwNonWritable(context);
-        } catch (IOException e) {
-            throw Throw.throwIOException(e, context);
-        } catch (IndexOutOfBoundsException e) {
-            Meta meta = context.getMeta();
-            throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
+    private ReadableByteChannel getReadableChannel(int fd) {
+        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
+        if (channel instanceof ReadableByteChannel readableByteChannel) {
+            return readableByteChannel;
         }
+        throw Throw.throwNonReadable(context);
+    }
+
+    private SocketChannel getSocketChannel(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        return getSocketChannel(getFD(getFileDesc(self, fdAccess)));
+    }
+
+    private SocketChannel getSocketChannel(int fd) {
+        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
+        if (channel instanceof SocketChannel socketChannel) {
+            return socketChannel;
+        }
+        // SocketChannels are backed by the host, thus it would be very suspicious if we reach here.
+        throw Throw.throwIOException("The fd does not refer to a SocketChannel", context);
+    }
+
+    private NetworkChannel getNetworkChannel(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        return getNetworkChannel(getFD(getFileDesc(self, fdAccess)));
+    }
+
+    private NetworkChannel getNetworkChannel(int fd) {
+        return getNetworkChannel(Checks.ensureOpen(getChannel(fd), getContext()));
+    }
+
+    private NetworkChannel getNetworkChannel(Channel channel) {
+        if (channel instanceof NetworkChannel networkChannel) {
+            return networkChannel;
+        }
+        // NetworkChannel are backed by the host, thus it would be very suspicious if we reach here.
+        throw Throw.throwIOException("The fd does not refer to a NetworkChannel", context);
+    }
+
+    private ServerTCPChannelWrapper getServerTCPChannelWrapper(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        ChannelWrapper channelWrapper = files.getOrDefault(getFD(self, fdAccess), null);
+        Objects.requireNonNull(channelWrapper);
+        if (channelWrapper instanceof ServerTCPChannelWrapper tcpWrapper) {
+            return tcpWrapper;
+        }
+        // ServerTCPChannelWrapper are backed by the host, thus it would be very suspicious if we
+        // reach here.
+        throw Throw.throwIOException("The fd does not refer to a ServerTCPChannelWrapper", context);
+    }
+
+    private ServerSocketChannel getServerSocketChannel(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        Channel channel = Checks.ensureOpen(getChannel(getFD(self, fdAccess)), getContext());
+        if (channel instanceof ServerSocketChannel serverSocketChannel) {
+            return serverSocketChannel;
+        }
+        // ServerSocketChannel are backed by the host, thus it would be very suspicious if we reach
+        // here.
+        throw Throw.throwIOException("The fd does not refer to a ServerSocketChannel", context);
+    }
+
+    private SelectableChannel getSelectableChannel(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess) {
+        return getSelectableChannel(getFD(getFileDesc(self, fdAccess)));
+    }
+
+    private SelectableChannel getSelectableChannel(int fd) {
+        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
+        if (channel instanceof SelectableChannel selectableChannel) {
+            return selectableChannel;
+        }
+        // SelectableChannel are backed by the host, thus it would be very suspicious if we reach
+        // here.
+        throw Throw.throwIOException("The fd does not refer to a SelectableChannel", context);
+    }
+
+    /**
+     * Handles the translation between the value returned by the java read/write and the expected
+     * return value of the native functions.
+     */
+    private int convertReturnVal(int n, Channel channel) {
+        /*
+         * In the native code, if the system call returns EAGAIN or EWOULDBLOCK they return
+         * ioStatusSync.UNAVAILABLE. To me EAGAIN or EWOULDBLOCK translates here to n = 0 on a
+         * non-blocking channel.
+         */
+        if (n == 0 && channel instanceof SelectableChannel selectableChannel) {
+            return selectableChannel.isBlocking() ? n : ioStatusSync.UNAVAILABLE;
+        }
+        return n;
+    }
+
+    private WritableByteChannel getWritableChannel(int fd) {
+        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
+        if (channel instanceof WritableByteChannel writableByteChannel) {
+            return writableByteChannel;
+        }
+        throw Throw.throwNonWritable(context);
     }
 
     private static long sizeImpl(SeekableByteChannel seekableChannel, EspressoContext context) {
@@ -762,11 +1550,12 @@ public final class TruffleIO implements ContextAccess {
         }
     }
 
-    private static int lookupSyncedValue(ObjectKlass klass, Symbol<Name> constant) {
-        Field f = klass.lookupDeclaredField(constant, Types._int);
-        EspressoError.guarantee(f != null, "Failed to sync " + klass.getExternalName() + " constants");
-        assert f.isStatic();
-        return f.getInt(klass.tryInitializeAndGetStatics());
+    private SeekableByteChannel getSeekableChannel(int fd) {
+        Channel channel = Checks.ensureOpen(getChannel(fd), getContext());
+        if (channel instanceof SeekableByteChannel seekableChannel) {
+            return seekableChannel;
+        }
+        throw Throw.throwNonSeekable(context);
     }
 
     // Checkstyle: stop field name check
@@ -778,11 +1567,11 @@ public final class TruffleIO implements ContextAccess {
         public final int O_TEMPORARY;
 
         public RAF_Sync(TruffleIO io) {
-            this.O_RDONLY = lookupSyncedValue(io.java_io_RandomAccessFile, Names.O_RDONLY);
-            this.O_RDWR = lookupSyncedValue(io.java_io_RandomAccessFile, Names.O_RDWR);
-            this.O_SYNC = lookupSyncedValue(io.java_io_RandomAccessFile, Names.O_SYNC);
-            this.O_DSYNC = lookupSyncedValue(io.java_io_RandomAccessFile, Names.O_DSYNC);
-            this.O_TEMPORARY = lookupSyncedValue(io.java_io_RandomAccessFile, Names.O_TEMPORARY);
+            this.O_RDONLY = Meta.getIntConstant(io.java_io_RandomAccessFile, Names.O_RDONLY);
+            this.O_RDWR = Meta.getIntConstant(io.java_io_RandomAccessFile, Names.O_RDWR);
+            this.O_SYNC = Meta.getIntConstant(io.java_io_RandomAccessFile, Names.O_SYNC);
+            this.O_DSYNC = Meta.getIntConstant(io.java_io_RandomAccessFile, Names.O_DSYNC);
+            this.O_TEMPORARY = Meta.getIntConstant(io.java_io_RandomAccessFile, Names.O_TEMPORARY);
         }
     }
 
@@ -797,13 +1586,92 @@ public final class TruffleIO implements ContextAccess {
         public final int ACCESS_EXECUTE;
 
         public FileSystem_Sync(TruffleIO io) {
-            this.BA_EXISTS = lookupSyncedValue(io.java_io_FileSystem, Names.BA_EXISTS);
-            this.BA_REGULAR = lookupSyncedValue(io.java_io_FileSystem, Names.BA_REGULAR);
-            this.BA_DIRECTORY = lookupSyncedValue(io.java_io_FileSystem, Names.BA_DIRECTORY);
-            this.BA_HIDDEN = lookupSyncedValue(io.java_io_FileSystem, Names.BA_HIDDEN);
-            this.ACCESS_READ = lookupSyncedValue(io.java_io_FileSystem, Names.ACCESS_READ);
-            this.ACCESS_WRITE = lookupSyncedValue(io.java_io_FileSystem, Names.ACCESS_WRITE);
-            this.ACCESS_EXECUTE = lookupSyncedValue(io.java_io_FileSystem, Names.ACCESS_EXECUTE);
+            this.BA_EXISTS = Meta.getIntConstant(io.java_io_FileSystem, Names.BA_EXISTS);
+            this.BA_REGULAR = Meta.getIntConstant(io.java_io_FileSystem, Names.BA_REGULAR);
+            this.BA_DIRECTORY = Meta.getIntConstant(io.java_io_FileSystem, Names.BA_DIRECTORY);
+            this.BA_HIDDEN = Meta.getIntConstant(io.java_io_FileSystem, Names.BA_HIDDEN);
+            this.ACCESS_READ = Meta.getIntConstant(io.java_io_FileSystem, Names.ACCESS_READ);
+            this.ACCESS_WRITE = Meta.getIntConstant(io.java_io_FileSystem, Names.ACCESS_WRITE);
+            this.ACCESS_EXECUTE = Meta.getIntConstant(io.java_io_FileSystem, Names.ACCESS_EXECUTE);
+        }
+    }
+
+    public static final class FileAttributeParser_Sync {
+        public final int OWNER_READ_VALUE;
+        public final int OWNER_WRITE_VALUE;
+        public final int OWNER_EXECUTE_VALUE;
+        public final int GROUP_READ_VALUE;
+        public final int GROUP_WRITE_VALUE;
+        public final int GROUP_EXECUTE_VALUE;
+        public final int OTHERS_READ_VALUE;
+        public final int OTHERS_WRITE_VALUE;
+        public final int OTHERS_EXECUTE_VALUE;
+
+        public FileAttributeParser_Sync(TruffleIO io) {
+            // if this would fail we would need to load the class at post system init.
+            this.OWNER_READ_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.OWNER_READ_VALUE, false);
+            this.OWNER_WRITE_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.OWNER_WRITE_VALUE, false);
+            this.OWNER_EXECUTE_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.OWNER_EXECUTE_VALUE, false);
+            this.GROUP_READ_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.GROUP_READ_VALUE, false);
+            this.GROUP_WRITE_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.GROUP_WRITE_VALUE, false);
+            this.GROUP_EXECUTE_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.GROUP_EXECUTE_VALUE, false);
+            this.OTHERS_READ_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.OTHERS_READ_VALUE, false);
+            this.OTHERS_WRITE_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.OTHERS_WRITE_VALUE, false);
+            this.OTHERS_EXECUTE_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.OTHERS_EXECUTE_VALUE, false);
+        }
+    }
+
+    public static final class FileChannelImpl_Sync {
+        public final int MAP_RW;
+
+        public FileChannelImpl_Sync(TruffleIO io) {
+            // if this would fail we would need to load the class at post system init.
+            this.MAP_RW = Meta.getIntConstant(io.sun_nio_ch_FileChannelImpl, Names.MAP_RW, false);
+        }
+    }
+
+    public static final class IOStatus_Sync {
+        public final int EOF;
+        public final int UNAVAILABLE;
+        public final int INTERRUPTED;
+        public final int UNSUPPORTED;
+        public final int THROWN;
+        public final int UNSUPPORTED_CASE;
+
+        public IOStatus_Sync(TruffleIO io) {
+            this.EOF = Meta.getIntConstant(io.sun_nio_ch_IOStatus, Names.EOF);
+            this.UNAVAILABLE = Meta.getIntConstant(io.sun_nio_ch_IOStatus, Names.UNAVAILABLE);
+            this.INTERRUPTED = Meta.getIntConstant(io.sun_nio_ch_IOStatus, Names.INTERRUPTED);
+            this.UNSUPPORTED = Meta.getIntConstant(io.sun_nio_ch_IOStatus, Names.UNSUPPORTED);
+            this.THROWN = Meta.getIntConstant(io.sun_nio_ch_IOStatus, Names.THROWN);
+            this.UNSUPPORTED_CASE = Meta.getIntConstant(io.sun_nio_ch_IOStatus, Names.UNSUPPORTED_CASE);
+        }
+    }
+
+    public static final class InetAddressResolver_LookupPolicy_Sync {
+        public final int IPV4;
+        public final int IPV6;
+        public final int IPV4_FIRST;
+        public final int IPV6_FIRST;
+
+        public InetAddressResolver_LookupPolicy_Sync(TruffleIO io) {
+            this.IPV4 = Meta.getIntConstant(io.java_net_spi_InetAddressResolver$LookupPolicy, Names.IPV4);
+            this.IPV6 = Meta.getIntConstant(io.java_net_spi_InetAddressResolver$LookupPolicy, Names.IPV6);
+            this.IPV4_FIRST = Meta.getIntConstant(io.java_net_spi_InetAddressResolver$LookupPolicy, Names.IPV4_FIRST);
+            this.IPV6_FIRST = Meta.getIntConstant(io.java_net_spi_InetAddressResolver$LookupPolicy, Names.IPV6_FIRST);
+        }
+    }
+
+    public static final class Net_ShutFlags_Sync {
+        public final int SHUT_RD;
+        public final int SHUT_WR;
+        public final int SHUT_RDWR;
+
+        public Net_ShutFlags_Sync(TruffleIO io) {
+            // if this would fail we would need to load the class at post system init.
+            this.SHUT_RD = Meta.getIntConstant(io.sun_nio_ch_Net, Names.SHUT_RD, false);
+            this.SHUT_WR = Meta.getIntConstant(io.sun_nio_ch_Net, Names.SHUT_WR, false);
+            this.SHUT_RDWR = Meta.getIntConstant(io.sun_nio_ch_Net, Names.SHUT_RDWR, false);
         }
     }
     // Checkstyle: resume field name check

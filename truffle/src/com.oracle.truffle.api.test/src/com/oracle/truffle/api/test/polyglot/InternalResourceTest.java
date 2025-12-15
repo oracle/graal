@@ -40,6 +40,13 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -66,16 +73,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.test.OSUtils;
-import com.oracle.truffle.api.test.ReflectionUtils;
-import com.oracle.truffle.api.test.SubprocessTestUtils;
-import com.oracle.truffle.api.test.common.TestUtils;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -84,18 +81,21 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.OSUtils;
+import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
-import static org.junit.Assume.assumeFalse;
+import com.oracle.truffle.api.test.common.TestUtils;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class InternalResourceTest {
 
@@ -1113,111 +1113,131 @@ public class InternalResourceTest {
     }
 
     @Test
-    public void testLogging() {
+    public void testLogging() throws IOException, InterruptedException {
         TruffleTestAssumptions.assumeNotAOT();
-        PrintStream originalErr = System.err;
-        ByteArrayOutputStream testErr = new ByteArrayOutputStream();
-        System.setErr(new PrintStream(testErr));
-        System.setProperty("polyglotimpl.TraceInternalResources", "true");
-        try (Context context = Context.create()) {
-            String languageId = TestUtils.getDefaultLanguageId(TestLogging.class);
-            AbstractExecutableTestLanguage.execute(context, TestLogging.class);
-            String[] lines = testErr.toString().split("\n");
-            String line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + SourcesResource.ID, lines);
-            assertNotNull(line);
-            line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + LibraryResource.ID, lines);
-            assertNotNull(line);
-        } finally {
-            System.getProperties().remove("polyglotimpl.TraceInternalResources");
-            System.setErr(originalErr);
-        }
+        executeWithLogging(() -> {
+            PrintStream originalErr = System.err;
+            ByteArrayOutputStream testErr = new ByteArrayOutputStream();
+            System.setErr(new PrintStream(testErr));
+            try (Context context = Context.create()) {
+                String languageId = TestUtils.getDefaultLanguageId(TestLogging.class);
+                AbstractExecutableTestLanguage.execute(context, TestLogging.class);
+                String[] lines = testErr.toString().split("\n");
+                String line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + SourcesResource.ID, lines);
+                assertNotNull(line);
+                line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + LibraryResource.ID, lines);
+                assertNotNull(line);
+            } finally {
+                System.getProperties().remove("polyglotimpl.TraceInternalResources");
+                System.setErr(originalErr);
+            }
+        });
+    }
+
+    private static void executeWithLogging(Runnable action) throws IOException, InterruptedException {
+        SubprocessTestUtils.newBuilder(InternalResourceTest.class, action).prefixVmOption("-Dpolyglotimpl.TraceInternalResources=true").run();
     }
 
     @Test
-    public void testLoggingOverriddenCacheRoot() throws IOException {
+    public void testLoggingOverriddenCacheRoot() throws IOException, InterruptedException {
         TruffleTestAssumptions.assumeNotAOT();
-        PrintStream originalErr = System.err;
-        ByteArrayOutputStream testErr = new ByteArrayOutputStream();
-        Path tmpDir = Files.createTempDirectory("resources");
-        String languageId = TestUtils.getDefaultLanguageId(TestLogging.class);
-        Engine.copyResources(tmpDir, languageId);
-        System.setErr(new PrintStream(testErr));
-        System.setProperty("polyglotimpl.TraceInternalResources", "true");
-        System.setProperty("polyglot.engine.resourcePath", tmpDir.toString());
-        try (Context context = Context.create()) {
-            AbstractExecutableTestLanguage.execute(context, TestLogging.class, tmpDir.toString());
-            String[] lines = testErr.toString().split("\n");
-            String line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + SourcesResource.ID, lines);
-            assertNotNull(line);
-            assertTrue(line.contains(tmpDir.toString()));
-            line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + LibraryResource.ID, lines);
-            assertNotNull(line);
-            assertTrue(line.contains(tmpDir.toString()));
-        } finally {
-            System.getProperties().remove("polyglot.engine.resourcePath");
-            System.getProperties().remove("polyglotimpl.TraceInternalResources");
-            System.setErr(originalErr);
-        }
+        executeWithLogging(() -> {
+            try {
+                PrintStream originalErr = System.err;
+                ByteArrayOutputStream testErr = new ByteArrayOutputStream();
+                Path tmpDir = Files.createTempDirectory("resources");
+                String languageId = TestUtils.getDefaultLanguageId(TestLogging.class);
+                Engine.copyResources(tmpDir, languageId);
+                System.setErr(new PrintStream(testErr));
+                System.setProperty("polyglot.engine.resourcePath", tmpDir.toString());
+                try (Context context = Context.create()) {
+                    AbstractExecutableTestLanguage.execute(context, TestLogging.class, tmpDir.toString());
+                    String[] lines = testErr.toString().split("\n");
+                    String line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + SourcesResource.ID, lines);
+                    assertNotNull(line);
+                    assertTrue(line.contains(tmpDir.toString()));
+                    line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + LibraryResource.ID, lines);
+                    assertNotNull(line);
+                    assertTrue(line.contains(tmpDir.toString()));
+                } finally {
+                    System.getProperties().remove("polyglot.engine.resourcePath");
+                    System.getProperties().remove("polyglotimpl.TraceInternalResources");
+                    System.setErr(originalErr);
+                }
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+        });
     }
 
     @Test
-    public void testLoggingOverriddenComponentRoot() throws IOException {
+    public void testLoggingOverriddenComponentRoot() throws IOException, InterruptedException {
         TruffleTestAssumptions.assumeNotAOT();
-        PrintStream originalErr = System.err;
-        ByteArrayOutputStream testErr = new ByteArrayOutputStream();
-        Path tmpDir = Files.createTempDirectory("resources");
-        String languageId = TestUtils.getDefaultLanguageId(TestLogging.class);
-        String overridePropName = "polyglot.engine.resourcePath." + languageId;
-        Path languageResources = tmpDir.resolve(languageId);
-        Engine.copyResources(tmpDir, languageId);
-        System.setErr(new PrintStream(testErr));
-        System.setProperty("polyglotimpl.TraceInternalResources", "true");
-        System.setProperty(overridePropName, languageResources.toString());
-        try (Context context = Context.create()) {
-            AbstractExecutableTestLanguage.execute(context, TestLogging.class);
-            String[] lines = testErr.toString().split("\n");
-            String line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + SourcesResource.ID, lines);
-            assertNotNull(line);
-            assertTrue(line.contains(languageResources.toString()));
-            line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + LibraryResource.ID, lines);
-            assertNotNull(line);
-            assertTrue(line.contains(languageResources.toString()));
-        } finally {
-            System.getProperties().remove(overridePropName);
-            System.getProperties().remove("polyglotimpl.TraceInternalResources");
-            System.setErr(originalErr);
-            delete(tmpDir);
-        }
+        executeWithLogging(() -> {
+            try {
+                PrintStream originalErr = System.err;
+                ByteArrayOutputStream testErr = new ByteArrayOutputStream();
+                Path tmpDir = Files.createTempDirectory("resources");
+                String languageId = TestUtils.getDefaultLanguageId(TestLogging.class);
+                String overridePropName = "polyglot.engine.resourcePath." + languageId;
+                Path languageResources = tmpDir.resolve(languageId);
+                Engine.copyResources(tmpDir, languageId);
+                System.setErr(new PrintStream(testErr));
+                System.setProperty(overridePropName, languageResources.toString());
+                try (Context context = Context.create()) {
+                    AbstractExecutableTestLanguage.execute(context, TestLogging.class);
+                    String[] lines = testErr.toString().split("\n");
+                    String line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + SourcesResource.ID, lines);
+                    assertNotNull(line);
+                    assertTrue(line.contains(languageResources.toString()));
+                    line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + LibraryResource.ID, lines);
+                    assertNotNull(line);
+                    assertTrue(line.contains(languageResources.toString()));
+                } finally {
+                    System.getProperties().remove(overridePropName);
+                    System.getProperties().remove("polyglotimpl.TraceInternalResources");
+                    System.setErr(originalErr);
+                    delete(tmpDir);
+                }
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+        });
     }
 
     @Test
-    public void testLoggingOverriddenResourceRoot() throws IOException {
+    public void testLoggingOverriddenResourceRoot() throws IOException, InterruptedException {
         TruffleTestAssumptions.assumeNotAOT();
-        PrintStream originalErr = System.err;
-        ByteArrayOutputStream testErr = new ByteArrayOutputStream();
-        Path tmpDir = Files.createTempDirectory("resources");
-        String languageId = TestUtils.getDefaultLanguageId(TestLogging.class);
-        String overridePropName = "polyglot.engine.resourcePath." + languageId + '.' + SourcesResource.ID;
-        Engine.copyResources(tmpDir, languageId);
-        Path sourceResource = tmpDir.resolve(languageId).resolve(SourcesResource.ID);
-        System.setErr(new PrintStream(testErr));
-        System.setProperty("polyglotimpl.TraceInternalResources", "true");
-        System.setProperty(overridePropName, sourceResource.toString());
-        try (Context context = Context.create()) {
-            AbstractExecutableTestLanguage.execute(context, TestLogging.class);
-            String[] lines = testErr.toString().split("\n");
-            String line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + SourcesResource.ID, lines);
-            assertNotNull(line);
-            assertTrue(line.contains(sourceResource.toString()));
-            line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + LibraryResource.ID, lines);
-            assertNotNull(line);
-            assertFalse(line.contains(sourceResource.toString()));
-        } finally {
-            System.getProperties().remove(overridePropName);
-            System.getProperties().remove("polyglotimpl.TraceInternalResources");
-            System.setErr(originalErr);
-            delete(tmpDir);
-        }
+        executeWithLogging(() -> {
+            try {
+                PrintStream originalErr = System.err;
+                ByteArrayOutputStream testErr = new ByteArrayOutputStream();
+                Path tmpDir = Files.createTempDirectory("resources");
+                String languageId = TestUtils.getDefaultLanguageId(TestLogging.class);
+                String overridePropName = "polyglot.engine.resourcePath." + languageId + '.' + SourcesResource.ID;
+                Engine.copyResources(tmpDir, languageId);
+                Path sourceResource = tmpDir.resolve(languageId).resolve(SourcesResource.ID);
+                System.setErr(new PrintStream(testErr));
+                System.setProperty(overridePropName, sourceResource.toString());
+                try (Context context = Context.create()) {
+                    AbstractExecutableTestLanguage.execute(context, TestLogging.class);
+                    String[] lines = testErr.toString().split("\n");
+                    String line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + SourcesResource.ID, lines);
+                    assertNotNull(line);
+                    assertTrue(line.contains(sourceResource.toString()));
+                    line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + LibraryResource.ID, lines);
+                    assertNotNull(line);
+                    assertFalse(line.contains(sourceResource.toString()));
+                } finally {
+                    System.getProperties().remove(overridePropName);
+                    System.getProperties().remove("polyglotimpl.TraceInternalResources");
+                    System.setErr(originalErr);
+                    delete(tmpDir);
+                }
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+        });
     }
 
     @Test

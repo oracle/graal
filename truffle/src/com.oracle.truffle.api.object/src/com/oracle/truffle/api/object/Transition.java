@@ -105,13 +105,7 @@ abstract class Transition {
                 return false;
             }
             PropertyTransition other = (PropertyTransition) obj;
-            if (!Objects.equals(this.key, other.key)) {
-                return false;
-            }
-            if (this.flags != other.flags) {
-                return false;
-            }
-            return true;
+            return Objects.equals(this.key, other.key) && this.flags == other.flags;
         }
 
         public Property getProperty() {
@@ -160,10 +154,7 @@ abstract class Transition {
                 return false;
             }
             TypedPropertyTransition other = (TypedPropertyTransition) obj;
-            if (!Objects.equals(this.locationOrType, other.locationOrType)) {
-                return false;
-            }
-            return true;
+            return Objects.equals(this.locationOrType, other.locationOrType);
         }
 
         public Object getLocationOrType() {
@@ -277,13 +268,7 @@ abstract class Transition {
                 return false;
             }
             AbstractReplacePropertyTransition other = (AbstractReplacePropertyTransition) obj;
-            if (!Objects.equals(this.property, other.property)) {
-                return false;
-            }
-            if (!Objects.equals(this.after, other.after)) {
-                return false;
-            }
-            return true;
+            return Objects.equals(this.property, other.property) && Objects.equals(this.after, other.after);
         }
 
         @Override

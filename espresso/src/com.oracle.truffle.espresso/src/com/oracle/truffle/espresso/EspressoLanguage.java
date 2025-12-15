@@ -68,6 +68,11 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbols;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Utf8Symbols;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
+import com.oracle.truffle.espresso.ffi.NoNativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFIStaticLibNativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -144,8 +149,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private boolean whiteBoxEnabled;
     @CompilationFinal private boolean eagerFrameAnalysis;
     @CompilationFinal private boolean internalJvmciEnabled;
+    @CompilationFinal private boolean externalJvmciEnabled;
     @CompilationFinal private boolean useEspressoLibs;
+    @CompilationFinal private boolean enableNetworking;
     @CompilationFinal private boolean continuum;
+    @CompilationFinal private String nativeBackendId;
     @CompilationFinal private boolean useTRegex;
     @CompilationFinal private int maxStackTraceDepth;
     // endregion Options
@@ -246,6 +254,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         previewEnabled = env.getOptions().get(EspressoOptions.EnablePreview);
         whiteBoxEnabled = env.getOptions().get(EspressoOptions.WhiteBoxAPI);
         internalJvmciEnabled = env.getOptions().get(EspressoOptions.EnableJVMCI);
+        externalJvmciEnabled = env.getOptions().get(EspressoOptions.ExposeJVMCIHelper);
         continuum = env.getOptions().get(EspressoOptions.Continuum);
         maxStackTraceDepth = env.getOptions().get(EspressoOptions.MaxJavaStackTraceDepth);
 
@@ -260,7 +269,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             case compact -> new CompactGuestFieldOffsetStrategy();
             case graal -> new GraalGuestFieldOffsetStrategy();
         };
-        this.useEspressoLibs = env.getOptions().get(EspressoOptions.UseEspressoLibs);
+        this.nativeBackendId = setNativeBackendId(env);
+        this.useEspressoLibs = setUseEspressoLibs(env);
         assert guestFieldOffsetStrategy.name().equals(strategy.name());
     }
 
@@ -321,6 +331,49 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         languageCache.importFrom(other.getLanguageCache());
     }
 
+    private static String setNativeBackendId(final TruffleLanguage.Env env) {
+        boolean isAllowed = env.isNativeAccessAllowed();
+        // if the Env allows, this might be overwritten.
+        String nativeBackend = NoNativeAccess.Provider.ID;
+        if (env.getOptions().hasBeenSet(EspressoOptions.NativeBackend)) {
+            String userNativeBackend = env.getOptions().get(EspressoOptions.NativeBackend);
+            if (!isAllowed && !userNativeBackend.equals(nativeBackend)) {
+                throw EspressoError.fatal("trying to set NativeBackend even though NativeAccess is disabled");
+            }
+            return userNativeBackend;
+
+        } else if (isAllowed) {
+            // Pick a sane "default" native backend depending on the platform.
+            boolean isInPreInit = (boolean) env.getConfig().getOrDefault("preinit", false);
+            if (isInPreInit || !EspressoOptions.RUNNING_ON_SVM) {
+                if (OS.getCurrent() == OS.Linux) {
+                    nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
+                } else if (OS.getCurrent() == OS.Darwin) {
+                    nativeBackend = NFIStaticLibNativeAccess.Provider.ID;
+                } else {
+                    nativeBackend = NFISulongNativeAccess.Provider.ID;
+                }
+            } else {
+                nativeBackend = NFINativeAccess.Provider.ID;
+            }
+        }
+        return nativeBackend;
+    }
+
+    private boolean setUseEspressoLibs(final TruffleLanguage.Env env) {
+        // For no-native we turn on espressoLibs by default
+        boolean flagSet = env.getOptions().hasBeenSet(EspressoOptions.UseEspressoLibs);
+        boolean userFlag = env.getOptions().get(EspressoOptions.UseEspressoLibs);
+        if (nativeBackendId.equals(NoNativeAccess.Provider.ID)) {
+            if (flagSet && !userFlag) {
+                throw EspressoError.fatal("You should not set UseEspressoLibs to false with no-native backend!");
+            }
+            return true;
+        } else {
+            return userFlag;
+        }
+    }
+
     @Override
     protected boolean patchContext(EspressoContext context, Env newEnv) {
         // This check has to be done manually as long as language uses exclusive context sharing
@@ -350,10 +403,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnablePreview) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.WhiteBoxAPI) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnableJVMCI) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.ExposeJVMCIHelper) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.Continuum) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseTRegex) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseEspressoLibs) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.NativeBackend) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.MaxJavaStackTraceDepth);
     }
 
@@ -496,9 +551,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     }
 
     public StaticProperty getArrayHashCodeProperty() {
-        if (!continuum) {
+        if (!canSetCustomIdentityHashCode()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere("Accessing array hash code property without continuum set up.");
+            throw EspressoError.shouldNotReachHere("Accessing array hash code property without continuum or JVMCI set up.");
         }
         return arrayHashCodeProperty;
     }
@@ -512,10 +567,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     private StaticShape<StaticObjectFactory> createArrayShape() {
         assert arrayShape == null;
         StaticShape.Builder builder = StaticShape.newBuilder(this).property(arrayProperty, Object.class, true);
-        if (continuum) {
+        if (canSetCustomIdentityHashCode()) {
             builder.property(arrayHashCodeProperty, int.class, false);
         }
         return builder.build(StaticObject.class, StaticObjectFactory.class);
+    }
+
+    public boolean canSetCustomIdentityHashCode() {
+        return isContinuumEnabled() || isJVMCIEnabled();
     }
 
     public StaticProperty getForeignProperty() {
@@ -588,8 +647,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         return internalJvmciEnabled;
     }
 
+    public boolean isExternalJVMCIEnabled() {
+        return externalJvmciEnabled;
+    }
+
     public boolean isJVMCIEnabled() {
-        return internalJvmciEnabled;
+        return internalJvmciEnabled || externalJvmciEnabled;
     }
 
     public boolean useTRegex() {
@@ -598,6 +661,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public boolean useEspressoLibs() {
         return useEspressoLibs;
+    }
+
+    public String nativeBackendId() {
+        return nativeBackendId;
+    }
+
+    public boolean isNativeAvailable() {
+        return !nativeBackendId.equals("no-native");
     }
 
     public boolean isContinuumEnabled() {
@@ -634,7 +705,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                         throw EspressoError.fatal("This guest field offset strategy (" + getGuestFieldOffsetStrategy().name() + ") is not allowed with this Java version (" + version + ")");
                     }
                     if (useTRegex && !version.java21OrLater()) {
-                        throw EspressoError.fatal("UseTRegex is not available for context running Java version < 21.");
+                        throw EspressoError.fatal("UseTRegex is not available for a context running Java version < 21.");
+                    }
+                    if (internalJvmciEnabled && !version.java21OrLater()) {
+                        throw EspressoError.fatal("EnableJVMCI is not available for a context running Java version < 21.");
                     }
                     this.javaVersion = ref = version;
                 }
@@ -753,6 +827,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public int getMaxStackTraceDepth() {
         return maxStackTraceDepth;
+    }
+
+    @SuppressWarnings("static-method")
+    public boolean needsInterruptedEvent() {
+        return OS.getCurrent() == OS.Windows;
     }
 
     public final class DisableSingleStepping implements AutoCloseable {

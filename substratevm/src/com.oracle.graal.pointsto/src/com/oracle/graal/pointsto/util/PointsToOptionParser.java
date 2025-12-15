@@ -31,9 +31,7 @@ import static com.oracle.svm.common.option.CommonOptionParser.BooleanOptionForma
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Predicate;
 
 import jdk.graal.compiler.options.OptionsContainer;
@@ -48,6 +46,7 @@ import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import org.graalvm.collections.EconomicSet;
 
 public final class PointsToOptionParser {
 
@@ -77,7 +76,7 @@ public final class PointsToOptionParser {
 
     public OptionValues parse(String[] args) {
         List<String> remainingArgs = new ArrayList<>();
-        Set<String> errors = new HashSet<>();
+        EconomicSet<String> errors = EconomicSet.create();
         /*
          * The standalone pointsto analysis can be programmatically invoked multiple times. Each
          * invocation should have its own options which are parsed independently, but all
@@ -107,7 +106,7 @@ public final class PointsToOptionParser {
     }
 
     private static boolean parseOption(String optionPrefix, EconomicMap<String, OptionDescriptor> options, EconomicMap<OptionKey<?>, Object> valuesMap,
-                    BooleanOptionFormat booleanOptionFormat, Set<String> errors, String arg, PrintStream out) {
+                    BooleanOptionFormat booleanOptionFormat, EconomicSet<String> errors, String arg, PrintStream out) {
         if (!arg.startsWith(optionPrefix)) {
             return false;
         }

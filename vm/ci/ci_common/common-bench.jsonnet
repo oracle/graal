@@ -48,54 +48,58 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     packages+: {
       'papi': '==5.5.1',
     },
+    local PAPI_DIR='/cm/shared/apps/papi/papi-5.5.1',
     environment+: {
       ENABLE_POLYBENCH_HPC: 'yes',
-      POLYBENCH_HPC_EXTRA_HEADERS: '/cm/shared/apps/papi/papi-5.5.1/include',
-      POLYBENCH_HPC_PAPI_LIB_DIR: '/cm/shared/apps/papi/papi-5.5.1/lib',
+      POLYBENCH_HPC_EXTRA_HEADERS: PAPI_DIR + '/include',
+      POLYBENCH_HPC_PAPI_LIB_DIR: PAPI_DIR + '/lib',
     } + if !std.objectHasAll(self, 'machine_name') then {} else if std.count(['e3', 'e4_36_256', 'e4_8_64'], self.machine_name) > 0 then {LIBPFM_FORCE_PMU: 'amd64'} else if self.machine_name == 'x52' then {} else {},
+    setup+: [
+        # Debug commands to help diagnose future problems.
+        ['sysctl', 'kernel.perf_event_paranoid'], # print paranoid level (-1 expected)
+        [PAPI_DIR + '/bin/papi_avail'], # print available events (non-zero number of events expected)
+    ],
   },
 
 
-  polybench_vm_common(env='${VM_ENV}', fail_fast=false, skip_machine=false): (if skip_machine then self.vm_bench_base(machine_name=null) else self.vm_bench_common) + common.deps.svm + vm.custom_vm {
-    local is_enterprise = (vm.edition == 'ee'),
-    setup+: [
-      ['mx', '--env', env, 'sforceimports'],
-      ['mx', '--env', env, 'build'],
-      ['set-export', 'POLYBENCH_JVM', ['mx', '--env', env, 'graalvm-home']],
-    ] + if is_enterprise then [['mx', '--dy', '/truffle-enterprise', 'build']] else [],
+  polybench_vm_common(os, arch, fail_fast=false, skip_machine=false): (if skip_machine then self.vm_bench_base(machine_name=null) else self.vm_bench_common) + vm_common.pipelined_graalvm(repo_config.graalvm_edition, os, arch, environment_variable='POLYBENCH_JVM') + {
+    local is_enterprise = (repo_config.graalvm_edition == 'ee'),
+    setup+: if is_enterprise then [['mx', '--dy', '/truffle-enterprise', 'build']] else [],
 
     # Extends the provided polybench command with common arguments used in CI. We want the command at the call site
     # to be simple (i.e., a flat array of string literals) so it can be easily copied and run locally; using this
     # wrapper allows us to inject CI-specific fields without specifying them in the command.
+    hwloc_command_prefix:: if std.length(std.find('bench', self.targets)) > 0 then ["hwloc-bind", "--cpubind", "node:0", "--membind", "node:0", "--"] else [],
     polybench_wrap(command)::
       assert command[0] == 'mx' : "polybench command should start with 'mx'";
       // Dynamically import /truffle-enterprise when running on enterprise.
       local extra_imports = if is_enterprise then ['--dy', '/truffle-enterprise'] else [];
-      ['mx'] + extra_imports + command[1:] + ['--mx-benchmark-args', '--results-file', self.result_file] +
+      self.hwloc_command_prefix + ['mx'] + extra_imports + command[1:] + ['--mx-benchmark-args', '--results-file', self.result_file] +
       (if (fail_fast) then ['--fail-fast'] else []),
-    notify_groups:: ['polybench'],
+    notify_groups:: ['polybench']
   },
 
-  polybench_vm_hpc_common: self.polybench_vm_common(skip_machine=true) + self.polybench_hpc_linux_common(shape='e4_8_64') + {
-    polybench_wrap(command)::
-      super.polybench_wrap(command) + [
-        '--mx-benchmark-args',
-        '--fork-count-file', 'ci/ci_includes/polybench-hpc.json',
-        '--machine-name', 'gate-' + self.machine_name
-      ],
+  polybench_vm_hpc_common(bench=false): self.polybench_vm_common('linux', 'amd64', skip_machine=true) + self.polybench_hpc_linux_common(shape=if bench then 'x52' else 'e4_8_64') + {
+    # Even gate jobs should upload results, since the data is used for regression tracking.
     teardown: [self.upload_and_wait_for_indexing + ['||', 'echo', 'Result upload failed!']],
   },
 
-  polybench_vm_gate(os, arch, language, name = null): vm_common.vm_base(os, arch, 'tier3') + self.polybench_vm_common(fail_fast=true, skip_machine=true) + vm.vm_java_Latest + {
+  polybench_vm_gate(os, arch, language, name = null): vm_common.vm_base(os, arch, 'tier3') + self.polybench_vm_common(os, arch, fail_fast=true, skip_machine=true) + vm.vm_java_Latest + {
     name: utils.hyphenize(['gate-vm', vm.vm_setup.short_name, 'polybench', language, name, utils.jdk_and_hardware(self)]),
     timelimit: '1:00:00',
   },
 
-  polybench_vm_daily(os, arch, language, name = null): vm_common.vm_base(os, arch, 'daily', bench=true) + self.polybench_vm_common() + vm.vm_java_Latest + {
+  polybench_vm_daily(os, arch, language, name = null): vm_common.vm_base(os, arch, 'daily', bench=true) + self.polybench_vm_common(os, arch) + vm.vm_java_Latest + {
     name: utils.hyphenize(['daily-bench-vm', vm.vm_setup.short_name, 'polybench', language, name, utils.jdk_and_hardware(self)]),
     teardown: [self.upload],
     timelimit: '4:00:00',
   },
+
+  build_polybenchmarks: [
+    ['mx', '--env', '${VM_ENV}', '--dy', 'polybenchmarks', 'sforceimports'],
+    ['mx', '-p', '../../polybenchmarks', 'build_benchmarks'],
+    ['mx', '--dy', 'polybenchmarks', 'build', '--dependencies', 'POLYBENCHMARKS_BENCHMARKS']
+  ],
 
   js_bench_compilation_throughput(pgo): self.vm_bench_common + common.heap.default + {
     local mx_libgraal = ["mx", "--env", repo_config.vm.mx_env.libgraal],
@@ -166,8 +170,9 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', '/sulong', 'build', '--dependencies', 'SULONG_POLYBENCH_BENCHMARKS'],
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/sulong', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'sulong:gate']),
+        self.polybench_wrap(['mx', '--dy', '/sulong', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'sulong:gate']),
       ],
+      notify_groups +: ['sulong'],
     },
     self.polybench_vm_daily('linux', 'amd64', 'sulong') + {
       setup+: [
@@ -175,8 +180,9 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', '/sulong', 'build', '--dependencies', 'SULONG_POLYBENCH_BENCHMARKS'],
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/sulong', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'sulong:benchmark']),
+        self.polybench_wrap(['mx', '--dy', '/sulong', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'sulong:benchmark']),
       ],
+      notify_groups +: ['sulong'],
     }
   ] + [
     # Wasm polybench jobs
@@ -186,17 +192,20 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', '/wasm', 'build', '--dependencies', 'WASM_POLYBENCH_BENCHMARKS']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/wasm', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'wasm:gate']),
+        self.polybench_wrap(['mx', '--dy', '/wasm', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'wasm:gate']),
       ],
+      notify_groups +: ['wasm'],
     },
     self.polybench_vm_daily('linux', 'amd64', 'wasm') + common.deps.wasm + {
+      local is_enterprise = (repo_config.graalvm_edition == 'ee'),
       setup+: [
         ['mx', '--dy', '/wasm', 'build'],
         ['mx', '--dy', '/wasm', 'build', '--dependencies', 'WASM_POLYBENCH_BENCHMARKS']
-      ],
+      ] + if is_enterprise then [['mx', '--dy', '/wasm-enterprise', 'build', '--dependencies', 'WASM_ENTERPRISE_POLYBENCH_BENCHMARKS']] else [],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/wasm', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'wasm:benchmark']),
-      ],
+        self.polybench_wrap(['mx', '--dy', '/wasm', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'wasm:benchmark']),
+      ] + if is_enterprise then [self.polybench_wrap(['mx', '--dy', '/wasm-enterprise', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'wasm-enterprise:benchmark'])] else [],
+      notify_groups +: ['wasm'],
     }
   ] + [
     # Espresso polybench jobs
@@ -205,40 +214,18 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', '/espresso', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/espresso', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'espresso:gate']),
+        self.polybench_wrap(['mx', '--dy', '/espresso', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'espresso:gate']),
       ],
+      notify_groups +: ['espresso'],
     },
     self.polybench_vm_daily('linux', 'amd64', 'espresso') + {
       setup+: [
         ['mx', '--dy', '/espresso', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', '/espresso', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'espresso:benchmark']),
+        self.polybench_wrap(['mx', '--dy', '/espresso', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'espresso:benchmark']),
       ],
-    }
-  ] + [
-    # TruffleRuby polybench jobs
-    self.polybench_vm_gate('linux', 'amd64', 'ruby') + common.deps.truffleruby + {
-      environment+: {
-        RUBY_BENCHMARKS: 'true',
-      },
-      setup+: [
-        ['mx', '--dy', 'truffleruby', 'build']
-      ],
-      run+: [
-        self.polybench_wrap(['mx', '--dy', 'truffleruby', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'ruby:gate']),
-      ],
-    },
-    self.polybench_vm_daily('linux', 'amd64', 'ruby') + common.deps.truffleruby + {
-      environment+: {
-        RUBY_BENCHMARKS: 'true',
-      },
-      setup+: [
-        ['mx', '--dy', 'truffleruby', 'build']
-      ],
-      run+: [
-        self.polybench_wrap(['mx', '--dy', 'truffleruby', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'ruby:benchmark']),
-      ],
+      notify_groups +: ['espresso'],
     }
   ] + [
     # GraalPy polybench jobs
@@ -247,55 +234,94 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ['mx', '--dy', 'graalpython', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', 'graalpython', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'python:gate']),
+        self.polybench_wrap(['mx', '--dy', 'graalpython', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'python:gate']),
       ],
+      notify_groups +: ['python'],
     },
     self.polybench_vm_daily('linux', 'amd64', 'python') + {
       setup+: [
         ['mx', '--dy', 'graalpython', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', 'graalpython', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'python:benchmark']),
+        self.polybench_wrap(['mx', '--dy', 'graalpython', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'python:benchmark']),
       ],
+      notify_groups +: ['python'],
     }
   ] + [
     # NFI polybench jobs
     self.polybench_vm_gate('linux', 'amd64', 'nfi') + {
       setup+: [
-        ['mx', '--dy', 'graal-js', 'build']
+        ['mx', '--dy', '/graal-js', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', 'graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'nfi:gate']),
+        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'nfi:gate']),
       ],
     },
     self.polybench_vm_daily('linux', 'amd64', 'nfi') + {
       setup+: [
-        ['mx', '--dy', 'graal-js', 'build']
+        ['mx', '--dy', '/graal-js', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', 'graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'nfi:benchmark']),
+        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'nfi:benchmark']),
       ],
     }
  ] + [
     # Graal.js polybench jobs
     self.polybench_vm_gate('linux', 'amd64', 'js') + {
       setup+: [
-        ['mx', '--dy', 'graal-js', 'build']
+        ['mx', '--dy', '/graal-js', 'build']
       ],
       run+: [
-        self.polybench_wrap(['mx', '--dy', 'graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'js:gate']),
+        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'js:gate']),
       ],
+      notify_groups +: ['javascript'],
     },
     self.polybench_vm_daily('linux', 'amd64', 'js') + {
+      local is_enterprise = (repo_config.graalvm_edition == 'ee'),
       setup+: [
-        ['mx', '--dy', 'graal-js', 'build']
-      ],
+        ['mx', '--dy', '/graal-js', 'build']
+      ] + if is_enterprise then [['mx', '--dy', '/graal-js-enterprise', 'build', '--dependencies', 'GRAALJS_ENTERPRISE_POLYBENCH_BENCHMARKS']] else [],
       run+: [
-        self.polybench_wrap(['mx', '--dy', 'graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', 'run', '--suite', 'js:benchmark']),
-      ],
+        self.polybench_wrap(['mx', '--dy', '/graal-js', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'js:benchmark']),
+      ] + if is_enterprise then [self.polybench_wrap(['mx', '--dy', '/graal-js-enterprise', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'js-enterprise:benchmark'])] else [],
+      notify_groups +: ['javascript'],
     }
+  ] + [
+    # Polybenchmarks jobs
+    self.polybench_vm_gate('linux', 'amd64', 'espresso', name='polybenchmarks') + {
+      setup+: [
+        ['mx', '--dy', '/espresso', 'build']
+      ] + $.build_polybenchmarks,
+      run+: [
+        self.polybench_wrap(['mx', '--dy', '/espresso,polybenchmarks', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'polybenchmarks-espresso:gate']),
+      ],
+    },
+    self.polybench_vm_daily('linux', 'amd64', 'espresso', 'polybenchmarks') + {
+      setup+: [
+        ['mx', '--dy', '/espresso', 'build']
+      ] + $.build_polybenchmarks,
+      run+: [
+        self.polybench_wrap(['mx', '--dy', '/espresso,polybenchmarks', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'polybenchmarks-espresso:benchmark']),
+      ],
+    },
+
+    self.polybench_vm_gate('linux', 'amd64', 'python', name='polybenchmarks') + {
+      setup+: [
+        ['mx', '--dy', 'graalpython', 'build']
+      ] + $.build_polybenchmarks,
+      run+: [
+        self.polybench_wrap(['mx', '--dy', 'graalpython,polybenchmarks', '--java-home', '${POLYBENCH_JVM}', 'polybench',  '--suite', 'polybenchmarks-python:gate']),
+      ],
+    },
+    self.polybench_vm_daily('linux', 'amd64', 'python', 'polybenchmarks') + {
+      setup+: [
+        ['mx', '--dy', 'graalpython', 'build']
+      ] + $.build_polybenchmarks,
+      run+: [
+        self.polybench_wrap(['mx', '--dy', 'graalpython,polybenchmarks', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'polybenchmarks-python:benchmark']),
+      ],
+    },
   ],
-  # TODO (GR-60584): reimplement polybenchmarks jobs once polybench is unchained
 
   builds: utils.add_defined_in(builds, std.thisFile),
 }

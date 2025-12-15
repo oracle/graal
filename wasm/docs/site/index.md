@@ -45,10 +45,10 @@ layout: base
               <img src='{{ "/assets/img/icon-set-general/compatibility.svg" | relative_url }}' alt="compatibility icon">
             </div>
             <div class="langbenefits__title">
-              <h4>WebAssembly 1.0 Support</h4>
+              <h4>WebAssembly 2.0 Support</h4>
             </div>
             <div class="langpage__benefits-text">
-              <h5>Full WebAssembly 1.0 compatibility and support for many <a href="https://webassembly.org/features/" target="_blank">feature extensions</a>, including WASI</h5>
+              <h5>Full WebAssembly 2.0 compatibility and support for many <a href="https://webassembly.org/features/" target="_blank">feature extensions</a>, including WASI</h5>
             </div>
           </div>
           <div class="langbenefits__card">
@@ -59,7 +59,7 @@ layout: base
               <h4>Portable Native Extensions</h4>
             </div>
             <div class="langpage__benefits-text">
-              <h5><a href="https://github.com/graalvm/graal-languages-demos/tree/main/graalwasm/graalwasm-embed-c-code-guide/" target="_blank">Integrate C</a>, C++, Rust, and Go libraries using Wasm as an alternative to JNI or FFM API</h5>
+              <h5>Integrate <a href="https://github.com/graalvm/graal-languages-demos/tree/main/graalwasm/graalwasm-embed-c-code-guide/" target="_blank">C, C++</a>, <a href="https://github.com/graalvm/graal-languages-demos/tree/main/graalwasm/graalwasm-embed-rust-code-guide/" target="_blank">Rust</a>, and <a href="https://github.com/graalvm/graal-languages-demos/tree/main/graalwasm/graalwasm-embed-go-code-guide/" target="_blank">Go</a> libraries using Wasm as an alternative to JNI or FFM API</h5>
             </div>
           </div>
         </div>
@@ -184,13 +184,6 @@ implementation("org.graalvm.polyglot:wasm:{{ site.language_version }}")
               <div class="language__example-subtitle">
                 <h4>3. Embed the Wasm module in Java</h4>
               </div>
-              <div class="tabs-container">
-                <ul class="nav nav-tabs">
-                  <li><a href="#" data-bs-toggle="tab" data-bs-target="#version25" class="nav-link active">≥ 25.0</a></li>
-                  <li><a href="#" data-bs-toggle="tab" data-bs-target="#version24" class="nav-link">≤ 24.2</a></li>
-                </ul>
-                <div class="tab-content">
-                  <div id="version25" class="tab-pane fade show active">
 {% highlight java %}
 import java.net.URL;
 
@@ -206,26 +199,6 @@ try (Context context = Context.create()) {
     System.out.println("addTwo(40, 2) = " + addTwo.execute(40, 2));
 }
 {% endhighlight %}
-                  </div>
-                  <div id="version24" class="tab-pane fade">
-{% highlight java %}
-import java.net.URL;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-
-try (Context context = Context.create()) {
-    URL wasmFile = Main.class.getResource("add-two.wasm");
-    String moduleName = "main";
-    context.eval(Source.newBuilder("wasm", wasmFile).name(moduleName).build());
-    Value addTwo = context.getBindings("wasm").getMember(moduleName).getMember("addTwo");
-    System.out.println("addTwo(40, 2) = " + addTwo.execute(40, 2));
-}
-{% endhighlight %}
-                  </div>
-                </div>
-              </div>
             </div><!-- languages__snippet -->
             <div class="example-logo-box">
               <img alt="Java icon" src='{{ "/assets/img/logos/java-logo.svg" | relative_url }}' class="languages__example-logo">
@@ -246,22 +219,34 @@ try (Context context = Context.create()) {
           <div class="guides__column">
             <div class="guides__card">
               <img src='{{ "/assets/img/downloads-new/miscellaneous-book.svg" | relative_url }}' alt="book icon">
-              <a href="https://github.com/graalvm/graal-languages-demos/blob/main/graalwasm/graalwasm-micronaut-photon/" target="_blank">
-                <div class="guides__topics">Embed Photon Image Processing Library with GraalWasm in Micronaut</div>
+              <a href="https://github.com/graalvm/graal-languages-demos/tree/main/graalwasm/graalwasm-embed-c-code-guide/" target="_blank">
+                <div class="guides__topics">Embed C in Java Using GraalWasm</div>
               </a>
             </div>
             <div class="guides__card">
               <img src='{{ "/assets/img/downloads-new/miscellaneous-book.svg" | relative_url }}' alt="book icon">
-              <a href="https://github.com/graalvm/graal-languages-demos/blob/main/graalwasm/graalwasm-spring-boot-photon/" target="_blank">
-                <div class="guides__topics">Embed Photon Image Processing Library with GraalWasm in Spring Boot</div>
+              <a href="https://github.com/graalvm/graal-languages-demos/tree/main/graalwasm/graalwasm-embed-go-code-guide/" target="_blank">
+                <div class="guides__topics">Embed Go in Java Using GraalWasm</div>
+              </a>
+            </div>
+            <div class="guides__card">
+              <img src='{{ "/assets/img/downloads-new/miscellaneous-book.svg" | relative_url }}' alt="book icon">
+              <a href="https://github.com/graalvm/graal-languages-demos/blob/main/graalwasm/graalwasm-micronaut-photon/" target="_blank">
+                <div class="guides__topics">Embed Photon Image Processing Library with GraalWasm in Micronaut</div>
               </a>
             </div>
           </div>
           <div class="guides__column">
             <div class="guides__card">
               <img src='{{ "/assets/img/downloads-new/miscellaneous-book.svg" | relative_url }}' alt="book icon">
-              <a href="https://github.com/graalvm/graal-languages-demos/tree/main/graalwasm/graalwasm-embed-c-code-guide/" target="_blank">
-                <div class="guides__topics">Embed C in Java Using GraalWasm</div>
+              <a href="https://github.com/graalvm/graal-languages-demos/tree/main/graalwasm/graalwasm-embed-rust-code-guide/" target="_blank">
+                <div class="guides__topics">Embed Rust in Java Using GraalWasm</div>
+              </a>
+            </div>
+            <div class="guides__card">
+              <img src='{{ "/assets/img/downloads-new/miscellaneous-book.svg" | relative_url }}' alt="book icon">
+              <a href="https://github.com/graalvm/graal-languages-demos/blob/main/graalwasm/graalwasm-spring-boot-photon/" target="_blank">
+                <div class="guides__topics">Embed Photon Image Processing Library with GraalWasm in Spring Boot</div>
               </a>
             </div>
           </div>
@@ -282,16 +267,22 @@ try (Context context = Context.create()) {
           <div class="guides__column">
             <div class="guides__card">
               <img src='{{ "/assets/img/downloads-new/miscellaneous-book.svg" | relative_url }}' alt="book icon">
-              <a href="https://www.youtube.com/watch?v=Z2SWSIThHXY" target="_blank">
-                <div class="guides__topics">Video: GraalWasm at Wasm I/O 2025</div>
+              <a href="https://www.youtube.com/watch?v=uefc2t9AmQI" target="_blank">
+                <div class="guides__topics">Video: GraalVM meets WebAssembly at Devoxx 2025</div>
+              </a>
+            </div>
+            <div class="guides__card">
+              <img src='{{ "/assets/img/downloads-new/miscellaneous-book.svg" | relative_url }}' alt="book icon">
+              <a href="https://medium.com/graalvm/announcing-graalwasm-a-webassembly-engine-in-graalvm-25cd0400a7f2" target="_blank">
+                <div class="guides__topics">Blog: Announcing GraalWasm — a WebAssembly engine in GraalVM</div>
               </a>
             </div>
           </div>
           <div class="guides__column">
             <div class="guides__card">
               <img src='{{ "/assets/img/downloads-new/miscellaneous-book.svg" | relative_url }}' alt="book icon">
-              <a href="https://medium.com/graalvm/announcing-graalwasm-a-webassembly-engine-in-graalvm-25cd0400a7f2" target="_blank">
-                <div class="guides__topics">Blog: Announcing GraalWasm — a WebAssembly engine in GraalVM</div>
+              <a href="https://www.youtube.com/watch?v=Z2SWSIThHXY" target="_blank">
+                <div class="guides__topics">Video: GraalWasm at Wasm I/O 2025</div>
               </a>
             </div>
           </div>

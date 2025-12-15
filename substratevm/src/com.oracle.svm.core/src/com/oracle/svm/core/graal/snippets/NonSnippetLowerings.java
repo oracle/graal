@@ -553,7 +553,7 @@ public abstract class NonSnippetLowerings {
         private void lowerLoadMethodByIndexNode(LoadMethodByIndexNode node, LoweringTool tool) {
             LoadOpenTypeWorldDispatchTableStartingOffset tableStartOffset = null;
             if (!haveClosedWorldHubLayout) {
-                tableStartOffset = node.graph().add(new LoadOpenTypeWorldDispatchTableStartingOffset(node.getHub(), node.getInterfaceTypeID()));
+                tableStartOffset = node.graph().add(new LoadOpenTypeWorldDispatchTableStartingOffset(node.getHub(), node.getInterfaceID()));
             }
             lowerLoadMethod(node, node.getHub(), tool, node.getVTableIndex(), tableStartOffset);
         }

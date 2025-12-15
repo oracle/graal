@@ -138,6 +138,8 @@ def registered_graalvm_components(stage1=False):
             components = dependencies[:]
             while components:
                 component = components.pop(0)
+                if component.stage1_only and not stage1:
+                    continue
                 if component.final_stage_only and stage1:
                     continue
                 if component not in components_to_build and not (excludes and is_excluded(component)):
@@ -240,18 +242,6 @@ More than one component has priority {} and native launchers.\
     return main_component
 
 
-_src_jdk = mx_sdk_vm.base_jdk()
-_src_jdk_version = mx_sdk_vm.base_jdk_version()
-
-# Example:
-#   macOS:
-#     _src_jdk_dir  = /Library/Java/JavaVirtualMachines/oraclejdk1.8.0_221-jvmci-19.2-b02
-#     _src_jdk_base = Contents/Home
-#   Others:
-#     _src_jdk_dir  = $JAVA_HOME (e.g. /usr/lib/jvm/oraclejdk1.8.0_212-jvmci-19.2-b01)
-#     _src_jdk_base = .
-_src_jdk_dir, _src_jdk_base = _get_jdk_base(_src_jdk)
-
 """:type: dict[str, (str, str)]"""
 _parent_info_cache = {}
 
@@ -281,6 +271,15 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
         self.components = components or registered_graalvm_components(stage1)
         self.stage1 = stage1
         self.skip_archive = stage1 or graalvm_skip_archive()  # *.tar archives for stage1 distributions are never built
+
+        # Example:
+        #   macOS:
+        #     _src_jdk_dir  = /Library/Java/JavaVirtualMachines/oraclejdk1.8.0_221-jvmci-19.2-b02
+        #     _src_jdk_base = Contents/Home
+        #   Others:
+        #     _src_jdk_dir  = $JAVA_HOME (e.g. /usr/lib/jvm/oraclejdk1.8.0_212-jvmci-19.2-b01)
+        #     _src_jdk_base = .
+        _src_jdk_dir, _src_jdk_base = _get_jdk_base(mx_sdk_vm.base_jdk(stage1=stage1))
 
         layout = {}
         src_jdk_base = _src_jdk_base if add_jdk_base else '.'
@@ -421,10 +420,10 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                 for profile in _image_profiles(GraalVmNativeProperties.canonical_image_name(image_config)):
                     _add(layout, _macro_dir, 'file:{}'.format(abspath(profile)))
 
-        def _add_link(_dest, _target, _component=None, _dest_base_name=None):
+        def _add_link(_dest, _target, _component=None, _suggested_dest_base_name=None):
             assert _dest.endswith('/')
             _linkname = relpath(path_substitutions.substitute(_target), start=path_substitutions.substitute(_dest[:-1]))
-            dest_base_name = _dest_base_name or basename(_target)
+            dest_base_name = _suggested_dest_base_name or basename(_target)
             if _linkname != dest_base_name:
                 if mx.is_windows():
                     if _target.endswith('.exe') or _target.endswith('.cmd'):
@@ -442,7 +441,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
             if stage1:
                 # 1. we do not want a GraalVM to be used as base-JDK
                 # 2. we don't need to check if the base JDK is JVMCI-enabled, since JVMCIVersionCheck takes care of that when the GraalVM compiler is a registered component
-                check_versions(_src_jdk, expect_graalvm=False, check_jvmci=False)
+                check_versions(mx_sdk_vm.base_jdk(stage1=stage1), expect_graalvm=False, check_jvmci=False)
 
             # Add base JDK
             if mx.get_os() == 'darwin':
@@ -586,10 +585,10 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                     _link_dest = _component_base + _component_link
                     # add links `LauncherConfig.links` -> `LauncherConfig.destination`
                     _link_dest_dir, _link_dest_base_name = os.path.split(_link_dest)
-                    _add_link(_link_dest_dir + '/', _launcher_dest, _component, _dest_base_name=_link_dest_base_name)
+                    _final_link_dest = _add_link(_link_dest_dir + '/', _launcher_dest, _component, _suggested_dest_base_name=_link_dest_base_name)
                     # add links from jre/bin to component link
                     if _launcher_config.default_symlinks:
-                        _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
+                        _link_path = _add_link(_jdk_jre_bin, _final_link_dest, _component)
                         _jre_bin_names.append(basename(_link_path))
                 if stage1 or _rebuildable_image(_launcher_config):
                     _add_native_image_macro(_launcher_config, _component, stage1)
@@ -679,7 +678,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
         _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in sorted(graalvm_dists)], with_sources=True)
 
         for _base, _suites in component_suites.items():
-            _metadata = self._get_metadata(_suites)
+            _metadata = self._get_metadata(_suites, stage1=stage1)
             _add(layout, _base + 'release', "string:{}".format(_metadata))
 
         if "archive_factory" not in kw_args and self.skip_archive:
@@ -712,7 +711,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
             return super(BaseGraalVmLayoutDistribution, self).needsUpdate(newestInput)
 
     @staticmethod
-    def _get_metadata(suites, parent_release_file=None, java_version=None):
+    def _get_metadata(suites, parent_release_file=None, java_version=None, stage1=True):
         """
         :type suites: list[mx.Suite]
         :type parent_release_file: str | None
@@ -735,7 +734,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
         else:
             _metadata_dict = OrderedDict()
 
-        _metadata_dict.setdefault('JAVA_VERSION', java_version or _src_jdk.version)
+        _metadata_dict.setdefault('JAVA_VERSION', java_version or mx_sdk_vm.base_jdk(stage1=stage1).version)
         _metadata_dict.setdefault('OS_NAME', get_graalvm_os())
         _metadata_dict.setdefault('OS_ARCH', mx.get_arch())
         if mx.get_os_variant():
@@ -907,19 +906,18 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
 
         if vm_dist_name is not None:
             # Examples (later we call `.lower().replace('_', '-')`):
-            # GraalVM_community_openjdk_17.0.7+4.1
-            # GraalVM_jdk_17.0.7+4.1
-            # GraalVM_jit_jdk_17.0.7+4.1
-            base_dir = '{base_name}{vm_dist_name}_{jdk_type}_{version}'.format(
+            # GraalVM_community_25.1.0+36.1
+            # GraalVM_25.1.0+36.1
+            # GraalVM_jit_25.1.0+36.1
+            base_dir = '{base_name}{vm_dist_name}_{version}'.format(
                 base_name=base_name,
                 vm_dist_name=('_' + vm_dist_name) if vm_dist_name else '',
-                jdk_type='jdk' if mx_sdk_vm.ee_implementor() else 'openjdk',
                 version=graalvm_version(version_type='base-dir')
             )
             name_prefix = '{base_name}{vm_dist_name}_java{jdk_version}'.format(
                 base_name=base_name,
                 vm_dist_name=('_' + vm_dist_name) if vm_dist_name else '',
-                jdk_version=_src_jdk_version
+                jdk_version=mx_sdk_vm.base_jdk_version(stage1=stage1)
             )
             name = '{name_prefix}{stage_suffix}'.format(name_prefix=name_prefix, stage_suffix='_stage1' if stage1 else '')
         else:
@@ -934,7 +932,7 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
             else:
                 m.update("not-jlinked".encode())
             short_sha1_digest = m.hexdigest()[:10]  # to keep paths short
-            base_dir = '{base_name}_{hash}_java{jdk_version}'.format(base_name=base_name, hash=short_sha1_digest, jdk_version=_src_jdk_version)
+            base_dir = '{base_name}_{hash}_java{jdk_version}'.format(base_name=base_name, hash=short_sha1_digest, jdk_version=mx_sdk_vm.base_jdk_version(stage1=stage1))
             name = '{base_dir}{stage_suffix}'.format(base_dir=base_dir, stage_suffix='_stage1' if stage1 else '')
             base_dir += '_' + _suite.release_version()
         name = name.upper()
@@ -1350,7 +1348,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     launcher_classpath = NativePropertiesBuildTask.get_launcher_classpath(self._graalvm_dist, graalvm_home, image_config, self.subject.component, exclude_implicit=True)
                     build_args += ['-Dorg.graalvm.launcher.classpath=' + os.pathsep.join(launcher_classpath)]
                     if isinstance(image_config, mx_sdk.LauncherConfig):
-                        build_args += svm_experimental_options(['-H:-ParseRuntimeOptions'])
+                        build_args += ['-H:-ParseRuntimeOptions'] + svm_experimental_options(['-H:-InitializeVM'])
 
                 if has_component('svmee', stage1=True):
                     build_args += [
@@ -1590,11 +1588,12 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
             return not isinstance(dep, mx.Dependency) or (_include_sources(dep.qualifiedName()) and dep.isJARDistribution() and not dep.is_stripped())
         vendor_info = {'vendor-version': graalvm_vendor_version()}
         out_dir = self.subject.output_directory()
+        stage1 = 'stage1' in self.subject.name
 
         if _jlink_libraries():
             use_upgrade_module_path = mx.get_env('MX_BUILD_EXPLODED') == 'true'
 
-            built = mx_sdk.jlink_new_jdk(_src_jdk,
+            built = mx_sdk.jlink_new_jdk(mx_sdk_vm.base_jdk(stage1=stage1),
                                  out_dir,
                                  self.subject.deps,
                                  self.subject.jimage_ignore_jars,
@@ -1607,12 +1606,12 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
             mx.warn("--no-jlinking flag used. The resulting VM will be HotSpot, not GraalVM")
             if exists(out_dir):
                 mx.rmtree(out_dir)
-            shutil.copytree(_src_jdk.home, out_dir, symlinks=True)
+            shutil.copytree(mx_sdk_vm.base_jdk(stage1=stage1).home, out_dir, symlinks=True)
             built = True
 
         release_file = join(out_dir, 'release')
         _sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
-        _metadata = BaseGraalVmLayoutDistribution._get_metadata(_sorted_suites, release_file)
+        _metadata = BaseGraalVmLayoutDistribution._get_metadata(_sorted_suites, release_file, stage1=stage1)
         with open(release_file, 'w') as f:
             f.write(_metadata)
 
@@ -1656,7 +1655,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         # Save the path and timestamp of the JDK image so that graalvm-jimage
         # is rebuilt if the JDK at JAVA_HOME is rebuilt. The JDK image file is
         # always updated when the JDK is rebuilt.
-        src_jimage = mx.TimeStampFile(join(_src_jdk.home, 'lib', 'modules'))
+        src_jimage = mx.TimeStampFile(join(mx_sdk_vm.base_jdk().home, 'lib', 'modules'))
         return [
             f'include sources: {_include_sources_str()}',
             f'strip jars: {mx.get_opts().strip_jars}',
@@ -2109,7 +2108,7 @@ def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=Fal
         if jimage_deps and _jlink_libraries() and _cp_entry in jimage_deps:
             continue
         if _cp_entry.isJdkLibrary() or _cp_entry.isJreLibrary():
-            jdk = _src_jdk
+            jdk = mx_sdk_vm.base_jdk(stage1=graal_vm.stage1)
             if hasattr(_cp_entry, 'jdkStandardizedSince') and jdk.javaCompliance >= _cp_entry.jdkStandardizedSince:
                 continue
             jdk_location = relpath(_cp_entry.classpath_repr(jdk), jdk.home)
@@ -2294,12 +2293,6 @@ class JmodModifierBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
         return 'Building {}'.format(self.subject.name)
 
 
-def _get_component_stability(component):
-    if _src_jdk_version not in (17, 20):
-        return "experimental"
-    return component.stability
-
-
 def default_jvm_components():
     """
     Components that, for now, must be included in the JVM.
@@ -2312,7 +2305,7 @@ def _get_jvm_cfg():
     candidates = (['lib', 'jvm.cfg'], ['jre', 'lib', 'jvm.cfg'], ['jre', 'lib', mx.get_arch(), 'jvm.cfg'])
     probed = []
     for candidate in candidates:
-        jvm_cfg = join(_src_jdk.home, *candidate)
+        jvm_cfg = join(mx_sdk_vm.base_jdk().home, *candidate)
         if exists(jvm_cfg):
             return jvm_cfg
         probed.append(jvm_cfg)
@@ -2761,6 +2754,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             defaultBuild=False,
             missing_export_target_action='warn',
             default_to_jvmci='lib' if has_lib_graal else False,
+            stage1=False,
         )
         register_project(java_standalone_jimage)
 
@@ -2831,6 +2825,11 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
 def _needs_stage1_jimage(stage1_dist, final_dist):
     assert isinstance(stage1_dist.jimage_jars, set) and isinstance(final_dist.jimage_jars, set)
+
+    if mx_sdk_vm.base_jdk(stage1=True) != mx_sdk_vm.base_jdk(stage1=False):
+        # cross-build, always need a stage1_jimage
+        return True
+
     return stage1_dist.jimage_jars != final_dist.jimage_jars
 
 
@@ -2985,38 +2984,45 @@ def graalvm_version(version_type):
         raise mx.abort(f'VM info extraction failed. Exit code: {code}\nOutput: {out.data}')
 
     if version_type == 'graalvm':
-        return _suite.release_version()
+        return _suite.release_version(snapshotSuffix='dev')
     else:
+        graalvm_version = _suite.release_version(snapshotSuffix='dev')
         if _base_jdk_version_info is None:
             _base_jdk_version_info = base_jdk_version_info()
 
-        java_vnum, java_pre, java_build, _ = _base_jdk_version_info
+        _, java_pre, java_build, _ = _base_jdk_version_info
         if version_type == 'vendor':
-            graalvm_pre = '' if _suite.is_release() else '-dev'
+            graalvm_suffix = ''
             if java_pre:
-                graalvm_pre += '.' if graalvm_pre else '-'
-                graalvm_pre += java_pre
+                graalvm_suffix += '.' if graalvm_version.endswith('dev') else '-'
+                graalvm_suffix += java_pre
         else:
             assert version_type == 'base-dir', version_type
-            graalvm_pre = ''
+            graalvm_suffix = ''
         # Ignores `java_opt` (`Runtime.version().optional()`)
         #
         # Examples:
         #
+        # GraalVM version: 25.1.0
         # ```
-        # openjdk version "17.0.7" 2023-04-18
-        # OpenJDK Runtime Environment (build 17.0.7+4-jvmci-23.0-b10)
+        # $ java -version
+        # openjdk 25 2025-09-16
+        # OpenJDK Runtime Environment (build 25+36-3489)
+        # OpenJDK 64-Bit Server VM (build 25+36-3489, mixed mode, sharing)
         # ```
-        # -> `17.0.7-dev+4.1`
+        # -> `25.1.0+36.1`
         #
+        # GraalVM version: 25.1.0-dev
         # ```
-        # openjdk version "21-ea" 2023-09-19
-        # OpenJDK Runtime Environment (build 21-ea+16-1326)
+        # $ java -version
+        # openjdk 25 2025-09-16
+        # OpenJDK Runtime Environment (build 25+36-3489)
+        # OpenJDK 64-Bit Server VM (build 25+36-3489, mixed mode, sharing)
         # ```
-        # -> `21-dev.ea+16.1`
-        return '{java_vnum}{graalvm_pre}{java_build}.{release_build}'.format(
-            java_vnum=java_vnum,
-            graalvm_pre=graalvm_pre,
+        # -> `25.1.0-dev+36.1`
+        return '{graalvm_version}{graalvm_suffix}{java_build}.{release_build}'.format(
+            graalvm_version=graalvm_version,
+            graalvm_suffix=graalvm_suffix,
             java_build=java_build,
             release_build=mx_sdk_vm.release_build
         )
@@ -3239,7 +3245,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
     print("Config name: {}".format(graalvm_dist.vm_config_name))
     print("Components:")
     for component in sorted(graalvm_dist.components, key=lambda c: c.name):
-        print(" - {} ('{}', /{}, {})".format(component.name, component.short_name, component.dir_name, _get_component_stability(component)))
+        print(" - {} ('{}', /{})".format(component.name, component.short_name, component.dir_name))
 
     if forced_graalvm_dist is None:
         # Custom GraalVM distributions with a forced component list do not yet support launchers and libraries.
@@ -3388,7 +3394,7 @@ def print_graalvm_vm_name(args):
     """Print the VM name of GraalVM"""
     parser = ArgumentParser(prog='mx graalvm-vm-name', description='Print the VM name of GraalVM')
     _ = parser.parse_args(args)
-    print(graalvm_vm_name(get_final_graalvm_distribution(), _src_jdk))
+    print(graalvm_vm_name(get_final_graalvm_distribution(), mx_sdk_vm.base_jdk(stage1=False)))
 
 def graalvm_vm_name(graalvm_dist, jdk):
     """

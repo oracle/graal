@@ -55,6 +55,7 @@ import jdk.graal.compiler.hotspot.HotSpotLIRGenerationResult;
 import jdk.graal.compiler.hotspot.HotSpotLIRGenerator;
 import jdk.graal.compiler.hotspot.HotSpotLockStack;
 import jdk.graal.compiler.hotspot.amd64.g1.AMD64HotSpotG1BarrierSetLIRTool;
+import jdk.graal.compiler.hotspot.amd64.shenandoah.AMD64HotSpotShenandoahBarrierSetLIRGenerator;
 import jdk.graal.compiler.hotspot.amd64.z.AMD64HotSpotZBarrierSetLIRGenerator;
 import jdk.graal.compiler.hotspot.debug.BenchmarkCounters;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
@@ -120,11 +121,15 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
             return new AMD64HotSpotZBarrierSetLIRGenerator(config, providers);
         }
+        if (config.gc == HotSpotGraalRuntime.HotSpotGC.Shenandoah) {
+            return new AMD64HotSpotShenandoahBarrierSetLIRGenerator(config, providers);
+        }
         return null;
     }
 
     private AMD64HotSpotLIRGenerator(HotSpotProviders providers, GraalHotSpotVMConfig config, LIRGenerationResult lirGenRes, BackupSlotProvider backupSlotProvider) {
-        this(new AMD64HotSpotLIRKindTool(), new AMD64ArithmeticLIRGenerator(null), getBarrierSet(config, providers), new AMD64HotSpotMoveFactory(backupSlotProvider), providers, config, lirGenRes);
+        this(new AMD64HotSpotLIRKindTool(), new AMD64ArithmeticLIRGenerator(null), getBarrierSet(config, providers),
+                        new AMD64HotSpotMoveFactory(backupSlotProvider, providers.getRegisters().getZeroValueRegister(config)), providers, config, lirGenRes);
     }
 
     protected AMD64HotSpotLIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGeneratorTool barrierSetLIRGen, MoveFactory moveFactory,
@@ -306,7 +311,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private LIRFrameState currentRuntimeCallInfo;
 
     @Override
-    protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+    protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         currentRuntimeCallInfo = info;
         HotSpotForeignCallLinkage hsLinkage = (HotSpotForeignCallLinkage) linkage;
         AMD64 arch = (AMD64) target().arch;
@@ -322,7 +327,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
              */
             append(new AMD64VZeroUpper(arguments, getRegisterConfig()));
         }
-        super.emitForeignCallOp(linkage, targetAddress, result, arguments, temps, info);
+        super.emitForeignCallOp(linkage, result, arguments, temps, info);
 
         // Handle different return value locations
         Stub stub = getStub();

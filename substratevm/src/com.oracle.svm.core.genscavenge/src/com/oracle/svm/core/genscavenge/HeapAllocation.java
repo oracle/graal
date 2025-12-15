@@ -144,7 +144,9 @@ public final class HeapAllocation {
 
         retainAllocChunk();
         Pointer result = newAllocChunkAndAllocate(requestedSize);
-        actualSize.write(requestedSize);
+        if (result.isNonNull()) {
+            actualSize.write(requestedSize);
+        }
         return result;
     }
 
@@ -170,7 +172,7 @@ public final class HeapAllocation {
         assert JavaSpinLockUtils.isLocked(this, LOCK_OFFSET);
 
         UnsignedWord freeBytes = HeapChunk.availableObjectMemory(currentChunk);
-        UnsignedWord minTlabSize = Word.unsigned(TlabOptionCache.singleton().getMinTlabSize());
+        UnsignedWord minTlabSize = Word.unsigned(TlabOptionCache.getMinTlabSize());
         if (freeBytes.belowThan(minTlabSize)) {
             return false;
         }
@@ -202,7 +204,6 @@ public final class HeapAllocation {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+4/src/hotspot/share/gc/g1/g1HeapRegion.inline.hpp#L186-L208")
     @Uninterruptible(reason = "Returns uninitialized memory, modifies alloc chunk.", callerMustBe = true)
     private static Pointer allocateParallel(AlignedHeader chunk, UnsignedWord minSize, UnsignedWord requestedSize, WordPointer actualSize) {
-
         do {
             Pointer top = (Pointer) chunk.getTopOffset(CHUNK_HEADER_TOP_IDENTITY);
 
@@ -214,13 +215,12 @@ public final class HeapAllocation {
 
             UnsignedWord newTop = top.add(wantToAllocate);
             ObjectLayout ol = ConfigurationValues.getObjectLayout();
-            assert ol.isAligned(top.rawValue()) && ol.isAligned(newTop.rawValue());
+            assert ol.isAligned(top) && ol.isAligned(newTop);
             if (((Pointer) chunk).logicCompareAndSwapWord(HeapChunk.Header.offsetOfTopOffset(), top, newTop, CHUNK_HEADER_TOP_IDENTITY)) {
                 actualSize.write(wantToAllocate);
                 return HeapChunk.asPointer(chunk).add(top);
             }
         } while (true);
-
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -244,25 +244,20 @@ public final class HeapAllocation {
             eden.appendAlignedHeapChunk(chunk);
             chunk = next;
         }
-
     }
 
     /**
-     * Return the remaining space in the current alloc chunk, but not less than the min. TLAB size.
-     *
-     * Also, this value can be at most the size available for objects within an aligned chunk, as
-     * bigger TLABs are not possible.
+     * Return the remaining space in the current allocation chunk. Multiple threads may execute the
+     * TLAB logic concurrently, so there is no guarantee that the returned size is really available
+     * in the current allocation chunk once a thread requests the new TLAB.
      */
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/g1/g1Allocator.cpp#L184-L203")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public UnsignedWord unsafeMaxTlabAllocSize() {
+    public UnsignedWord availableSizeForNewTlab() {
         UnsignedWord maxTlabSize = AlignedHeapChunk.getUsableSizeForObjects();
-        UnsignedWord minTlabSize = Word.unsigned(TlabOptionCache.singleton().getMinTlabSize());
+        UnsignedWord minTlabSize = Word.unsigned(TlabOptionCache.getMinTlabSize());
         if (currentChunk.isNull() || HeapChunk.availableObjectMemory(currentChunk).belowThan(minTlabSize)) {
-            /*
-             * The next TLAB allocation will most probably happen in a new chunk, therefore we can
-             * attempt to allocate the maximum allowed TLAB size.
-             */
+            /* The next TLAB allocation will most likely happen in a new chunk. */
             return maxTlabSize;
         }
 

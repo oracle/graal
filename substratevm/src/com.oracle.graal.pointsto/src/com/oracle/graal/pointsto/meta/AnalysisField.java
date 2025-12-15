@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,16 +31,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
-import com.oracle.graal.pointsto.flow.FieldTypeFlow;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.svm.common.meta.GuaranteeFolded;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalFieldProvider;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
@@ -50,6 +48,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class AnalysisField extends AnalysisElement implements WrappedJavaField, OriginalFieldProvider {
+
+    static final AnalysisField[] EMPTY_ARRAY = new AnalysisField[0];
 
     private static final AtomicReferenceFieldUpdater<AnalysisField, Object> isAccessedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisField.class, Object.class, "isAccessed");
@@ -65,23 +65,15 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     private static final AtomicReferenceFieldUpdater<AnalysisField, Object> isUnsafeAccessedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisField.class, Object.class, "isUnsafeAccessed");
+    /**
+     * Unique id assigned to each {@link AnalysisField}. This id is consistent across layers and can
+     * be used to load or match a field in an extension layer.
+     */
     private final int id;
-    /** Marks a field loaded from a base layer. */
-    private final boolean isInBaseLayer;
+    /** Marks a field loaded from a shared layer. */
+    private final boolean isInSharedLayer;
 
     public final ResolvedJavaField wrapped;
-
-    /**
-     * Initial field type flow, i.e., as specified by the analysis client. It can be used to inject
-     * specific types into a field that the analysis would not see on its own, and to inject the
-     * null value into a field.
-     */
-    protected FieldTypeFlow initialFlow;
-    /**
-     * Field type flow that reflects all the types flowing in this field on its declaring type and
-     * all the sub-types. It does not track any context-sensitive information.
-     */
-    protected FieldTypeFlow sinkFlow;
 
     /** The reason flags contain a {@link BytecodePosition} or a reason object. */
     @SuppressWarnings("unused") private volatile Object isRead;
@@ -93,7 +85,10 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     private ConcurrentMap<Object, Boolean> readBy;
     private ConcurrentMap<Object, Boolean> writtenBy;
 
-    /** Field's position in the list of declaring type's fields, including inherited fields. */
+    /**
+     * Field's position in the list of declaring type's fields, including inherited fields. The
+     * position needs to be consistent across layers.
+     */
     protected int position;
 
     protected final AnalysisType declaringClass;
@@ -129,34 +124,22 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         declaringClass = universe.lookup(wrappedField.getDeclaringClass());
         fieldType = getDeclaredType(universe, wrappedField);
 
-        initialFlow = new FieldTypeFlow(this, getType());
-        if (this.isStatic()) {
-            /* There is never any context-sensitivity for static fields. */
-            sinkFlow = initialFlow;
-        } else {
-            /*
-             * Regardless of the context-sensitivity policy, there is always this single type flow
-             * that accumulates all types.
-             */
-            sinkFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
-        }
-
-        if (universe.hostVM().buildingExtensionLayer() && declaringClass.isInBaseLayer()) {
+        if (universe.hostVM().buildingExtensionLayer() && declaringClass.isInSharedLayer()) {
             int fid = universe.getImageLayerLoader().lookupHostedFieldInBaseLayer(this);
             if (fid != -1) {
                 /*
-                 * This id is the actual link between the corresponding field from the base layer
+                 * This id is the actual link between the corresponding field from the shared layer
                  * and this new field.
                  */
                 id = fid;
-                isInBaseLayer = true;
+                isInSharedLayer = true;
             } else {
                 id = universe.computeNextFieldId();
-                isInBaseLayer = false;
+                isInSharedLayer = false;
             }
         } else {
             id = universe.computeNextFieldId();
-            isInBaseLayer = false;
+            isInSharedLayer = false;
         }
         isLayeredStaticField = isStatic() && universe.hostVM.buildingImageLayer();
     }
@@ -191,8 +174,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return id;
     }
 
-    public boolean isInBaseLayer() {
-        return isInBaseLayer;
+    public boolean isInSharedLayer() {
+        return isInSharedLayer;
     }
 
     public boolean installableInLayer() {
@@ -221,22 +204,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     }
 
-    public FieldTypeFlow getInitialFlow() {
-        return initialFlow;
-    }
-
-    public FieldTypeFlow getSinkFlow() {
-        return sinkFlow;
-    }
-
-    public FieldTypeFlow getStaticFieldFlow() {
-        assert Modifier.isStatic(this.getModifiers()) : this;
-        return sinkFlow;
-    }
-
     public void cleanupAfterAnalysis() {
-        initialFlow = null;
-        sinkFlow = null;
         readBy = null;
         writtenBy = null;
     }
@@ -293,16 +261,11 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public void injectDeclaredType() {
-        BigBang bb = getUniverse().getBigbang();
-        if (getStorageKind().isObject()) {
-            bb.injectFieldTypes(this, List.of(this.getType()), true);
-        } else if (bb.trackPrimitiveValues() && getStorageKind().isPrimitive()) {
-            ((PointsToAnalysisField) this).saturatePrimitiveField();
-        }
+        /* By default, nothing to do. */
     }
 
     public boolean isGuaranteeFolded() {
-        return getAnnotation(GuaranteeFolded.class) != null;
+        return AnnotationUtil.getAnnotation(this, GuaranteeFolded.class) != null;
     }
 
     public void checkGuaranteeFolded() {

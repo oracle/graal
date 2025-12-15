@@ -25,209 +25,102 @@
 
 package com.oracle.svm.core.debug;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.objectfile.BasicNobitsSectionImpl;
-import com.oracle.objectfile.ObjectFile;
-import com.oracle.objectfile.SectionName;
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.NonmovableArray;
-import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.graal.compiler.options.Option;
 
 public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
+    public static final String DEBUG_INFO_OBJFILE_NAME = "objfile";
+    public static final String DEBUG_INFO_JITDUMP_NAME = "jitdump";
 
-    private final DebugContext debug;
-    private final SubstrateDebugInfoProvider substrateDebugInfoProvider;
-    private final ObjectFile objectFile;
-    private final ArrayList<ObjectFile.Element> sortedObjectFileElements;
-    private final int debugInfoSize;
+    public static class Options {
 
-    static final class Factory implements InstalledCodeObserver.Factory {
+        private static final Set<String> DEBUG_INFO_ALL_FORMATS = Set.of(DEBUG_INFO_OBJFILE_NAME, DEBUG_INFO_JITDUMP_NAME);
 
-        private final MetaAccessProvider metaAccess;
-        private final RuntimeConfiguration runtimeConfiguration;
+        @Option(help = """
+                        Specify formats for run-time debug info generation as a comma-separated list.
+                        Possible values are:
+                          "objfile" (default): Generate and install a full in-memory object file for each run-time compilation.
+                          "jitdump": Create <RuntimeJitdumpDir>/jit-<pid>.dump and append to it. Each run-time compilation adds one or more records to the file.""")//
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> RuntimeDebugInfoFormat = new HostedOptionKey<>(
+                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter(),
+                        Options::validateRuntimeDebugInfoFormat);
 
-        Factory(MetaAccessProvider metaAccess, RuntimeConfiguration runtimeConfiguration) {
-            this.metaAccess = metaAccess;
-            this.runtimeConfiguration = runtimeConfiguration;
+        private static Set<String> getEnabledRuntimeDebugInfoFormats() {
+            Set<String> values = RuntimeDebugInfoFormat.getValue().valuesAsSet();
+            if (values.isEmpty()) {
+                return Set.of(DEBUG_INFO_OBJFILE_NAME);
+            }
+            return values;
+        }
+
+        private static void validateRuntimeDebugInfoFormat(HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> optionKey) {
+            UserError.guarantee(!optionKey.hasBeenSet() || SubstrateOptions.RuntimeDebugInfo.getValue(),
+                            "Selecting a runtime debug info format is only possible if runtime debug info generation is enabled ('%s').",
+                            SubstrateOptionsParser.commandArgument(SubstrateOptions.RuntimeDebugInfo, "+"));
+
+            List<String> selectedFormats = optionKey.getValue().values();
+            selectedFormats.removeAll(DEBUG_INFO_ALL_FORMATS);
+            if (!selectedFormats.isEmpty()) {
+                String d = optionKey.getValue().getDelimiter();
+                throw UserError.invalidOptionValue(optionKey, String.join(d, selectedFormats), "Available formats are: " + String.join(d, DEBUG_INFO_ALL_FORMATS));
+            }
+        }
+
+        @Fold
+        public static boolean hasRuntimeDebugInfoFormatSupport(String debugInfoFormat) {
+            return SubstrateOptions.RuntimeDebugInfo.getValue() && getEnabledRuntimeDebugInfoFormats().contains(debugInfoFormat);
+        }
+    }
+
+    public static final class Factory implements InstalledCodeObserver.Factory {
+
+        private final RuntimeConfiguration runtimeConfig;
+        private final SubstrateDebugInfoWriter writer;
+
+        public Factory(RuntimeConfiguration runtimeConfig, SubstrateDebugInfoWriter writer) {
+            this.runtimeConfig = runtimeConfig;
+            this.writer = writer;
         }
 
         @Override
         public InstalledCodeObserver create(DebugContext debugContext, SharedMethod method, CompilationResult compilation, Pointer code, int codeSize) {
             try {
-                return new SubstrateDebugInfoInstaller(debugContext, method, compilation, metaAccess, runtimeConfiguration, code, codeSize);
+                return new SubstrateDebugInfoInstaller(debugContext, writer, method, compilation, runtimeConfig, code, codeSize);
             } catch (Throwable t) {
                 throw VMError.shouldNotReachHere(t);
             }
         }
     }
 
-    private SubstrateDebugInfoInstaller(DebugContext debugContext, SharedMethod method, CompilationResult compilation, MetaAccessProvider metaAccess, RuntimeConfiguration runtimeConfiguration,
+    private final InstalledCodeObserverHandle handle;
+
+    private SubstrateDebugInfoInstaller(DebugContext debugContext, SubstrateDebugInfoWriter writer, SharedMethod method, CompilationResult compilation, RuntimeConfiguration runtimeConfig,
                     Pointer code, int codeSize) {
-        debug = debugContext;
-        substrateDebugInfoProvider = new SubstrateDebugInfoProvider(debugContext, method, compilation, runtimeConfiguration, metaAccess, code.rawValue());
-
-        int pageSize = NumUtil.safeToInt(ImageSingletons.lookup(VirtualMemoryProvider.class).getGranularity().rawValue());
-        objectFile = ObjectFile.createRuntimeDebugInfo(pageSize);
-        objectFile.newNobitsSection(SectionName.TEXT.getFormatDependentName(objectFile.getFormat()), new BasicNobitsSectionImpl(codeSize));
-        objectFile.installDebugInfo(substrateDebugInfoProvider);
-        sortedObjectFileElements = new ArrayList<>();
-        debugInfoSize = objectFile.bake(sortedObjectFileElements);
-
-        if (debugContext.isLogEnabled()) {
-            dumpObjectFile();
-        }
-    }
-
-    private void dumpObjectFile() {
-        StringBuilder sb = new StringBuilder(substrateDebugInfoProvider.getCompilationName()).append(".debug");
-        try (FileChannel dumpFile = FileChannel.open(Paths.get(sb.toString()),
-                        StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING,
-                        StandardOpenOption.CREATE)) {
-            ByteBuffer buffer = dumpFile.map(FileChannel.MapMode.READ_WRITE, 0, debugInfoSize);
-            objectFile.writeBuffer(sortedObjectFileElements, buffer);
-        } catch (IOException e) {
-            debug.log("Failed to dump %s", sb);
-        }
-    }
-
-    @RawStructure
-    private interface Handle extends InstalledCodeObserverHandle {
-        int INITIALIZED = 0;
-        int ACTIVATED = 1;
-        int RELEASED = 2;
-
-        @RawField
-        GdbJitInterface.JITCodeEntry getRawHandle();
-
-        @RawField
-        void setRawHandle(GdbJitInterface.JITCodeEntry value);
-
-        @RawField
-        NonmovableArray<Byte> getDebugInfoData();
-
-        @RawField
-        void setDebugInfoData(NonmovableArray<Byte> data);
-
-        @RawField
-        int getState();
-
-        @RawField
-        void setState(int value);
-    }
-
-    static final class GdbJitAccessor implements InstalledCodeObserverHandleAccessor {
-
-        static Handle createHandle(NonmovableArray<Byte> debugInfoData) {
-            Handle handle = NativeMemory.malloc(SizeOf.get(Handle.class), NmtCategory.Code);
-            GdbJitInterface.JITCodeEntry entry = NativeMemory.calloc(SizeOf.get(GdbJitInterface.JITCodeEntry.class), NmtCategory.Code);
-            handle.setAccessor(ImageSingletons.lookup(GdbJitAccessor.class));
-            handle.setRawHandle(entry);
-            handle.setDebugInfoData(debugInfoData);
-            handle.setState(Handle.INITIALIZED);
-            return handle;
-        }
-
-        @Override
-        public void activate(InstalledCodeObserverHandle installedCodeObserverHandle) {
-            Handle handle = (Handle) installedCodeObserverHandle;
-            VMOperation.guaranteeInProgressAtSafepoint("SubstrateDebugInfoInstaller.Accessor.activate must run in a VMOperation");
-            VMError.guarantee(handle.getState() == Handle.INITIALIZED);
-
-            NonmovableArray<Byte> debugInfoData = handle.getDebugInfoData();
-            CCharPointer address = NonmovableArrays.addressOf(debugInfoData, 0);
-            int size = NonmovableArrays.lengthOf(debugInfoData);
-            GdbJitInterface.registerJITCode(address, size, handle.getRawHandle());
-
-            handle.setState(Handle.ACTIVATED);
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void release(InstalledCodeObserverHandle installedCodeObserverHandle) {
-            Handle handle = (Handle) installedCodeObserverHandle;
-            GdbJitInterface.JITCodeEntry entry = handle.getRawHandle();
-            // Handle may still be just initialized here, so it never got registered in GDB.
-            if (handle.getState() == Handle.ACTIVATED) {
-                GdbJitInterface.unregisterJITCode(entry);
-                handle.setState(Handle.RELEASED);
-            }
-            NativeMemory.free(entry);
-            NonmovableArrays.releaseUnmanagedArray(handle.getDebugInfoData());
-            NativeMemory.free(handle);
-        }
-
-        @Override
-        public void detachFromCurrentIsolate(InstalledCodeObserverHandle installedCodeObserverHandle) {
-            Handle handle = (Handle) installedCodeObserverHandle;
-            NonmovableArrays.untrackUnmanagedArray(handle.getDebugInfoData());
-        }
-
-        @Override
-        public void attachToCurrentIsolate(InstalledCodeObserverHandle installedCodeObserverHandle) {
-            Handle handle = (Handle) installedCodeObserverHandle;
-            NonmovableArrays.trackUnmanagedArray(handle.getDebugInfoData());
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void releaseOnTearDown(InstalledCodeObserverHandle installedCodeObserverHandle) {
-            release(installedCodeObserverHandle);
-        }
+        // Initialize the debug info generator and write the debug info.
+        SubstrateDebugInfoProvider debugInfoProvider = new SubstrateDebugInfoProvider(debugContext, method, compilation, runtimeConfig, runtimeConfig.getProviders().getMetaAccess(), code.rawValue(),
+                        codeSize);
+        handle = writer.writeDebugInfo(debugContext, debugInfoProvider);
     }
 
     @Override
-    @SuppressWarnings("try")
     public InstalledCodeObserverHandle install() {
-        NonmovableArray<Byte> debugInfoData = writeDebugInfoData();
-        Handle handle = GdbJitAccessor.createHandle(debugInfoData);
-        if (debug.isLogEnabled()) {
-            try (DebugContext.Scope s = debug.scope("RuntimeCompilation")) {
-                debug.log(toString(handle));
-            }
-        }
         return handle;
-    }
-
-    private NonmovableArray<Byte> writeDebugInfoData() {
-        NonmovableArray<Byte> array = NonmovableArrays.createByteArray(debugInfoSize, NmtCategory.Code);
-        objectFile.writeBuffer(sortedObjectFileElements, NonmovableArrays.asByteBuffer(array));
-        return array;
-    }
-
-    private static String toString(Handle handle) {
-        return "DebugInfoHandle(handle = 0x" + Long.toHexString(handle.getRawHandle().rawValue()) +
-                        ", address = 0x" +
-                        Long.toHexString(NonmovableArrays.addressOf(handle.getDebugInfoData(), 0).rawValue()) +
-                        ", size = " +
-                        NonmovableArrays.lengthOf(handle.getDebugInfoData()) +
-                        ", handleState = " +
-                        handle.getState() +
-                        ")";
     }
 }

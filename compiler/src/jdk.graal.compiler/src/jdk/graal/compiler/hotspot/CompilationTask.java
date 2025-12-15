@@ -36,7 +36,6 @@ import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.concurrent.TimeUnit;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -53,8 +52,8 @@ import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugContext.Description;
-import jdk.graal.compiler.debug.DebugDumpScope;
 import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpScope;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
@@ -78,7 +77,6 @@ import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.serviceprovider.JMXService;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
@@ -299,8 +297,6 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
             }
 
             int entryBCI = getEntryBCI();
-            final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
-            CompilationStatistics stats = CompilationStatistics.create(debug.getOptions(), method, isOSR);
 
             final CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), compilationId, method, entryBCI);
 
@@ -319,8 +315,6 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
             }
             // Installation is included in compilation time and memory usage reported by printer
             printer.finish(result, installedCode);
-
-            stats.finish(method, installedCode);
 
             return buildCompilationRequestResult(method);
         }
@@ -399,8 +393,6 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                                 DebugCloseable c = initialDebug.inRetryCompilation() ? debug.openRetryCompilation() : null;
                                 DebugCloseable t = CompilationReplayTime.start(debug)) {
                     int entryBCI = getEntryBCI();
-                    boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
-                    CompilationStatistics stats = CompilationStatistics.create(options, method, isOSR);
                     CompilationPrinter printer = CompilationPrinter.begin(options, compilationId, method, entryBCI);
                     if (initialDebug.inRetryCompilation()) {
                         profileProvider.forQueriedProfiles((profileKey, profilingInfo) -> {
@@ -416,14 +408,14 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                         performRecompilationCheck(options, method);
                         CompilationReplayBytecodes.add(debug, result.getBytecodeSize());
                     } catch (Throwable e) {
+                        replaySupport.recordCompilationTaskException(e);
                         throw debug.handle(e);
                     }
                     try (DebugCloseable b = CodeInstallationTime.start(debug)) {
                         installMethod(selectedCompiler.getGraalRuntime().getHostBackend(), debug, graph, result);
                     }
                     printer.finish(result, installedCode);
-                    stats.finish(method, installedCode);
-                    replaySupport.recordCompilationArtifacts(graph, result);
+                    replaySupport.recordCompilationTaskArtifacts(graph, result);
                     return buildCompilationRequestResult(method);
                 }
             }
@@ -595,16 +587,6 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     public static final TimerKey CompilationTime = DebugContext.timer("CompilationTime").doc("Time spent in compilation and code installation.");
 
     /**
-     * Time spent in garbage collection during this compilation.
-     */
-    public static final TimerKey GarbageCollectionTime = DebugContext.timer("GarbageCollectionTime").doc("Time spent in GC during compilation and code installation.");
-
-    /**
-     * Number of garbage collection during this compilation.
-     */
-    public static final CounterKey GarbageCollectionCount = DebugContext.counter("GarbageCollectionCount").doc("Number of GCs during compilation and code installation.");
-
-    /**
      * Counts the number of compiled {@linkplain CompilationResult#getBytecodeSize() bytecodes}.
      */
     private static final CounterKey CompiledBytecodes = DebugContext.counter("CompiledBytecodes");
@@ -638,27 +620,9 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         }
     }
 
-    public record GCTimerScope(DebugContext debug, JMXService.GCTimeStatistics gcStats) implements DebugCloseable {
-        static DebugCloseable create(DebugContext debug) {
-            if (GarbageCollectionTime.isEnabled(debug) || GarbageCollectionCount.isEnabled(debug)) {
-                final JMXService.GCTimeStatistics gcStats = GraalServices.getGCTimeStatistics();
-                if (gcStats != null) {
-                    return new GCTimerScope(debug, gcStats);
-                }
-            }
-            return null;
-        }
-
-        @Override
-        public void close() {
-            GarbageCollectionCount.add(debug, gcStats.getGCCount());
-            GarbageCollectionTime.add(debug, gcStats.getGCTimeMills(), TimeUnit.MILLISECONDS);
-        }
-    }
-
     @SuppressWarnings({"try"})
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {
-        try (DebugCloseable a = CompilationTime.start(debug); DebugCloseable b = GCTimerScope.create(debug)) {
+        try (DebugCloseable a = CompilationTime.start(debug); DebugCloseable b = GraalServices.GCTimerScope.create(debug)) {
             HotSpotCompilationRequestResult result = runCompilation(debug, new HotSpotCompilationWrapper());
             LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
             if (libgraal != null) {

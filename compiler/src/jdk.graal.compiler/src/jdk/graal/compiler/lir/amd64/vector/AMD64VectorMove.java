@@ -71,7 +71,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
 public class AMD64VectorMove {
-    private static AMD64SIMDInstructionEncoding maybeOverrideEvex(AMD64MacroAssembler masm, AMD64SIMDInstructionEncoding enc, AllocatableValue slot) {
+    public static AMD64SIMDInstructionEncoding maybeOverrideEvex(AMD64MacroAssembler masm, AMD64SIMDInstructionEncoding enc, AllocatableValue slot) {
         if (enc != AMD64SIMDInstructionEncoding.EVEX && AVXKind.getRegisterSize(slot) == AVXSize.ZMM) {
             /*
              * Force EVEX encoding even if we don't use evex elsewhere during this compilation since
@@ -227,8 +227,8 @@ public class AMD64VectorMove {
     }
 
     @Opcode("VSTACKMOVE")
-    public static final class StackMoveOp extends AMD64LIRInstruction implements StandardOp.ValueMoveOp {
-        public static final LIRInstructionClass<StackMoveOp> TYPE = LIRInstructionClass.create(StackMoveOp.class);
+    public static final class AMD64VectorStackMove extends AMD64LIRInstruction implements AMD64Move.StackMoveOp {
+        public static final LIRInstructionClass<AMD64VectorStackMove> TYPE = LIRInstructionClass.create(AMD64VectorStackMove.class);
 
         @Def({OperandFlag.STACK}) protected AllocatableValue result;
         @Use({OperandFlag.STACK, OperandFlag.HINT}) protected AllocatableValue input;
@@ -237,7 +237,7 @@ public class AMD64VectorMove {
         private Register scratch;
         private final AMD64SIMDInstructionEncoding encoding;
 
-        public StackMoveOp(AllocatableValue result, AllocatableValue input, Register scratch, AllocatableValue backupSlot, AMD64SIMDInstructionEncoding encoding) {
+        public AMD64VectorStackMove(AllocatableValue result, AllocatableValue input, Register scratch, AllocatableValue backupSlot, AMD64SIMDInstructionEncoding encoding) {
             super(TYPE);
             this.result = result;
             this.input = input;
@@ -258,6 +258,20 @@ public class AMD64VectorMove {
         }
 
         @Override
+        public Register getScratchRegister() {
+            return scratch;
+        }
+
+        @Override
+        public AllocatableValue getBackupSlot() {
+            return backupSlot;
+        }
+
+        public AMD64SIMDInstructionEncoding getEncoding() {
+            return encoding;
+        }
+
+        @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             AMD64SIMDInstructionEncoding backupEnc = maybeOverrideEvex(masm, encoding, backupSlot);
             // backup scratch register
@@ -267,7 +281,6 @@ public class AMD64VectorMove {
             move(crb, masm, getResult(), scratch.asValue(getResult().getValueKind()), encoding);
             // restore scratch register
             move(crb, masm, scratch.asValue(backupSlot.getValueKind()), backupSlot, backupEnc);
-
         }
     }
 
@@ -497,7 +510,7 @@ public class AMD64VectorMove {
         };
     }
 
-    private static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, AllocatableValue result, Value input, AMD64SIMDInstructionEncoding enc) {
+    public static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, AllocatableValue result, Value input, AMD64SIMDInstructionEncoding enc) {
         VexMoveOp op;
         AVXSize size;
         AMD64Kind kind = (AMD64Kind) result.getPlatformKind();

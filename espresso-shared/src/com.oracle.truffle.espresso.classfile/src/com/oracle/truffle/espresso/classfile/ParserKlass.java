@@ -26,15 +26,18 @@ package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserTypes;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 
 /**
  * Immutable raw representation of classes in Espresso, this is the output of the parser, super
  * klass/interfaces are not resolved.
  */
-public final class ParserKlass {
+public final class ParserKlass implements AttributedElement {
 
     private final Symbol<Name> name;
     private final Symbol<Type> type;
@@ -135,15 +138,7 @@ public final class ParserKlass {
         return fields;
     }
 
-    public Attribute getAttribute(Symbol<Name> attributeName) {
-        for (Attribute attribute : attributes) {
-            if (attributeName.equals(attribute.getName())) {
-                return attribute;
-            }
-        }
-        return null;
-    }
-
+    @Override
     public Attribute[] getAttributes() {
         return attributes;
     }
@@ -167,5 +162,28 @@ public final class ParserKlass {
     @Override
     public String toString() {
         return "ParserKlass<" + getType() + ">";
+    }
+
+    public static ParserKlass forHiddenClass(ParserKlass parserKlass, Symbol<Type> requestedClassType, long hiddenKlassId, ParsingContext parsingContext) {
+        assert requestedClassType != null;
+        Symbol<Name> thisKlassName = parsingContext.getOrCreateName(TypeSymbols.hiddenClassName(requestedClassType, hiddenKlassId));
+        Symbol<Type> thisKlassType = parsingContext.getOrCreateTypeFromName(thisKlassName);
+        var pool = parserKlass.getConstantPool().patchForHiddenClass(parserKlass.getThisKlassIndex(), thisKlassName);
+        var classFlags = parserKlass.getFlags() | Constants.ACC_IS_HIDDEN_CLASS;
+        return new ParserKlass(pool, classFlags, thisKlassName, thisKlassType,
+                        parserKlass.getSuperKlass(), parserKlass.getSuperInterfaces(),
+                        parserKlass.getMethods(), parserKlass.getFields(),
+                        parserKlass.getAttributes(),
+                        parserKlass.getThisKlassIndex(),
+                        parserKlass.getMajorVersion(), parserKlass.getMinorVersion(),
+                        parserKlass.getHiddenKlassId());
+    }
+
+    /**
+     * Checks whether if the given type name can declare signature polymorphic methods according to
+     * JVM-2.9.3.
+     */
+    public static boolean isSignaturePolymorphicHolderType(Symbol<Type> type) {
+        return type == ParserTypes.java_lang_invoke_MethodHandle || type == ParserTypes.java_lang_invoke_VarHandle;
     }
 }

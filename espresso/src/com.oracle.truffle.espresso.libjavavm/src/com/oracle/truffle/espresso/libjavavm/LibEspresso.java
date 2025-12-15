@@ -122,6 +122,12 @@ public final class LibEspresso {
             STDERR.println("<JavaVM> is not available in the java bindings");
             return JNIErrors.JNI_ERR();
         }
+        /*
+         * Here we assume the value of asNativePointer actually refers to host memory which
+         * generally does not hold anymore since the introduction of NativeMemory (GR-70643).
+         * However, this could only pose problems in the unlikely case of explicitly choosing a
+         * "virtualized" NativeMemory while starting espresso from native.
+         */
         JNIJavaVM espressoJavaVM = WordFactory.pointer(java.asNativePointer());
         bindings.removeMember("<JavaVM>");
         ObjectHandle contextHandle = ObjectHandles.getGlobal().create(context);

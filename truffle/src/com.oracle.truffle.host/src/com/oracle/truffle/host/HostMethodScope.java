@@ -65,6 +65,7 @@ final class HostMethodScope {
 
     private static final ScopedObject[] EMTPY_SCOPE_ARRAY = new ScopedObject[0];
     private static final Unsafe UNSAFE = getUnsafe();
+    private static final Message MESSAGE_AS_HOST_OBJECT = Message.resolveExact(InteropLibrary.class, "asHostObject", Object.class);
 
     private ScopedObject[] scope;
     private int nextDynamicIndex;
@@ -245,9 +246,8 @@ final class HostMethodScope {
                                 "Avoid accessing scoped objects after their corresponding method has finished execution. " +
                                 "Alternatively, use Value.pin() to prevent a scoped object from being released after the host call completed.");
             }
-            assert d != null : "delegate must not be null here";
             Object returnValue = library.send(d, message, args);
-            if (message.getReturnType() == Object.class && !(d instanceof PinnedObject)) {
+            if (message.getReturnType() == Object.class && !(d instanceof PinnedObject) && message != MESSAGE_AS_HOST_OBJECT) {
                 /*
                  * Object return type indicates for an interop message that any interop value may be
                  * returned.

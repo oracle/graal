@@ -50,6 +50,21 @@ JNIEXPORT int JNICALL JVM_GetInterfaceVersion() {
     return JVM_INTERFACE_VERSION;
 }
 
+/* Declaration only. Implemented via JVM_FindClassFromBootLoader_default */
+JNIEXPORT void JNICALL JVM_FindClassFromBootLoader(JNIEnv *env, char *fqn);
+
+#if defined(_MSC_VER)
+  #if defined(_M_IX86)
+    #pragma comment(linker, "/alternatename:_JVM_FindClassFromBootLoader=_JVM_FindClassFromBootLoader_default")
+  #elif defined(_M_X64) || defined(_M_ARM64)
+    #pragma comment(linker, "/alternatename:JVM_FindClassFromBootLoader=JVM_FindClassFromBootLoader_default")
+  #endif
+#endif
+
+JNIEXPORT void JNICALL JVM_FindClassFromBootLoader_default(JNIEnv *env, char *fqn) {
+    (*env)->FatalError(env, "JVM_FindClassFromBootLoader called: Unimplemented");
+}
+
 jlong as_long(LARGE_INTEGER x) {
     return jlong_from(x.HighPart, x.LowPart);
 }
@@ -248,12 +263,13 @@ JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject acti
 }
 
 JNIEXPORT jstring JNICALL JVM_GetTemporaryDirectory(JNIEnv *env) {
-    // see os_windows.cpp line 1367
-    static char path_buf[MAX_PATH];
-    if (GetTempPath(MAX_PATH, path_buf) <= 0) {
-        path_buf[0] = '\0';
+    // see os::get_temp_directory() in os_windows.cpp
+    WCHAR path_buf[MAX_PATH + 1];
+    DWORD len = GetTempPathW(MAX_PATH + 1, path_buf);
+    if (len == 0 || len > MAX_PATH + 1) {
+        return (*env)->NewString(env, NULL, 0); // empty on error/overflow
     }
-    return (*env)->NewStringUTF(env, path_buf);
+    return (*env)->NewString(env, path_buf, len);
 }
 
 jboolean VerifyFixClassname(char *utf_name) {

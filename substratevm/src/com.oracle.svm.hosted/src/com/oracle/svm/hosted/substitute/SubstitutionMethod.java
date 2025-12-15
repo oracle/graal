@@ -24,19 +24,13 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
-
-import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Type;
-
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
-
+import com.oracle.svm.util.AnnotatedWrapper;
+import com.oracle.svm.util.OriginalMethodProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.meta.Constant;
@@ -50,8 +44,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.annotation.Annotated;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider, AnnotationWrapper {
+import java.lang.reflect.Type;
+
+import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
+
+public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider, AnnotationWrapper, AnnotatedWrapper {
 
     private final ResolvedJavaMethod original;
     private final ResolvedJavaMethod annotated;
@@ -60,15 +61,16 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
 
     /**
      * This field is used in the {@link com.oracle.svm.hosted.SubstitutionReportFeature} class to
-     * determine {@link SubstitutionMethod} objects which correspond to annotated substitutions.
+     * determine {@link SubstitutionMethod} objects are user-defined substitutions (from the
+     * classpath).
      */
-    private final boolean isUserSubstitution;
+    private final boolean userSubstitution;
 
-    public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated, boolean inClassSubstitution, boolean isUserSubstitution) {
+    public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated, boolean inClassSubstitution, boolean userSubstitution) {
         this.original = original;
         this.annotated = annotated;
         this.inClassSubstitution = inClassSubstitution;
-        this.isUserSubstitution = isUserSubstitution;
+        this.userSubstitution = userSubstitution;
 
         LocalVariableTable newLocalVariableTable = null;
         if (annotated.getLocalVariableTable() != null) {
@@ -90,7 +92,7 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
     }
 
     public boolean isUserSubstitution() {
-        return isUserSubstitution;
+        return userSubstitution;
     }
 
     public ResolvedJavaMethod getOriginal() {
@@ -218,13 +220,8 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
     }
 
     @Override
-    public AnnotatedElement getAnnotationRoot() {
+    public Annotated getWrappedAnnotated() {
         return annotated;
-    }
-
-    @Override
-    public Annotation[][] getParameterAnnotations() {
-        return annotated.getParameterAnnotations();
     }
 
     @Override
@@ -290,5 +287,15 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
     @Override
     public SpeculationLog getSpeculationLog() {
         throw shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public AnnotationsInfo getParameterAnnotationInfo() {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public AnnotationsInfo getAnnotationDefaultInfo() {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 }

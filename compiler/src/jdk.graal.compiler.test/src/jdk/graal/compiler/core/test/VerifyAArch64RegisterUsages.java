@@ -24,19 +24,18 @@
  */
 package jdk.graal.compiler.core.test;
 
+import java.util.Arrays;
+import java.util.List;
+
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * Verify that scratch registers are not used in AArch64 specific code. We use a different set for
@@ -63,6 +62,7 @@ public class VerifyAArch64RegisterUsages extends VerifyPhase<CoreProviders> {
             case "jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotBackend.emitCodePrefix":
             case "com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler.<clinit>":
             case "com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig.getCallingConvention":
+            case "com.oracle.objectfile.elf.dwarf.DwarfLocSectionImpl$DwarfRegEncodingAArch64.<clinit>":
                 // Exempted cases
                 return;
             default:
@@ -80,7 +80,7 @@ public class VerifyAArch64RegisterUsages extends VerifyPhase<CoreProviders> {
 
             if (potentialScratchRegisters.contains(f.getName())) {
                 throw new VerificationError("Access to %s register at callsite %s is prohibited.",
-                                f, method.format("%H.%n(%p)"), f);
+                                f.format("%H.%n"), method.format("%H.%n(%p)"), f);
             }
         }
     }

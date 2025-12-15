@@ -35,7 +35,6 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
@@ -105,7 +104,7 @@ public final class ObjectGroupHistogram {
          * order in which types are prcessed matters.
          */
         processType(DynamicHub.class, "DynamicHub", true, null, ObjectGroupHistogram::filterDynamicHubField);
-        processObject(NonmovableArrays.getHostedArray(DynamicHubSupport.currentLayer().getReferenceMapEncoding()), "DynamicHub", true, null, null);
+        processObject(DynamicHubSupport.currentLayer().getReferenceMapEncoding(), "DynamicHub", true, null, null);
         processObject(CodeInfoTable.getCurrentLayerImageCodeCache(), "ImageCodeInfo", true, ObjectGroupHistogram::filterCodeInfoObjects, null);
 
         processObject(readTruffleRuntimeCompilationSupportField("graphEncoding"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
@@ -210,7 +209,7 @@ public final class ObjectGroupHistogram {
                 }
             }
         } else if (ihc instanceof ImageHeapObjectArray) {
-            heap.hConstantReflection.forEachArrayElement(ihc, (element, idx) -> {
+            heap.hConstantReflection.forEachArrayElement(ihc, (element, _) -> {
                 if (element.isNonNull()) {
                     ObjectInfo elementInfo = heap.getConstantInfo(element);
                     if (elementInfo != null) {

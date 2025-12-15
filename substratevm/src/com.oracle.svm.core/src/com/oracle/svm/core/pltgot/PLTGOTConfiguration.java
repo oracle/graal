@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.pltgot;
 
+import com.oracle.svm.core.meta.SharedMethod;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -54,4 +55,7 @@ public abstract class PLTGOTConfiguration {
 
     public abstract LIRInstruction createExitMethodAddressResolutionOp(RegisterValue exitThroughRegisterValue);
 
+    public abstract boolean shouldCallViaPLTGOT(SharedMethod caller, SharedMethod callee);
+
+    public abstract int getMethodGotEntry(SharedMethod method);
 }

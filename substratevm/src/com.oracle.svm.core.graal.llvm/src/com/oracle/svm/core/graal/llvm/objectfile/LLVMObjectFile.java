@@ -61,6 +61,7 @@ import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder;
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * Represents an object file emitted using LLVM.
@@ -150,7 +151,7 @@ public class LLVMObjectFile extends ObjectFile {
 
     @Override
     public Set<Segment> getSegments() {
-        return new HashSet<>();
+        return new HashSet<>(); // noEconomicSet(streaming)
     }
 
     @Override
@@ -181,7 +182,6 @@ public class LLVMObjectFile extends ObjectFile {
     }
 
     @Override
-    @SuppressWarnings("try")
     public final void write(DebugContext context, Path outputFile) throws IOException {
         List<Element> sortedObjectFileElements = new ArrayList<>();
         bake(sortedObjectFileElements);
@@ -258,7 +258,7 @@ public class LLVMObjectFile extends ObjectFile {
     }
 
     private void compileBitcodeBatches(BatchExecutor executor, DebugContext context, int numBatches) {
-        executor.forEach(numBatches, batchId -> (debugContextInner) -> {
+        executor.forEach(numBatches, batchId -> _ -> {
             llvmCompile(context, getCompiledBitcodeFilename(batchId), getBitcodeFilename(batchId), basePath, (s -> s));
         });
     }
@@ -332,7 +332,7 @@ public class LLVMObjectFile extends ObjectFile {
             // (e.g. SHT, PHT) must be decided before content, and we need to give a size so that
             // that nextAvailableOffset remains defined.
             // So, our size comes first.
-            HashSet<BuildDependency> dependencies = new HashSet<>();
+            EconomicSet<BuildDependency> dependencies = EconomicSet.create(2);
 
             LayoutDecision ourContent = decisions.get(this).getDecision(LayoutDecision.Kind.CONTENT);
             LayoutDecision ourOffset = decisions.get(this).getDecision(LayoutDecision.Kind.OFFSET);

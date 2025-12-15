@@ -62,13 +62,14 @@ public final class GraphState {
                     StageFlag.GUARD_LOWERING,
                     StageFlag.MID_TIER_LOWERING,
                     StageFlag.FSA,
-                    StageFlag.BARRIER_ADDITION);
+                    StageFlag.MID_TIER_BARRIER_ADDITION);
     private static final EnumSet<StageFlag> LOW_TIER_MANDATORY_STAGES = EnumSet.of(
                     StageFlag.LOW_TIER_LOWERING,
                     StageFlag.EXPAND_LOGIC,
                     StageFlag.ADDRESS_LOWERING,
                     StageFlag.REMOVE_OPAQUE_VALUES,
-                    StageFlag.FINAL_SCHEDULE);
+                    StageFlag.FINAL_SCHEDULE,
+                    StageFlag.LOW_TIER_BARRIER_ADDITION);
     private static final EnumSet<StageFlag> ENTERPRISE_MID_TIER_MANDATORY_STAGES = EnumSet.of(
                     StageFlag.OPTIMISTIC_ALIASING,
                     StageFlag.GUARD_LOWERING,
@@ -77,7 +78,7 @@ public final class GraphState {
                     StageFlag.MID_TIER_LOWERING,
                     StageFlag.FSA,
                     StageFlag.NODE_VECTORIZATION,
-                    StageFlag.BARRIER_ADDITION);
+                    StageFlag.MID_TIER_BARRIER_ADDITION);
 
     /**
      * This set of {@link StageFlag}s represents the stages a {@link StructuredGraph} initially
@@ -570,7 +571,7 @@ public final class GraphState {
      * {@link jdk.graal.compiler.phases.common.FixReadsPhase} has not.
      */
     public boolean allowsFloatingReads() {
-        return isAfterStage(StageFlag.FLOATING_READS) && isBeforeStage(StageFlag.FIXED_READS);
+        return isDuringStage(StageFlag.FLOATING_READS) || isAfterStage(StageFlag.FLOATING_READS) && isBeforeStage(StageFlag.FIXED_READS);
     }
 
     /**
@@ -617,6 +618,7 @@ public final class GraphState {
      * order used to defined theses stages corresponds to their order in a standard compilation.
      */
     public enum StageFlag {
+        PARTIAL_EVALUATION,
         CANONICALIZATION,
         /* Stages applied by high tier. */
         LOOP_OVERFLOWS_CHECKED,
@@ -637,13 +639,14 @@ public final class GraphState {
         NODE_VECTORIZATION,
         VECTOR_MATERIALIZATION,
         OPTIMISTIC_GUARDS,
-        BARRIER_ADDITION,
+        MID_TIER_BARRIER_ADDITION,
         BARRIER_ELIMINATION,
         /* Stages applied by low tier. */
         LOW_TIER_LOWERING,
         VECTOR_LOWERING,
         EXPAND_LOGIC,
         FIXED_READS,
+        LOW_TIER_BARRIER_ADDITION,
         PARTIAL_REDUNDANCY_SCHEDULE,
         ADDRESS_LOWERING,
         FINAL_CANONICALIZATION,

@@ -1,6 +1,47 @@
 #Signature file v4.1
 #Version 
 
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GenerateCached
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean alwaysInlineCached()
+meth public abstract !hasdefault boolean inherit()
+meth public abstract !hasdefault boolean value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GenerateInline
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean inherit()
+meth public abstract !hasdefault boolean inlineByDefault()
+meth public abstract !hasdefault boolean value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GeneratePackagePrivate
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GenerateUncached
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean inherit()
+meth public abstract !hasdefault boolean value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GeneratedBy
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.String methodName()
+meth public abstract java.lang.Class<?> value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.ImportStatic
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<?>[] value()
+
 CLSS public abstract interface com.oracle.truffle.api.interop.TruffleObject
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.library.ExportLibrary
@@ -28,6 +69,15 @@ meth public abstract !hasdefault boolean dynamicDispatchEnabled()
 meth public abstract !hasdefault boolean pushEncapsulatingNode()
 meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.library.Library> assertions()
 meth public abstract !hasdefault java.lang.Class<?> receiverType()
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.library.GenerateLibrary$DefaultExport
+ outer com.oracle.truffle.api.library.GenerateLibrary
+ anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.library.GenerateLibrary$DefaultExport$Repeat)
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+innr public abstract interface static !annotation Repeat
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<?> value()
 
 CLSS public abstract com.oracle.truffle.api.library.Library
 cons protected init()
@@ -103,11 +153,45 @@ meth public abstract void setDouble(com.oracle.truffle.api.object.DynamicObject,
 CLSS public abstract com.oracle.truffle.api.object.DynamicObject
 cons protected init(com.oracle.truffle.api.object.Shape)
 innr protected abstract interface static !annotation DynamicField
+innr public abstract static ContainsKeyNode
+innr public abstract static CopyPropertiesNode
+innr public abstract static GetDynamicTypeNode
+innr public abstract static GetKeyArrayNode
+innr public abstract static GetNode
+innr public abstract static GetPropertyArrayNode
+innr public abstract static GetPropertyFlagsNode
+innr public abstract static GetPropertyNode
+innr public abstract static GetShapeFlagsNode
+innr public abstract static IsSharedNode
+innr public abstract static MarkSharedNode
+innr public abstract static PutAllNode
+innr public abstract static PutConstantNode
+innr public abstract static PutNode
+innr public abstract static RemoveKeyNode
+innr public abstract static ResetShapeNode
+innr public abstract static SetDynamicTypeNode
+innr public abstract static SetPropertyFlagsNode
+innr public abstract static SetShapeFlagsNode
+innr public abstract static UpdateShapeNode
 intf com.oracle.truffle.api.interop.TruffleObject
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth public final com.oracle.truffle.api.object.Shape getShape()
 supr java.lang.Object
-hfds LOOKUP,SHAPE_OFFSET,UNSAFE,extRef,extVal,shape
+hfds EMPTY_INT_ARRAY,EMPTY_OBJECT_ARRAY,LOOKUP,SHAPE_CACHE_LIMIT,SHAPE_OFFSET,UNSAFE,extRef,extVal,shape
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$ContainsKeyNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract boolean execute(com.oracle.truffle.api.object.DynamicObject,java.lang.Object)
+meth public static com.oracle.truffle.api.object.DynamicObject$ContainsKeyNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$ContainsKeyNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$CopyPropertiesNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract void execute(com.oracle.truffle.api.object.DynamicObject,com.oracle.truffle.api.object.DynamicObject)
+meth public static com.oracle.truffle.api.object.DynamicObject$CopyPropertiesNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$CopyPropertiesNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
 
 CLSS protected abstract interface static !annotation com.oracle.truffle.api.object.DynamicObject$DynamicField
  outer com.oracle.truffle.api.object.DynamicObject
@@ -115,7 +199,166 @@ CLSS protected abstract interface static !annotation com.oracle.truffle.api.obje
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[FIELD])
 intf java.lang.annotation.Annotation
 
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$GetDynamicTypeNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract java.lang.Object execute(com.oracle.truffle.api.object.DynamicObject)
+meth public static com.oracle.truffle.api.object.DynamicObject$GetDynamicTypeNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$GetDynamicTypeNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$GetKeyArrayNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract java.lang.Object[] execute(com.oracle.truffle.api.object.DynamicObject)
+meth public static com.oracle.truffle.api.object.DynamicObject$GetKeyArrayNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$GetKeyArrayNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$GetNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract double executeDouble(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.nodes.UnexpectedResultException
+meth public abstract int executeInt(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.nodes.UnexpectedResultException
+meth public abstract java.lang.Object execute(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object)
+meth public abstract long executeLong(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.nodes.UnexpectedResultException
+meth public static com.oracle.truffle.api.object.DynamicObject$GetNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$GetNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$GetPropertyArrayNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract com.oracle.truffle.api.object.Property[] execute(com.oracle.truffle.api.object.DynamicObject)
+meth public static com.oracle.truffle.api.object.DynamicObject$GetPropertyArrayNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$GetPropertyArrayNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$GetPropertyFlagsNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract int execute(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,int)
+meth public static com.oracle.truffle.api.object.DynamicObject$GetPropertyFlagsNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$GetPropertyFlagsNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$GetPropertyNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract com.oracle.truffle.api.object.Property execute(com.oracle.truffle.api.object.DynamicObject,java.lang.Object)
+meth public static com.oracle.truffle.api.object.DynamicObject$GetPropertyNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$GetPropertyNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$GetShapeFlagsNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract int execute(com.oracle.truffle.api.object.DynamicObject)
+meth public static com.oracle.truffle.api.object.DynamicObject$GetShapeFlagsNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$GetShapeFlagsNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$IsSharedNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract boolean execute(com.oracle.truffle.api.object.DynamicObject)
+meth public static com.oracle.truffle.api.object.DynamicObject$IsSharedNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$IsSharedNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$MarkSharedNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract boolean execute(com.oracle.truffle.api.object.DynamicObject)
+meth public static com.oracle.truffle.api.object.DynamicObject$MarkSharedNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$MarkSharedNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$PutAllNode
+ outer com.oracle.truffle.api.object.DynamicObject
+cons public init()
+meth public final void execute(com.oracle.truffle.api.object.DynamicObject,java.lang.Object[],java.lang.Object[])
+meth public final void executeIfAbsent(com.oracle.truffle.api.object.DynamicObject,java.lang.Object[],java.lang.Object[])
+meth public final void executeIfPresent(com.oracle.truffle.api.object.DynamicObject,java.lang.Object[],java.lang.Object[])
+meth public final void executeWithFlags(com.oracle.truffle.api.object.DynamicObject,java.lang.Object[],java.lang.Object[],int[])
+meth public final void executeWithFlagsIfAbsent(com.oracle.truffle.api.object.DynamicObject,java.lang.Object[],java.lang.Object[],int[])
+meth public final void executeWithFlagsIfPresent(com.oracle.truffle.api.object.DynamicObject,java.lang.Object[],java.lang.Object[],int[])
+meth public static com.oracle.truffle.api.object.DynamicObject$PutAllNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$PutAllNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+hfds PUT_CACHE_LIMIT
+hcls PutAllCache,PutAllPlan
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$PutConstantNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public final boolean executeIfAbsent(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object)
+meth public final boolean executeIfPresent(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object)
+meth public final boolean executeWithFlagsIfAbsent(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object,int)
+meth public final boolean executeWithFlagsIfPresent(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object,int)
+meth public final void execute(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object)
+meth public final void executeWithFlags(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object,int)
+meth public static com.oracle.truffle.api.object.DynamicObject$PutConstantNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$PutConstantNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$PutNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public final boolean executeIfAbsent(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object)
+meth public final boolean executeIfPresent(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object)
+meth public final boolean executeWithFlagsIfAbsent(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object,int)
+meth public final boolean executeWithFlagsIfPresent(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object,int)
+meth public final void execute(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object)
+meth public final void executeWithFlags(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object,int)
+meth public static com.oracle.truffle.api.object.DynamicObject$PutNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$PutNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$RemoveKeyNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract boolean execute(com.oracle.truffle.api.object.DynamicObject,java.lang.Object)
+meth public static com.oracle.truffle.api.object.DynamicObject$RemoveKeyNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$RemoveKeyNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$ResetShapeNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract boolean execute(com.oracle.truffle.api.object.DynamicObject,com.oracle.truffle.api.object.Shape)
+meth public static com.oracle.truffle.api.object.DynamicObject$ResetShapeNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$ResetShapeNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$SetDynamicTypeNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract boolean execute(com.oracle.truffle.api.object.DynamicObject,java.lang.Object)
+meth public static com.oracle.truffle.api.object.DynamicObject$SetDynamicTypeNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$SetDynamicTypeNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$SetPropertyFlagsNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public final boolean execute(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,int)
+meth public final boolean executeAdd(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,int)
+meth public final boolean executeRemove(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,int)
+meth public final boolean executeRemoveAndAdd(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,int,int)
+meth public static com.oracle.truffle.api.object.DynamicObject$SetPropertyFlagsNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$SetPropertyFlagsNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$SetShapeFlagsNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public final boolean execute(com.oracle.truffle.api.object.DynamicObject,int)
+meth public final boolean executeAdd(com.oracle.truffle.api.object.DynamicObject,int)
+meth public final boolean executeRemove(com.oracle.truffle.api.object.DynamicObject,int)
+meth public final boolean executeRemoveAndAdd(com.oracle.truffle.api.object.DynamicObject,int,int)
+meth public static com.oracle.truffle.api.object.DynamicObject$SetShapeFlagsNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$SetShapeFlagsNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$UpdateShapeNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public abstract boolean execute(com.oracle.truffle.api.object.DynamicObject)
+meth public static com.oracle.truffle.api.object.DynamicObject$UpdateShapeNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$UpdateShapeNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public final com.oracle.truffle.api.object.DynamicObjectFactory
+cons public init()
+supr java.lang.Object
+hcls ContainsKeyNodeGen,CopyPropertiesNodeGen,GetDynamicTypeNodeGen,GetKeyArrayNodeGen,GetNodeGen,GetPropertyArrayNodeGen,GetPropertyFlagsNodeGen,GetPropertyNodeGen,GetShapeFlagsNodeGen,IsSharedNodeGen,MarkSharedNodeGen,PutAllNodeGen,PutConstantNodeGen,PutNodeGen,RemoveKeyNodeGen,ResetShapeNodeGen,SetDynamicTypeNodeGen,SetPropertyFlagsNodeGen,SetShapeFlagsNodeGen,UpdateShapeNodeGen
+
 CLSS public abstract com.oracle.truffle.api.object.DynamicObjectLibrary
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 meth public abstract boolean containsKey(com.oracle.truffle.api.object.DynamicObject,java.lang.Object)
 meth public abstract boolean isShared(com.oracle.truffle.api.object.DynamicObject)
 meth public abstract boolean putIfPresent(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,java.lang.Object)
@@ -178,7 +421,6 @@ meth public abstract void setInt(com.oracle.truffle.api.object.DynamicObject,int
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 
 CLSS public abstract com.oracle.truffle.api.object.Location
-cons protected init()
 meth protected double getDouble(com.oracle.truffle.api.object.DynamicObject,boolean) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth protected int getInt(com.oracle.truffle.api.object.DynamicObject,boolean) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth protected long getLong(com.oracle.truffle.api.object.DynamicObject,boolean) throws com.oracle.truffle.api.nodes.UnexpectedResultException
@@ -186,17 +428,16 @@ meth protected static com.oracle.truffle.api.object.FinalLocationException final
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth protected static com.oracle.truffle.api.object.IncompatibleLocationException incompatibleLocation() throws com.oracle.truffle.api.object.IncompatibleLocationException
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
-meth public abstract boolean equals(java.lang.Object)
-meth public abstract int hashCode()
 meth public boolean canSet(java.lang.Object)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth public boolean canStore(java.lang.Object)
+meth public boolean equals(java.lang.Object)
 meth public boolean isAssumedFinal()
 meth public boolean isConstant()
 meth public boolean isDeclared()
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth public boolean isFinal()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="26.0")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 meth public boolean isPrimitive()
 meth public boolean isValue()
 meth public com.oracle.truffle.api.Assumption getFinalAssumption()
@@ -204,14 +445,18 @@ meth public final java.lang.Object get(com.oracle.truffle.api.object.DynamicObje
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth public final java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,com.oracle.truffle.api.object.Shape)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
+meth public int hashCode()
 meth public java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,boolean)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth public java.lang.Object getConstantValue()
+meth public java.lang.String toString()
 meth public void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,com.oracle.truffle.api.object.Shape) throws com.oracle.truffle.api.object.FinalLocationException,com.oracle.truffle.api.object.IncompatibleLocationException
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth public void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,com.oracle.truffle.api.object.Shape,com.oracle.truffle.api.object.Shape) throws com.oracle.truffle.api.object.IncompatibleLocationException
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 supr java.lang.Object
+hfds FINAL_ASSUMPTION_UPDATER,field,finalAssumption,index
+hcls LocationVisitor,UncheckedIncompatibleLocationException
 
 CLSS public abstract interface com.oracle.truffle.api.object.LongLocation
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
@@ -237,20 +482,22 @@ meth public java.lang.String toString(com.oracle.truffle.api.object.DynamicObjec
 supr java.lang.Object
 hfds DEFAULT
 
-CLSS public abstract com.oracle.truffle.api.object.Property
-cons protected init()
+CLSS public final com.oracle.truffle.api.object.Property
+meth public boolean equals(java.lang.Object)
+meth public boolean isHidden()
+meth public com.oracle.truffle.api.object.Location getLocation()
+meth public int getFlags()
+meth public int hashCode()
+meth public java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,boolean)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
-meth public abstract boolean isHidden()
-meth public abstract com.oracle.truffle.api.object.Location getLocation()
-meth public abstract int getFlags()
-meth public abstract java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,boolean)
+meth public java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,com.oracle.truffle.api.object.Shape)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
-meth public abstract java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,com.oracle.truffle.api.object.Shape)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
-meth public abstract java.lang.Object getKey()
+meth public java.lang.Object getKey()
+meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.object.Property create(java.lang.Object,com.oracle.truffle.api.object.Location,int)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 supr java.lang.Object
+hfds flags,key,location
 
 CLSS public final com.oracle.truffle.api.object.PropertyGetter
 meth public boolean accepts(com.oracle.truffle.api.object.DynamicObject)
@@ -263,48 +510,49 @@ meth public long getLong(com.oracle.truffle.api.object.DynamicObject) throws com
 supr java.lang.Object
 hfds expectedShape,location,property
 
-CLSS public abstract com.oracle.truffle.api.object.Shape
-cons protected init()
+CLSS public final com.oracle.truffle.api.object.Shape
 innr public final static Builder
 innr public final static DerivedBuilder
-meth protected abstract com.oracle.truffle.api.object.Shape addProperty(com.oracle.truffle.api.object.Property)
-meth protected abstract com.oracle.truffle.api.object.Shape defineProperty(java.lang.Object,java.lang.Object,int,int)
-meth protected abstract com.oracle.truffle.api.object.Shape removeProperty(com.oracle.truffle.api.object.Property)
-meth protected abstract com.oracle.truffle.api.object.Shape replaceProperty(com.oracle.truffle.api.object.Property,com.oracle.truffle.api.object.Property)
 meth protected boolean hasInstanceProperties()
+meth protected com.oracle.truffle.api.object.Shape addProperty(com.oracle.truffle.api.object.Property)
+meth protected com.oracle.truffle.api.object.Shape defineProperty(java.lang.Object,java.lang.Object,int,int)
+meth protected com.oracle.truffle.api.object.Shape removeProperty(com.oracle.truffle.api.object.Property)
+meth protected com.oracle.truffle.api.object.Shape replaceProperty(com.oracle.truffle.api.object.Property,com.oracle.truffle.api.object.Property)
 meth protected com.oracle.truffle.api.object.Shape setDynamicType(java.lang.Object)
 meth protected com.oracle.truffle.api.object.Shape setFlags(int)
-meth public abstract boolean check(com.oracle.truffle.api.object.DynamicObject)
-meth public abstract boolean hasProperty(java.lang.Object)
-meth public abstract boolean isLeaf()
-meth public abstract boolean isValid()
-meth public abstract com.oracle.truffle.api.Assumption getLeafAssumption()
-meth public abstract com.oracle.truffle.api.Assumption getValidAssumption()
-meth public abstract com.oracle.truffle.api.object.Property getLastProperty()
-meth public abstract com.oracle.truffle.api.object.Property getProperty(java.lang.Object)
-meth public abstract com.oracle.truffle.api.object.Shape defineProperty(java.lang.Object,java.lang.Object,int)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
-meth public abstract com.oracle.truffle.api.object.Shape getRoot()
-meth public abstract com.oracle.truffle.api.object.Shape tryMerge(com.oracle.truffle.api.object.Shape)
-meth public abstract int getPropertyCount()
-meth public abstract java.lang.Iterable<com.oracle.truffle.api.object.Property> getProperties()
-meth public abstract java.lang.Iterable<java.lang.Object> getKeys()
-meth public abstract java.lang.Object getSharedData()
-meth public abstract java.util.List<com.oracle.truffle.api.object.Property> getPropertyList()
-meth public abstract java.util.List<com.oracle.truffle.api.object.Property> getPropertyListInternal(boolean)
-meth public abstract java.util.List<java.lang.Object> getKeyList()
 meth public boolean allPropertiesMatch(java.util.function.Predicate<com.oracle.truffle.api.object.Property>)
+meth public boolean check(com.oracle.truffle.api.object.DynamicObject)
+meth public boolean hasProperty(java.lang.Object)
+meth public boolean isLeaf()
 meth public boolean isShared()
+meth public boolean isValid()
+meth public com.oracle.truffle.api.Assumption getLeafAssumption()
 meth public com.oracle.truffle.api.Assumption getPropertyAssumption(java.lang.Object)
+meth public com.oracle.truffle.api.Assumption getValidAssumption()
+meth public com.oracle.truffle.api.object.Property getFirstProperty()
+meth public com.oracle.truffle.api.object.Property getLastProperty()
+meth public com.oracle.truffle.api.object.Property getProperty(java.lang.Object)
 meth public com.oracle.truffle.api.object.PropertyGetter makePropertyGetter(java.lang.Object)
+meth public com.oracle.truffle.api.object.Shape defineProperty(java.lang.Object,java.lang.Object,int)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
+meth public com.oracle.truffle.api.object.Shape getRoot()
 meth public com.oracle.truffle.api.object.Shape makeSharedShape()
+meth public com.oracle.truffle.api.object.Shape tryMerge(com.oracle.truffle.api.object.Shape)
 meth public int getFlags()
+meth public int getPropertyCount()
 meth public java.lang.Class<? extends com.oracle.truffle.api.object.DynamicObject> getLayoutClass()
+meth public java.lang.Iterable<com.oracle.truffle.api.object.Property> getProperties()
+meth public java.lang.Iterable<java.lang.Object> getKeys()
 meth public java.lang.Object getDynamicType()
+meth public java.lang.Object getSharedData()
+meth public java.lang.String toString()
+meth public java.util.List<com.oracle.truffle.api.object.Property> getPropertyList()
+meth public java.util.List<com.oracle.truffle.api.object.Property> getPropertyListInternal(boolean)
+meth public java.util.List<java.lang.Object> getKeyList()
 meth public static com.oracle.truffle.api.object.Shape$Builder newBuilder()
 meth public static com.oracle.truffle.api.object.Shape$DerivedBuilder newBuilder(com.oracle.truffle.api.object.Shape)
 supr java.lang.Object
-hfds OBJECT_FLAGS_MASK,OBJECT_FLAGS_SHIFT,OBJECT_PROPERTY_ASSUMPTIONS,OBJECT_SHARED,PUT_CONSTANT
+hfds FLAG_ALLOW_PROPERTY_ASSUMPTIONS,FLAG_HAS_INSTANCE_PROPERTIES,FLAG_SHARED_SHAPE,LEAF_ASSUMPTION_UPDATER,OBJECT_FLAGS_MASK,OBJECT_FLAGS_SHIFT,PREDECESSOR_SHAPE_UPDATER,PROPERTY_ASSUMPTIONS_UPDATER,TRANSITION_MAP_UPDATER,depth,flags,layout,leafAssumption,objectArrayCapacity,objectArraySize,objectFieldSize,objectType,parent,predecessorShape,primitiveArrayCapacity,primitiveArraySize,primitiveFieldSize,propertyCount,propertyMap,root,sharedData,sharedPropertyAssumptions,successorShape,transitionFromParent,transitionMap,validAssumption
 hcls AbstractBuilder
 
 CLSS public final static com.oracle.truffle.api.object.Shape$Builder
@@ -391,7 +639,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.Object
-hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,jfrTracing,serialVersionUID,stackTrace,suppressedExceptions
 hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
 
 CLSS public abstract interface java.lang.annotation.Annotation

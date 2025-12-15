@@ -379,6 +379,18 @@ public class TypeStateUtils {
     }
 
     /**
+     * Convert {@link MultiTypeStateWithArray} to {@link BitSet}. This is a slow path we only hit in
+     * ~1% of cases.
+     */
+    public static BitSet bitSetFromArray(MultiTypeStateWithArray withArray) {
+        var bitset = new BitSet(withArray.maxTypeId() + 1);
+        for (int typeId : withArray.getTypeIdArray()) {
+            bitset.set(typeId);
+        }
+        return bitset;
+    }
+
+    /**
      * Make a clone of the input bitSet ensuring the original doesn't get modified in the process.
      * <p>
      * We want to keep the original MultiTypeState.typesBitSet effectively immutable, so we use
@@ -402,6 +414,18 @@ public class TypeStateUtils {
         return clone;
     }
 
+    /**
+     * Convert {@link BitSet} to {@code typeIds} array for {@link MultiTypeStateWithArray}, which is
+     * useful when the result of bitset-based filtering is small enough to be represented via array.
+     */
+    public static int[] typeIdArrayFromBitSet(BitSet bitSet) {
+        var typeIds = new int[bitSet.cardinality()];
+        for (int i = 0, typeId = bitSet.nextSetBit(0); typeId != -1; typeId = bitSet.nextSetBit(typeId + 1)) {
+            typeIds[i++] = typeId;
+        }
+        return typeIds;
+    }
+
     public static boolean closeToAllInstantiated(BigBang bb, TypeState state) {
         if (state.isPrimitive()) {
             return false;
@@ -421,4 +445,18 @@ public class TypeStateUtils {
         return false;
     }
 
+    /**
+     * Create a new {@link BitSet} containing all the types from {@code arrayTypeState} plus
+     * {@code extraType} on top.
+     */
+    public static BitSet newBitSet(MultiTypeStateWithArray arrayTypeState, AnalysisType extraType) {
+        int topBit = Math.max(arrayTypeState.maxTypeId(), extraType.getId());
+        var bitSet = new BitSet(topBit + 1);
+        var typeIdArray = arrayTypeState.getTypeIdArray();
+        for (int i = 0; i < arrayTypeState.typesCount(); i++) {
+            bitSet.set(typeIdArray[i]);
+        }
+        bitSet.set(extraType.getId());
+        return bitSet;
+    }
 }

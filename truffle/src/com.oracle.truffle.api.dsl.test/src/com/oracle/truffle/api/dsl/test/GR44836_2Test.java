@@ -88,6 +88,7 @@ public class GR44836_2Test extends AbstractPolyglotTest {
         @Specialization
         static String s1(Node node, String arg0,
                         @Exclusive @Cached InnerInlinedNode errorProfile,
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached InnerInnerInlinedNode raiseNode) {
             return "s1";
         }
@@ -108,6 +109,7 @@ public class GR44836_2Test extends AbstractPolyglotTest {
                         @Exclusive @Cached(inline = false) InnerCachedNode innerCached3,
                         @Exclusive @Cached(inline = false) InnerCachedNode innerCached4,
                         @Exclusive @Cached InnerInlinedNode errorProfile,
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached InnerInnerInlinedNode raiseNode) {
             errorProfile.execute(inlineTarget, arg0);
             return raiseNode.execute(inlineTarget, arg0);
@@ -125,6 +127,7 @@ public class GR44836_2Test extends AbstractPolyglotTest {
         @Specialization
         static String s1(Node node, String arg0,
                         @Cached InnerInlinedNode errorProfile,
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached InnerInlinedNode raiseNode) {
             return "s1";
         }
@@ -132,6 +135,7 @@ public class GR44836_2Test extends AbstractPolyglotTest {
         @Specialization(guards = "arg0 == 3")
         static String s2(Node inlineTarget, int arg0,
                         @Exclusive @Cached InnerInlinedNode errorProfile,
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached InnerInlinedNode raiseNode) {
             errorProfile.execute(inlineTarget, arg0);
             return raiseNode.execute(inlineTarget, arg0);
@@ -146,6 +150,7 @@ public class GR44836_2Test extends AbstractPolyglotTest {
                         @Exclusive @Cached(inline = false) InnerCachedNode innerCached3,
                         @Exclusive @Cached(inline = false) InnerCachedNode innerCached4,
                         @Exclusive @Cached InnerInlinedNode errorProfile,
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached InnerInlinedNode raiseNode) {
 
             errorProfile.execute(inlineTarget, arg0);

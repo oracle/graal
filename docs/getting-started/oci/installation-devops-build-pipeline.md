@@ -8,8 +8,6 @@ permalink: /getting-started/oci/devops-build-pipeline/
 This guide describes how to use Oracle GraalVM in the Oracle Cloud Infrastructure (OCI) DevOps service.
 [OCI DevOps](https://www.oracle.com/in/devops/devops-service/) is a continuous integration/continuous delivery (CI/CD) service that enables developers to automate the delivery and deployment of software to OCI compute platforms.
 
-> Note: Oracle GraalVM license and support are included in the Oracle Cloud Infrastructure subscription at no additional cost.
-
 OCI DevOps service provides build runners with Oracle Linux 8 as the base container image along with a number of [runtimes and tools](https://docs.oracle.com/en-us/iaas/Content/devops/using/runtime_details.htm).
 
 Oracle GraalVM RPMs are available in the Oracle YUM repository.
@@ -31,17 +29,17 @@ Each package includes the JDK and the Native Image tool.
 
 To install and use Oracle GraalVM in your DevOps Build Pipeline, update your build specification file as shown in the following example.
 
-1. Add a command to install Oracle GraalVM for JDK 25 with Native Image and Java Development Kit (JDK):
+1. Add a command to install Oracle GraalVM 25 with Native Image and Java Development Kit (JDK):
 
     ```yml
     steps:
     - type: Command
-        name: "Install Oracle GraalVM for JDK 25"
+        name: "Install Oracle GraalVM 25"
         command: |
         yum -y install graalvm-25-native-image
     ```
 
-2. Add a command to set the value of the `JAVA_HOME` environment variable for Oracle GraalVM for JDK 25:
+2. Add a command to set the value of the `JAVA_HOME` environment variable for Oracle GraalVM 25:
 
     ```yml
     env:
@@ -68,7 +66,7 @@ Here is an example of a complete [build specification file](https://github.com/o
 
 Oracle GraalVM provides more features, each of which can be installed as an add-on.
 Use the `yum list` command to get a list of the available RPMs for your installation.
-For instance, for Oracle GraalVM for JDK 25, run:
+For instance, for Oracle GraalVM 25, run:
 ```bash
 yum list graalvm-25*
 ...

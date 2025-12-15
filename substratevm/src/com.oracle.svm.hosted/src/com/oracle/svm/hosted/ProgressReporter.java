@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -52,8 +53,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.configure.ConditionalRuntimeValue;
-import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
@@ -69,13 +68,16 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
+import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -88,7 +90,9 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.ByteFormattingUtil;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ProgressReporterFeature.UserRecommendation;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.AnalysisResults;
@@ -104,6 +108,7 @@ import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
+import com.oracle.svm.util.LogUtils;
 import com.sun.management.OperatingSystemMXBean;
 
 import jdk.graal.compiler.options.OptionDescriptor;
@@ -114,13 +119,15 @@ import jdk.graal.compiler.util.json.JsonWriter;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class ProgressReporter {
-    private static final int CHARACTERS_PER_LINE;
+    static final int CHARACTERS_PER_LINE;
     private static final String HEADLINE_SEPARATOR;
     private static final String LINE_SEPARATOR;
     private static final int MAX_NUM_BREAKDOWN = 10;
     public static final String DOCS_BASE_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
     private static final double EXCESSIVE_GC_MIN_THRESHOLD_MILLIS = TimeUtils.secondsToMillis(15);
     private static final double EXCESSIVE_GC_RATIO = 0.5;
+    // Use a leading space like in the rest of Native Image output
+    private static final String BYTES_TO_HUMAN_FORMAT = " " + ByteFormattingUtil.RIGHT_ALIGNED_FORMAT;
 
     private final NativeImageSystemIOWrappers builderIO;
 
@@ -176,8 +183,8 @@ public class ProgressReporter {
 
     static {
         CHARACTERS_PER_LINE = SubstrateUtil.isNonInteractiveTerminal() ? ProgressReporterCHelper.MAX_CHARACTERS_PER_LINE : ProgressReporterCHelper.getTerminalWindowColumnsClamped();
-        HEADLINE_SEPARATOR = Utils.stringFilledWith(CHARACTERS_PER_LINE, "=");
-        LINE_SEPARATOR = Utils.stringFilledWith(CHARACTERS_PER_LINE, "-");
+        HEADLINE_SEPARATOR = ProgressReporterUtils.stringFilledWith(CHARACTERS_PER_LINE, "=");
+        LINE_SEPARATOR = ProgressReporterUtils.stringFilledWith(CHARACTERS_PER_LINE, "-");
     }
 
     public static ProgressReporter singleton() {
@@ -241,35 +248,53 @@ public class ProgressReporter {
         recordJsonMetric(GeneralInfo.JAVA_VERSION, vm.version);
         recordJsonMetric(GeneralInfo.VENDOR_VERSION, vm.vendorVersion);
         recordJsonMetric(GeneralInfo.GRAALVM_VERSION, vm.vendorVersion); // deprecated
-        l().a(" ").doclink("Java version", "#glossary-java-info").a(": ").a(vm.version).a(", ").doclink("vendor version", "#glossary-java-info").a(": ").a(vm.vendorVersion).println();
+
+        // Builder Configuration section
+        l().a(" ").a("Builder configuration:").println();
+        l().a(" - ").doclink("Java version", "#glossary-java-info").a(": ").a(vm.version).a(", ").doclink("vendor version", "#glossary-java-info").a(": ").a(vm.vendorVersion).println();
         String optimizationLevel = SubstrateOptions.Optimize.getValue();
         recordJsonMetric(GeneralInfo.GRAAL_COMPILER_OPTIMIZATION_LEVEL, optimizationLevel);
         String march = CPUType.getSelectedOrDefaultMArch();
         recordJsonMetric(GeneralInfo.GRAAL_COMPILER_MARCH, march);
-        DirectPrinter graalLine = l().a(" ").doclink("Graal compiler", "#glossary-graal-compiler").a(": optimization level: %s, target machine: %s", optimizationLevel, march);
+        DirectPrinter graalLine = l().a(" - ").doclink("Graal compiler", "#glossary-graal-compiler").a(": optimization level: %s, target machine: %s", optimizationLevel, march);
         ImageSingletons.lookup(ProgressReporterFeature.class).appendGraalSuffix(graalLine);
         graalLine.println();
         String cCompilerShort = null;
         if (ImageSingletons.contains(CCompilerInvoker.class)) {
             cCompilerShort = ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.getShortDescription();
-            l().a(" ").doclink("C compiler", "#glossary-ccompiler").a(": ").a(cCompilerShort).println();
+            l().a(" - ").doclink("C compiler", "#glossary-ccompiler").a(": ").a(cCompilerShort).println();
         }
         recordJsonMetric(GeneralInfo.CC, cCompilerShort);
         String gcName = Heap.getHeap().getGC().getName();
         recordJsonMetric(GeneralInfo.GC, gcName);
         long maxHeapSize = SubstrateGCOptions.MaxHeapSize.getValue();
         String maxHeapValue = maxHeapSize == 0 ? Heap.getHeap().getGC().getDefaultMaxHeapSize() : ByteFormattingUtil.bytesToHuman(maxHeapSize);
-        l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
+
+        l().a(" - ").doclink("Assertions", "#glossary-builder-assertions").a(": ").a(SubstrateUtil.assertionsEnabled() ? "enabled" : "disabled").a(", system assertions: ")
+                        .a(getSystemAssertionStatus() ? "enabled" : "disabled")
+                        .println();
 
         printFeatures(features);
+
+        // Image Configuration section
+        l().a(" ").a("Image configuration:").println();
+        l().a(" - ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
+        l().a(" - ").doclink("Assertions", "#glossary-image-assertions").a(": ").a(RuntimeAssertionsSupport.singleton().getDefaultAssertionStatus() ? "enabled" : "disabled")
+                        .a(" (class-specific config may apply), system assertions: ")
+                        .a(RuntimeAssertionsSupport.singleton().getDefaultSystemAssertionStatus() ? "enabled" : "disabled").println();
+
         printExperimentalOptions(classLoader);
         printResourceInfo();
+    }
+
+    private static boolean getSystemAssertionStatus() {
+        return java.util.ArrayList.class.desiredAssertionStatus();
     }
 
     private void printFeatures(List<Feature> features) {
         int numFeatures = features.size();
         if (numFeatures > 0) {
-            l().a(" ").a(numFeatures).a(" ").doclink("user-specific feature(s)", "#glossary-user-specific-features").a(":").println();
+            l().a(" - ").a(numFeatures).a(" ").doclink("user-specific feature(s)", "#glossary-user-specific-features").a(":").println();
             features.sort(Comparator.comparing(a -> a.getClass().getName()));
             for (Feature feature : features) {
                 printFeature(l(), feature);
@@ -278,7 +303,7 @@ public class ProgressReporter {
     }
 
     private static void printFeature(DirectPrinter printer, Feature feature) {
-        printer.a(" - ");
+        printer.a("   - ");
         String name = feature.getClass().getName();
         String url = feature.getURL();
         if (url != null) {
@@ -418,18 +443,7 @@ public class ProgressReporter {
         long totalMemorySize = getOperatingSystemMXBean().getTotalMemorySize();
         recordJsonMetric(ResourceUsageKey.MEMORY_TOTAL, totalMemorySize);
 
-        List<String> inputArguments = ManagementFactory.getRuntimeMXBean().getInputArguments();
-        List<String> maxRAMPercentageValues = inputArguments.stream().filter(arg -> arg.startsWith("-XX:MaxRAMPercentage=") || arg.startsWith("-XX:MaximumHeapSizePercent=")).toList();
-        String memoryUsageReason = "unknown";
-        if (maxRAMPercentageValues.size() == 1) { // The driver sets one of these options once
-            memoryUsageReason = System.getProperty(SubstrateOptions.BUILD_MEMORY_USAGE_REASON_TEXT_PROPERTY, "unknown");
-        } else if (maxRAMPercentageValues.size() > 1) {
-            memoryUsageReason = "set via '%s'".formatted(maxRAMPercentageValues.getLast());
-        }
-        String xmxValueOrNull = inputArguments.stream().filter(arg -> arg.startsWith("-Xmx")).reduce((first, second) -> second).orElse(null);
-        if (xmxValueOrNull != null) { // -Xmx takes precedence over -XX:MaxRAMPercentage
-            memoryUsageReason = "set via '%s'".formatted(xmxValueOrNull);
-        }
+        String memoryUsageReason = System.getProperty(SubstrateOptions.BUILD_MEMORY_USAGE_REASON_TEXT_PROPERTY, "unknown");
 
         int maxNumberOfThreads = NativeImageOptions.getActualNumberOfThreads();
         recordJsonMetric(ResourceUsageKey.PARALLELISM, maxNumberOfThreads);
@@ -442,9 +456,9 @@ public class ProgressReporter {
 
         l().printLineSeparator();
         l().yellowBold().doclink("Build resources", "#glossary-build-resources").a(":").reset().println();
-        l().a(" - %s of memory (%.1f%% of system memory, %s)", ByteFormattingUtil.bytesToHuman(maxMemory), Utils.toPercentage(maxMemory, totalMemorySize), memoryUsageReason).println();
+        l().a(" - %s", memoryUsageReason).println();
         l().a(" - %s thread(s) (%.1f%% of %s available processor(s), %s)",
-                        maxNumberOfThreads, Utils.toPercentage(maxNumberOfThreads, availableProcessors), availableProcessors, maxNumberOfThreadsSuffix).println();
+                        maxNumberOfThreads, ProgressReporterUtils.toPercentage(maxNumberOfThreads, availableProcessors), availableProcessors, maxNumberOfThreadsSuffix).println();
     }
 
     public ReporterClosable printAnalysis(AnalysisUniverse universe, Collection<String> libraries) {
@@ -532,20 +546,20 @@ public class ProgressReporter {
         if (numRuntimeCompiledMethods >= 0) {
             recordJsonMetric(ImageDetailKey.RUNTIME_COMPILED_METHODS_COUNT, numRuntimeCompiledMethods);
             l().a("%,9d ", numRuntimeCompiledMethods).doclink("runtime compiled methods", "#glossary-runtime-methods")
-                            .a(" (%.1f%% of all reachable methods)", Utils.toPercentage(numRuntimeCompiledMethods, reachableMethods), reachableMethods).println();
+                            .a(" (%.1f%% of all reachable methods)", ProgressReporterUtils.toPercentage(numRuntimeCompiledMethods, reachableMethods), reachableMethods).println();
         }
     }
 
     public static List<AnalysisType> reportedReachableTypes(AnalysisUniverse universe) {
-        return reportedElements(universe, universe.getTypes(), AnalysisType::isReachable, t -> !t.isInBaseLayer());
+        return reportedElements(universe, universe.getTypes(), AnalysisType::isReachable, t -> !t.isInSharedLayer());
     }
 
     public static List<AnalysisField> reportedReachableFields(AnalysisUniverse universe) {
-        return reportedElements(universe, universe.getFields(), AnalysisField::isAccessed, f -> !f.isInBaseLayer());
+        return reportedElements(universe, universe.getFields(), AnalysisField::isAccessed, f -> !f.isInSharedLayer());
     }
 
     public static List<AnalysisMethod> reportedReachableMethods(AnalysisUniverse universe) {
-        return reportedElements(universe, universe.getMethods(), AnalysisMethod::isReachable, m -> !m.isInBaseLayer());
+        return reportedElements(universe, universe.getMethods(), AnalysisMethod::isReachable, m -> !m.isInSharedLayer());
     }
 
     private static <T extends AnalysisElement> List<T> reportedElements(AnalysisUniverse universe, Collection<T> elements, Predicate<T> elementsFilter, Predicate<T> baseLayerFilter) {
@@ -589,8 +603,8 @@ public class ProgressReporter {
         Timer archiveTimer = getTimer(TimerCollection.Registry.ARCHIVE_LAYER);
         stagePrinter.end(imageTimer.getTotalTime() + writeTimer.getTotalTime() + archiveTimer.getTotalTime());
         creationStageEndCompleted = true;
-        String format = "%9s (%5.2f%%) for ";
-        l().a(format, ByteFormattingUtil.bytesToHuman(codeAreaSize), Utils.toPercentage(codeAreaSize, imageFileSize))
+        String format = BYTES_TO_HUMAN_FORMAT + " (%5.2f%%) for ";
+        l().a(format, ByteFormattingUtil.bytesToHuman(codeAreaSize), ProgressReporterUtils.toPercentage(codeAreaSize, imageFileSize))
                         .doclink("code area", "#glossary-code-area").a(":%,10d compilation units", numCompilations).println();
         int numResources = 0;
         for (ConditionalRuntimeValue<ResourceStorageEntryBase> entry : Resources.currentLayer().resources().getValues()) {
@@ -599,16 +613,16 @@ public class ProgressReporter {
             }
         }
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_RESOURCE_COUNT, numResources);
-        l().a(format, ByteFormattingUtil.bytesToHuman(imageHeapSize), Utils.toPercentage(imageHeapSize, imageFileSize))
+        l().a(format, ByteFormattingUtil.bytesToHuman(imageHeapSize), ProgressReporterUtils.toPercentage(imageHeapSize, imageFileSize))
                         .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resource%s", heapObjectCount, numResources, numResources == 1 ? "" : "s").println();
         long otherBytes = imageFileSize - codeAreaSize - imageHeapSize;
         if (debugInfoSize > 0) {
             recordJsonMetric(ImageDetailKey.DEBUG_INFO_SIZE, debugInfoSize); // Optional metric
-            DirectPrinter l = l().a(format, ByteFormattingUtil.bytesToHuman(debugInfoSize), Utils.toPercentage(debugInfoSize, imageFileSize))
+            DirectPrinter l = l().a(format, ByteFormattingUtil.bytesToHuman(debugInfoSize), ProgressReporterUtils.toPercentage(debugInfoSize, imageFileSize))
 
                             .doclink("debug info", "#glossary-debug-info");
             if (debugInfoTimer != null) {
-                l.a(" generated in %.1fs", Utils.millisToSeconds(debugInfoTimer.getTotalTime()));
+                l.a(" generated in %.1fs", ProgressReporterUtils.millisToSeconds(debugInfoTimer.getTotalTime()));
             }
             l.println();
             if (!(ImageSingletons.contains(NativeImageDebugInfoStripFeature.class) && ImageSingletons.lookup(NativeImageDebugInfoStripFeature.class).hasStrippedSuccessfully())) {
@@ -621,9 +635,9 @@ public class ProgressReporter {
         recordJsonMetric(ImageDetailKey.TOTAL_SIZE, imageFileSize);
         recordJsonMetric(ImageDetailKey.CODE_AREA_SIZE, codeAreaSize);
         recordJsonMetric(ImageDetailKey.NUM_COMP_UNITS, numCompilations);
-        l().a(format, ByteFormattingUtil.bytesToHuman(otherBytes), Utils.toPercentage(otherBytes, imageFileSize))
+        l().a(format, ByteFormattingUtil.bytesToHuman(otherBytes), ProgressReporterUtils.toPercentage(otherBytes, imageFileSize))
                         .doclink("other data", "#glossary-other-data").println();
-        l().a("%9s in total image size", ByteFormattingUtil.bytesToHuman(imageFileSize));
+        l().a(BYTES_TO_HUMAN_FORMAT + " in total image size", ByteFormattingUtil.bytesToHuman(imageFileSize));
         if (imageDiskFileSize >= 0) {
             l().a(", %s in total file size", ByteFormattingUtil.bytesToHuman(imageDiskFileSize));
         }
@@ -640,18 +654,36 @@ public class ProgressReporter {
     }
 
     private void printBreakdowns() {
+        Map<ProgressReporterUtils.BreakDownClassifier, Long> codeBreakdown = CodeBreakdownProvider.getAndClear().entrySet().stream()
+                        .collect(Collectors.groupingBy(
+                                        entry -> ProgressReporterUtils.BreakDownClassifier.of(entry.getKey()),
+                                        Collectors.summingLong(Entry::getValue)));
+
+        List<Entry<ProgressReporterUtils.BreakDownClassifier, Long>> sortedBreakdownData = codeBreakdown.entrySet().stream()
+                        .sorted(Entry.comparingByValue(Comparator.reverseOrder())).toList();
+
+        if (SubstrateOptions.BuildOutputCodeBreakdownFile.getValue()) {
+            String valueSeparator = ",";
+            List<String> lines = new ArrayList<>();
+            lines.add(String.join(valueSeparator, "Size", "Module", "Package", "Location"));
+            sortedBreakdownData.forEach(entry -> {
+                lines.add(entry.getValue() + valueSeparator + String.join(valueSeparator, entry.getKey().elements()));
+            });
+            Path breakdownFile = SubstrateOptions.getImagePath().resolve(SubstrateOptions.Name.getValue() + ".code_breakdown.csv");
+            BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.BUILD_INFO, breakdownFile);
+            try {
+                Files.write(breakdownFile, lines);
+            } catch (IOException e) {
+                throw VMError.shouldNotReachHere("Failed generating " + breakdownFile, e);
+            }
+        }
+
         if (!SubstrateOptions.BuildOutputBreakdowns.getValue()) {
             return;
         }
-        l().printLineSeparator();
-        Map<String, Long> codeBreakdown = CodeBreakdownProvider.getAndClear();
-        Iterator<Entry<String, Long>> packagesBySize = codeBreakdown.entrySet().stream()
-                        .sorted(Entry.comparingByValue(Comparator.reverseOrder())).iterator();
-
-        HeapBreakdownProvider heapBreakdown = HeapBreakdownProvider.singleton();
-        Iterator<HeapBreakdownProvider.HeapBreakdownEntry> typesBySizeInHeap = heapBreakdown.getSortedBreakdownEntries().iterator();
 
         final TwoColumnPrinter p = new TwoColumnPrinter();
+        l().printLineSeparator();
         p.l().yellowBold().a(String.format("Top %d ", MAX_NUM_BREAKDOWN)).doclink("origins", "#glossary-code-area-origins").a(" of code area:")
                         .jumpToMiddle()
                         .a(String.format("Top %d object types in image heap:", MAX_NUM_BREAKDOWN)).reset().flushln();
@@ -660,26 +692,29 @@ public class ProgressReporter {
         long printedHeapBytes = 0;
         long printedCodeItems = 0;
         long printedHeapItems = 0;
+        Iterator<Entry<ProgressReporterUtils.BreakDownClassifier, Long>> packagesBySize = sortedBreakdownData.iterator();
+        HeapBreakdownProvider heapBreakdown = HeapBreakdownProvider.singleton();
+        Iterator<HeapBreakdownProvider.HeapBreakdownEntry> typesBySizeInHeap = heapBreakdown.getSortedBreakdownEntries().iterator();
         for (int i = 0; i < MAX_NUM_BREAKDOWN; i++) {
             String codeSizePart = "";
+            /* <- 12% for module name -><- remainder for package FQN -> */
             if (packagesBySize.hasNext()) {
-                Entry<String, Long> e = packagesBySize.next();
-                String className = Utils.truncateClassOrPackageName(e.getKey());
-                codeSizePart = String.format("%9s %s", ByteFormattingUtil.bytesToHuman(e.getValue()), className);
-                printedCodeBytes += e.getValue();
+                Entry<ProgressReporterUtils.BreakDownClassifier, Long> entry = packagesBySize.next();
+                String sizeStr = getBreakdownSizeString(entry.getValue());
+                String entryStr = entry.getKey().renderToString(p.middle() - sizeStr.length());
+                codeSizePart = sizeStr + entryStr;
+                printedCodeBytes += entry.getValue();
                 printedCodeItems++;
             }
 
             String heapSizePart = "";
+            /* <- 12% for module name -><- remainder for class FQN -> */
             if (typesBySizeInHeap.hasNext()) {
                 HeapBreakdownProvider.HeapBreakdownEntry e = typesBySizeInHeap.next();
-                String className = e.label.renderToString(linkStrategy);
-                // Do not truncate special breakdown items, they can contain links.
-                if (e.label instanceof HeapBreakdownProvider.SimpleHeapObjectKindName) {
-                    className = Utils.truncateClassOrPackageName(className);
-                }
                 long byteSize = e.byteSize;
-                heapSizePart = String.format("%9s %s", ByteFormattingUtil.bytesToHuman(byteSize), className);
+                String sizeStr = getBreakdownSizeString(byteSize);
+                String labelStr = e.getLabel(CHARACTERS_PER_LINE - p.middle() - sizeStr.length()).renderToString(linkStrategy);
+                heapSizePart = sizeStr + labelStr;
                 printedHeapBytes += byteSize;
                 printedHeapItems++;
             }
@@ -693,10 +728,15 @@ public class ProgressReporter {
         int numHeapItems = heapBreakdown.getSortedBreakdownEntries().size();
         long totalCodeBytes = codeBreakdown.values().stream().mapToLong(Long::longValue).sum();
 
-        p.l().a(String.format("%9s for %s more packages", ByteFormattingUtil.bytesToHuman(totalCodeBytes - printedCodeBytes), numCodeItems - printedCodeItems))
+        p.l().a(String.format(BYTES_TO_HUMAN_FORMAT + " for %s more packages", ByteFormattingUtil.bytesToHuman(totalCodeBytes - printedCodeBytes), numCodeItems - printedCodeItems))
                         .jumpToMiddle()
-                        .a(String.format("%9s for %s more object types", ByteFormattingUtil.bytesToHuman(heapBreakdown.getTotalHeapSize() - printedHeapBytes), numHeapItems - printedHeapItems))
+                        .a(String.format(BYTES_TO_HUMAN_FORMAT + " for %s more object types", ByteFormattingUtil.bytesToHuman(heapBreakdown.getTotalHeapSize() - printedHeapBytes),
+                                        numHeapItems - printedHeapItems))
                         .flushln();
+    }
+
+    private static String getBreakdownSizeString(long sizeInBytes) {
+        return String.format(BYTES_TO_HUMAN_FORMAT + " ", ByteFormattingUtil.bytesToHuman(sizeInBytes));
     }
 
     private void printRecommendations() {
@@ -711,7 +751,7 @@ public class ProgressReporter {
         l().printLineSeparator();
         l().yellowBold().a("Recommendations:").reset().println();
         for (UserRecommendation r : topApplicableRecommendations) {
-            String alignment = Utils.stringFilledWith(Math.max(1, 5 - r.id().length()), " ");
+            String alignment = ProgressReporterUtils.stringFilledWith(Math.max(1, 5 - r.id().length()), " ");
             l().a(" ").doclink(r.id(), "#recommendation-" + r.id().toLowerCase(Locale.ROOT)).a(":").a(alignment).a(r.description()).println();
         }
     }
@@ -744,7 +784,7 @@ public class ProgressReporter {
         l().printLineSeparator();
         printResourceStatistics();
 
-        double totalSeconds = Utils.millisToSeconds(getTimer(TimerCollection.Registry.TOTAL).getTotalTime());
+        double totalSeconds = ProgressReporterUtils.millisToSeconds(getTimer(TimerCollection.Registry.TOTAL).getTotalTime());
         recordJsonMetric(ResourceUsageKey.TOTAL_SECS, totalSeconds);
 
         createAdditionalArtifacts(imageName, generator, buildOutcome.successful(), parsedHostedOptions);
@@ -761,7 +801,9 @@ public class ProgressReporter {
         l().a(outcomePrefix(buildOutcome)).a(" generating '").bold().a(imageName).reset().a("' ")
                         .a(buildOutcome.successful() ? "in" : "after").a(" ").a(timeStats).a(".").println();
 
+        printWarningsCount();
         printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
+        checkTreatWarningsAsError();
     }
 
     private static String outcomePrefix(NativeImageGeneratorRunner.BuildOutcome buildOutcome) {
@@ -770,6 +812,46 @@ public class ProgressReporter {
             case FAILED -> "Failed";
             case STOPPED -> "Stopped";
         };
+    }
+
+    private void printWarningsCount() {
+        int warningsCount = LogUtils.getWarningsCount() + SubstrateOptions.DriverWarningsCount.getValue();
+        if (warningsCount == 0) {
+            return;
+        }
+
+        l().println();
+        l().yellowBold().a("The build process encountered ").a(warningsCount).a(warningsCount == 1 ? " warning." : " warnings.").reset().println();
+        l().println();
+    }
+
+    private static void checkTreatWarningsAsError() {
+        if (SubstrateOptions.TreatWarningsAsError.getValue().contains("all")) {
+            deleteBuiltArtifacts();
+            throw UserError.abort("Build failed: Warnings are treated as errors because the -Werror flag is set.");
+        }
+    }
+
+    /**
+     * Delete built artifacts. This is done e.g. in the -Werror case to ensure we don't "fail on
+     * error" but still have built - but potentially broken - artifacts created.
+     */
+    private static void deleteBuiltArtifacts() {
+        BuildArtifacts.singleton().forEach((artifactType, paths) -> {
+            if (artifactType != ArtifactType.BUILD_INFO) {
+                for (Path path : paths) {
+                    try {
+                        if (path.startsWith(SubstrateOptions.getImagePath())) {
+                            java.nio.file.Files.delete(path);
+                        } else {
+                            LogUtils.warning("Cleaning up due to -Werror failed: Cannot delete artifacts not in " + SubstrateOptions.getImagePath() + ". Invalid: " + path);
+                        }
+                    } catch (IOException ex) {
+                        LogUtils.warning("Cleaning up due to -Werror failed: cannot delete " + path + ": " + ex.getMessage());
+                    }
+                }
+            }
+        });
     }
 
     private void printErrorMessage(Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {
@@ -823,10 +905,35 @@ public class ProgressReporter {
         Map<Path, List<String>> pathToTypes = new TreeMap<>();
         artifacts.forEach((artifactType, paths) -> {
             for (Path path : paths) {
-                pathToTypes.computeIfAbsent(path, p -> new ArrayList<>()).add(artifactType.name().toLowerCase(Locale.ROOT));
+                pathToTypes.computeIfAbsent(path, _ -> new ArrayList<>()).add(artifactType.name().toLowerCase(Locale.ROOT));
             }
         });
-        pathToTypes.forEach((path, typeNames) -> l().a(" ").link(path).dim().a(" (").a(String.join(", ", typeNames)).a(")").reset().println());
+        pathToTypes.forEach((path, typeNames) -> {
+            String artifactTypesString = String.join(", ", typeNames);
+            long artifactSize = getArtifactSize(path);
+            String artifactSizeString = artifactSize >= 0 ? ByteFormattingUtil.bytesToHuman(artifactSize) : "unknown size";
+            l().a(" ").link(path).dim().a(" (").a(artifactTypesString).a(", ").a(artifactSizeString).a(")").reset().println();
+        });
+    }
+
+    private static long getArtifactSize(Path artifactPath) {
+        try {
+            if (Files.isRegularFile(artifactPath)) {
+                return Files.size(artifactPath);
+            } else {
+                try (Stream<Path> artifactDirectorySubPaths = Files.walk(artifactPath)) {
+                    return artifactDirectorySubPaths.filter(Files::isRegularFile).mapToLong(filePath -> {
+                        try {
+                            return Files.size(filePath);
+                        } catch (IOException e) {
+                            return 0;
+                        }
+                    }).sum();
+                }
+            }
+        } catch (IOException e) {
+            return -1;
+        }
     }
 
     private Path reportBuildOutput(Path jsonOutputFile) {
@@ -847,9 +954,9 @@ public class ProgressReporter {
     }
 
     private void printResourceStatistics() {
-        double totalProcessTimeSeconds = Utils.millisToSeconds(ManagementFactory.getRuntimeMXBean().getUptime());
+        double totalProcessTimeSeconds = ProgressReporterUtils.millisToSeconds(ManagementFactory.getRuntimeMXBean().getUptime());
         GCStats gcStats = GCStats.getCurrent();
-        double gcSeconds = Utils.millisToSeconds(gcStats.totalTimeMillis);
+        double gcSeconds = ProgressReporterUtils.millisToSeconds(gcStats.totalTimeMillis);
         recordJsonMetric(ResourceUsageKey.GC_COUNT, gcStats.totalCount);
         recordJsonMetric(ResourceUsageKey.GC_SECS, gcSeconds);
         CenteredTextPrinter p = centered();
@@ -863,7 +970,7 @@ public class ProgressReporter {
         long processCPUTime = getOperatingSystemMXBean().getProcessCpuTime();
         double cpuLoad = UNAVAILABLE_METRIC;
         if (processCPUTime > 0) {
-            cpuLoad = Utils.nanosToSeconds(processCPUTime) / totalProcessTimeSeconds;
+            cpuLoad = ProgressReporterUtils.nanosToSeconds(processCPUTime) / totalProcessTimeSeconds;
             p.a(" | ").doclink("CPU load", "#glossary-cpu-load").a(": ").a("%.2f", cpuLoad);
         }
         recordJsonMetric(ResourceUsageKey.CPU_LOAD, cpuLoad);
@@ -880,7 +987,7 @@ public class ProgressReporter {
         if (gcTimeDeltaMillis > EXCESSIVE_GC_MIN_THRESHOLD_MILLIS && ratio > EXCESSIVE_GC_RATIO) {
             l().redBold().a("GC warning").reset()
                             .a(": %.1fs spent in %d GCs during the last stage, taking up %.2f%% of the time.",
-                                            Utils.millisToSeconds(gcTimeDeltaMillis), currentGCStats.totalCount - lastGCStats.totalCount, ratio * 100)
+                                            ProgressReporterUtils.millisToSeconds(gcTimeDeltaMillis), currentGCStats.totalCount - lastGCStats.totalCount, ratio * 100)
                             .println();
             l().a("            Please ensure more than %s of memory is available for Native Image", ByteFormattingUtil.bytesToHuman(ProgressReporterCHelper.getPeakRSS())).println();
             l().a("            to reduce GC overhead and improve image build time.").println();
@@ -918,64 +1025,6 @@ public class ProgressReporter {
 
     private static OperatingSystemMXBean getOperatingSystemMXBean() {
         return (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    }
-
-    private static final class Utils {
-        private static final double MILLIS_TO_SECONDS = 1000d;
-        private static final double NANOS_TO_SECONDS = 1000d * 1000d * 1000d;
-
-        private static double millisToSeconds(double millis) {
-            return millis / MILLIS_TO_SECONDS;
-        }
-
-        private static double nanosToSeconds(double nanos) {
-            return nanos / NANOS_TO_SECONDS;
-        }
-
-        private static String getUsedMemory() {
-            return ByteFormattingUtil.bytesToHumanGB(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
-        }
-
-        private static String stringFilledWith(int size, String fill) {
-            return new String(new char[size]).replace("\0", fill);
-        }
-
-        private static double toPercentage(long part, long total) {
-            return part / (double) total * 100;
-        }
-
-        private static String truncateClassOrPackageName(String classOrPackageName) {
-            int classNameLength = classOrPackageName.length();
-            int maxLength = CHARACTERS_PER_LINE / 2 - 10;
-            if (classNameLength <= maxLength) {
-                return classOrPackageName;
-            }
-            StringBuilder sb = new StringBuilder();
-            int currentDot = -1;
-            while (true) {
-                int nextDot = classOrPackageName.indexOf('.', currentDot + 1);
-                if (nextDot < 0) { // Not more dots, handle the rest and return.
-                    String rest = classOrPackageName.substring(currentDot + 1);
-                    int sbLength = sb.length();
-                    int restLength = rest.length();
-                    if (sbLength + restLength <= maxLength) {
-                        sb.append(rest);
-                    } else {
-                        int remainingSpaceDivBy2 = (maxLength - sbLength) / 2;
-                        sb.append(rest, 0, remainingSpaceDivBy2 - 1).append("~").append(rest, restLength - remainingSpaceDivBy2, restLength);
-                    }
-                    break;
-                }
-                sb.append(classOrPackageName.charAt(currentDot + 1)).append('.');
-                if (sb.length() + (classNameLength - nextDot) <= maxLength) {
-                    // Rest fits maxLength, append and return.
-                    sb.append(classOrPackageName.substring(nextDot + 1));
-                    break;
-                }
-                currentDot = nextDot;
-            }
-            return sb.toString();
-        }
     }
 
     private record GCStats(long totalCount, long totalTimeMillis) {
@@ -1234,7 +1283,7 @@ public class ProgressReporter {
         }
 
         final String progressBarStartPadding() {
-            return Utils.stringFilledWith(PROGRESS_BAR_START - getCurrentTextLength(), " ");
+            return ProgressReporterUtils.stringFilledWith(PROGRESS_BAR_START - getCurrentTextLength(), " ");
         }
 
         void reportProgress() {
@@ -1254,11 +1303,11 @@ public class ProgressReporter {
                 a("]").reset();
             }
 
-            String suffix = String.format("(%.1fs @ %s)", Utils.millisToSeconds(totalTime), Utils.getUsedMemory());
+            String suffix = String.format("(%.1fs @ %s)", ProgressReporterUtils.millisToSeconds(totalTime), ProgressReporterUtils.getUsedMemory());
             int textLength = getCurrentTextLength();
             // TODO: `assert textLength > 0;` should be used here but tests do not start stages
             // properly (GR-35721)
-            String padding = Utils.stringFilledWith(Math.max(0, CHARACTERS_PER_LINE - textLength - suffix.length()), " ");
+            String padding = ProgressReporterUtils.stringFilledWith(Math.max(0, CHARACTERS_PER_LINE - textLength - suffix.length()), " ");
             a(padding).dim().a(suffix).reset().flushln();
 
             activeBuildStage = null;
@@ -1375,11 +1424,15 @@ public class ProgressReporter {
         }
 
         TwoColumnPrinter jumpToMiddle() {
-            int remaining = (CHARACTERS_PER_LINE / 2) - getCurrentTextLength();
+            int remaining = middle() - getCurrentTextLength();
             assert remaining >= 0 : "Column text too wide";
-            a(Utils.stringFilledWith(remaining, " "));
-            assert getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
+            a(ProgressReporterUtils.stringFilledWith(remaining, " "));
+            assert getCurrentTextLength() == middle();
             return this;
+        }
+
+        private int middle() {
+            return CHARACTERS_PER_LINE / 2;
         }
     }
 
@@ -1391,7 +1444,7 @@ public class ProgressReporter {
 
         @Override
         public void flushln() {
-            String padding = Utils.stringFilledWith((Math.max(0, CHARACTERS_PER_LINE - getCurrentTextLength())) / 2, " ");
+            String padding = ProgressReporterUtils.stringFilledWith((Math.max(0, CHARACTERS_PER_LINE - getCurrentTextLength())) / 2, " ");
             print(padding);
             super.flushln();
         }

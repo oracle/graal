@@ -40,13 +40,15 @@
  */
 package com.oracle.truffle.api.object;
 
+import static com.oracle.truffle.api.object.ObjectStorageOptions.MaxMergeDepth;
+import static com.oracle.truffle.api.object.ObjectStorageOptions.MaxMergeDiff;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.object.ExtLocations.BooleanLocation;
 import com.oracle.truffle.api.object.ExtLocations.DoubleLocation;
 import com.oracle.truffle.api.object.ExtLocations.IntLocation;
 import com.oracle.truffle.api.object.ExtLocations.LongLocation;
@@ -69,7 +71,7 @@ abstract class Obsolescence {
      * @param other Shape to compare to
      * @return true if one shape is an upcast of the other, or the Shapes are equal
      */
-    public static boolean isRelatedByUpcast(ShapeImpl thiz, ShapeImpl other) {
+    public static boolean isRelatedByUpcast(Shape thiz, Shape other) {
         CompilerAsserts.neverPartOfCompilation();
         return tryMergeShapes(thiz, other, true) != null;
     }
@@ -80,9 +82,9 @@ abstract class Obsolescence {
      *
      * @return the more general (not obsoleted) shape if an obsolescence was performed
      */
-    public static ShapeImpl tryObsoleteDowncast(ShapeImpl thiz, ShapeImpl other) {
+    public static Shape tryObsoleteDowncast(Shape thiz, Shape other) {
         CompilerAsserts.neverPartOfCompilation();
-        Supplier<ShapeImpl> mergeResult = tryMergeShapes(thiz, other, false);
+        Supplier<Shape> mergeResult = tryMergeShapes(thiz, other, false);
         if (mergeResult != null) {
             synchronized (thiz.getMutex()) {
                 return mergeResult.get();
@@ -91,7 +93,7 @@ abstract class Obsolescence {
         return null;
     }
 
-    private static Supplier<ShapeImpl> tryMergeShapes(ShapeImpl thiz, ShapeImpl other, boolean checkOnly) {
+    private static Supplier<Shape> tryMergeShapes(Shape thiz, Shape other, boolean checkOnly) {
         CompilerAsserts.neverPartOfCompilation();
         // Check that shapes are related and have the same number of parents and properties.
         if (thiz.getLayout() != other.getLayout()) {
@@ -102,7 +104,7 @@ abstract class Obsolescence {
             return null;
         } else if (thiz.getSharedData() != other.getSharedData()) {
             return null;
-        } else if (thiz.getDepth() >= ExtLayout.MaxMergeDepth) {
+        } else if (thiz.getDepth() >= MaxMergeDepth) {
             return null;
         } else if (thiz.getDepth() != other.getDepth()) {
             return null;
@@ -111,11 +113,11 @@ abstract class Obsolescence {
         }
 
         final LayoutImpl layout = thiz.getLayout();
-        ShapeImpl thisParent = thiz;
-        ShapeImpl otherParent = other;
-        Supplier<ShapeImpl> lastMergeResult = null;
+        Shape thisParent = thiz;
+        Shape otherParent = other;
+        Supplier<Shape> lastMergeResult = null;
         int diff = 0;
-        for (int i = 0; i < ExtLayout.MaxMergeDepth; i++) {
+        for (int i = 0; i < MaxMergeDepth; i++) {
             if (thisParent == otherParent) {
                 // found a common ancestor, so we are done
                 return lastMergeResult;
@@ -143,7 +145,7 @@ abstract class Obsolescence {
                 }
                 assert !thisLast.getLocation().equals(otherLast.getLocation());
                 if (!isLocationEquivalent(thisLast.getLocation(), otherLast.getLocation())) {
-                    if (++diff > ExtLayout.MaxMergeDiff) {
+                    if (++diff > MaxMergeDiff) {
                         // Bail out if too many locations differ since we would need multiple rounds
                         // of obsolescence to migrate to the (or a) more general shape.
                         // Also, not all locations are necessarily assignable in the same direction.
@@ -168,11 +170,11 @@ abstract class Obsolescence {
         return null;
     }
 
-    private static Supplier<ShapeImpl> makeMergeResult(ShapeImpl thiz, ShapeImpl other, ShapeImpl thisParent, ShapeImpl otherParent, Property thisProperty, Property otherProperty) {
+    private static Supplier<Shape> makeMergeResult(Shape thiz, Shape other, Shape thisParent, Shape otherParent, Property thisProperty, Property otherProperty) {
         CompilerAsserts.neverPartOfCompilation();
         assert isSameProperty(thisProperty, otherProperty);
         return () -> {
-            ShapeImpl succ = null;
+            Shape succ = null;
             if (thiz.isValid() && other.isValid() && thisParent.isValid() && otherParent.isValid()) {
                 LayoutImpl layout = thisParent.getLayout();
                 if (isLocationAssignableFrom(layout, thisProperty.getLocation(), otherProperty.getLocation())) {
@@ -202,16 +204,14 @@ abstract class Obsolescence {
     protected static boolean isLocationEquivalent(Location thisLoc, Location otherLoc) {
         if (thisLoc instanceof IntLocation) {
             return (otherLoc instanceof IntLocation);
-        } else if (thisLoc instanceof DoubleLocation) {
-            return (otherLoc instanceof DoubleLocation && ((DoubleLocation) thisLoc).isImplicitCastIntToDouble() && ((DoubleLocation) otherLoc).isImplicitCastIntToDouble());
-        } else if (thisLoc instanceof LongLocation) {
-            return (otherLoc instanceof LongLocation && ((LongLocation) thisLoc).isImplicitCastIntToLong() && ((LongLocation) otherLoc).isImplicitCastIntToLong());
-        } else if (thisLoc instanceof BooleanLocation) {
-            return (otherLoc instanceof BooleanLocation);
+        } else if (thisLoc instanceof DoubleLocation thisDoubleLoc) {
+            return (otherLoc instanceof DoubleLocation otherDoubleLoc &&
+                            thisDoubleLoc.isImplicitCastIntToDouble() == otherDoubleLoc.isImplicitCastIntToDouble());
+        } else if (thisLoc instanceof LongLocation thisLongLoc) {
+            return (otherLoc instanceof LongLocation otherLongLoc &&
+                            thisLongLoc.isImplicitCastIntToLong() == otherLongLoc.isImplicitCastIntToLong());
         } else if (thisLoc instanceof ObjectLocation) {
-            return (otherLoc instanceof ObjectLocation &&
-                            ((ObjectLocation) thisLoc).getType() == ((ObjectLocation) otherLoc).getType() &&
-                            ((ObjectLocation) thisLoc).isNonNull() == ((ObjectLocation) otherLoc).isNonNull());
+            return otherLoc instanceof ObjectLocation;
         } else if (thisLoc.isValue()) {
             return thisLoc.equals(otherLoc);
         } else {
@@ -226,18 +226,9 @@ abstract class Obsolescence {
             return (source instanceof DoubleLocation || (layout.isAllowedIntToDouble() && source instanceof IntLocation));
         } else if (destination instanceof LongLocation) {
             return (source instanceof LongLocation || (layout.isAllowedIntToLong() && source instanceof IntLocation));
-        } else if (destination instanceof BooleanLocation) {
-            return (source instanceof BooleanLocation);
-        } else if (destination instanceof ObjectLocation dstObjLoc) {
-            if (source instanceof ObjectLocation) {
-                return (dstObjLoc.getType() == Object.class || dstObjLoc.getType().isAssignableFrom(((ObjectLocation) source).getType())) &&
-                                (!dstObjLoc.isNonNull() || ((ObjectLocation) source).isNonNull());
-            } else if (source instanceof ExtLocations.TypedLocation) {
-                // Untyped object location is assignable from any primitive type location
-                return dstObjLoc.getType() == Object.class;
-            } else {
-                return false;
-            }
+        } else if (destination instanceof ObjectLocation) {
+            // Object location is assignable from any object or primitive type location
+            return true;
         } else if (destination.isValue()) {
             return destination.equals(source);
         } else {
@@ -248,7 +239,7 @@ abstract class Obsolescence {
     /**
      * Mark this Shape, and all of its descendants, obsolete.
      */
-    public static void markObsolete(ShapeImpl oldShape, ShapeImpl obsoletedBy, Property oldProperty, Property newProperty) {
+    public static void markObsolete(Shape oldShape, Shape obsoletedBy, Property oldProperty, Property newProperty) {
         CompilerAsserts.neverPartOfCompilation();
         assert oldProperty != newProperty;
         assert !oldShape.isShared();
@@ -256,7 +247,7 @@ abstract class Obsolescence {
         markObsolete(oldShape, obsoletedBy);
     }
 
-    private static void markObsolete(ShapeImpl oldShape, ShapeImpl obsoletedBy) {
+    private static void markObsolete(Shape oldShape, Shape obsoletedBy) {
         CompilerAsserts.neverPartOfCompilation();
 
         if (!oldShape.isValid()) {
@@ -267,11 +258,11 @@ abstract class Obsolescence {
         setObsoletedBy(oldShape, obsoletedBy);
         invalidateShape(oldShape);
 
-        Deque<ShapeImpl> workQueue = new ArrayDeque<>(4);
+        Deque<Shape> workQueue = new ArrayDeque<>(4);
         addTransitionsToWorkQueue(oldShape, workQueue);
 
         while (!workQueue.isEmpty()) {
-            ShapeImpl childOldShape = workQueue.pop();
+            Shape childOldShape = workQueue.pop();
 
             if (!childOldShape.isValid() || childOldShape.isShared()) {
                 continue;
@@ -283,10 +274,10 @@ abstract class Obsolescence {
         }
     }
 
-    private static void addTransitionsToWorkQueue(ShapeImpl shape, Deque<? super ShapeImpl> workQueue) {
-        shape.forEachTransition(new BiConsumer<Transition, ShapeImpl>() {
+    private static void addTransitionsToWorkQueue(Shape shape, Deque<? super Shape> workQueue) {
+        shape.forEachTransition(new BiConsumer<Transition, Shape>() {
             @Override
-            public void accept(Transition t, ShapeImpl s) {
+            public void accept(Transition t, Shape s) {
                 if (isDirectTransition(t)) {
                     workQueue.add(s);
                 }
@@ -298,12 +289,12 @@ abstract class Obsolescence {
         return transition.isDirect();
     }
 
-    static void invalidateShape(ShapeImpl shape) {
+    static void invalidateShape(Shape shape) {
         shape.invalidateValidAssumption();
     }
 
-    static void setObsoletedBy(ShapeImpl shape, ShapeImpl successorShape) {
-        ((ShapeExt) shape).setSuccessorShape(successorShape);
-        ((ShapeExt) successorShape).addPredecessorShape(shape);
+    static void setObsoletedBy(Shape shape, Shape successorShape) {
+        shape.setSuccessorShape(successorShape);
+        successorShape.addPredecessorShape(shape);
     }
 }

@@ -363,6 +363,11 @@ public class HotSpotReplacementsUtil {
         return runtime().getHostJVMCIBackend().getCodeCache().getTarget().wordSize;
     }
 
+    @Fold
+    public static int pageSize(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.vmPageSize;
+    }
+
     public static final LocationIdentity PROTOTYPE_MARK_WORD_LOCATION = NamedLocationIdentity.mutable("PrototypeMarkWord");
 
     public static final LocationIdentity KLASS_ACCESS_FLAGS_LOCATION = NamedLocationIdentity.immutable("Klass::_access_flags");
@@ -531,6 +536,16 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
+    public static boolean useStackLocking(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.lockingMode == config.lockingModeStack;
+    }
+
+    @Fold
+    public static boolean useLightweightLocking(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.lockingMode == config.lockingModeLightweight;
+    }
+
+    @Fold
     public static boolean useObjectMonitorTable(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.useObjectMonitorTable;
     }
@@ -543,6 +558,11 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int monitorValue(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.monitorValue;
+    }
+
+    @Fold
+    public static int unusedMark(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.unusedMark;
     }
 
     @Fold
@@ -681,6 +701,36 @@ public class HotSpotReplacementsUtil {
         return config.useCondCardMark;
     }
 
+    @Fold
+    public static int shenandoahGCStateOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.shenandoahGCStateOffset;
+    }
+
+    @Fold
+    public static int shenandoahSATBIndexOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.shenandoahSATBIndexOffset;
+    }
+
+    @Fold
+    public static int shenandoahSATBBufferOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.shenandoahSATBBufferOffset;
+    }
+
+    @Fold
+    public static int shenandoahCardTableOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.shenandoahCardTableOffset;
+    }
+
+    @Fold
+    public static int shenandoahGCRegionSizeBytesShift(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.shenandoahGCRegionSizeBytesShift;
+    }
+
+    @Fold
+    public static long shenandoahGCCSetFastTestAddr(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.shenandoahGCCSetFastTestAddress;
+    }
+
     public static final LocationIdentity KLASS_SUPER_CHECK_OFFSET_LOCATION = NamedLocationIdentity.immutable("Klass::_super_check_offset");
 
     @Fold
@@ -743,6 +793,11 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int lockMetadataOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.basicLockMetadataOffset;
+    }
+
+    @Fold
+    static int heldMonitorCountOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.threadHeldMonitorCountOffset;
     }
 
     @Fold

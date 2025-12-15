@@ -42,7 +42,7 @@
 package com.oracle.truffle.regex.flavor.java;
 
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 // Sets corresponding to the contents of java.util.regex.ASCII
 class JavaASCII {
@@ -50,7 +50,7 @@ class JavaASCII {
     static final CodePointSet LOWER = CodePointSet.createNoDedup(0x61, 0x7A);
     static final CodePointSet DIGIT = CodePointSet.createNoDedup(0x30, 0x39);
     static final CodePointSet SPACE = CodePointSet.createNoDedup(0x09, 0x0D, 0x20, 0x20);
-    static final CodePointSet NON_SPACE = SPACE.createInverse(Encodings.UTF_16);
+    static final CodePointSet NON_SPACE = SPACE.createInverse(Encoding.UTF_16);
     static final CodePointSet PUNCT = CodePointSet.createNoDedup(0x21, 0x2F, 0x3A, 0x40, 0x5B, 0x60, 0x7B, 0x7E);
     static final CodePointSet CNTRL = CodePointSet.createNoDedup(0x00, 0x1F, 0x7F, 0x7F);
     static final CodePointSet BLANK = CodePointSet.createNoDedup(0x09, 0x09, 0x20, 0x20);

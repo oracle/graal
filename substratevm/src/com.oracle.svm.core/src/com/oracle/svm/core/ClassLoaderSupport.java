@@ -30,11 +30,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
-import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public abstract class ClassLoaderSupport {
@@ -52,7 +52,7 @@ public abstract class ClassLoaderSupport {
 
     protected abstract boolean isNativeImageClassLoaderImpl(ClassLoader classLoader);
 
-    public record ConditionWithOrigin(ConfigurationCondition condition, Object origin) {
+    public record ConditionWithOrigin(AccessCondition condition, Object origin) {
     }
 
     public interface ResourceCollector {
@@ -60,7 +60,7 @@ public abstract class ClassLoaderSupport {
 
         void addResourceEntry(Module module, String resourceName, Object origin);
 
-        void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition, Object origin);
+        void addResourceConditionally(Module module, String resourceName, AccessCondition condition, Object origin);
 
         void registerNegativeQuery(Module module, String resourceName);
 
@@ -71,5 +71,5 @@ public abstract class ClassLoaderSupport {
 
     public abstract List<ResourceBundle> getResourceBundle(String bundleName, Locale locale);
 
-    public abstract Map<String, Set<Module>> getPackageToModules();
+    public abstract Map<String, EconomicSet<Module>> getPackageToModules();
 }

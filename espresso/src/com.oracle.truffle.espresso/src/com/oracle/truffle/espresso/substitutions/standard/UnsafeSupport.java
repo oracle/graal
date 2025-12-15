@@ -22,9 +22,13 @@
  */
 package com.oracle.truffle.espresso.substitutions.standard;
 
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAccessMode;
+
 import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 import sun.misc.Unsafe;
@@ -58,58 +62,10 @@ final class UnsafeSupport {
         return ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
     }
 
-    static boolean compareAndSetByte(
-                    Object o, long offset,
-                    byte expected,
-                    byte x) {
-        return compareAndExchangeByte(o, offset, expected, x) == expected;
-    }
-
-    static boolean compareAndSetBoolean(
-                    Object o, long offset,
-                    boolean expected,
-                    boolean x) {
-        byte byteExpected = expected ? (byte) 1 : (byte) 0;
-        byte byteX = x ? (byte) 1 : (byte) 0;
-        return compareAndSetByte(o, offset, byteExpected, byteX);
-    }
-
-    static boolean compareAndSetShort(
-                    Object o, long offset,
-                    short expected,
-                    short x) {
-        return compareAndExchangeShort(o, offset, expected, x) == expected;
-    }
-
-    static boolean compareAndSetChar(
-                    Object o, long offset,
-                    char expected,
-                    char x) {
-        return compareAndSetShort(o, offset, (short) expected, (short) x);
-    }
-
-    static boolean compareAndSetFloat(
-                    Object o, long offset,
-                    float expected,
-                    float x) {
-        return UNSAFE.compareAndSwapInt(o, offset,
-                        Float.floatToRawIntBits(expected),
-                        Float.floatToRawIntBits(x));
-    }
-
-    static boolean compareAndSetDouble(
-                    Object o, long offset,
-                    double expected,
-                    double x) {
-        return UNSAFE.compareAndSwapLong(o, offset,
-                        Double.doubleToRawLongBits(expected),
-                        Double.doubleToRawLongBits(x));
-    }
-
     static byte compareAndExchangeByte(
                     Object o, long offset,
                     byte expected,
-                    byte x) {
+                    byte x, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
         long wordOffset = offset & ~3;
         int shift = (int) (offset & 3) << 3;
         if (isBigEndian()) {
@@ -120,28 +76,33 @@ final class UnsafeSupport {
         int maskedX = (x & 0xFF) << shift;
         int fullWord;
         do {
-            fullWord = UNSAFE.getIntVolatile(o, wordOffset);
+            fullWord = doGetIntVolatile(o, wordOffset, nativeMemory);
             if ((fullWord & mask) != maskedExpected) {
                 return (byte) ((fullWord & mask) >> shift);
             }
-        } while (!UNSAFE.compareAndSwapInt(o, wordOffset,
-                        fullWord, (fullWord & ~mask) | maskedX));
+        } while (!doCAS(o, wordOffset,
+                        fullWord, (fullWord & ~mask) | maskedX, nativeMemory));
         return expected;
     }
 
-    static boolean compareAndExchangeBoolean(
-                    Object o, long offset,
-                    boolean expected,
-                    boolean x) {
-        byte byteExpected = expected ? (byte) 1 : (byte) 0;
-        byte byteX = x ? (byte) 1 : (byte) 0;
-        return compareAndExchangeByte(o, offset, byteExpected, byteX) != 0;
+    private static int doGetIntVolatile(Object o, long offset, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+        if (nativeMemory != null && o == null) {
+            return nativeMemory.getInt(offset, MemoryAccessMode.VOLATILE);
+        }
+        return UNSAFE.getIntVolatile(o, offset);
+    }
+
+    private static boolean doCAS(Object o, long offset, int expected, int value, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+        if (nativeMemory != null && o == null) {
+            return nativeMemory.compareAndExchangeInt(offset, expected, value) == expected;
+        }
+        return UNSAFE.compareAndSwapInt(o, offset, expected, value);
     }
 
     static short compareAndExchangeShort(
                     Object o, long offset,
                     short expected,
-                    short x) {
+                    short x, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
         if ((offset & 3) == 3) {
             throw new IllegalArgumentException("Update spans the word, not supported");
         }
@@ -155,20 +116,13 @@ final class UnsafeSupport {
         int maskedX = (x & 0xFFFF) << shift;
         int fullWord;
         do {
-            fullWord = UNSAFE.getIntVolatile(o, wordOffset);
+            fullWord = doGetIntVolatile(o, wordOffset, nativeMemory);
             if ((fullWord & mask) != maskedExpected) {
                 return (short) ((fullWord & mask) >> shift);
             }
-        } while (!UNSAFE.compareAndSwapInt(o, wordOffset,
-                        fullWord, (fullWord & ~mask) | maskedX));
+        } while (!doCAS(o, wordOffset,
+                        fullWord, (fullWord & ~mask) | maskedX, nativeMemory));
         return expected;
-    }
-
-    static char compareAndExchangeChar(
-                    Object o, long offset,
-                    char expected,
-                    char x) {
-        return (char) compareAndExchangeShort(o, offset, (short) expected, (short) x);
     }
 
     static int compareAndExchangeInt(
@@ -199,15 +153,6 @@ final class UnsafeSupport {
         return expected;
     }
 
-    static float compareAndExchangeFloat(
-                    Object o, long offset,
-                    float expected,
-                    float x) {
-        return Float.intBitsToFloat(compareAndExchangeInt(o, offset,
-                        Float.floatToRawIntBits(expected),
-                        Float.floatToRawIntBits(x)));
-    }
-
     static long compareAndExchangeLong(
                     Object o, long offset,
                     long expected,
@@ -222,25 +167,16 @@ final class UnsafeSupport {
         return expected;
     }
 
-    static double compareAndExchangeDouble(
-                    Object o, long offset,
-                    double expected,
-                    double x) {
-        return Double.longBitsToDouble(compareAndExchangeLong(o, offset,
-                        Double.doubleToRawLongBits(expected),
-                        Double.doubleToRawLongBits(x)));
-    }
-
-    static void copySwapMemory(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize) {
+    static void copySwapMemory(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
         switch ((int) elemSize) {
             case 2:
-                CSMHelper.do2(src, srcOffset, dst, destOffset, bytes, elemSize);
+                CSMHelper.do2(src, srcOffset, dst, destOffset, bytes, elemSize, nativeMemory);
                 return;
             case 4:
-                CSMHelper.do4(src, srcOffset, dst, destOffset, bytes, elemSize);
+                CSMHelper.do4(src, srcOffset, dst, destOffset, bytes, elemSize, nativeMemory);
                 return;
             case 8:
-                CSMHelper.do8(src, srcOffset, dst, destOffset, bytes, elemSize);
+                CSMHelper.do8(src, srcOffset, dst, destOffset, bytes, elemSize, nativeMemory);
                 return;
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -288,7 +224,7 @@ final class UnsafeSupport {
             return Long.reverseBytes(l);
         }
 
-        static void do2(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize) {
+        static void do2(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
             assert elemSize == 2 : elemSize;
             Direction d = getDirection(src, srcOffset, dst, destOffset, bytes);
             char tmp;
@@ -298,16 +234,31 @@ final class UnsafeSupport {
 
             while (copied < bytes) {
 
-                tmp = UNSAFE.getChar(src, srcOffset + pos);
+                tmp = doGetChar(src, srcOffset + pos, nativeMemory);
                 tmp = swap(tmp);
-                UNSAFE.putChar(dst, destOffset + pos, tmp);
+                doPutChar(dst, destOffset + pos, tmp, nativeMemory);
 
                 pos += d.inc(elemSize);
                 copied += elemSize;
             }
         }
 
-        static void do4(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize) {
+        private static char doGetChar(Object o, long offSet, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+            if (o == null) {
+                return nativeMemory.getChar(offSet, MemoryAccessMode.PLAIN);
+            }
+            return UNSAFE.getChar(o, offSet);
+        }
+
+        private static void doPutChar(Object o, long offSet, char x, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+            if (o == null) {
+                nativeMemory.putChar(offSet, x, MemoryAccessMode.PLAIN);
+                return;
+            }
+            UNSAFE.putChar(o, offSet, x);
+        }
+
+        static void do4(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
             assert elemSize == 4 : elemSize;
             Direction d = getDirection(src, srcOffset, dst, destOffset, bytes);
             int tmp;
@@ -317,15 +268,30 @@ final class UnsafeSupport {
 
             while (copied < bytes) {
 
-                tmp = swap(UNSAFE.getInt(src, srcOffset + pos));
-                UNSAFE.putInt(dst, destOffset + pos, tmp);
+                tmp = swap(doGetInt(src, srcOffset + pos, nativeMemory));
+                doPutInt(dst, destOffset + pos, tmp, nativeMemory);
 
                 pos += d.inc(elemSize);
                 copied += elemSize;
             }
         }
 
-        static void do8(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize) {
+        private static int doGetInt(Object o, long offSet, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+            if (o == null) {
+                return nativeMemory.getInt(offSet, MemoryAccessMode.PLAIN);
+            }
+            return UNSAFE.getInt(o, offSet);
+        }
+
+        private static void doPutInt(Object o, long offSet, int x, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+            if (o == null) {
+                nativeMemory.putInt(offSet, x, MemoryAccessMode.PLAIN);
+                return;
+            }
+            UNSAFE.putInt(o, offSet, x);
+        }
+
+        static void do8(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
             assert elemSize == 8 : elemSize;
             Direction d = getDirection(src, srcOffset, dst, destOffset, bytes);
             long tmp;
@@ -335,124 +301,27 @@ final class UnsafeSupport {
 
             while (copied < bytes) {
 
-                tmp = swap(UNSAFE.getLong(src, srcOffset + pos));
-                UNSAFE.putLong(dst, destOffset + pos, tmp);
+                tmp = swap(doGetLong(src, srcOffset + pos, nativeMemory));
+                doPutLong(dst, destOffset + pos, tmp, nativeMemory);
 
                 pos += d.inc(elemSize);
                 copied += elemSize;
             }
         }
-    }
 
-    // For 11:
-    /*-
-    static boolean isBigEndian() {
-        return UNSAFE.isBigEndian();
+        private static long doGetLong(Object o, long offSet, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+            if (o == null) {
+                return nativeMemory.getLong(offSet, MemoryAccessMode.PLAIN);
+            }
+            return UNSAFE.getLong(o, offSet);
+        }
+
+        private static void doPutLong(Object o, long offSet, long x, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+            if (o == null) {
+                nativeMemory.putLong(offSet, x, MemoryAccessMode.PLAIN);
+                return;
+            }
+            UNSAFE.putLong(o, offSet, x);
+        }
     }
-    
-    static boolean compareAndSetByte(
-                    Object o, long offset,
-                    byte expected,
-                    byte x) {
-        return UNSAFE.compareAndSetByte(o, offset, expected, x);
-    }
-    
-    static boolean compareAndSetBoolean(
-                    Object o, long offset,
-                    boolean expected,
-                    boolean x) {
-        return UNSAFE.compareAndSetBoolean(o, offset, expected, x);
-    }
-    
-    static boolean compareAndSetShort(
-                    Object o, long offset,
-                    short expected,
-                    short x) {
-        return UNSAFE.compareAndSetShort(o, offset, expected, x);
-    }
-    
-    static boolean compareAndSetChar(
-                    Object o, long offset,
-                    char expected,
-                    char x) {
-        return UNSAFE.compareAndSetChar(o, offset, expected, x);
-    }
-    
-    static boolean compareAndSetFloat(
-                    Object o, long offset,
-                    float expected,
-                    float x) {
-        return UNSAFE.compareAndSetFloat(o, offset, expected, x);
-    }
-    
-    static boolean compareAndSetDouble(
-                    Object o, long offset,
-                    double expected,
-                    double x) {
-        return UNSAFE.compareAndSetDouble(o, offset, expected, x);
-    }
-    
-    static byte compareAndExchangeByte(
-                    Object o, long offset,
-                    byte expected,
-                    byte x) {
-        return UNSAFE.compareAndExchangeByte(o, offset, expected, x);
-    }
-    
-    static boolean compareAndExchangeBoolean(
-                    Object o, long offset,
-                    boolean expected,
-                    boolean x) {
-        return UNSAFE.compareAndExchangeBoolean(o, offset, expected, x);
-    }
-    
-    static short compareAndExchangeShort(
-                    Object o, long offset,
-                    short expected,
-                    short x) {
-        return UNSAFE.compareAndExchangeShort(o, offset, expected, x);
-    }
-    
-    static char compareAndExchangeChar(
-                    Object o, long offset,
-                    char expected,
-                    char x) {
-        return UNSAFE.compareAndExchangeChar(o, offset, expected, x);
-    }
-    
-    static int compareAndExchangeInt(
-                    Object o, long offset,
-                    int expected,
-                    int x) {
-        return UNSAFE.compareAndExchangeInt(o, offset, expected, x);
-    }
-    
-    static Object compareAndExchangeObject(
-                    Object o, long offset,
-                    Object expected,
-                    Object x) {
-        return UNSAFE.compareAndExchangeObject(o, offset, expected, x);
-    }
-    
-    static float compareAndExchangeFloat(
-                    Object o, long offset,
-                    float expected,
-                    float x) {
-        return UNSAFE.compareAndExchangeFloat(o, offset, expected, x);
-    }
-    
-    static long compareAndExchangeLong(
-                    Object o, long offset,
-                    long expected,
-                    long x) {
-        return UNSAFE.compareAndExchangeLong(o, offset, expected, x);
-    }
-    
-    static double compareAndExchangeDouble(
-                    Object o, long offset,
-                    double expected,
-                    double x) {
-        return UNSAFE.compareAndExchangeDouble(o, offset, expected, x);
-    }
-    */
 }

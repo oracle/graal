@@ -34,7 +34,6 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
-import jdk.graal.compiler.phases.VerifyPhase;
 
 /**
  * Utility class that verifies that every {@link Class} extending {@link Node} specifies non default
@@ -47,8 +46,8 @@ public class VerifyNodeCosts {
         if (Node.class.isAssignableFrom(clazz)) {
             NodeInfo nodeInfo = clazz.getAnnotation(NodeInfo.class);
             if (nodeInfo == null) {
-                throw new VerifyPhase.VerificationError("%s extends %s but does not specify a %s annotation.",
-                                clazz.getName(), Node.class.getName(), NodeInfo.class.getName());
+                throw new AssertionError(String.format("%s extends %s but does not specify a %s annotation.",
+                                clazz.getName(), Node.class.getName(), NodeInfo.class.getName()));
             }
 
             List<String> errors = new ArrayList<>();
@@ -75,7 +74,7 @@ public class VerifyNodeCosts {
                 }
             }
             if (!errors.isEmpty()) {
-                throw new VerifyPhase.VerificationError("Errors for " + clazz.getName() + System.lineSeparator() + String.join(System.lineSeparator(), errors));
+                throw new AssertionError(String.format("Errors for " + clazz.getName() + System.lineSeparator() + String.join(System.lineSeparator(), errors)));
             }
         }
     }

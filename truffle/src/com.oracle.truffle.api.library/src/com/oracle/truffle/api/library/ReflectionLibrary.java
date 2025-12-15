@@ -56,15 +56,15 @@ import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
  *
  * <h3>Sending Messages</h3>
  *
- * Messages can be sent to receivers by first {@link Message#resolve(Class, String) resolving} a
- * target message. Then the message can be sent to a receiver that may implement that message. The
- * message name and class may be resolved dynamically.
+ * Messages can be sent to receivers by first {@link Message#resolveExact(Class, String, Class[])}
+ * resolving} a target message. Then the message can be sent to a receiver that may implement that
+ * message. The message name and class may be resolved dynamically.
  *
  * <h4>Usage example</h4>
  *
  * <pre>
  * String messageName = "isArray";
- * Message message = Message.resolve(ArrayLibrary.class, messageName);
+ * Message message = Message.resolveExact(ArrayLibrary.class, messageName);
  * Object receiver = 42;
  * try {
  *     ReflectionLibrary.getFactory().getUncached().send(receiver, message);

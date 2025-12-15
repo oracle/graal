@@ -121,7 +121,7 @@ public abstract class AbstractJfrTest {
     }
 
     private static void checkEvents(List<RecordedEvent> events, String[] testedEventTypes) {
-        HashSet<String> seenEventTypes = new HashSet<>();
+        HashSet<String> seenEventTypes = new HashSet<>(); // noEconomicSet(test)
         for (RecordedEvent event : events) {
             String eventName = event.getEventType().getName();
             seenEventTypes.add(eventName);

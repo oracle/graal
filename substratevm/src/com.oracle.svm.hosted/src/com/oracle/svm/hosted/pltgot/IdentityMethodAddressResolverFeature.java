@@ -27,27 +27,18 @@ package com.oracle.svm.hosted.pltgot;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.nativeimage.AnnotationAccess;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
-import com.oracle.svm.core.graal.code.StubCallingConvention;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.IdentityMethodAddressResolver;
 import com.oracle.svm.core.pltgot.MethodAddressResolver;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
@@ -75,48 +66,14 @@ public class IdentityMethodAddressResolverFeature implements InternalFeature {
     private ObjectFile.ProgbitsSectionImpl offsetsSectionBufferImpl;
 
     protected class IdentityMethodAddressResolverSupport implements MethodAddressResolutionSupport {
-        private static boolean isAllowed(SharedMethod method) {
-            if (AnnotationAccess.isAnnotationPresent(method, CEntryPoint.class)) {
-                return false;
-            }
-            if (AnnotationAccess.isAnnotationPresent(method, CFunction.class)) {
-                return false;
-            }
-            if (AnnotationAccess.isAnnotationPresent(method, StubCallingConvention.class)) {
-                return false;
-            }
-            if (AnnotationAccess.isAnnotationPresent(method, Uninterruptible.class)) {
-                return false;
-            }
-            if (AnnotationAccess.isAnnotationPresent(method, SubstrateForeignCallTarget.class)) {
-                return false;
-            }
-            if (AnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), InternalVMMethod.class)) {
-                return false;
-            }
-            if (AnnotationAccess.isAnnotationPresent(method, ExplicitCallingConvention.class) &&
-                            AnnotationAccess.getAnnotation(method, ExplicitCallingConvention.class).value().equals(SubstrateCallingConventionKind.ForwardReturnValue)) {
-                /*
-                 * Methods that use ForwardReturnValue calling convention can't be resolved with
-                 * PLT/GOT on AMD64 because
-                 * AMD64MethodAddressResolutionDispatcher.resolveMethodAddress uses the same calling
-                 * convention, and we can't save the callers value of the `rax` register on AMD64
-                 * without spilling it.
-                 */
-                return false;
-            }
-            return true;
-        }
-
         @Override
-        @SuppressWarnings("unused")
-        public boolean shouldCallViaPLTGOT(SharedMethod caller, SharedMethod callee) {
-            return isAllowed(callee);
+        public boolean shouldCallViaPLTGOT(@SuppressWarnings("unused") SharedMethod caller, SharedMethod callee) {
+            return HostedPLTGOTConfiguration.canBeCalledViaPLTGOT(callee);
         }
 
         @Override
         public boolean shouldCallViaPLTGOT(SharedMethod callee) {
-            return isAllowed(callee);
+            return HostedPLTGOTConfiguration.canBeCalledViaPLTGOT(callee);
         }
 
         @Override
@@ -154,7 +111,7 @@ public class IdentityMethodAddressResolverFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        HostedPLTGOTConfiguration.singleton().initializeMethodAddressResolutionSupport(IdentityMethodAddressResolverSupport::new);
+        HostedPLTGOTConfiguration.singleton().initializeMethodAddressResolutionSupport(new IdentityMethodAddressResolverSupport());
     }
 
     @Override

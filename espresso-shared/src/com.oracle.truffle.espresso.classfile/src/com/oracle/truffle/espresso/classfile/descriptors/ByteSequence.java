@@ -52,12 +52,18 @@ public abstract class ByteSequence {
     }
 
     static int hashOfRange(final byte[] bytes, int offset, int length) {
-        int h = 0;
-        if (length > 0) {
-            h = 1;
-            for (int i = 0; i < length; ++i) {
-                h = 31 * h + bytes[offset + i];
-            }
+        if (offset == 0 && length == bytes.length) {
+            int h = Arrays.hashCode(bytes);
+            assert h == hashOfRange0(bytes, offset, length);
+            return h;
+        }
+        return hashOfRange0(bytes, offset, length);
+    }
+
+    private static int hashOfRange0(byte[] bytes, int offset, int length) {
+        int h = 1;
+        for (int i = 0; i < length; ++i) {
+            h = 31 * h + bytes[offset + i];
         }
         return h;
     }
@@ -191,27 +197,14 @@ public abstract class ByteSequence {
     }
 
     public final boolean contentEquals(ByteSequence other) {
-        if (length() != other.length()) {
-            return false;
-        }
-        for (int i = 0; i < length(); ++i) {
-            if (byteAt(i) != other.byteAt(i)) {
-                return false;
-            }
-        }
-        return true;
+        return Arrays.equals(value, offset(), offset() + length(), other.value, other.offset(), other.offset() + other.length());
     }
 
     public final boolean contentStartsWith(ByteSequence other) {
         if (length() < other.length()) {
             return false;
         }
-        for (int i = 0; i < other.length(); ++i) {
-            if (byteAt(i) != other.byteAt(i)) {
-                return false;
-            }
-        }
-        return true;
+        return Arrays.equals(value, offset(), offset() + other.length(), other.value, other.offset(), other.offset() + other.length());
     }
 
     @TruffleBoundary
@@ -238,6 +231,15 @@ public abstract class ByteSequence {
 
     public int lastIndexOf(byte b) {
         for (int i = length() - 1; i >= 0; i--) {
+            if (byteAt(i) == b) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public int indexOf(byte b) {
+        for (int i = 0; i < length(); i++) {
             if (byteAt(i) == b) {
                 return i;
             }
@@ -301,8 +303,6 @@ public abstract class ByteSequence {
         if (this.hashCode != that.hashCode) {
             return false;
         }
-        return Arrays.equals(
-                        this.value, this.offset(), this.offset() + this.length(),
-                        that.value, that.offset(), that.offset() + that.length());
+        return contentEquals(that);
     }
 }

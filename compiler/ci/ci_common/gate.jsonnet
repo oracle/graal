@@ -101,9 +101,15 @@
   test:: s.base(no_warning_as_error=true, extra_vm_args="-Djdk.graal.DetailedAsserts=true"),
   unittest_compiler:: s.base(tags="build,unittest-compiler", no_warning_as_error=true, extra_vm_args="-Djdk.graal.DetailedAsserts=true"),
   unittest_truffle:: s.base(tags="build,unittest-truffle", no_warning_as_error=true, extra_vm_args="-Djdk.graal.DetailedAsserts=true"),
+
   test_zgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
   unittest_compiler_zgc:: s.base(tags="build,unittest-compiler", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
   unittest_truffle_zgc:: s.base(tags="build,unittest-truffle", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
+
+  test_shenandoah:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseShenandoahGC"),
+  unittest_compiler_shenandoah:: s.base(tags="build,unittest-compiler", no_warning_as_error=true, extra_vm_args="-XX:+UseShenandoahGC"),
+  unittest_truffle_shenandoah:: s.base(tags="build,unittest-truffle", no_warning_as_error=true, extra_vm_args="-XX:+UseShenandoahGC"),
+
   test_serialgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseSerialGC"),
 
   jacoco_gate_args:: ["--jacoco-omit-excluded", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
@@ -131,43 +137,25 @@
 
   # Runs truffle tests in a mode similar to HotSpot's -Xcomp option
   # (i.e. compile immediately without background compilation).
-  truffle_xcomp:: s.base("build,unittest",
+  truffle_xcomp_base(extra_vm_args=""):: s.base("build,unittest",
     extra_vm_args="-Dpolyglot.engine.AllowExperimentalOptions=true " +
                   "-Dpolyglot.engine.CompileImmediately=true " +
                   "-Dpolyglot.engine.BackgroundCompilation=false " +
-                  "-Dtck.inlineVerifierInstrument=false",
+                  "-Dtck.inlineVerifierInstrument=false" + extra_vm_args,
     extra_unittest_args="--verbose truffle") + {
       environment+: {"TRACE_COMPILATION": "true"},
       logs+: ["*/*_compilation.log"],
       components+: ["truffle"],
     },
 
-  truffle_xcomp_zgc:: s.base("build,unittest",
-    extra_vm_args="-Dpolyglot.engine.AllowExperimentalOptions=true " +
-                  "-Dpolyglot.engine.CompileImmediately=true " +
-                  "-Dpolyglot.engine.BackgroundCompilation=false " +
-                  "-Dtck.inlineVerifierInstrument=false " +
-                  "-XX:+UseZGC",
-    extra_unittest_args="--verbose truffle") + {
-      environment+: {"TRACE_COMPILATION": "true"},
-      logs+: ["*/*_compilation.log"],
-      components+: ["truffle"],
-    },
-
-  truffle_xcomp_serialgc:: s.base("build,unittest",
-    extra_vm_args="-Dpolyglot.engine.AllowExperimentalOptions=true " +
-                  "-Dpolyglot.engine.CompileImmediately=true " +
-                  "-Dpolyglot.engine.BackgroundCompilation=false " +
-                  "-Dtck.inlineVerifierInstrument=false " +
-                  "-XX:+UseSerialGC",
-    extra_unittest_args="--verbose truffle") + {
-      environment+: {"TRACE_COMPILATION": "true"},
-      logs+: ["*/*_compilation.log"],
-      components+: ["truffle"],
-    },
+  truffle_xcomp:: s.truffle_xcomp_base(),
+  truffle_xcomp_zgc:: s.truffle_xcomp_base(" -XX:+UseZGC"),
+  truffle_xcomp_shenandoah:: s.truffle_xcomp_base(" -XX:+UseShenandoahGC"),
+  truffle_xcomp_serialgc:: s.truffle_xcomp_base(" -XX:+UseSerialGC"),
 
   ctw:: s.base("build,ctw", no_warning_as_error=true),
   ctw_zgc:: s.base("build,ctw", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
+  ctw_shenandoah:: s.base("build,ctw", no_warning_as_error=true, extra_vm_args="-XX:+UseShenandoahGC"),
 
   ctw_economy:: s.base("build,ctweconomy", extra_vm_args="-Djdk.graal.CompilerConfiguration=economy"),
   ctw_phaseplan_fuzzing:: s.base("build,ctwphaseplanfuzzing"),
@@ -175,11 +163,13 @@
   # Runs some benchmarks as tests
   benchmarktest:: s.base("build,benchmarktest") + jmh_benchmark_test,
   benchmarktest_zgc:: s.base("build,benchmarktest", extra_vm_args="-XX:+UseZGC") + jmh_benchmark_test,
+  benchmarktest_shenandoah:: s.base("build,benchmarktest", extra_vm_args="-XX:+UseShenandoahGC") + jmh_benchmark_test,
 
   bootstrap:: s.base("build,bootstrap", no_warning_as_error=true),
   bootstrap_lite:: s.base("build,bootstraplite", no_warning_as_error=true),
   bootstrap_full:: s.base("build,bootstrapfullverify", no_warning_as_error=true),
   bootstrap_full_zgc:: s.base("build,bootstrapfullverify", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
+  bootstrap_full_shenandoah:: s.base("build,bootstrapfullverify", no_warning_as_error=true, extra_vm_args="-XX:+UseShenandoahGC"),
   bootstrap_economy:: s.base("build,bootstrapeconomy", no_warning_as_error=true, extra_vm_args="-Djdk.graal.CompilerConfiguration=economy"),
 
   style:: c.deps.eclipse + c.deps.jdt + c.deps.spotbugs + s.base("style,fullbuild,javadoc") + galahad.exclude,
@@ -283,27 +273,22 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local dailies = {
-    "compiler-test-labsjdk-latest-darwin-amd64": {},
     "compiler-test-labsjdk-latest-windows-amd64": {},
 
     "compiler-test_zgc-labsjdk-latest-darwin-aarch64": {},
-    "compiler-test_zgc-labsjdk-latest-darwin-amd64": {},
     "compiler-test_zgc-labsjdk-latest-linux-aarch64": {},
     "compiler-test_zgc-labsjdk-latest-linux-amd64": {},
 
     "compiler-ctw-labsjdk-latest-darwin-aarch64": {},
-    "compiler-ctw-labsjdk-latest-darwin-amd64": {},
     "compiler-ctw-labsjdk-latest-linux-aarch64": {},
     "compiler-ctw-labsjdk-latest-windows-amd64": {},
 
     "compiler-ctw_zgc-labsjdk-latest-linux-amd64": {},
 
     "compiler-ctw_economy-labsjdk-latest-darwin-aarch64": {},
-    "compiler-ctw_economy-labsjdk-latest-darwin-amd64": {},
     "compiler-ctw_economy-labsjdk-latest-linux-aarch64": {},
     "compiler-ctw_economy-labsjdk-latest-windows-amd64": {},
 
-    "compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": {},
 
     "compiler-bootstrap_full-labsjdk-latest-linux-amd64": {},
     "compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": {},
@@ -344,7 +329,6 @@
 
     "compiler-test_serialgc-labsjdk-latest-linux-amd64": {},
     "compiler-test_serialgc-labsjdk-latest-linux-aarch64": {},
-    "compiler-test_serialgc-labsjdk-latest-darwin-amd64": {},
     "compiler-test_serialgc-labsjdk-latest-darwin-aarch64": {},
 
     "compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-amd64": {},
@@ -449,7 +433,6 @@
   local all_os_arches = [
     "linux-amd64",
     "linux-aarch64",
-    "darwin-amd64",
     "darwin-aarch64",
     "windows-amd64"
   ],
@@ -491,35 +474,50 @@
      self.make_build(self.jdk_latest, "linux-amd64", "coverage_avx3").build
   ],
 
-    # Test ZGC on supported platforms.  Windows requires version 1083 or later which will
-    # probably require adding some capabilities.
-    local all_zgc_builds = [self.make_build(jdk, os_arch, task).build + galahad.exclude
-      for jdk in [
-        self.jdk_latest
-      ]
-      for os_arch in [
-        "linux-amd64",
-        "linux-aarch64",
-        "darwin-amd64",
-        "darwin-aarch64"
-      ]
-      for task in [
-        "test_zgc",
-        "unittest_compiler_zgc",
-        "unittest_truffle_zgc",
-        "truffle_xcomp_zgc",
-        "ctw_zgc",
-        "benchmarktest_zgc",
-        "bootstrap_full_zgc",
-      ]
-    ],
+  # Test ZGC on supported platforms.  Windows requires version 1083 or later which will
+  # probably require adding some capabilities.
+  local all_zgc_builds = [self.make_build(jdk, os_arch, task).build + galahad.exclude
+    for jdk in [
+      self.jdk_latest
+    ]
+    for os_arch in [
+      "linux-amd64",
+      "linux-aarch64",
+      "darwin-aarch64"
+    ]
+    for task in [
+      "test_zgc",
+      "unittest_compiler_zgc",
+      "unittest_truffle_zgc",
+      "truffle_xcomp_zgc",
+      "ctw_zgc",
+      "benchmarktest_zgc",
+      "bootstrap_full_zgc",
+    ]
+  ],
+
+  # Test Shenandoah on supported platforms.
+  local all_shenandoah_builds = [self.make_build(jdk, os_arch, task).build + galahad.exclude
+    for jdk in [
+      self.jdk_latest
+    ]
+    for os_arch in all_os_arches
+    for task in [
+      "test_shenandoah",
+      "unittest_compiler_shenandoah",
+      "unittest_truffle_shenandoah",
+      "truffle_xcomp_shenandoah",
+      "ctw_shenandoah",
+      "benchmarktest_shenandoah",
+      "bootstrap_full_shenandoah",
+    ]
+  ],
 
   # Run unittests with SerialGC.
   local all_serialgc_builds = [self.make_build(self.jdk_latest, os_arch, task).build + galahad.exclude
     for os_arch in [
       "linux-amd64",
       "linux-aarch64",
-      "darwin-amd64",
       "darwin-aarch64"
     ]
     for task in [
@@ -563,6 +561,7 @@
     all_platforms_builds +
     all_coverage_builds +
     all_zgc_builds +
+    all_shenandoah_builds +
     all_serialgc_builds +
     style_builds +
     linux_amd64_jdk_latest_builds +

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,14 +39,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
@@ -57,6 +55,7 @@ import java.util.stream.Stream;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.util.ArchiveSupport;
+import com.oracle.svm.core.util.ByteFormattingUtil;
 import com.oracle.svm.driver.BundleOptions.BundleOption;
 import com.oracle.svm.driver.BundleOptions.ExtendedOption;
 import com.oracle.svm.driver.launcher.BundleLauncher;
@@ -70,6 +69,7 @@ import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.util.json.JsonPrinter;
 import jdk.graal.compiler.util.json.JsonWriter;
+import org.graalvm.collections.EconomicSet;
 
 final class BundleSupport {
 
@@ -88,7 +88,6 @@ final class BundleSupport {
     Map<Path, Path> pathCanonicalizations = new HashMap<>();
     Map<Path, Path> pathSubstitutions = new HashMap<>();
 
-    private final boolean forceBuilderOnClasspath;
     private final List<String> nativeImageArgs;
     private List<String> updatedNativeImageArgs;
     final ArrayList<String> bundleLauncherArgs = new ArrayList<>();
@@ -112,10 +111,26 @@ final class BundleSupport {
     private static final String DRY_RUN_OPTION = "dry-run";
     private static final String CONTAINER_OPTION = "container";
     private static final String DOCKERFILE_OPTION = "dockerfile";
+    private static final String SIZE_WARNING_FILE_LIMIT_OPTION = "size-warning-file-limit";
+    private static final String SIZE_WARNING_TOTAL_LIMIT_OPTION = "size-warning-total-limit";
     static final String BUNDLE_FILE_EXTENSION = ".nib";
+    static final String BUNDLE_ALIAS = "<BUNDLE>";
 
     ContainerSupport containerSupport;
     boolean useContainer;
+
+    private long fileSizeWarningFileLimit = 1024 * 1024 * 50; // 50 MB
+    private long fileSizeWarningTotalLimit = 1024 * 1024 * 500; // 500 MB
+
+    /**
+     * Counter for all the files addd to a bundle (except .nil), to print warnings.
+     */
+    private long cumulativeFileSize = 0;
+
+    /**
+     * Tracks whether a layers file (.nil) is part of the bundle.
+     */
+    private boolean nilFileSeen = false;
 
     private static final String DEFAULT_DOCKERFILE = getDockerfile("Dockerfile");
 
@@ -248,8 +263,29 @@ final class BundleSupport {
                     throw NativeImage.showError(String.format("native-image option %s requires a dockerfile argument. E.g. %s=path/to/Dockerfile.", option.key(), option.key()));
                 }
             }
+            case SIZE_WARNING_FILE_LIMIT_OPTION -> {
+                fileSizeWarningFileLimit = readSizeLimit(option.key(), option.value());
+            }
+            case SIZE_WARNING_TOTAL_LIMIT_OPTION -> {
+                fileSizeWarningTotalLimit = readSizeLimit(option.key(), option.value());
+            }
             default -> throw NativeImage.showError(String.format("Unknown option %s. Use --help-extra for usage instructions.", option.key()));
         }
+    }
+
+    private static long readSizeLimit(String optionKey, String optionValue) {
+        if (optionValue != null) {
+            try {
+                long limit = Long.parseLong(optionValue);
+                if (limit >= 0) {
+                    return limit * 1024 * 1024;
+                } else if (limit == -1) {
+                    return -1; // no limit
+                }
+            } catch (NumberFormatException ex) {
+            }
+        }
+        throw NativeImage.showError(String.format("native-image option %s requires a size in MiB, or -1 to deactivate.", optionKey));
     }
 
     private BundleSupport(NativeImage nativeImage) {
@@ -275,7 +311,6 @@ final class BundleSupport {
         } catch (IOException e) {
             throw NativeImage.showError("Unable to create bundle directory layout", e);
         }
-        forceBuilderOnClasspath = !nativeImage.config.modulePathBuild;
         nativeImageArgs = nativeImage.getNativeImageArgs();
     }
 
@@ -304,8 +339,10 @@ final class BundleSupport {
         }
 
         bundleProperties.loadAndVerify();
-        forceBuilderOnClasspath = bundleProperties.forceBuilderOnClasspath();
-        nativeImage.config.modulePathBuild = !forceBuilderOnClasspath;
+        if (bundleProperties.forceBuilderOnClasspath()) {
+            throw NativeImage.showError("The given bundle file " + bundleFilePath + " uses the BuilderOnClasspath property which is not supported anymore. " +
+                            "To build this bundle use the latest bugfix release of the GraalVM version that was used to build the bundle.");
+        }
 
         try {
             inputDir = rootDir.resolve("input");
@@ -435,7 +472,6 @@ final class BundleSupport {
         }
     }
 
-    @SuppressWarnings("try")
     private Path substitutePath(Path origPath, Path destinationDir) {
         assert destinationDir.startsWith(rootDir);
 
@@ -465,7 +501,7 @@ final class BundleSupport {
             Path tmpPath = ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT.resolve("tmp");
             boolean subdirInTmp = origPath.startsWith(tmpPath) && !origPath.equals(tmpPath);
             if (!subdirInTmp) {
-                Set<Path> forbiddenPaths = new HashSet<>(ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES);
+                EconomicSet<Path> forbiddenPaths = EconomicSet.create(ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES);
                 forbiddenPaths.add(rootDir);
                 for (Path path : forbiddenPaths) {
                     if (origPath.startsWith(path)) {
@@ -555,10 +591,48 @@ final class BundleSupport {
                 return;
             }
             CopyOption[] options = overwrite ? new CopyOption[]{StandardCopyOption.REPLACE_EXISTING} : new CopyOption[0];
+            if (warnSize()) {
+                trackFileSize(sourceFile);
+            }
             Files.copy(sourceFile, target, options);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to copy " + sourceFile + " to " + target, e);
         }
+    }
+
+    /**
+     * Tracks the size of a file added to a bundle. Prints a log warning if the individual size
+     * exceeds a certain limit. Also prints a warning when the cumulative size of all files added so
+     * far exceed a limit, and repeats that at every multiple of that limit (maximum once per file).
+     *
+     * Layers files (.nil) are ignored for individual warnings and don't contribute to the
+     * cumulative limit.
+     *
+     * @param file the file to track the size of
+     * @throws IOException
+     */
+    private void trackFileSize(Path file) throws IOException {
+        if (!warnSize()) {
+            return;
+        }
+        if (file.getFileName().endsWith(".nil")) {
+            nilFileSeen = true;
+        }
+        long fileSize = Files.size(file);
+        if (fileSizeWarningFileLimit >= 0 && fileSize > fileSizeWarningFileLimit) {
+            LogUtils.warning(file + " adds " + ByteFormattingUtil.bytesToHuman(fileSize) + " to the Native Image bundle.");
+        }
+        if (fileSizeWarningTotalLimit >= 0) {
+            long nextLimitMultiple = cumulativeFileSize + fileSizeWarningTotalLimit - (cumulativeFileSize % fileSizeWarningTotalLimit);
+            cumulativeFileSize += fileSize;
+            if (cumulativeFileSize > nextLimitMultiple) {
+                LogUtils.warning("Native Image bundle has grown to " + ByteFormattingUtil.bytesToHuman(cumulativeFileSize) + (nilFileSeen ? " (excluding .nil files)." : "."));
+            }
+        }
+    }
+
+    private boolean warnSize() {
+        return fileSizeWarningFileLimit >= 0 || fileSizeWarningTotalLimit >= 0;
     }
 
     void complete() {
@@ -602,6 +676,15 @@ final class BundleSupport {
         Objects.requireNonNull(bundlePath);
         Objects.requireNonNull(bundleName);
         return bundlePath.resolve(bundleName + '.' + outputDir.getFileName());
+    }
+
+    String cleanupBuilderOutput(String output) {
+        var transformedOutput = output;
+        if (bundlePath != null) {
+            transformedOutput = transformedOutput.replace(outputDir.toString(), getExternalOutputDir().toString());
+        }
+        transformedOutput = transformedOutput.replace(rootDir.toString(), BUNDLE_ALIAS);
+        return transformedOutput;
     }
 
     void updateBundleLocation(Path bundleFile, boolean redefine) {
@@ -877,7 +960,7 @@ final class BundleSupport {
             String currentPlatform = bundlePlatform.equals(NativeImage.platform) ? "" : " != '" + NativeImage.platform + "'";
             String bundleCreationTimestamp = properties.getOrDefault(PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP, "");
             nativeImage.showNewline();
-            nativeImage.showMessage("%sLoaded Bundle from %s", BUNDLE_INFO_MESSAGE_PREFIX, bundleFileName);
+            nativeImage.showMessage("%sLoaded Bundle from %s referred to as %s from here on.", BUNDLE_INFO_MESSAGE_PREFIX, bundleFileName, BUNDLE_ALIAS);
             nativeImage.showMessage("%sBundle created at '%s'", BUNDLE_INFO_MESSAGE_PREFIX, ArchiveSupport.parseTimestamp(bundleCreationTimestamp));
             nativeImage.showMessage("%sUsing version: '%s'%s (vendor '%s'%s) on platform: '%s'%s", BUNDLE_INFO_MESSAGE_PREFIX,
                             bundleVersion, currentVersion,
@@ -899,7 +982,6 @@ final class BundleSupport {
             properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MAJOR, String.valueOf(BUNDLE_FILE_FORMAT_VERSION_MAJOR));
             properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MINOR, String.valueOf(BUNDLE_FILE_FORMAT_VERSION_MINOR));
             properties.put(PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP, ArchiveSupport.currentTime());
-            properties.put(PROPERTY_KEY_BUILDER_ON_CLASSPATH, String.valueOf(forceBuilderOnClasspath));
             boolean imageBuilt = !nativeImage.isDryRun();
             properties.put(PROPERTY_KEY_IMAGE_BUILT, String.valueOf(imageBuilt));
             if (imageBuilt) {

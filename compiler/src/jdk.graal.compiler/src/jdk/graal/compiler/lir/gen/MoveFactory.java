@@ -98,7 +98,7 @@ public abstract class MoveFactory {
             this.frameMapBuilder = frameMapBuilder;
         }
 
-        public RegisterBackupPair getScratchRegister(PlatformKind kind) {
+        public RegisterBackupPair getScratchRegister(PlatformKind kind, Register preferredScratchRegister) {
             PlatformKind.Key key = kind.getKey();
             if (categorized == null) {
                 categorized = EconomicMap.create(Equivalence.DEFAULT);
@@ -106,12 +106,19 @@ public abstract class MoveFactory {
                 return categorized.get(key);
             }
 
-            RegisterConfig registerConfig = frameMapBuilder.getRegisterConfig();
+            Register scratchRegister = preferredScratchRegister;
 
-            List<Register> availableRegister = registerConfig.filterAllocatableRegisters(kind, registerConfig.getAllocatableRegisters());
-            assert availableRegister != null;
-            assert availableRegister.size() > 1 : Assertions.errorMessageContext("availableReg", availableRegister);
-            Register scratchRegister = availableRegister.get(0);
+            if (scratchRegister == null || scratchRegister.equals(Register.None)) {
+                RegisterConfig registerConfig = frameMapBuilder.getRegisterConfig();
+
+                List<Register> availableRegister = registerConfig.filterAllocatableRegisters(kind, registerConfig.getAllocatableRegisters());
+                assert availableRegister != null;
+                assert availableRegister.size() > 1 : Assertions.errorMessageContext("availableReg", availableRegister);
+                // Prefer using the last register to minimize potential conflicts with register
+                // allocation. Note that in HotSpot, the register allocation order differs slightly
+                // from the default order
+                scratchRegister = availableRegister.getLast();
+            }
 
             Architecture arch = frameMapBuilder.getCodeCache().getTarget().arch;
             LIRKind largestKind = LIRKind.value(arch.getLargestStorableKind(scratchRegister.getRegisterCategory()));

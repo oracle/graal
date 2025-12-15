@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,19 +45,21 @@ import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 
+import java.util.BitSet;
+
 /**
  * Representation of a wasm loop during module validation.
  */
 class LoopFrame extends ControlFrame {
     private final int labelLocation;
 
-    LoopFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int labelLocation) {
-        super(paramTypes, resultTypes, initialStackSize, unreachable);
+    LoopFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, ControlFrame parentFrame, int labelLocation) {
+        super(paramTypes, resultTypes, parentFrame.getSymbolTable(), initialStackSize, (BitSet) parentFrame.initializedLocals.clone());
         this.labelLocation = labelLocation;
     }
 
     @Override
-    byte[] labelTypes() {
+    int[] labelTypes() {
         return paramTypes();
     }
 
@@ -71,17 +73,17 @@ class LoopFrame extends ControlFrame {
     }
 
     @Override
-    void addBranch(RuntimeBytecodeGen bytecode) {
-        bytecode.addBranch(labelLocation);
-    }
-
-    @Override
-    void addBranchIf(RuntimeBytecodeGen bytecode) {
-        bytecode.addBranchIf(labelLocation);
+    void addBranch(RuntimeBytecodeGen bytecode, RuntimeBytecodeGen.BranchOp branchOp) {
+        bytecode.addBranch(labelLocation, branchOp);
     }
 
     @Override
     void addBranchTableItem(RuntimeBytecodeGen bytecode) {
         bytecode.patchLocation(bytecode.addBranchTableItemLocation(), labelLocation);
+    }
+
+    @Override
+    void addExceptionHandler(ExceptionHandler handler) {
+        handler.setTarget(labelLocation);
     }
 }

@@ -2279,7 +2279,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     public int reQuickenInvoke(VirtualFrame frame, int top, int opcode, int curBCI, int statementIndex) {
         CompilerAsserts.neverPartOfCompilation();
         assert Bytecodes.isInvoke(opcode);
-        BaseQuickNode invoke = generifyInlinedMethodNode(top, opcode, curBCI, statementIndex);
+        BaseQuickNode invoke = generifyInlinedMethodNode(top, opcode, curBCI, statementIndex, null);
         // Perform the call outside of the lock.
         return invoke.execute(frame, false);
     }
@@ -2314,9 +2314,17 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      * Reverts Bytecode-level method inlining at the current bci, in case instrumentation starts
      * happening on this node.
      */
-    public BaseQuickNode generifyInlinedMethodNode(int top, int opcode, int curBCI, int statementIndex) {
+    public BaseQuickNode generifyInlinedMethodNode(int top, int opcode, int curBCI, int statementIndex, ResolvedCall<Klass, Method, Field> resolvedCall) {
         CompilerAsserts.neverPartOfCompilation();
-        ResolvedInvoke resolvedInvoke = getResolvedInvoke(opcode, readOriginalCPI(curBCI));
+        ResolvedInvoke resolvedInvoke;
+        if (resolvedCall == null) {
+            resolvedInvoke = getResolvedInvoke(opcode, readOriginalCPI(curBCI));
+        } else {
+            assert !resolvedCall.getResolvedMethod().isInvokeIntrinsic() : "An inlined method may never be an invokeGeneric.";
+            assert resolvedCall.getCallKind() != CallKind.ITABLE_LOOKUP : "A bytecode-inlined method may not be from an interface dispatch.";
+            resolvedInvoke = new ResolvedInvoke(resolvedCall, null);
+        }
+
         return atomic(() -> {
             assert bs.currentBC(curBCI) == QUICK;
             char nodeIndex = readCPI(curBCI);
@@ -2941,32 +2949,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
             if (table != LineNumberTableAttribute.EMPTY) {
                 List<LineNumberTableAttribute.Entry> entries = table.getEntries();
-                // don't allow multiple entries with same line, keep only the first one
-                // reduce the checks needed heavily by keeping track of max seen line number
-                int[] seenLines = new int[entries.size()];
-                Arrays.fill(seenLines, -1);
-                int maxSeenLine = -1;
-
                 EspressoStatementNode[] statements = new EspressoStatementNode[entries.size()];
                 MapperBCI mapper = new MapperBCI(table);
                 for (int i = 0; i < entries.size(); i++) {
                     LineNumberTableAttribute.Entry entry = entries.get(i);
                     int lineNumber = entry.getLineNumber();
-                    boolean seen = false;
-                    boolean checkSeen = !(maxSeenLine < lineNumber);
-                    if (checkSeen) {
-                        for (int seenLine : seenLines) {
-                            if (seenLine == lineNumber) {
-                                seen = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (!seen) {
-                        statements[mapper.initIndex(i, entry.getBCI())] = new EspressoStatementNode(method.getMethod().getSource().createSection(lineNumber));
-                        seenLines[i] = lineNumber;
-                        maxSeenLine = Math.max(maxSeenLine, lineNumber);
-                    }
+                    statements[mapper.initIndex(i, entry.getBCI())] = new EspressoStatementNode(method.getMethod().getSource().createSection(lineNumber));
                 }
                 this.hookBCIToNodeIndex = mapper;
                 this.statementNodes = statements;

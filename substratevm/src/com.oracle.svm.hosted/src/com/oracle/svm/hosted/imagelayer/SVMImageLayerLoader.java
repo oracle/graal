@@ -25,6 +25,8 @@
 package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.graal.pointsto.util.AnalysisError.guarantee;
+import static com.oracle.svm.core.classinitialization.ClassInitializationInfo.InitState.FullyInitialized;
+import static com.oracle.svm.core.classinitialization.ClassInitializationInfo.InitState.InitializationError;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.CLASS_INIT_NAME;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.CONSTRUCTOR_NAME;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.PERSISTED;
@@ -42,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -52,12 +55,13 @@ import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.api.ImageLayerLoader;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
@@ -68,7 +72,6 @@ import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -81,11 +84,12 @@ import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
@@ -97,7 +101,6 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
-import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CEntryPointLiteralReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DynamicHubInfo;
@@ -106,8 +109,10 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod.WrappedMethod;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod.WrappedMethod.WrappedMember;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.Reader;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType.SerializationGenerated;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.EnumConstant;
@@ -120,11 +125,14 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.serialize.SerializationFeature;
-import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
+import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
 import com.oracle.svm.shaded.org.capnproto.StructList;
 import com.oracle.svm.shaded.org.capnproto.Text;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -143,6 +151,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.MethodHandleNode;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.internal.reflect.ReflectionFactory;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethodProfile;
@@ -454,15 +463,31 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     /**
+     * The {@link SubstitutionMethod} contains less information than the original
+     * {@link ResolvedJavaMethod} and trying to access it can result in an exception.
+     */
+    private static ResolvedJavaMethod getOriginalWrapped(AnalysisMethod method) {
+        ResolvedJavaMethod wrapped = method.getWrapped();
+        if (wrapped instanceof SubstitutionMethod subst) {
+            return subst.getAnnotated();
+        }
+        return wrapped;
+    }
+
+    /**
      * Load all lambda types of the given capturing class. Each method of the capturing class is
      * parsed (see {@link LambdaParser#createMethodGraph(ResolvedJavaMethod, OptionValues)}). The
      * lambda types can then be found in the constant nodes of the graphs.
      */
     private void loadLambdaTypes(Class<?> capturingClass) {
-        capturingClasses.computeIfAbsent(capturingClass, key -> {
+        capturingClasses.computeIfAbsent(capturingClass, _ -> {
+            /*
+             * Getting the original wrapped method is important to avoid getting exceptions that
+             * would be ignored otherwise.
+             */
             LambdaParser.allExecutablesDeclaredInClass(universe.getBigbang().getMetaAccess().lookupJavaType(capturingClass))
                             .filter(m -> m.getCode() != null)
-                            .forEach(m -> loadLambdaTypes(((AnalysisMethod) m).getWrapped(), universe.getBigbang()));
+                            .forEach(m -> loadLambdaTypes(getOriginalWrapped((AnalysisMethod) m), universe.getBigbang()));
             return true;
         });
     }
@@ -483,7 +508,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private void loadMethodHandleTargets(ResolvedJavaMethod m, BigBang bigBang) {
-        methodHandleCallers.computeIfAbsent(m, method -> {
+        methodHandleCallers.computeIfAbsent(m, _ -> {
             StructuredGraph graph = getMethodGraph(m, bigBang);
             if (graph != null) {
                 for (Node node : graph.getNodes()) {
@@ -567,7 +592,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private BaseLayerType getBaseLayerType(PersistedAnalysisType.Reader td, int tid, ResolvedJavaType superClass, ResolvedJavaType[] interfaces) {
-        return baseLayerTypes.computeIfAbsent(tid, (typeId) -> {
+        return baseLayerTypes.computeIfAbsent(tid, _ -> {
             String className = td.getClassName().toString();
             String sourceFileName = td.hasSourceFileName() ? td.getSourceFileName().toString() : null;
             ResolvedJavaType enclosingType = getResolvedJavaTypeForBaseLayerId(td.getEnclosingTypeId());
@@ -575,16 +600,16 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             ResolvedJavaType objectType = universe.getOriginalMetaAccess().lookupJavaType(Object.class);
             Annotation[] annotations = getAnnotations(td.getAnnotationList());
 
-            return new BaseLayerType(className, tid, td.getModifiers(), td.getIsInterface(), td.getIsEnum(), td.getIsInitialized(), td.getIsLinked(), sourceFileName,
+            return new BaseLayerType(className, tid, td.getModifiers(), td.getIsInterface(), td.getIsEnum(), td.getIsRecord(), td.getIsInitialized(), td.getIsLinked(), sourceFileName,
                             enclosingType, componentType, superClass, interfaces, objectType, annotations);
         });
     }
 
-    private Annotation[] getAnnotations(StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader> reader) {
+    private Annotation[] getAnnotations(StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader> reader) {
         return CapnProtoAdapters.toArray(reader, this::getAnnotation, Annotation[]::new);
     }
 
-    private Annotation getAnnotation(SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader a) {
+    private Annotation getAnnotation(SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader a) {
         String typeName = a.getTypeName().toString();
         Class<? extends Annotation> annotationType = lookupBaseLayerTypeInHostVM(typeName).asSubclass(Annotation.class);
         Map<String, Object> annotationValuesMap = new HashMap<>();
@@ -595,7 +620,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return AnnotationParser.annotationForMap(annotationType, annotationValuesMap);
     }
 
-    private Object getAnnotationValue(AnnotationValue.Reader v) {
+    private Object getAnnotationValue(PersistedAnnotationElement.Reader v) {
         return switch (v.which()) {
             case STRING -> v.getString().toString();
             case ENUM -> getEnumValue(v.getEnum().getClassName(), v.getEnum().getName());
@@ -654,7 +679,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private static int getBaseLayerTypeId(AnalysisType type) {
-        VMError.guarantee(type.isInBaseLayer());
+        VMError.guarantee(type.isInSharedLayer());
         if (type.getWrapped() instanceof BaseLayerType baseLayerType) {
             return baseLayerType.getBaseLayerId();
         }
@@ -666,7 +691,6 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
      * {@link AnalysisUniverse}. The side effects of this method are visible to other threads that
      * are consuming the {@link AnalysisType} object.
      */
-    @SuppressWarnings("try")
     private void initializeBaseLayerTypeBeforePublishing(AnalysisType type, PersistedAnalysisType.Reader typeData) {
         assert !(type.getWrapped() instanceof BaseLayerType);
         VMError.guarantee(type.isLinked() == typeData.getIsLinked());
@@ -677,7 +701,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
          * initialization kind, even in ways that would otherwise be considered compatible, e.g.,
          * RUN_TIME -> BUILD_TIME. Similarly, if a different initialization kind was already
          * registered in this layer registration will fail.
-         * 
+         *
          * Note that this is done after the app-layer class initialization specification is applied,
          * so we don't have to traverse all types. Moreover, for package-level specification this
          * should also be OK, because package-level specification is only a suggestion and the
@@ -718,26 +742,31 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
      */
     @Override
     public void initializeBaseLayerType(AnalysisType type) {
-        VMError.guarantee(type.isInBaseLayer());
+        VMError.guarantee(type.isInSharedLayer());
         PersistedAnalysisType.Reader td = findType(getBaseLayerTypeId(type));
-        registerFlag(td.getIsInstantiated(), debug -> type.registerAsInstantiated(PERSISTED));
-        registerFlag(td.getIsUnsafeAllocated(), debug -> type.registerAsUnsafeAllocated(PERSISTED));
-        registerFlag(td.getIsReachable(), debug -> type.registerAsReachable(PERSISTED));
+        postTask(td.getIsInstantiated(), _ -> type.registerAsInstantiated(PERSISTED));
+        postTask(td.getIsUnsafeAllocated(), _ -> type.registerAsUnsafeAllocated(PERSISTED));
+        postTask(td.getIsReachable(), _ -> type.registerAsReachable(PERSISTED));
 
-        if (!td.getIsInstantiated() && td.getIsAnySubtypeInstantiated()) {
+        if (td.getIsAnySubtypeInstantiated()) {
+            /*
+             * Once a base layer type is loaded, loading all its instantiated subtypes ensures that
+             * the application layer typestate is coherent with the base layer typestate. Otherwise,
+             * unwanted optimizations could occur as the typestate would not contain some missed
+             * types from the base layer.
+             */
             var subTypesReader = td.getSubTypes();
             for (int i = 0; i < subTypesReader.size(); ++i) {
                 int tid = subTypesReader.get(i);
                 var subTypeReader = findType(tid);
-                if (subTypeReader.getIsInstantiated()) {
-                    registerFlag(true, debug -> getAnalysisTypeForBaseLayerId(subTypeReader.getId()));
-                }
+                /* Only load instantiated subtypes. */
+                postTask(subTypeReader.getIsInstantiated(), _ -> getAnalysisTypeForBaseLayerId(subTypeReader.getId()));
             }
         }
     }
 
-    private void registerFlag(boolean flag, DebugContextRunnable task) {
-        if (flag) {
+    private void postTask(boolean condition, DebugContextRunnable task) {
+        if (condition) {
             if (universe.getBigbang() != null) {
                 universe.getBigbang().postTask(task);
             } else {
@@ -818,7 +847,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                             return;
                         }
                     }
-                } else {
+                } else if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogLoadingFailures.getValue()) {
                     LogUtils.warning("Arguments reflectively loading %s. %s could not be found: %s", methodData.getClassName().toString(), methodData.getName().toString(),
                                     Arrays.toString(parameterTypes));
                 }
@@ -918,7 +947,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             if (wm.isReflectionExpandSignature()) {
                 ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(member);
             } else if (wm.isJavaCallVariantWrapper()) {
-                JNIAccessFeature.singleton().addMethod(member, (FeatureImpl.DuringAnalysisAccessImpl) universe.getConcurrentAnalysisAccess());
+                JNIAccessFeature.singleton().addMethod(member, false, (FeatureImpl.DuringAnalysisAccessImpl) universe.getConcurrentAnalysisAccess());
             }
             return true;
         } else if (wrappedMethod.isPolymorphicSignature()) {
@@ -931,7 +960,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                     return true;
                 }
             }
-            LogUtils.warning("The PolymorphicSignature method %s.%s could not get loaded", methodData.getClassName().toString(), methodData.getName().toString());
+            if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogLoadingFailures.getValue()) {
+                LogUtils.warning("The PolymorphicSignature method %s.%s could not get loaded", methodData.getClassName().toString(), methodData.getName().toString());
+            }
             return false;
         }
         return false;
@@ -971,7 +1002,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         Annotation[] annotations = getAnnotations(md.getAnnotationList());
 
         baseLayerMethods.computeIfAbsent(mid,
-                        methodId -> new BaseLayerMethod(mid, type, name, md.getIsVarArgs(), md.getIsBridge(), signature, md.getCanBeStaticallyBound(), md.getIsConstructor(),
+                        _ -> new BaseLayerMethod(mid, type, name, md.getIsVarArgs(), md.getIsBridge(), signature, md.getCanBeStaticallyBound(), md.getIsConstructor(),
                                         md.getModifiers(), md.getIsSynthetic(), code, md.getBytecodeSize(), methodHandleIntrinsic, annotations));
         BaseLayerMethod baseLayerMethod = baseLayerMethods.get(mid);
 
@@ -1003,13 +1034,13 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         methods.putIfAbsent(analysisMethod.getId(), analysisMethod);
 
         PersistedAnalysisMethod.Reader md = getMethodData(analysisMethod);
-        registerFlag(md.getIsVirtualRootMethod(), debug -> analysisMethod.registerAsVirtualRootMethod(PERSISTED));
-        registerFlag(md.getIsDirectRootMethod(), debug -> analysisMethod.registerAsDirectRootMethod(PERSISTED));
-        registerFlag(md.getIsInvoked(), debug -> analysisMethod.registerAsInvoked(PERSISTED));
-        registerFlag(md.getIsImplementationInvoked(), debug -> analysisMethod.registerAsImplementationInvoked(PERSISTED));
-        registerFlag(md.getIsIntrinsicMethod(), debug -> analysisMethod.registerAsIntrinsicMethod(PERSISTED));
+        postTask(md.getIsVirtualRootMethod(), _ -> analysisMethod.registerAsVirtualRootMethod(PERSISTED));
+        postTask(md.getIsDirectRootMethod(), _ -> analysisMethod.registerAsDirectRootMethod(PERSISTED));
+        postTask(md.getIsInvoked(), _ -> analysisMethod.registerAsInvoked(PERSISTED));
+        postTask(md.getIsImplementationInvoked(), _ -> analysisMethod.registerAsImplementationInvoked(PERSISTED));
+        postTask(md.getIsIntrinsicMethod(), _ -> analysisMethod.registerAsIntrinsicMethod(PERSISTED));
 
-        AnalysisMethod.CompilationBehavior compilationBehavior = AnalysisMethod.CompilationBehavior.values()[md.getCompilationBehaviorOrdinal()];
+        LayeredCompilationBehavior.Behavior compilationBehavior = LayeredCompilationBehavior.Behavior.values()[md.getCompilationBehaviorOrdinal()];
         analysisMethod.setCompilationBehavior(compilationBehavior);
     }
 
@@ -1249,7 +1280,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     private BaseLayerField getBaseLayerField(PersistedAnalysisField.Reader fd, int id, ResolvedJavaType declaringClass, ResolvedJavaType type) {
         return baseLayerFields.computeIfAbsent(id,
-                        fid -> new BaseLayerField(id, fd.getName().toString(), declaringClass, type, fd.getIsInternal(),
+                        _ -> new BaseLayerField(id, fd.getName().toString(), declaringClass, type, fd.getIsInternal(),
                                         fd.getIsSynthetic(), fd.getModifiers(), getAnnotations(fd.getAnnotationList())));
     }
 
@@ -1290,17 +1321,23 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         if (!analysisField.isStatic() && (isAccessed || isRead)) {
             analysisField.getDeclaringClass().getInstanceFields(true);
         }
-        registerFlag(isAccessed, debug -> {
+        postTask(isAccessed, _ -> {
             analysisField.injectDeclaredType();
             analysisField.registerAsAccessed(PERSISTED);
         });
-        registerFlag(isRead, debug -> analysisField.registerAsRead(PERSISTED));
-        registerFlag(fieldData.getIsWritten(), debug -> {
+        postTask(isRead, _ -> analysisField.registerAsRead(PERSISTED));
+        postTask(fieldData.getIsWritten(), _ -> {
             analysisField.injectDeclaredType();
             analysisField.registerAsWritten(PERSISTED);
         });
-        registerFlag(fieldData.getIsFolded(), debug -> analysisField.registerAsFolded(PERSISTED));
-        registerFlag(fieldData.getIsUnsafeAccessed(), debug -> analysisField.registerAsUnsafeAccessed(PERSISTED));
+        postTask(fieldData.getIsFolded(), _ -> analysisField.registerAsFolded(PERSISTED));
+        postTask(fieldData.getIsUnsafeAccessed(), _ -> analysisField.registerAsUnsafeAccessed(PERSISTED));
+
+        /*
+         * Inject the base layer position. If the position computed for this layer, either before
+         * this step or later, is different this will result in a failed guarantee.
+         */
+        analysisField.setPosition(fieldData.getPosition());
     }
 
     private PersistedAnalysisField.Reader getFieldData(AnalysisField analysisField) {
@@ -1375,6 +1412,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     public ImageHeapConstant getOrCreateConstant(int id) {
         return getOrCreateConstant(id, null);
+    }
+
+    /* Retrieves the given constant iff it has already been relinked. */
+    public ImageHeapConstant getConstant(int id) {
+        return constants.get(id);
     }
 
     /**
@@ -1617,16 +1659,17 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private void addBaseLayerObject(int id, long objectOffset, Supplier<ImageHeapConstant> imageHeapConstantSupplier) {
-        constants.computeIfAbsent(id, key -> {
+        constants.computeIfAbsent(id, _ -> {
             ImageHeapConstant heapObj = imageHeapConstantSupplier.get();
-            heapObj.markInBaseLayer();
+            heapObj.markInSharedLayer();
             /*
              * Packages are normally rescanned when the DynamicHub is initialized. However, since
              * they are not relinked, the packages from the base layer will never be marked as
              * reachable without doing so manually.
              */
             if (heapObj.getType().getJavaClass().equals(Package.class)) {
-                universe.getHeapScanner().doScan(heapObj);
+                ScanReason reason = new OtherReason("Object loaded from base layer");
+                universe.getHeapScanner().doScan(heapObj, reason);
             }
             if (objectOffset != -1) {
                 objectOffsets.put(ImageHeapConstant.getConstantID(heapObj), objectOffset);
@@ -1694,8 +1737,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private static boolean shouldRelinkField(AnalysisField field) {
-        VMError.guarantee(field.isInBaseLayer());
-        return !(field.getWrapped() instanceof BaseLayerField) && !AnnotationAccess.isAnnotationPresent(field, Delete.class);
+        VMError.guarantee(field.isInSharedLayer());
+        return !(field.getWrapped() instanceof BaseLayerField) && !AnnotationUtil.isAnnotationPresent(field, Delete.class);
     }
 
     @SuppressWarnings("unchecked")
@@ -1710,15 +1753,21 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             universe.getHeapScanner().registerBaseLayerValue(constant, getFieldFromIndex(imageHeapInstance, i));
         } else if (parentConstant instanceof ImageHeapObjectArray) {
             universe.getHeapScanner().registerBaseLayerValue(constant, i);
+        } else if (parentConstant instanceof ImageHeapRelocatableConstant) {
+            // skip - nothing to do
         } else {
             throw AnalysisError.shouldNotReachHere("unexpected constant: " + constant);
         }
     }
 
     private void ensureHubInitialized(ImageHeapConstant constant) {
-        JavaConstant javaConstant = constant.getHostedObject();
+        if (constant instanceof ImageHeapRelocatableConstant) {
+            // not a hub
+            return;
+        }
+
         if (constant.getType().getJavaClass().equals(Class.class)) {
-            DynamicHub hub = universe.getHostedValuesProvider().asObject(DynamicHub.class, javaConstant);
+            DynamicHub hub = universe.getHostedValuesProvider().asObject(DynamicHub.class, constant.getHostedObject());
             AnalysisType type = ((SVMHost) universe.hostVM()).lookupType(hub);
             ensureHubInitialized(type);
             /*
@@ -1780,28 +1829,33 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         if (object == null || identityHashCode == null) {
             return;
         }
-        boolean result = IdentityHashCodeUtil.injectIdentityHashCode(object, identityHashCode);
-        if (!result) {
-            if (SubstrateOptions.LoggingHashCodeInjection.getValue()) {
-                LogUtils.warning("Object of type %s already had an hash code: %s", object.getClass(), object);
+
+        ConstantReflectionProvider constantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
+        JavaConstant constant = GraalAccess.getOriginalSnippetReflection().forObject(object);
+        int actualHashCode = constantReflection.makeIdentityHashCode(constant, identityHashCode);
+        if (actualHashCode != identityHashCode) {
+            if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogHashCodeInjectionFailure.getValue()) {
+                LogUtils.warning("Object of %s already has identity hash code %d when trying to set it to %d: %s",
+                                object.getClass(), actualHashCode, identityHashCode, object);
             }
         }
     }
 
     public void rescanHub(AnalysisType type, DynamicHub hub) {
         if (hasValueForObject(hub)) {
-            universe.getHeapScanner().rescanObject(hub);
+            ScanReason reason = new OtherReason("Manual hub rescan for " + hub.getName() + " triggered from " + SVMImageLayerLoader.class);
+            universe.getHeapScanner().rescanObject(hub, reason);
             scanCompanionField(hub);
-            universe.getHeapScanner().rescanField(hub.getCompanion(), SVMImageLayerSnapshotUtil.classInitializationInfo);
+            universe.getHeapScanner().rescanField(hub.getCompanion(), SVMImageLayerSnapshotUtil.classInitializationInfo, reason);
             if (type.getJavaKind() == JavaKind.Object) {
                 if (type.isArray()) {
                     DynamicHub componentHub = hub.getComponentHub();
                     scanCompanionField(componentHub);
-                    universe.getHeapScanner().rescanField(componentHub.getCompanion(), SVMImageLayerSnapshotUtil.arrayHub);
+                    universe.getHeapScanner().rescanField(componentHub.getCompanion(), SVMImageLayerSnapshotUtil.arrayHub, reason);
                 }
-                universe.getHeapScanner().rescanField(hub.getCompanion(), SVMImageLayerSnapshotUtil.interfacesEncoding);
+                universe.getHeapScanner().rescanField(hub.getCompanion(), SVMImageLayerSnapshotUtil.interfacesEncoding, reason);
                 if (type.isEnum()) {
-                    universe.getHeapScanner().rescanField(hub.getCompanion(), SVMImageLayerSnapshotUtil.enumConstantsReference);
+                    universe.getHeapScanner().rescanField(hub.getCompanion(), SVMImageLayerSnapshotUtil.enumConstantsReference, reason);
                 }
             }
         }
@@ -1810,6 +1864,36 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private void scanCompanionField(DynamicHub hub) {
         var instance = (ImageHeapInstance) getValueForObject(hub);
         instance.readFieldValue(metaAccess.lookupJavaField(dynamicHubCompanionField));
+    }
+
+    public boolean isReachableInPreviousLayer(AnalysisType type) {
+        return getPropertyInPreviousLayer(type, Reader::getIsReachable);
+    }
+
+    public boolean isInstantiatedInPreviousLayer(AnalysisType type) {
+        return getPropertyInPreviousLayer(type, Reader::getIsInstantiated);
+    }
+
+    private boolean getPropertyInPreviousLayer(AnalysisType type, Function<PersistedAnalysisType.Reader, Boolean> propertyGetter) {
+        Integer typeId;
+        if (type.getWrapped() instanceof BaseLayerType baseLayerType) {
+            typeId = baseLayerType.getBaseLayerId();
+        } else {
+            /*
+             * Types that cannot be loaded manually can be duplicated and can get a new type id even
+             * if they were in a shared layer. In this case, using the type identifier can still
+             * retrieve the id from the shared layer.
+             */
+            String typeDescriptor = imageLayerSnapshotUtil.getTypeDescriptor(type);
+            typeId = typeDescriptorToBaseLayerId.get(typeDescriptor);
+        }
+        if (typeId != null) {
+            var typeInfo = findType(typeId);
+            if (typeInfo != null) {
+                return propertyGetter.apply(typeInfo);
+            }
+        }
+        return false;
     }
 
     public record LayeredSimulationResult(boolean successful, EconomicMap<AnalysisField, JavaConstant> staticFieldValues) {
@@ -1842,28 +1926,14 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return null;
         }
         var initInfo = typeData.getClassInitializationInfo();
-        if (initInfo.getIsNoInitializerNoTracking()) {
-            return ClassInitializationInfo.forNoInitializerInfo(false);
-        } else if (initInfo.getIsInitializedNoTracking()) {
-            return ClassInitializationInfo.forInitializedInfo(false);
-        } else if (initInfo.getIsFailedNoTracking()) {
-            return ClassInitializationInfo.forFailedInfo(false);
+        if (initInfo.getIsInitialized() || initInfo.getIsInErrorState()) {
+            ClassInitializationInfo.InitState initState = initInfo.getIsInitialized() ? FullyInitialized : InitializationError;
+            return ClassInitializationInfo.forBuildTimeInitializedClass(initState, initInfo.getHasInitializer(), initInfo.getIsTracked());
         } else {
-            boolean isTracked = initInfo.getIsTracked();
-
-            ClassInitializationInfo.InitState initState;
-            if (initInfo.getIsInitialized()) {
-                initState = ClassInitializationInfo.InitState.FullyInitialized;
-            } else if (initInfo.getIsInErrorState()) {
-                initState = ClassInitializationInfo.InitState.InitializationError;
-            } else {
-                assert initInfo.getIsLinked() : "Invalid state";
-                int classInitializerId = initInfo.getInitializerMethodId();
-                MethodPointer classInitializer = (classInitializerId == 0) ? null : new MethodPointer(getAnalysisMethodForBaseLayerId(classInitializerId));
-                return new ClassInitializationInfo(classInitializer, isTracked);
-            }
-
-            return new ClassInitializationInfo(initState, initInfo.getHasInitializer(), initInfo.getIsBuildTimeInitialized(), isTracked);
+            assert initInfo.getIsLinked() : "Invalid state";
+            int classInitializerId = initInfo.getInitializerMethodId();
+            MethodPointer classInitializer = (classInitializerId == 0) ? null : new MethodPointer(getAnalysisMethodForBaseLayerId(classInitializerId));
+            return ClassInitializationInfo.forRuntimeTimeInitializedClass(classInitializer, initInfo.getIsTracked());
         }
     }
 
@@ -1927,5 +1997,10 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     public static JavaConstantSupplier getConstant(ConstantReference.Reader constantReference) {
         return new JavaConstantSupplier(constantReference);
+    }
+
+    public List<Integer> getUpdatableFieldReceiverIds(int fid) {
+        var updatableReceivers = findField(fid).getUpdatableReceivers();
+        return IntStream.range(0, updatableReceivers.size()).map(updatableReceivers::get).boxed().toList();
     }
 }

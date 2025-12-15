@@ -70,6 +70,7 @@ import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.StandardOp.JumpOp;
+import jdk.graal.compiler.lir.StandardOp.NewScratchRegisterOp;
 import jdk.graal.compiler.lir.SwitchStrategy;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.amd64.AMD64AESDecryptOp;
@@ -711,8 +712,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
-        long maxOffset = linkage.getMaxCallTargetOffset();
+    protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+        long maxOffset = linkage.getMaxCallTargetOffset(getCodeCache());
         if (maxOffset != (int) maxOffset) {
             append(new AMD64Call.DirectFarForeignCallOp(linkage, result, arguments, temps, info));
         } else {
@@ -891,7 +892,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitCalcStringAttributes(CalcStringAttributesEncoding encoding, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value array, Value offset, Value length, boolean assumeValid) {
-        Variable result = newVariable(LIRKind.value(encoding == CalcStringAttributesEncoding.UTF_8 || encoding == CalcStringAttributesEncoding.UTF_16 ? AMD64Kind.QWORD : AMD64Kind.DWORD));
+        Variable result = newVariable(LIRKind.value(encoding == CalcStringAttributesEncoding.UTF_8 || encoding.isUTF16() ? AMD64Kind.QWORD : AMD64Kind.DWORD));
         append(AMD64CalcStringAttributesOp.movParamsAndCreate(this, encoding, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, array, offset, length, result, assumeValid));
         return result;
     }
@@ -1159,8 +1160,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key) {
-        append(new RangeTableSwitchOp(this, lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key));
+    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key,
+                    boolean inputMayBeOutOfRange, boolean mayEmitThreadedCode) {
+        AllocatableValue scratch = newVariable(LIRKind.value(target().arch.getWordKind()));
+        append(new NewScratchRegisterOp(scratch));
+        append(new RangeTableSwitchOp(this, lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key, scratch, inputMayBeOutOfRange, mayEmitThreadedCode));
     }
 
     @Override

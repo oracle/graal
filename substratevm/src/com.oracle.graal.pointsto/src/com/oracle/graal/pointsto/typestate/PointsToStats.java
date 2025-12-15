@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,11 +34,13 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -72,10 +74,13 @@ import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreInstanceFieldTypeF
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreStaticFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
+import com.oracle.graal.pointsto.flow.context.bytecode.ContextSensitiveMultiTypeState;
+import com.oracle.graal.pointsto.flow.context.bytecode.ContextSensitiveSingleTypeState;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.GraalAccess;
 
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -84,29 +89,46 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * This class provides methods for collecting and reporting statistics about
+ * {@link PointsToAnalysis}. It tracks various metrics such as {@link TypeState} memory footprint,
+ * {@link TypeFlow} statistics, and union operation statistics. If the {@link TypeFlow} or
+ * {@link TypeState} hierarchy changes, this class might have to be updated to reflect that.
+ *
+ * @see PointsToAnalysis
+ * @see TypeFlow
+ * @see TypeState
+ */
 public class PointsToStats {
 
     static boolean reportStatistics;
+    static boolean reportTypeStateMemoryFootPrint;
 
     public static void init(PointsToAnalysis bb) {
+        reportStatistics = bb.reportAnalysisStatistics();
+        reportTypeStateMemoryFootPrint = bb.reportTypeStateMemoryFootprint();
         registerTypeState(bb, EmptyTypeState.SINGLETON);
         registerTypeState(bb, NullTypeState.SINGLETON);
         registerTypeState(bb, AnyPrimitiveTypeState.SINGLETON);
         PrimitiveConstantTypeState.registerCachedTypeStates(bb);
-        reportStatistics = bb.reportAnalysisStatistics();
     }
 
     public static void report(@SuppressWarnings("unused") BigBang bb, String reportNameRoot) {
-
+        assert reportStatistics || reportTypeStateMemoryFootPrint : "At least one of these options should be selected.";
         try {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
             String timeStamp = LocalDateTime.now().format(formatter);
             Path statsDirectory = Files.createDirectories(FileSystems.getDefault().getPath("svmbuild").resolve("stats"));
 
-            doReport(statsDirectory, reportNameRoot, "type state stats", timeStamp, PointsToStats::reportTypeStateStats);
-            doReport(statsDirectory, reportNameRoot, "union operation stats", timeStamp, PointsToStats::reportUnionOpertationsStats);
-            doReport(statsDirectory, reportNameRoot, "type flow stats", timeStamp, PointsToStats::reportTypeFlowStats);
-            doReport(statsDirectory, reportNameRoot, "pruned type flow stats", timeStamp, PointsToStats::reportPrunedTypeFlows);
+            /* Both report option include the footprint, so generate it unconditionally. */
+            doReport(statsDirectory, reportNameRoot, "type state memory footprint", timeStamp, PointsToStats::reportTypeStateMemoryFootprint);
+            if (reportStatistics) {
+                /* The rest of reports should only be generated if reportStatistics was enabled. */
+                doReport(statsDirectory, reportNameRoot, "detailed type state stats", timeStamp, PointsToStats::reportTypeStateStats);
+                doReport(statsDirectory, reportNameRoot, "union operation stats", timeStamp, PointsToStats::reportUnionOpertationsStats);
+                doReport(statsDirectory, reportNameRoot, "type flow stats", timeStamp, PointsToStats::reportTypeFlowStats);
+                doReport(statsDirectory, reportNameRoot, "pruned type flow stats", timeStamp, PointsToStats::reportPrunedTypeFlows);
+            }
 
         } catch (IOException e) {
             throw JVMCIError.shouldNotReachHere(e);
@@ -316,7 +338,25 @@ public class PointsToStats {
     private static final AtomicInteger nextStateId = new AtomicInteger();
     private static ConcurrentHashMap<TypeState, AtomicInteger> typeStateStats = new ConcurrentHashMap<>();
 
+    /**
+     * Contains the count and total size of the given TypeState class.
+     *
+     * @see #typeStateFootprint
+     * @see #reportTypeStateMemoryFootprint
+     * @see #registerTypeStateSize
+     */
+    private static final class TypeStateMemoryStats {
+        AtomicInteger frequency = new AtomicInteger();
+        AtomicLong size = new AtomicLong();
+    }
+
+    private static Map<Class<? extends TypeState>, TypeStateMemoryStats> typeStateFootprint = new ConcurrentHashMap<>();
+
     public static <T extends TypeState> T registerTypeState(PointsToAnalysis bb, T state) {
+        if (bb.reportAnalysisStatistics() || bb.reportTypeStateMemoryFootprint()) {
+            /* TypeState memory footprint is measured in both cases. */
+            registerTypeStateSize(state);
+        }
 
         if (!bb.reportAnalysisStatistics()) {
             return state;
@@ -341,6 +381,83 @@ public class PointsToStats {
             return 0;
         }
         return state.typesCount();
+    }
+
+    /**
+     * This method is used to track the memory footprint of {@link TypeState} classes. It updates
+     * the frequency and total size of the given {@link TypeState} class in the
+     * {@link #typeStateFootprint} map.
+     *
+     * @param <T> the type of the {@link TypeState} instance
+     * @param state the {@link TypeState} instance to register
+     */
+    private static <T extends TypeState> void registerTypeStateSize(T state) {
+        var stats = typeStateFootprint.computeIfAbsent(state.getClass(), __ -> new TypeStateMemoryStats());
+        stats.frequency.incrementAndGet();
+        stats.size.addAndGet(getTypeStateMemorySize(state));
+    }
+
+    /**
+     * In most cases, we use just the shallow size of the object as obtained from the heap dump.
+     * However, {@link MultiTypeState} is an exception, because it represents a set of values, so we
+     * consider the size of the underlying collection as well.
+     */
+    private static long getTypeStateMemorySize(TypeState typeState) {
+        var shallowSize = getObjectSize(typeState);
+        return switch (typeState) {
+            case MultiTypeStateWithBitSet multi -> {
+                var bitsetSize = getObjectSize(multi.typesBitSet);
+                var wordArraySize = getObjectSize(TypeStateUtils.extractBitSetField(multi.typesBitSet));
+                yield shallowSize + bitsetSize + wordArraySize;
+            }
+            case MultiTypeStateWithArray multi -> {
+                var arraySize = getObjectSize(multi.getTypeIdArray());
+                yield shallowSize + arraySize;
+            }
+            default -> shallowSize;
+        };
+    }
+
+    private static long getObjectSize(Object object) {
+        return GraalAccess.getOriginalProviders().getMetaAccess().getMemorySize(GraalAccess.getOriginalProviders().getSnippetReflection().forObject(object));
+    }
+
+    /**
+     * Reports the memory footprint of {@link TypeState} classes used by {@link PointsToAnalysis}.
+     * <p>
+     * This method writes a report to the provided {@link BufferedWriter} containing the frequency
+     * and total size of each allocated {@link TypeState} class.
+     * <p>
+     * The report includes the following information:
+     * <ul>
+     * <li>Type: the class name of the {@link TypeState}</li>
+     * <li>Frequency: the number of instances of the {@link TypeState} class</li>
+     * <li>Total Size: the total memory size of all instances of the {@link TypeState} class</li>
+     * </ul>
+     * <p>
+     * The report is written in a tabular format with the columns "Type", "Frequency", and "Total
+     * Size".
+     *
+     * @param out the {@link BufferedWriter} to write the report to
+     */
+    private static void reportTypeStateMemoryFootprint(BufferedWriter out) {
+        doWrite(out, String.format("%30s\t%15s\t%15s%n", "Type", "Frequency", "Total Size"));
+        /* Use explicit order for the final report. */
+        var typeStateOrder = List.of(EmptyTypeState.class, NullTypeState.class, PrimitiveConstantTypeState.class, AnyPrimitiveTypeState.class, SingleTypeState.class,
+                        ContextSensitiveSingleTypeState.class, ConstantTypeState.class,
+                        MultiTypeStateWithBitSet.class, MultiTypeStateWithArray.class, ContextSensitiveMultiTypeState.class);
+        var totalFreq = 0L;
+        var totalSize = 0L;
+        for (var typeStateClass : typeStateOrder) {
+            var stats = typeStateFootprint.remove(typeStateClass);
+            if (stats != null) {
+                doWrite(out, String.format("%30s\t%15d\t%15d%n", ClassUtil.getUnqualifiedName(typeStateClass), stats.frequency.get(), stats.size.get()));
+                totalFreq += stats.frequency.get();
+                totalSize += stats.size.get();
+            }
+        }
+        AnalysisError.guarantee(typeStateFootprint.isEmpty(), "Missing elements in the typeStateOrder list: %s, please update it.", typeStateFootprint.keySet());
+        doWrite(out, String.format("%30s\t%15d\t%15d%n", "TOTAL", totalFreq, totalSize));
     }
 
     private static void reportTypeStateStats(BufferedWriter out) {
@@ -389,6 +506,11 @@ public class PointsToStats {
                                             union.getState1Id(), union.getState2Id(), union.getResultId(),
                                             frequency, asString(union.getState1()), asString(union.getState2()), asString(union.getResult())));
                         });
+    }
+
+    public static void cleanupAfterAnalysis() {
+        typeStateStats = null;
+        typeStateFootprint = null;
     }
 
     static class UnionOperation {

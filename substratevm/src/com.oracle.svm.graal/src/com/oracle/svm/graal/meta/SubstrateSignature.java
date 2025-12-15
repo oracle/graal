@@ -27,6 +27,10 @@ package com.oracle.svm.graal.meta;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
+
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
@@ -35,9 +39,9 @@ public class SubstrateSignature implements Signature {
     private Object parameterTypes;
     private SubstrateType returnType;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateSignature() {
         /* Types are initialized later with an explicit call to setTypes. */
+        assert SubstrateUtil.HOSTED || SubstrateOptions.useRistretto() : "Must only be initialized at runtime by ristretto";
     }
 
     @SuppressWarnings("this-escape")
@@ -79,7 +83,7 @@ public class SubstrateSignature implements Signature {
     }
 
     @Override
-    public SubstrateType getParameterType(int index, ResolvedJavaType accessingClass) {
+    public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
         if (parameterTypes instanceof SubstrateType) {
             assert index == 0;
             return (SubstrateType) parameterTypes;
@@ -89,7 +93,7 @@ public class SubstrateSignature implements Signature {
     }
 
     @Override
-    public SubstrateType getReturnType(ResolvedJavaType accessingClass) {
+    public JavaType getReturnType(ResolvedJavaType accessingClass) {
         return returnType;
     }
 }

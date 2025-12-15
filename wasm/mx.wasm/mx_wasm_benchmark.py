@@ -166,7 +166,7 @@ class NodeWasmBenchmarkVm(WasmBenchmarkVm):
         try:
             tmp_dir = self.extract_jar_to_tempdir(jar, suite, benchmark)
             node_cmd = os.path.join(node_dir, "node")
-            node_cmd_line = [node_cmd, "--experimental-wasm-bigint", os.path.join(tmp_dir, "bench", suite, benchmark + ".js")]
+            node_cmd_line = [node_cmd, os.path.join(tmp_dir, "bench", suite, benchmark + ".js")]
             mx.log("Running benchmark " + benchmark + " with node.")
             mx.run(node_cmd_line, cwd=tmp_dir, out=out, err=err, nonZeroIsFatal=nonZeroIsFatal)
         finally:
@@ -343,6 +343,8 @@ def wasm_polybench_runner(polybench_run: mx_polybench.PolybenchRunFunction, tags
         polybench_run(["--native", "interpreter/*.wasm"])
         polybench_run(["--jvm", "simd/*.wasm", "--vm-args", "--add-modules=jdk.incubator.vector"])
         polybench_run(["--native", "simd/*.wasm", "--vm-args", "--add-modules=jdk.incubator.vector"])
+        polybench_run(["--jvm", "exceptions/*.wasm", "--experimental-options", "--wasm.Exceptions=true"])
+        polybench_run(["--native", "exceptions/*.wasm", "--experimental-options", "--wasm.Exceptions=true"])
         polybench_run(["--jvm", "interpreter/*.wasm", "--metric=metaspace-memory"])
         polybench_run(["--jvm", "interpreter/*.wasm", "--metric=application-memory"])
         polybench_run(["--jvm", "interpreter/*.wasm", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])

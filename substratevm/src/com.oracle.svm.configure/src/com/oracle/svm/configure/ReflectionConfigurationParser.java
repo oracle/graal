@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.TypeResult;
 
@@ -46,10 +46,10 @@ import jdk.graal.compiler.util.json.JsonParserException;
 public abstract class ReflectionConfigurationParser<C, T> extends ConditionalConfigurationParser {
     private static final String CONSTRUCTOR_NAME = "<init>";
 
-    protected final ConfigurationConditionResolver<C> conditionResolver;
+    protected final AccessConditionResolver<C> conditionResolver;
     protected final ReflectionConfigurationParserDelegate<C, T> delegate;
 
-    public ReflectionConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate, EnumSet<ConfigurationParserOption> parserOptions) {
+    public ReflectionConfigurationParser(AccessConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate, EnumSet<ConfigurationParserOption> parserOptions) {
         super(parserOptions);
         this.conditionResolver = conditionResolver;
         this.delegate = delegate;
@@ -64,7 +64,7 @@ public abstract class ReflectionConfigurationParser<C, T> extends ConditionalCon
     }
 
     public static <C, T> ReflectionConfigurationParser<C, T> create(boolean combinedFileSchema,
-                    ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate,
+                    AccessConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate,
                     EnumSet<ConfigurationParserOption> parserOptions) {
         if (combinedFileSchema) {
             return new ReflectionMetadataParser<>(conditionResolver, delegate, parserOptions);

@@ -71,7 +71,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
@@ -129,6 +128,10 @@ final class InternalResourceCache {
         return resourceId;
     }
 
+    Path getOwningRoot() {
+        return owningRoot == null ? null : owningRoot.path();
+    }
+
     Path getPathOrNull() {
         return path;
     }
@@ -152,6 +155,10 @@ final class InternalResourceCache {
         } else {
             throw new IllegalArgumentException("Internal resources are restricted. To enable them, use '-H:+CopyLanguageResources' during the native image build.");
         }
+    }
+
+    InternalResource getInternalResource() {
+        return resourceFactory.get();
     }
 
     void initializeOwningRoot(InternalResourceRoots.Root root) {
@@ -199,13 +206,13 @@ final class InternalResourceCache {
     }
 
     /**
-     * Installs truffleattach library. Used reflectively by
-     * {@code com.oracle.truffle.runtime.JDKSupport}. The {@code JDKSupport} is initialized before
-     * the Truffle runtime is created and accessor classes are initialized. For this reason, it
-     * cannot use {@code EngineSupport} to call this method, nor can this method use any accessor.
+     * Installs {@code truffleattach} library. Used by{@link JDKSupport}. The {@code JDKSupport} is
+     * initialized before the Truffle runtime is created and accessor classes are initialized. For
+     * this reason, it cannot use {@code EngineSupport} to call this method, nor can this method use
+     * any accessor.
      */
-    static Path installRuntimeResource(InternalResource resource) throws IOException {
-        InternalResourceCache cache = createRuntimeResourceCache(resource);
+    static Path installRuntimeResource(InternalResource resource, String id) throws IOException {
+        InternalResourceCache cache = createRuntimeResourceCache(resource, id);
         synchronized (cache) {
             Path result = cache.path;
             if (result == null) {
@@ -216,12 +223,24 @@ final class InternalResourceCache {
         }
     }
 
-    private static InternalResourceCache createRuntimeResourceCache(InternalResource resource) {
-        InternalResource.Id id = resource.getClass().getAnnotation(InternalResource.Id.class);
-        assert id != null : resource.getClass() + " must be annotated by @InternalResource.Id";
-        InternalResourceCache cache = new InternalResourceCache(PolyglotEngineImpl.ENGINE_ID, id.value(), () -> resource);
+    /**
+     * Creates an {@link InternalResourceCache} for the {@code truffleattach} library. This method
+     * is used by {@link JDKSupport} to diagnose the cause of {@code truffleattach} library
+     * installation failure.
+     */
+    static InternalResourceCache createRuntimeResourceCache(InternalResource resource, String id) {
+        assert verifyAnnotationConsistency(resource, id) : resource.getClass() + " must be annotated by @InternalResource.Id(\"" + id + "\"";
+        InternalResourceCache cache = new InternalResourceCache(PolyglotEngineImpl.ENGINE_ID, id, () -> resource);
         InternalResourceRoots.initializeRuntimeResource(cache);
         return cache;
+    }
+
+    private static boolean verifyAnnotationConsistency(InternalResource resource, String expectedId) {
+        InternalResource.Id id = resource.getClass().getAnnotation(InternalResource.Id.class);
+        if (id == null) {
+            return false;
+        }
+        return id.value().equals(expectedId);
     }
 
     private static InternalResource.Env createInternalResourceEnvReflectively(InternalResource resource) {
@@ -248,7 +267,9 @@ final class InternalResourceCache {
         }
         Path target = owningRoot.path().resolve(Path.of(sanitize(id), sanitize(resourceId), sanitize(versionHash)));
         if (!Files.exists(target)) {
-            InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, unpacking resource files.", id, resourceId, target);
+            if (InternalResourceRoots.isTraceInternalResourceEvents()) {
+                InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, unpacking resource files.", id, resourceId, target);
+            }
             Path parent = target.getParent();
             if (parent == null) {
                 throw new AssertionError("Target must have a parent directory but was " + target);
@@ -274,8 +295,10 @@ final class InternalResourceCache {
                 }
             }
         } else {
-            InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, using existing resource files.",
-                            id, resourceId, target);
+            if (InternalResourceRoots.isTraceInternalResourceEvents()) {
+                InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, using existing resource files.",
+                                id, resourceId, target);
+            }
             verifyResourceRoot(target);
         }
         return target;
@@ -520,17 +543,19 @@ final class InternalResourceCache {
             if (loader == null) {
                 continue;
             }
-            StreamSupport.stream(ServiceLoader.load(InternalResourceProvider.class, loader).spliterator(), false).filter((p) -> supplier.accepts(p.getClass())).forEach((p) -> {
-                JDKSupport.exportTransitivelyTo(p.getClass().getModule());
-                String componentId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(p);
-                String resourceId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(p);
-                var componentOptionalResources = cache.computeIfAbsent(componentId, (k) -> new HashMap<>());
-                var resourceSupplier = new OptionalResourceSupplier(p);
-                var existing = (OptionalResourceSupplier) componentOptionalResources.put(resourceId, resourceSupplier);
-                if (existing != null && !hasSameCodeSource(resourceSupplier, existing)) {
-                    throw throwDuplicateOptionalResourceException(existing.get(), resourceSupplier.get());
+            for (InternalResourceProvider p : ServiceLoader.load(InternalResourceProvider.class, loader)) {
+                if (supplier.accepts(p.getClass())) {
+                    JDKSupport.exportTransitivelyTo(p.getClass().getModule());
+                    String componentId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(p);
+                    String resourceId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(p);
+                    var componentOptionalResources = cache.computeIfAbsent(componentId, (k) -> new HashMap<>());
+                    var resourceSupplier = new OptionalResourceSupplier(p);
+                    var existing = (OptionalResourceSupplier) componentOptionalResources.put(resourceId, resourceSupplier);
+                    if (existing != null && !hasSameCodeSource(resourceSupplier, existing)) {
+                        throw throwDuplicateOptionalResourceException(existing.get(), resourceSupplier.get());
+                    }
                 }
-            });
+            }
         }
         return cache;
     }

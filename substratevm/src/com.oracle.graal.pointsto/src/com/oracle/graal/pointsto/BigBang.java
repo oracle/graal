@@ -45,6 +45,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -61,6 +62,8 @@ public interface BigBang extends ReachabilityAnalysis {
     HostVM getHostVM();
 
     UnsupportedFeatures getUnsupportedFeatures();
+
+    boolean isPointsToAnalysis();
 
     /**
      * Checks if all user defined limitations such as the number of types are satisfied.
@@ -94,6 +97,10 @@ public interface BigBang extends ReachabilityAnalysis {
 
     boolean trackPrimitiveValues();
 
+    default boolean isSupportedJavaKind(JavaKind javaKind) {
+        return javaKind == JavaKind.Object;
+    }
+
     /** You can blacklist certain callees here. */
     @SuppressWarnings("unused")
     default boolean isCallAllowed(PointsToAnalysis bb, AnalysisMethod caller, AnalysisMethod target, BytecodePosition srcPosition) {
@@ -126,6 +133,10 @@ public interface BigBang extends ReachabilityAnalysis {
 
     void initializeMetaData(AnalysisType type);
 
+    void markInitializationFinished();
+
+    boolean isInitialized();
+
     /**
      * Callback executed after the analysis finished. The cleanupAfterAnalysis is executed after the
      * universe builder, which can be too late for some tasks.
@@ -151,6 +162,11 @@ public interface BigBang extends ReachabilityAnalysis {
 
     @SuppressWarnings("unused")
     default void tryRegisterFieldForBaseImage(AnalysisField field) {
+
+    }
+
+    @SuppressWarnings("unused")
+    default void tryRegisterNativeMethodsForBaseImage(ResolvedJavaType analysisType) {
 
     }
 }

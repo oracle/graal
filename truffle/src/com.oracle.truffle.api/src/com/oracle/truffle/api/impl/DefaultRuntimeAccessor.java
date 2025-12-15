@@ -212,7 +212,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public void flushCompileQueue(Object runtimeData) {
+        public void shutdownCompilationForEngine(Object runtimeData) {
             // default runtime has no compile queue.
         }
 
@@ -303,6 +303,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
             return ThreadLocal.withInitial(initialValue);
+        }
+
+        @Override
+        public void setInitializedTimestamp(CallTarget target, long timestamp) {
+
         }
     }
 

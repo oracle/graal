@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.typestore;
 
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
-import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 
 /**
  * Store for instance field access type flows. The read and write flows are unified.
@@ -35,11 +35,11 @@ public class UnifiedFieldTypeStore extends FieldTypeStore {
 
     private final FieldTypeFlow readWriteFlow;
 
-    public UnifiedFieldTypeStore(AnalysisField field, AnalysisObject object) {
+    public UnifiedFieldTypeStore(PointsToAnalysisField field, AnalysisObject object) {
         this(field, object, new FieldTypeFlow(field, field.getType(), object));
     }
 
-    public UnifiedFieldTypeStore(AnalysisField field, AnalysisObject object, FieldTypeFlow fieldFlow) {
+    public UnifiedFieldTypeStore(PointsToAnalysisField field, AnalysisObject object, FieldTypeFlow fieldFlow) {
         super(field, object);
         this.readWriteFlow = fieldFlow;
     }

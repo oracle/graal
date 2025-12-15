@@ -31,8 +31,8 @@ import org.junit.Test;
 /**
  * Like {@link ConfigurationGenerator}, but performs the work across multiple test methods. The
  * agent is run separately for each and configured to emit "partial" configurations, and then the
- * results are combined using the {@code native-image-configure generate-conditional} command. This
- * test is invoked manually from mx.
+ * results are combined using the {@code native-image-utils generate-conditional} command. This test
+ * is invoked manually from mx.
  */
 public class PartialConfigurationGenerator {
 

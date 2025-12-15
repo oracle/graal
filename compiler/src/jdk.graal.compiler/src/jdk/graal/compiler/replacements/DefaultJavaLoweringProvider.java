@@ -25,7 +25,6 @@
 package jdk.graal.compiler.replacements;
 
 import static jdk.graal.compiler.core.common.GraalOptions.EmitStringSubstitutions;
-import static jdk.graal.compiler.core.common.GraalOptions.InlineGraalStubs;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTIndexMasking;
 import static jdk.graal.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMax;
@@ -45,7 +44,6 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
@@ -105,7 +103,6 @@ import jdk.graal.compiler.nodes.debug.VerifyHeapNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.ClassIsArrayNode;
-import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.GuardedUnsafeLoadNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
@@ -166,9 +163,7 @@ import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.IdentityHashCodeNode;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.vm.ci.code.CodeUtil;
@@ -180,7 +175,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -315,10 +309,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
                 }
             } else if (n instanceof VerifyHeapNode) {
                 lowerVerifyHeap((VerifyHeapNode) n);
-            } else if (n instanceof UnaryMathIntrinsicNode) {
-                lowerUnaryMath((UnaryMathIntrinsicNode) n, tool);
-            } else if (n instanceof BinaryMathIntrinsicNode) {
-                lowerBinaryMath((BinaryMathIntrinsicNode) n, tool);
             } else if (n instanceof UnpackEndianHalfNode) {
                 lowerSecondHalf((UnpackEndianHalfNode) n);
             } else if (n instanceof RegisterFinalizerNode) {
@@ -402,59 +392,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         n.lower(byteOrder);
     }
 
-    private void lowerBinaryMath(BinaryMathIntrinsicNode math, LoweringTool tool) {
-        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
-            return;
-        }
-        ResolvedJavaMethod method = math.graph().method();
-        if (method != null) {
-            if (replacements.isSnippet(method)) {
-                // In the context of SnippetStub, i.e., Graal-generated stubs, use the LIR
-                // lowering to emit the stub assembly code instead of the Node lowering.
-                return;
-            }
-            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && method.getDeclaringClass().getName().equals("Ljava/lang/Math;")) {
-                // A root compilation of the intrinsic method should emit the full assembly
-                // implementation.
-                return;
-            }
-            if (InlineGraalStubs.getValue(math.graph().getOptions())) {
-                return;
-            }
-        }
-        StructuredGraph graph = math.graph();
-        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, math.getOperation().foreignCallSignature, math.getX(), math.getY()));
-        graph.addAfterFixed(tool.lastFixedNode(), call);
-        math.replaceAtUsages(call);
-    }
-
-    private void lowerUnaryMath(UnaryMathIntrinsicNode math, LoweringTool tool) {
-        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
-            return;
-        }
-        ResolvedJavaMethod method = math.graph().method();
-        if (method != null) {
-            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && method.getDeclaringClass().getName().equals("Ljava/lang/Math;")) {
-                // A root compilation of the intrinsic method should emit the full assembly
-                // implementation.
-                return;
-            }
-            if (InlineGraalStubs.getValue(math.graph().getOptions())) {
-                return;
-            }
-        }
-        lowerUnaryMathToForeignCall(math, tool);
-    }
-
-    protected void lowerUnaryMathToForeignCall(UnaryMathIntrinsicNode math, LoweringTool tool) {
-        StructuredGraph graph = math.graph();
-        ForeignCallDescriptor desc = foreignCalls.getDescriptor(math.getOperation().foreignCallSignature);
-        Stamp s = UnaryMathIntrinsicNode.UnaryOperation.computeStamp(math.getOperation(), math.getValue().stamp(NodeView.DEFAULT));
-        ForeignCallNode call = graph.add(new ForeignCallNode(desc, s, List.of(math.getValue())));
-        graph.addAfterFixed(tool.lastFixedNode(), call);
-        math.replaceAtUsages(call);
-    }
-
     protected void lowerVerifyHeap(VerifyHeapNode n) {
         GraphUtil.removeFixedWithUnusedInputs(n);
     }
@@ -485,7 +422,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         assert loadField.getStackKind() != JavaKind.Illegal : loadField;
         StructuredGraph graph = loadField.graph();
         ResolvedJavaField field = loadField.field();
-        ValueNode object = loadField.isStatic() ? staticFieldBase(graph, field) : loadField.object();
+        ValueNode object = loadField.isStatic() ? staticFieldBase(graph, field, tool) : loadField.object();
         object = createNullCheckedValue(object, loadField, tool);
         Stamp loadStamp = loadStamp(loadField.stamp(NodeView.DEFAULT), getStorageKind(field));
 
@@ -502,7 +439,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
     protected void lowerStoreFieldNode(StoreFieldNode storeField, LoweringTool tool) {
         StructuredGraph graph = storeField.graph();
         ResolvedJavaField field = storeField.field();
-        ValueNode object = storeField.isStatic() ? staticFieldBase(graph, field) : storeField.object();
+        ValueNode object = storeField.isStatic() ? staticFieldBase(graph, field, tool) : storeField.object();
         object = createNullCheckedValue(object, storeField, tool);
         ValueNode value = implicitStoreConvert(graph, getStorageKind(storeField.field()), storeField.value());
         AddressNode address = createFieldAddress(graph, object, field);
@@ -1242,7 +1179,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         return fieldIdentity;
     }
 
-    public abstract ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField field);
+    public abstract ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField field, LoweringTool tool);
 
     public abstract int arrayLengthOffset();
 

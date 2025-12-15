@@ -39,6 +39,7 @@ import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.lookup.LookupMode;
 import com.oracle.truffle.espresso.threads.ThreadState;
 import com.oracle.truffle.espresso.threads.Transition;
 
@@ -135,7 +136,7 @@ public final class ReferenceProcessCache extends EspressoNode {
 
     private static Field findJlaField(Klass sharedSecrets) {
         for (Symbol<Type> type : JAVA_LANG_ACCESS_TYPES) {
-            Field f = sharedSecrets.lookupField(Names.javaLangAccess, type, Klass.LookupMode.STATIC_ONLY);
+            Field f = sharedSecrets.lookupField(Names.javaLangAccess, type, LookupMode.STATIC_ONLY);
             if (f != null) {
                 return f;
             }
@@ -145,7 +146,7 @@ public final class ReferenceProcessCache extends EspressoNode {
 
     private static Method findRunFinalizer(EspressoContext context) {
         for (Symbol<Signature> signature : RUN_FINALIZER_SIGNATURES) {
-            Method m = context.getMeta().java_lang_ref_Finalizer.lookupMethod(Names.runFinalizer, signature, Klass.LookupMode.INSTANCE_ONLY);
+            Method m = context.getMeta().java_lang_ref_Finalizer.lookupMethod(Names.runFinalizer, signature);
             if (m != null) {
                 return m;
             }
@@ -157,9 +158,9 @@ public final class ReferenceProcessCache extends EspressoNode {
         Method processPendingReferenceMethod;
         if (context.getJavaVersion().java8OrEarlier()) {
             processPendingReferenceMethod = context.getMeta().java_lang_ref_Reference.lookupDeclaredMethod(Names.tryHandlePending, Signatures._boolean_boolean,
-                            Klass.LookupMode.STATIC_ONLY);
+                            LookupMode.STATIC_ONLY);
         } else {
-            processPendingReferenceMethod = context.getMeta().java_lang_ref_Reference.lookupDeclaredMethod(Names.processPendingReferences, Signatures._void, Klass.LookupMode.STATIC_ONLY);
+            processPendingReferenceMethod = context.getMeta().java_lang_ref_Reference.lookupDeclaredMethod(Names.processPendingReferences, Signatures._void, LookupMode.STATIC_ONLY);
         }
         if (processPendingReferenceMethod == null) {
             throw EspressoError.shouldNotReachHere("Could not find pending reference processing method.");

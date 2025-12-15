@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,8 +58,6 @@ DEBUG_ONLY(class ResourceMark;)
 namespace svm_container {
 
 class outputStream : public CHeapObjBase {
-  friend class StreamIndentor;
-
 #ifndef NATIVE_IMAGE
  private:
    NONCOPYABLE(outputStream);
@@ -105,9 +103,6 @@ class outputStream : public CHeapObjBase {
    void do_vsnprintf_and_write(const char* format, va_list ap, bool add_cr) ATTRIBUTE_PRINTF(2, 0);
 #endif // !NATIVE_IMAGE
 
-   // Automatic indentation. Returns old autoindent state.
-   bool set_autoindent(bool value);
-
  public:
 #ifndef NATIVE_IMAGE
    class TestSupport;  // Unit test support
@@ -125,6 +120,14 @@ class outputStream : public CHeapObjBase {
    void set_indentation(int i) { _indentation = i;    }
    int fill_to(int col);
    void move_to(int col, int slop = 6, int min_space = 2);
+
+   // Automatic indentation:
+   // If autoindent mode is on, the following APIs will automatically indent
+   // line starts depending on the current indentation level:
+   // print(), print_cr(), print_raw(), print_raw_cr()
+   // Other APIs are unaffected
+   // Returns old autoindent state.
+   bool set_autoindent(bool value);
 
    // sizing
    int position() const { return _position; }
@@ -151,6 +154,7 @@ class outputStream : public CHeapObjBase {
    void put(char ch);
    void sp(int count = 1);
    void cr();
+   void cr_indent();
    void bol() { if (_position > 0)  cr(); }
 
 
@@ -194,29 +198,25 @@ class outputStream : public CHeapObjBase {
 // ANSI C++ name collision
 extern outputStream* tty;           // tty output
 
-// outputStream indentation. When used, indentation is automatically applied
-// when printing on the stream using the following APIs:
-// print(), print_cr(), print_raw(), print_raw_cr()
-class StreamIndentor {
- private:
-  outputStream* const _stream;
-  const int           _indentation;
-  const bool          _old_autoindent;
-  NONCOPYABLE(StreamIndentor);
+class streamIndentor : public StackObj {
+  outputStream* const _str;
+  const int _amount;
+  NONCOPYABLE(streamIndentor);
+public:
+  streamIndentor(outputStream* str, int amt = 2) : _str(str), _amount(amt) {
+    _str->inc(_amount);
+  }
+  ~streamIndentor() { _str->dec(_amount); }
+};
 
+class StreamAutoIndentor : public StackObj {
+  outputStream* const _os;
+  const bool _old;
+  NONCOPYABLE(StreamAutoIndentor);
  public:
-  StreamIndentor(outputStream* os, int indentation) :
-    _stream(os),
-    _indentation(indentation),
-    _old_autoindent(_stream->set_autoindent(true)) {
-
-    _stream->inc(_indentation);
-  }
-
-  ~StreamIndentor() {
-    _stream->dec(_indentation);
-    _stream->set_autoindent(_old_autoindent);
-  }
+  StreamAutoIndentor(outputStream* os) :
+    _os(os), _old(os->set_autoindent(true)) {}
+  ~StreamAutoIndentor() { _os->set_autoindent(_old); }
 };
 
 // advisory locking for the shared tty stream:

@@ -46,7 +46,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.debug.BytecodeDebugListener;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
@@ -56,6 +58,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Generates a bytecode interpreter using the Bytecode DSL. The Bytecode DSL automatically produces
@@ -219,7 +222,7 @@ public @interface GenerateBytecode {
      * language {@link ProvidedTags provides} it.
      * <p>
      * Root tagging requires the probe to be notified before the {@link Prolog prolog} is executed.
-     * Implementing this behavior manually is not trivial and not recommended. It is recommended to
+     * Implementing this behaviour manually is not trivial and not recommended. It is recommended to
      * use automatic root tagging. For inlining performed by the parser it may be useful to emit
      * custom {@link RootTag root} tag using the builder methods for inlined methods. This ensures
      * that tools can still work correctly for inlined calls.
@@ -248,7 +251,7 @@ public @interface GenerateBytecode {
      * <ul>
      * <li>Allowing instruments to access the current receiver or function object.
      * <li>Implementing custom scopes for local variables instead of the default scope.
-     * <li>Hiding certain local local variables or arguments from instruments.
+     * <li>Hiding certain local variables or arguments from instruments.
      * </ul>
      * <p>
      * Minimal example of a tag node library:
@@ -282,7 +285,7 @@ public @interface GenerateBytecode {
      * <p>
      * Unsafe accesses are faster, but they do not perform array bounds checks. This means it is
      * possible (though unlikely) for unsafe accesses to cause undefined behaviour. Undefined
-     * behavior may only happen due to a bug in the Bytecode DSL implementation and not language
+     * behaviour may only happen due to a bug in the Bytecode DSL implementation and not language
      * implementation code.
      *
      * @since 24.2
@@ -290,12 +293,17 @@ public @interface GenerateBytecode {
     boolean allowUnsafe() default true;
 
     /**
-     * Whether the generated interpreter should support coroutines via a {@code yield} operation.
+     * Whether the generated interpreter should support coroutines via a built-in {@code yield}
+     * operation.
      * <p>
-     * The yield operation returns a {@link ContinuationResult} from the current point in execution.
-     * The {@link ContinuationResult} saves the current state of the interpreter so that it can be
-     * resumed at a later time. The yield and resume actions pass values, enabling communication
-     * between the caller and callee.
+     * The built-in yield operation returns a {@link ContinuationResult} from the current point in
+     * execution. The {@link ContinuationResult} saves the current state of the interpreter so that
+     * it can be resumed at a later time. The yield and resume actions pass values, enabling
+     * communication between the caller and callee.
+     * <p>
+     * If more control over the yield process is required, consider defining a custom {@link Yield}
+     * instead. You can enable built-in and custom yields separately (i.e., {@link #enableYield}
+     * does not need to be {@code true} if you only use a custom yield).
      * <p>
      * Technical note: in theoretical terms, a {@link ContinuationResult} implements an asymmetric
      * stack-less coroutine.
@@ -415,6 +423,22 @@ public @interface GenerateBytecode {
     boolean storeBytecodeIndexInFrame() default false;
 
     /**
+     * Whether {@link TruffleStackTraceElement stack trace elements} of the annotated root node
+     * should capture frames. This flag should be used instead of
+     * {@link RootNode#isCaptureFramesForTrace(boolean)}, which the Bytecode DSL prevents you from
+     * overriding.
+     * <p>
+     * When this flag is non-null, you can use {@link BytecodeFrame#get(TruffleStackTraceElement)}
+     * to access frame data from a stack trace element. The frame only supports read-only access.
+     * <p>
+     * Bytecode DSL interpreters <strong>must not</strong> access frames directly using
+     * {@link TruffleStackTraceElement#getFrame}.
+     *
+     * @since 25.1
+     */
+    boolean captureFramesForTrace() default false;
+
+    /**
      * Path to a file containing optimization decisions. This file is generated using tracing on a
      * representative corpus of code.
      * <p>
@@ -463,6 +487,16 @@ public @interface GenerateBytecode {
      * @since 24.2
      */
     Class<?>[] boxingEliminationTypes() default {};
+
+    /**
+     * Whether constant operands of primitive type should be encoded directly in the bytecode.
+     * Inlining can reduce the number of memory reads required to access constants.
+     * <p>
+     * Currently, inlining is only supported for {@link ConstantOperand}s.
+     *
+     * @since 25.1
+     */
+    boolean inlinePrimitiveConstants() default true;
 
     /**
      * Whether to generate introspection data for specializations. The data is accessible using
@@ -536,5 +570,40 @@ public @interface GenerateBytecode {
      * @since 25.0
      */
     boolean additionalAssertions() default false;
+
+    /**
+     * Enables the use of the {@link HostCompilerDirectives#markThreadedSwitch(int) threaded switch}
+     * for the generated bytecode switch.
+     * <p>
+     * The threaded-switch mechanism reduces dispatch overhead for large or frequently executed
+     * bytecode switches, improving interpreter performance. Disabling it forces a traditional
+     * (non-threaded) switch implementation, which can be useful for benchmarking or debugging but
+     * is generally slower.
+     * <p>
+     * This option is enabled by default. It is not recommended to disable the threaded switch in
+     * production, as doing so may significantly reduce performance without improving stability. On
+     * JVMs that do not support {@link HostCompilerDirectives#markThreadedSwitch(int)} this flag has
+     * no effect.
+     *
+     * @see HostCompilerDirectives#markThreadedSwitch(int)
+     * @since 25.1
+     */
+    boolean enableThreadedSwitch() default true;
+
+    /**
+     * Enables instruction tracing support for the generated bytecode interpreter.
+     * <p>
+     * If {@code true}, the interpreter is generated with tracing hooks so that
+     * {@link InstructionTracer InstructionTracer}s can be attached at run time (via
+     * {@link BytecodeRootNodes#addInstructionTracer BytecodeRootNodes.addInstructionTracer} or
+     * {@link BytecodeDescriptor#addInstructionTracer BytecodeDescriptor.addInstructionTracer}).
+     * Attaching a tracer causes all executed instructions to invoke the tracer before execution.
+     * <p>
+     * If {@code false}, no tracing hooks are generated and any attempt to attach a tracer will
+     * throw {@link UnsupportedOperationException}.
+     *
+     * @since 25.1
+     */
+    boolean enableInstructionTracing() default true;
 
 }

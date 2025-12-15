@@ -41,22 +41,25 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
-import java.util.Set;
 import java.util.function.Predicate;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.core.ClassLoaderSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -64,15 +67,16 @@ import com.oracle.svm.util.ClassUtil;
 
 import jdk.internal.module.Modules;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final NativeImageClassLoaderSupport classLoaderSupport;
 
     private final NativeImageClassLoader imageClassLoader;
 
-    private final Map<String, Set<Module>> packageToModules;
+    private final Map<String, EconomicSet<Module>> packageToModules;
 
-    private record ConditionalResource(ConfigurationCondition condition, String resourceName, Object origin) {
+    private record ConditionalResource(AccessCondition condition, String resourceName, Object origin) {
     }
 
     public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
@@ -179,7 +183,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 relativeFilePath = String.valueOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
             }
 
-            var conditionsWithOrigins = shouldIncludeEntry(null, collector, relativeFilePath, Path.of(relativeFilePath).toUri(), includeCurrent);
+            var conditionsWithOrigins = shouldIncludeEntry(null, collector, relativeFilePath, entry.toUri(), includeCurrent);
             for (var conditionWithOrigin : conditionsWithOrigins) {
                 includeResource(collector, null, relativeFilePath, conditionWithOrigin.condition(), conditionWithOrigin.origin());
             }
@@ -220,13 +224,13 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void includeResource(ResourceCollector collector, Module module, String name, ConfigurationCondition condition, Object origin) {
+    private static void includeResource(ResourceCollector collector, Module module, String name, AccessCondition condition, Object origin) {
         collector.addResourceConditionally(module, name, condition, origin);
     }
 
     private static List<ConditionWithOrigin> shouldIncludeEntry(Module module, ResourceCollector collector, String fileName, URI uri, boolean includeCurrent) {
         if (includeCurrent && !(fileName.endsWith(".class") || fileName.endsWith(".jar"))) {
-            return Collections.singletonList(new ConditionWithOrigin(ConfigurationCondition.alwaysTrue(), "Include all"));
+            return Collections.singletonList(new ConditionWithOrigin(AccessCondition.unconditional(), "Include all"));
         }
 
         return collector.isIncluded(module, fileName, uri);
@@ -246,13 +250,13 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
         bundleName = bundleName.replace("/", ".");
         String packageName = packageName(bundleName);
-        Set<Module> modules;
+        EconomicSet<Module> modules;
         if (ResourcesFeature.MODULE_NAME_ALL_UNNAMED.equals(moduleName)) {
-            modules = Collections.emptySet();
+            modules = EconomicSet.emptySet();
         } else if (moduleName != null) {
-            modules = classLoaderSupport.findModule(moduleName).stream().collect(Collectors.toSet());
+            modules = EconomicSet.create(classLoaderSupport.findModule(moduleName).stream().collect(Collectors.toSet()));
         } else {
-            modules = packageToModules.getOrDefault(packageName, Collections.emptySet());
+            modules = packageToModules.getOrDefault(packageName, EconomicSet.emptySet());
         }
         if (modules.isEmpty()) {
             /* If bundle is not located in any module get it via classloader (from ALL_UNNAMED) */
@@ -276,7 +280,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     }
 
     @Override
-    public Map<String, Set<Module>> getPackageToModules() {
+    public Map<String, EconomicSet<Module>> getPackageToModules() {
         return packageToModules;
     }
 
@@ -299,13 +303,13 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     }
 
     private void addToPackageNameModules(Module moduleName, String packageName) {
-        Set<Module> prevValue = packageToModules.get(packageName);
+        EconomicSet<Module> prevValue = packageToModules.get(packageName);
         if (prevValue == null) {
             /* Mostly packageName is only used in a single module */
-            packageToModules.put(packageName, Collections.singleton(moduleName));
+            packageToModules.put(packageName, EconomicSet.of(moduleName));
         } else if (prevValue.size() == 1) {
             /* Transition to HashSet - happens rarely */
-            HashSet<Module> newValue = new HashSet<>();
+            EconomicSet<Module> newValue = EconomicSet.create(2);
             newValue.add(prevValue.iterator().next());
             newValue.add(moduleName);
             packageToModules.put(packageName, newValue);

@@ -49,15 +49,14 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.word.Pointer;
@@ -89,10 +88,13 @@ import com.oracle.svm.core.foreign.SubstrateMappedMemoryUtils;
 import com.oracle.svm.core.foreign.Target_java_nio_MappedMemoryUtils;
 import com.oracle.svm.core.foreign.phases.SubstrateOptimizeSharedArenaAccessPhase;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -106,6 +108,7 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -155,7 +158,6 @@ public class ForeignFunctionsFeature implements InternalFeature {
                                     "jdk.internal.foreign.layout"});
 
     /** Indicates if the registration of stubs is no longer allowed. */
-    private boolean sealed;
     private RuntimeForeignAccessSupportImpl accessSupport;
 
     /** Indicates if at least one stub was registered. */
@@ -171,10 +173,6 @@ public class ForeignFunctionsFeature implements InternalFeature {
     @Fold
     public static ForeignFunctionsFeature singleton() {
         return ImageSingletons.lookup(ForeignFunctionsFeature.class);
-    }
-
-    private void checkNotSealed() {
-        UserError.guarantee(!sealed, "Registration of foreign functions was closed.");
     }
 
     /**
@@ -218,8 +216,8 @@ public class ForeignFunctionsFeature implements InternalFeature {
         }
 
         @Override
-        public void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
-            checkNotSealed();
+        public void registerForDowncall(AccessCondition condition, FunctionDescriptor desc, Linker.Option... options) {
+            abortIfSealed();
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forDowncall(desc, options);
                 SharedDesc sharedDesc = new SharedDesc(desc, linkerOptions);
@@ -230,8 +228,8 @@ public class ForeignFunctionsFeature implements InternalFeature {
         }
 
         @Override
-        public void registerForUpcall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
-            checkNotSealed();
+        public void registerForUpcall(AccessCondition condition, FunctionDescriptor desc, Linker.Option... options) {
+            abortIfSealed();
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
                 SharedDesc sharedDesc = new SharedDesc(desc, linkerOptions);
@@ -242,8 +240,8 @@ public class ForeignFunctionsFeature implements InternalFeature {
         }
 
         @Override
-        public void registerForDirectUpcall(ConfigurationCondition condition, MethodHandle target, FunctionDescriptor desc, Linker.Option... options) {
-            checkNotSealed();
+        public void registerForDirectUpcall(AccessCondition condition, MethodHandle target, FunctionDescriptor desc, Linker.Option... options) {
+            abortIfSealed();
             DirectMethodHandleDesc directMethodHandleDesc = target.describeConstable()
                             .filter(x -> x instanceof DirectMethodHandleDesc dmh && dmh.kind() == Kind.STATIC)
                             .map(x -> ((DirectMethodHandleDesc) x))
@@ -260,7 +258,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
                 LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
                 DirectUpcallDesc directUpcallDesc = new DirectUpcallDesc(target, directMethodHandleDesc, desc, linkerOptions);
                 runConditionalTask(condition, _ -> {
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), false, method);
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, false, method);
                     createStub(UpcallStubFactory.INSTANCE, directUpcallDesc.toSharedDesc());
                     createStub(DirectUpcallStubFactory.INSTANCE, directUpcallDesc);
                 });
@@ -403,6 +401,19 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(getConfigurationParser(imageClassLoader), imageClassLoader, "panama foreign");
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        if (ForeignFunctionsRuntime.areFunctionCallsSupported()) {
+            FeatureImpl.BeforeCompilationAccessImpl a = (FeatureImpl.BeforeCompilationAccessImpl) access;
+            SubstrateBackend b = a.getRuntimeConfiguration().getBackendForNormalMethod();
+            if (b instanceof SubstrateBackendWithAssembler<?> bAsm) {
+                foreignFunctionsRuntime.generateTrampolineTemplate(bAsm);
+            } else {
+                throw VMError.shouldNotReachHere("Support for the Foreign Function and Memory API needs a backend with an assembler, it is not available with backend %s", b.getClass());
+            }
+        }
     }
 
     private ConfigurationParser getConfigurationParser(ImageClassLoader imageClassLoader) {
@@ -661,8 +672,6 @@ public class ForeignFunctionsFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
 
-        AbiUtils.singleton().checkLibrarySupport();
-
         accessSupport.setAnalysisAccess(a);
 
         for (String simpleName : VAR_HANDLE_SEGMENT_ACCESSORS) {
@@ -688,8 +697,10 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         RuntimeClassInitialization.initializeAtRunTime(RuntimeSystemLookup.class);
 
-        access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false,
-                        "Runtime support, registered in " + ForeignFunctionsFeature.class);
+        if (ForeignFunctionsRuntime.isLibcSupported()) {
+            access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false,
+                            "Runtime support, registered in " + ForeignFunctionsFeature.class);
+        }
 
         /*
          * Even if there is no instance of MemorySessionImpl, we will kill the field location of
@@ -706,7 +717,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        sealed = true;
+        accessSupport.sealed();
         if (!ForeignFunctionsRuntime.areFunctionCallsSupported() && stubsRegistered) {
             assert getCreatedDowncallStubsCount() == 0;
             assert getCreatedUpcallStubsCount() == 0;
@@ -764,6 +775,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(mappedMemoryUtils, "unload", long.class, boolean.class, long.class));
         registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(SubstrateMappedMemoryUtils.class, "load", long.class, boolean.class, long.class));
         registerSafeArenaAccessorMethod(metaAccess, Thread.class.getMethod("currentThread"));
+        registerSafeArenaAccessorMethod(metaAccess, JavaThreads.class.getMethod("getCurrentThreadOrNull"));
 
         /*
          * The actual method checking a valid session state (if not inlined) is also safe as this
@@ -827,7 +839,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
                 if (MultiMethod.isOriginalMethod(b.getMethod())) { // not for hosted compilation
                     return false;
                 }
-                if (!AnnotationAccess.isAnnotationPresent(b.getMethod(), SharedArenaSupport.SCOPED_ANNOTATION)) {
+                if (!AnnotationUtil.isAnnotationPresent(b.getMethod(), SharedArenaSupport.SCOPED_ANNOTATION)) {
                     return false;
                 }
                 MethodCallTargetNode mt = b.add(new SubstrateMethodCallTargetNode(InvokeKind.Static, checkValidStateRawInRuntimeCompiledCode, args, b.getInvokeReturnStamp(b.getAssumptions())));
@@ -840,17 +852,17 @@ public class ForeignFunctionsFeature implements InternalFeature {
     /* Testing and reporting interface */
 
     public int getCreatedDowncallStubsCount() {
-        assert sealed;
+        assert accessSupport.isSealed();
         return foreignFunctionsRuntime.getDowncallStubsCount();
     }
 
     public int getCreatedUpcallStubsCount() {
-        assert sealed;
+        assert accessSupport.isSealed();
         return foreignFunctionsRuntime.getUpcallStubsCount();
     }
 
     public int getCreatedDirectUpcallStubsCount() {
-        assert sealed;
+        assert accessSupport.isSealed();
         return foreignFunctionsRuntime.getDirectUpcallStubsCount();
     }
 }

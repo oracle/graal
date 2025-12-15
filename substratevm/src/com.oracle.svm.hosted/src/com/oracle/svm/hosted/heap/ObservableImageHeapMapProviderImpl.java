@@ -29,14 +29,22 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.util.ObservableMap;
 
 public class ObservableImageHeapMapProviderImpl implements ObservableImageHeapMapProvider {
+    ScanReason scanReason = new OtherReason("Manual value rescan triggered from " + ObservableImageHeapMapProviderImpl.class);
+
     private List<ObservableMap<?, ?>> cachedInstances = new ArrayList<>();
     private ImageHeapScanner heapScanner;
 
@@ -69,11 +77,12 @@ public class ObservableImageHeapMapProviderImpl implements ObservableImageHeapMa
 
     private <K, V> void registerWithScanner(ObservableMap<K, V> map) {
         /* Scan map values when they are added. */
-        map.addObserver((key, value) -> heapScanner.rescanObject(value));
+        map.addObserver((_, value) -> heapScanner.rescanObject(value, scanReason));
     }
 }
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 final class ObservableHeapMapFeature implements InternalFeature {
 
     @Override

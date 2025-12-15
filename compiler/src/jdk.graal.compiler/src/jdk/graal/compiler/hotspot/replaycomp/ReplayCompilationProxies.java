@@ -35,12 +35,13 @@ import java.util.Objects;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TimerKey;
+import jdk.graal.compiler.hotspot.CompilationContext;
+import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.graal.compiler.hotspot.Platform;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase;
@@ -49,7 +50,10 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 //JaCoCo Exclude
 
@@ -66,13 +70,12 @@ import jdk.vm.ci.meta.Constant;
  * memory usage low, which is important when replaying many compilations on libgraal and
  * benchmarking compile time.
  * <p>
- * It is necessary to call {@link #findLocalMirrors()} after the operations are loaded and JVMCI
+ * It is necessary to call {@link #findLocalMirrors} after the operations are loaded and JVMCI
  * providers are created. The local mirrors may be required during a replayed compilation to query
  * information from the local VM, which is needed for snippet parsing.
  *
  * @see ReplayCompilationSupport
  */
-@LibGraalSupport.HostedOnly(unlessTrue = ReplayCompilationSupport.ENABLE_REPLAY_LAUNCHER_PROP)
 public class ReplayCompilationProxies implements CompilationProxies {
     public static class Options {
         // @formatter:off
@@ -144,6 +147,11 @@ public class ReplayCompilationProxies implements CompilationProxies {
     private final EconomicMap<Class<?>, Object> singletonObjects;
 
     /**
+     * The host meta access provider.
+     */
+    private MetaAccessProvider hostMetaAccess;
+
+    /**
      * Proxifies and unproxifies composite objects.
      */
     private final CompilationProxyMapper proxyMapper;
@@ -212,6 +220,17 @@ public class ReplayCompilationProxies implements CompilationProxies {
             globalMetrics.add(debug);
             debug = null;
         };
+    }
+
+    @Override
+    public DebugCloseable enterCompilationContext() {
+        // The handles created during replay are cached across compilations.
+        CompilationContext context = HotSpotGraalServices.enterGlobalCompilationContext();
+        if (context == null) {
+            return DebugCloseable.VOID_CLOSEABLE;
+        } else {
+            return context::close;
+        }
     }
 
     /**
@@ -330,14 +349,17 @@ public class ReplayCompilationProxies implements CompilationProxies {
      * <p>
      * During snippet parsing, the compiler may discover a JVMCI object which has no matching proxy.
      * For such objects, local-only proxies are created using {@link #proxify(Object)}.
+     *
+     * @param jvmciRuntime the JVMCI runtime
      */
-    public void findLocalMirrors() {
+    public void findLocalMirrors(HotSpotJVMCIRuntime jvmciRuntime) {
+        HotSpotConstantReflectionProvider constantReflection = (HotSpotConstantReflectionProvider) singletonObjects.get(HotSpotConstantReflectionProvider.class);
         var cursor = createdProxies.getEntries();
         while (cursor.advance()) {
             CompilationProxy proxy = cursor.getKey();
             CompilerInterfaceDeclarations.Registration registration = declarations.findRegistrationForInstance(proxy);
             if (registration.mirrorLocator() != null) {
-                Object localMirror = registration.mirrorLocator().findLocalMirror(proxy, singletonObjects);
+                Object localMirror = registration.mirrorLocator().findLocalMirror(proxy, hostMetaAccess, constantReflection, jvmciRuntime);
                 if (localMirror != null) {
                     Object previousProxy = localMirrorToProxy.put(localMirror, proxy);
                     GraalError.guarantee(previousProxy == null, "there must be at most one proxy instance for an object");
@@ -402,6 +424,9 @@ public class ReplayCompilationProxies implements CompilationProxies {
         localMirrorToProxy.put(input, proxy);
         if (registration.singleton()) {
             singletonObjects.put(registration.clazz(), input);
+            if (input instanceof MetaAccessProvider metaAccess) {
+                hostMetaAccess = metaAccess;
+            }
         }
         return proxy;
     }
@@ -461,13 +486,13 @@ public class ReplayCompilationProxies implements CompilationProxies {
                     if (proxyInfo.localMirror == null) {
                         CompilerInterfaceDeclarations.OperationResultSupplier handler = registration.findFallbackHandler(method);
                         if (handler != null) {
-                            return proxyMapper.proxifyRecursive(handler.apply(proxy, method, args, singletonObjects));
+                            return proxyMapper.proxifyRecursive(handler.apply(proxy, method, args, hostMetaAccess));
                         }
                     }
                     GraalError.guarantee(proxyInfo.localMirror != null, "a proxy with passthrough strategy must have a local mirror or fallback handler");
                     return callback.invoke(proxyInfo.localMirror, args);
                 } else if (strategy == CompilerInterfaceDeclarations.MethodStrategy.DefaultValue) {
-                    return proxyMapper.proxifyRecursive(registration.findDefaultValue(proxy, method, args, singletonObjects));
+                    return proxyMapper.proxifyRecursive(registration.findDefaultValue(proxy, method, args, hostMetaAccess));
                 }
                 Object result = findResult(proxyInfo, method, args);
                 if (result != SpecialResultMarker.NO_RESULT_MARKER) {
@@ -478,24 +503,26 @@ public class ReplayCompilationProxies implements CompilationProxies {
                         return proxyMapper.proxifyRecursive(result);
                     }
                 }
-                try {
-                    Object[] unproxifiedArgs = (Object[]) proxyMapper.unproxifyRecursive(args);
-                    if (registration.singleton()) {
-                        return proxyMapper.proxifyRecursive(callback.invoke(input, unproxifiedArgs));
+                if (registration.useLocalMirrorFallback()) {
+                    try {
+                        Object[] unproxifiedArgs = (Object[]) proxyMapper.unproxifyRecursive(args);
+                        if (registration.singleton()) {
+                            return proxyMapper.proxifyRecursive(callback.invoke(input, unproxifiedArgs));
+                        }
+                        Object localMirror = proxyInfo.localMirror;
+                        if (localMirror != null) {
+                            return proxyMapper.proxifyRecursive(callback.invoke(localMirror, unproxifiedArgs));
+                        }
+                    } catch (NotUnproxifiableException ignored2) {
+                        // Cannot unproxify the arguments: continue.
+                    } catch (InvocationTargetException exception) {
+                        // The result of the invocation is a thrown exception.
+                        throw exception.getTargetException();
                     }
-                    Object localMirror = proxyInfo.localMirror;
-                    if (localMirror != null) {
-                        return proxyMapper.proxifyRecursive(callback.invoke(localMirror, unproxifiedArgs));
-                    }
-                } catch (NotUnproxifiableException ignored2) {
-                    // Cannot unproxify the arguments: continue.
-                } catch (InvocationTargetException exception) {
-                    // The result of the invocation is a thrown exception.
-                    throw exception.getTargetException();
                 }
                 CompilerInterfaceDeclarations.OperationResultSupplier handler = registration.findFallbackHandler(method);
                 if (handler != null) {
-                    return proxyMapper.proxifyRecursive(handler.apply(proxy, method, args, singletonObjects));
+                    return proxyMapper.proxifyRecursive(handler.apply(proxy, method, args, hostMetaAccess));
                 }
                 if (args != null) {
                     for (Object arg : args) {
@@ -507,7 +534,7 @@ public class ReplayCompilationProxies implements CompilationProxies {
                 if (divergenceIsFailure) {
                     failOnDivergence(proxy, proxyInfo, method, args);
                 }
-                return proxyMapper.proxifyRecursive(registration.findDefaultValue(proxy, method, args, singletonObjects));
+                return proxyMapper.proxifyRecursive(registration.findDefaultValue(proxy, method, args, hostMetaAccess));
             }
         });
         if (registration.singleton()) {
@@ -542,7 +569,11 @@ public class ReplayCompilationProxies implements CompilationProxies {
                 entry: for (int j = 0; j < entries; j++) {
                     for (int k = 0; k < method.paramCount(); k++) {
                         Object arg = operationResults[i++];
-                        if (!Objects.equals(args[k], arg)) {
+                        /*
+                         * Call equals on the deserialized object to allow the deserialized object
+                         * to override equals behavior (i.e., to support ClassSurrogate).
+                         */
+                        if (!Objects.equals(arg, args[k])) {
                             i += method.paramCount() - k;
                             continue entry;
                         }

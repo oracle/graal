@@ -2,7 +2,24 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
-## GraalVM for JDK 25
+## GraalVM 25.1 (Internal Version 25.1.0)
+* (GR-70601) (GR-70592) (GR-70593) (GR-70598) (GR-71096): Add experimental support for just-in-time compilation of Java bytecodes loaded at run-time.
+* (GR-44384) Add size warnings for bundles when individual or cumulative file sizes exceed limits. Configure with options `size-warning-file-limit` and `size-warning-total-limit` to `bundle-create`, sizes in MiB.
+* (GR-43070) Add a new API flag `-Werror` to treat warnings as errors.
+* (GR-69280) Allow use of the `graal.` prefix for options without issuing a warning.
+* (GR-2092) Add jitdump support for recording run-time compilation metadata for perf (see PerfProfiling.md). Can be enabled with `-g -H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=jitdump`.
+* (GR-69116) Rename `native-image-configure` tool to `native-image-utils`.
+* (GR-69572) Deprecates the `native-image-inspect` tool. To extract embedded SBOMs, use `native-image-utils extract-sbom --image-path=<path_to_binary>`.
+* (GR-70136) Add a new tool `--tool:llvm` for the LLVM backend of Native Image.
+* (GR-68984) Ship the `reachability-metadata-schema.json` together with GraalVM at `<graalvm-home>/lib/svm/schemas/reachability-metadata-schema.json`.
+* (GR-68984) Improve the schema to capture detailed constraints about each element in the `reachability-metadata-schema.json`.
+* (GR-57214) `-H:...` can now be used at build-time to set new defaults for both build-time and run-time options (for example, run-time option `-R:MaxHeapSize` can now also be set via `-H:MaxHeapSize`).
+* (GR-70046) Remove all support for running image builder on classpath.
+* (GR-71146) Make `ParseRuntimeOptions` a non-experimental flag and extract a separate (experimental) `InitializeVM` flag. If your project previously used `ParseRuntimeOptions` and you call `VMRuntime.initialize()` manually, you might have to disable the new flag.
+* (GR-69577) Retire `--future-defaults=complete-reflection-types`. All reflective operations on types registered for reflection will now return complete results.
+* (GR-71698) Introduced a new value for `--future-defaults=run-time-initialize-resource-bundles` that shifts away from build-time initialization for 'java.util.ResourceBundle'. Unless you store 'ResourceBundle'-related classes in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
+
+## GraalVM 25
 * (GR-52276) (GR-61959) Add support for Arena.ofShared().
 * (GR-58668) Enabled [Whole-Program Sparse Conditional Constant Propagation (WP-SCCP)](https://github.com/oracle/graal/pull/9821) by default, improving the precision of points-to analysis in Native Image. This optimization enhances static analysis accuracy and scalability, potentially reducing the size of the final native binary.
 * (GR-59313) Deprecated class-level metadata extraction using `native-image-inspect` and removed option `DumpMethodsData`. Use class-level SBOMs instead by passing `--enable-sbom=class-level,export` to the `native-image` builder. The default value of option `IncludeMethodData` was changed to `false`.
@@ -13,8 +30,11 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-55222) Enabled lazy deoptimization of runtime-compiled code, which reduces memory used for deoptimization. Can be turned off with `-H:-LazyDeoptimization`.
 * (GR-54953) Add the experimental option `-H:Preserve` that makes the program work correctly without providing reachability metadata. Correctness is achieved by preserving all classes, resources, and reflection metadata in the image. Usage: `-H:Preserve=[all|none|module=<module>|package=<package>|package=<package-wildcard>|path=<cp-entry>][,...]`.
 * (GR-58659) (GR-58660) Support for FFM API ("Panama") has been added for darwin-aarch64 and linux-aarch64.
-* (GR-49525) Introduced `--future-defaults=[all|<options>|none]` that enables options that are planned to become defaults in future releases. The enabled options are:
-    1. `run-time-initialized-jdk` shifts away from build-time initialization of the JDK, instead initializing most of it at run time. This transition is gradual, with individual components of the JDK becoming run-time initialized in each release. This process should complete with JDK 29 when this option should not be needed anymore. Unless you store classes from the JDK in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
+* (GR-49525) Introduced `--future-defaults=[all|run-time-initialize-jdk|<options>|none]` that enables options that are planned to become defaults in future releases. The enabled options are:
+    1. `run-time-initialize-jdk` shifts away from build-time initialization of the JDK, instead initializing most of it at run time. This transition is gradual, with individual components of the JDK becoming run-time initialized in each release. In this release, it enables `run-time-initialize-security-providers` and `run-time-initialize-file-system-providers`. Unless you store classes from the JDK in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
+    2. `complete-reflection-types` reflective registration of a type, via metadata files or the Feature API, always includes all type metadata. Now, all registered types behave the same as types defined in 'reachability-metadata.json'.
+    3. `run-time-initialize-security-providers` shifts away from build-time initialization for 'java.security.Provider'. Unless you store 'java.security.Provider'-related classes in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
+    4. 'run-time-initialize-file-system-providers' shifts away from build-time initialization for 'java.nio.file.spi.FileSystemProvider'. Unless you store 'FileSystemProvider'-related classes in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
 * (GR-63494) Recurring callback support is no longer enabled by default. If this feature is needed, please specify `-H:+SupportRecurringCallback` at image build-time.
 * (GR-60209) New syntax for configuration of the [Foreign Function & Memory API](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ForeignInterface.md)
 * (GR-64584) Experimental option `-H:+RelativeCodePointers` to significantly reduce relocation entries in position-independent executables and shared libraries.
@@ -39,7 +59,7 @@ Run-time initialization of security providers helps reduce image heap size by av
 * (GR-55708) (Alibaba contribution) Support for running premain methods of Java agents at runtime as an experimental feature. At build time, `-H:PremainClasses` is used to set the premain classes.
 At runtime, premain runtime options are set along with main class' arguments in the format of `-XXpremain:[class]:[options]`.
 * (GR-54476): Issue a deprecation warning on first use of a legacy `graal.` prefix (see GR-49960 in [Compiler changelog](../compiler/CHANGELOG.md)).
-  The warning is planned to be replaced by an error in GraalVM for JDK 25.
+  The warning is planned to be replaced by an error in GraalVM 25.
 * (GR-48384) Added a GDB Python script (`gdb-debughelpers.py`) to improve the Native Image debugging experience.
 * (GR-49517) Add support for emitting Windows x64 unwind info. This enables stack walking in native tooling such as debuggers and profilers.
 * (GR-52576) Optimize FFM API upcalls for specifiable static upcall target methods.
@@ -68,7 +88,7 @@ At runtime, premain runtime options are set along with main class' arguments in 
 * (GR-47832) Experimental support for upcalls from foreign code and other improvements to our implementation of the [Foreign Function & Memory API](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ForeignInterface.md) (part of "Project Panama", [JEP 454](https://openjdk.org/jeps/454)) on AMD64. Must be enabled with `-H:+ForeignAPISupport` (requiring `-H:+UnlockExperimentalVMOptions`).
 * (GR-52314) `-XX:MissingRegistrationReportingMode` can now be used on program invocation instead of as a build option, to avoid a rebuild when debugging missing registration errors.
 * (GR-51086) Introduce a new `--static-nolibc` API option as a replacement for the experimental `-H:±StaticExecutableWithDynamicLibC` option.
-* (GR-52732) Introduce a new `ReduceImplicitExceptionStackTraceInformation` hosted option that reduces image size by reducing the runtime metadata for implicit exceptions, at the cost of stack trace precision. The option is diabled by default, but enabled with optimization level 3 and profile guided optimizations.
+* (GR-52732) Introduce a new `ReduceImplicitExceptionStackTraceInformation` hosted option that reduces image size by reducing the runtime metadata for implicit exceptions, at the cost of stack trace precision. The option is disabled by default, but enabled with optimization level 3 and profile guided optimizations.
 * (GR-52534) Change the digest (used e.g. for symbol names) from SHA-1 encoded as a hex string (40 bytes) to 128-bit Murmur3 as a Base-62 string (22 bytes).
 * (GR-52578) Print information about embedded resources into `embedded-resources.json` using the `-H:+GenerateEmbeddedResourcesFile` option.
 * (GR-51172) Add support to catch OutOfMemoryError exceptions on native image if there is no memory left.

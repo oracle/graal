@@ -566,8 +566,9 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key) {
-        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key));
+    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key,
+                    boolean inputMayBeOutOfRange, boolean mayEmitThreadedCode) {
+        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key, inputMayBeOutOfRange, mayEmitThreadedCode));
     }
 
     @Override
@@ -824,7 +825,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitCalcStringAttributes(CalcStringAttributesEncoding encoding, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value offset, Value length, boolean assumeValid) {
-        Variable result = newVariable(LIRKind.value(encoding == CalcStringAttributesEncoding.UTF_8 || encoding == CalcStringAttributesEncoding.UTF_16 ? AArch64Kind.QWORD : AArch64Kind.DWORD));
+        Variable result = newVariable(LIRKind.value(encoding == CalcStringAttributesEncoding.UTF_8 || encoding.isUTF16() ? AArch64Kind.QWORD : AArch64Kind.DWORD));
         append(new AArch64CalcStringAttributesOp(this, encoding, emitConvertNullToZero(array), asAllocatable(offset), asAllocatable(length), result, assumeValid));
         return result;
     }

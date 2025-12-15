@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.libs.libjava.impl;
 
-import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -38,6 +37,7 @@ import com.oracle.truffle.espresso.io.Throw;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
@@ -47,15 +47,8 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.SubstitutionNamesProvider;
 import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(value = RandomAccessFile.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_io_RandomAccessFile {
-    private static final FDAccess FD = new FDAccess() {
-        @Override
-        public @JavaType(FileDescriptor.class) StaticObject get(@JavaType(RandomAccessFile.class) StaticObject objectWithFD, TruffleIO io) {
-            Checks.nullCheck(objectWithFD, io);
-            return io.java_io_RandomAccessFile_fd.getObject(objectWithFD);
-        }
-    };
 
     @Substitution
     public static void initIDs() {
@@ -66,7 +59,7 @@ public final class Target_java_io_RandomAccessFile {
     @Throws(IOException.class)
     static long length0(@JavaType(RandomAccessFile.class) StaticObject self,
                     @Inject TruffleIO io) {
-        return io.length(self, FD);
+        return io.length(self, FDAccess.forRandomAccessFile());
     }
 
     @Substitution(hasReceiver = true)
@@ -76,7 +69,12 @@ public final class Target_java_io_RandomAccessFile {
         Checks.nullCheck(name, context);
         String hostName = context.getMeta().toHostString(name);
         Set<OpenOption> openOptions = getOpenOptions(mode, context, io);
-        io.open(self, FD, hostName, openOptions);
+        try {
+            io.open(self, FDAccess.forRandomAccessFile(), hostName, openOptions);
+        } catch (EspressoException e) {
+            // Guest code only ever expects FileNotFoundException.
+            throw Throw.throwFileNotFoundException(hostName, context);
+        }
     }
 
     @Substitution(hasReceiver = true, nameProvider = Append0.class)
@@ -85,7 +83,7 @@ public final class Target_java_io_RandomAccessFile {
                     @Inject EspressoContext context, @Inject TruffleIO io) {
         Checks.nullCheck(b, context);
         Checks.requireNonForeign(b, context);
-        return io.readBytes(self, FD, b.unwrap(context.getLanguage()), off, len);
+        return io.readBytes(self, FDAccess.forRandomAccessFile(), b.unwrap(context.getLanguage()), off, len);
     }
 
     @Substitution(hasReceiver = true)
@@ -94,7 +92,7 @@ public final class Target_java_io_RandomAccessFile {
                     @Inject EspressoContext context, @Inject TruffleIO io) {
         assert pos >= 0;
         Checks.nullCheck(self, context);
-        io.seek(self, FD, pos);
+        io.seek(self, FDAccess.forRandomAccessFile(), pos);
     }
 
     @TruffleBoundary

@@ -950,24 +950,22 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
     public static class SSERMIOp extends AMD64RMIOp {
         // @formatter:off
-        public static final SSERMIOp ROUNDSS       = new SSERMIOp("ROUNDSS",       true, P_0F3A,       0x0A, PreferredNDS.SRC,  OpAssertion.PackedDoubleAssertion,           CPUFeature.SSE4_1);
-        public static final SSERMIOp ROUNDSD       = new SSERMIOp("ROUNDSD",       true, P_0F3A,       0x0B, PreferredNDS.SRC,  OpAssertion.PackedDoubleAssertion,           CPUFeature.SSE4_1);
+        public static final SSERMIOp ROUNDSS       = new SSERMIOp("ROUNDSS",       true, P_0F3A,       0x0A, PreferredNDS.SRC, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSERMIOp ROUNDSD       = new SSERMIOp("ROUNDSD",       true, P_0F3A,       0x0B, PreferredNDS.SRC, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
 
-        public static final SSERMIOp PCMPESTRI     = new SSERMIOp("PCMPESTRI",     true, P_0F3A,       0x61, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion,           CPUFeature.SSE4_2);
-        public static final SSERMIOp PCLMULQDQ     = new SSERMIOp("PCLMULQDQ",     true, P_0F3A,       0x44, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion,           CPUFeature.CLMUL);
-        public static final SSERMIOp GF2P8AFFINEQB = new SSERMIOp("GF2P8AFFINEQB", true, P_0F3A, true, 0xCE, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion,           CPUFeature.GFNI);
+        public static final SSERMIOp PCMPESTRI     = new SSERMIOp("PCMPESTRI",     true, P_0F3A,       0x61, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_2);
+        public static final SSERMIOp PCLMULQDQ     = new SSERMIOp("PCLMULQDQ",     true, P_0F3A,       0x44, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.CLMUL);
+        public static final SSERMIOp GF2P8AFFINEQB = new SSERMIOp("GF2P8AFFINEQB", true, P_0F3A, true, 0xCE, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.GFNI);
 
         public static final SSERMIOp PINSRB        = new SSERMIOp("PINSRB",        true, P_0F3A,       0x20, PreferredNDS.DST,  OpAssertion.PackedDoubleIntToFloatAssertion, CPUFeature.SSE4_1);
         public static final SSERMIOp PINSRW        = new SSERMIOp("PINSRW",        true,   P_0F,       0xC4, PreferredNDS.DST,  OpAssertion.PackedDoubleIntToFloatAssertion, CPUFeature.SSE2);
         public static final SSERMIOp PINSRD        = new SSERMIOp("PINSRD",        true, P_0F3A,       0x22, PreferredNDS.DST,  OpAssertion.PackedDoubleIntToFloatAssertion, CPUFeature.SSE4_1);
         public static final SSERMIOp PINSRQ        = new SSERMIOp("PINSRQ",        true, P_0F3A, true, 0x22, PreferredNDS.DST,  OpAssertion.PackedDoubleIntToFloatAssertion, CPUFeature.SSE4_1);
 
-        public static final SSERMIOp PALIGNR       = new SSERMIOp("PALIGNR",       true, P_0F3A,       0x0F, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion,           CPUFeature.SSSE3);
-        public static final SSERMIOp PBLENDW       = new SSERMIOp("PBLENDW",       true, P_0F3A,       0x0E, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion,           CPUFeature.SSE4_1);
-        public static final SSERMIOp PSHUFD        = new SSERMIOp("PSHUFD",        true, P_0F,         0x70, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion,           CPUFeature.SSE2);
-        public static final SSERMIOp PSHUFLW       = new SSERMIOp("PSHUFLW",       true, P_0F,         0x70, PreferredNDS.NONE, OpAssertion.DoubleAssertion,                 CPUFeature.SSE2);
-
-        public static final SSERMIOp SHUFPD        = new SSERMIOp("SHUFPD",        true, P_0F,         0xC6, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion,           CPUFeature.SSE2);
+        public static final SSERMIOp PALIGNR       = new SSERMIOp("PALIGNR",       true, P_0F3A,       0x0F, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSSE3);
+        public static final SSERMIOp PBLENDW       = new SSERMIOp("PBLENDW",       true, P_0F3A,       0x0E, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSERMIOp PSHUFD        = new SSERMIOp("PSHUFD",        true, P_0F,         0x70, PreferredNDS.NONE,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSERMIOp PSHUFLW       = new SSERMIOp("PSHUFLW",       true, P_0F,         0x70, PreferredNDS.NONE,  OpAssertion.DoubleAssertion, CPUFeature.SSE2);
         // @formatter:on
 
         private final PreferredNDS preferredNDS;
@@ -2023,8 +2021,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
      */
     public static final class EvexRMIOp extends VexRMIOp {
         // @formatter:off
-        public static final EvexRMIOp EVFPCLASSSS = new EvexRMIOp("EVFPCLASS", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x67, VEXOpAssertion.MASK_XMM_AVX512DQ_128, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final EvexRMIOp EVFPCLASSSD = new EvexRMIOp("EVFPCLASD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x67, VEXOpAssertion.MASK_XMM_AVX512DQ_128, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final EvexRMIOp EVFPCLASSSS = new EvexRMIOp("EVFPCLASSSS", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x67, VEXOpAssertion.MASK_XMM_AVX512DQ_128, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final EvexRMIOp EVFPCLASSSD = new EvexRMIOp("EVFPCLASSSD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x67, VEXOpAssertion.MASK_XMM_AVX512DQ_128, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final EvexRMIOp EVFPCLASSPS = new EvexRMIOp("EVFPCLASSPS", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x66, VEXOpAssertion.MASK_XMM_AVX512DQ_VL, EVEXTuple.T1F_32BIT, VEXPrefixConfig.W0);
+        public static final EvexRMIOp EVFPCLASSPD = new EvexRMIOp("EVFPCLASSPD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x66, VEXOpAssertion.MASK_XMM_AVX512DQ_VL, EVEXTuple.T1F_64BIT, VEXPrefixConfig.W1);
         // @formatter:on
 
         private EvexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
@@ -3490,7 +3490,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     }
 
     protected boolean ensureWithinBoundary(int opStart) {
-        if (useBranchesWithin32ByteBoundary) {
+        if (useBranchesWithin32ByteBoundary && !isRecordingCodeSnippet()) {
             int nextOpStart = position();
             int opEnd = nextOpStart - 1;
             if (mayCrossBoundary(opStart, opEnd)) {
@@ -3519,7 +3519,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
      * @return the number of nop bytes emitted
      */
     protected final int mitigateJCCErratum(int position, int bytesToEmit) {
-        if (useBranchesWithin32ByteBoundary) {
+        if (useBranchesWithin32ByteBoundary && !isRecordingCodeSnippet()) {
             int bytesUntilBoundary = bytesUntilBoundary(position);
             if (bytesUntilBoundary < bytesToEmit) {
                 nop(bytesUntilBoundary);
@@ -3529,7 +3529,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         return 0;
     }
 
-    public void jcc(ConditionFlag cc, int jumpTarget, boolean forceDisp32) {
+    protected void jcc(ConditionFlag cc, int jumpTarget, boolean forceDisp32) {
         final int shortSize = JumpType.JCCB.instrSize;
         final int longSize = JumpType.JCC.instrSize;
 
@@ -3570,12 +3570,16 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         emitByte(0x80 | cc.getValue());
         emitInt(0);
         trackJump(JumpType.JCC, pos);
+        if (isRecordingCodeSnippet()) {
+            abortRecordingCodeSnippet();
+        }
     }
 
     public final void jcc(ConditionFlag cc, Label l) {
         assert (0 <= cc.getValue()) && (cc.getValue() < 16) : "illegal cc";
         if (l.isBound()) {
-            jcc(cc, l.position(), false);
+            jcc(cc, l.position(), isRecordingCodeSnippet());
+            registerPatchInCodeSnippetRecord(position() - 4, l);
         } else if (canUseShortJump(nextJumpIdx)) {
             jccb(cc, l);
         } else {
@@ -3594,7 +3598,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     }
 
     public final void jccb(ConditionFlag cc, Label l) {
-        if (force4ByteNonZeroDisplacements) {
+        if (force4ByteNonZeroDisplacements || isRecordingCodeSnippet()) {
             jcc(cc, l);
             return;
         }
@@ -3615,13 +3619,14 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
             emitByte(0);
             trackJump(JumpType.JCCB, pos);
         }
+        GraalError.guarantee(!isRecordingCodeSnippet(), "Short jump is unlikely applicable when replaying code snippet");
     }
 
     public final void jcc(ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
         if (branchTarget == null) {
             // jump to placeholder
             jcc(cc, 0, true);
-        } else if (isShortJmp) {
+        } else if (isShortJmp && !isRecordingCodeSnippet()) {
             jccb(cc, branchTarget);
         } else {
             jcc(cc, branchTarget);
@@ -3666,6 +3671,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     public final void jmp(Label l) {
         if (l.isBound()) {
             jmp(l.position(), false);
+            registerPatchInCodeSnippetRecord(position() - 4, l);
         } else if (canUseShortJump(nextJumpIdx)) {
             jmpb(l);
         } else {
@@ -3783,10 +3789,17 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     }
 
     @Override
+    protected final void patchRelativeJumpTarget(int branch, int offset) {
+        int currentOffset = getInt(branch);
+        emitInt(currentOffset + offset, branch);
+    }
+
+    @Override
     protected final void patchJumpTarget(int branch, int branchTarget) {
         int op = getByte(branch);
         // @formatter:off
         assert op == 0xE8 // call
+                || op == 0xFF // jump table
                 || op == 0x00 // jump table entry
                 || op == 0xE9 // jmp
                 || op == 0xEB // short jmp
@@ -3795,7 +3808,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
                 : "Invalid opcode at patch point branch=" + branch + ", branchTarget=" + branchTarget + ", op=" + op;
         // @formatter:on
 
-        if (op == 0x00) {
+        if (op == 0xFF) {
+            int imm32 = branchTarget - (branch + 4);
+            emitInt(imm32, branch);
+        } else if (op == 0x00) {
             int offsetToJumpTableBase = getShort(branch + 1);
             int jumpTableBase = branch - offsetToJumpTableBase;
             int imm32 = branchTarget - jumpTableBase;
@@ -3812,9 +3828,8 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
                 throw new BranchTargetOutOfBoundsException(true, "Displacement too large to be encoded as a byte: %d", imm8);
             }
             emitByte(imm8, branch + 1);
-
+            updatePatchInCodeSnippet(branch, 1);
         } else {
-
             int off = 1;
             if (op == 0x0F) {
                 off = 2;
@@ -3822,6 +3837,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
             int imm32 = branchTarget - (branch + 4 + off);
             emitInt(imm32, branch + off);
+            updatePatchInCodeSnippet(branch, off);
         }
     }
 
@@ -3973,7 +3989,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
      * a previous code emit has found that this jump will have a sufficiently small displacement.
      */
     private boolean canUseShortJump(int jumpIdx) {
-        return !force4ByteNonZeroDisplacements && optimizeLongJumps && longToShortJumps != null && longToShortJumps.contains(jumpIdx);
+        return !force4ByteNonZeroDisplacements && optimizeLongJumps && longToShortJumps != null && longToShortJumps.contains(jumpIdx) && !isRecordingCodeSnippet();
     }
 
     /**
@@ -4229,6 +4245,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         if (l.isBound()) {
             emitByte(0xE8);
             emitInt(l.position());
+            registerPatchInCodeSnippetRecord(position() - 4, l);
         } else {
             l.addPatchAt(position(), this);
             emitByte(0xE8);
@@ -5687,10 +5704,6 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         SSEOp.PSUBUSW.emit(this, OperandSize.PD, dst, src);
     }
 
-    public final void psubw(Register dst, Register src) {
-        SSEOp.PSUBW.emit(this, OperandSize.PD, dst, src);
-    }
-
     public final void ptest(Register dst, Register src) {
         SSEOp.PTEST.emit(this, OperandSize.PD, dst, src);
     }
@@ -5724,6 +5737,11 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     public final void roll(Register dst, int imm8) {
         GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
         AMD64Shift.ROL.miOp.emit(this, OperandSize.DWORD, dst, (byte) imm8);
+    }
+
+    public final void rorw(Register dst, int imm8) {
+        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
+        AMD64Shift.ROR.miOp.emit(this, OperandSize.WORD, dst, (byte) imm8);
     }
 
     public final void rorl(Register dst, int imm8) {
@@ -5859,10 +5877,6 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     public final void shrq(Register dst) {
         // Unsigned divide dst by 2, CL times.
         AMD64MOp.SHR.emit(this, OperandSize.QWORD, dst);
-    }
-
-    public final void shufpd(Register dst, Register src, int imm8) {
-        SSERMIOp.SHUFPD.emit(this, OperandSize.PD, dst, src, imm8);
     }
 
     public final void sqrtsd(Register dst, Register src) {
@@ -6264,6 +6278,14 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
     public final void kshiftrw(Register dst, Register src, int imm8) {
         VexMaskRRIOp.KSHIFTRW.emit(this, AVXSize.XMM, dst, src, imm8);
+    }
+
+    public final void ktestb(Register src1, Register src2) {
+        VexRROp.KTESTB.emit(this, AVXSize.XMM, src1, src2);
+    }
+
+    public final void ktestw(Register src1, Register src2) {
+        VexRROp.KTESTW.emit(this, AVXSize.XMM, src1, src2);
     }
 
     public final void ktestd(Register src1, Register src2) {

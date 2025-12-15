@@ -25,18 +25,17 @@
 package com.oracle.svm.configure.filters;
 
 import java.lang.module.ModuleDescriptor;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Arrays;
 
 import com.oracle.svm.configure.filters.ConfigurationFilter.Inclusion;
 import com.oracle.svm.util.LogUtils;
+import org.graalvm.collections.EconomicSet;
 
 public class ModuleFilterTools {
 
     public static HierarchyFilterNode generateFromModules(String[] moduleNames, Inclusion rootInclusion, Inclusion exportedInclusion, Inclusion unexportedInclusion, boolean reduce) {
-        Set<String> includedModuleNameSet = new HashSet<>();
-        Collections.addAll(includedModuleNameSet, moduleNames);
+        EconomicSet<String> includedModuleNameSet = EconomicSet.create();
+        includedModuleNameSet.addAll(Arrays.asList(moduleNames));
         for (Module module : ModuleLayer.boot().modules()) {
             if (includedModuleNameSet.contains(module.getName())) {
                 checkDependencies(module, includedModuleNameSet);
@@ -56,7 +55,7 @@ public class ModuleFilterTools {
         return rootNode;
     }
 
-    private static void checkDependencies(Module module, Set<String> includedModuleNames) {
+    private static void checkDependencies(Module module, EconomicSet<String> includedModuleNames) {
         for (ModuleDescriptor.Requires require : module.getDescriptor().requires()) {
             if (!includedModuleNames.contains(require.name())) {
                 LogUtils.warning("Dependency missing from input set of modules: " + module.getName() + " -> " + require.name());

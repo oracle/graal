@@ -5,8 +5,6 @@ permalink: /overview/
 
 # Overview
 
-Oracle GraalVM is an advanced JDK with ahead-of-time Native Image compilation.
-
 Oracle GraalVM accelerates application performance while consuming fewer resources&mdash;improving application efficiency and reducing IT costs.
 It achieves this by compiling your Java application ahead of time into a native binary.
 The binary is smaller, starts up to 100x faster, provides peak performance with no warmup, and uses less memory and CPU than an application running on a Java Virtual Machine (JVM).

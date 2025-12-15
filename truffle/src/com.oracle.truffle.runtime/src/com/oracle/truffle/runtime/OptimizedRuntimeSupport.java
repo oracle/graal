@@ -320,15 +320,8 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public void flushCompileQueue(Object runtimeData) {
-        EngineData engine = (EngineData) runtimeData;
-        BackgroundCompileQueue queue = OptimizedTruffleRuntime.getRuntime().getCompileQueue();
-        // compile queue might be null if no call target was yet created
-        if (queue != null) {
-            for (OptimizedCallTarget target : queue.getQueuedTargets(engine)) {
-                target.cancelCompilation("Polyglot engine was closed.");
-            }
-        }
+    public void shutdownCompilationForEngine(Object runtimeData) {
+        OptimizedTruffleRuntime.getRuntime().shutdownCompilationForEngine((EngineData) runtimeData);
     }
 
     @Override
@@ -419,5 +412,12 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     @Override
     public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
         return OptimizedTruffleRuntime.createTerminatingThreadLocal(initialValue, onThreadTermination);
+    }
+
+    @Override
+    public void setInitializedTimestamp(CallTarget target, long timestamp) {
+        if (target instanceof OptimizedCallTarget optimizedCallTarget) {
+            optimizedCallTarget.setInitializedTimestamp(timestamp);
+        }
     }
 }

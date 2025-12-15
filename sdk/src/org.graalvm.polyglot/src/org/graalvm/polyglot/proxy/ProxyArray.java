@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,19 +123,21 @@ public interface ProxyArray extends ProxyIterable {
     static ProxyArray fromArray(Object... values) {
         return new ProxyArray() {
             public Object get(long index) {
-                checkIndex(index);
-                return values[(int) index];
+                int intIndex = coerceIndex(index);
+                return values[intIndex];
             }
 
             public void set(long index, Value value) {
-                checkIndex(index);
-                values[(int) index] = value.isHostObject() ? value.asHostObject() : value;
+                int intIndex = coerceIndex(index);
+                values[intIndex] = value.isHostObject() ? value.asHostObject() : value;
             }
 
-            private void checkIndex(long index) {
-                if (index > Integer.MAX_VALUE || index < 0) {
+            private int coerceIndex(long index) {
+                int intIndex = (int) index;
+                if (intIndex != index || intIndex < 0) {
                     throw new ArrayIndexOutOfBoundsException("invalid index.");
                 }
+                return intIndex;
             }
 
             public long getSize() {
@@ -155,27 +157,29 @@ public interface ProxyArray extends ProxyIterable {
 
             @Override
             public Object get(long index) {
-                checkIndex(index);
-                return values.get((int) index);
+                int intIndex = coerceIndex(index);
+                return values.get(intIndex);
             }
 
             @Override
             public void set(long index, Value value) {
-                checkIndex(index);
-                values.set((int) index, value.isHostObject() ? value.asHostObject() : value);
+                int intIndex = coerceIndex(index);
+                values.set(intIndex, value.isHostObject() ? value.asHostObject() : value);
             }
 
             @Override
             public boolean remove(long index) {
-                checkIndex(index);
-                values.remove((int) index);
+                int intIndex = coerceIndex(index);
+                values.remove(intIndex);
                 return true;
             }
 
-            private void checkIndex(long index) {
-                if (index > Integer.MAX_VALUE || index < 0) {
+            private int coerceIndex(long index) {
+                int intIndex = (int) index;
+                if (intIndex != index || intIndex < 0) {
                     throw new ArrayIndexOutOfBoundsException("invalid index.");
                 }
+                return intIndex;
             }
 
             public long getSize() {

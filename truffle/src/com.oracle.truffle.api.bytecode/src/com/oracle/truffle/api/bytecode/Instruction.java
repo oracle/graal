@@ -40,17 +40,20 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
+import com.oracle.truffle.api.bytecode.InstructionDescriptor.ArgumentDescriptor;
 import com.oracle.truffle.api.dsl.Bind.DefaultExpression;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Represents metadata for an instruction in a bytecode node.
@@ -98,11 +101,29 @@ public abstract class Instruction {
     public abstract int getBytecodeIndex();
 
     /**
+     * Returns the descriptor object for this instruction.
+     * <p>
+     * The descriptor provides static metadata about the instruction executed at this bytecode
+     * index, such as its name, operation code, length in bytes, argument layout, and whether it is
+     * considered instrumentation.
+     *
+     * @see BytecodeDescriptor#getInstructionDescriptors()
+     * @since 25.1
+     */
+    public InstructionDescriptor getDescriptor() {
+        return null;
+    }
+
+    /**
      * Returns the length of this instruction in bytes.
      *
+     * @see #getDescriptor()
+     * @see InstructionDescriptor#getLength()
      * @since 24.2
      */
-    public abstract int getLength();
+    public int getLength() {
+        return getDescriptor().getLength();
+    }
 
     /**
      * Converts this instruction pointer into a bytecode location. It is recommended to use
@@ -124,9 +145,13 @@ public abstract class Instruction {
      * and other optimizations.
      *
      * @see #getOperationCode()
+     * @see #getDescriptor()
+     * @see InstructionDescriptor#getName()
      * @since 24.2
      */
-    public abstract String getName();
+    public String getName() {
+        return getDescriptor().getName();
+    }
 
     /**
      * Returns the operation code of this instruction. The operation code of the instruction is
@@ -138,9 +163,13 @@ public abstract class Instruction {
      * to quickening and other optimizations.
      *
      * @see #getName()
+     * @see #getDescriptor()
+     * @see InstructionDescriptor#getOperationCode()
      * @since 24.2
      */
-    public abstract int getOperationCode();
+    public int getOperationCode() {
+        return getDescriptor().getOperationCode();
+    }
 
     /**
      * Returns an immutable list of immediate arguments for this instructions. The number and kinds
@@ -159,7 +188,9 @@ public abstract class Instruction {
      *
      * @since 24.2
      */
-    public abstract boolean isInstrumentation();
+    public boolean isInstrumentation() {
+        return getDescriptor().isInstrumentation();
+    }
 
     /**
      * Returns the most concrete source section associated with this instruction. If no source
@@ -255,7 +286,7 @@ public abstract class Instruction {
      */
     @Override
     public final String toString() {
-        return formatInstruction(null, -1, this, 40, 60);
+        return formatInstruction(null, -1, this, 40, 120);
     }
 
     static String formatInstruction(List<Throwable> errors, int index, Instruction instruction, int maxLabelWidth, int maxArgumentWidth) {
@@ -268,10 +299,10 @@ public abstract class Instruction {
         appendSpaces(sb, maxLabelWidth - label.length());
         String arguments = formatArguments(instruction);
         sb.append(arguments);
-        appendSpaces(sb, maxArgumentWidth - arguments.length());
         try {
             SourceSection s = instruction.getSourceSection();
             if (s != null) {
+                appendSpaces(sb, maxArgumentWidth - arguments.length());
                 sb.append(" | ");
                 sb.append(SourceInformation.formatSourceSection(s, 60));
             }
@@ -326,6 +357,19 @@ public abstract class Instruction {
         }
 
         /**
+         * Returns the descriptor object for this argument.
+         * <p>
+         * The descriptor provides static metadata about the argument position and interpretation
+         * for this instruction, including its {@link Kind}, printable name, and encoded width in
+         * bytes.
+         *
+         * @since 25.1
+         */
+        public ArgumentDescriptor getDescriptor() {
+            return null;
+        }
+
+        /**
          * Returns the {@link Kind} of this argument. The kind determines which {@code asX} method
          * can be called on a given argument.
          * <p>
@@ -335,7 +379,9 @@ public abstract class Instruction {
          *
          * @since 24.2
          */
-        public abstract Kind getKind();
+        public Kind getKind() {
+            return getDescriptor().getKind();
+        }
 
         /**
          * Returns a human readable name for this argument. This could be for example
@@ -346,7 +392,9 @@ public abstract class Instruction {
          *
          * @since 24.2
          */
-        public abstract String getName();
+        public String getName() {
+            return getDescriptor().getName();
+        }
 
         /**
          * Converts this argument to an <code>int</code> value. This method is only supported if the
@@ -455,12 +503,29 @@ public abstract class Instruction {
          * @since 24.2
          */
         public final List<SpecializationInfo> getSpecializationInfo() {
+            List<SpecializationInfo> info = getSpecializationInfoInternal();
+            if (info != null) {
+                return info;
+            }
+
             Node n = asCachedNode();
             if (Introspection.isIntrospectable(n)) {
-                return Introspection.getSpecializations(n);
-            } else {
-                return null;
+                try {
+                    return Introspection.getSpecializations(n);
+                } catch (UnsupportedOperationException o) {
+                    // for backwards compatibility fallback to null
+                }
             }
+            return null;
+        }
+
+        /**
+         * Allows the generated code to customize the specialization info lookup.
+         *
+         * @since 25.1
+         */
+        protected List<SpecializationInfo> getSpecializationInfoInternal() {
+            return null;
         }
 
         private RuntimeException unsupported() {
@@ -504,22 +569,30 @@ public abstract class Instruction {
         }
 
         private String printNodeProfile(Object o) {
-            StringBuilder sb = new StringBuilder();
             if (o == null) {
-                return "null";
+                return "Disabled";
             }
-            sb.append(o.getClass().getSimpleName());
+            StringBuilder sb = new StringBuilder();
+            sb.append("Enabled");
             List<SpecializationInfo> info = getSpecializationInfo();
             if (info != null) {
                 sb.append("(");
                 String sep = "";
+                boolean empty = true;
                 for (SpecializationInfo specialization : info) {
                     if (specialization.getInstances() == 0) {
                         continue;
                     }
+                    empty = false;
                     sb.append(sep);
                     sb.append(specialization.getMethodName());
                     sep = "#";
+                }
+                if (empty) {
+                    sb.append("UNINITIALIZED");
+                }
+                if (o instanceof Node n && !n.isAdoptable()) {
+                    sb.append(",SINGLETON");
                 }
                 sb.append(")");
             }
@@ -530,35 +603,97 @@ public abstract class Instruction {
             if (value == null) {
                 return "null";
             }
-            String typeString = value.getClass().getSimpleName();
-            String valueString = value.getClass().isArray() ? printArray(value) : value.toString();
-            if (valueString.length() > 100) {
-                valueString = valueString.substring(0, 97) + "...";
+            if (value instanceof LocalAccessor || value instanceof LocalRangeAccessor) {
+                // trusted toString to contain the type name
+                return value.toString();
+            } else if (value instanceof String || value instanceof TruffleString) {
+                return "\"" + truncateString(value.toString()) + "\"";
+            } else if (value instanceof Number n) {
+                return formatLiteral(n);
+            } else {
+                String typeString = value.getClass().getSimpleName();
+                String valueString = value.getClass().isArray() ? printArray(value, 16) : value.toString();
+                return String.format("%s %s", typeString, truncateString(valueString));
             }
-            return String.format("%s %s", typeString, valueString);
         }
 
-        private static String printArray(Object array) {
-            if (array instanceof Object[] objArr) {
-                return Arrays.toString(objArr);
-            } else if (array instanceof long[] longArr) {
-                return Arrays.toString(longArr);
-            } else if (array instanceof int[] intArr) {
-                return Arrays.toString(intArr);
-            } else if (array instanceof short[] shortArr) {
-                return Arrays.toString(shortArr);
-            } else if (array instanceof char[] charArr) {
-                return Arrays.toString(charArr);
-            } else if (array instanceof byte[] byteArr) {
-                return Arrays.toString(byteArr);
-            } else if (array instanceof double[] doubleArr) {
-                return Arrays.toString(doubleArr);
-            } else if (array instanceof float[] floatArr) {
-                return Arrays.toString(floatArr);
-            } else if (array instanceof boolean[] boolArr) {
-                return Arrays.toString(boolArr);
+        private static String formatLiteral(Number n) {
+            String s = n.toString();
+            String suffix = "";
+            if (n instanceof Float) {
+                suffix = "F";
+            } else if (n instanceof Long) {
+                suffix = "L";
+            } else if (n instanceof Double) {
+                suffix = "D";
             }
-            throw new AssertionError(String.format("Unhandled array type %s", array));
+            return s + suffix;
+        }
+
+        private static String truncateString(String s) {
+            String replaced = s.replace("\n", "\\n");
+            if (replaced.length() > 30) {
+                replaced = replaced.substring(0, 27) + "...";
+            }
+            return replaced;
+        }
+
+        private static String printArray(Object array, int limit) {
+            Object a = array;
+            int length = Array.getLength(array);
+            if (length > limit) {
+                a = truncateArray(array, limit);
+            }
+            String s;
+            if (a instanceof Object[] objArr) {
+                s = Arrays.toString(objArr);
+            } else if (a instanceof long[] longArr) {
+                s = Arrays.toString(longArr);
+            } else if (a instanceof int[] intArr) {
+                s = Arrays.toString(intArr);
+            } else if (a instanceof short[] shortArr) {
+                s = Arrays.toString(shortArr);
+            } else if (a instanceof char[] charArr) {
+                s = Arrays.toString(charArr);
+            } else if (a instanceof byte[] byteArr) {
+                s = Arrays.toString(byteArr);
+            } else if (a instanceof double[] doubleArr) {
+                s = Arrays.toString(doubleArr);
+            } else if (a instanceof float[] floatArr) {
+                s = Arrays.toString(floatArr);
+            } else if (a instanceof boolean[] boolArr) {
+                s = Arrays.toString(boolArr);
+            } else {
+                throw new AssertionError(String.format("Unhandled array type %s", array));
+            }
+            if (length > limit) {
+                return "[length:" + length + "]" + s;
+            }
+            return s;
+
+        }
+
+        private static Object truncateArray(Object array, int limit) {
+            if (array instanceof Object[] arr) {
+                return Arrays.copyOf(arr, limit);
+            } else if (array instanceof long[] arr) {
+                return Arrays.copyOf(arr, limit);
+            } else if (array instanceof int[] arr) {
+                return Arrays.copyOf(arr, limit);
+            } else if (array instanceof short[] arr) {
+                return Arrays.copyOf(arr, limit);
+            } else if (array instanceof char[] arr) {
+                return Arrays.copyOf(arr, limit);
+            } else if (array instanceof byte[] arr) {
+                return Arrays.copyOf(arr, limit);
+            } else if (array instanceof double[] arr) {
+                return Arrays.copyOf(arr, limit);
+            } else if (array instanceof float[] arr) {
+                return Arrays.copyOf(arr, limit);
+            } else if (array instanceof boolean[] arr) {
+                return Arrays.copyOf(arr, limit);
+            }
+            return array;
         }
 
         /**

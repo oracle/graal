@@ -380,14 +380,16 @@ public class TruffleCompilerOptions implements OptionsContainer {
         options = new OptionValues(options, BytecodeParserOptions.DoNotMoveAllocationsWithOOMEHandlers, false);
 
         EconomicMap<OptionKey<?>, Object> extraPairs = OptionValues.asMap(BytecodeParserOptions.DoNotMoveAllocationsWithOOMEHandlers, false);
-        // Forward the truffle timeout to the compiler
-        double compilationExpiration;
-        if (parsedTruffleOptions.containsKey(CompilationTimeout)) {
-            compilationExpiration = (double) parsedTruffleOptions.get(CompilationTimeout);
-        } else {
-            compilationExpiration = CompilationTimeout.getValue(options);
+        if (!CompilationAlarm.Options.CompilationExpirationPeriod.hasBeenSet(options)) {
+            // Forward the truffle timeout to the compiler
+            double compilationExpiration;
+            if (parsedTruffleOptions.containsKey(CompilationTimeout)) {
+                compilationExpiration = (double) parsedTruffleOptions.get(CompilationTimeout);
+            } else {
+                compilationExpiration = CompilationTimeout.getValue(options);
+            }
+            extraPairs.put(CompilationAlarm.Options.CompilationExpirationPeriod, compilationExpiration);
         }
-        extraPairs.put(CompilationAlarm.Options.CompilationExpirationPeriod, compilationExpiration);
         return new OptionValues(options, extraPairs);
     }
 

@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.espresso.substitutions.jvmci;
 
-import static com.oracle.truffle.espresso.jvmci.JVMCIUtils.LOGGER;
-import static com.oracle.truffle.espresso.jvmci.JVMCIUtils.findObjectType;
+import static com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils.LOGGER;
+import static com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils.findObjectType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIInstanceType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIObjectType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIPrimitiveType;
@@ -46,7 +46,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
@@ -94,8 +93,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedInstanceType_init.getCallTarget())") DirectCallNode objectTypeConstructor,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedArrayType_init.getCallTarget())") DirectCallNode arrayTypeConstructor,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedPrimitiveType_forBasicType.getCallTarget())") DirectCallNode forBasicType,
-                        @Cached("create(context.getMeta().jvmci.UnresolvedJavaType_create.getCallTarget())") DirectCallNode createUnresolved,
-                        @Cached InitCheck initCheck) {
+                        @Cached("create(context.getMeta().jvmci.UnresolvedJavaType_create.getCallTarget())") DirectCallNode createUnresolved) {
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
             if (StaticObject.isNull(guestTypeString) || StaticObject.isNull(accessingClass)) {
@@ -104,25 +102,25 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
             String type = meta.toHostString(guestTypeString);
             LOGGER.finer(() -> "lookupType " + type + " resolved:" + resolve);
             ObjectKlass accessingKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(accessingClass);
-            return lookupType(type, accessingKlass, resolve, objectTypeConstructor, arrayTypeConstructor, forBasicType, initCheck, createUnresolved, context, meta);
+            return lookupType(type, accessingKlass, resolve, objectTypeConstructor, arrayTypeConstructor, forBasicType, createUnresolved, context, meta);
         }
     }
 
-    static StaticObject lookupType(String type, ObjectKlass accessingKlass, boolean resolve, DirectCallNode objectTypeConstructor, DirectCallNode arrayTypeConstructor, DirectCallNode forBasicType,
-                    InitCheck initCheck, DirectCallNode createUnresolved, EspressoContext context, Meta meta) {
+    private static StaticObject lookupType(String type, ObjectKlass accessingKlass, boolean resolve, DirectCallNode objectTypeConstructor, DirectCallNode arrayTypeConstructor,
+                    DirectCallNode forBasicType, DirectCallNode createUnresolved, EspressoContext context, Meta meta) {
         ByteSequence typeDescriptor = ByteSequence.create(type);
         if (type.length() == 1) {
             JavaKind kind = JavaKind.fromPrimitiveOrVoidTypeCharOrNull(type.charAt(0));
             if (kind == null) {
                 return toJVMCIUnresolvedType(typeDescriptor, createUnresolved, meta);
             }
-            return toJVMCIPrimitiveType(kind, forBasicType, initCheck, meta);
+            return toJVMCIPrimitiveType(kind, forBasicType, meta);
         }
-        return lookupNonPrimitiveType(typeDescriptor, accessingKlass, resolve, objectTypeConstructor, arrayTypeConstructor, forBasicType, initCheck, createUnresolved, context, meta);
+        return lookupNonPrimitiveType(typeDescriptor, accessingKlass, resolve, objectTypeConstructor, arrayTypeConstructor, forBasicType, createUnresolved, context, meta);
     }
 
-    static StaticObject lookupNonPrimitiveType(ByteSequence typeDescriptor, ObjectKlass accessingKlass, boolean resolve, DirectCallNode objectTypeConstructor, DirectCallNode arrayTypeConstructor,
-                    DirectCallNode forBasicType, InitCheck initCheck, DirectCallNode createUnresolved, EspressoContext context, Meta meta) {
+    private static StaticObject lookupNonPrimitiveType(ByteSequence typeDescriptor, ObjectKlass accessingKlass, boolean resolve, DirectCallNode objectTypeConstructor,
+                    DirectCallNode arrayTypeConstructor, DirectCallNode forBasicType, DirectCallNode createUnresolved, EspressoContext context, Meta meta) {
         Symbol<Type> symbol = meta.getTypes().lookupValidType(typeDescriptor);
         if (symbol == null) {
             if (resolve) {
@@ -132,12 +130,12 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
                 return toJVMCIUnresolvedType(typeDescriptor, createUnresolved, meta);
             }
         }
-        Klass result = findObjectType(symbol, accessingKlass, resolve, meta);
+        Klass result = findObjectType(symbol, accessingKlass, resolve, false, meta);
         if (result == null) {
             assert !resolve;
             return toJVMCIUnresolvedType(symbol, createUnresolved, meta);
         } else {
-            return toJVMCIObjectType(result, objectTypeConstructor, arrayTypeConstructor, forBasicType, initCheck, context, meta);
+            return toJVMCIObjectType(result, objectTypeConstructor, arrayTypeConstructor, forBasicType, context, meta);
         }
     }
 
@@ -162,7 +160,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
             Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(jvmciMethod);
             ObjectKlass accessingKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(accessingClass);
             LOGGER.finer(() -> "resolveMethod " + method + " on " + receiverKlass + " as seen from " + accessingKlass);
-            if (method.isSignaturePolymorphicDeclared() || !receiverKlass.isLinked() || receiverKlass.isInterface() || method.isStatic()) {
+            if (method.isDeclaredSignaturePolymorphic() || !receiverKlass.isLinked() || receiverKlass.isInterface() || method.isStatic()) {
                 return StaticObject.NULL;
             }
 

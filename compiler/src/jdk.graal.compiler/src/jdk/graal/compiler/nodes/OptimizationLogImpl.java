@@ -697,7 +697,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         if (!printToStdout && !printToFile) {
             return;
         }
-        StableMethodNameFormatter methodNameFormatter = new StableMethodNameFormatter(true);
+        StableMethodNameFormatter methodNameFormatter = new StableMethodNameFormatter();
         String json = JsonFormatter.formatJson(asJSONMap(methodNameFormatter));
         if (printToStdout) {
             TTY.out().println(json);

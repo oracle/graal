@@ -28,8 +28,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
-//JaCoCo Exclude
-
 public final class SignatureProxy extends CompilationProxyBase implements Signature {
     SignatureProxy(InvocationHandler handler) {
         super(handler);
@@ -47,8 +45,8 @@ public final class SignatureProxy extends CompilationProxyBase implements Signat
         return (int) handle(getParameterCountMethod, getParameterCountInvokable, rec);
     }
 
-    private static final SymbolicMethod getParameterTypeMethod = method("getParameterType", int.class, ResolvedJavaType.class);
-    private static final InvokableMethod getParameterTypeInvokable = (receiver, args) -> ((Signature) receiver).getParameterType((int) args[0], (ResolvedJavaType) args[1]);
+    public static final SymbolicMethod getParameterTypeMethod = method("getParameterType", int.class, ResolvedJavaType.class);
+    public static final InvokableMethod getParameterTypeInvokable = (receiver, args) -> ((Signature) receiver).getParameterType((int) args[0], (ResolvedJavaType) args[1]);
 
     @Override
     public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {

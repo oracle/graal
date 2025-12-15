@@ -54,7 +54,7 @@ public class TestJfrStreamingBasic extends JfrStreamingTest {
 
     private final MonitorWaitHelper helper = new MonitorWaitHelper();
     private final AtomicInteger emittedEventsPerType = new AtomicInteger(0);
-    private final Set<String> seenThreads = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> seenThreads = Collections.synchronizedSet(new HashSet<>()); // noEconomicSet(synchronization)
     private boolean firstFlush = true;
 
     @Test

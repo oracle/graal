@@ -21,7 +21,7 @@ Espresso is a complete Java implementation which is kept up to date with the lat
 
 It features complete meta-circularity: it can run itself any amount of layers deep, preserving all the capabilities (Unsafe, JNI, Reflection...) of the base layer. Running HelloWorld on three nested layers of Espresso takes **~15 minutes**.  
 
-The development of Espresso happens mostly on HotSpot, but this configuration (Espresso on HotSpot) is only supported on Linux, see [Limitations](docs/hacking.md#limitations).
+The development of Espresso happens mostly on HotSpot, but this configuration (Espresso on HotSpot) is not equally supported on all platforms, see [Limitations](docs/hacking.md#limitations).
 
 ## Working on Espresso
 

@@ -245,7 +245,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             this.debug = graph.getDebug();
             this.schedule = schedule;
             this.metaAccess = metaAccess;
-            this.rawCanonicalizerTool = new RawCanonicalizerTool(new Providers(metaAccess, null, null, null, null, null, null, null, null, null, null, null, null, null));
+            this.rawCanonicalizerTool = new RawCanonicalizerTool(new Providers(metaAccess, null, null, null, null, null, null, null, null, null, null, null, null));
             blockActionStart = new BlockMap<>(schedule.getCFG());
             endMaps = EconomicMap.create(Equivalence.IDENTITY);
             stampMap = graph.createNodeMap();
@@ -699,6 +699,11 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
+    public boolean mustApply(GraphState graphState) {
+        return graphState.requiresFutureStage(StageFlag.FIXED_READS);
+    }
+
+    @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
         schedulePhase.apply(graph, context);
@@ -764,6 +769,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     public void updateGraphState(GraphState graphState) {
         super.updateGraphState(graphState);
         graphState.setAfterStage(StageFlag.FIXED_READS);
+        graphState.removeRequirementToStage(StageFlag.FIXED_READS);
     }
 
     protected ControlFlowGraph.RecursiveVisitor<?> createVisitor(StructuredGraph graph, ScheduleResult schedule, CoreProviders context) {

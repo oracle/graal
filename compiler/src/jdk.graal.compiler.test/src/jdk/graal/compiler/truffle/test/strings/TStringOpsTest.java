@@ -169,14 +169,14 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
                         byte[].class, long.class, int.class);
     }
 
-    protected ResolvedJavaMethod getMemcmpWithStrideIntl() {
-        return getTStringOpsMethod("memcmpWithStrideIntl",
+    protected ResolvedJavaMethod getMemcmpWithStride() {
+        return getTStringOpsMethod("memcmpWithStride",
                         byte[].class, long.class, int.class,
                         byte[].class, long.class, int.class, int.class);
     }
 
-    protected ResolvedJavaMethod getRegionEqualsWithOrMaskWithStrideIntl() {
-        return getTStringOpsMethod("regionEqualsWithOrMaskWithStrideIntl",
+    protected ResolvedJavaMethod getRegionEqualsWithOrMaskWithStride() {
+        return getTStringOpsMethod("regionEqualsWithOrMaskWithStride",
                         byte[].class, long.class, int.class, int.class, int.class,
                         byte[].class, long.class, int.class, int.class, int.class, byte[].class, int.class);
     }
@@ -201,8 +201,18 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
                         byte[].class, long.class, int.class, int.class, int.class, int[].class);
     }
 
+    protected ResolvedJavaMethod getIndexOfAnyIntRangeForeignEndianIntl() {
+        return getTStringOpsMethod("indexOfAnyIntRangeForeignEndianIntl",
+                        byte[].class, long.class, int.class, int.class, int.class, int[].class);
+    }
+
     protected ResolvedJavaMethod getIndexOfTableIntl() {
         return getTStringOpsMethod("indexOfTableIntl",
+                        byte[].class, long.class, int.class, int.class, int.class, byte[].class);
+    }
+
+    protected ResolvedJavaMethod getIndexOfTableForeignEndianIntl() {
+        return getTStringOpsMethod("indexOfTableForeignEndianIntl",
                         byte[].class, long.class, int.class, int.class, int.class, byte[].class);
     }
 

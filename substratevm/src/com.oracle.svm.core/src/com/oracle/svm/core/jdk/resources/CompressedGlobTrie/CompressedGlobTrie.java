@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,8 +38,9 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.util.GlobUtils;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
 
 /**
@@ -50,13 +51,13 @@ import com.oracle.svm.util.StringUtil;
  * parameter represents list of glob patterns given in any order. At the very beginning, all given
  * globs will be validated using {@link GlobUtils#validatePattern(String)}. If all globs were
  * correct, they will be classified (with
- * {@link CompressedGlobTrieBuilder#classifyPatterns(List, List, List, List)}) and sorted (using
- * {@link CompressedGlobTrieBuilder#comparePatterns(GlobWithInfo, GlobWithInfo)} as the comparator
- * function). This preprocessing phase allows incremental structure build, going from the most
- * general glob pattern to the more specific ones. Furthermore, when trying to add a new glob, the
- * structure will first check if the given glob can be matched with some glob that already exists in
- * the structure (NOTE: possibly more than one glob pattern from the structure can match the new
- * pattern). When that is not the case, a new pattern will be added using
+ * {@link CompressedGlobTrieBuilder#classifyPatterns(List, List, List, List, boolean)}) and sorted
+ * (using {@link CompressedGlobTrieBuilder#comparePatterns(GlobWithInfo, GlobWithInfo)} as the
+ * comparator function). This preprocessing phase allows incremental structure build, going from the
+ * most general glob pattern to the more specific ones. Furthermore, when trying to add a new glob,
+ * the structure will first check if the given glob can be matched with some glob that already
+ * exists in the structure (NOTE: possibly more than one glob pattern from the structure can match
+ * the new pattern). When that is not the case, a new pattern will be added using
  * {@link CompressedGlobTrieBuilder#addNewBranch}. This function will attempt identical matching
  * (where wildcards have no special semantics) to move as deep in the structure as possible. Once it
  * cannot proceed with the existing branches, the function will append rest of the pattern as the
@@ -99,18 +100,23 @@ public class CompressedGlobTrie {
          * with possibly additional context.
          */
         public static <C> GlobTrieNode<C> build(List<GlobWithInfo<C>> patterns) {
+            return build(patterns, true);
+        }
+
+        /**
+         * Builds an immutable CompressedGlobTrie structure from glob patterns given in any order
+         * with possibly additional context. Validation of patterns can be turned off.
+         */
+        public static <C> GlobTrieNode<C> build(List<GlobWithInfo<C>> patterns, boolean validatePatterns) {
             GlobTrieNode<C> root = new GlobTrieNode<>();
             /* classify patterns in groups */
             List<GlobWithInfo<C>> doubleStarPatterns = new ArrayList<>();
             List<GlobWithInfo<C>> starPatterns = new ArrayList<>();
             List<GlobWithInfo<C>> noStarPatterns = new ArrayList<>();
 
-            List<String> invalidPatterns = classifyPatterns(patterns, doubleStarPatterns, starPatterns, noStarPatterns);
-            if (!invalidPatterns.isEmpty()) {
-                StringBuilder sb = new StringBuilder("Error: invalid glob patterns found:" + System.lineSeparator());
-                invalidPatterns.forEach(msg -> sb.append(msg).append(System.lineSeparator()));
-
-                throw UserError.abort(sb.toString());
+            List<String> invalidPatternsErrors = classifyPatterns(patterns, doubleStarPatterns, starPatterns, noStarPatterns, validatePatterns);
+            if (!invalidPatternsErrors.isEmpty()) {
+                invalidPatternsErrors.forEach(LogUtils::warning);
             }
 
             /* sort patterns in the groups based on generality */
@@ -215,14 +221,22 @@ public class CompressedGlobTrie {
         private static <C> List<String> classifyPatterns(List<GlobWithInfo<C>> patterns,
                         List<GlobWithInfo<C>> doubleStar,
                         List<GlobWithInfo<C>> singleStar,
-                        List<GlobWithInfo<C>> noStar) {
+                        List<GlobWithInfo<C>> noStar,
+                        boolean validate) {
             List<String> invalidPatterns = new ArrayList<>();
             for (GlobWithInfo<C> patternWithInfo : patterns) {
-                /* validate patterns */
-                String error = GlobUtils.validatePattern(patternWithInfo.pattern());
-                if (!error.isEmpty()) {
-                    invalidPatterns.add(error);
-                    continue;
+                if (validate) {
+                    /* validate patterns */
+                    String error = GlobUtils.validatePattern(patternWithInfo.pattern());
+                    if (!error.isEmpty()) {
+                        if (patternWithInfo.additionalContent() instanceof ClassLoaderSupport.ConditionWithOrigin conditionWithOrigin) {
+                            invalidPatterns.add(error + "Pattern is from: " + conditionWithOrigin.origin());
+                        } else {
+                            invalidPatterns.add(error);
+                        }
+
+                        continue;
+                    }
                 }
 
                 String pattern = patternWithInfo.pattern();

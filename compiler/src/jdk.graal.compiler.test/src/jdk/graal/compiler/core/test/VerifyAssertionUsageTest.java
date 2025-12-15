@@ -36,6 +36,7 @@ import org.junit.Test;
 
 import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.test.VerifyPhase.VerificationError;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
@@ -47,7 +48,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.PhaseSuite;
-import jdk.graal.compiler.phases.VerifyPhase.VerificationError;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.GraphOrder;
 import jdk.graal.compiler.phases.util.Providers;

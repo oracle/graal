@@ -89,6 +89,21 @@ public interface Metaspace {
     /** Allocates a byte array. */
     byte[] allocateByteArray(int length);
 
+    /** Allocates an int array. */
+    int[] allocateIntArray(int length);
+
+    default byte[] copyToMetaspace(byte[] heapArray) {
+        byte[] result = Metaspace.singleton().allocateByteArray(heapArray.length);
+        System.arraycopy(heapArray, 0, result, 0, heapArray.length);
+        return result;
+    }
+
+    default int[] copyToMetaspace(int[] heapArray) {
+        int[] result = Metaspace.singleton().allocateIntArray(heapArray.length);
+        System.arraycopy(heapArray, 0, result, 0, heapArray.length);
+        return result;
+    }
+
     /** Walks all metaspace objects. May only be called at a safepoint. */
     void walkObjects(ObjectVisitor visitor);
 }

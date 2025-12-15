@@ -31,6 +31,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
@@ -47,6 +49,7 @@ import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.snippets.SubstrateIsArraySnippets;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -90,6 +93,7 @@ import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -158,9 +162,16 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    public ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField f) {
+    public ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField f, LoweringTool tool) {
         SharedField field = (SharedField) f;
         assert field.isStatic();
+        Object staticFieldBase = field.getStaticFieldBaseForRuntimeLoadedClass();
+        if (staticFieldBase != null) {
+            assert !SubstrateUtil.HOSTED && SubstrateOptions.useRistretto();
+            SnippetReflectionProvider snippetReflection = tool.getSnippetReflection();
+            JavaConstant constant = snippetReflection.forObject(staticFieldBase);
+            return ConstantNode.forConstant(constant, tool.getMetaAccess(), graph);
+        }
         return graph.unique(StaticFieldsSupport.createStaticFieldBaseNode(field));
     }
 

@@ -46,11 +46,6 @@ public final class LineBreakpointInfo extends AbstractBreakpointInfo {
     }
 
     @Override
-    public Object getThread() {
-        return getFilter().getThread();
-    }
-
-    @Override
     public long getClassId() {
         return classId;
     }

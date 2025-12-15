@@ -44,6 +44,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.BooleanPointer;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -285,6 +286,7 @@ public final class ThreadLocalAllocation {
 
     @Uninterruptible(reason = "Possible use of StackValue in virtual thread.")
     private static Object slowPathNewArrayLikeObjectWithoutAllocation0(DynamicHub hub, int length, UnsignedWord size, byte[] podReferenceMap) {
+        SubstrateUtil.guaranteeRuntimeOnly();
         long startTicks = JfrTicks.elapsedTicks();
         UnsignedWord tlabSize = Word.zero();
 

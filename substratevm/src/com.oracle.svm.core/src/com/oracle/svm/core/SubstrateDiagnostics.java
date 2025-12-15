@@ -28,7 +28,6 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
 import java.util.Arrays;
-import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -51,6 +50,7 @@ import com.oracle.svm.core.SubstrateDiagnostics.DumpCodeCacheHistory;
 import com.oracle.svm.core.SubstrateDiagnostics.DumpDeoptStubPointer;
 import com.oracle.svm.core.SubstrateDiagnostics.DumpRecentDeoptimizations;
 import com.oracle.svm.core.SubstrateDiagnostics.DumpRuntimeCodeInfoMemory;
+import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -68,12 +68,12 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
@@ -94,6 +94,13 @@ import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.AbstractImageHeapList;
 import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.ImageHeapList;
 import com.oracle.svm.core.util.TimeUtils;
@@ -513,6 +520,7 @@ public class SubstrateDiagnostics {
         return CodeInfoTable.lookupCodeInfo(possibleIp).isNonNull();
     }
 
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
     public static class FatalErrorState {
         AtomicWord<IsolateThread> diagnosticThread;
         volatile int diagnosticThunkIndex;
@@ -746,6 +754,7 @@ public class SubstrateDiagnostics {
                         }
                     }
                     log.string(", stack(").zhex(VMThreads.StackEnd.get(thread)).string(",").zhex(VMThreads.StackBase.get(thread)).string(")");
+                    log.string(", OS thread ").signed(VMThreads.OSThreadIdTL.get(thread)).string(" (").zhex(VMThreads.OSThreadHandleTL.get(thread)).string(")");
                     log.newline();
                     printed++;
                 }
@@ -868,7 +877,10 @@ public class SubstrateDiagnostics {
             log.string("Platform: ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
             log.string("Page size: ").unsigned(SubstrateOptions.getPageSize()).newline();
             log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
-            log.string("Containerized: ").string(String.valueOf(Container.singleton().isContainerized())).newline();
+            if (RuntimeCompilation.isEnabled()) {
+                log.string("Supports isolated compilation: ").bool(SubstrateOptions.supportCompileInIsolates()).newline();
+            }
+            log.string("Container support: ").bool(Container.isSupported()).newline();
             log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
             log.string("CPU features used for AOT compiled code: ").string(getBuildTimeCpuFeatures()).newline();
             log.indent(false);
@@ -890,12 +902,26 @@ public class SubstrateDiagnostics {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             log.string("Runtime information:").indent(true);
-            log.string("Isolate id: ").signed(Isolates.getIsolateId()).newline();
+            log.string("Isolate id: ").signed(Isolates.getIsolateId());
+            if (RuntimeCompilation.isEnabled() && IsolateArgumentParser.isCompilationIsolate()) {
+                log.string(" (compilation isolate)");
+            }
+            log.newline();
+
             log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
             if (SubstrateOptions.useRelativeCodePointers()) {
                 log.string("Code base: ").zhex(KnownIntrinsics.codeBase()).newline();
             }
-            log.string("CGlobalData base: ").zhex(CGlobalDataInfo.CGLOBALDATA_RUNTIME_BASE_ADDRESS.getPointer()).newline();
+            CGlobalDataPointerSingleton[] layeredSingletons = CGlobalDataPointerSingleton.allLayers();
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                for (int i = 0; i < layeredSingletons.length; ++i) {
+                    log.string("CGlobalData base for layer ").unsigned(i).string(": ").zhex(layeredSingletons[i].getRuntimeBaseAddress().getPointer()).newline();
+                }
+            } else {
+                BoxedRelocatedPointer baseAddress = layeredSingletons[0].getRuntimeBaseAddress();
+                log.string("CGlobalData base: ").zhex(baseAddress.getPointer()).newline();
+            }
+            log.string("Containerized: ").bool(Container.singleton().isContainerized()).newline();
 
             if (Container.singleton().isContainerized()) {
                 log.string("CPU cores (container): ");
@@ -940,14 +966,23 @@ public class SubstrateDiagnostics {
             }
 
             CodeInfo info = CodeInfoTable.getFirstImageCodeInfo();
+            int layerNumber = 0;
             do {
                 Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
                 UnsignedWord codeSize = CodeInfoAccess.getCodeSize(info);
                 Pointer codeEnd = codeStart.add(codeSize).subtract(1);
-                log.string("AOT compiled code: ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
+                log.string("AOT compiled code");
+                if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                    log.string(" - Layer ").unsigned(layerNumber);
+                }
+                log.string(": ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
                 info = CodeInfoAccess.getNextImageCodeInfo(info);
+                layerNumber++;
             } while (info.isNonNull());
 
+            if (RuntimeCompilation.isEnabled()) {
+                log.string("Compile in isolates: ").bool(SubstrateOptions.shouldCompileInIsolates()).newline();
+            }
             log.indent(false);
         }
 
@@ -1263,17 +1298,18 @@ public class SubstrateDiagnostics {
         public abstract int maxInvocationCount();
     }
 
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
     public static class DiagnosticThunkRegistry {
         @Platforms(Platform.HOSTED_ONLY.class) //
         final int runtimeCompilationPosition;
 
-        private final List<DiagnosticThunk> thunks = ImageHeapList.create(DiagnosticThunk.class);
+        private final AbstractImageHeapList<DiagnosticThunk> thunks = ImageHeapList.create(DiagnosticThunk.class);
         private int[] initialInvocationCount;
 
         @Fold
         public static synchronized DiagnosticThunkRegistry singleton() {
             /* The registry is already used very early during the image build. */
-            if (!ImageSingletons.contains(DiagnosticThunkRegistry.class)) {
+            if (!ImageSingletons.contains(DiagnosticThunkRegistry.class) && ImageLayerBuildingSupport.firstImageBuild()) {
                 ImageSingletons.add(DiagnosticThunkRegistry.class, new DiagnosticThunkRegistry());
             }
             return ImageSingletons.lookup(DiagnosticThunkRegistry.class);
@@ -1364,6 +1400,7 @@ public class SubstrateDiagnostics {
         }
     }
 
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
     @AutomaticallyRegisteredImageSingleton
     public static class Options {
         @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
@@ -1428,8 +1465,14 @@ public class SubstrateDiagnostics {
     }
 }
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 class SubstrateDiagnosticsFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
     /**
      * {@link RuntimeCompilation#isEnabled()} can't be executed in the
      * {@link DiagnosticThunkRegistry} constructor because the feature registration is not

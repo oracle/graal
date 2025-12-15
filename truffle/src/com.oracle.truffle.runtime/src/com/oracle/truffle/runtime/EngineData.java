@@ -80,6 +80,7 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueue
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueFirstTierPriority;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueInvalidatedBonus;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueOSRBonus;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueRateHalfLife;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueWeightingBothTiers;
 import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.getRuntime;
 
@@ -164,6 +165,7 @@ public final class EngineData {
     @CompilationFinal public double traversingFirstTierBonus;
     @CompilationFinal public double traversingInvalidatedBonus;
     @CompilationFinal public double traversingOSRBonus;
+    @CompilationFinal public long traversingRateHalfLifeNs;
     @CompilationFinal public boolean propagateCallAndLoopCount;
     @CompilationFinal public int propagateCallAndLoopCountMaxDepth;
     @CompilationFinal public int maximumCompilations;
@@ -182,6 +184,7 @@ public final class EngineData {
     private Map<String, String> compilerOptions;
 
     private volatile Object polyglotEngine;
+    private volatile boolean closed;
 
     /*
      * Extension data for dynamically bound engine extensions.
@@ -198,6 +201,14 @@ public final class EngineData {
 
         // the splittingStatistics requires options to be initialized
         this.splittingStatistics = new TruffleSplittingStrategy.SplitStatisticsData();
+    }
+
+    public void ensureClosed() {
+        this.closed = true;
+    }
+
+    public boolean isClosed() {
+        return this.closed;
     }
 
     public static IllegalArgumentException sandboxPolicyException(SandboxPolicy sandboxPolicy, String reason, String fix) {
@@ -337,6 +348,7 @@ public final class EngineData {
         maximumCompilations = options.get(MaximumCompilations);
         traversingInvalidatedBonus = options.get(TraversingQueueInvalidatedBonus);
         traversingOSRBonus = options.get(TraversingQueueOSRBonus);
+        traversingRateHalfLifeNs = options.get(TraversingQueueRateHalfLife) * 1_000_000;
 
         this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
         this.argumentTypeSpeculation = options.get(ArgumentTypeSpeculation);

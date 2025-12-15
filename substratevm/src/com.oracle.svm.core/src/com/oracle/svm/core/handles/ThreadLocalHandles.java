@@ -24,14 +24,18 @@
  */
 package com.oracle.svm.core.handles;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.Arrays;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.word.SignedWord;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Implementation of local object handles, which are bound to a specific thread and can be created
@@ -69,6 +73,7 @@ public final class ThreadLocalHandles<T extends ObjectHandle> {
         return (int) handle.rawValue();
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getHandleCount() {
         return top - MIN_VALUE;
     }
@@ -80,6 +85,18 @@ public final class ThreadLocalHandles<T extends ObjectHandle> {
         frameStack[frameCount] = top;
         frameCount++;
         ensureCapacity(capacity);
+        return frameCount;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public int pushFrameUninterruptible(int capacity) {
+        VMError.guarantee(frameCount < frameStack.length, "cannot grow");
+        frameStack[frameCount] = top;
+        frameCount++;
+
+        int minLength = top + capacity;
+        VMError.guarantee(minLength < objects.length, "cannot ensure capacity");
+
         return frameCount;
     }
 
@@ -112,6 +129,18 @@ public final class ThreadLocalHandles<T extends ObjectHandle> {
         return Word.signed(index);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public T tryCreateNonNullUninterruptible(Object obj) {
+        assert obj != null;
+        if (top >= objects.length) {
+            return nullHandle();
+        }
+        int index = top;
+        objects[index] = obj;
+        top++;
+        return Word.signed(index);
+    }
+
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public <U> U getObject(T handle) {
@@ -125,19 +154,24 @@ public final class ThreadLocalHandles<T extends ObjectHandle> {
         return previous != null;
     }
 
-    public void popFrame() {
-        popFramesIncluding(frameCount);
+    public int popFrame() {
+        return popFramesIncluding(frameCount);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void popFramesIncluding(int frame) {
+    public int popFramesIncluding(int frame) {
         assert frame > 0 && frame <= frameCount;
+
+        int currentFrameCount = frameCount;
         int previousTop = top;
+
         frameCount = frame - 1;
         top = frameStack[frameCount];
         for (int i = top; i < previousTop; i++) {
             objects[i] = null; // so objects can be garbage collected
         }
+
+        return currentFrameCount;
     }
 
     public void ensureCapacity(int capacity) {

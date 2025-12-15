@@ -36,15 +36,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.ReflectionIntrospector;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
-import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
+import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
@@ -69,7 +69,9 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
+import com.oracle.svm.core.reflect.ReflectionIntrospectorImpl;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
@@ -92,10 +94,13 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.util.Digest;
 import jdk.internal.reflect.CallerSensitive;
@@ -144,6 +149,11 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                     Object.class, Object[].class, CFunctionPointer.class);
 
     FeatureImpl.BeforeAnalysisAccessImpl analysisAccess;
+
+    public static final class Options {
+        @Option(help = "Emits a warning when the old programmatic registration API is used.", type = OptionType.User) public static final HostedOptionKey<Boolean> TrackDeprecatedRegistrationUsage = new HostedOptionKey<>(
+                        false);
+    }
 
     @Override
     public SubstrateAccessor getOrCreateAccessor(Executable member) {
@@ -302,11 +312,13 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
         ImageSingletons.add(ReflectionHostedSupport.class, reflectionData);
 
+        ImageSingletons.add(ReflectionIntrospector.class, new ReflectionIntrospectorImpl());
+
         /*
          * Querying Object members is allowed to enable these accesses on array classes, since those
          * don't define any additional members.
          */
-        reflectionData.registerClassMetadata(ConfigurationCondition.alwaysTrue(), Object.class);
+        reflectionData.registerClassMetadata(AccessCondition.unconditional(), Object.class, false);
     }
 
     @Override
@@ -315,24 +327,25 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         aUniverse = access.getUniverse();
         var conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(), ClassInitializationSupport.singleton());
         reflectionData.duringSetup(access.getMetaAccess(), aUniverse);
-        RuntimeProxyCreationSupport proxyRegistry = ImageSingletons.lookup(RuntimeProxyCreationSupport.class);
-        RuntimeSerializationSupport<ConfigurationCondition> serializationSupport = RuntimeSerializationSupport.singleton();
+        RuntimeProxyRegistrySupport proxyRegistry = ImageSingletons.lookup(RuntimeProxyRegistrySupport.class);
+        RuntimeSerializationSupport<AccessCondition> serializationSupport = RuntimeSerializationSupport.singleton();
         RuntimeJNIAccessSupport jniSupport = SubstrateOptions.JNI.getValue() ? ImageSingletons.lookup(RuntimeJNIAccessSupport.class) : null;
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, true, conditionResolver, reflectionData, proxyRegistry,
+        ReflectionConfigurationParser<AccessCondition, Class<?>> parser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, true, conditionResolver, reflectionData, proxyRegistry,
                         serializationSupport, jniSupport, access.getImageClassLoader());
-        loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, access.getImageClassLoader(), "reflection");
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, false, conditionResolver, reflectionData,
+        List<String> originalLoadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, access.getImageClassLoader(), "reflection");
+        ReflectionConfigurationParser<AccessCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, false, conditionResolver, reflectionData,
                         proxyRegistry, serializationSupport, jniSupport, access.getImageClassLoader());
-        loadedConfigurations += ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, access.getImageClassLoader(), "reflection",
+        originalLoadedConfigurations.addAll(ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, access.getImageClassLoader(), "reflection",
                         ConfigurationFiles.Options.ReflectionConfigurationFiles, ConfigurationFiles.Options.ReflectionConfigurationResources,
-                        ConfigurationFile.REFLECTION.getFileName());
+                        ConfigurationFile.REFLECTION.getFileName()));
+        loadedConfigurations = FallbackFeature.adjustLoadedConfigurations(originalLoadedConfigurations);
 
         loader = access.getImageClassLoader();
         annotationSubstitutions = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
 
         /* Primitive classes cannot be accessed through Class.forName() */
         for (Class<?> primitiveClass : PRIMITIVE_CLASSES) {
-            ClassForNameSupport.currentLayer().registerNegativeQuery(ConfigurationCondition.alwaysTrue(), primitiveClass.getName());
+            ClassForNameSupport.currentLayer().registerNegativeQuery(AccessCondition.unconditional(), primitiveClass.getName());
         }
 
         access.registerObjectReachableCallback(SubstrateAccessor.class, ReflectionFeature::onAccessorReachable);
@@ -427,7 +440,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     @Override
     public String getDeletionReason(Field reflectionField) {
         ResolvedJavaField field = metaAccess.lookupJavaField(reflectionField);
-        Delete annotation = AnnotationAccess.getAnnotation(field, Delete.class);
+        Delete annotation = AnnotationUtil.getAnnotation(field, Delete.class);
         return annotation != null ? annotation.value() : null;
     }
 
@@ -544,7 +557,7 @@ final class ComputeInterfaceTypeID implements FieldValueTransformerWithAvailabil
         HostedMethod method = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
         HostedMethod indirectCallTarget = method.getIndirectCallTarget();
         if (indirectCallTarget.getDeclaringClass().isInterface()) {
-            return indirectCallTarget.getDeclaringClass().getTypeID();
+            return indirectCallTarget.getDeclaringClass().getInterfaceID();
         }
         return SubstrateMethodAccessor.INTERFACE_TYPEID_CLASS_TABLE;
     }

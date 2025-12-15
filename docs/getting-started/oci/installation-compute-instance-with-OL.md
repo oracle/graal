@@ -8,19 +8,17 @@ permalink: /getting-started/oci/compute-instance/
 This guide describes how to install Oracle GraalVM on an Oracle Cloud Infrastructure (OCI) Compute instance with Oracle Linux 7, 8, 9, and 10.
 For complete beginners, [start with this tutorial to create and launch your first Linux instance](https://docs.oracle.com/iaas/Content/GSG/Reference/overviewworkflow.htm).
 
-> Note: Oracle GraalVM license and support are included in the Oracle Cloud Infrastructure subscription at no additional cost.
-
 ### Prerequisites
 
 To replicate the steps in this guide, [create a Compute instance and connect to it](https://docs.oracle.com/iaas/Content/GSG/Reference/overviewworkflow.htm).
 
 ## Install Oracle GraalVM
 
-For convenience, the RPM package for Oracle GraalVM for JDK 25 is available in the Oracle YUM repository with the package name `graalvm-25-native-image`.
+For convenience, the RPM package for Oracle GraalVM 25 is available in the Oracle YUM repository with the package name `graalvm-25-native-image`.
 This distribution includes a JDK and Native Image.
 It is self-contained and all the required dependencies will be automatically resolved during the installation.
 
-That means that OCI customers can use Oracle GraalVM in their compute instances, just like any other Java Development Kit, by installing it with `yum`, `dnf`, or `microdnf` default package managers, depending on the Oracle Linux version.
+That means that OCI customers can use Oracle GraalVM in their compute instances, just like any Java Development Kit, by installing it with `yum`, `dnf`, or `microdnf` default package managers, depending on the Oracle Linux version.
 
 Use the following command to connect to the OCI Compute Instance from a Unix-style system:
 ```bash

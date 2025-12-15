@@ -245,7 +245,7 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
                 newHead = newTail = newEntry;
             } else {
                 // inserting at the end
-                assert tail != null && head != null;
+                assert head != null;
                 Object tailKey = tail.getKey();
                 newEntry = new LinkedPropertyEntry(value, tailKey, null);
                 // old tail needs to point to the new key
@@ -450,6 +450,11 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
     @Override
     public Property getLastProperty() {
         return tail == null ? null : tail.getValue();
+    }
+
+    @Override
+    public Property getFirstProperty() {
+        return head == null ? null : head.getValue();
     }
 
     @Override

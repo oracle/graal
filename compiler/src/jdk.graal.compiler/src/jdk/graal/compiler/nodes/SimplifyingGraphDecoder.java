@@ -141,9 +141,9 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     }
 
     @Override
-    protected void cleanupGraph(MethodScope methodScope) {
+    protected void cleanupGraph(MethodScope rootMethodScope) {
         GraphUtil.normalizeLoops(graph);
-        super.cleanupGraph(methodScope);
+        super.cleanupGraph(rootMethodScope);
 
         /*
          * To avoid calling tryKillUnused for each individual floating node we remove during
@@ -152,7 +152,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
          */
         final NodeBitMap unusedNodes = new NodeBitMap(graph);
 
-        for (Node node : graph.getNewNodes(methodScope.methodStartMark)) {
+        for (Node node : graph.getNewNodes(rootMethodScope.methodStartMark)) {
             if (node instanceof MergeNode mergeNode) {
                 if (mergeNode.forwardEndCount() == 1) {
                     graph.reduceTrivialMerge(mergeNode, false, unusedNodes);

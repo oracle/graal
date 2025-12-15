@@ -40,15 +40,22 @@
 #
 import argparse
 import contextlib
-import fnmatch
+import os
+import shlex
 from argparse import ArgumentParser
 from enum import Enum
-from typing import List, Set, Tuple, NamedTuple
+from typing import List, Set, Tuple, NamedTuple, Dict
 
 import mx
 import mx_benchmark
 import mx_sdk
-from mx_polybench.model import _resolve_all_benchmarks, _get_all_suites, PolybenchBenchmarkSuiteEntry
+from mx_polybench.model import (
+    _resolve_all_benchmarks,
+    _get_all_suites,
+    PolybenchBenchmarkSuiteEntry,
+    _extend_env,
+    PolybenchBenchmarkSuite,
+)
 
 _suite = mx.suite("truffle")
 
@@ -69,9 +76,9 @@ class PolybenchArgumentsSpecification(NamedTuple):
         return (
             "additional benchmark arguments. By default, arguments are passed to the Polybench launcher, "
             f"but you may use flags to forward arguments to specific components: "
-            f"{cls.MX_BENCHMARK_FLAG} for mx benchmark, "
-            f"{cls.VM_FLAG} for the host VM or native-image, or "
-            f"{cls.POLYBENCH_FLAG} for the Polybench launcher. "
+            f'"{cls.MX_BENCHMARK_FLAG}" for mx benchmark, '
+            f'"{cls.VM_FLAG}" for the host VM or native-image, or '
+            f'"{cls.POLYBENCH_FLAG}" for the Polybench launcher (pass "--help" to see launcher help). '
             f'For example: "-i 2 {cls.MX_BENCHMARK_FLAG} --fail-fast {cls.VM_FLAG} -ea '
             f'{cls.POLYBENCH_FLAG} --engine.TraceCompilation=true".'
         )
@@ -124,57 +131,60 @@ class PolybenchArgumentsSpecification(NamedTuple):
         )
 
 
-def polybench_list(args):
+def polybench_list():
     benchmarks = _resolve_all_benchmarks()
-    print('Benchmark files (run using "mx polybench run <glob_pattern>"):')
+    mx.log("Listing all available polybench benchmarks.")
+    mx.log('Benchmark files (run using "mx polybench <glob_pattern>"):')
     file_found = False
     for benchmark_name, resolved_benchmark in benchmarks.items():
-        if args.glob and not fnmatch.fnmatchcase(benchmark_name, f"*{args.glob}*"):
-            continue
         file_found = True
-        print(f"\t{benchmark_name}")
-        if args.verbose:
-            print(f"\t\tabsolute path: {resolved_benchmark.absolute_path}")
-            print(f"\t\tdistribution: {resolved_benchmark.suite.benchmark_distribution}")
-            print(f"\t\tdeclaring suite: {resolved_benchmark.suite.mx_suite.name}")
-            print(f"\t\trequired languages: {resolved_benchmark.suite.languages}")
+        mx.log(f"\t{benchmark_name}")
+        mx.logv(f"\t\tabsolute path: {resolved_benchmark.absolute_path}")
+        mx.logv(f"\t\tdistribution: {resolved_benchmark.suite.benchmark_distribution}")
+        mx.logv(f"\t\tdeclaring suite: {resolved_benchmark.suite.mx_suite.name}")
+        mx.logv(f"\t\trequired languages: {resolved_benchmark.suite.languages}")
     if not file_found:
-        print("\tno benchmark files found")
+        mx.log("\tno benchmark files found")
 
     suites = _get_all_suites()
-    print(
-        'Suites (run using "mx polybench run --suite <suite_name>" or "mx polybench run --suite <suite_name>:<tag1>,<tag2>,..."):'
+    mx.log(
+        'Suites (run using "mx polybench --suite <suite_name>" or "mx polybench --suite <suite_name>:<tag1>,<tag2>,..."):'
     )
     suite_found = False
     for suite_name, suite in suites.items():
-        if args.glob and not fnmatch.fnmatchcase(suite_name, f"*{args.glob}*"):
-            continue
         suite_found = True
-        print(f"\t{suite_name}: {suite.tags if suite.tags else '{}'}")
+        mx.log(f"\t{suite_name}: {suite.tags if suite.tags else '{}'}")
     if not suite_found:
-        print("\tno suites found")
+        mx.log("\tno suites found")
 
 
-def polybench_run(args):
-    if args.suite:
-        _run_suite(args)
+def polybench_run(parsed_args, raw_args):
+    if parsed_args.suite:
+        _run_suite(parsed_args)
+    elif parsed_args.dry_run_polybench:
+        _dry_run_polybench(raw_args)
     else:
-        _run_benchmark_pattern(args)
+        _run_benchmark_pattern(parsed_args)
+
+
+def _dry_run_polybench(raw_args):
+    raw_args.remove("--dry-run-polybench")
+    mx.log(_mx_polybench_command_string(raw_args))
 
 
 def _run_suite(args):
     suite, tags = _get_suite_and_tags(args)
     if tags - suite.tags:
         mx.abort(
-            f"Requested tag(s) not available for suite '{suite}': {tags - suite.tags}. Available tags: {suite.tags}"
+            f'Requested tag(s) not available for suite "{suite}": {tags - suite.tags}. Available tags: {suite.tags}'
         )
 
     mx.log(f"Running suite {suite.name} with tags {tags}.")
 
     # Arguments passed in a suite run are appended after the arguments specified by the suite runner.
-    if args.arguments:
+    if args.benchmark_arguments:
         mx.warn(
-            f"Arguments were supplied on the command line ({args.arguments}). "
+            f"Arguments were supplied on the command line ({args.benchmark_arguments}). "
             "These arguments will be inserted after any arguments supplied by the suite runner."
         )
     features = _get_vm_features(args)
@@ -184,7 +194,7 @@ def _run_suite(args):
             "You can directly enable these features in the suite runner itself."
         )
     override_arguments = (
-        PolybenchArgumentsSpecification.parse(args.arguments)
+        PolybenchArgumentsSpecification.parse(args.benchmark_arguments)
         .append(
             # Ensure results are combined across multiple runs.
             PolybenchArgumentsSpecification(mx_benchmark_args=["--append-results"])
@@ -192,13 +202,18 @@ def _run_suite(args):
         .to_normalized_command_line()
     )
 
-    base_args = ["run"]
+    base_args = []
     if args.dry_run:
         base_args.append("--dry-run")
+    elif args.dry_run_polybench:
+        base_args.append("--dry-run-polybench")
+    elif args.reuse_disk_images:
+        base_args.append("--reuse-disk-images")
 
     def polybench_run_function(argument_list: List[str]) -> None:
-        parsed_args = parser.parse_args(base_args + argument_list + override_arguments)
-        polybench_run(parsed_args)
+        raw_args = base_args + argument_list + override_arguments
+        parsed_args = parser.parse_args(raw_args)
+        polybench_run(parsed_args, raw_args)
 
     with _run_suite_context(suite, tags):
         suite.runner(polybench_run_function, tags)
@@ -233,7 +248,9 @@ class VMFeature(Enum):
 def _get_vm_features(args) -> Set[VMFeature]:
     def require_native(feature_name):
         if not args.is_native:
-            mx.abort(f"Feature {feature_name} is only supported on native runs, but native mode is not selected.")
+            mx.abort(
+                f"Feature {feature_name} is only supported on native runs, but native mode is not selected (enable native mode with --native)."
+            )
 
     result = set()
     if args.is_native:
@@ -248,21 +265,23 @@ def _get_vm_features(args) -> Set[VMFeature]:
 
 
 def _run_benchmark_pattern(args):
-    arguments_spec = PolybenchArgumentsSpecification.parse(args.arguments)
+    arguments_spec = PolybenchArgumentsSpecification.parse(args.benchmark_arguments)
     run_spec = PolybenchRunSpecification(args.benchmarks, _get_vm_features(args), arguments_spec)
-    _validate_jdk(run_spec.is_native())
+    _validate_jdk(run_spec)
     mx.logv(f"Performing polybench run: {run_spec}")
-    _run_specification(run_spec, pattern_is_glob=args.pattern_is_glob, dry_run=args.dry_run)
+    _run_specification(
+        run_spec, pattern_is_glob=args.pattern_is_glob, dry_run=args.dry_run, reuse_disk_images=args.reuse_disk_images
+    )
 
 
-def _validate_jdk(is_native: bool) -> mx.JDKConfig:
+def _validate_jdk(run_spec: "PolybenchRunSpecification") -> mx.JDKConfig:
     jdk = mx.get_jdk()
+    rerun_details = (
+        'You can change the JDK using "mx --java-home $GRAALVM_HOME", where GRAALVM_HOME points to a downloaded GraalVM release '
+        '(or a GraalVM built from source, e.g., with "mx -p /vm --env ce build").'
+    )
     if not mx_sdk.GraalVMJDKConfig.is_graalvm(jdk.home):
-        rerun_details = (
-            'You can change the JDK using "mx --java-home $GRAALVM_HOME", where GRAALVM_HOME points to a downloaded GraalVM release '
-            '(or a GraalVM built from source, e.g., with "mx -p /vm --env ce build").'
-        )
-        if is_native:
+        if run_spec.is_native():
             mx.abort(
                 f"Polybench was invoked with a non-Graal JDK ({jdk.home}), but a native image run was requested. "
                 f"Re-run using a Graal JDK. " + rerun_details
@@ -272,8 +291,19 @@ def _validate_jdk(is_native: bool) -> mx.JDKConfig:
                 f"Polybench is intended to run on a Graal JDK, but it was invoked with a non-Graal JDK ({jdk.home}). "
                 f"If you encounter issues, consider re-running using a GraalVM release. " + rerun_details
             )
+
+    if VMFeature.PGO in run_spec.vm_features and not _check_vm_is_enterprise(jdk.home):
+        mx.abort(
+            "PGO was requested, but the Graal JDK specified does not appear to support PGO. Re-run using an Oracle GraalVM. "
+            + rerun_details
+        )
+
     mx.logv(f"Using GraalVM at {jdk.home}")
     return jdk
+
+
+def _check_vm_is_enterprise(jdk_home):
+    return os.path.exists(os.path.join(jdk_home, "lib", "svm", "builder", "svm-enterprise.jar"))
 
 
 def _parse_mx_benchmark_pattern(pattern: str, pattern_is_glob: bool) -> str:
@@ -282,7 +312,7 @@ def _parse_mx_benchmark_pattern(pattern: str, pattern_is_glob: bool) -> str:
         if pattern.count(":") == 1:
             message += ' This pattern looks like a suite. Did you forget "--suite"?'
         else:
-            message += ' Use "mx polybench run -h" to view the expected format for benchmark patterns.'
+            message += ' Use "mx polybench -h" to view the expected format for benchmark patterns.'
         mx.abort(message)
 
     if pattern_is_glob:
@@ -335,18 +365,20 @@ class PolybenchRunSpecification(NamedTuple):
     vm_features: Set[VMFeature] = set()
     arguments: PolybenchArgumentsSpecification = PolybenchArgumentsSpecification()
 
-    def append_arguments(self, other: PolybenchArgumentsSpecification) -> "PolybenchRunSpecification":
-        return PolybenchRunSpecification(
-            pattern=self.pattern, vm_features=self.vm_features, arguments=self.arguments.append(other)
-        )
-
     def is_native(self) -> bool:
         return VMFeature.NATIVE in self.vm_features
 
-    def jvm_name(self) -> str:
-        return "native-image-java-home" if self.is_native() else "java-home"
+    def jvm_and_config(self) -> Tuple[str, str]:
+        if self.is_native():
+            # The VM config misses the 'ce'/'ee' suffix. The PolybenchBenchmarkSuite
+            # patches this in the output data.
+            return "native-image", self._native_vm_config()
+        else:
+            # The vanilla configuration does not inject any additional VM arguments.
+            # The PolybenchBenchmarkSuite overwrites this config in the output data.
+            return "server", "vanilla"
 
-    def jvm_config(self) -> str:
+    def _native_vm_config(self) -> str:
         features = []
         if VMFeature.G1GC in self.vm_features:
             features.append("g1gc")
@@ -355,12 +387,18 @@ class PolybenchRunSpecification(NamedTuple):
         return "-".join(features) if features else "default"
 
 
-def _run_specification(spec: PolybenchRunSpecification, pattern_is_glob: bool = True, dry_run: bool = False):
+def _run_specification(
+    spec: PolybenchRunSpecification,
+    pattern_is_glob: bool = True,
+    dry_run: bool = False,
+    reuse_disk_images: bool = False,
+):
     pattern = _parse_mx_benchmark_pattern(spec.pattern, pattern_is_glob)
+    jvm_name, jvm_config = spec.jvm_and_config()
     mx_benchmark_args = (
         [f"polybench:{pattern}"]
         + spec.arguments.mx_benchmark_args
-        + ["--", f"--jvm={spec.jvm_name()}", f"--jvm-config={spec.jvm_config()}"]
+        + ["--", f"--jvm={jvm_name}", f"--jvm-config={jvm_config}", "--prebuilt-vm"]
         + spec.arguments.vm_args
         + ["--"]
         + spec.arguments.polybench_args
@@ -371,19 +409,37 @@ def _run_specification(spec: PolybenchRunSpecification, pattern_is_glob: bool = 
         return
 
     mx.logv(f"Running command: {command_string}")
-    mx_benchmark.benchmark(mx_benchmark_args)
+    with _extend_env(_extra_run_variables(reuse_disk_images)):
+        mx_benchmark.benchmark(mx_benchmark_args)
+
+
+def _extra_run_variables(reuse_disk_images) -> Dict[str, str]:
+    result = {}
+    if reuse_disk_images:
+        result[PolybenchBenchmarkSuite.REUSE_DISK_IMAGES] = "true"
+    return result
+
+
+def _base_mx_command() -> List[str]:
+    command = ["mx", "--java-home", mx.get_jdk().home]
+    for dynamic_import, in_subdir in mx.get_dynamic_imports():
+        if in_subdir:
+            command += ["--dy", f"/{dynamic_import}"]
+        else:
+            command += ["--dy", dynamic_import]
+    return command
+
+
+def _mx_polybench_command_string(mx_polybench_args: List[str]) -> str:
+    return _build_command(_base_mx_command() + ["polybench"] + mx_polybench_args)
 
 
 def _mx_benchmark_command_string(mx_benchmark_args: List[str]) -> str:
-    command = f"mx --java-home {mx.get_jdk().home}"
-    for dynamic_import, in_subdir in mx.get_dynamic_imports():
-        if in_subdir:
-            command += f" --dy /{dynamic_import}"
-        else:
-            command += f" --dy {dynamic_import}"
-    command += " benchmark "
-    command += " ".join(mx_benchmark_args)
-    return command
+    return _build_command(_base_mx_command() + ["benchmark"] + mx_benchmark_args)
+
+
+def _build_command(command: List[str]) -> str:
+    return " ".join(shlex.quote(token) for token in command)
 
 
 def _create_parser() -> ArgumentParser:
@@ -391,62 +447,104 @@ def _create_parser() -> ArgumentParser:
         prog="mx polybench",
         description=(
             "mx polybench is a simple command line interface for Polybench, the system used to benchmark Truffle languages. "
-            "It is a thin wrapper around Polybench's mx benchmark integration that makes it easy to discover benchmarks "
-            '(using "mx polybench list") and to run them (using "mx polybench run"). '
+            "It is a thin wrapper around Polybench's mx benchmark integration that makes it easy to discover and run benchmarks. "
             "It also supports batch execution of the benchmarks in a suite, which is convenient for defining CI jobs."
         ),
+        usage="%(prog)s [options*] benchmarks [benchmark_arguments*]",
     )
-    subparsers = parser.add_subparsers(dest="command", required=True, help="the polybench command to run")
 
-    list_parser = subparsers.add_parser("list", help="list the available benchmarks")
-    list_parser.add_argument("glob", nargs="?", type=str, help="a glob pattern to filter benchmark output")
-    list_parser.add_argument("--verbose", action="store_true", help="print a detailed view of the benchmarks")
-    list_parser.set_defaults(func=polybench_list)
-
-    run_parser = subparsers.add_parser("run", help="run one or more benchmarks")
-    run_parser.add_argument(
+    parser.add_argument(
         "benchmarks",
+        nargs="?",
         help='a glob pattern representing benchmarks to run (e.g., "interpreter/*"), '
         'or a suite specification if "--suite" is provided. '
-        'Use "mx polybench list" to see a list of available benchmarks.',
+        'Use "--list" to see a list of available benchmarks.',
     )
-    run_parser.add_argument(
-        "arguments", nargs=argparse.REMAINDER, help=PolybenchArgumentsSpecification.parser_help_message()
+    parser.add_argument(
+        "--list", action="store_true", help="list all available benchmarks (without actually executing them)."
     )
-    run_parser.add_argument(
-        "--dry-run",
+
+    run_flags = set()
+
+    def run_flag(run_arg):
+        run_flags.add(run_arg)
+        return run_arg
+
+    dry_run_group = parser.add_mutually_exclusive_group()
+    dry_run_group.add_argument(
+        run_flag("--dry-run"),
         action="store_true",
         help="log the mx benchmark commands that would be executed by this command (without actually executing them)",
     )
-    mode_group = run_parser.add_mutually_exclusive_group()
+    dry_run_group.add_argument(
+        run_flag("--dry-run-polybench"),
+        action="store_true",
+        help="log the mx polybench commands that would be executed by this command (without actually executing them)",
+    )
+
+    mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument(
-        "--jvm", action="store_false", dest="is_native", default=False, help="run the benchmark on the JVM (default)"
+        run_flag("--jvm"),
+        action="store_false",
+        dest="is_native",
+        default=False,
+        help="run the benchmark on the JVM (default)",
     )
     mode_group.add_argument(
-        "--native",
+        run_flag("--native"),
         action="store_true",
         dest="is_native",
         help="run the benchmark with a native image of the Truffle interpreter",
     )
-    run_parser.add_argument("--pgo", action="store_true", default=False, help="use PGO (only valid for native runs)")
-    run_parser.add_argument("--g1gc", action="store_true", default=False, help="use G1GC (only valid for native runs)")
-    benchmark_pattern_group = run_parser.add_mutually_exclusive_group()
+    parser.add_argument(
+        run_flag("--pgo"), action="store_true", default=False, help="use PGO (only valid for native runs)"
+    )
+    parser.add_argument(
+        run_flag("--g1gc"), action="store_true", default=False, help="use G1GC (only valid for native runs)"
+    )
+    parser.add_argument(
+        run_flag("--reuse-disk-images"),
+        action="store_true",
+        default=False,
+        help=(
+            "reuse existing native images found on disk. Polybench will reuse an image from disk if it was built with the same languages and VM arguments. "
+            "This feature does not detect stale images, does not support PGO, and should only be used for development. "
+            f'This feature can also be enabled by setting the environment variable {PolybenchBenchmarkSuite.REUSE_DISK_IMAGES} to "true".'
+        ),
+    )
+    benchmark_pattern_group = parser.add_mutually_exclusive_group()
     benchmark_pattern_group.add_argument(
-        "--suite",
+        run_flag("--suite"),
         action="store_true",
         help='treat "benchmarks" as a suite specification (a suite name, optionally '
         "followed by a colon and a comma-separated list of tags, "
         'e.g., "sl:gate,daily")',
     )
     benchmark_pattern_group.add_argument(
-        "--use-mx-benchmark-pattern",
+        run_flag("--use-mx-benchmark-pattern"),
         action="store_false",
         dest="pattern_is_glob",
         default=True,
         help='treat "benchmarks" as an mx benchmark pattern instead of a glob '
         '(e.g., "r[interpreter/.*]"; see mx_benchmark.py for details)',
     )
-    run_parser.set_defaults(func=polybench_run)
+
+    def benchmark_argument(arg):
+        """Prevents users from accidentally passing a run flag in the benchmark arguments section."""
+        if arg in run_flags:
+            mx.abort(
+                f'Flag "{arg}" is an "mx polybench" flag, but it was specified in the extra benchmark arguments section.\n'
+                f'Move it before the benchmark pattern/suite specification to fix this error (e.g., "mx polybench {arg} ... benchmark_or_suite ...").'
+            )
+        return arg
+
+    parser.add_argument(
+        "benchmark_arguments",
+        nargs=argparse.REMAINDER,
+        type=benchmark_argument,
+        help=PolybenchArgumentsSpecification.parser_help_message(),
+    )
+
     return parser
 
 
@@ -457,5 +555,10 @@ parser = _create_parser()
 def polybench_command(args):
     """Run one or more benchmarks using polybench."""
     parsed_args = parser.parse_args(args)
-    mx.logv(f"Running polybench command {parsed_args.command} with arguments {parsed_args}")
-    parsed_args.func(parsed_args)
+    mx.logv(f"Running polybench with arguments {parsed_args}")
+    if parsed_args.list:
+        polybench_list()
+    elif parsed_args.benchmarks:
+        polybench_run(parsed_args, args)
+    else:
+        mx.abort('A benchmark pattern or --list must be specified. Use "mx polybench -h" for more info.')

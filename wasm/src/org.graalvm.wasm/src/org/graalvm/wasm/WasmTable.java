@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,9 +46,9 @@ import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_INSTANCE_SIZE;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.wasm.constants.Sizes;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 
 public final class WasmTable extends EmbedderDataHolder implements TruffleObject {
@@ -65,7 +65,13 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
     /**
      * @see #elemType()
      */
-    private final byte elemType;
+    private final int elemType;
+
+    /**
+     * For resolving {@link #elemType} in {@link #closedElemType()}. Can be {@code null} for tables
+     * allocated from JS.
+     */
+    private final SymbolTable symbolTable;
 
     /**
      * @see #minSize()
@@ -86,13 +92,13 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
     private Object[] elements;
 
     @TruffleBoundary
-    private WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize, byte elemType, Object initialValue) {
+    private WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize, int elemType, Object initialValue, SymbolTable symbolTable) {
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
         assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
         assert compareUnsigned(maxAllowedSize, MAX_TABLE_INSTANCE_SIZE) <= 0;
         assert compareUnsigned(declaredMaxSize, MAX_TABLE_DECLARATION_SIZE) <= 0;
-        assert elemType == WasmType.FUNCREF_TYPE || elemType == WasmType.EXTERNREF_TYPE;
+        assert WasmType.isReferenceType(elemType);
 
         this.declaredMinSize = declaredMinSize;
         this.declaredMaxSize = declaredMaxSize;
@@ -101,14 +107,15 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
         this.elements = new Object[declaredMinSize];
         Arrays.fill(this.elements, initialValue);
         this.elemType = elemType;
+        this.symbolTable = symbolTable;
     }
 
-    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize, byte elemType) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, elemType, WasmConstant.NULL);
+    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize, int elemType, SymbolTable symbolTable) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, elemType, WasmConstant.NULL, symbolTable);
     }
 
-    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize, byte elemType, Object initialValue) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, elemType, initialValue);
+    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize, int elemType, Object initialValue) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, elemType, initialValue, null);
     }
 
     /**
@@ -156,10 +163,18 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
      * <p>
      * This table can only be imported with an equivalent elem type.
      *
-     * @return Either {@link WasmType#FUNCREF_TYPE} or {@link WasmType#EXTERNREF_TYPE}.
+     * @return Either {@link WasmType#FUNCREF_TYPE}, {@link WasmType#EXTERNREF_TYPE} or some
+     *         concrete reference type.
      */
-    public byte elemType() {
+    public int elemType() {
         return elemType;
+    }
+
+    /**
+     * The closed form of the type of the elements in the table.
+     */
+    public SymbolTable.ClosedValueType closedElemType() {
+        return SymbolTable.closedTypeOf(elemType, symbolTable);
     }
 
     /**

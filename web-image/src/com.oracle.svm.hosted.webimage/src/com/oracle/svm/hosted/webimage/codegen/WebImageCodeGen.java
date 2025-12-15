@@ -31,18 +31,23 @@ import static com.oracle.svm.hosted.webimage.metrickeys.UniverseMetricKeys.EMITT
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.BuildArtifacts;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -190,6 +195,19 @@ public abstract class WebImageCodeGen {
         }
 
         postProcess();
+    }
+
+    protected void afterHeapLayout() {
+        // after this point, the layout is final and must not be changed anymore
+        assert !hasDuplicatedObjects(codeCache.nativeImageHeap) : "heap.getObjects() must not contain any duplicates";
+        BuildPhaseProvider.markHeapLayoutFinished();
+        codeCache.nativeImageHeap.getLayouter().afterLayout(codeCache.nativeImageHeap);
+    }
+
+    protected boolean hasDuplicatedObjects(NativeImageHeap heap) {
+        Set<NativeImageHeap.ObjectInfo> deduplicated = Collections.newSetFromMap(new IdentityHashMap<>());
+        deduplicated.addAll(heap.getObjects());
+        return deduplicated.size() != heap.getObjectCount();
     }
 
     /**
@@ -378,7 +396,7 @@ public abstract class WebImageCodeGen {
 
             codeBuffer.emitText(codeGenTool.vmClassName() + ".");
             WebImageEntryFunctionLowerer.FUNCTION.emitCall(codeGenTool, Emitter.of("load_cmd_args()"), Emitter.of("config"));
-            codeBuffer.emitText(".catch(console.error)");
+            codeBuffer.emitText(".catch(e => { console.error(e); throw e; })");
 
             codeBuffer.emitInsEnd();
         } else {

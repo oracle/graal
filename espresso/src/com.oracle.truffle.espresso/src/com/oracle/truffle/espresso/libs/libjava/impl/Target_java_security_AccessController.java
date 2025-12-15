@@ -33,7 +33,7 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
-@EspressoSubstitutions(type = "Ljava/security/AccessController;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_security_AccessController {
     @Substitution
     public static @JavaType(ProtectionDomain.class) StaticObject getProtectionDomain(

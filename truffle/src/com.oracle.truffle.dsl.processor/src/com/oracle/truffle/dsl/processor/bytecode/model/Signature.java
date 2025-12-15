@@ -91,55 +91,45 @@ public final class Signature {
         this.constantOperandsAfterCount = copy.constantOperandsAfterCount;
     }
 
+    public List<TypeMirror> getConstantOperandsBeforeTypes() {
+        return operandTypes.subList(0, constantOperandsBeforeCount);
+    }
+
     public List<TypeMirror> getDynamicOperandTypes() {
         return operandTypes.subList(constantOperandsBeforeCount, constantOperandsBeforeCount + dynamicOperandCount);
+    }
+
+    public List<TypeMirror> getConstantOperandsAfterTypes() {
+        return operandTypes.subList(constantOperandsBeforeCount + dynamicOperandCount, operandTypes.size());
     }
 
     public Signature specializeReturnType(TypeMirror newReturnType) {
         return new Signature(this, operandTypes, newReturnType);
     }
 
-    public Signature specializeOperandType(int dynamicOperandIndex, TypeMirror newType) {
+    public Signature specializeDynamicOperandType(int dynamicOperandIndex, TypeMirror newType) {
         if (dynamicOperandIndex < 0 || dynamicOperandIndex >= dynamicOperandCount) {
             throw new IllegalArgumentException("Invalid operand index " + dynamicOperandIndex);
         }
-
-        TypeMirror type = getSpecializedType(dynamicOperandIndex);
+        int operandIndex = constantOperandsBeforeCount + dynamicOperandIndex;
+        TypeMirror type = operandTypes.get(operandIndex);
         if (ElementUtils.typeEquals(type, newType)) {
             return this;
         }
-
         List<TypeMirror> newOperandTypes = new ArrayList<>(operandTypes);
-        newOperandTypes.set(dynamicOperandIndex, newType);
+        newOperandTypes.set(operandIndex, newType);
         return new Signature(this, newOperandTypes, this.returnType);
     }
 
-    public TypeMirror getGenericType(int dynamicOperandIndex) {
-        if (dynamicOperandIndex < 0 || dynamicOperandIndex >= dynamicOperandCount) {
-            throw new IllegalArgumentException("Invalid operand index " + dynamicOperandIndex);
-        }
-        if (isVariadicParameter(dynamicOperandIndex)) {
-            return context.getType(Object[].class);
-        }
-        return context.getType(Object.class);
-    }
-
-    public TypeMirror getGenericReturnType() {
-        if (isVoid) {
-            return context.getType(void.class);
-        } else {
-            return context.getType(Object.class);
-        }
-    }
-
-    public TypeMirror getSpecializedType(int dynamicOperandIndex) {
+    public TypeMirror getDynamicOperandType(int dynamicOperandIndex) {
         if (dynamicOperandIndex < 0 && dynamicOperandIndex >= dynamicOperandCount) {
             throw new IllegalArgumentException("Invalid operand index " + dynamicOperandIndex);
         }
-        if (isVariadicParameter(dynamicOperandIndex)) {
-            return context.getType(Object[].class);
+        TypeMirror type = operandTypes.get(constantOperandsBeforeCount + dynamicOperandIndex);
+        if (isVariadicParameter(dynamicOperandIndex) && !ElementUtils.typeEquals(type, context.getType(Object[].class))) {
+            throw new AssertionError("Invalid varargs type.");
         }
-        return operandTypes.get(constantOperandsBeforeCount + dynamicOperandIndex);
+        return type;
     }
 
     public boolean isVariadicParameter(int i) {

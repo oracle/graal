@@ -5,7 +5,6 @@
   local top_level_ci = utils.top_level_ci,
   local devkits = common.devkits,
 
-  local darwin_amd64 = common.darwin_amd64,
   local darwin_aarch64 = common.darwin_aarch64,
   local linux_amd64 = common.linux_amd64,
   local linux_aarch64 = common.linux_aarch64,
@@ -33,7 +32,9 @@
       ["cd", "./compiler"],
       ["mx", "build" ],
       ["mx", "hsdis", "||", "true"],
-    ]
+    ],
+    notify_groups:: ["truffle"],
+    upload:: ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"],
   },
 
   local simple_tool_maven_project_gate = truffle_common + {
@@ -130,15 +131,19 @@
     timelimit: "45:00",
   },
 
+  local jmh_benchmark_daily_targets = std.join(",", [
+    "org.graalvm.truffle.benchmark.bytecode_dsl.SimpleBytecodeBenchmark"
+  ]),
+
   local jmh_benchmark = bench_common + {
     name: self.name_prefix + 'truffle-jmh-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
     notify_groups:: ["truffle_bench"],
     run+: [
-      ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "org.graalvm.truffle.benchmark"],
+      ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "org.graalvm.truffle.benchmark", "-e", jmh_benchmark_daily_targets],
     ],
     timelimit: "3:00:00",
     teardown: [
-      ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"],
+      self.upload,
     ],
   },
 
@@ -146,6 +151,29 @@
     name:  self.name_prefix + 'truffle-test-benchmarks-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
     run+: [
       ["mx", "benchmark", "truffle:*", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "org.graalvm.truffle.benchmark", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1"],
+    ],
+  },
+
+  local jmh_compiler_benchmark_test = bench_common + {
+      name:  self.name_prefix + 'truffle-test-compiler-benchmarks-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
+      run+: [
+        self.mx_prefix + ["benchmark", "truffle:*", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "org.graalvm.truffle.compiler.benchmark", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1", "-prof", "org.graalvm.truffle.compiler.benchmark.CompilationTimingsProfiler"],
+        self.mx_prefix + ["benchmark", "truffle:*", "--", "--jvm", "native-image", "--jvm-config", "default", "--", "org.graalvm.truffle.compiler.benchmark", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1", "-prof", "org.graalvm.truffle.compiler.benchmark.CompilationTimingsProfiler"],
+      ],
+  },
+
+  local jmh_benchmark_daily = bench_common + {
+    name: self.name_prefix + 'truffle-jmh-daily-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
+    notify_groups:: ["truffle_bench"],
+    run+: [
+      self.mx_prefix + ["benchmark", "truffle:*", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "--", "--jvm", "server", "--", jmh_benchmark_daily_targets],
+      self.upload,
+      self.mx_prefix + ["benchmark", "truffle:*", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "--", "--jvm", "native-image", "--jvm-config", "default", "--", jmh_benchmark_daily_targets],
+      self.upload,
+      self.mx_prefix + ["benchmark", "truffle:*", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "--", "--jvm", "server", "--", "org.graalvm.truffle.compiler.benchmark", "-f", "10", "-prof", "org.graalvm.truffle.compiler.benchmark.CompilationTimingsProfiler"],
+      self.upload,
+      self.mx_prefix + ["benchmark", "truffle:*", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "--", "--jvm", "native-image", "--jvm-config", "default", "--", "org.graalvm.truffle.compiler.benchmark", "-f", "10", "-prof", "org.graalvm.truffle.compiler.benchmark.CompilationTimingsProfiler"],
+      self.upload,
     ],
   },
 
@@ -173,6 +201,10 @@
     name_prefix: "bench-",
     timelimit: "04:00:00"
   },
+  local bench_daily  = common.daily + {
+    name_prefix: "bench-",
+    timelimit: "04:00:00"
+  },
 
   local jdk_21_oracle = common.oraclejdk21 + {truffle_jdk_name: "oraclejdk-21"},
   local jdk_latest_oracle = common.oraclejdkLatest + {truffle_jdk_name: "oraclejdk-latest"},
@@ -180,10 +212,10 @@
 
   local jdk_latest_graalvm_ce = jdk_latest_labs + common.deps.svm + {
     truffle_jdk_name: "graalvm-ce-latest",
-    mx_build_graalvm_cmd: ["mx", "-p", "../vm", "--env", "ce", "--native-images=lib:jvmcicompiler"],
+    mx_prefix: ["mx", "-p", "../vm", "--env", "ce"],
     run+: [
-        self.mx_build_graalvm_cmd + ["build", "--force-javac"],
-        ["set-export", "JAVA_HOME", self.mx_build_graalvm_cmd + ["--quiet", "--no-warning", "graalvm-home"]]
+        self.mx_prefix + ["build", "--force-javac"],
+        ["set-export", "JAVA_HOME", self.mx_prefix + ["--quiet", "--no-warning", "graalvm-home"]]
     ]
   },
 
@@ -205,9 +237,6 @@
         linux_aarch64    + tier3  + jdk + truffle_test_lite_gate,
         darwin_aarch64   + tier3  + jdk + truffle_test_lite_gate,
         windows_amd64    + tier3  + jdk + truffle_test_lite_gate + winDevKit(jdk),
-
-        # we do have very few resources for Darwin AMD64 so only run weekly
-        darwin_amd64     + weekly + jdk + truffle_test_lite_gate,
       ]
     ),
 
@@ -217,7 +246,6 @@
         linux_amd64      + tier3  + jdk + simple_language_maven_project_gate,
 
         linux_aarch64    + weekly + jdk + simple_language_maven_project_gate,
-        darwin_amd64     + weekly + jdk + simple_language_maven_project_gate,
         darwin_aarch64   + weekly + jdk + simple_language_maven_project_gate,
 
         # GR-68277 currently unsupported
@@ -231,7 +259,6 @@
         linux_amd64      + tier3  + jdk + simple_tool_maven_project_gate,
 
         linux_aarch64    + weekly + jdk + simple_tool_maven_project_gate,
-        darwin_amd64     + weekly + jdk + simple_tool_maven_project_gate,
         darwin_aarch64   + weekly + jdk + simple_tool_maven_project_gate,
 
         # GR-68277 currently unsupported
@@ -244,7 +271,9 @@
 
     # Truffle Benchmarks
     [linux_amd64  + tier3  + jdk_latest_labs + jmh_benchmark_test],
-    [bench_hw.x52 + bench  + jdk_latest_labs + jmh_benchmark]
+    [linux_amd64  + tier3  + jdk_latest_graalvm_ce + jmh_compiler_benchmark_test],
+    [bench_hw.x52 + bench  + jdk_latest_labs + jmh_benchmark],
+    [bench_hw.x52 + bench_daily + jdk_latest_graalvm_ce + jmh_benchmark_daily],
   ]),
   builds: utils.add_defined_in(_builds, std.thisFile),
 }

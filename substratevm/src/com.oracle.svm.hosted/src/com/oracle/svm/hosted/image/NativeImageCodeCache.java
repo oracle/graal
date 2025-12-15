@@ -41,7 +41,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -50,6 +49,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -89,7 +89,6 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.sampler.CallStackFrameMethodInfo;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
@@ -142,6 +141,7 @@ public abstract class NativeImageCodeCache {
 
     protected final NativeImageHeap imageHeap;
 
+    /** The entirety of compilations in this code cache. */
     private final Map<HostedMethod, CompilationResult> compilations;
 
     private final List<Pair<HostedMethod, CompilationResult>> orderedCompilations;
@@ -167,7 +167,7 @@ public abstract class NativeImageCodeCache {
         this.imageHeap = imageHeap;
         this.dataSection = new DataSection();
         this.targetPlatform = targetPlatform;
-        this.orderedCompilations = computeCompilationOrder(compilations, imageHeap.hMetaAccess);
+        this.orderedCompilations = layoutCompilations();
     }
 
     public abstract int getCodeCacheSize();
@@ -189,22 +189,28 @@ public abstract class NativeImageCodeCache {
         return orderedCompilations.getLast();
     }
 
-    private static List<Pair<HostedMethod, CompilationResult>> computeCompilationOrder(Map<HostedMethod, CompilationResult> compilationMap, HostedMetaAccess metaAccess) {
-        var orderedMethods = ImageSingletons.lookup(CodeSectionLayouter.class).layout(compilationMap);
+    private List<Pair<HostedMethod, CompilationResult>> layoutCompilations() {
 
         /* We force this method to be at code offset 0 to make that offset and address invalid. */
-        HostedMethod invalidMethod = getInvalidCodeAddressHandler(metaAccess);
+        HostedMethod invalidMethod = getInvalidCodeAddressHandler(imageHeap.hMetaAccess);
 
-        var orderedCompilations = new ArrayList<Pair<HostedMethod, CompilationResult>>();
+        var ordCompilations = new ArrayList<Pair<HostedMethod, CompilationResult>>();
         if (invalidMethod != null) {
-            orderedCompilations.add(Pair.create(invalidMethod, compilationMap.get(invalidMethod)));
+            ordCompilations.add(Pair.create(invalidMethod, compilations.get(invalidMethod)));
         }
-        for (HostedMethod method : orderedMethods) {
+
+        var orderedMethods = doLayout(compilations, ImageSingletons.lookup(CodeSectionLayouter.class));
+        for (Pair<HostedMethod, CompilationResult> pair : orderedMethods) {
+            HostedMethod method = pair.getLeft();
             if (!Objects.equals(invalidMethod, method)) {
-                orderedCompilations.add(Pair.create(method, compilationMap.get(method)));
+                ordCompilations.add(pair);
             }
         }
-        return orderedCompilations;
+        return ordCompilations;
+    }
+
+    protected List<Pair<HostedMethod, CompilationResult>> doLayout(Map<HostedMethod, CompilationResult> compilationMap, CodeSectionLayouter layouter) {
+        return layouter.layout(compilationMap).stream().map(hm -> Pair.create(hm, compilationMap.get(hm))).toList();
     }
 
     private static HostedMethod getInvalidCodeAddressHandler(HostedMetaAccess metaAccess) {
@@ -214,6 +220,13 @@ public abstract class NativeImageCodeCache {
 
     public List<Pair<HostedMethod, CompilationResult>> getOrderedCompilations() {
         return orderedCompilations;
+    }
+
+    /**
+     * Returns those compilations for which the image should contain symbols.
+     */
+    public List<Pair<HostedMethod, CompilationResult>> getCompilationsWithSymbols() {
+        return getOrderedCompilations();
     }
 
     public abstract int codeSizeFor(HostedMethod method);
@@ -361,7 +374,7 @@ public abstract class NativeImageCodeCache {
                     throw VMError.shouldNotReachHere("Type added to the runtime metadata without being seen by the analysis: %s", clazz);
                 }
             }
-        });
+        }, false);
         HostedConstantAccess hostedConstantAccess = new HostedConstantAccess(snippetReflection);
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, encoders, hostedConstantAccess);
         DeadlockWatchdog watchdog = ImageSingletons.lookup(DeadlockWatchdog.class);
@@ -409,8 +422,8 @@ public abstract class NativeImageCodeCache {
             runtimeMetadataEncoder.addRecordComponentsLookupError(type, error);
         });
 
-        Set<AnalysisField> includedFields = new HashSet<>();
-        Set<AnalysisMethod> includedMethods = new HashSet<>();
+        EconomicSet<AnalysisField> includedFields = EconomicSet.create();
+        EconomicSet<AnalysisMethod> includedMethods = EconomicSet.create();
         Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> configurationFields = reflectionSupport.getReflectionFields();
         Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> configurationExecutables = reflectionSupport.getReflectionExecutables();
 
@@ -430,14 +443,14 @@ public abstract class NativeImageCodeCache {
             }
         }));
 
-        configurationFields.forEach((declaringClass, classFields) -> classFields.forEach((analysisField, reflectField) -> {
+        configurationFields.forEach((_, classFields) -> classFields.forEach((analysisField, reflectField) -> {
             if (includedFields.add(analysisField)) {
                 HostedField hostedField = hUniverse.lookup(analysisField);
                 runtimeMetadataEncoder.addReflectionFieldMetadata(hMetaAccess, hostedField, reflectField);
             }
         }));
 
-        configurationExecutables.forEach((declaringClass, classMethods) -> classMethods.forEach((analysisMethod, reflectMethod) -> {
+        configurationExecutables.forEach((_, classMethods) -> classMethods.forEach((analysisMethod, reflectMethod) -> {
             if (includedMethods.add(analysisMethod)) {
                 HostedMethod method = hUniverse.lookup(analysisMethod);
                 Object accessor = reflectionSupport.getAccessor(analysisMethod);
@@ -567,6 +580,7 @@ public abstract class NativeImageCodeCache {
         imageCodeInfo.setDataOffset(codeSize);
         imageCodeInfo.setDataSize(Word.zero()); // (only for data immediately after code)
         imageCodeInfo.setCodeAndDataMemorySize(codeSize);
+        imageCodeInfo.setRelativeIPOffset(Word.zero());
         return imageCodeInfo;
     }
 
@@ -708,7 +722,7 @@ public abstract class NativeImageCodeCache {
             executor.start();
             for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
                 HostedMethod method = pair.getLeft();
-                executor.execute(ignore -> CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo, constantAccess));
+                executor.execute(_ -> CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo, constantAccess));
             }
             executor.complete();
         } catch (InterruptedException e) {
@@ -835,7 +849,7 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    public interface RuntimeMetadataEncoder extends EncodedRuntimeMetadataSupplier {
+    public interface RuntimeMetadataEncoder {
         void addClassMetadata(MetaAccessProvider metaAccess, HostedType type, Class<?>[] reflectionClasses);
 
         void addReflectionFieldMetadata(MetaAccessProvider metaAccess, HostedField sharedField, ConditionalRuntimeValue<Field> reflectField);

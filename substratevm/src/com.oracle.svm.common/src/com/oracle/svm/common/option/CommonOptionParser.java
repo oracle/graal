@@ -32,14 +32,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -70,13 +69,13 @@ public class CommonOptionParser {
      */
     public static final class OptionParseResult {
         private final EnumSet<OptionType> printFlags;
-        private final Set<String> optionNameFilter;
+        private final EconomicSet<String> optionNameFilter;
         private final String error;
         private final OptionKey<?> optionKey;
         private final boolean optionUnrecognized;
         private static final String EXTRA_HELP_OPTIONS_WILDCARD = "*";
 
-        OptionParseResult(EnumSet<OptionType> printFlags, String error, Set<String> optionNameFilter, OptionKey<?> optionKey, boolean optionUnrecognized) {
+        OptionParseResult(EnumSet<OptionType> printFlags, String error, EconomicSet<String> optionNameFilter, OptionKey<?> optionKey, boolean optionUnrecognized) {
             this.printFlags = printFlags;
             this.error = error;
             this.optionNameFilter = optionNameFilter;
@@ -85,7 +84,7 @@ public class CommonOptionParser {
         }
 
         private OptionParseResult(EnumSet<OptionType> printFlags, String error, OptionKey<?> optionKey) {
-            this(printFlags, error, new HashSet<>(), optionKey, false);
+            this(printFlags, error, EconomicSet.create(), optionKey, false);
         }
 
         static OptionParseResult error(String message) {
@@ -93,7 +92,7 @@ public class CommonOptionParser {
         }
 
         static OptionParseResult optionUnrecognizedError(String message) {
-            return new OptionParseResult(EnumSet.noneOf(OptionType.class), message, new HashSet<>(), null, true);
+            return new OptionParseResult(EnumSet.noneOf(OptionType.class), message, EconomicSet.create(), null, true);
         }
 
         static OptionParseResult correct(OptionKey<?> optionKey) {
@@ -104,10 +103,10 @@ public class CommonOptionParser {
             return new OptionParseResult(selectedOptionTypes, null, null);
         }
 
-        static OptionParseResult printFlagsWithExtraHelp(Set<String> optionNameFilter) {
-            Set<String> optionNames = optionNameFilter;
+        static OptionParseResult printFlagsWithExtraHelp(EconomicSet<String> optionNameFilter) {
+            EconomicSet<String> optionNames = optionNameFilter;
             if (optionNames.contains(EXTRA_HELP_OPTIONS_WILDCARD)) {
-                optionNames = new HashSet<>();
+                optionNames = EconomicSet.create();
                 optionNames.add(EXTRA_HELP_OPTIONS_WILDCARD);
             }
             return new OptionParseResult(EnumSet.noneOf(OptionType.class), null, optionNames, null, false);
@@ -181,9 +180,9 @@ public class CommonOptionParser {
         }
     }
 
-    public static OptionParseResult parseOption(EconomicMap<String, OptionDescriptor> options, Predicate<OptionKey<?>> isHosted, String option, EconomicMap<OptionKey<?>, Object> valuesMap,
+    public static OptionParseResult parseOption(UnmodifiableEconomicMap<String, OptionDescriptor> options, Predicate<OptionKey<?>> isHosted, String option, EconomicMap<OptionKey<?>, Object> valuesMap,
                     String optionPrefix, BooleanOptionFormat booleanOptionFormat) throws UnsupportedOptionClassException {
-        if (option.length() == 0) {
+        if (option.isEmpty()) {
             return OptionParseResult.error("Option name must be specified");
         }
 
@@ -292,7 +291,8 @@ public class CommonOptionParser {
         if (CommonOptions.PrintFlagsWithExtraHelp.getName().equals(optionName)) {
             String optionValue = (String) value;
             String[] optionNames = StringUtil.split(optionValue, ",");
-            HashSet<String> selectedOptionNames = new HashSet<>(Arrays.asList(optionNames));
+            EconomicSet<String> selectedOptionNames = EconomicSet.create();
+            selectedOptionNames.addAll(Arrays.asList(optionNames));
             return OptionParseResult.printFlagsWithExtraHelp(selectedOptionNames);
         }
         return OptionParseResult.correct(optionKey);
@@ -479,7 +479,7 @@ public class CommonOptionParser {
         }
     }
 
-    public static void printFlags(Predicate<OptionDescriptor> filter, EconomicMap<String, OptionDescriptor> options, String prefix, PrintStream out, boolean verbose) {
+    public static void printFlags(Predicate<OptionDescriptor> filter, UnmodifiableEconomicMap<String, OptionDescriptor> options, String prefix, PrintStream out, boolean verbose) {
         List<OptionDescriptor> sortedDescriptors = new ArrayList<>();
         for (OptionDescriptor option : options.getValues()) {
             if (filter.test(option)) {

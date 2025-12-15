@@ -211,7 +211,7 @@ public class SubstrateCompilationDirectives {
          * deoptimization target. No bci needs to be registered, it is enough to have a non-null
          * value in the map.
          */
-        deoptEntries.computeIfAbsent(deoptMethod, m -> new ConcurrentHashMap<>());
+        deoptEntries.computeIfAbsent(deoptMethod, _ -> new ConcurrentHashMap<>());
     }
 
     public void registerFrameInformationRequired(AnalysisMethod method) {
@@ -230,11 +230,11 @@ public class SubstrateCompilationDirectives {
         assert state.bci >= 0;
         long encodedBci = FrameInfoEncoder.encodeBci(state.bci, state.getStackState());
 
-        Map<Long, DeoptSourceFrameInfo> sourceFrameInfoMap = deoptEntries.computeIfAbsent(toAnalysisMethod(method), m -> new ConcurrentHashMap<>());
+        Map<Long, DeoptSourceFrameInfo> sourceFrameInfoMap = deoptEntries.computeIfAbsent(toAnalysisMethod(method), _ -> new ConcurrentHashMap<>());
 
         boolean newEntry = !sourceFrameInfoMap.containsKey(encodedBci);
 
-        sourceFrameInfoMap.compute(encodedBci, (k, v) -> v == null ? DeoptSourceFrameInfo.create(state) : v.mergeStateInfo(state));
+        sourceFrameInfoMap.compute(encodedBci, (_, v) -> v == null ? DeoptSourceFrameInfo.create(state) : v.mergeStateInfo(state));
 
         return newEntry;
     }
@@ -324,7 +324,7 @@ public class SubstrateCompilationDirectives {
             assert m.isOriginalMethod();
             var deoptMethod = m.getMultiMethod(DEOPT_TARGET_METHOD);
             assert deoptMethod != null;
-            deoptEntries.computeIfAbsent(deoptMethod, n -> new ConcurrentHashMap<>());
+            deoptEntries.computeIfAbsent(deoptMethod, _ -> new ConcurrentHashMap<>());
         });
     }
 }

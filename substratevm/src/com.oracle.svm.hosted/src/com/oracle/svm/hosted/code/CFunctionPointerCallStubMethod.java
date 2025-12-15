@@ -37,6 +37,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -55,7 +56,7 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
     static CFunctionPointerCallStubMethod create(AnalysisMethod aMethod) {
         assert !aMethod.isSynthetic() : "Creating a stub for a stub? " + aMethod;
         ResolvedJavaMethod method = aMethod.getWrapped();
-        int newThreadStatus = StatusSupport.getNewThreadStatus(aMethod.getAnnotation(InvokeCFunctionPointer.class).transition());
+        int newThreadStatus = StatusSupport.getNewThreadStatus(AnnotationUtil.getAnnotation(aMethod, InvokeCFunctionPointer.class).transition());
         return new CFunctionPointerCallStubMethod(method, newThreadStatus);
     }
 

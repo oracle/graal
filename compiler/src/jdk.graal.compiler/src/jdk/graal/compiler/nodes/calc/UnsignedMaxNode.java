@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,6 +26,7 @@
 package jdk.graal.compiler.nodes.calc;
 
 import jdk.graal.compiler.core.common.NumUtil.Signedness;
+import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.UMax;
@@ -72,10 +73,20 @@ public class UnsignedMaxNode extends MinMaxNode<UMax> {
     }
 
     @Override
-    public boolean isNarrowable(int resultBits) {
-        if (!super.isNarrowable(resultBits)) {
-            return false;
+    public Signedness signedness() {
+        return Signedness.UNSIGNED;
+    }
+
+    @Override
+    protected Condition conditionCodeForEqualsUsage(ValueNode other) {
+        if (other == getX()) {
+            // umax(x, y) == x --> x |>=| y
+            return Condition.AE;
+        } else if (other == getY()) {
+            // umax(x, y) == y --> x |<=| y
+            return Condition.BE;
+        } else {
+            return null;
         }
-        return super.isNarrowable(resultBits, Signedness.UNSIGNED);
     }
 }

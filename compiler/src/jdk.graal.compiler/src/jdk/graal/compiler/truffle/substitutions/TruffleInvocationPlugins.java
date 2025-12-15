@@ -27,7 +27,9 @@ package jdk.graal.compiler.truffle.substitutions;
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.BMP;
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.LATIN1;
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_16;
+import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_16_FOREIGN_ENDIAN;
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_32;
+import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_32_FOREIGN_ENDIAN;
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_8;
 import static jdk.graal.compiler.nodes.NamedLocationIdentity.getArrayLocation;
 
@@ -35,7 +37,6 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.StrideUtil;
-import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -46,14 +47,11 @@ import jdk.graal.compiler.lir.gen.LIRGeneratorTool.ArrayIndexOfVariant;
 import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.nodes.ConditionAnchorNode;
 import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.LogicConstantNode;
-import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
-import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -76,6 +74,7 @@ import jdk.graal.compiler.replacements.nodes.CalcStringAttributesMacroNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
 import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexMacroNode;
 import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
+import jdk.graal.compiler.replacements.nodes.ThreadedSwitchNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins.Options;
 import jdk.vm.ci.aarch64.AArch64;
@@ -94,70 +93,75 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class TruffleInvocationPlugins {
 
     public static void register(Architecture architecture, InvocationPlugins plugins) {
+        register(architecture, plugins, true);
+    }
+
+    public static void register(Architecture architecture, InvocationPlugins plugins, boolean registerSIMDIntrinsics) {
         if (architecture instanceof AMD64 || architecture instanceof AArch64) {
-            registerTStringPlugins(plugins, architecture);
-            registerArrayUtilsPlugins(plugins);
+            if (registerSIMDIntrinsics) {
+                registerTStringPlugins(plugins, architecture);
+                registerArrayUtilsPlugins(plugins);
+            }
             registerExactMathPlugins(plugins);
         }
         registerFramePlugins(plugins);
         registerBytecodePlugins(plugins);
+        registerCompilerDirectivesPlugins(plugins);
+        registerDynamicObjectPlugins(plugins);
     }
 
     private static void registerFramePlugins(InvocationPlugins plugins) {
         plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/impl/FrameWithoutBoxing;"));
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.impl.FrameWithoutBoxing");
-        r.register(new OptionalInlineOnlyInvocationPlugin("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, boolean.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull,
-                            ValueNode isExactType) {
-                if (!clazz.isConstant() || !nonNull.isConstant() || !isExactType.isConstant()) {
-                    b.push(JavaKind.Object, object);
-                    return true;
-                }
-                if (!Options.TruffleTrustedTypeCast.getValue(b.getOptions())) {
-                    b.push(JavaKind.Object, object);
-                    return true;
-                }
-                ConstantReflectionProvider constantReflection = b.getConstantReflection();
-                ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
-                if (javaType == null) {
-                    b.push(JavaKind.Object, object);
-                    return true;
-                }
+        r.register(new UnsafeCastPlugin("unsafeCast", true));
+    }
 
-                TypeReference type;
-                if (isExactType.asJavaConstant().asInt() != 0) {
-                    assert javaType.isConcrete() || javaType.isArray() : "exact type is not a concrete class: " + javaType;
-                    type = TypeReference.createExactTrusted(javaType);
-                } else {
-                    type = TypeReference.createTrusted(b.getAssumptions(), javaType);
-                }
+    private static final class UnsafeCastPlugin extends OptionalInlineOnlyInvocationPlugin {
+        private final boolean injectTrustedFinal;
 
-                boolean trustedNonNull = nonNull.asJavaConstant().asInt() != 0 && Options.TruffleTrustedNonNullCast.getValue(b.getOptions());
-                Stamp piStamp = StampFactory.object(type, trustedNonNull);
+        UnsafeCastPlugin(String name, boolean injectTrustedFinal) {
+            super(name, Object.class, Class.class, boolean.class, boolean.class, boolean.class);
+            this.injectTrustedFinal = injectTrustedFinal;
+        }
 
-                ConditionAnchorNode valueAnchorNode = null;
-                if (condition.isConstant() && condition.asJavaConstant().asInt() == 1) {
-                    // Nothing to do.
-                } else {
-                    boolean skipAnchor = false;
-                    LogicNode compareNode = CompareNode.createCompareNode(object.graph(), CanonicalCondition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection,
-                                    NodeView.DEFAULT);
-                    if (compareNode instanceof LogicConstantNode) {
-                        LogicConstantNode logicConstantNode = (LogicConstantNode) compareNode;
-                        if (logicConstantNode.getValue()) {
-                            skipAnchor = true;
-                        }
-                    }
-                    if (!skipAnchor) {
-                        valueAnchorNode = b.add(new ConditionAnchorNode(compareNode));
-                    }
-                }
-
-                b.addPush(JavaKind.Object, PiNode.create(castTrustedFinalFrameField(b, object), piStamp, valueAnchorNode));
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull,
+                        ValueNode isExactType) {
+            if (!clazz.isConstant() || !nonNull.isConstant() || !isExactType.isConstant()) {
+                b.push(JavaKind.Object, object);
                 return true;
             }
-        });
+            if (!Options.TruffleTrustedTypeCast.getValue(b.getOptions())) {
+                b.push(JavaKind.Object, object);
+                return true;
+            }
+            ConstantReflectionProvider constantReflection = b.getConstantReflection();
+            ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
+            if (javaType == null) {
+                b.push(JavaKind.Object, object);
+                return true;
+            }
+
+            TypeReference type;
+            if (isExactType.asJavaConstant().asInt() != 0) {
+                GraalError.guarantee(javaType.isConcrete(), "exact type is not a concrete class: %s", javaType);
+                type = TypeReference.createExactTrusted(javaType);
+            } else {
+                type = TypeReference.createTrusted(b.getAssumptions(), javaType);
+            }
+
+            boolean trustedNonNull = nonNull.asJavaConstant().asInt() != 0 && Options.TruffleTrustedNonNullCast.getValue(b.getOptions());
+            Stamp piStamp = StampFactory.object(type, trustedNonNull);
+
+            ValueNode guard = null;
+            // If the condition is the constant true then no guard is needed
+            if (!condition.isConstant() || condition.asJavaConstant().asInt() == 0) {
+                guard = b.add(ConditionAnchorNode.create(condition, b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), NodeView.DEFAULT));
+            }
+            ValueNode trustedObject = injectTrustedFinal ? castTrustedFinalFrameField(b, object) : object;
+            b.addPush(JavaKind.Object, PiNode.create(trustedObject, piStamp, guard));
+            return true;
+        }
     }
 
     /**
@@ -315,7 +319,7 @@ public class TruffleInvocationPlugins {
     public static boolean arrayUtilsIndexOf(GraphBuilderContext b, JavaKind arrayKind, Stride stride, ArrayIndexOfVariant variant, ValueNode array, ValueNode fromIndex,
                     ValueNode maxIndex, ValueNode... values) {
         ValueNode baseOffset = ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(arrayKind), b.getGraph());
-        GraalError.guarantee(variant != ArrayIndexOfVariant.MatchRange && variant != ArrayIndexOfVariant.Table,
+        GraalError.guarantee(!variant.isMatchRange() && !variant.isTable(),
                         "ArrayIndexOf variants \"matchRange\" and \"table\" require more CPU features than just SSE2 and must be inserted via ArrayIndexOfMacroNode");
         b.addPush(JavaKind.Int, new ArrayIndexOfNode(stride, variant, null, getArrayLocation(arrayKind), array, baseOffset, maxIndex, fromIndex, values));
         return true;
@@ -438,9 +442,23 @@ public class TruffleInvocationPlugins {
                         int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
-                            ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1, ValueNode v2,
-                            ValueNode v3) {
+                            ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1, ValueNode v2, ValueNode v3) {
                 return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchRange, location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2, v3);
+            }
+        });
+        r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOfRangeForeignEndian1", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                            ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1) {
+                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchRangeForeignEndian, location, array, offset, length, stride, isNative, fromIndex, v0, v1);
+            }
+        });
+        r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOfRangeForeignEndian2", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class,
+                        int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                            ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1, ValueNode v2, ValueNode v3) {
+                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchRangeForeignEndian, location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2, v3);
             }
         });
         r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOfTable", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, byte[].class) {
@@ -448,6 +466,13 @@ public class TruffleInvocationPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode tables) {
                 return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.Table, location, array, offset, length, stride, isNative, fromIndex, tables);
+            }
+        });
+        r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOfTableForeignEndian", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, byte[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                            ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode tables) {
+                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.TableForeignEndian, location, array, offset, length, stride, isNative, fromIndex, tables);
             }
         });
         r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOf2ConsecutiveWithStride", nodeType, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class,
@@ -596,6 +621,15 @@ public class TruffleInvocationPlugins {
                 return true;
             }
         });
+        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF16FE", nodeType, byte[].class, long.class, int.class, boolean.class, boolean.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                            ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative, ValueNode assumeValid) {
+                MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, isNative, assumeValid);
+                b.addPush(JavaKind.Long, new CalcStringAttributesMacroNode(params, UTF_16_FOREIGN_ENDIAN, constantBooleanParam(assumeValid), inferLocationIdentity(isNative)));
+                return true;
+            }
+        });
         r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF32", nodeType, byte[].class, long.class, int.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
@@ -611,6 +645,15 @@ public class TruffleInvocationPlugins {
                             ValueNode array, ValueNode offset, ValueNode length) {
                 MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length);
                 b.addPush(JavaKind.Int, new CalcStringAttributesMacroNode(params, UTF_32, false, getArrayLocation(JavaKind.Int)));
+                return true;
+            }
+        });
+        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF32FE", nodeType, byte[].class, long.class, int.class, boolean.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                            ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative) {
+                MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, isNative);
+                b.addPush(JavaKind.Int, new CalcStringAttributesMacroNode(params, UTF_32_FOREIGN_ENDIAN, false, inferLocationIdentity(isNative)));
                 return true;
             }
         });
@@ -661,6 +704,16 @@ public class TruffleInvocationPlugins {
                     return true;
                 }
             });
+            r.register(new OptionalInlineOnlyInvocationPlugin("runCodePointIndexToByteIndexUTF16FEValid", nodeType, byte[].class, long.class, int.class, int.class, boolean.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                                ValueNode array, ValueNode offset, ValueNode length, ValueNode index, ValueNode isNative) {
+                    MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, index, isNative);
+                    b.addPush(JavaKind.Int,
+                                    new StringCodepointIndexToByteIndexMacroNode(params, StringCodepointIndexToByteIndexNode.InputEncoding.UTF_16_FOREIGN_ENDIAN, inferLocationIdentity(isNative)));
+                    return true;
+                }
+            });
         }
     }
 
@@ -680,7 +733,7 @@ public class TruffleInvocationPlugins {
                     ValueNode location, ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode... values) {
         Stride constStride = constantStrideParam(stride);
         LocationIdentity locationIdentity = inferLocationIdentity(isNative);
-        if (variant == ArrayIndexOfVariant.MatchRange || variant == ArrayIndexOfVariant.Table) {
+        if (variant.isMatchRange() || variant.isTable()) {
             // matchRange and table variants require more that just baseline features, so we have to
             // use a MacroNode here
             ValueNode[] args = new ValueNode[7 + values.length];
@@ -757,5 +810,24 @@ public class TruffleInvocationPlugins {
                 }
             });
         }
+    }
+
+    public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/HostCompilerDirectives;"));
+        var r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.HostCompilerDirectives");
+        r.register(new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("markThreadedSwitch", int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input) {
+                ThreadedSwitchNode threadedSwitchNode = b.add(new ThreadedSwitchNode(input));
+                b.push(input.getStackKind(), threadedSwitchNode);
+                return true;
+            }
+        });
+    }
+
+    private static void registerDynamicObjectPlugins(InvocationPlugins plugins) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/object/UnsafeAccess;"));
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.object.UnsafeAccess");
+        r.register(new UnsafeCastPlugin("hostUnsafeCast", false));
     }
 }

@@ -25,35 +25,37 @@
 package com.oracle.svm.hosted.substitute;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
+import java.util.List;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
+import com.oracle.svm.util.AnnotatedWrapper;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalFieldProvider;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
-public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider, AnnotationWrapper {
+public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider, AnnotationWrapper, AnnotatedWrapper {
 
     private final ResolvedJavaField original;
-    private final AnnotationValue[] injectedAnnotations;
+    private final List<AnnotationValue> injectedAnnotations;
 
     public AnnotatedField(ResolvedJavaField original, Annotation injectedAnnotation) {
         this.original = original;
-        this.injectedAnnotations = SubstrateAnnotationExtractor.prepareInjectedAnnotations(injectedAnnotation);
+        this.injectedAnnotations = List.of(AnnotationUtil.asAnnotationValue(injectedAnnotation));
     }
 
     @Override
-    public AnnotatedElement getAnnotationRoot() {
+    public Annotated getWrappedAnnotated() {
         return original;
     }
 
     @Override
-    public AnnotationValue[] getInjectedAnnotations() {
+    public List<AnnotationValue> getInjectedAnnotations() {
         return injectedAnnotations;
     }
 
@@ -96,7 +98,7 @@ public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider,
 
     @Override
     public String toString() {
-        return "AnnotatedField<original " + original.toString() + ", annotation: " + injectedAnnotations[0].getType() + ">";
+        return "AnnotatedField<original " + original.toString() + ", annotation: " + injectedAnnotations.getFirst().getAnnotationType() + ">";
     }
 
     @Override

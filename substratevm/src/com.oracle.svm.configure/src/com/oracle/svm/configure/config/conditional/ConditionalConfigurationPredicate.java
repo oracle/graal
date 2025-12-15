@@ -29,7 +29,7 @@ import java.util.Map;
 
 import com.oracle.svm.configure.ConditionalElement;
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationPredefinedClass;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.ForeignConfiguration;
@@ -92,7 +92,7 @@ public class ConditionalConfigurationPredicate implements TypeConfiguration.Pred
         return clazz.getNameInfo() != null && !filter.includes(clazz.getNameInfo());
     }
 
-    private boolean testTypeDescriptor(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
+    private boolean testTypeDescriptor(UnresolvedAccessCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
         if (!filter.includes(condition.getTypeName())) {
             return true;
         }

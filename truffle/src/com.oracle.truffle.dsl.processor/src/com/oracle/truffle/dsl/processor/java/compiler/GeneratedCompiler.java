@@ -69,10 +69,11 @@ public class GeneratedCompiler extends AbstractCompiler {
 
     public List<? extends Element> getAllMembersInDeclarationOrder(ProcessingEnvironment environment, TypeElement type) {
         List<Element> elements = new ArrayList<>();
-
         TypeElement currentType = type;
         while (currentType != null) {
-            elements.addAll(CompilerFactory.getCompiler(currentType).getEnclosedElementsInDeclarationOrder(currentType));
+            // we expect super class members first in the list
+            // this is analog to the behavior of getAllMembersInDeclarationOrder in other compilers.
+            elements.addAll(0, CompilerFactory.getCompiler(currentType).getEnclosedElementsInDeclarationOrder(currentType));
             TypeMirror superClass = currentType.getSuperclass();
             if (superClass != null && superClass.getKind() == TypeKind.DECLARED) {
                 currentType = (TypeElement) ((DeclaredType) currentType.getSuperclass()).asElement();

@@ -32,28 +32,26 @@ import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.t
 import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.toStringMethod;
 import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.unproxifyInvokable;
 import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.unproxifyMethod;
-import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationInvokable;
-import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationMethod;
-import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationsInvokable;
-import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationsMethod;
-import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getDeclaredAnnotationsInvokable;
-import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getDeclaredAnnotationsMethod;
+import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getTypeAnnotationInfoInvokable;
+import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getTypeAnnotationInfoMethod;
 
-import java.lang.annotation.Annotation;
 import java.util.List;
 
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaType;
-
-//JaCoCo Exclude
+import jdk.vm.ci.meta.annotation.AbstractAnnotated;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType implements CompilationProxy permits HotSpotResolvedObjectTypeProxy {
     private final InvocationHandler handler;
@@ -82,6 +80,31 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
     @Override
     public final HotSpotResolvedObjectType getArrayClass() {
         return (HotSpotResolvedObjectType) handle(getArrayClassMethod, getArrayClassInvokable);
+    }
+
+    private static final SymbolicMethod getEnclosingMethodMethod = method("getEnclosingMethod");
+    private static final InvokableMethod getEnclosingMethodInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getEnclosingMethod();
+
+    @Override
+    public HotSpotResolvedJavaMethod getEnclosingMethod() {
+        return (HotSpotResolvedJavaMethod) handle(getEnclosingMethodMethod, getEnclosingMethodInvokable);
+    }
+
+    private static final SymbolicMethod isHiddenMethod = method("isHidden");
+    private static final InvokableMethod isHiddenInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).isHidden();
+
+    @Override
+    public boolean isHidden() {
+        return (boolean) handle(isHiddenMethod, isHiddenInvokable);
+    }
+
+    private static final SymbolicMethod getPermittedSubclassesMethod = method("getPermittedSubclasses");
+    private static final InvokableMethod getPermittedSubclassesInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getPermittedSubclasses();
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<JavaType> getPermittedSubclasses() {
+        return (List<JavaType>) handle(getPermittedSubclassesMethod, getPermittedSubclassesInvokable);
     }
 
     @Override
@@ -198,8 +221,8 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         handle(initializeMethod, initializeInvokable);
     }
 
-    private static final SymbolicMethod isLinkedMethod = method("isLinked");
-    private static final InvokableMethod isLinkedInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).isLinked();
+    public static final SymbolicMethod isLinkedMethod = method("isLinked");
+    public static final InvokableMethod isLinkedInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).isLinked();
 
     @Override
     public final boolean isLinked() {
@@ -241,7 +264,7 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (boolean) handle(isAssignableFromMethod, isAssignableFromInvokable, other);
     }
 
-    private static final SymbolicMethod isInstanceMethod = method("isInstance", JavaConstant.class);
+    public static final SymbolicMethod isInstanceMethod = method("isInstance", JavaConstant.class);
     private static final InvokableMethod isInstanceInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).isInstance((JavaConstant) args[0]);
 
     @Override
@@ -257,8 +280,8 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (HotSpotResolvedObjectType) handle(getSuperclassMethod, getSuperclassInvokable);
     }
 
-    private static final SymbolicMethod getInterfacesMethod = method("getInterfaces");
-    private static final InvokableMethod getInterfacesInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getInterfaces();
+    public static final SymbolicMethod getInterfacesMethod = method("getInterfaces");
+    public static final InvokableMethod getInterfacesInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getInterfaces();
 
     @Override
     public final HotSpotResolvedObjectType[] getInterfaces() {
@@ -281,12 +304,20 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (HotSpotResolvedObjectType) handle(findLeastCommonAncestorMethod, findLeastCommonAncestorInvokable, otherType);
     }
 
-    private static final SymbolicMethod isPrimitiveMethod = method("isPrimitive");
+    public static final SymbolicMethod isPrimitiveMethod = method("isPrimitive");
     private static final InvokableMethod isPrimitiveInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).isPrimitive();
 
     @Override
     public final boolean isPrimitive() {
         return (boolean) handle(isPrimitiveMethod, isPrimitiveInvokable);
+    }
+
+    private static final SymbolicMethod isRecordMethod = method("isRecord");
+    private static final InvokableMethod isRecordInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).isRecord();
+
+    @Override
+    public boolean isRecord() {
+        return (boolean) handle(isRecordMethod, isRecordInvokable);
     }
 
     public static final SymbolicMethod getJavaKindMethod = method("getJavaKind");
@@ -355,12 +386,29 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (boolean) handle(isMemberMethod, isMemberInvokable);
     }
 
+    private static final SymbolicMethod getDeclaredTypesMethod = method("getDeclaredTypes");
+    private static final InvokableMethod getDeclaredTypesInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredTypes();
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        return (ResolvedJavaType[]) handle(getDeclaredTypesMethod, getDeclaredTypesInvokable);
+    }
+
     private static final SymbolicMethod getEnclosingTypeMethod = method("getEnclosingType");
     private static final InvokableMethod getEnclosingTypeInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getEnclosingType();
 
     @Override
     public final HotSpotResolvedObjectType getEnclosingType() {
         return (HotSpotResolvedObjectType) handle(getEnclosingTypeMethod, getEnclosingTypeInvokable);
+    }
+
+    private static final SymbolicMethod getRecordComponentsMethod = method("getRecordComponents");
+    private static final InvokableMethod getRecordComponentsInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getRecordComponents();
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        return (List<ResolvedJavaRecordComponent>) handle(getRecordComponentsMethod, getRecordComponentsInvokable);
     }
 
     private static final SymbolicMethod getDeclaredConstructorsMethod = method("getDeclaredConstructors");
@@ -371,8 +419,8 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (ResolvedJavaMethod[]) handle(getDeclaredConstructorsMethod, getDeclaredConstructorsInvokable);
     }
 
-    private static final SymbolicMethod getDeclaredConstructorsBooleanMethod = method("getDeclaredConstructors", boolean.class);
-    private static final InvokableMethod getDeclaredConstructorsBooleanInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredConstructors((Boolean) args[0]);
+    public static final SymbolicMethod getDeclaredConstructorsBooleanMethod = method("getDeclaredConstructors", boolean.class);
+    public static final InvokableMethod getDeclaredConstructorsBooleanInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredConstructors((Boolean) args[0]);
 
     @Override
     public final ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
@@ -393,11 +441,11 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
     @Override
     @SuppressWarnings("unchecked")
     public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
-        return (List<ResolvedJavaMethod>) handle(getAllMethodsMethod, getAllMethodsInvokable);
+        return (List<ResolvedJavaMethod>) handle(getAllMethodsMethod, getAllMethodsInvokable, forceLink);
     }
 
-    private static final SymbolicMethod getDeclaredMethodsBooleanMethod = method("getDeclaredMethods", boolean.class);
-    private static final InvokableMethod getDeclaredMethodsBooleanInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredMethods((boolean) args[0]);
+    public static final SymbolicMethod getDeclaredMethodsBooleanMethod = method("getDeclaredMethods", boolean.class);
+    public static final InvokableMethod getDeclaredMethodsBooleanInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredMethods((boolean) args[0]);
 
     @Override
     public final ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
@@ -437,19 +485,17 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return (T) handle(getAnnotationMethod, getAnnotationInvokable, annotationClass);
+    public AnnotationsInfo getRawDeclaredAnnotationInfo() {
+        return (AnnotationsInfo) handle(getRawDeclaredAnnotationInfoMethod, getRawDeclaredAnnotationInfoInvokable);
     }
 
-    @Override
-    public final Annotation[] getAnnotations() {
-        return (Annotation[]) handle(getAnnotationsMethod, getAnnotationsInvokable);
-    }
+    public static final SymbolicMethod getRawDeclaredAnnotationInfoMethod = new SymbolicMethod(AbstractAnnotated.class, "getRawDeclaredAnnotationInfo");
+    @SuppressWarnings("unchecked") //
+    public static final InvokableMethod getRawDeclaredAnnotationInfoInvokable = (receiver, args) -> ((AbstractAnnotated) receiver).getRawDeclaredAnnotationInfo();
 
     @Override
-    public final Annotation[] getDeclaredAnnotations() {
-        return (Annotation[]) handle(getDeclaredAnnotationsMethod, getDeclaredAnnotationsInvokable);
+    public AnnotationsInfo getTypeAnnotationInfo() {
+        return (AnnotationsInfo) handle(getTypeAnnotationInfoMethod, getTypeAnnotationInfoInvokable);
     }
 
     @Override

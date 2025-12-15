@@ -12,8 +12,6 @@ The Code Editor enables you to edit and deploy code for OCI services directly fr
 
 Oracle GraalVM for JDK 17 is preinstalled in Cloud Shell, so you do not have to install and configure a development machine. Code Editor's integration with Cloud Shell gives you direct access to it.
 
-> Note: Oracle GraalVM license and support are included in the Oracle Cloud Infrastructure subscription at no additional cost.
-
 ## Create and Run a Java Application in OCI Code Editor
 
 ### Step 1: Open a Terminal in Code Editor

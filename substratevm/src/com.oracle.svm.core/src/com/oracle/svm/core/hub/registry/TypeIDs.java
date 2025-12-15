@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.hub.registry;
 
-import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -38,14 +37,21 @@ import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
-/** Keeps track of type ID information at run-time (see {@link DynamicHub#getTypeID()}). */
-public class TypeIDs implements ApplicationLayerOnlyImageSingleton, UnsavedSingleton {
+/**
+ * Keeps track of type ID information at run-time (see {@link DynamicHub#getTypeID()} and
+ * {@link DynamicHub#getInterfaceID()}).
+ */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = ApplicationLayerOnly.class)
+public class TypeIDs {
     private final AtomicInteger nextTypeId = new AtomicInteger();
+    // interfaceIDs must not be 0 to be distinct from empty hash table entries
+    private final AtomicInteger nextInterfaceId = new AtomicInteger(1);
     @UnknownPrimitiveField(availability = AfterCompilation.class) //
     private int firstRuntimeTypeId;
 
@@ -59,9 +65,10 @@ public class TypeIDs implements ApplicationLayerOnlyImageSingleton, UnsavedSingl
 
     @Platforms(Platform.HOSTED_ONLY.class)
     void initialize() {
-        assert firstRuntimeTypeId == 0 && nextTypeId.get() == 0;
+        assert firstRuntimeTypeId == 0 && nextTypeId.get() == 0 && nextInterfaceId.get() == 1;
         firstRuntimeTypeId = DynamicHubSupport.currentLayer().getMaxTypeId() + 1;
         nextTypeId.set(firstRuntimeTypeId);
+        nextInterfaceId.set(DynamicHubSupport.currentLayer().getMaxInterfaceId() + 1);
     }
 
     /** The type id that is used for the first type that is loaded at run-time. */
@@ -80,9 +87,10 @@ public class TypeIDs implements ApplicationLayerOnlyImageSingleton, UnsavedSingl
         return nextTypeId.get();
     }
 
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    public int nextInterfaceId() {
+        int result = nextInterfaceId.getAndIncrement();
+        VMError.guarantee(result > 1);
+        return result;
     }
 }
 

@@ -24,11 +24,11 @@
  */
 package jdk.graal.compiler.lir.alloc.lsra;
 
+import org.graalvm.collections.Pair;
+
+import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
-import org.graalvm.collections.Pair;
-import jdk.graal.compiler.debug.Indent;
-
 import jdk.vm.ci.code.TargetDescription;
 
 public final class LinearScanRegisterAllocationPhase extends LinearScanAllocationPhase {
@@ -57,12 +57,7 @@ public final class LinearScanRegisterAllocationPhase extends LinearScanAllocatio
             notPrecoloredIntervals = result.getRight();
 
             // allocate cpu registers
-            LinearScanWalker lsw;
-            if (OptimizingLinearScanWalker.Options.LSRAOptimization.getValue(allocator.getOptions())) {
-                lsw = new OptimizingLinearScanWalker(allocator, precoloredIntervals, notPrecoloredIntervals);
-            } else {
-                lsw = new LinearScanWalker(allocator, precoloredIntervals, notPrecoloredIntervals);
-            }
+            LinearScanWalker lsw = new LinearScanWalker(allocator, precoloredIntervals, notPrecoloredIntervals);
             lsw.walk();
             lsw.finishAllocation();
         }

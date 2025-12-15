@@ -40,12 +40,35 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 public interface ClassLoadingSupport {
+    static ClassLoadingSupport singleton() {
+        return ImageSingletons.lookup(ClassLoadingSupport.class);
+    }
+
+    /**
+     * Returns whether runtime class loading is supported.
+     */
     boolean isSupported();
 
+    /**
+     * Returns false iff the current thread is in a
+     * {@linkplain #startIgnoreReflectionConfigurationScope() scope} where reflection configuration
+     * is ignored.
+     */
     boolean followReflectionConfiguration();
 
+    /**
+     * Starts a scope in which the reflection configuration is ignored for runtime class loading.
+     * <p>
+     * That scope can be closed by calling {@link #endIgnoreReflectionConfigurationScope()}.
+     */
     void startIgnoreReflectionConfigurationScope();
 
+    /**
+     * Ends a scope started by {@link #startIgnoreReflectionConfigurationScope()} for the current
+     * thread.
+     */
     void endIgnoreReflectionConfigurationScope();
 }

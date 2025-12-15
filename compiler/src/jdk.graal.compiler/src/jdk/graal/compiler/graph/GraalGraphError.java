@@ -99,7 +99,7 @@ public class GraalGraphError extends GraalError {
             String nodeMessage;
             try {
                 // Provide more detail about the node.
-                nodeMessage = newNode.toString(Verbosity.Debugger);
+                nodeMessage = newNode.toString(Verbosity.All);
             } catch (Throwable t) {
                 nodeMessage = newNode.toString();
             }

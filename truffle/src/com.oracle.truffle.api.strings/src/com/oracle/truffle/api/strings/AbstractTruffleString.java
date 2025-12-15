@@ -86,7 +86,6 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
      * <li>{@link LazyLong}</li>
      * <li>{@link LazyConcat}</li>
      * <li>{@link NativePointer}</li>
-     * <li>{@link String} (only for caching results of {@link #toJavaStringUncached()})</li>
      * </ul>
      */
     private Object data;
@@ -137,6 +136,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         assert isByte(flags);
         assert validateCodeRange(encoding, codeRange);
         assert isSupportedEncoding(encoding) || length == 0 || JCodings.JCODINGS_ENABLED;
+        assert !encoding.isForeignEndian() || stride == encoding.naturalStride;
         this.data = data;
         this.encoding = encoding.id;
         this.offset = offset;
@@ -155,8 +155,6 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     private static void validateData(Object data, int offset, int length, int stride) {
         if (data instanceof byte[]) {
             TStringOps.validateRegion((byte[]) data, offset, length, stride);
-        } else if (data instanceof String) {
-            TStringOps.validateRegion(TStringUnsafe.getJavaStringArray((String) data), offset, length, stride);
         } else if (data instanceof LazyLong || data instanceof LazyConcat) {
             validateDataLazy(offset, length, stride);
         } else if (data instanceof NativePointer) {
@@ -179,7 +177,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     }
 
     private static boolean validateCodeRange(Encoding encoding, int codeRange) {
-        assert isByte(codeRange);
+        assert (codeRange & 0xff) == codeRange;
         assert TSCodeRange.isCodeRange(codeRange);
         assert !isAscii(encoding) || is7Bit(codeRange) || isBrokenFixedWidth(codeRange);
         assert !isLatin1(encoding) || is7Bit(codeRange) || is8Bit(codeRange);
@@ -289,7 +287,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     }
 
     final boolean isCodeRangeCompatibleTo(int codeRangeA, int maxCompatibleCodeRange) {
-        return (!DEBUG_STRICT_ENCODING_CHECKS && this instanceof TruffleString && TSCodeRange.isMoreRestrictiveThan(codeRangeA, maxCompatibleCodeRange));
+        return (!DEBUG_STRICT_ENCODING_CHECKS && this instanceof TruffleString && TSCodeRange.isMoreRestrictiveAndNativeEndian(codeRangeA, maxCompatibleCodeRange));
     }
 
     /**
@@ -360,7 +358,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     }
 
     final int codeRange() {
-        return codeRange;
+        return Byte.toUnsignedInt(codeRange);
     }
 
     final int codePointLength() {
@@ -418,24 +416,22 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         return data instanceof AbstractTruffleString.LazyLong;
     }
 
-    final boolean isJavaString() {
-        return data instanceof String;
+    static TruffleStringIterator forwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding) {
+        return forwardIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
     }
 
-    static TruffleStringIterator forwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int codeRangeA, Encoding encoding) {
-        return forwardIterator(a, arrayA, offsetA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
+    static TruffleStringIterator forwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding,
+                    TruffleString.ErrorHandling errorHandling) {
+        return new TruffleStringIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, errorHandling, 0);
     }
 
-    static TruffleStringIterator forwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling) {
-        return new TruffleStringIterator(a, arrayA, offsetA, codeRangeA, encoding, errorHandling, 0);
+    static TruffleStringIterator backwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding) {
+        return backwardIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
     }
 
-    static TruffleStringIterator backwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int codeRangeA, Encoding encoding) {
-        return backwardIterator(a, arrayA, offsetA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
-    }
-
-    static TruffleStringIterator backwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling) {
-        return new TruffleStringIterator(a, arrayA, offsetA, codeRangeA, encoding, errorHandling, a.length());
+    static TruffleStringIterator backwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding,
+                    TruffleString.ErrorHandling errorHandling) {
+        return new TruffleStringIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, errorHandling, lengthA);
     }
 
     final void checkEncoding(TruffleString.Encoding expectedEncoding) {
@@ -455,13 +451,13 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     }
 
     final boolean isLooselyCompatibleTo(int expectedEncoding, int maxCompatibleCodeRange, int codeRangeA) {
-        return encoding() == expectedEncoding || TSCodeRange.isMoreRestrictiveThan(codeRangeA, maxCompatibleCodeRange);
+        return encoding() == expectedEncoding || TSCodeRange.isMoreRestrictiveAndNativeEndian(codeRangeA, maxCompatibleCodeRange);
     }
 
     static int rawIndex(int byteIndex, TruffleString.Encoding expectedEncoding) {
-        if (isUTF16(expectedEncoding) && (byteIndex & 1) != 0) {
+        if (expectedEncoding.naturalStride == 1 && (byteIndex & 1) != 0) {
             throw InternalErrors.illegalArgument("misaligned byte index %d on UTF-16 string", byteIndex);
-        } else if (isUTF32(expectedEncoding) && (byteIndex & 3) != 0) {
+        } else if (expectedEncoding.naturalStride == 2 && (byteIndex & 3) != 0) {
             throw InternalErrors.illegalArgument("misaligned byte index %d on UTF-32 string", byteIndex);
         }
         return byteIndex >> expectedEncoding.naturalStride;
@@ -499,35 +495,34 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         boundsCheckRegionI(fromIndex, regionLength, codePointLengthNode.execute(node, this, arrayA, offsetA, expectedEncoding));
     }
 
-    final void boundsCheckByteIndexS0(int byteIndex) {
-        assert stride() == 0;
-        boundsCheckI(byteIndex, length());
+    static void boundsCheckByteIndex(int lengthA, int strideA, int byteIndex) {
+        boundsCheckI(byteIndex, lengthA << strideA);
     }
 
-    final void boundsCheckByteIndexUTF16(int byteIndex) {
-        boundsCheckI(byteIndex, length() << TruffleString.Encoding.UTF_16.naturalStride);
+    static void boundsCheckByteIndexUTF16(int lengthA, int byteIndex) {
+        boundsCheckI(byteIndex, lengthA << TruffleString.Encoding.UTF_16.naturalStride);
     }
 
-    final void boundsCheckByteIndexUTF32(int byteIndex) {
-        boundsCheckI(byteIndex, length() << TruffleString.Encoding.UTF_32.naturalStride);
+    static void boundsCheckByteIndexUTF32(int lengthA, int byteIndex) {
+        boundsCheckI(byteIndex, lengthA << TruffleString.Encoding.UTF_32.naturalStride);
     }
 
-    final void boundsCheckRaw(int index) {
-        boundsCheckI(index, length());
+    static void boundsCheckRawIndex(int lengthA, int index) {
+        boundsCheckI(index, lengthA);
     }
 
-    final void boundsCheckRawLength(int index) {
-        if (Integer.compareUnsigned(index, length()) > 0) {
-            throw InternalErrors.indexOutOfBounds(length(), index);
+    static void boundsCheckRawLength(int lengthA, int index) {
+        if (Integer.compareUnsigned(index, lengthA) > 0) {
+            throw InternalErrors.indexOutOfBounds(lengthA, index);
         }
     }
 
-    final void boundsCheckRaw(int fromIndex, int toIndex) {
-        boundsCheckI(fromIndex, toIndex, length());
+    static void boundsCheckRawRange(int lengthA, int fromIndex, int toIndex) {
+        boundsCheckI(fromIndex, toIndex, lengthA);
     }
 
-    final void boundsCheckRegionRaw(int fromIndex, int regionLength) {
-        boundsCheckRegionI(fromIndex, regionLength, length());
+    static void boundsCheckRawRegion(int lengthA, int fromIndex, int regionLength) {
+        boundsCheckRegionI(fromIndex, regionLength, lengthA);
     }
 
     static void boundsCheckI(int index, int arrayLength) {
@@ -635,11 +630,33 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     /**
      * Shorthand for calling the uncached version of {@link TruffleString.MaterializeNode}.
      *
+     * @deprecated since 25.1, use {@link #materializeUncached(Encoding)} instead.
      * @since 23.1
      */
+    @Deprecated(since = "25.1")
     @TruffleBoundary
     public void materializeUncached(AbstractTruffleString a, Encoding expectedEncoding) {
         TruffleString.MaterializeNode.getUncached().execute(a, expectedEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.MaterializeNode}.
+     *
+     * @since 25.1
+     */
+    @TruffleBoundary
+    public void materializeUncached(Encoding expectedEncoding) {
+        TruffleString.MaterializeNode.getUncached().execute(this, expectedEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.MaterializeSubstringNode}.
+     *
+     * @since 25.1
+     */
+    @TruffleBoundary
+    public TruffleString materializeSubstringUncached(Encoding expectedEncoding) {
+        return TruffleString.MaterializeSubstringNode.getUncached().execute(this, expectedEncoding);
     }
 
     /**
@@ -1359,7 +1376,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     public final String toStringDebug() {
         Object curData = data;
         String dataString;
-        if (curData instanceof byte[] || curData instanceof NativePointer || curData instanceof String) {
+        if (curData instanceof byte[] || curData instanceof NativePointer) {
             dataString = String.format("\"%s\"", toJavaStringUncached());
         } else if (curData instanceof LazyLong lazyLong) {
             dataString = String.format("LazyLong(%d)", lazyLong.value);

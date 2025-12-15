@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1008,6 +1008,55 @@ public final class Value extends AbstractValue {
         }
     }
 
+    /**
+     * Returns {@code true} if this value is a {@linkplain #isMetaObject() meta object} that
+     * provides a {@linkplain #getStaticScope() static scope}. A static scope represents the static
+     * or class level members associated with the type described by this meta object, such as static
+     * fields or methods.
+     *
+     * @throws IllegalStateException if the context is already {@linkplain Context#close() closed}
+     * @throws PolyglotException if a guest language error occurs during execution
+     * @see #isMetaObject()
+     * @see #getStaticScope()
+     * @since 25.1
+     */
+    public boolean hasStaticScope() {
+        return dispatch.hasStaticScope(this.context, receiver);
+    }
+
+    /**
+     * Returns the static scope associated with this value. This value must be a
+     * {@linkplain #isMetaObject() meta-object}. A static scope is an object that exposes static
+     * members, members whose values or behavior are independent of any particular instance.
+     * <p>
+     * The returned static scope can be used to access static members using
+     * {@link #getMember(String)}, {@link #getMemberKeys()}, or
+     * {@link #invokeMember(String, Object...)}.
+     * <p>
+     * The returned static scope is always expected to provide {@link #hasMembers() members},
+     * representing the static context.
+     * <p>
+     * <b>Examples:</b>
+     * </p>
+     * <ul>
+     * <li>In Java, the static scope exposes static fields and methods of a class.</li>
+     * <li>In Python, the static scope exposes class-level attributes and methods, effectively
+     * corresponding to the members provided by the Python metaobject.</li>
+     * </ul>
+     *
+     * @throws UnsupportedOperationException if and only if this value does not
+     *             {@linkplain #hasStaticScope() have a static scope}
+     * @throws IllegalStateException if the context is already {@linkplain Context#close() closed}
+     * @throws PolyglotException if a guest language error occurs during execution
+     * @see #hasStaticScope()
+     * @see #isMetaObject()
+     * @see #hasMembers()
+     * @since 25.1
+     */
+    public Value getStaticScope() {
+        return (Value) dispatch.getStaticScope(this.context, receiver);
+    }
+
     // executable
 
     /**
@@ -1554,7 +1603,7 @@ public final class Value extends AbstractValue {
     /**
      * Returns the value of the pointer as <code>long</code> value.
      *
-     * @throws UnsupportedOperationException if the value is not a pointer.
+     * @throws ClassCastException if the value is not a pointer.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
      * @since 19.0
@@ -1586,7 +1635,9 @@ public final class Value extends AbstractValue {
     /**
      * Returns the original Java host language object.
      *
-     * @throws UnsupportedOperationException if {@link #isHostObject()} is <code>false</code>.
+     * @throws ClassCastException if {@link #isHostObject()} is <code>false</code>
+     * @throws UnsupportedOperationException if Java host language object is allocated in a foreign
+     *             heap.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
      * @since 19.0
@@ -1620,7 +1671,7 @@ public final class Value extends AbstractValue {
      * Returns the unboxed instance of the {@link Proxy}. Proxies are not automatically boxed to
      * {@link #isHostObject() host objects} on host language call boundaries (Java methods).
      *
-     * @throws UnsupportedOperationException if a value is not a proxy object.
+     * @throws ClassCastException if a value is not a proxy object.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
      * @since 19.0

@@ -201,7 +201,7 @@ public class WasmHeap extends Heap {
 
         @Override
         public <T> void visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
-            if (!access.isWritable(region) && !access.consistsOfHugeObjects(region)) {
+            if (!access.isWritable(region) && !access.usesUnalignedChunks(region)) {
                 access.visitObjects(region, this);
             }
         }
