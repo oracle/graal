@@ -59,7 +59,7 @@ public final class CVDebugInfo extends DebugInfoBase {
         cvTypeSection = new CVTypeSectionImpl(this);
         if (machine != PECoffMachine.X86_64) {
             /* room for future aach64 port */
-            throw GraalError.shouldNotReachHere("Unsupported architecture on Windows"); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHere("Unsupported Windows architecture"); // ExcludeFromJacocoGeneratedReport
         }
     }
 
