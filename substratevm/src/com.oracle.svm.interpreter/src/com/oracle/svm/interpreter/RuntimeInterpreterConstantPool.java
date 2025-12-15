@@ -174,8 +174,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         assert type != null;
 
         try (var _ = ClassLoading.allowArbitraryClassLoading(allowArbitraryClassLoading)) {
-            InterpreterResolvedObjectType result = resolveObjectType(type, accessingKlass);
-            return result;
+            return resolveObjectType(type, accessingKlass);
         } catch (LinkageError e) {
             // Comment from Hotspot:
             // Just throw the exception and don't prevent these classes from being loaded for

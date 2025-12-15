@@ -35,6 +35,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AddressRangeCommittedMemoryProvider;
 import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.genscavenge.OldGeneration;
+import com.oracle.svm.core.genscavenge.SerialAndEpsilonGCOptions;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -42,6 +43,7 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
@@ -157,5 +159,27 @@ public class MetaspaceImpl implements Metaspace {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void tearDown() {
         space.tearDown();
+    }
+
+    public static final class ShutdownHook implements RuntimeSupport.Hook {
+        private final MetaspaceImpl metaspace;
+
+        public ShutdownHook(MetaspaceImpl metaspace) {
+            this.metaspace = metaspace;
+        }
+
+        @Override
+        public void execute(boolean isFirstIsolate) {
+            if (SerialAndEpsilonGCOptions.PrintMetaspace.getValue()) {
+                metaspace.printStats();
+            }
+        }
+    }
+
+    private void printStats() {
+        Log log = Log.log();
+        logUsage(log);
+        log.string("Metaspace allocation stats:").newline();
+        allocator.printStats(log);
     }
 }
