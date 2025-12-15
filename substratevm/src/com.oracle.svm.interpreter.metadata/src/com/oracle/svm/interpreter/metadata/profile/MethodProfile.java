@@ -433,7 +433,7 @@ public final class MethodProfile {
                 ResolvedJavaType t = types[i];
                 long c = counts[i];
                 if (t != null) {
-                    sb.append(t.getName()).append(':').append(c);
+                    sb.append(t.toClassName()).append(':').append(c);
                 } else {
                     sb.append("null:").append(c);
                 }
