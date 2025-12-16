@@ -206,7 +206,7 @@ final class CVSymbolSubsectionBuilder {
                         if (reclen > 0xffff) {
                             /*
                              * Variable span is too large to fit into 16 bits; emit what we have so
-                             * far.  Future work could emit more ranges or utilize gaps.
+                             * far. Future work could emit more ranges or utilize gaps.
                              */
                             currentRecord.length = (short) 0xffff;
                             return;
