@@ -1949,9 +1949,7 @@ suite = {
                 },
             },
             "noMavenJavadoc": True,
-            "maven": {
-                "tag": ["default", "public"],
-            },
+            "maven": False,
         },
 
         "SVM_GUEST_STAGING": {
@@ -1980,9 +1978,7 @@ suite = {
                 ],
             },
             "noMavenJavadoc": True,
-            "maven": {
-                "tag": ["default", "public"],
-            },
+            "maven": False,
         },
 
         "SVM_GUEST": {
@@ -2008,9 +2004,7 @@ suite = {
                 ],
             },
             "noMavenJavadoc": True,
-            "maven": {
-                "tag": ["default", "public"],
-            },
+            "maven": False,
         },
 
         "SVM_CAPNPROTO_RUNTIME" : {
@@ -2029,9 +2023,7 @@ suite = {
             },
             "allowsJavadocWarnings" : True,
             "noMavenJavadoc": True,
-            "maven": {
-                "tag": ["default", "public"],
-            },
+            "maven": False,
         },
 
         "JVMTI_AGENT_BASE": {
@@ -2077,9 +2069,7 @@ suite = {
                 ],
             },
             "noMavenJavadoc": True,
-            "maven": {
-                "tag": ["default", "public"],
-            },
+            "maven": False,
         },
 
         "JUNIT_SUPPORT": {
@@ -2107,9 +2097,7 @@ suite = {
                 ]
             },
             "noMavenJavadoc": True,
-            "maven": {
-                "tag": ["default", "public"],
-            },
+            "maven": False,
         },
 
         "OBJECTFILE": {
@@ -2145,9 +2133,7 @@ suite = {
               ],
             },
             "noMavenJavadoc": True,
-            "maven": {
-                "tag": ["default", "public"],
-            },
+            "maven": False,
         },
 
         "TRUFFLE_RUNTIME_SVM_VERSION": {
@@ -2220,9 +2206,7 @@ suite = {
                 },
             },
             "noMavenJavadoc": True,
-            "maven": {
-                "tag": ["default", "public"],
-            },
+            "maven": False,
         },
 
         "TRUFFLE_GRAALVM_SUPPORT" : {
@@ -2285,9 +2269,7 @@ suite = {
             },
             "description" : "SubstrateVM image builder native components",
             "noMavenJavadoc": True,
-            "maven": {
-                "tag": ["default", "public"],
-            },
+            "maven": False,
         },
 
         #
@@ -2411,9 +2393,7 @@ suite = {
                   "org.graalvm.collections",
                 ],
             },
-            "maven": {
-                "tag": ["default", "public"],
-            },
+            "maven": False,
         },
 
         "SVM_LIBJVM" : {
@@ -2505,9 +2485,7 @@ suite = {
                 ]
             },
             "noMavenJavadoc": True,
-            "maven": {
-                "tag": ["default", "public"],
-            },
+            "maven": False,
         },
 
         "POINTSTO": {
@@ -2565,9 +2543,7 @@ suite = {
               }
             },
             "noMavenJavadoc": True,
-            "maven": {
-                "tag": ["default", "public"],
-            },
+            "maven": False,
         },
 
         "STANDALONE_POINTSTO": {
@@ -2614,9 +2590,7 @@ suite = {
                 }
             },
             "noMavenJavadoc": True,
-            "maven": {
-                "tag": ["default", "public"],
-            },
+            "maven": False,
         },
 
         "STANDALONE_POINTSTO_TESTS" : {
@@ -2839,9 +2813,7 @@ suite = {
                 "truffle:TRUFFLE_RUNTIME"
             ],
             "noMavenJavadoc": True,
-            "maven" : {
-                "tag": ["default", "public"],
-            },
+            "maven": False,
         },
 
         "SVM_JDWP_SERVER": {
