@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import com.oracle.svm.interpreter.Interpreter;
+import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.CremaResolvedJavaFieldImpl;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -137,7 +138,14 @@ public final class RistrettoConstantPool implements ConstantPool {
 
     @Override
     public JavaConstant lookupAppendix(int rawIndex, int opcode) {
-        return interpreterConstantPool.lookupAppendix(rawIndex, opcode);
+        if (opcode == Bytecodes.INVOKEDYNAMIC) {
+            return interpreterConstantPool.lookupAppendix(rawIndex, opcode);
+        }
+        /*
+         * TODO GR-71270 - The parser has support for special runtimes that rewrite invokes of
+         * methods handles to static adapters. Crema does not do that.
+         */
+        return null;
     }
 
     @Override

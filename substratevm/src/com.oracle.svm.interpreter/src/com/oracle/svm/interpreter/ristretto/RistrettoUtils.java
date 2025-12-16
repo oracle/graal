@@ -141,6 +141,24 @@ public class RistrettoUtils {
         return doCompile(debug, RuntimeCompilationSupport.getRuntimeConfig(), RuntimeCompilationSupport.getLIRSuites(), method);
     }
 
+    public static StructuredGraph parseOnly(SubstrateMethod method) {
+        if (method instanceof RistrettoMethod rMethod) {
+            final RuntimeConfiguration runtimeConfig = RuntimeCompilationSupport.getRuntimeConfig();
+            final DebugContext debug = new DebugContext.Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(runtimeConfig.getProviders().getSnippetReflection())).build();
+            final OptionValues options = debug.getOptions();
+            final SpeculationLog speculationLog = new SubstrateSpeculationLog();
+            final ProfileProvider profileProvider = new RistrettoProfileProvider(rMethod);
+            final StructuredGraph.AllowAssumptions allowAssumptions = StructuredGraph.AllowAssumptions.NO;
+            SubstrateCompilationIdentifier compilationId = new SubstrateCompilationIdentifier(method);
+            StructuredGraph graph = new StructuredGraph.Builder(options, debug, allowAssumptions).method(method).speculationLog(speculationLog)
+                            .profileProvider(profileProvider).compilationId(compilationId).build();
+            assert graph != null;
+            parseFromBytecode(graph, runtimeConfig);
+            return graph;
+        }
+        return null;
+    }
+
     public static InstalledCode compileAndInstall(SubstrateMethod method) {
         return compileAndInstall(method, () -> new SubstrateInstalledCodeImpl(method));
     }
@@ -242,7 +260,7 @@ public class RistrettoUtils {
         Replacements runtimeReplacements = runtimeProviders.getReplacements();
         GraphBuilderConfiguration.Plugins gbp = runtimeReplacements.getGraphBuilderPlugins();
         GraphBuilderConfiguration gpc = GraphBuilderConfiguration.getDefault(gbp);
-        HighTierContext hc = new HighTierContext(runtimeConfig.getProviders(), null, OptimisticOptimizations.NONE);
+        HighTierContext hc = new HighTierContext(runtimeConfig.getProviders(), null, OptimisticOptimizations.ALL);
         RistrettoGraphBuilderPhase graphBuilderPhase = new RistrettoGraphBuilderPhase(gpc);
         graphBuilderPhase.apply(graph, hc);
         assert graph.getNodeCount() > 1 : "Must have nodes after parsing";
