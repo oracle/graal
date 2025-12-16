@@ -48,18 +48,48 @@ import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * A {@link ConstantReflectionProvider} implementation for standalone use.
+ */
 public class StandaloneConstantReflectionProvider implements ConstantReflectionProvider {
+    /**
+     * The analysis universe used by this provider.
+     */
     private final AnalysisUniverse universe;
+    /**
+     * The original {@link ConstantReflectionProvider} used by this provider.
+     */
     private final ConstantReflectionProvider original;
-    private final AnalysisField commonPoolField;
-    private final JavaConstant commonPoolSubstitution;
+    /**
+     * The {@link AnalysisField} representing the {@code ForkJoinPool.common} field. If not null,
+     * {@link #commonPoolSubstitution} should not be null either and each field access of
+     * ForkJoinPool.common in the compiled application will be replaced with this substitution.
+     */
+    private AnalysisField commonPoolField;
+    /**
+     * A substitution for the {@code ForkJoinPool.common} field used to prevent the pollution of
+     * analysis state with analysis tasks (the analysis itself is using {@link ForkJoinPool}.
+     */
+    private JavaConstant commonPoolSubstitution;
 
+    /**
+     * Creates a new {@link StandaloneConstantReflectionProvider} instance.
+     *
+     * @param aMetaAccess the analysis meta access
+     * @param universe the analysis universe
+     * @param original the original {@link ConstantReflectionProvider}
+     * @param originalSnippetReflection the original snippet reflection provider
+     * @param usingGuestContext true if a guest context is used to achieve isolation between the vm
+     *            performing the compilation and the compiled application
+     */
     public StandaloneConstantReflectionProvider(AnalysisMetaAccess aMetaAccess, AnalysisUniverse universe, ConstantReflectionProvider original,
-                    SnippetReflectionProvider originalSnippetReflection) {
+                    SnippetReflectionProvider originalSnippetReflection, boolean usingGuestContext) {
         this.universe = universe;
         this.original = original;
-        commonPoolField = aMetaAccess.lookupJavaField(ReflectionUtil.lookupField(ForkJoinPool.class, "common"));
-        commonPoolSubstitution = originalSnippetReflection.forObject(new ForkJoinPool());
+        if (!usingGuestContext) {
+            commonPoolField = aMetaAccess.lookupJavaField(ReflectionUtil.lookupField(ForkJoinPool.class, "common"));
+            commonPoolSubstitution = originalSnippetReflection.forObject(new ForkJoinPool());
+        }
     }
 
     @Override
@@ -123,6 +153,7 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
              * is used during analysis, so it can expose analysis metadata to the analysis itself,
              * i.e., the analysis engine analyzing itself.
              */
+            assert commonPoolSubstitution != null : "A substitution for the common pool must be provided if commonPoolField is set.";
             return commonPoolSubstitution;
         }
         return universe.getHostedValuesProvider().interceptHosted(original.readFieldValue(field.wrapped, receiver));
