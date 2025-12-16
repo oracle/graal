@@ -260,7 +260,7 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
             return;
         }
 
-        EconomicSet<String> currentPathNames = EconomicSet.create(currentPathDigests.size());
+        EconomicSet<Path> currentPathNames = EconomicSet.create(currentPathDigests.size());
         currentPathDigests.forEach(pathEntry -> currentPathNames.add(pathEntry.path()));
         String messagePrefix = strict ? "Error" : "Warning";
         for (PathDigestEntry unmatchedDigestEntry : previousUnmatchedPathDigests) {

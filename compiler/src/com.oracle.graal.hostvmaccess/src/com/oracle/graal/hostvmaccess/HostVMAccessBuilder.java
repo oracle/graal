@@ -43,7 +43,7 @@ public final class HostVMAccessBuilder implements VMAccess.Builder {
     private List<String> modulepath = List.of();
     private List<String> addModules = List.of();
     private boolean enableAssertions;
-    private Map<String, String> systemProperties = new LinkedHashMap<>();
+    private final Map<String, String> systemProperties = new LinkedHashMap<>();
 
     @Override
     public String getVMAccessName() {
@@ -136,14 +136,15 @@ public final class HostVMAccessBuilder implements VMAccess.Builder {
 
     private static final class ModuleAccess {
         static {
-            ModuleSupport.addExports("jdk.graal.compiler.hostvmaccess", "java.base",
+            Module module = ModuleAccess.class.getModule();
+            ModuleSupport.addExports(module, "java.base",
                             "jdk.internal.access",
                             "jdk.internal.loader",
                             "jdk.internal.module");
-            ModuleSupport.addExports("jdk.graal.compiler.hostvmaccess", "jdk.internal.vm.ci",
+            ModuleSupport.addExports(module, "jdk.internal.vm.ci",
                             "jdk.vm.ci.meta",
                             "jdk.vm.ci.runtime");
-            ModuleSupport.addExports("jdk.graal.compiler.hostvmaccess", "jdk.graal.compiler",
+            ModuleSupport.addExports(module, "jdk.graal.compiler",
                             "jdk.graal.compiler.api.replacements",
                             "jdk.graal.compiler.api.runtime",
                             "jdk.graal.compiler.core.target",

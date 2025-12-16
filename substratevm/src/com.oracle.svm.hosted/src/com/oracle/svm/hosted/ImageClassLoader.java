@@ -49,6 +49,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.vmaccess.ResolvedJavaPackage;
+import com.oracle.graal.vmaccess.VMAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.VMError;
@@ -77,6 +78,7 @@ public final class ImageClassLoader {
     public final Platform platform;
 
     public final NativeImageClassLoaderSupport classLoaderSupport;
+    public final VMAccess vmAccess;
     public final DeadlockWatchdog watchdog;
 
     /**
@@ -107,8 +109,9 @@ public final class ImageClassLoader {
      */
     private Set<Module> builderModules;
 
-    ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport) {
+    ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport, VMAccess vmAccess) {
         this.platform = platform;
+        this.vmAccess = vmAccess;
         this.classLoaderSupport = classLoaderSupport;
 
         int watchdogInterval = SubstrateOptions.DeadlockWatchdogInterval.getValue(classLoaderSupport.getParsedHostedOptions());
@@ -374,10 +377,37 @@ public final class ImageClassLoader {
     }
 
     /**
+     * Finds the type named by {@code name}.
+     *
+     * @param name the name of a class as expected by {@link Class#forName(String)}
+     * @return the found class or the error that occurred locating the type
+     */
+    public TypeResult<ResolvedJavaType> findType(String name) {
+        return findType(name, true);
+    }
+
+    /**
      * Find class, return result encoding class or failure reason.
      */
     public TypeResult<Class<?>> findClass(String name, boolean allowPrimitives) {
         return findClass(name, allowPrimitives, getClassLoader());
+    }
+
+    /**
+     * Find class, return result encoding class or failure reason.
+     */
+    public TypeResult<ResolvedJavaType> findType(String name, boolean allowPrimitives) {
+        try {
+            if (allowPrimitives && name.indexOf('.') == -1) {
+                ResolvedJavaType primitive = typeForPrimitive(name);
+                if (primitive != null) {
+                    return TypeResult.forType(name, primitive);
+                }
+            }
+            return TypeResult.forType(name, typeForName(name));
+        } catch (ClassNotFoundException | LinkageError ex) {
+            return TypeResult.forException(name, ex);
+        }
     }
 
     /**
@@ -412,12 +442,21 @@ public final class ImageClassLoader {
         };
     }
 
-    public Class<?> forName(String className) throws ClassNotFoundException {
-        return forName(className, false);
+    public static ResolvedJavaType typeForPrimitive(String name) {
+        Class<?> c = forPrimitive(name);
+        return c == null ? null : GraalAccess.lookupType(c);
     }
 
-    public Class<?> forName(String className, boolean initialize) throws ClassNotFoundException {
-        return forName(className, initialize, getClassLoader());
+    public ResolvedJavaType typeForName(String className) throws ClassNotFoundException {
+        ResolvedJavaType type = vmAccess.lookupAppClassLoaderType(className);
+        if (type == null) {
+            throw new ClassNotFoundException(className);
+        }
+        return type;
+    }
+
+    public Class<?> forName(String className) throws ClassNotFoundException {
+        return forName(className, false, getClassLoader());
     }
 
     public static Class<?> forName(String className, boolean initialize, ClassLoader loader) throws ClassNotFoundException {

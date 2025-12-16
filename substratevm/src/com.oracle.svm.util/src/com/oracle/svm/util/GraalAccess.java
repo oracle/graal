@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.util;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -43,6 +45,7 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
 import jdk.graal.compiler.api.runtime.GraalRuntime;
 import jdk.graal.compiler.core.target.Backend;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.vm.ci.code.TargetDescription;
@@ -68,25 +71,49 @@ public final class GraalAccess {
 
     private static final GraalRuntime graalRuntime;
     private static final TargetDescription originalTarget;
-    private static final Providers originalProviders;
-    private static final SnippetReflectionProvider originalSnippetReflection;
+    private static Providers originalProviders;
+    private static SnippetReflectionProvider originalSnippetReflection;
+
+    private static volatile String providersInit;
 
     static {
         graalRuntime = ((GraalJVMCICompiler) JVMCI.getRuntime().getCompiler()).getGraalRuntime();
         Backend hostBackend = getGraalCapability(RuntimeProvider.class).getHostBackend();
         originalTarget = Objects.requireNonNull(hostBackend.getTarget());
-        originalProviders = Objects.requireNonNull(hostBackend.getProviders());
-        originalSnippetReflection = Objects.requireNonNull(getGraalCapability(SnippetReflectionProvider.class));
     }
 
     private GraalAccess() {
     }
 
+    /**
+     * Plant a custom set of providers to configure {@link GraalAccess}. This method should be
+     * called <b>early in the lifecycle of svm</b> to make sure the whole system receives the same
+     * set of providers. For the same reason, it should be called <b>only once</b>.
+     */
+    public static synchronized void plantProviders(Providers providers) {
+        GraalError.guarantee(providersInit == null, "Providers have already been planted: %s", providersInit);
+        originalProviders = providers;
+        originalSnippetReflection = originalProviders.getSnippetReflection();
+
+        StringWriter sw = new StringWriter();
+        new Exception("providers previously planted here:").printStackTrace(new PrintWriter(sw));
+        providersInit = sw.toString();
+    }
+
+    private static void init() {
+        if (providersInit == null) {
+            Backend hostBackend = getGraalCapability(RuntimeProvider.class).getHostBackend();
+            plantProviders(Objects.requireNonNull(hostBackend.getProviders()));
+        }
+    }
+
     public static TargetDescription getOriginalTarget() {
+        init();
         return originalTarget;
     }
 
     public static Providers getOriginalProviders() {
+        init();
         return originalProviders;
     }
 
@@ -113,22 +140,23 @@ public final class GraalAccess {
     }
 
     public static ResolvedJavaType lookupType(Class<?> cls) {
-        return typeCache.computeIfAbsent(cls, c -> originalProviders.getMetaAccess().lookupJavaType(cls));
+        return typeCache.computeIfAbsent(cls, c -> getOriginalProviders().getMetaAccess().lookupJavaType(cls));
     }
 
     public static ResolvedJavaMethod lookupMethod(Executable exe) {
-        return methodCache.computeIfAbsent(exe, e -> originalProviders.getMetaAccess().lookupJavaMethod(e));
+        return methodCache.computeIfAbsent(exe, e -> getOriginalProviders().getMetaAccess().lookupJavaMethod(e));
     }
 
     public static ResolvedJavaField lookupField(Field field) {
-        return fieldCache.computeIfAbsent(field, f -> originalProviders.getMetaAccess().lookupJavaField(f));
+        return fieldCache.computeIfAbsent(field, f -> getOriginalProviders().getMetaAccess().lookupJavaField(f));
     }
 
     public static ResolvedJavaRecordComponent lookupRecordComponent(RecordComponent rc) {
-        return recordCache.computeIfAbsent(rc, r -> originalProviders.getMetaAccess().lookupJavaRecordComponent(rc));
+        return recordCache.computeIfAbsent(rc, r -> getOriginalProviders().getMetaAccess().lookupJavaRecordComponent(rc));
     }
 
     public static SnippetReflectionProvider getOriginalSnippetReflection() {
+        init();
         return originalSnippetReflection;
     }
 

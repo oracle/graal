@@ -1770,6 +1770,7 @@ suite = {
                 "compiler:GRAAL",
                 "NATIVE_IMAGE_BASE",
                 "SVM_CONFIGURE",
+                "compiler:HOSTVMACCESS",
                 "espresso-shared:ESPRESSO_SVM",
             ],
             "moduleInfo" : {
@@ -1824,9 +1825,11 @@ suite = {
                     "org.graalvm.nativeimage.configure",
                     "org.graalvm.nativeimage.libgraal",
                     "org.graalvm.espresso.shared.svm",
+                    "jdk.graal.compiler.vmaccess",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
+                    "com.oracle.graal.vmaccess.VMAccess.Builder",
                     "jdk.graal.compiler.options.OptionDescriptors",
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
                     "com.oracle.svm.hosted.NativeImageGeneratorRunnerProvider",
@@ -1968,6 +1971,7 @@ suite = {
                     "static com.oracle.mxtool.junit",
                     "static junit",
                     "static hamcrest",
+                    "org.graalvm.collections",
                 ]
             },
             "noMavenJavadoc": True,
@@ -2244,6 +2248,7 @@ suite = {
                     "com.oracle.svm.diagnosticsagent",
                 ],
                 "requires": [
+                  "org.graalvm.collections",
                   "org.graalvm.nativeimage.builder",
                 ],
             },
@@ -2289,6 +2294,7 @@ suite = {
             "distDependencies": [
                 "compiler:GRAAL",
                 "compiler:VMACCESS",
+                "compiler:HOSTVMACCESS",
                 "sdk:NATIVEIMAGE",
                 "sdk:NATIVEIMAGE_LIBGRAAL",
             ],
@@ -2428,6 +2434,8 @@ suite = {
                 "requires": [
                     "java.management",
                     "jdk.management",
+                    "org.graalvm.collections",
+                    "jdk.graal.compiler.vmaccess",
                     "org.graalvm.nativeimage",
                 ],
                 "requiresConcealed" : {
@@ -2683,6 +2691,7 @@ suite = {
                 "com.oracle.svm.jdwp.server",
             ],
             "distDependencies": [
+                "sdk:COLLECTIONS",
                 "substratevm:SVM",
             ],
             "moduleInfo" : {

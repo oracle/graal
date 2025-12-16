@@ -359,7 +359,7 @@ public class FeatureImpl {
 
         public void ensureInitialized(String className) {
             try {
-                imageClassLoader.forName(className, true);
+                imageClassLoader.typeForName(className).initialize();
             } catch (ClassNotFoundException e) {
                 throw VMError.shouldNotReachHere(e);
             }

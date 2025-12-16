@@ -355,10 +355,10 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
     @Override
     public void initializeAtRunTime(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        Class<?> clazz = loader.findClass(name).get();
-        if (clazz != null) {
+        ResolvedJavaType type = loader.findType(name).get();
+        if (type != null) {
             classInitializationConfiguration.insert(name, InitKind.RUN_TIME, reason, true);
-            initializeAtRunTime(clazz, reason);
+            initializeAtRunTime(type, reason);
         } else {
             classInitializationConfiguration.insert(name, InitKind.RUN_TIME, reason, false);
         }
