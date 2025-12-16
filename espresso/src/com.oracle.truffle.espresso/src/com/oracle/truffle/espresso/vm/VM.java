@@ -1117,38 +1117,10 @@ public final class VM extends NativeEnv {
             return meta.java_lang_Class.allocateReferenceArray(0);
         }
         ObjectKlass instanceKlass = (ObjectKlass) klass;
-        InnerClassesAttribute innerClasses = instanceKlass.getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
-
-        if (innerClasses == null || innerClasses.entryCount() == 0) {
+        List<Klass> innerKlasses = instanceKlass.getDeclaredClasses();
+        if (innerKlasses.isEmpty()) {
             return meta.java_lang_Class.allocateReferenceArray(0);
         }
-
-        RuntimeConstantPool pool = instanceKlass.getConstantPool();
-        List<Klass> innerKlasses = new ArrayList<>();
-
-        for (int i = 0; i < innerClasses.entryCount(); i++) {
-            InnerClassesAttribute.Entry entry = innerClasses.entryAt(i);
-            if (entry.innerClassIndex != 0 && entry.outerClassIndex != 0) {
-                // Check to see if the name matches the class we're looking for
-                // before attempting to find the class.
-                Symbol<Name> outerDescriptor = pool.className(entry.outerClassIndex);
-
-                // Check descriptors/names before resolving.
-                if (outerDescriptor.equals(instanceKlass.getName())) {
-                    Klass outerKlass = pool.resolvedKlassAt(instanceKlass, entry.outerClassIndex);
-                    if (outerKlass == instanceKlass) {
-                        Klass innerKlass = pool.resolvedKlassAt(instanceKlass, entry.innerClassIndex);
-                        // HotSpot:
-                        // Throws an exception if outer klass has not declared k as
-                        // an inner klass
-                        // Reflection::check_for_inner_class(k, inner_klass, true, CHECK_NULL);
-                        // TODO(peterssen): The check in HotSpot is redundant.
-                        innerKlasses.add(innerKlass);
-                    }
-                }
-            }
-        }
-
         return meta.java_lang_Class.allocateReferenceArray(innerKlasses.size(), new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int index) {

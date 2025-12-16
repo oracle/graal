@@ -1552,6 +1552,37 @@ public final class ObjectKlass extends Klass implements AttributedElement {
         return size;
     }
 
+    @TruffleBoundary
+    public List<Klass> getDeclaredClasses() {
+        InnerClassesAttribute innerClasses = getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
+        if (innerClasses == null || innerClasses.entryCount() == 0) {
+            return List.of();
+        }
+
+        RuntimeConstantPool pool = getConstantPool();
+        List<Klass> innerKlasses = new ArrayList<>();
+
+        for (int i = 0; i < innerClasses.entryCount(); i++) {
+            InnerClassesAttribute.Entry entry = innerClasses.entryAt(i);
+            if (entry.innerClassIndex != 0 && entry.outerClassIndex != 0) {
+                // Check to see if the name matches the class we're looking for
+                // before attempting to find the class.
+                Symbol<Name> outerDescriptor = pool.className(entry.outerClassIndex);
+
+                // Check descriptors/names before resolving.
+                if (outerDescriptor == getName()) {
+                    Klass outerKlass = pool.resolvedKlassAt(this, entry.outerClassIndex);
+                    if (outerKlass == this) {
+                        Klass innerKlass = pool.resolvedKlassAt(this, entry.innerClassIndex);
+                        // TODO: Consider implementing extra checks as performed by HotSpot GR-72144
+                        innerKlasses.add(innerKlass);
+                    }
+                }
+            }
+        }
+        return innerKlasses;
+    }
+
     public final class KlassVersion implements AttributedElement {
         final Assumption assumption;
         final RuntimeConstantPool pool;

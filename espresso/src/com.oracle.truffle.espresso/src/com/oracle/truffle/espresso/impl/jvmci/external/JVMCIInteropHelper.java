@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.impl.jvmci.external;
 
+import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -102,6 +103,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.NEW_OBJECT_ARRAY,
                         InvokeMember.NEW_PRIMITIVE_ARRAY,
                         InvokeMember.GET_RAW_ANNOTATION_BYTES,
+                        InvokeMember.GET_DECLARED_TYPES,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -148,6 +150,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String NEW_OBJECT_ARRAY = "newObjectArray";
         static final String NEW_PRIMITIVE_ARRAY = "newPrimitiveArray";
         static final String GET_RAW_ANNOTATION_BYTES = "getRawAnnotationBytes";
+        static final String GET_DECLARED_TYPES = "getDeclaredTypes";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -682,6 +685,24 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                 return StaticObject.NULL;
             }
             return new TruffleReadOnlyBytes(bytes);
+        }
+
+        @Specialization(guards = "GET_DECLARED_TYPES.equals(member)")
+        static Object getDeclaredTypes(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
+            List<Klass> declaredClasses = klass.getDeclaredClasses();
+            if (declaredClasses.isEmpty()) {
+                return StaticObject.NULL;
+            }
+            ObjectKlass[] interfaces = new ObjectKlass[declaredClasses.size()];
+            for (int i = 0; i < interfaces.length; i++) {
+                interfaces[i] = (ObjectKlass) declaredClasses.get(i);
+            }
+            return new KeysArray<>(interfaces);
         }
 
         @Fallback

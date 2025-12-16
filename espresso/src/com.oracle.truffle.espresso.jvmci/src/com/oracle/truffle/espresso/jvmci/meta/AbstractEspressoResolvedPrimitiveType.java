@@ -225,7 +225,7 @@ public abstract class AbstractEspressoResolvedPrimitiveType extends EspressoReso
 
     @Override
     public ResolvedJavaType[] getDeclaredTypes() {
-        return new ResolvedJavaType[0];
+        return NO_TYPES;
     }
 
     @Override

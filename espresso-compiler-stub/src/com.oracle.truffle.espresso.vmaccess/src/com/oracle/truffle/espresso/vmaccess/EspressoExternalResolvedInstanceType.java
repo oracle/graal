@@ -315,8 +315,13 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
     }
 
     @Override
-    public ResolvedJavaType[] getDeclaredTypes() {
-        throw JVMCIError.unimplemented();
+    public AbstractEspressoResolvedInstanceType[] getDeclaredTypes() {
+        Value declaredTypes = access.invokeJVMCIHelper("getDeclaredTypes", getMetaObject());
+        EspressoExternalResolvedInstanceType[] result = translateInstanceTypeArray(declaredTypes);
+        if (result == null) {
+            return NO_INSTANCE_TYPES;
+        }
+        return result;
     }
 
     @Override
