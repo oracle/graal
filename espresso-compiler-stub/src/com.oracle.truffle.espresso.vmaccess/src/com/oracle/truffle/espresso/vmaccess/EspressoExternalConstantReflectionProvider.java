@@ -241,7 +241,7 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
         if (constant instanceof KlassConstant klassConstant) {
             return klassConstant.getType();
         }
-        throw new IllegalArgumentException(constant.getClass().toString());
+        return null;
     }
 
     static EspressoResolvedJavaType classAsType(Value value, EspressoExternalVMAccess access) {
