@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -276,7 +277,7 @@ public abstract class StrengthenGraphs {
 
     protected abstract String getTypeName(AnalysisType type);
 
-    protected abstract boolean simplifyDelegate(Node n, SimplifierTool tool);
+    protected abstract boolean simplifyDelegate(Node n, SimplifierTool tool, Predicate<Node> isUnreachable);
 
     /* Wrapper to clearly identify phase in IGV graph dumps. */
     public class AnalysisStrengthenGraphsPhase extends BasePhase<CoreProviders> {
@@ -313,7 +314,7 @@ public abstract class StrengthenGraphs {
         // placeholder
     }
 
-    static String getQualifiedName(StructuredGraph graph) {
+    protected static String getQualifiedName(StructuredGraph graph) {
         return ((AnalysisMethod) graph.method()).getQualifiedName();
     }
 

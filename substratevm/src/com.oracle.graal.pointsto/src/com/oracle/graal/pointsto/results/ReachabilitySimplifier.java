@@ -94,7 +94,7 @@ class ReachabilitySimplifier implements CustomSimplification {
             tryImproveStamp(node, tool);
         }
 
-        if (strengthenGraphs.simplifyDelegate(n, tool)) {
+        if (strengthenGraphs.simplifyDelegate(n, tool, node -> false)) {
             // Handled in the delegate simplification.
             return;
         }
