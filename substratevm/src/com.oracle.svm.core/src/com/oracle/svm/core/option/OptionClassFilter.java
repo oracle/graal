@@ -24,19 +24,21 @@
  */
 package com.oracle.svm.core.option;
 
+import jdk.graal.compiler.util.EconomicHashSet;
 import org.graalvm.collections.EconomicSet;
 
 import java.util.Map;
 import java.util.Set;
 
 public class OptionClassFilter {
-    private final EconomicSet<OptionOrigin> reasonCommandLine = EconomicSet.create(Set.of(OptionOrigin.commandLineAPIOptionOriginSingleton, OptionOrigin.commandLineNonAPIOptionOriginSingleton));
+    private final EconomicHashSet<OptionOrigin> reasonCommandLine = new EconomicHashSet<>(
+                    Set.of(OptionOrigin.commandLineAPIOptionOriginSingleton, OptionOrigin.commandLineNonAPIOptionOriginSingleton));
 
-    private final Map<String, EconomicSet<OptionOrigin>> requireCompletePackageOrClass;
+    private final Map<String, EconomicHashSet<OptionOrigin>> requireCompletePackageOrClass;
     private final EconomicSet<Module> requireCompleteModules;
     private boolean requireCompleteAll;
 
-    public OptionClassFilter(Map<String, EconomicSet<OptionOrigin>> requireCompletePackageOrClass, EconomicSet<Module> requireCompleteModules, boolean requireCompleteAll) {
+    public OptionClassFilter(Map<String, EconomicHashSet<OptionOrigin>> requireCompletePackageOrClass, EconomicSet<Module> requireCompleteModules, boolean requireCompleteAll) {
         this.requireCompletePackageOrClass = requireCompletePackageOrClass;
         this.requireCompleteModules = requireCompleteModules;
         this.requireCompleteAll = requireCompleteAll;
@@ -59,14 +61,14 @@ public class OptionClassFilter {
             }
         }
 
-        EconomicSet<OptionOrigin> origins = isPackageOrClassIncluded(className);
+        EconomicHashSet<OptionOrigin> origins = isPackageOrClassIncluded(className);
         if (origins != null) {
             return origins;
         }
         return isPackageOrClassIncluded(packageName);
     }
 
-    public EconomicSet<OptionOrigin> isPackageOrClassIncluded(String packageName) {
+    public EconomicHashSet<OptionOrigin> isPackageOrClassIncluded(String packageName) {
         if (requireCompleteAll) {
             return reasonCommandLine;
         }
@@ -83,7 +85,7 @@ public class OptionClassFilter {
         return null;
     }
 
-    public void addPackageOrClass(String packageOrClass, EconomicSet<OptionOrigin> reason) {
+    public void addPackageOrClass(String packageOrClass, EconomicHashSet<OptionOrigin> reason) {
         requireCompletePackageOrClass.put(packageOrClass, reason);
     }
 }
