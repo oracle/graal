@@ -696,4 +696,9 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
             return multiMethodMap.values();
         }
     }
+
+    @Override
+    public MethodPointer getRawAddressForRuntimeLoadedMethod() {
+        throw VMError.intentionallyUnimplemented();
+    }
 }

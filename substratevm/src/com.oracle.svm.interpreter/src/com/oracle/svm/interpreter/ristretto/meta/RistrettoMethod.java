@@ -26,6 +26,7 @@ package com.oracle.svm.interpreter.ristretto.meta;
 
 import java.util.function.Function;
 
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
@@ -91,6 +92,12 @@ public final class RistrettoMethod extends SubstrateMethod {
          * indirect call target is always this.
          */
         this.indirectCallTarget = this;
+        this.vTableIndex = interpreterMethod.getVTableIndex();
+    }
+
+    @Override
+    public boolean hasImageCodeOffset() {
+        return RistrettoUtils.wasAOTCompiled(interpreterMethod);
     }
 
     public InterpreterResolvedJavaMethod getInterpreterMethod() {
@@ -286,4 +293,8 @@ public final class RistrettoMethod extends SubstrateMethod {
         return interpreterMethod.isConcrete();
     }
 
+    @Override
+    public MethodPointer getRawAddressForRuntimeLoadedMethod() {
+        return interpreterMethod.getNativeEntryPoint();
+    }
 }

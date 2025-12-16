@@ -108,4 +108,17 @@ public interface SharedMethod extends ResolvedJavaMethod {
      */
     @Override
     boolean isDeclared();
+
+    /**
+     * Returns a function pointer to the method if it can be called directly without any dispatch.
+     * <p>
+     * This method should be overridden in implementations to provide access to the direct address
+     * of this method. Normally this should be reserved for types loaded at runtime that are
+     * just-in-time compiled.
+     * 
+     * 
+     * @return the direct address of this method or {@code Word.nullPointer()} if direct addressing
+     *         is not supported
+     */
+    MethodPointer getRawAddressForRuntimeLoadedMethod();
 }

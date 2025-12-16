@@ -29,6 +29,7 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.common.option.CommonOptionParser;
@@ -46,6 +47,8 @@ import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPhase;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoNoDeoptPhase;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
@@ -73,6 +76,7 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -141,8 +145,8 @@ public class RistrettoUtils {
         return doCompile(debug, RuntimeCompilationSupport.getRuntimeConfig(), RuntimeCompilationSupport.getLIRSuites(), method);
     }
 
-    public static InstalledCode compileAndInstallInCrema(RistrettoMethod method) {
-        InstalledCode ic = compileAndInstall(method, () -> new SubstrateInstalledCodeImpl(method));
+    public static SubstrateInstalledCodeImpl compileAndInstallInCrema(RistrettoMethod method) {
+        SubstrateInstalledCodeImpl ic = compileAndInstall(method, () -> new SubstrateInstalledCodeImpl(method));
         return method.installedCode = ic;
     }
 
@@ -285,6 +289,34 @@ public class RistrettoUtils {
         RistrettoGraphBuilderPhase graphBuilderPhase = new RistrettoGraphBuilderPhase(gpc);
         graphBuilderPhase.apply(graph, hc);
         assert graph.getNodeCount() > 1 : "Must have nodes after parsing";
+    }
+
+    public static void logVTable(InterpreterResolvedJavaType iType) {
+        if (!(iType instanceof InterpreterResolvedObjectType)) {
+            return;
+        }
+        InterpreterResolvedObjectType t = (InterpreterResolvedObjectType) iType;
+        Log.log().string("Dumping vtable ").string(t.getName()).newline();
+        InterpreterResolvedJavaMethod[] table = t.getVtable();
+        if (table == null) {
+            Log.log().string("No vtable found").newline();
+            return;
+        }
+        for (int i = 0; i < table.length; i++) {
+            InterpreterResolvedJavaMethod method = table[i];
+            CFunctionPointer jitEntryPoint = Word.nullPointer();
+            RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) method.getRistrettoMethod();
+            if (rMethod != null && rMethod.installedCode != null && rMethod.installedCode.isValid()) {
+                /*
+                 * A JIT compiled version is available, execute this one instead. This could be more
+                 * optimized, see GR-71160.
+                 */
+
+                jitEntryPoint = Word.pointer(rMethod.installedCode.getEntryPoint());
+            }
+            Log.log().string("\tslot=").signed(method.getVTableIndex()).string(" -> ").string(method.getDeclaringClass().getName()).string("::").string(method.getName()).string(", AOT addr=")
+                            .hex(method.getNativeEntryPoint()).string(", JIT addr=").hex(jitEntryPoint).newline();
+        }
     }
 
     public static final class TestingBackdoor {
