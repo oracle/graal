@@ -142,7 +142,7 @@ final class EspressoExternalVMAccess implements VMAccess {
         LoweringProvider lowerer = new DummyLoweringProvider(target);
         StampProvider stampProvider = new DummyStampProvider();
         PlatformConfigurationProvider platformConfigurationProvider = new DummyPlatformConfigurationProvider();
-        SnippetReflectionProvider snippetReflection = new EspressoExternalSnippetReflectionProvider();
+        SnippetReflectionProvider snippetReflection = new EspressoExternalSnippetReflectionProvider(this, metaAccess, constantReflection);
         WordTypes wordTypes = new WordTypes(metaAccess, target.wordJavaKind);
         LoopsDataProvider loopsDataProvider = new LoopsDataProviderImpl();
         Providers newProviders = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls,
