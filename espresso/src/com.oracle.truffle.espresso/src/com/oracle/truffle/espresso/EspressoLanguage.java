@@ -756,6 +756,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     }
 
     public static Path getEspressoLibs(TruffleLanguage.Env env) {
+        Path resourceLibs = getEspressoLibsFromResource(env);
+        if (resourceLibs != null) {
+            return resourceLibs;
+        }
         Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
         if (espressoHome != null) {
             Path libs = espressoHome.resolve("lib");
@@ -764,10 +768,16 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                 return libs;
             }
         }
+        throw EspressoError.shouldNotReachHere("Could not find required espresso libraries.");
+    }
+
+    private static Path getEspressoLibsFromResource(Env env) {
         try {
-            String resources = env.getInternalResource("espresso-libs").getAbsoluteFile().toString();
-            Path libs = Path.of(resources, "lib");
-            assert Files.isDirectory(libs);
+            TruffleFile resource = env.getInternalResource("espresso-libs");
+            if (resource == null || !resource.isDirectory()) {
+                return null;
+            }
+            Path libs = Path.of(resource.getAbsoluteFile().toString(), "lib");
             env.getLogger(EspressoContext.class).config(() -> "Using espresso libs from resources at " + libs);
             return libs;
         } catch (IOException e) {
