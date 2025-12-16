@@ -25,6 +25,8 @@
 package jdk.graal.compiler.truffle.substitutions;
 
 import static java.lang.Character.toUpperCase;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 import static jdk.graal.compiler.replacements.PEGraphDecoder.Options.MaximumLoopExplosionCount;
 
 import java.lang.reflect.Type;
@@ -52,7 +54,9 @@ import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool.RoundingMode;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConditionAnchorNode;
@@ -60,6 +64,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.DynamicPiNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -93,6 +98,8 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.ResolvedJavaS
 import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.EnsureVirtualizedNode;
@@ -176,6 +183,7 @@ public class TruffleGraphBuilderPlugins {
         registerBufferPlugins(plugins, types, canDelayIntrinsification);
         registerMemorySegmentPlugins(plugins, types, canDelayIntrinsification);
         registerByteArraySupportPlugins(plugins, canDelayIntrinsification);
+        registerAtomicFieldupdaterPlugins(plugins, types);
     }
 
     private static void registerTruffleSafepointPlugins(InvocationPlugins plugins, KnownTruffleTypes types, boolean canDelayIntrinsification) {
@@ -1557,5 +1565,183 @@ public class TruffleGraphBuilderPlugins {
             }
             return JavaConstant.forPrimitive(resultKind, value);
         }
+    }
+
+    private static void registerAtomicFieldupdaterPlugins(InvocationPlugins plugins, KnownTruffleTypes types) {
+        InvocationPlugins.Registration r;
+
+        r = new InvocationPlugins.Registration(plugins, new ResolvedJavaSymbol(types.AtomicIntegerFieldUpdater));
+        r.register(new RequiredInvocationPlugin("accessCheck", Receiver.class, Object.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.add(new AtomicFieldUpdaterCheckAccessNode(receiver.get(false), arg));
+                return true;
+            }
+        });
+
+        r = new InvocationPlugins.Registration(plugins, new ResolvedJavaSymbol(types.AtomicLongFieldUpdater));
+        r.register(new RequiredInvocationPlugin("accessCheck", Receiver.class, Object.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.add(new AtomicFieldUpdaterCheckAccessNode(receiver.get(false), arg));
+                return true;
+            }
+        });
+
+        r = new InvocationPlugins.Registration(plugins, new ResolvedJavaSymbol(types.AtomicReferenceFieldUpdater));
+        r.register(new RequiredInvocationPlugin("accessCheck", Receiver.class, Object.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.add(new AtomicFieldUpdaterCheckAccessNode(receiver.get(false), arg));
+                return true;
+            }
+        });
+        r.register(new RequiredInvocationPlugin("valueCheck", Receiver.class, Object.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.add(new AtomicFieldUpdaterValueCheckNode(receiver.get(false), arg));
+                return true;
+            }
+        });
+
+    }
+
+    /**
+     * Represents the following pattern. But instead of throwing an access exception it bails out
+     * from compilation.
+     *
+     * <pre>
+     * private final void accessCheck(T obj) {
+     *     if (!cclass.isInstance(obj))
+     *         throwAccessCheckException(obj);
+     * }
+     * </pre>
+     */
+    @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
+    private static final class AtomicFieldUpdaterCheckAccessNode extends FixedWithNextNode implements Lowerable {
+
+        @Input private ValueNode updater;
+        @Input private ValueNode receiver;
+
+        public static final NodeClass<AtomicFieldUpdaterCheckAccessNode> TYPE = NodeClass.create(AtomicFieldUpdaterCheckAccessNode.class);
+
+        protected AtomicFieldUpdaterCheckAccessNode(ValueNode updater, ValueNode receiver) {
+            super(TYPE, StampFactory.forVoid());
+            this.updater = updater;
+            this.receiver = receiver;
+        }
+
+        @Override
+        public void lower(LoweringTool tool) {
+            if (!updater.isConstant()) {
+                throw bailout("Atomic field updater must resolve to a constant after PE.");
+            }
+            JavaConstant updaterConstant = updater.asJavaConstant();
+            if (updaterConstant.isNull()) {
+                throw bailout("Atomic field updater must not be null");
+            }
+
+            ResolvedJavaType type = updater.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess());
+            ResolvedJavaField f = null;
+            for (ResolvedJavaField instanceField : type.getInstanceFields(false)) {
+                if (instanceField.getName().equals("tclass")) {
+                    f = instanceField;
+                    break;
+                }
+            }
+
+            if (f == null) {
+                throw bailout("Unexpected class incompatibility in atomic field updater. Field tclass not found.");
+            }
+
+            JavaConstant t = tool.getConstantReflection().readFieldValue(f, updaterConstant);
+            if (t == null) {
+                throw bailout("Could not resolve constant tclass field.");
+            }
+
+            ResolvedJavaType expectedType = tool.getConstantReflection().asJavaType(t);
+            ResolvedJavaType actualType = receiver.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess());
+            if (!expectedType.isAssignableFrom(actualType)) {
+                throw bailout("Failed atomic field updater resolution. Receiver type " + expectedType.getName() + " does not match actual type " + actualType.getName() +
+                                " at compile time.");
+            }
+
+            // this node deletes itself after validation is successful
+            graph().removeFixed(this);
+        }
+
+        private BailoutException bailout(String message) {
+            throw GraphUtil.createBailoutException(message, null, GraphUtil.approxSourceStackTraceElement(this));
+        }
+
+    }
+
+    /**
+     * Represents the following pattern. But instead of throwing an CCE it bails out from
+     * compilation.
+     *
+     * <pre>
+     * private final void valueCheck(V v) {
+     *     if (v != null && !(vclass.isInstance(v)))
+     *         throwCCE();
+     * }
+     * </pre>
+     */
+    @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
+    private static final class AtomicFieldUpdaterValueCheckNode extends FixedWithNextNode implements Lowerable {
+
+        @Input private ValueNode updater;
+        @Input private ValueNode value;
+
+        public static final NodeClass<AtomicFieldUpdaterValueCheckNode> TYPE = NodeClass.create(AtomicFieldUpdaterValueCheckNode.class);
+
+        protected AtomicFieldUpdaterValueCheckNode(ValueNode updater, ValueNode value) {
+            super(TYPE, StampFactory.forVoid());
+            this.updater = updater;
+            this.value = value;
+        }
+
+        @Override
+        public void lower(LoweringTool tool) {
+            if (!updater.isConstant()) {
+                throw bailout("Atomic field updater must resolve to a constant after PE.");
+            }
+            JavaConstant updaterConstant = updater.asJavaConstant();
+            if (updaterConstant.isNull()) {
+                throw bailout("Atomic field updater must not be null");
+            }
+
+            ResolvedJavaType type = updater.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess());
+            ResolvedJavaField f = null;
+            for (ResolvedJavaField instanceField : type.getInstanceFields(false)) {
+                if (instanceField.getName().equals("vclass")) {
+                    f = instanceField;
+                    break;
+                }
+            }
+            if (f == null) {
+                throw bailout("Unexpected class incompatibility in atomic field updater. Field vclass not found.");
+            }
+
+            JavaConstant t = tool.getConstantReflection().readFieldValue(f, updaterConstant);
+            if (t == null) {
+                throw bailout("Could not resolve constant tclass field.");
+            }
+
+            ResolvedJavaType expectedType = tool.getConstantReflection().asJavaType(t);
+            ResolvedJavaType actualType = value.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess());
+            if (!expectedType.isAssignableFrom(actualType)) {
+                throw bailout("Failed atomic field updater resolution. Value type type " + expectedType.getName() + " does not match actual type " + actualType.getName() +
+                                " at compile time.");
+            }
+
+            // this node deletes itself after validation is successful
+            graph().removeFixed(this);
+        }
+
+        private BailoutException bailout(String message) {
+            throw GraphUtil.createBailoutException(message, null, GraphUtil.approxSourceStackTraceElement(this));
+        }
+
     }
 }
