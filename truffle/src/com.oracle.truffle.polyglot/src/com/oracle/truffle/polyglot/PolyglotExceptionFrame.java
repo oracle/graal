@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
@@ -53,8 +52,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
-
-    private static final String HOST = "host";
 
     private final PolyglotImpl polyglot;
     private final Language language;
@@ -211,20 +208,12 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
-        if (INTEROP.hasMembers(frame)) {
-            if (INTEROP.isMemberReadable(frame, HOST)) {
-                try {
-                    host = INTEROP.asBoolean(INTEROP.readMember(frame, HOST));
-                    if (host && exception.engine != null) {
-                        PolyglotEngineImpl polyglotEngine = exception.engine;
-                        Engine engineAPI = polyglotEngine.getEngineAPIOrNull();
-                        if (engineAPI != null) {
-                            language = exception.engine.apiAccess.newLanguage(polyglotEngine.getImpl().languageDispatch, polyglotEngine.hostLanguage, engineAPI);
-                        }
-                    }
-                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                    throw CompilerDirectives.shouldNotReachHere(e);
-                }
+        host = INTEROP.isHostObject(frame);
+        if (host && exception.engine != null) {
+            PolyglotEngineImpl polyglotEngine = exception.engine;
+            Engine engineAPI = polyglotEngine.getEngineAPIOrNull();
+            if (engineAPI != null) {
+                language = exception.engine.apiAccess.newLanguage(polyglotEngine.getImpl().languageDispatch, polyglotEngine.hostLanguage, engineAPI);
             }
         }
         if (INTEROP.hasDeclaringMetaObject(frame)) {
