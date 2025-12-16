@@ -71,12 +71,12 @@ public final class CVDebugInfo extends DebugInfoBase {
         return cvTypeSection;
     }
 
-    public byte getHeapbaseRegister() {
+    public static byte getHeapbaseRegister() {
         return (byte) HEAP_BASE_REGISTER.number;
     }
 
     @SuppressWarnings("unused")
-    public byte getThreadRegister() {
+    public static byte getThreadRegister() {
         return (byte) THREAD_REGISTER.number;
     }
 

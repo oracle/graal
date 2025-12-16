@@ -45,7 +45,6 @@ import jdk.vm.ci.amd64.AMD64;
 import java.util.List;
 import java.util.Map;
 
-import static com.oracle.objectfile.pecoff.cv.CVRegisterUtil.CV_AMD64_R8;
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_LOCAL_BP;
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_PARAM_BP;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MAX_PRIMITIVE;
@@ -71,8 +70,8 @@ final class CVSymbolSubsectionBuilder {
         this.lineRecordBuilder = new CVLineRecordBuilder(cvDebugInfo);
         this.heapName = SectionName.SVM_HEAP.getFormatDependentName(cvDebugInfo.getCVSymbolSection().getOwner().getFormat());
         /* For isolates, Graal currently uses r14 as the heap base; this code will handle r8-r15. */
-        assert AMD64.r8.number <= cvDebugInfo.getHeapbaseRegister() && cvDebugInfo.getHeapbaseRegister() <= AMD64.r15.number;
-        this.heapRegister = CVRegisterUtil.getCVRegister(cvDebugInfo.getHeapbaseRegister(), CVDebugInfo.POINTER_LENGTH);
+        assert AMD64.r8.number <= CVDebugInfo.getHeapbaseRegister() && CVDebugInfo.getHeapbaseRegister() <= AMD64.r15.number;
+        this.heapRegister = CVRegisterUtil.getCVRegister(CVDebugInfo.getHeapbaseRegister(), CVDebugInfo.POINTER_LENGTH);
     }
 
     /**
