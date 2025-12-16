@@ -27,6 +27,7 @@ package jdk.graal.compiler.hostvmaccess;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
+import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -38,6 +39,7 @@ import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.vmaccess.InvocationException;
+import jdk.graal.compiler.vmaccess.ModuleSupport;
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -75,7 +77,7 @@ final class HostVMAccess implements VMAccess {
     public JavaConstant invoke(ResolvedJavaMethod method, JavaConstant receiver, JavaConstant... arguments) {
         SnippetReflectionProvider snippetReflection = providers.getSnippetReflection();
         Executable executable = snippetReflection.originalMethod(method);
-        executable.setAccessible(true);
+        makeAccessible(executable);
         boolean isConstructor = executable instanceof Constructor;
         Class<?>[] parameterTypes = executable.getParameterTypes();
         if (Modifier.isStatic(executable.getModifiers()) || isConstructor) {
@@ -131,6 +133,16 @@ final class HostVMAccess implements VMAccess {
             throw new InvocationException(snippetReflection.forObject(e.getCause()), e);
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private static void makeAccessible(Executable executable) {
+        try {
+            executable.setAccessible(true);
+        } catch (InaccessibleObjectException e) {
+            Class<?> declaringClass = executable.getDeclaringClass();
+            ModuleSupport.addOpens(HostVMAccess.class.getModule(), declaringClass.getModule(), declaringClass.getPackageName());
+            executable.setAccessible(true);
         }
     }
 

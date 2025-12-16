@@ -72,4 +72,10 @@ public final class ModuleSupport {
             Modules.addExports(targetModule, packageName, accessingModule);
         }
     }
+
+    public static void addOpens(Module accessingModule, Module targetModule, String... packageNames) {
+        for (String packageName : packageNames) {
+            Modules.addOpens(targetModule, packageName, accessingModule);
+        }
+    }
 }
