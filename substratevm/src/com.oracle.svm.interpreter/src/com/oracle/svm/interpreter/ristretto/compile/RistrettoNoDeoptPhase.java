@@ -39,7 +39,7 @@ public class RistrettoNoDeoptPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         for (Node n : graph.getNodes()) {
-            if (n instanceof AbstractDeoptimizeNode deopt) {
+            if (n instanceof AbstractDeoptimizeNode) {
                 /*
                  * TODO GR-72047 - this will be a non permanent bailout until ristretto support
                  * permanent bailouts

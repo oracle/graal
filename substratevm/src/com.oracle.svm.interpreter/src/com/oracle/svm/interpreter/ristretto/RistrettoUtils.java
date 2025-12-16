@@ -261,11 +261,12 @@ public class RistrettoUtils {
     }
 
     private static Suites adaptSuitesForRistretto(Suites suites) {
+        Suites effectiveSuites = suites;
         if (!RistrettoHostedOptions.getJITUseDeoptimization()) {
-            suites = suites.copy();
-            suites.getLowTier().appendPhase(new RistrettoNoDeoptPhase());
+            effectiveSuites = effectiveSuites.copy();
+            effectiveSuites.getLowTier().appendPhase(new RistrettoNoDeoptPhase());
         }
-        return suites;
+        return effectiveSuites;
     }
 
     private static void parseFromBytecode(StructuredGraph graph, RuntimeConfiguration runtimeConfig) {
