@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hostvmaccess;
+package jdk.graal.compiler.hostvmaccess;
 
 import java.io.File;
 import java.lang.module.Configuration;
@@ -35,8 +35,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.vmaccess.ModuleSupport;
-import com.oracle.graal.vmaccess.VMAccess;
+import jdk.graal.compiler.vmaccess.ModuleSupport;
+import jdk.graal.compiler.vmaccess.VMAccess;
 
 public final class HostVMAccessBuilder implements VMAccess.Builder {
     private List<String> classpath = List.of();

@@ -33,11 +33,10 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.graal.vmaccess.ResolvedJavaModule;
-import com.oracle.graal.vmaccess.ResolvedJavaModuleLayer;
-import com.oracle.graal.vmaccess.ResolvedJavaPackage;
-
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
+import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;

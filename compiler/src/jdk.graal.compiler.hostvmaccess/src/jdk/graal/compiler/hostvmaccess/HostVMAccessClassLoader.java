@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hostvmaccess;
+package jdk.graal.compiler.hostvmaccess;
 
 import java.io.IOException;
 import java.lang.module.Configuration;
@@ -52,6 +52,7 @@ import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.loader.ClassLoaders;
 import jdk.internal.loader.Resource;
@@ -61,8 +62,7 @@ import jdk.internal.module.Resources;
 /**
  * This copy of {@code com.oracle.svm.hosted.NativeImageClassLoader} is used in the
  * {@link HostVMAccess} to simulate the "app" class loader given the class- and module-path provided
- * through {@link com.oracle.graal.vmaccess.VMAccess.Builder#classPath} and
- * {@link com.oracle.graal.vmaccess.VMAccess.Builder#modulePath}.
+ * through {@link VMAccess.Builder#classPath} and {@link VMAccess.Builder#modulePath}.
  * <p>
  * This custom class loader is used by the image builder to load the application classes that should
  * be built into a native-image. It can load classes from a user-provided application module- and
