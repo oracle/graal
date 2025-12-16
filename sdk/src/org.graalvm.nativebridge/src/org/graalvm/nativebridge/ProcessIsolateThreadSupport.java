@@ -860,7 +860,7 @@ final class ProcessIsolateThreadSupport {
                 } finally {
                     workerThreads.remove(threadChannel);
                 }
-            } catch (IOException ioe) {
+            } catch (IOException | IsolateDeathException e) {
                 // Closes peerThreadChannel to notify client
             }
         }

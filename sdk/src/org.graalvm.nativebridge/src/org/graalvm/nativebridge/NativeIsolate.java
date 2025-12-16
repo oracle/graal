@@ -161,6 +161,9 @@ public final class NativeIsolate extends AbstractIsolate<NativeIsolateThread> {
     @Override
     NativeIsolateThread attachCurrentThread() {
         long isolateThreadAddress = attachThread.applyAsLong(isolateId);
+        if (isolateThreadAddress == 0L) {
+            throw new IsolateDeathException();
+        }
         return new NativeIsolateThread(Thread.currentThread(), this, false, isolateThreadAddress);
     }
 

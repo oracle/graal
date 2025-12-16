@@ -141,7 +141,18 @@ final class HotSpotToNativeFactoryGenerator extends AbstractBridgeGenerator {
         CharSequence create = isolateHandlerSnippet.createIsolate(builder, nativeIsolateHandlerVar, configVar);
         CharSequence tearDown = isolateHandlerSnippet.tearDownIsolateCallBack(builder, nativeIsolateHandlerVar);
         builder.lineStart().write(longType).space().write(isolateThreadVar).write(" = ").write(create).lineEnd(";");
+        builder.lineStart().write("if (").write(isolateThreadVar).write(" == 0L)").lineEnd(" {");
+        builder.indent();
+        CharSequence exceptionMessage = new CodeBuilder(builder).stringLiteral("Failed to create an isolate").build();
+        builder.lineStart("throw ").newInstance(getTypeCache().isolateCreateException, exceptionMessage).lineEnd(";");
+        builder.dedent();
+        builder.line("}");
         builder.lineStart().write(longType).space().write(isolateVar).write(" = ").invoke(isolateHandlerSnippet.defaultStartPointName(), "getIsolate", isolateThreadVar).lineEnd(";");
+        builder.lineStart().write("if (").write(isolateVar).write(" == 0L)").lineEnd(" {");
+        builder.indent();
+        builder.lineStart("throw ").newInstance(getTypeCache().isolateCreateException, exceptionMessage).lineEnd(";");
+        builder.dedent();
+        builder.line("}");
         CharSequence[] nativeIsolateArgs = new CharSequence[]{
                         isolateVar,
                         configVar,
@@ -159,8 +170,8 @@ final class HotSpotToNativeFactoryGenerator extends AbstractBridgeGenerator {
         builder.lineStart().write(longType).space().write(handleVar).write(" = ").write(isolateHandlerSnippet.initializeIsolate(builder, threadAddr)).lineEnd(";");
         builder.lineStart("if (").write(handleVar).lineEnd(" == 0L) {");
         builder.indent();
-        CharSequence message = new CodeBuilder(builder).stringLiteral("Failed to initialize an isolate 0x").write(" + ").invokeStatic(getTypeCache().boxedLong, "toHexString", isolateVar).build();
-        builder.lineStart("throw ").newInstance(getTypeCache().isolateCreateException, message).lineEnd(";");
+        exceptionMessage = new CodeBuilder(builder).stringLiteral("Failed to initialize an isolate 0x").write(" + ").invokeStatic(getTypeCache().boxedLong, "toHexString", isolateVar).build();
+        builder.lineStart("throw ").newInstance(getTypeCache().isolateCreateException, exceptionMessage).lineEnd(";");
         builder.dedent();
         builder.line("}");
         CharSequence peer = new CodeBuilder(builder).invokeStatic(getTypeCache().peer, "create", nativeIsolateVar, handleVar).build();
