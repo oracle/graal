@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.common.layeredimage;
+package com.oracle.svm.sdk.staging.layeredimage;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

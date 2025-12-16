@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import static com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER;
+import static com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER;
 
 import java.lang.reflect.Proxy;
 
@@ -32,13 +32,13 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.options.ModifiableOptionValues;
