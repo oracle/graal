@@ -342,27 +342,6 @@ public final class ImageClassLoader {
     }
 
     /**
-     * @deprecated use {@link #findClassOrFail(String)} instead.
-     */
-    @Deprecated
-    public Class<?> findClassByName(String name) {
-        return findClassByName(name, true);
-    }
-
-    /**
-     * @deprecated use {@link #findClass(String)} or {@link #findClassOrFail(String)} instead.
-     */
-    @Deprecated
-    public Class<?> findClassByName(String name, boolean failIfClassMissing) {
-        TypeResult<Class<?>> result = findClass(name);
-        if (failIfClassMissing) {
-            return result.getOrFail();
-        } else {
-            return result.get();
-        }
-    }
-
-    /**
      * Find class or fail if exception occurs.
      */
     public Class<?> findClassOrFail(String name) {
