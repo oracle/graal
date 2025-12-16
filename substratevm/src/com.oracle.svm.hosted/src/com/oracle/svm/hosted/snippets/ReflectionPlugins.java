@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.snippets;
 
+import static jdk.graal.compiler.ide.IDEReport.getInliningTrace;
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -76,6 +78,8 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.ide.IDEReport;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
@@ -434,7 +438,14 @@ public final class ReflectionPlugins {
         Object classNameValue = unbox(b, nameNode, JavaKind.Object);
         Object initializeValue = unbox(b, initializeNode, JavaKind.Boolean);
 
-        if (!(classNameValue instanceof String) || !(initializeValue instanceof Boolean)) {
+        if (!(classNameValue instanceof String)) {
+            makeReflectionReport(nameNode,
+                            "Call to forName: class name cannot be resolved at build time by Native Image. Please check that its actual values are listed in the reachability-metadata.json file.");
+            return false;
+        }
+
+        if (!(initializeValue instanceof Boolean)) {
+            makeReflectionReport(initializeNode, "Call to forName: the 'initialize' argument cannot be resolved at build time by Native Image.");
             return false;
         }
         String className = (String) classNameValue;
@@ -450,6 +461,7 @@ public final class ReflectionPlugins {
                 return false;
             }
             Throwable e = typeResult.getException();
+            makeReflectionReport(nameNode, "Call to forName: class " + className + " not found, the generated code will throw a " + e.getClass().getName() + ".");
             return throwException(b, targetMethod, null, arguments, e.getClass(), e.getMessage(), true);
         }
         Class<?> clazz = typeResult.get();
@@ -465,6 +477,7 @@ public final class ReflectionPlugins {
         if (initialize) {
             classInitializationPlugin.apply(b, b.getMetaAccess().lookupJavaType(clazz), () -> null);
         }
+        makeReflectionReport(nameNode, "Call to forName: access to class " + className + " has been resolved at build time.");
         return true;
     }
 
@@ -475,8 +488,10 @@ public final class ReflectionPlugins {
      * e.g., Class.forName calls.
      */
     private boolean processClassGetClassLoader(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-        Object classValue = unbox(b, receiver.get(false), JavaKind.Object);
+        var rec = receiver.get(false);
+        Object classValue = unbox(b, rec, JavaKind.Object);
         if (!(classValue instanceof Class)) {
+            makeReflectionReport(rec, "Loader could not be resolved a build time: receiver is not an instance of Class.");
             return false;
         }
         Class<?> clazz = (Class<?>) classValue;
@@ -505,11 +520,15 @@ public final class ReflectionPlugins {
         }
 
         if (result != null) {
+            // GR-71548: be more precise than "unnamed loader"
+            var msg = loader == null ? ("Loader is null.") : ("Loader has been resolved at build time: " + (loader.getName() != null ? loader.getName() : "unnamed loader") + ".");
+            makeReflectionReport(rec, msg);
             b.addPush(JavaKind.Object, ConstantNode.forConstant(result, b.getMetaAccess()));
             traceConstant(b, targetMethod, clazz, EMPTY_ARGUMENTS, result, false);
             return true;
         }
 
+        makeReflectionReport(rec, "Loader for class " + clazz.getName() + " could not be resolved at build time.");
         return false;
     }
 
@@ -791,6 +810,19 @@ public final class ReflectionPlugins {
         b.addPush(returnKind, ConstantNode.forConstant(intrinsicConstant, b.getMetaAccess()));
         traceConstant(b, targetMethod, receiver, arguments, intrinsicValue, subjectToStrictDynamicAccessInference);
         return intrinsicConstant;
+    }
+
+    private static void makeReflectionReport(Node positionNode, String msg) {
+        IDEReport.runIfEnabled(ideReport -> {
+            var srcPos = positionNode.getNodeSourcePosition();
+            if (srcPos == null) {
+                return;
+            }
+            var filePath = IDEReport.getFilePath(srcPos.getMethod().getDeclaringClass());
+            var line = IDEReport.getLineNumber(srcPos);
+            var className = srcPos.getMethod().getDeclaringClass().toJavaName();
+            ideReport.saveLineReport(filePath, className, line, msg, getInliningTrace(srcPos));
+        });
     }
 
     private boolean throwException(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, Class<? extends Throwable> exceptionClass, String originalMessage,

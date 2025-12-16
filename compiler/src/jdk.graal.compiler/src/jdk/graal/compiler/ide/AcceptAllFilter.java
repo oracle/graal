@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.classinitialization;
+package jdk.graal.compiler.ide;
 
 /**
- * The initialization kind for a class. The order of the enum values matters, {@link #max} depends
- * on it.
+ * An implementation of {@link ClassFilter} that accepts all classes.
+ * <p>
+ * This filter always returns {@code true} for any given class name, effectively allowing reports on
+ * all classes.
  */
-public enum InitKind {
-    /** Class is initialized during image building, so it is already initialized at runtime. */
-    BUILD_TIME,
-    /** Class should be initialized at runtime and not during image building. */
-    RUN_TIME;
+public enum AcceptAllFilter implements ClassFilter {
+    INSTANCE;
 
-    InitKind max(InitKind other) {
-        return this.ordinal() > other.ordinal() ? this : other;
+    @Override
+    public boolean shouldBeReported(String className) {
+        return true;
     }
+
 }

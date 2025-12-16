@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.graal.compiler.nodes.InliningIDEReporting;
 import org.graalvm.collections.Pair;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -1445,15 +1446,18 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             plugin.notifyAfterInline(inlineMethod);
         }
 
+        final var phase = "PEGraphDecoder";
         if (methodScope.inliningLog != null) {
             assert inlineScope.inliningLog != null : "all inlinees should have an inlining log if the root requires it";
-            methodScope.inliningLog.inlineByTransfer(invoke, invokeData.callTarget, inlineScope.inliningLog, "PEGraphDecoder",
-                            "inlined during decoding");
+            methodScope.inliningLog.inlineByTransfer(invoke, invokeData.callTarget, inlineScope.inliningLog, phase,
+                    "inlined during decoding");
         }
         if (methodScope.optimizationLog != null) {
             assert inlineScope.optimizationLog != null : "all inlinees should have an optimization log if the root requires it";
             methodScope.optimizationLog.inline(inlineScope.optimizationLog, false, null);
         }
+
+        InliningIDEReporting.reportInlining(invokeNode.getNodeSourcePosition(), invokeData.callTarget.targetMethod(), phase);
     }
 
     @SuppressWarnings("unchecked")

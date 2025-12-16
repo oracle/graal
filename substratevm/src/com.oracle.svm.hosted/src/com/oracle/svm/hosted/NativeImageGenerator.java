@@ -31,6 +31,7 @@ import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticsMode;
 import static jdk.graal.compiler.hotspot.JVMCIVersionCheck.OPEN_LABSJDK_RELEASE_URL_PATTERN;
 import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -287,6 +288,7 @@ import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugDumpScope;
 import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.ide.IDEReport;
 import jdk.graal.compiler.java.BciBlockMapping;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -544,6 +546,7 @@ public class NativeImageGenerator {
             doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions);
         } finally {
             reporter.ensureCreationStageEndCompleted();
+            IDEReport.runIfEnabled(ideReport -> ideReport.print(new File("").toPath().resolve("ide-reports")));
         }
     }
 
@@ -570,6 +573,10 @@ public class NativeImageGenerator {
         List<HostedMethod> hostedEntryPoints = new ArrayList<>();
 
         OptionValues options = HostedOptionValues.singleton();
+
+        if (IDEReport.Options.IDEReport.getValue(options)) {
+            IDEReport.createInstance(IDEReport.Options.IDEReportFiltered.getValue(options));
+        }
 
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
                         DebugCloseable _ = () -> featureHandler.forEachFeature(Feature::cleanup)) {
