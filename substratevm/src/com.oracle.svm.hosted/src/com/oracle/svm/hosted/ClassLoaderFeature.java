@@ -26,8 +26,6 @@ package com.oracle.svm.hosted;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -40,7 +38,9 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.internal.loader.ClassLoaders;
 import jdk.vm.ci.meta.JavaConstant;
@@ -135,15 +135,15 @@ public class ClassLoaderFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        var packagesField = ReflectionUtil.lookupField(ClassLoader.class, "packages");
         var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        var packagesField = JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(ClassLoader.class), "packages");
         if (!ImageLayerBuildingSupport.buildingImageLayer()) {
-            access.registerFieldValueTransformer(packagesField, new TraditionalPackageMapTransformer());
+            config.registerFieldValueTransformer(packagesField, new TraditionalPackageMapTransformer());
         } else {
             if (ImageLayerBuildingSupport.buildingInitialLayer()) {
                 config.registerFieldValueTransformer(packagesField, new InitialLayerPackageMapTransformer());
             } else {
-                access.registerFieldValueTransformer(packagesField, new ExtensionLayerPackageMapTransformer());
+                config.registerFieldValueTransformer(packagesField, new ExtensionLayerPackageMapTransformer());
             }
         }
 
@@ -223,10 +223,10 @@ public class ClassLoaderFeature implements InternalFeature {
         }
     }
 
-    static class ExtensionLayerPackageMapTransformer implements FieldValueTransformer {
+    static class ExtensionLayerPackageMapTransformer implements JVMCIFieldValueTransformer {
 
         @Override
-        public Object transform(Object receiver, Object originalValue) {
+        public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
             throw VMError.shouldNotReachHere("No classloaders should be installed in extension layers: %s", receiver);
         }
     }

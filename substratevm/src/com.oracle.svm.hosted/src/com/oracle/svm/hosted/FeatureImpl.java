@@ -103,6 +103,8 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
+import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -110,6 +112,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @SuppressWarnings("deprecation")
@@ -636,6 +639,20 @@ public class FeatureImpl {
 
         @Override
         public void registerFieldValueTransformer(Field field, FieldValueTransformer transformer) {
+            FieldValueInterceptionSupport.singleton().registerLegacyFieldValueTransformer(field, transformer);
+        }
+
+        /**
+         * Registers a field value transformer for the provided field. See the JavaDoc of
+         * {@link FieldValueTransformer} for details.
+         *
+         * @param field This should be the <em>original</em> (Host VM) field. See
+         *            {@link OriginalFieldProvider#getOriginalField}.
+         * @param transformer the transformer that should be applied
+         */
+        public void registerFieldValueTransformer(ResolvedJavaField field, JVMCIFieldValueTransformer transformer) {
+            VMError.guarantee(!(field instanceof OriginalFieldProvider),
+                            "The ResolvedJavaField %s must be the original (Host VM) field. You can use OriginalFieldProvider.getOriginalField() to retrieve that", field);
             FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(field, transformer);
         }
 

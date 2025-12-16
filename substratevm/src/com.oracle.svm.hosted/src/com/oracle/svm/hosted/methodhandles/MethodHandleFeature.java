@@ -55,6 +55,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import sun.invoke.util.ValueConversions;
@@ -190,7 +191,7 @@ public class MethodHandleFeature implements InternalFeature {
                             }
                         });
         access.registerFieldValueTransformer(
-                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.DirectMethodHandle"), "ACCESSOR_FORMS"),
+                        JVMCIReflectionUtil.getUniqueDeclaredField(access.findTypeByName("java.lang.invoke.DirectMethodHandle").unwrapTowardsOriginalType(), "ACCESSOR_FORMS"),
                         NewEmptyArrayFieldValueTransformer.INSTANCE);
         access.registerFieldValueTransformer(
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.MethodType"), "internTable"),

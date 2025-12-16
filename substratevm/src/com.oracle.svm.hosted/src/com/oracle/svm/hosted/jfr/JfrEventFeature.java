@@ -38,7 +38,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.DynamicHubSupport;
@@ -50,10 +50,11 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.internal.event.Event;
 import jdk.jfr.internal.JVM;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import sun.nio.ch.FileChannelImpl;
 
@@ -97,15 +98,15 @@ public class JfrEventFeature implements InternalFeature {
          * finishes, but only in case jfr is enabled, so we do not add @UnknownObjectField
          * annotation to it, because it will be null if jfr is disabled.
          */
-        var configField = ReflectionUtil.lookupField(DynamicHubCompanion.class, "jfrEventConfiguration");
-        FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(configField, new FieldValueTransformerWithAvailability() {
+        var configField = JVMCIReflectionUtil.getUniqueDeclaredField(metaAccess.lookupJavaType(DynamicHubCompanion.class), "jfrEventConfiguration");
+        FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(configField, new JVMCIFieldValueTransformerWithAvailability() {
             @Override
             public boolean isAvailable() {
                 return BuildPhaseProvider.isHostedUniverseBuilt();
             }
 
             @Override
-            public Object transform(Object receiver, Object originalValue) {
+            public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
                 return originalValue;
             }
         });

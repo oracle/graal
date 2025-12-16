@@ -87,11 +87,15 @@ import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport.WrappedFieldValueTransformer;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -149,7 +153,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions;
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> polymorphicMethodSubstitutions;
     private final Map<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
-    private Map<Field, Object> unsafeAccessedFields = new HashMap<>();
+    private Map<ResolvedJavaField, Object> unsafeAccessedFields = new HashMap<>();
     private final ClassInitializationSupport classInitializationSupport;
     private final Set<String> disabledSubstitutions;
     private final boolean reportUnsupportedElementAtRuntime;
@@ -354,7 +358,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
      */
     public void registerUnsafeAccessedFields(BigBang bb) {
         for (var entry : unsafeAccessedFields.entrySet()) {
-            AnalysisField targetField = bb.getMetaAccess().lookupJavaField(entry.getKey());
+            AnalysisField targetField = bb.getUniverse().lookup(entry.getKey());
             assert !AnnotationUtil.isAnnotationPresent(targetField, Delete.class);
             targetField.registerAsUnsafeAccessed(entry.getValue());
         }
@@ -1045,13 +1049,14 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 targetClass = imageClassLoader.findClassOrFail(recomputeAnnotation.declClassName());
             }
         }
-        Class<?> transformedValueAllowedType = getTargetClass(annotatedField.getType());
+        ResolvedJavaType targetType = GraalAccess.lookupType(targetClass);
+        ResolvedJavaType transformedValueAllowedType = GraalAccess.lookupType(getTargetClass(annotatedField.getType()));
 
-        var newTransformer = switch (kind) {
+        JVMCIFieldValueTransformer newTransformer = switch (kind) {
             case None, Manual -> null;
             case Reset -> ConstantValueFieldValueTransformer.defaultValueForField(original);
-            case NewInstance -> new NewInstanceOfFixedClassFieldValueTransformer(targetClass, false);
-            case NewInstanceWhenNotNull -> new NewInstanceOfFixedClassFieldValueTransformer(targetClass, true);
+            case NewInstance -> new NewInstanceOfFixedClassFieldValueTransformer(targetType, false);
+            case NewInstanceWhenNotNull -> new NewInstanceOfFixedClassFieldValueTransformer(targetType, true);
             case FromAlias -> {
                 if (!Modifier.isStatic(annotated.getModifiers())) {
                     throw UserError.abort("Cannot use " + kind + " on non-static alias " + annotated.format("%H.%n"));
@@ -1059,30 +1064,37 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 yield new FromAliasFieldValueTransformer(annotated);
             }
             case FieldOffset -> {
-                var targetField = getField(annotated, targetClass, targetName);
+                var targetField = getField(annotated, targetType, targetName);
                 unsafeAccessedFields.put(targetField, original);
-                yield new FieldOffsetFieldValueTransformer(targetField, original.getType().getJavaKind());
+                yield new FieldOffsetFieldValueTransformer(OriginalFieldProvider.getJavaField(targetField), original.getType().getJavaKind());
             }
             case StaticFieldBase -> {
-                var targetField = getField(annotated, targetClass, targetName);
+                var targetField = getField(annotated, targetType, targetName);
                 if (!Modifier.isStatic(targetField.getModifiers())) {
                     throw UserError.abort("Target field must be static for " + kind + " computation of alias " + annotated.format("%H.%n"));
                 }
-                yield new StaticFieldBaseFieldValueTransformer(targetField);
+                yield new StaticFieldBaseFieldValueTransformer(OriginalFieldProvider.getJavaField(targetField));
             }
             case ArrayBaseOffset ->
-                new ArrayBaseOffsetFieldValueTransformer(targetClass, original.getType().getJavaKind());
+                new ArrayBaseOffsetFieldValueTransformer(targetType, original.getType().getJavaKind());
             case ArrayIndexScale ->
-                new ArrayIndexScaleFieldValueTransformer(targetClass, original.getType().getJavaKind());
+                new ArrayIndexScaleFieldValueTransformer(targetType, original.getType().getJavaKind());
             case ArrayIndexShift ->
-                new ArrayIndexShiftFieldValueTransformer(targetClass, original.getType().getJavaKind());
+                new ArrayIndexShiftFieldValueTransformer(targetType, original.getType().getJavaKind());
             case AtomicFieldUpdaterOffset -> new AtomicFieldUpdaterOffsetFieldValueTransformer(original, targetClass);
             case TranslateFieldOffset -> new TranslateFieldOffsetFieldValueTransformer(original, targetClass);
-            case Custom -> (FieldValueTransformer) ReflectionUtil.newInstance(targetClass);
+            case Custom -> {
+                if (JVMCIFieldValueTransformer.class.isAssignableFrom(targetClass)) {
+                    yield (JVMCIFieldValueTransformer) ReflectionUtil.newInstance(targetClass);
+                } else {
+                    var fieldValueTransformer = (FieldValueTransformer) ReflectionUtil.newInstance(targetClass);
+                    yield WrappedFieldValueTransformer.create(fieldValueTransformer);
+                }
+            }
         };
 
         if (newTransformer != null) {
-            FieldValueTransformer existingTransformer = fieldValueInterceptionSupport.lookupAlreadyRegisteredTransformer(original);
+            JVMCIFieldValueTransformer existingTransformer = fieldValueInterceptionSupport.lookupAlreadyRegisteredTransformer(original);
             if (existingTransformer != null) {
                 if (existingTransformer.equals(newTransformer)) {
                     /* Equivalent transformations are allowed, nothing to do. */
@@ -1097,11 +1109,11 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return new AliasField(original, annotated, isFinal);
     }
 
-    private static Field getField(ResolvedJavaField annotated, Class<?> targetClass, String targetName) {
+    private static ResolvedJavaField getField(ResolvedJavaField annotated, ResolvedJavaType targetType, String targetName) {
         try {
-            return ReflectionUtil.lookupField(targetClass, targetName);
-        } catch (ReflectionUtilError e) {
-            throw UserError.abort("Could not find target field %s.%s for alias %s.", targetClass.getName(), targetName, annotated == null ? null : annotated.format("%H.%n"));
+            return JVMCIReflectionUtil.getUniqueDeclaredField(targetType, targetName);
+        } catch (NoSuchFieldError e) {
+            throw UserError.abort("Could not find target field %s.%s for alias %s.", targetType.toClassName(), targetName, annotated == null ? null : annotated.format("%H.%n"));
         }
     }
 
