@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.shared.util.ReflectionUtil;
+
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
@@ -418,19 +419,21 @@ public final class JVMCIReflectionUtil {
     }
 
     /**
-     * Reads the value of the non-static field named {@code fieldName} in the declaring class of the
-     * object represented by {@code receiver}.
+     * Reads the value of the non-static field named {@code fieldName} declared by
+     * {@code declaringClass} from the object represented by {@code receiver}.
      *
      * @param receiver the instance object from which the field value will be read
+     * @param declaringClass the class in which the field is declared
      * @param fieldName name of the field to read
      * @throws NoSuchFieldError if no field is uniquely identified by {@code fieldName} in
      *             {@code declaringClass}
      * @throws IllegalArgumentException if {@code !receiver.getJavaKind().isObject()} or the named
-     *             field is static
+     *             field is static or the type of receiver is not assignable to
+     *             {@code declaringClass}
      * @throws NullPointerException if {@code receiver == null} or {@code receiver} represents
      *             {@link JavaConstant#isNull() null}
      */
-    public static JavaConstant readInstanceField(JavaConstant receiver, String fieldName) {
+    public static JavaConstant readInstanceField(JavaConstant receiver, ResolvedJavaType declaringClass, String fieldName) {
         if (!receiver.getJavaKind().isObject()) {
             throw new IllegalArgumentException("Not an object: " + receiver);
         }
@@ -439,7 +442,10 @@ public final class JVMCIReflectionUtil {
         }
         GuestAccess access = GuestAccess.get();
         MetaAccessProvider metaAccess = access.getProviders().getMetaAccess();
-        ResolvedJavaType declaringClass = metaAccess.lookupJavaType(receiver);
+        ResolvedJavaType receiverClass = metaAccess.lookupJavaType(receiver);
+        if (!declaringClass.isAssignableFrom(receiverClass)) {
+            throw new IllegalArgumentException(receiverClass.toClassName() + " is not assignable to " + declaringClass.toClassName());
+        }
         ResolvedJavaField field = JVMCIReflectionUtil.getUniqueDeclaredField(false, declaringClass, fieldName);
         if (field.isStatic()) {
             throw new IllegalArgumentException(fieldName + " is static");

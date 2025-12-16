@@ -103,9 +103,8 @@ public interface VMAccess {
     /**
      * Writes a value to a {@link ResolvedJavaField}.
      *
-     * Note that if the implementation is backed by a {@link Field} object, this call will ensure
-     * it is {@linkplain Field#setAccessible(boolean) accessible} before attempting writing the
-     * field.
+     * Note that if the implementation is backed by a {@link Field} object, this call will ensure it
+     * is {@linkplain Field#setAccessible(boolean) accessible} before attempting writing the field.
      *
      * @param field the field to write.
      * @param receiver the receiver object for an instance field, passed as a {@link JavaConstant}.
