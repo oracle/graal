@@ -322,6 +322,10 @@ final class EspressoExternalVMAccess implements VMAccess {
         return lookupMetaObject(context, name);
     }
 
+    Value requireMetaObject(String name) {
+        return requireMetaObject(context, name);
+    }
+
     JavaType lookupType(String name, ResolvedJavaType accessingClass, boolean resolve) {
         Objects.requireNonNull(accessingClass);
         Objects.requireNonNull(name);

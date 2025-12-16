@@ -90,7 +90,7 @@ final class EspressoExternalObjectConstant implements JavaConstant {
     }
 
     public EspressoResolvedObjectType getType() {
-        Value cls = value.getMetaObject().getMember("class");
+        Value cls = value.getMetaObject();
         return (EspressoResolvedObjectType) EspressoExternalConstantReflectionProvider.classAsType(cls, access);
     }
 

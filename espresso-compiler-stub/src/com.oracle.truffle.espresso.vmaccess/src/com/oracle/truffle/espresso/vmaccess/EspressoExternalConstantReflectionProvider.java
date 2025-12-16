@@ -30,7 +30,6 @@ import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceTy
 import com.oracle.truffle.espresso.jvmci.meta.ConstantReflectionProviderWithStaticsBase;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedJavaType;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedObjectType;
-import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedPrimitiveType;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
@@ -53,6 +52,7 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
     private final EspressoExternalResolvedJavaMethod boxLong;
     private final EspressoExternalResolvedJavaMethod boxFloat;
     private final EspressoExternalResolvedJavaMethod boxDouble;
+    private final EspressoExternalResolvedJavaMethod getArrayType;
 
     EspressoExternalConstantReflectionProvider(EspressoExternalVMAccess access) {
         this.access = access;
@@ -64,10 +64,27 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
         boxLong = lookupBoxMethod(access, "Long");
         boxFloat = lookupBoxMethod(access, "Float");
         boxDouble = lookupBoxMethod(access, "Double");
+        getArrayType = lookupMethod(access, "java.lang.Class", "arrayType");
+    }
+
+    private static EspressoExternalResolvedJavaMethod lookupMethod(EspressoExternalVMAccess access, String className, String methodName) {
+        ResolvedJavaType type = new EspressoExternalResolvedInstanceType(access, access.requireMetaObject(className));
+        ResolvedJavaMethod found = null;
+        for (ResolvedJavaMethod declaredMethod : type.getDeclaredMethods()) {
+            if (!declaredMethod.getName().equals(methodName) || declaredMethod.isSynthetic()) {
+                continue;
+            }
+            if (found != null) {
+                throw new IllegalStateException("More than one method found: " + found + " and " + declaredMethod);
+            }
+            found = declaredMethod;
+        }
+        assert found != null;
+        return (EspressoExternalResolvedJavaMethod) found;
     }
 
     private static EspressoExternalResolvedJavaMethod lookupBoxMethod(EspressoExternalVMAccess access, String name) {
-        Value typeMeta = access.lookupMetaObject("java.lang." + name);
+        Value typeMeta = access.requireMetaObject("java.lang." + name);
         ResolvedJavaType type = new EspressoExternalResolvedInstanceType(access, typeMeta);
         ResolvedJavaMethod found = null;
         for (ResolvedJavaMethod declaredMethod : type.getDeclaredMethods()) {
@@ -79,6 +96,9 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
                 continue;
             }
             if (signature.getParameterKind(0).isPrimitive()) {
+                if (found != null) {
+                    throw new IllegalStateException("More than one box method found: " + found + " and " + declaredMethod);
+                }
                 found = declaredMethod;
             }
         }
@@ -273,13 +293,24 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
     }
 
     @Override
-    public JavaConstant asJavaClass(ResolvedJavaType type) {
-        Value clazz = switch (type) {
-            case EspressoExternalResolvedInstanceType espressoType -> espressoType.getMetaObject().getMember("class");
-            case EspressoResolvedPrimitiveType primitiveType -> access.getPrimitiveClass(primitiveType.getJavaKind());
+    public EspressoExternalObjectConstant asJavaClass(ResolvedJavaType type) {
+        switch (type) {
+            case EspressoExternalResolvedInstanceType espressoType -> {
+                return new EspressoExternalObjectConstant(access, espressoType.getMetaObject().getMember("class"));
+            }
+            case EspressoExternalResolvedPrimitiveType primitiveType -> {
+                return new EspressoExternalObjectConstant(access, access.getPrimitiveClass(primitiveType.getJavaKind()));
+            }
+            case EspressoExternalResolvedArrayType arrayType -> {
+                EspressoExternalObjectConstant result = asJavaClass(arrayType.getElementalType());
+                int dimensions = arrayType.getDimensions();
+                for (int i = 0; i < dimensions; i++) {
+                    result = (EspressoExternalObjectConstant) access.invoke(getArrayType, result);
+                }
+                return result;
+            }
             default -> throw new IllegalArgumentException("expected an espresso type, got a " + type.getClass());
-        };
-        return new EspressoExternalObjectConstant(access, clazz);
+        }
     }
 
     @Override
