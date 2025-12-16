@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -53,8 +52,6 @@ import com.oracle.truffle.api.source.SourceSection;
 
 @ExportLibrary(InteropLibrary.class)
 final class DefaultStackTraceElementObject implements TruffleObject {
-
-    static final String HOST = "host";
 
     private final RootNode rootNode;
     private final SourceSection sourceSection;
@@ -167,33 +164,5 @@ final class DefaultStackTraceElementObject implements TruffleObject {
     @ExportMessage
     boolean isInternal() {
         return rootNode.isInternal();
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean hasMembers() {
-        return true;
-    }
-
-    @ExportMessage
-    @SuppressWarnings({"static-method", "unused"})
-    Object getMembers(boolean includeInternal) {
-        return new InteropList(HOST);
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isMemberReadable(String member) {
-        return HOST.equals(member);
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    Object readMember(String member) throws UnknownIdentifierException {
-        if (HOST.equals(member)) {
-            return false;
-        } else {
-            throw UnknownIdentifierException.create(member);
-        }
     }
 }
