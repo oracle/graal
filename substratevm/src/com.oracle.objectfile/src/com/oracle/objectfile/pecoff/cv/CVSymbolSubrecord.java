@@ -37,7 +37,6 @@ import com.oracle.objectfile.debugentry.ClassEntry;
 
 import jdk.graal.compiler.serviceprovider.GraalServices;
 
-
 /*
  * A CVSymbolSubrecord is a record in a DEBUG_S_SYMBOL record within a .debug$S section within a PECOFF file.
  */
