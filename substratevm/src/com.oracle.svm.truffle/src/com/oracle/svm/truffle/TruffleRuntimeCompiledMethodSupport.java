@@ -46,7 +46,6 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
-import jdk.graal.compiler.truffle.phases.TruffleEarlyEscapeAnalysisPhase;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -89,8 +88,11 @@ public final class TruffleRuntimeCompiledMethodSupport extends RuntimeCompiledMe
         ResolvedJavaType earlyInline = OriginalClassProvider.getOriginalType(truffleTypes.CompilerDirectives_EarlyInline);
         new SubstrateEarlyInliningPhase(debug.getOptions(), canonicalizer, providers, graphBuilder, targetResolver, earlyInline).apply(graph, providers);
 
+        // GR-71985 Runtime compiled graphs do not yet support build time PEA
+        /*-
         ResolvedJavaType earlyEscapeAnalysisType = OriginalClassProvider.getOriginalType(truffleTypes.CompilerDirectives_EarlyEscapeAnalysis);
         new TruffleEarlyEscapeAnalysisPhase(canonicalizer, debug.getOptions(), earlyEscapeAnalysisType).apply(graph, providers);
+         */
 
     }
 
