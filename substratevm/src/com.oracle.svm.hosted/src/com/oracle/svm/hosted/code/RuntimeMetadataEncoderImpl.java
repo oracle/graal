@@ -97,6 +97,7 @@ import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
@@ -1375,7 +1376,12 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     /**
      * Container for data required in later phases. Cleaner separation, rest of
      * RuntimeMetadataEncoderImpl can be cleaned after encoding.
+     *
+     * GR-71595: This class does not need to have a particular behavior for Layered Image, as it
+     * only holds the data produced by RuntimeMetadataEncoderImpl. However, the data needs to be
+     * checked across layers to ensure it is consistent.
      */
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = PartiallyLayerAware.class)
     record EncodedRuntimeMetadataSupplierImpl(Map<AccessibleObject, byte[]> annotationsEncodings,
                     Map<Executable, byte[]> parameterAnnotationsEncodings,
                     Map<Method, byte[]> annotationDefaultEncodings,

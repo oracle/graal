@@ -651,6 +651,7 @@ public class SubstrateOptions {
     @Option(help = "Force no direct relocations to be present in the text section of the generated image", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> NoDirectRelocationsInText = new HostedOptionKey<>(true);
 
+    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "Support multiple isolates.", deprecated = true, deprecationMessage = "This option disables a major feature of GraalVM Native Image and will be removed in a future release") //
     public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
 

@@ -36,7 +36,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.c.locale.LocaleSupport.LayeredCallbacks;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
@@ -72,7 +71,7 @@ import jdk.graal.compiler.word.Word;
  * Note that the JavaDoc of {@link java.util.Locale} explains commonly used terms such as script,
  * display, format, variant, and extensions.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LocaleSupport.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredImageSingleton
 public class LocaleSupport {
     private static final String LOCALE = "locale";

@@ -35,7 +35,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.PointerBase;
 
@@ -156,20 +155,6 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo {
         } else {
             return null;
         }
-    }
-
-    public UnmodifiableEconomicSet<String> getReservedNames() {
-        /*
-         * Note we only need to ensure method names for persisted analysis methods are reserved.
-         */
-        EconomicSet<String> reservedNames = EconomicSet.create();
-        var methods = HostedImageLayerBuildingSupport.singleton().getLoader().getHostedMethods();
-        for (var methodData : methods) {
-            if (methodData.getMethodId() != LayeredDispatchTableFeature.PriorDispatchMethod.UNPERSISTED_METHOD_ID) {
-                reservedNames.add(methodData.getHostedMethodUniqueName().toString());
-            }
-        }
-        return reservedNames;
     }
 
     public void registerHostedMethod(HostedMethod hMethod) {

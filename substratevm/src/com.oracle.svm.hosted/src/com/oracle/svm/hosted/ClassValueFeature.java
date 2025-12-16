@@ -34,13 +34,20 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ClassValueSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.collections.EconomicSet;
 
 /**
  * This feature reads ClassValues created by the hosted environment and stores them into the image.
+ * See {@link ClassValueSupport}.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = PartiallyLayerAware.class)
 @AutomaticallyRegisteredFeature
 public final class ClassValueFeature implements InternalFeature {
 
