@@ -146,7 +146,8 @@ final class CVSymbolSubsectionBuilder {
         /* add function definition. */
         final int functionTypeIndex = addTypeRecords(compiledEntry);
         final byte funcFlags = 0;
-        CVSymbolSubrecord.CVSymbolGProc32IdRecord proc32 = new CVSymbolSubrecord.CVSymbolGProc32IdRecord(cvDebugInfo, externalName, debuggerName, 0, 0, 0, primaryRange.getHiOffset() - primaryRange.getLoOffset(),
+        CVSymbolSubrecord.CVSymbolGProc32IdRecord proc32 = new CVSymbolSubrecord.CVSymbolGProc32IdRecord(cvDebugInfo, externalName, debuggerName, 0, 0, 0,
+                        primaryRange.getHiOffset() - primaryRange.getLoOffset(),
                         0, 0, functionTypeIndex, (short) 0, funcFlags);
         addSymbolRecord(proc32);
 
@@ -203,8 +204,10 @@ final class CVSymbolSubsectionBuilder {
                     if (currentRecord != null) {
                         long reclen = currentHigh - currentRecord.procOffset - range.getLo();
                         if (reclen > 0xffff) {
-                            /* Variable span is too large to fit into 16 bits; emit what we have so far. */
-                            /* Future work could emit more ranges or utilize gaps. */
+                            /*
+                             * Variable span is too large to fit into 16 bits; emit what we have so
+                             * far.  Future work could emit more ranges or utilize gaps.
+                             */
                             currentRecord.length = (short) 0xffff;
                             return;
                         }

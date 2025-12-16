@@ -274,7 +274,7 @@ public class CVRegisterUtil {
             case 8 -> cvReg.cv8;
             default -> -1;
         };
- 
+
         /* Check for unimplemented size. */
         assert cvCode != -1;
         return cvCode;

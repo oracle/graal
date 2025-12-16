@@ -602,8 +602,8 @@ abstract class CVSymbolSubrecord {
     }
 
     /*
-     * Creating a proc32_id record has a side effect: two relocation entries are added to the section
-     * relocation table; they refer back to the global symbol.
+     * Creating a proc32_id record has a side effect: two relocation entries are added to the
+     * sectiom relocation table; they refer back to the global symbol.
      */
     public static class CVSymbolGProc32IdRecord extends CVSymbolSubrecord {
 
