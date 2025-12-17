@@ -27,7 +27,7 @@ package com.oracle.svm.interpreter.ristretto.profile;
 import java.util.concurrent.Callable;
 
 import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
-import com.oracle.svm.interpreter.ristretto.RistrettoRuntimeOptions;
+import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
 import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 
@@ -56,7 +56,7 @@ public class RistrettoCompilationRequest implements Comparable<RistrettoCompilat
     @Override
     public InstalledCode call() throws Exception {
         InstalledCode code = RistrettoUtils.compileAndInstall(rMethod);
-        RistrettoProfileSupport.trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Finished compiling %s%n", rMethod);
+        RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Finished compiling %s%n", rMethod);
 
         /*
          * Installing a reference to installed code in ristretto method to have the same lifecycle

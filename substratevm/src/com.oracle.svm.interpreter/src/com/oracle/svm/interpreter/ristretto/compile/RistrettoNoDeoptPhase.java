@@ -25,7 +25,7 @@
 package com.oracle.svm.interpreter.ristretto.compile;
 
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.interpreter.ristretto.RistrettoHostedOptions;
+import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
 
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.graph.Node;
@@ -39,17 +39,17 @@ import jdk.graal.compiler.phases.Phase;
  */
 public class RistrettoNoDeoptPhase extends Phase {
 
-    private static final String DeoptOptionName = SubstrateOptionsParser.commandArgument(RistrettoHostedOptions.JITUseDeoptimization, "-");
+    private static final String DeoptOptionName = SubstrateOptionsParser.commandArgument(RistrettoOptions.ConcealedOptions.JITUseDeoptimization, "-");
 
     @Override
     protected void run(StructuredGraph graph) {
         for (Node n : graph.getNodes()) {
             if (n instanceof AbstractDeoptimizeNode) {
                 /*
-                 * TODO GR-72047 - this will be a non permanent bailout until ristretto support
+                 * TODO GR-72047 - this will be a non-permanent bailout until ristretto support
                  * permanent bailouts
                  */
-                throw new PermanentBailoutException("Ristretto must not use deoptimizations when -H:" + DeoptOptionName + "==false, but found node " + n);
+                throw new PermanentBailoutException("Ristretto must not use deoptimization when " + DeoptOptionName + " is disabled, but found node " + n);
             }
         }
     }
