@@ -55,7 +55,12 @@ public class SubstrateGCOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
                 HeapSizeVerifier.verifyMinHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+
+                /* Update the isolate argument parser value. */
+                int optionIndex = IsolateArgumentParser.getOptionIndex(MinHeapSize);
+                IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
             }
+
             super.onValueUpdate(values, oldValue, newValue);
         }
     };
@@ -66,7 +71,12 @@ public class SubstrateGCOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
                 HeapSizeVerifier.verifyMaxHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+
+                /* Update the isolate argument parser value. */
+                int optionIndex = IsolateArgumentParser.getOptionIndex(MaxHeapSize);
+                IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
             }
+
             super.onValueUpdate(values, oldValue, newValue);
         }
     };
@@ -77,7 +87,12 @@ public class SubstrateGCOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
                 HeapSizeVerifier.verifyMaxNewSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+
+                /* Update the isolate argument parser value. */
+                int optionIndex = IsolateArgumentParser.getOptionIndex(MaxNewSize);
+                IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
             }
+
             super.onValueUpdate(values, oldValue, newValue);
         }
     };

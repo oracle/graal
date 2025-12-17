@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.PhysicalMemory;
@@ -359,7 +360,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         maxHeap = UnsignedUtils.clamp(alignDown(maxHeap), minAllSpaces, heapSizeLimit);
 
         UnsignedWord maxYoung;
-        long optionMaxYoung = SubstrateGCOptions.MaxNewSize.getValue();
+        long optionMaxYoung = getMaxNewSizeOptionValue();
         if (optionMaxYoung > 0L) {
             maxYoung = Word.unsigned(optionMaxYoung);
         } else if (SerialAndEpsilonGCOptions.MaximumYoungGenerationSizePercent.hasBeenSet()) {
@@ -375,7 +376,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
                         (maxHeap.belowOrEqual(unadjustedMaxHeap) || unadjustedMaxHeap.belowThan(minAllSpaces)));
 
         UnsignedWord minHeap = Word.zero();
-        long optionMin = SubstrateGCOptions.MinHeapSize.getValue();
+        long optionMin = getMinHeapSizeOptionValue();
         if (optionMin > 0L) {
             minHeap = Word.unsigned(optionMin);
         }
@@ -419,7 +420,18 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     protected long getMaximumHeapSizeOptionValue() {
-        return SubstrateGCOptions.MaxHeapSize.getValue();
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxHeapSize);
+        return IsolateArgumentParser.singleton().getLongOptionValue(optionIndex);
+    }
+
+    protected static long getMaxNewSizeOptionValue() {
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxNewSize);
+        return IsolateArgumentParser.singleton().getLongOptionValue(optionIndex);
+    }
+
+    protected static long getMinHeapSizeOptionValue() {
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MinHeapSize);
+        return IsolateArgumentParser.singleton().getLongOptionValue(optionIndex);
     }
 
     protected UnsignedWord getInitialHeapSize() {
