@@ -32,6 +32,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.GraalAccess;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
@@ -60,7 +61,7 @@ public interface FieldValueTransformerWithAvailability extends FieldValueTransfo
      * Transform a field value using a {@linkplain FieldValueTransformer core reflection based field
      * value transformer}. The {@link JavaConstant} inputs are unwrapped, the returned
      * {@link Object} is wrapped. This is only a temporary helper. Eventually, core reflection based
-     * field value transformers will be executed via {@link com.oracle.graal.vmaccess.VMAccess}.
+     * field value transformers will be executed via {@link VMAccess}.
      */
     static JavaConstant transformAndConvert(FieldValueTransformer fieldValueTransformer, JavaConstant receiver, JavaConstant originalValue) {
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
