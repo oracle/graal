@@ -206,11 +206,10 @@ public class InliningLogCodec extends CompanionObjectEncoder<InliningLog, Inlini
          * @param orderId the order ID of the registered node
          */
         public void registerNode(InliningLog inliningLog, Node node, int orderId) {
-            if (!(node instanceof Invokable)) {
+            if (!(node instanceof Invokable invokable)) {
                 return;
             }
             assert orderIdToCallsite != null : "registerNode should be called after decode";
-            Invokable invokable = (Invokable) node;
             if (inliningLog.containsLeafCallsite(invokable)) {
                 return;
             }

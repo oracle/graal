@@ -39,6 +39,7 @@ public class TruffleTier extends BaseTier<TruffleTierContext> {
         appendPhase(instrumentationSuite);
         appendPhase(new ReportPerformanceWarningsPhase());
         appendPhase(new VerifyFrameDoesNotEscapePhase());
+        appendPhase(new VerifyMergeExplodeKeyDoesNotRemainPhase());
         appendPhase(new NeverPartOfCompilationPhase());
         appendPhase(new MaterializeFramesPhase());
         appendPhase(new SetIdentityForValueTypesPhase());

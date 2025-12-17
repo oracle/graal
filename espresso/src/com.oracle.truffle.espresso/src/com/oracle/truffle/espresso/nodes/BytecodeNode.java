@@ -755,6 +755,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             livenessAnalysis.onStart(frame, skipLivenessActions);
         }
 
+        curBCI = CompilerDirectives.mergeExplodeKey(curBCI);
         loop: while (true) {
             final int curOpcode = bs.opcode(curBCI);
             EXECUTED_BYTECODES_COUNT.inc();

@@ -63,6 +63,7 @@ import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.LoopExplosionKeyNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiArrayNode;
@@ -511,6 +512,22 @@ public class TruffleGraphBuilderPlugins {
                 ValueNode nullCheckedClass = b.addNonNullCast(javaClass);
                 LogicNode condition = b.append(InstanceOfDynamicNode.create(b.getAssumptions(), b.getConstantReflection(), nullCheckedClass, object, false, true));
                 b.addPush(JavaKind.Boolean, b.append(new ConditionalNode(condition)));
+                return true;
+            }
+        });
+
+        r.register(new RequiredInvocationPlugin("mergeExplodeKey", int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                if (canDelayIntrinsification) {
+                    /*
+                     * We make sure to keep the original call while parsing the method so we don't
+                     * lose the node when encoding the graph. At the time of decoding,
+                     * `canDelayIntrinsification` will be false, so the actual node is created.
+                     */
+                    return false;
+                }
+                b.push(JavaKind.Int, b.add(new LoopExplosionKeyNode(value)));
                 return true;
             }
         });
