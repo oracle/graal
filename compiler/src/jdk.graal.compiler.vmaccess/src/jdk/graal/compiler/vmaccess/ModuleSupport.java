@@ -39,6 +39,7 @@ public final class ModuleSupport {
     static {
         ModuleSupport.addExports(VMAccess.class, "jdk.internal.vm.ci",
                         "jdk.vm.ci.meta",
+                        "jdk.vm.ci.meta.annotation",
                         "jdk.vm.ci.code");
         ModuleSupport.addExports(VMAccess.class, "jdk.graal.compiler",
                         "jdk.graal.compiler.phases.util");

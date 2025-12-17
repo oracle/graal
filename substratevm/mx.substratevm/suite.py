@@ -1857,7 +1857,6 @@ suite = {
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
-                    "jdk.graal.compiler.vmaccess.VMAccess.Builder",
                     "jdk.graal.compiler.options.OptionDescriptors",
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
                     "com.oracle.svm.hosted.NativeImageGeneratorRunnerProvider",
@@ -2374,6 +2373,9 @@ suite = {
                     """com.oracle.svm.sdk.staging.layeredimage to org.graalvm.nativeimage.pointsto,
                            org.graalvm.nativeimage.builder""",
                 ],
+                "uses" : [
+                    "jdk.graal.compiler.vmaccess.VMAccess.Builder"
+                ]
             },
             "noMavenJavadoc": True,
             "maven": {

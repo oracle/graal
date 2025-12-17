@@ -81,9 +81,7 @@ import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -301,35 +299,10 @@ public class NativeImageGeneratorRunner {
     }
 
     private static VMAccess getVmAccess(String[] classpath, String[] modulepath) {
-        VMAccess.Builder builder = getVmAccessBuilder();
+        VMAccess.Builder builder = GraalAccess.getVmAccessBuilder();
         builder.classPath(List.of(classpath));
         builder.modulePath(List.of(modulepath));
         return builder.build();
-    }
-
-    private static VMAccess.Builder getVmAccessBuilder() {
-        String requestedAccessName = GraalServices.getSavedProperty("com.oracle.svm.vmaccessname", "host");
-        ServiceLoader<VMAccess.Builder> loader = ServiceLoader.load(VMAccess.Builder.class);
-        VMAccess.Builder selected = null;
-        List<VMAccess.Builder> builders = new ArrayList<>();
-        for (VMAccess.Builder builder : loader) {
-            builders.add(builder);
-            if (requestedAccessName.equals(builder.getVMAccessName())) {
-                selected = builder;
-                break;
-            }
-        }
-        if (selected == null) {
-            if (builders.isEmpty()) {
-                throw new GraalError("No %s service providers found", VMAccess.Builder.class.getName());
-            }
-            String available = builders.stream().map(b -> "'" + b.getVMAccessName() + "'").collect(Collectors.joining(", "));
-            throw new GraalError("No %s service provider named '%s' found. Available providers: %s",
-                            VMAccess.Builder.class.getName(),
-                            requestedAccessName,
-                            available);
-        }
-        return selected;
     }
 
     /**
@@ -350,7 +323,7 @@ public class NativeImageGeneratorRunner {
      */
     public static ImageClassLoader installNativeImageClassLoader(String[] classpath, String[] modulepath, List<String> arguments) {
         VMAccess vmAccess = getVmAccess(classpath, modulepath);
-        GraalAccess.plantProviders(vmAccess.getProviders());
+        GraalAccess.plantConfiguration(vmAccess);
         NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
         NativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath);
         nativeImageClassLoaderSupport.setupHostedOptionParser(arguments);
