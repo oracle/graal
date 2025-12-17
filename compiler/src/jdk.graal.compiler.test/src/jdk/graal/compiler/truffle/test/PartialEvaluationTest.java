@@ -29,6 +29,7 @@ import static jdk.graal.compiler.debug.DebugOptions.DumpOnError;
 
 import java.lang.StackWalker.StackFrame;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -234,6 +235,84 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         StructuredGraph actual = partialEval((OptimizedCallTarget) callTarget, arguments);
         for (MethodCallTargetNode node : actual.getNodes(MethodCallTargetNode.TYPE)) {
             Assert.fail("Found invalid method call target node: " + node + " (" + node.targetMethod() + ")");
+        }
+    }
+
+    private static RootNode createLambdaRootNode(Runnable f) {
+        StackFrame frame = WALKER.walk(stream -> stream.skip(2).findFirst().orElse(null));
+        return new TestRootNode("Lambda_", frame, (_) -> {
+            f.run();
+            return null;
+        });
+    }
+
+    private static RootNode createLambdaRootNode(Supplier<?> f) {
+        StackFrame frame = WALKER.walk(stream -> stream.skip(2).findFirst().orElse(null));
+        return new TestRootNode("Lambda_", frame, (_) -> {
+            f.get();
+            return null;
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static RootNode createLambdaRootNode(Consumer<?> f) {
+        StackFrame frame = WALKER.walk(stream -> stream.skip(2).findFirst().orElse(null));
+        return new TestRootNode("Lambda_", frame, (a) -> {
+            ((Consumer<Object>) f).accept(a);
+            return null;
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> RootNode createLambdaRootNode(Function<T, ?> f, @SuppressWarnings("unused") T object) {
+        StackFrame frame = WALKER.walk(stream -> stream.skip(2).findFirst().orElse(null));
+        return new TestRootNode("Lambda_", frame, (Function<Object, ?>) f);
+    }
+
+    protected void assertPartialEvalNoInvokes(Runnable expected) {
+        assertPartialEvalNoInvokes(createLambdaRootNode(expected), new Object[1]);
+    }
+
+    protected void assertPartialEvalNoInvokes(Supplier<?> expected) {
+        assertPartialEvalNoInvokes(createLambdaRootNode(expected), new Object[1]);
+    }
+
+    protected <T> void assertPartialEvalNoInvokes(Consumer<T> expected, T value) {
+        assertPartialEvalNoInvokes(createLambdaRootNode(expected), new Object[]{value});
+    }
+
+    protected <T, R> void assertPartialEvalNoInvokes(Function<T, R> expected, T value) {
+        assertPartialEvalNoInvokes(createLambdaRootNode(expected, value), new Object[]{value});
+    }
+
+    protected void assertCompileBailout(Runnable expected) {
+        assertCompileBailout(createLambdaRootNode(expected), new Object[1]);
+    }
+
+    protected void assertCompileBailout(Supplier<?> expected) {
+        assertCompileBailout(createLambdaRootNode(expected), new Object[1]);
+    }
+
+    protected <T> void assertCompileBailout(Consumer<T> expected, T value) {
+        assertCompileBailout(createLambdaRootNode(expected), new Object[]{value});
+    }
+
+    protected <T, R> void assertCompileBailout(Function<T, R> expected, T value) {
+        assertCompileBailout(createLambdaRootNode(expected, value), new Object[]{value});
+    }
+
+    private void assertCompileBailout(RootNode lambdaRootNode, Object[] objects) {
+        boolean prevProfileCalls = this.preventProfileCalls;
+        this.preventProfileCalls = true;
+        try {
+            try {
+                compile((OptimizedCallTarget) lambdaRootNode.getCallTarget(), partialEval(lambdaRootNode, objects));
+                fail("Bailout expected but succeeded for " + lambdaRootNode.getName());
+            } catch (BailoutException e) {
+                // expected
+            }
+        } finally {
+            this.preventProfileCalls = prevProfileCalls;
         }
     }
 
