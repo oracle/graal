@@ -19,7 +19,6 @@ import java.util.Set;
  * Applies ConstantFact by tightening the stamp of the corresponding ValueNode
  * to an exact integer interval [v, v].
  */
-// TODO: same reason as invoke Constant Folding Applier, we should not do this since it is not sound
 public final class ConstantStampApplier extends BaseApplier {
 
     @Override
@@ -30,6 +29,11 @@ public final class ConstantStampApplier extends BaseApplier {
     @Override
     public String getDescription() {
         return "ConstantStamp";
+    }
+
+    @Override
+    public boolean shouldApply() {
+        return true;
     }
 
     @Override

@@ -371,7 +371,7 @@ public final class IntInterval implements AbstractDomain<IntInterval> {
         return lowerBound >= iy.upperBound;
     }
 
-    public boolean isSingleton() {
+    public boolean isConstantValue() {
         return !isBot() && !isTop() && !isLowerInfinite() && !isUpperInfinite() && lowerBound == upperBound;
     }
 

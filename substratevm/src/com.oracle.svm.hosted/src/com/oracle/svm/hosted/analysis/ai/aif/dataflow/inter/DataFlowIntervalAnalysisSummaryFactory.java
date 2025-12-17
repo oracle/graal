@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyses.dataflow.inter;
+package com.oracle.svm.hosted.analysis.ai.aif.dataflow.inter;
 
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;

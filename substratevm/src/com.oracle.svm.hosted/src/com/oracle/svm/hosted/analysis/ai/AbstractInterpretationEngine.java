@@ -68,7 +68,7 @@ public class AbstractInterpretationEngine {
         }
 
         logger.log("Running intraprocedural analyzer on all trivially invoked methods", LoggerVerbosity.INFO);
-        invokedMethods.parallelStream().forEach(analyzer::runAnalysis);
+        invokedMethods.parallelStream().filter(method -> !analyzer.getMethodFilterManager().shouldSkipMethod(method)).forEach(analyzer::runAnalysis);
     }
 
     private <Domain extends AbstractDomain<Domain>> void executeInterProceduralAnalysis(InterProceduralAnalyzer<Domain> analyzer) {

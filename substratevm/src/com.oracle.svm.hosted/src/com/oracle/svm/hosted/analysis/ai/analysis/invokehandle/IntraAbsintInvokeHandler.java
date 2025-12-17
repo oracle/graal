@@ -35,10 +35,6 @@ public final class IntraAbsintInvokeHandler<Domain extends AbstractDomain<Domain
 
     @Override
     public void handleRootInvoke(AnalysisMethod root) {
-        if (methodFilterManager.shouldSkipMethod(root)) {
-            return;
-        }
-
         FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analysisContext);
         AbstractState<Domain> abstractState = fixpointIterator.runFixpointIteration();
         StructuredGraph graph = analysisContext.getMethodGraphCache().getMethodGraphMap().get(root);

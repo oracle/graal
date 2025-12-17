@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyses.dataflow;
+package com.oracle.svm.hosted.analysis.ai.aif.dataflow;
 
 import com.oracle.svm.hosted.analysis.ai.analysis.invokehandle.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.analysis.invokehandle.InvokeInput;
@@ -730,7 +730,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             res.setToBot();
         } else if (x.isTop() || s.isTop()) {
             res.setToTop();
-        } else if (s.isSingleton() && s.getLower() >= 0 && s.getLower() <= 63) {
+        } else if (s.isConstantValue() && s.getLower() >= 0 && s.getLower() <= 63) {
             long sh = s.getLower();
             long factor = 1L << sh;
             IntInterval f = new IntInterval(factor, factor);
@@ -750,7 +750,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             res.setToBot();
         } else if (x.isTop() || s.isTop()) {
             res.setToTop();
-        } else if (s.isSingleton() && s.getLower() >= 0 && s.getLower() <= 63) {
+        } else if (s.isConstantValue() && s.getLower() >= 0 && s.getLower() <= 63) {
             long sh = s.getLower();
             long div = 1L << sh;
             if (!x.isLowerInfinite() && x.getLower() >= 0) {
@@ -775,7 +775,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             res.setToBot();
         } else if (x.isTop() || s.isTop()) {
             res.setToTop();
-        } else if (s.isSingleton() && s.getLower() >= 0 && s.getLower() <= 63) {
+        } else if (s.isConstantValue() && s.getLower() >= 0 && s.getLower() <= 63) {
             long sh = s.getLower();
             long div = 1L << sh;
             // For non-negative x, >>> equals arithmetic >>
@@ -928,7 +928,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
     }
 
     private static boolean isPoint(IntInterval v) {
-        return v != null && v.isSingleton();
+        return v != null && v.isConstantValue();
     }
 
     private static Function<AccessPath, AccessPath> indexTransform(Node indexNode, AbstractMemory mem) {

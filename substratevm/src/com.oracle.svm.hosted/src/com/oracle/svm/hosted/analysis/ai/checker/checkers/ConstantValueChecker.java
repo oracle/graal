@@ -11,6 +11,8 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -39,7 +41,7 @@ public class ConstantValueChecker implements Checker<AbstractMemory> {
             AbstractMemory post = abstractState.getPostCondition(node);
             if (post == null) continue;
 
-            if (node instanceof ConstantNode cn) {
+            if (node instanceof ConstantNode cn || !(node instanceof FloatingNode)) {
                 continue;
             }
 
@@ -48,38 +50,9 @@ public class ConstantValueChecker implements Checker<AbstractMemory> {
             var p = post.lookupTempByName(nid);
             if (p != null) {
                 var iv = post.readStore(p);
-                if (iv != null && !iv.isTop() && !iv.isBot() && !iv.isLowerInfinite() && !iv.isUpperInfinite() && iv.getLower() == iv.getUpper()) {
+                if (iv != null && iv.isConstantValue()) {
                     long c = iv.getLower();
                     facts.add(new ConstantFact(node, c));
-                }
-            }
-
-            /* 2) if this is a StoreFieldNode, check the field value in the post-condition */
-            if (node instanceof StoreFieldNode sfn) {
-                ResolvedJavaField field = sfn.field();
-                if (field != null && field.getType().getJavaKind().isNumericInteger()) {
-                    if (field.isStatic()) {
-                        String className = field.getDeclaringClass().getName();
-                        AccessPath key = AccessPath.forStaticClass(className).appendField(field.getName());
-                        IntInterval v = post.readStore(key);
-                        if (v != null && !v.isTop() && !v.isBot() && !v.isLowerInfinite() && !v.isUpperInfinite() && v.getLower() == v.getUpper()) {
-                            long c = v.getLower();
-                            facts.add(new ConstantFact(node, c));
-                        }
-                    } else {
-                        /* instance field: try to resolve base from evaluated temps */
-                        Node objNode = sfn.object();
-                        AccessPath base = null;
-                        if (objNode != null) base = post.lookupTempByName(nodeId(objNode));
-                        if (base != null) {
-                            AccessPath key = base.appendField(field.getName());
-                            IntInterval v = post.readStore(key);
-                            if (v != null && !v.isTop() && !v.isBot() && !v.isLowerInfinite() && !v.isUpperInfinite() && v.getLower() == v.getUpper()) {
-                                long c = v.getLower();
-                                facts.add(new ConstantFact(node, c));
-                            }
-                        }
-                    }
                 }
             }
         }

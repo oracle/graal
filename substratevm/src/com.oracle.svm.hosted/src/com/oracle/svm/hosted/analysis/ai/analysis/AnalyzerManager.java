@@ -3,9 +3,6 @@ package com.oracle.svm.hosted.analysis.ai.analysis;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * A wrapper around the list of {@link Analyzer}s,
- */
 public final class AnalyzerManager {
 
     private final List<Analyzer<?>> analyzers = new ArrayList<>();
