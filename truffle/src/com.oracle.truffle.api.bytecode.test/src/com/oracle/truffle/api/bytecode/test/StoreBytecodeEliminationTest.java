@@ -47,6 +47,7 @@ import static org.junit.Assert.assertTrue;
 import java.lang.reflect.Field;
 import java.util.List;
 
+import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instrumentation;
@@ -70,6 +72,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -183,7 +191,76 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
         assertEquals(-1, t.get(0).getBytecodeIndex());
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true, enableSpecializationIntrospection = true)
+    @Test
+    public void testTags() {
+        try (Context context = Context.create(BytecodeDSLTestLanguage.ID)) {
+            context.initialize(BytecodeDSLTestLanguage.ID);
+            context.enter();
+            Instrumenter instrumenter = context.getEngine().getInstruments().get(TagTestInstrumentation.ID).lookup(Instrumenter.class);
+
+            BytecodeConfig config = StoreBytecodeEliminationRootNodeGen.BYTECODE.newConfigBuilder().addTag(ExpressionTag.class).build();
+            StoreBytecodeEliminationRootNode root = StoreBytecodeEliminationRootNodeGen.create(BytecodeDSLTestLanguage.REF.get(null), config, b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.beginTag(ExpressionTag.class);
+                b.beginYield();
+                b.emitLoadNull();
+                b.endYield();
+                b.endTag(ExpressionTag.class);
+                b.endReturn();
+                b.endRoot();
+            }).getNode(0);
+
+            assertInstructions(root,
+                            "tag.enter",
+                            "load.null",
+                            "tag.yield",
+                            "yield",
+                            "tag.resume",
+                            "tag.leave",
+                            "return");
+
+            List<Instruction> instructions = root.getBytecodeNode().getInstructionsAsList();
+
+            instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(), (e) -> {
+                return new ExecutionEventNode() {
+                    @Override
+                    public void onEnter(VirtualFrame f) {
+                        assertEquals(instructions.get(0).getBytecodeIndex(), StoreBytecodeEliminationRootNode.readBCI(f));
+                    }
+
+                    @Override
+                    public void onReturnValue(VirtualFrame f, Object arg) {
+                        assertEquals(instructions.get(5).getBytecodeIndex(), StoreBytecodeEliminationRootNode.readBCI(f));
+                    }
+
+                    @Override
+                    public void onYield(VirtualFrame f, Object result) {
+                        assertEquals(instructions.get(2).getBytecodeIndex(), StoreBytecodeEliminationRootNode.readBCI(f));
+                    }
+
+                    @Override
+                    public void onResume(VirtualFrame f) {
+                        assertEquals(instructions.get(4).getBytecodeIndex(), StoreBytecodeEliminationRootNode.readBCI(f));
+                    }
+
+                };
+            });
+
+            ContinuationResult cont = (ContinuationResult) root.getCallTarget().call();
+            assertEquals(42, cont.continueWith(42));
+        }
+
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                    enableQuickening = true, //
+                    enableUncachedInterpreter = true, //
+                    storeBytecodeIndexInFrame = true, //
+                    enableSpecializationIntrospection = true, //
+                    enableTagInstrumentation = true, //
+                    enableYield = true //
+    )
     abstract static class StoreBytecodeEliminationRootNode extends RootNode implements BytecodeRootNode {
 
         private static final int BCI_INDEX;
@@ -523,6 +600,17 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
             super(language, frameDescriptor);
         }
 
+    }
+
+    @TruffleInstrument.Registration(id = TagTestInstrumentation.ID, services = Instrumenter.class)
+    public static class TagTestInstrumentation extends TruffleInstrument {
+
+        public static final String ID = "bytecode_TagTestInstrument";
+
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(env.getInstrumenter());
+        }
     }
 
 }

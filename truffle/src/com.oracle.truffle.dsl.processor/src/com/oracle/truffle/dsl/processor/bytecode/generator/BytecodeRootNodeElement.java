@@ -2732,44 +2732,36 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         if (!isStoreBciEnabled(model, tier)) {
             return false;
         }
-        if (instr.operation == null) {
-            return false;
-        }
-        switch (instr.operation.kind) {
-            case RETURN:
-            case YIELD:
-            case TAG:
-            case CUSTOM_YIELD: // custom yield always needs to set the bci
-                return true;
-            case CUSTOM:
-            case CUSTOM_INSTRUMENTATION:
-            case CUSTOM_SHORT_CIRCUIT:
+        return switch (instr.kind) {
+            case RETURN, YIELD, TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, TAG_YIELD_NULL -> true;
+            case CUSTOM -> {
                 if (instr.operation.kind == OperationKind.CUSTOM_YIELD) {
-                    return true;
+                    // custom yield always needs to set the bci
+                    yield true;
                 }
                 CustomOperationModel custom = instr.operation.customModel;
                 if (!custom.shouldStoreBytecodeIndex()) {
-                    return false;
+                    yield false;
                 }
 
                 for (SpecializationData s : instr.nodeData.getReachableSpecializations()) {
                     // if we use cached values in guards we need to store before execute regardless
                     // otherwise the bytecode index is not up-to-date in the guard
                     if (custom.shouldStoreBytecodeIndex(s) && s.isAnyGuardBoundWithCache()) {
-                        return true;
+                        yield true;
                     }
                 }
+
                 for (SpecializationData s : instr.nodeData.getReachableSpecializations()) {
                     if (!custom.shouldStoreBytecodeIndex(s)) {
-                        return false;
+                        yield false;
                     }
                 }
 
-                return true;
-            default:
-                return false;
-        }
-
+                yield true;
+            }
+            default -> false;
+        };
     }
 
     /**
