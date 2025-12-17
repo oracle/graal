@@ -41,7 +41,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -79,6 +78,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import jdk.internal.loader.ClassLoaderValue;
 
@@ -410,17 +410,17 @@ final class Target_java_lang_System {
     }
 
     @Substitute
-    private static void setIn(InputStream is) {
+    private static void setIn0(InputStream is) {
         in = is;
     }
 
     @Substitute
-    private static void setOut(PrintStream ps) {
+    private static void setOut0(PrintStream ps) {
         out = ps;
     }
 
     @Substitute
-    private static void setErr(PrintStream ps) {
+    private static void setErr0(PrintStream ps) {
         err = ps;
     }
 
