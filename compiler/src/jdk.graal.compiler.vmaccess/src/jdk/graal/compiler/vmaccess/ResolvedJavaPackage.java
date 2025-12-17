@@ -22,19 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.vmaccess;
+package jdk.graal.compiler.vmaccess;
 
-import java.util.Optional;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 /**
- * JVMCI equivalent for {@link ModuleLayer}. Do not compare with {@code ==}, use
- * {@code #equals(Object)} instead.
+ * JVMCI equivalent to {@link Package}. Do not compare with {@code ==}, use {@code #equals(Object)}
+ * instead.
  */
-public interface ResolvedJavaModuleLayer {
+public interface ResolvedJavaPackage extends Annotated {
+    /**
+     * Return the version of this implementation. See {@link Package#getImplementationVersion()}.
+     */
+    String getImplementationVersion();
 
     /**
-     * Returns the module with the given name in this layer, or if not in this layer, the parent
-     * layers. See {@link java.lang.ModuleLayer#findModule(String)}.
+     * Return the name of this package. See {@link Package#getName()}.
      */
-    Optional<ResolvedJavaModule> findModule(String moduleName);
+    String getName();
+
+    /**
+     * Returns the module of this named package. See {@code NamedPackage#module()}.
+     */
+    ResolvedJavaModule module();
 }

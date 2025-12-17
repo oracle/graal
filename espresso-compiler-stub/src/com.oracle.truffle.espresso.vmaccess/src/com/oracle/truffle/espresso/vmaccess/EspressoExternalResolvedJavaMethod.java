@@ -27,11 +27,11 @@ import java.lang.reflect.Type;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
-import com.oracle.graal.vmaccess.InvocationException;
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaMethod;
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoSignature;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType;
 
+import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaConstant;

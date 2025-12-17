@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.vmaccess;
+package jdk.graal.compiler.vmaccess;
 
 import java.lang.module.ModuleDescriptor;
 import java.util.Set;

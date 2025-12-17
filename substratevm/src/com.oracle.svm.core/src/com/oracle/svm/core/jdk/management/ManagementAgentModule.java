@@ -28,11 +28,12 @@ import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
 
-import com.oracle.graal.vmaccess.ResolvedJavaModule;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.HostModuleUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 
 public class ManagementAgentModule {
 

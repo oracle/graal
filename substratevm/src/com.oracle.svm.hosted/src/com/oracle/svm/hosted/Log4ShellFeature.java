@@ -38,9 +38,10 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.vmaccess.ResolvedJavaPackage;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -51,8 +52,8 @@ import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.LogUtils;
 
+import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.collections.EconomicSet;
 
 /**
  * A feature that detects whether a native image may be vulnerable to Log4Shell.

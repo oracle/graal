@@ -30,8 +30,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
-import com.oracle.graal.vmaccess.InvocationException;
-import com.oracle.graal.vmaccess.VMAccess;
 import com.oracle.truffle.espresso.graal.DummyForeignCallsProvider;
 import com.oracle.truffle.espresso.graal.DummyLoweringProvider;
 import com.oracle.truffle.espresso.graal.DummyPlatformConfigurationProvider;
@@ -53,6 +51,8 @@ import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.vmaccess.InvocationException;
+import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;

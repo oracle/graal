@@ -1857,7 +1857,7 @@ suite = {
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
-                    "com.oracle.graal.vmaccess.VMAccess.Builder",
+                    "jdk.graal.compiler.vmaccess.VMAccess.Builder",
                     "jdk.graal.compiler.options.OptionDescriptors",
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
                     "com.oracle.svm.hosted.NativeImageGeneratorRunnerProvider",

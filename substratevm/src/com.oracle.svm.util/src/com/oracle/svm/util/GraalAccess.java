@@ -39,8 +39,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.graal.vmaccess.ResolvedJavaModule;
-
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
 import jdk.graal.compiler.api.runtime.GraalRuntime;
@@ -48,6 +46,7 @@ import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

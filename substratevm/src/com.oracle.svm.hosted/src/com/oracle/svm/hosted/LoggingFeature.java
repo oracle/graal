@@ -30,7 +30,6 @@ import java.util.Optional;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
-import com.oracle.graal.vmaccess.ResolvedJavaModule;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -45,6 +44,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 
 @AutomaticallyRegisteredFeature
 public class LoggingFeature implements InternalFeature {
