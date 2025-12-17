@@ -65,6 +65,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-71402: Added `InteropLibrary#isHostObject` and `InteropLibrary#asHostObject` for accessing the Java host-object representation of a Truffle guest object. Deprecated `Env#isHostObject`, `Env#isHostException`, `Env#isHostFunction`, `Env#isHostSymbol`, `Env#asHostObject`, and `Env#asHostException` in favor of the new InteropLibrary messages.
 * GR-71402: Added `InteropLibrary#hasStaticScope` and `InteropLibrary#getStaticScope` returning the static scope representing static or class-level members associated with the given meta object.
 * GR-44829: Added `TruffleString.CodePointAtIndexUTF32Node` for better interpreter performance of UTF-32 strings.
+* GR-44829: `TruffleString` nodes no longer profile the `expectedEncoding` parameter for interpreter performance reasons. Languages with non-constant string encodings should profile the encoding before passing it to `TruffleString` nodes.
 
 
 ## Version 25.0
