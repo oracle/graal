@@ -41,7 +41,7 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.word.Word;
@@ -209,7 +209,7 @@ public class WebImageJSHeap extends Heap {
     }
 
     @Override
-    public void optionValueChanged(RuntimeOptionKey<?> key) {
+    public void optionValueChanged(NotifyGCRuntimeOptionKey<?> key) {
     }
 
     @Override

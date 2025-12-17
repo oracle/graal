@@ -76,6 +76,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.PlatformThreads;
@@ -701,10 +702,18 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    public void optionValueChanged(RuntimeOptionKey<?> key) {
-        if (!SubstrateUtil.HOSTED) {
-            GCImpl.getPolicy().updateSizeParameters();
+    public void optionValueChanged(NotifyGCRuntimeOptionKey<?> key) {
+        if (SubstrateUtil.HOSTED || isIrrelevantForGCPolicy(key)) {
+            return;
         }
+
+        GCImpl.getPolicy().updateSizeParameters();
+    }
+
+    private static boolean isIrrelevantForGCPolicy(RuntimeOptionKey<?> key) {
+        return key == SubstrateGCOptions.DisableExplicitGC ||
+                        key == SubstrateGCOptions.PrintGC ||
+                        key == SubstrateGCOptions.VerboseGC;
     }
 
     @Override
