@@ -34,6 +34,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Similar to {@link Log} but can be used from {@link Uninterruptible} code. Unlike {@link Log},
@@ -384,10 +385,16 @@ public class DebugLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    protected DebugLog rawBytes(CCharPointer bytes, UnsignedWord length) {
+    @Uninterruptible(reason = "Some implementations are interruptible.", calleeMustBe = false)
+    protected void writeBytes0(CCharPointer bytes, UnsignedWord length) {
         ImageSingletons.lookup(StdErrWriter.class).log(bytes, length);
-        return this;
+    }
+
+    @Override
+    @NeverInline("Logging is always slow-path code")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
+    protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
+        throw VMError.shouldNotReachHere("writeBytes0 should be used instead.");
     }
 
     @Override
