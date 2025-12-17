@@ -140,7 +140,10 @@ public class HostedOptionParser implements HostedOptionProvider {
     private OptionParseResult tryParseHostedOption(String arg) {
         if (arg.startsWith(SubstrateOptionsParser.HOSTED_OPTION_PREFIX)) {
             /* All options can be set via -H:<OptionName>. */
-            OptionParseResult result = SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allOptions, hostedValues, PLUS_MINUS, arg);
+            OptionParseResult result = SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allHostedOptions, hostedValues, PLUS_MINUS, arg);
+            if (result.optionUnrecognized()) {
+                result = SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allRuntimeOptions, runtimeValues, PLUS_MINUS, arg);
+            }
             maybePrintOptions(result, SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allOptions, false);
             return result;
         } else if (arg.startsWith(SubstrateOptionsParser.RUNTIME_OPTION_PREFIX)) {
