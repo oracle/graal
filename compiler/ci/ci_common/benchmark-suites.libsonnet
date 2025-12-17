@@ -98,7 +98,7 @@
     local barista_args_with_separator = if std.length(all_barista_args) > 0 then ["--"] + all_barista_args else [],
     downloads+: {
       "WRK": { "name": "wrk", "version": "a211dd5", platformspecific: true},
-      "WRK2": { "name": "wrk2", "version": "2.1", platformspecific: true},
+      "WRK2": { "name": "wrk2", "version": "2.2", platformspecific: true},
       "BARISTA_BENCHMARKS": { "name": "barista", "version": "0.5.1"}
     },
     packages+: {
