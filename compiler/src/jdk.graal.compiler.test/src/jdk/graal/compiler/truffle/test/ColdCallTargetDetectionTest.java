@@ -161,6 +161,11 @@ public class ColdCallTargetDetectionTest {
                                         return;
                                     }
                                 }
+                                /*
+                                 * The timing of GC threads, and thus test behavior, may vary under
+                                 * machine load. To account for rare nondeterministic conditions, we
+                                 * allow up to MAX_TRIAL_COUNT retries.
+                                 */
                                 if (trialCounter.incrementAndGet() == MAX_TRIAL_COUNT) {
                                     throw new AssertionError("There was no profile reset event");
                                 }
