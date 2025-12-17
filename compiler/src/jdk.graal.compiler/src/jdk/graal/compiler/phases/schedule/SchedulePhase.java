@@ -40,6 +40,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Function;
 
+import jdk.graal.compiler.phases.PhaseSuite;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.word.LocationIdentity;
 
@@ -233,8 +234,27 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
     /**
      * Last schedule to be run in any phase plan in the compiler. After this no further
      * optimizations or transformations must happen that would require a re-scheduling of the graph.
+     *
+     * Optionally, a post-processing phase can be provided via the constructor to perform low-tier
+     * cleanups that rely on a stable schedule. Such a phase must be schedule-preserving and must
+     * not introduce changes that require another scheduling pass. This is typically used to run
+     * local transformations (e.g., {@link SchedulingStrategy#BASIC_BLOCK_LOCAL_SCHEDULING}) as part
+     * of a {@link PhaseSuite} plan.
      */
     public static class FinalSchedulePhase extends BasePhase<LowTierContext> {
+
+        private final BasePhase<LowTierContext> postProcessingPhase;
+
+        /**
+         * Creates a FinalSchedulePhase without any post-processing.
+         */
+        public FinalSchedulePhase() {
+            this(null);
+        }
+
+        public FinalSchedulePhase(final BasePhase<LowTierContext> postProcessingPhase) {
+            this.postProcessingPhase = postProcessingPhase;
+        }
 
         @Override
         public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
@@ -246,7 +266,11 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         @Override
         protected void run(StructuredGraph graph, LowTierContext context) {
             new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS).apply(graph, context);
-
+            // Apply the optional, schedule-preserving post-processing phase. This must not perform
+            // transformations that would invalidate or require recomputing the final schedule.
+            if (postProcessingPhase != null) {
+                postProcessingPhase.apply(graph, context);
+            }
         }
 
         @Override
