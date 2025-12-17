@@ -25,6 +25,7 @@
 
 import os
 import pathlib
+import platform
 import re
 import shutil
 import tempfile
@@ -51,6 +52,7 @@ import mx_subst
 import mx_util
 import mx_substratevm_benchmark  # pylint: disable=unused-import
 import mx_substratevm_namespace  # pylint: disable=unused-import
+from mx import is_linux
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
 from mx_sdk_vm_impl import svm_experimental_options
@@ -432,6 +434,8 @@ def svm_gate_body(args, tasks):
         if t:
             if mx.is_windows():
                 mx.warn('layereddebuginfotest does not work on Windows')
+            elif mx.is_darwin() and platform.machine() == "arm64":
+                mx.warn('layered images do not currently work on ARM macOS')
             # Running debuginfotest with layers does not work for static builds
             elif '--static' not in args.extra_image_builder_arguments:
                 with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
@@ -2700,8 +2704,11 @@ def _get_libcontainer_files(skip_svm_specific=False):
 def check_libcontainer_annotations(args):
     """Verifies that files from libcontainer that are copied from hotspot have a @BasedOnJDKFile annotation in ContainerLibrary."""
 
-    # collect paths to check
+    if not is_linux():
+        mx.warn("Skipping check_libcontainer_annotations because this is a Linux specific task.")
+        return
 
+    # collect paths to check
     libcontainer_dir, paths = _get_libcontainer_files()
 
     java_project = mx.project("com.oracle.svm.core")
@@ -2765,6 +2772,9 @@ LIBCONTAINER_NAMESPACE = "svm_libcontainer_namespace"
 
 @mx.command(suite, LIBCONTAINER_NAMESPACE)
 def svm_libcontainer_namespace(args):
+    if not is_linux():
+        mx.warn("Skipping svm_libcontainer_namespace as it is a Linux specific task.")
+        return
     libcontainer_project = mx.project("com.oracle.svm.native.libcontainer")
     for src_dir in  libcontainer_project.source_dirs():
         mx.command_function("svm_namespace")(args + ["--directory", src_dir , "--namespace", "svm_container"])
