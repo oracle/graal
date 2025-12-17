@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.results;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicSet;
 
@@ -152,7 +153,13 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
             super.tryImproveStamp(node, tool);
         }
 
-        if (strengthenGraphs.simplifyDelegate(n, tool)) {
+        Predicate<Node> isUnreachable = (node) -> {
+            if (getNodeFlow(node) instanceof InvokeTypeFlow invokeFlow) {
+                return !invokeFlow.isFlowEnabled() || invokeFlow.getAllCallees().isEmpty();
+            }
+            return false;
+        };
+        if (strengthenGraphs.simplifyDelegate(n, tool, isUnreachable)) {
             // Handled in the delegate simplification.
             return;
         }
