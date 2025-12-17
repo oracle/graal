@@ -920,7 +920,7 @@ public final class InterpreterToVM {
             // wrapping of exceptions is done in leaveInterpreter
             retObj = InterpreterStubSection.leaveInterpreter(calleeFtnPtr, targetMethod, calleeArgs);
         } else {
-            retObj = InterpreterStubSection.potentialCallJITMethod(targetMethod, calleeArgs, true);
+            retObj = InterpreterStubSection.call(targetMethod, calleeArgs, true);
         }
         return retObj;
     }

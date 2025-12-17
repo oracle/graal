@@ -77,6 +77,7 @@ import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.word.Word;
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.ValueKindFactory;
 import jdk.vm.ci.meta.JavaKind;
@@ -409,7 +410,7 @@ public abstract class InterpreterStubSection {
         VMError.guarantee(handles.getHandleCount() == handleCount);
         VMError.guarantee(handleFrameId == handles.popFrame());
 
-        return potentialCallJITMethod(interpreterMethod, args, false);
+        return call(interpreterMethod, args, false);
     }
 
     @Uninterruptible(reason = "Raw object pointer.")
@@ -564,29 +565,48 @@ public abstract class InterpreterStubSection {
         }
     }
 
-    public static Object potentialCallJITMethod(InterpreterResolvedJavaMethod interpreterMethod, Object[] args, boolean wrapInterpreterExceptions) {
+    /**
+     * Try to query {@link InstalledCode} for the given {@link InterpreterResolvedJavaMethod}. In
+     * order to guarantee that no safepoint happens during this operation and the execution of the
+     * first instruction inside {@code installedCode} this method is marked as
+     * {@code Uninterruptible}. Callers must ensure no safepoint happens between the return and the
+     * call to the installed code.
+     */
+    @Uninterruptible(reason = "InstalledCode can be deoptimized concurrently to accessing and and checking its validity.", calleeMustBe = false)
+    private static InstalledCode getInstalledCode(InterpreterResolvedJavaMethod interpreterMethod) {
         RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
-        if (rMethod != null && rMethod.installedCode != null && rMethod.installedCode.isValid()) {
-            /*
-             * A JIT compiled version is available, execute this one instead. This could be more
-             * optimized, see GR-71160.
-             */
-            CFunctionPointer entryPoint = Word.pointer(rMethod.installedCode.getEntryPoint());
+        if (rMethod != null) {
+            InstalledCode ic = rMethod.installedCode;
+            if (ic != null && ic.isValid()) {
+                return ic;
+            }
+        }
+        return null;
+    }
+
+    public static Object call(InterpreterResolvedJavaMethod interpreterMethod, Object[] args, boolean wrapInterpreterExceptions) {
+        /*
+         * Determine if a JIT compiled version is available and if so execute this one instead. This
+         * could be more optimized, see GR-71160.
+         */
+        InstalledCode ic = getInstalledCode(interpreterMethod);
+        if (ic != null) {
+            CFunctionPointer entryPoint = Word.pointer(ic.getEntryPoint());
             try {
+                /*
+                 * TODO GR-71501 - deoptimization support
+                 * 
+                 * While getInstalledCode is Uninterruptible - leaveInterpreter is not, the callees
+                 * of leaveInterpreter are, but in between a safepoint can happen and code could be
+                 * deoptimized
+                 */
                 return leaveInterpreter(entryPoint, interpreterMethod, args);
             } catch (Throwable t) {
-                /*
-                 * This can be called from contexts that do not require exception wrapping. Make
-                 * sure to unwrap. In order to unwrap and to avoid exception handlers in the caller
-                 * we exploit type erasure to bypass the checked-exception requirements of javac.
-                 */
                 Throwable rethrow = t;
-                if (!wrapInterpreterExceptions) {
-                    if (t instanceof SemanticJavaException sem) {
-                        rethrow = sem.getCause();
-                    }
+                if (!wrapInterpreterExceptions && t instanceof SemanticJavaException sem) {
+                    rethrow = sem.getCause();
                 }
-                throw rethrow(rethrow);
+                throw uncheckedThrow(rethrow);
             }
         } else {
             try {
@@ -602,17 +622,8 @@ public abstract class InterpreterStubSection {
         }
     }
 
-    /**
-     * Throws the given {@link Throwable} without requiring the caller to declare it in a
-     * {@code throws} clause. This exploits generic type erasure to bypass the Java compiler's
-     * checked-exception checks while preserving the original exception at runtime.
-     * <p>
-     * Misuse can make control flow and error handling harder to follow, surprise maintainers, and
-     * hinder static analysis. Use sparingly, document the rationale at the call site, and consider
-     * alternatives first.
-     */
     @SuppressWarnings("unchecked")
-    private static <T extends Throwable> T rethrow(Throwable t) throws T {
+    private static <T extends Throwable> T uncheckedThrow(Throwable t) throws T {
         throw (T) t;
     }
 }
