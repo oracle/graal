@@ -33,10 +33,10 @@ import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.spi.LIRLowerable;
-import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode.Address;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2)
 public final class PrefetchAllocateNode extends FixedWithNextNode implements LIRLowerable {

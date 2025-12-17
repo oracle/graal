@@ -29,7 +29,6 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapParameters;
@@ -95,6 +94,7 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
     }
 
     @Override
+<<<<<<< HEAD
     public SubstrateForeignCallDescriptor getNewDynamicHub() {
         return NEW_DYNAMICHUB;
     }
@@ -105,6 +105,8 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
     }
 
     @Override
+=======
+>>>>>>> 4873ef60555 (Allocation and write barrier refactorings.)
     public boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray) {
         return !isArray || arrayAllocatedInAlignedChunk(size);
     }

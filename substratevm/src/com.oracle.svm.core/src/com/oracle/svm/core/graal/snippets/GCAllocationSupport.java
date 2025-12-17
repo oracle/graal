@@ -41,10 +41,13 @@ public interface GCAllocationSupport {
 
     ForeignCallDescriptor getNewPodInstanceStub();
 
+<<<<<<< HEAD
     ForeignCallDescriptor getNewDynamicHub();
 
     boolean useTLAB();
 
+=======
+>>>>>>> 4873ef60555 (Allocation and write barrier refactorings.)
     boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray);
 
     Word getTLABInfo();

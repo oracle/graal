@@ -64,6 +64,7 @@ public class WebImageNopAllocationSupport implements GCAllocationSupport {
     }
 
     @Override
+<<<<<<< HEAD
     public ForeignCallDescriptor getNewDynamicHub() {
         throw GraalError.unimplementedOverride();
     }
@@ -74,6 +75,8 @@ public class WebImageNopAllocationSupport implements GCAllocationSupport {
     }
 
     @Override
+=======
+>>>>>>> 4873ef60555 (Allocation and write barrier refactorings.)
     public boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray) {
         throw GraalError.unimplementedOverride();
     }

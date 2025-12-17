@@ -48,7 +48,7 @@ import jdk.graal.compiler.word.Word;
 public abstract class AllocationSnippets implements Snippets {
     protected Object allocateInstanceImpl(Word hub,
                     UnsignedWord size,
-                    boolean forceSlowPath,
+                    boolean useTLAB,
                     FillContent fillContents,
                     boolean emitMemoryBarrier,
                     boolean constantSize,
@@ -59,7 +59,7 @@ public abstract class AllocationSnippets implements Snippets {
         Word top = readTlabTop(tlabInfo);
         Word end = readTlabEnd(tlabInfo);
         Word newTop = top.add(size);
-        if (!forceSlowPath && useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(size, false)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
+        if (useTLAB && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(size, false)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(tlabInfo, newTop);
             emitPrefetchAllocate(newTop, false);
             result = formatObject(hub, size, top, fillContents, emitMemoryBarrier, constantSize, profilingData.snippetCounters);
@@ -73,7 +73,7 @@ public abstract class AllocationSnippets implements Snippets {
 
     public Object allocateArrayImpl(Word hub,
                     int length,
-                    boolean forceSlowPath,
+                    boolean useTLAB,
                     int arrayBaseOffset,
                     int log2ElementSize,
                     FillContent fillContents,
@@ -95,7 +95,7 @@ public abstract class AllocationSnippets implements Snippets {
         Word newTop = top.add(allocationSize);
 
         Object result;
-        if (!forceSlowPath && useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
+        if (useTLAB && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
             boolean useOptimizedFilling = !withException && supportsOptimizedFilling;
@@ -343,8 +343,6 @@ public abstract class AllocationSnippets implements Snippets {
     protected abstract int getPrefetchStepSize();
 
     protected abstract int getPrefetchDistance();
-
-    public abstract boolean useTLAB();
 
     protected abstract boolean shouldAllocateInTLAB(UnsignedWord allocationSize, boolean isArray);
 
