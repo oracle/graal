@@ -38,6 +38,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.Heap;
@@ -45,6 +46,7 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.TypeIDs;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.memory.NullableNativeMemory;
@@ -57,6 +59,7 @@ import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.coder.ByteStream;
 import com.oracle.svm.core.util.coder.ByteStreamAccess;
 import com.oracle.svm.core.util.coder.NativeCoder;
@@ -121,6 +124,20 @@ public class HeapDumpMetadata {
 
     public static HeapDumpMetadata singleton() {
         return ImageSingletons.lookup(HeapDumpMetadata.class);
+    }
+
+    /**
+     * When using layered images we must ensure that metadata has been encoded for all layers.
+     */
+    public static boolean isLayeredMetadataAvailable() {
+        SubstrateUtil.guaranteeRuntimeOnly();
+        VMError.guarantee(ImageLayerBuildingSupport.buildingImageLayer());
+        for (var encodedData : HeapDumpEncodedData.layeredSingletons()) {
+            if (encodedData.data == null) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public boolean initialize() {

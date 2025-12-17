@@ -115,12 +115,11 @@ class GenScavengeGCFeature implements InternalFeature {
             ImageSingletons.add(TlabOptionCache.class, tlabOptionCache);
 
             ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
+            if (ImageSingletons.contains(PerfManager.class)) {
+                ImageSingletons.lookup(PerfManager.class).register(createPerfData());
+            }
         }
         TlabOptionCache.validateHostedOptionValues();
-
-        if (ImageSingletons.contains(PerfManager.class)) {
-            ImageSingletons.lookup(PerfManager.class).register(createPerfData());
-        }
 
         if (SubstrateGCOptions.VerifyHeap.getValue()) {
             ImageSingletons.add(HeapVerifier.class, new HeapVerifier());

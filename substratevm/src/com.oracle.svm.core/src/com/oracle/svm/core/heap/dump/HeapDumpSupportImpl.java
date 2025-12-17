@@ -43,6 +43,7 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
@@ -138,7 +139,7 @@ public class HeapDumpSupportImpl extends HeapDumping {
 
     @Override
     public void dumpHeap(String filename, boolean gcBefore, boolean overwrite) throws IOException {
-        if (!RawFileOperationSupport.isPresent()) {
+        if (!RawFileOperationSupport.isPresent() || (ImageLayerBuildingSupport.buildingImageLayer() && !HeapDumpMetadata.isLayeredMetadataAvailable())) {
             throw new UnsupportedOperationException(VMInspectionOptions.getHeapDumpNotSupportedMessage());
         }
 
