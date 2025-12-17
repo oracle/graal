@@ -14,6 +14,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-35913: `Value#asHostObject()` throws `UnsupportedOperationException` if object is allocated in a foreign heap.
 * GR-71402: Added `Value#hasStaticScope` and `Value#getStaticScope` returning the static scope representing static or class-level members associated with the meta object.
 * GR-71643: Added `Context.Builder#exceptionHandler(Consumer<PolyglotException>)` to customize how polyglot exceptions are handled before they are propagated to the host.
+* GR-69929: Reset a `CallTarget`’s execution profile when its associated nmethod is invalidated by HotSpot due to code cache “cold” flushing heuristics.
 
 ## Version 25.0.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.

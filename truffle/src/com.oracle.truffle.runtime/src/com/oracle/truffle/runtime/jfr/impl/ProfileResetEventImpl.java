@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,10 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.runtime.jfr;
+package com.oracle.truffle.runtime.jfr.impl;
 
-public interface DeoptimizationEvent extends RootFunctionEvent {
-    void setInvalidated(boolean invalidated);
+import com.oracle.truffle.runtime.jfr.ProfileResetEvent;
 
-    void setReason(String reason);
+import jdk.jfr.Category;
+import jdk.jfr.Description;
+import jdk.jfr.Label;
+import jdk.jfr.Name;
+import jdk.jfr.StackTrace;
+
+@Name("jdk.graal.compiler.truffle.ProfileReset")
+@Category("Truffle Compiler")
+@Label("Profile Reset")
+@Description("Truffle Call Target Profile Reset")
+@StackTrace(false)
+class ProfileResetEventImpl extends RootFunctionEventImpl implements ProfileResetEvent {
 }

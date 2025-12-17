@@ -51,6 +51,7 @@ import com.oracle.truffle.runtime.jfr.DeoptimizationEvent;
 import com.oracle.truffle.runtime.jfr.Event;
 import com.oracle.truffle.runtime.jfr.EventFactory;
 import com.oracle.truffle.runtime.jfr.InvalidationEvent;
+import com.oracle.truffle.runtime.jfr.ProfileResetEvent;
 
 import jdk.jfr.FlightRecorder;
 import jdk.jfr.FlightRecorderListener;
@@ -98,6 +99,11 @@ final class EventFactoryImpl implements EventFactory {
     @Override
     public DeoptimizationEvent createDeoptimizationEvent() {
         return new DeoptimizationEventImpl();
+    }
+
+    @Override
+    public ProfileResetEvent createProfileResetEvent() {
+        return new ProfileResetEventImpl();
     }
 
     @Override
