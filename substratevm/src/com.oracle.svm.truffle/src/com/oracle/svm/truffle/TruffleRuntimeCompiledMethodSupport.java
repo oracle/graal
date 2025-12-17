@@ -46,10 +46,10 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
-import jdk.graal.compiler.truffle.phases.PrePartialEvaluationSuite;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Truffle specific runtime compilation feature enriching runtime-compilation with truffle specific
@@ -72,12 +72,28 @@ public final class TruffleRuntimeCompiledMethodSupport extends RuntimeCompiledMe
     }
 
     @Override
-    public void applyParsingHookPhases(DebugContext debug, StructuredGraph graph, Function<ResolvedJavaMethod, StructuredGraph> buildGraph, CanonicalizerPhase canonicalizer, Providers providers) {
+    public void applyParsingHookPhases(DebugContext debug, StructuredGraph graph, Function<ResolvedJavaMethod, StructuredGraph> graphBuilder,
+                    Function<ResolvedJavaMethod, ResolvedJavaMethod> targetResolver, CanonicalizerPhase canonicalizer, Providers providers) {
         if (!ImageSingletons.contains(KnownTruffleTypes.class)) {
             return;
         }
+        /*
+         * Keep this in sync with CachingPEGraphDecoder#createGraph.
+         */
         KnownTruffleTypes truffleTypes = ImageSingletons.lookup(KnownTruffleTypes.class);
-        new PrePartialEvaluationSuite(debug.getOptions(), truffleTypes, providers, canonicalizer, buildGraph, OriginalClassProvider::getOriginalType).apply(graph, providers);
+        /*
+         * The annotation APIs in SubstrateVM unfortunately operate on the unwrapped Java type, so
+         * we need to unwrap it for the early inline type to match.
+         */
+        ResolvedJavaType earlyInline = OriginalClassProvider.getOriginalType(truffleTypes.CompilerDirectives_EarlyInline);
+        new SubstrateEarlyInliningPhase(debug.getOptions(), canonicalizer, providers, graphBuilder, targetResolver, earlyInline).apply(graph, providers);
+
+        // GR-71985 Runtime compiled graphs do not yet support build time PEA
+        /*-
+        ResolvedJavaType earlyEscapeAnalysisType = OriginalClassProvider.getOriginalType(truffleTypes.CompilerDirectives_EarlyEscapeAnalysis);
+        new TruffleEarlyEscapeAnalysisPhase(canonicalizer, debug.getOptions(), earlyEscapeAnalysisType).apply(graph, providers);
+         */
+
     }
 
     @SuppressWarnings("javadoc")

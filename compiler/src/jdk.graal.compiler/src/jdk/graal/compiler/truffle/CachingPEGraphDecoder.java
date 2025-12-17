@@ -25,7 +25,6 @@
 package jdk.graal.compiler.truffle;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -50,12 +49,14 @@ import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
-import jdk.graal.compiler.truffle.phases.PrePartialEvaluationSuite;
+import jdk.graal.compiler.truffle.phases.TruffleEarlyEscapeAnalysisPhase;
+import jdk.graal.compiler.truffle.phases.TruffleEarlyInliningPhase;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -128,8 +129,13 @@ public final class CachingPEGraphDecoder extends PEGraphDecoder {
 
         try (DebugContext.Scope scope = debug.scope("createGraph", graphToEncode)) {
             Providers p = this.graphCacheProviders;
+            OptionValues optionValues = graphToEncode.getOptions();
 
-            new PrePartialEvaluationSuite(graphToEncode.getOptions(), truffleTypes, p, canonicalizer, (m) -> buildGraph(m, canonicalizer), Function.identity()).apply(graphToEncode, p);
+            /*
+             * Keep this in sync with TruffleRuntimeCompiledMethodSupport#applyParsingHookPhases
+             */
+            new TruffleEarlyInliningPhase(optionValues, canonicalizer, p, (m) -> buildGraph(m, canonicalizer), truffleTypes.CompilerDirectives_EarlyInline).apply(graphToEncode, p);
+            new TruffleEarlyEscapeAnalysisPhase(canonicalizer, optionValues, truffleTypes.CompilerDirectives_EarlyEscapeAnalysis).apply(graphToEncode, p);
 
             new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graphToEncode, p);
             if (GraalOptions.EarlyGVN.getValue(graphToEncode.getOptions())) {

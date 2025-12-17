@@ -25,14 +25,12 @@
 package jdk.graal.compiler.truffle.phases;
 
 import java.util.Map;
-import java.util.function.Function;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
-import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -41,12 +39,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public final class TruffleEarlyEscapeAnalysisPhase extends PartialEscapePhase {
 
-    private final ResolvedJavaType unwrappedAnnotationType;
+    private final ResolvedJavaType earlyEscapeAnalysisType;
 
-    public TruffleEarlyEscapeAnalysisPhase(CanonicalizerPhase canonicalizer, OptionValues options, KnownTruffleTypes truffleTypes,
-                    Function<ResolvedJavaType, ResolvedJavaType> unwrapType) {
+    public TruffleEarlyEscapeAnalysisPhase(CanonicalizerPhase canonicalizer, OptionValues options,
+                    ResolvedJavaType earlyEscapeAnalysisType) {
         super(false, canonicalizer, options);
-        this.unwrappedAnnotationType = unwrapType.apply(truffleTypes.CompilerDirectives_EarlyEscapeAnalysis);
+        this.earlyEscapeAnalysisType = earlyEscapeAnalysisType;
     }
 
     @Override
@@ -57,7 +55,7 @@ public final class TruffleEarlyEscapeAnalysisPhase extends PartialEscapePhase {
     @Override
     protected boolean matchGraph(StructuredGraph graph) {
         Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues = AnnotationValueSupport.getDeclaredAnnotationValues(graph.method());
-        if (!declaredAnnotationValues.containsKey(unwrappedAnnotationType)) {
+        if (!declaredAnnotationValues.containsKey(earlyEscapeAnalysisType)) {
             return false;
         }
         // we do not respect the PE only option for Truffle because PE depends on escape analysis
