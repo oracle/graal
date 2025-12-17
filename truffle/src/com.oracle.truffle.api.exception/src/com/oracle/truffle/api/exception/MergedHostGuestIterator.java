@@ -40,13 +40,9 @@
  */
 package com.oracle.truffle.api.exception;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
-import com.oracle.truffle.api.interop.HeapIsolationException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import java.io.PrintStream;
@@ -285,18 +281,7 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
 
     static Object[] mergeHostGuestFrames(Throwable throwable, List<TruffleStackTraceElement> guestStack, boolean inHost, Object polyglotEngine, boolean includeHostStack) {
         StackTraceElement[] hostStack = null;
-        InteropLibrary exceptions = InteropLibrary.getUncached(throwable);
-        if (exceptions.isHostObject(throwable) && exceptions.isException(throwable)) {
-            Throwable original = null;
-            try {
-                original = (Throwable) exceptions.asHostObject(throwable);
-            } catch (HeapIsolationException e) {
-                // continue with original == null
-            } catch (UnsupportedMessageException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
-            hostStack = original != null ? original.getStackTrace() : throwable.getStackTrace();
-        } else if (throwable instanceof AbstractTruffleException) {
+        if (throwable instanceof AbstractTruffleException) {
             Throwable lazyStackTrace = ((AbstractTruffleException) throwable).getLazyStackTrace();
             if (lazyStackTrace != null) {
                 hostStack = ExceptionAccessor.LANGUAGE.getInternalStackTraceElements(lazyStackTrace);

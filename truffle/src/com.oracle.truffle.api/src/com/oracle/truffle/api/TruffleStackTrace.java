@@ -83,9 +83,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 @SuppressWarnings("serial")
 public final class TruffleStackTrace extends Exception {
 
-    private static final TruffleStackTrace EMPTY = new TruffleStackTrace(Collections.emptyList(), 0);
+    static final TruffleStackTrace EMPTY = new TruffleStackTrace(Collections.emptyList(), 0);
 
-    private List<TruffleStackTraceElement> frames;
+    private final List<TruffleStackTraceElement> frames;
     private final int lazyFrames;
 
     // contains host exception frames
