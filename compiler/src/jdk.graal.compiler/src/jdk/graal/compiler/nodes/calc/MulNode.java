@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.nodes.calc;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_4;
 
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
@@ -46,7 +46,10 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo(shortName = "*", cycles = CYCLES_2)
+/**
+ * Multiplication node.
+ */
+@NodeInfo(shortName = "*", cycles = CYCLES_4, cyclesRationale = "The node cycle estimate is taken from Agner Fog's instruction tables (https://www.agner.org/optimize/instruction_tables.pdf).")
 public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArithmeticNode, Canonicalizable.BinaryCommutative<ValueNode> {
 
     public static final NodeClass<MulNode> TYPE = NodeClass.create(MulNode.class);

@@ -32,10 +32,10 @@ import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Optional;
 import java.util.ResourceBundle;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.spi.LocaleServiceProvider;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -59,7 +59,7 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
 
     final Map<BundleCacheKey, ResourceBundle> resourceBundles = new HashMap<>();
 
-    public OptimizedLocalizationSupport(Set<Locale> locales, Charset defaultCharset) {
+    public OptimizedLocalizationSupport(EconomicSet<Locale> locales, Charset defaultCharset) {
         super(locales, defaultCharset);
     }
 

@@ -49,11 +49,13 @@ class EmptySet {
     static final EconomicSet<Object> EMPTY_SET = new EconomicSet<>() {
         @Override
         public boolean add(Object element) {
+            EconomicMapImpl.checkNonNull(element);
             throw new IllegalArgumentException("Cannot modify the always-empty set");
         }
 
         @Override
         public void remove(Object element) {
+            EconomicMapImpl.checkNonNull(element);
             throw new IllegalArgumentException("Cannot modify the always-empty set");
         }
 
@@ -64,6 +66,7 @@ class EmptySet {
 
         @Override
         public boolean contains(Object element) {
+            EconomicMapImpl.checkNonNull(element);
             return false;
         }
 

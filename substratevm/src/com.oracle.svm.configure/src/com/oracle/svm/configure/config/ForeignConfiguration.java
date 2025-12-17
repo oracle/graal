@@ -155,7 +155,7 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
     protected void intersect(ForeignConfiguration other) {
         downcallStubs.retainAll(other.downcallStubs);
         upcallStubs.retainAll(other.upcallStubs);
-        Set<DirectStubDesc> tmp = new HashSet<>();
+        Set<DirectStubDesc> tmp = new HashSet<>(); // noEconomicSet(concurrent,temp)
         /*-
          * Example: directUpcallStubs={
          *     DirectStubDesc(class="A", methodName="foo", desc=null, linkerOptions={}),

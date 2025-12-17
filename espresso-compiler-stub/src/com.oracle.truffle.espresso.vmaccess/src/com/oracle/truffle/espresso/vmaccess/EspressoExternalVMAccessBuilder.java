@@ -32,8 +32,8 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
-import com.oracle.graal.vmaccess.ModuleSupport;
-import com.oracle.graal.vmaccess.VMAccess;
+import jdk.graal.compiler.vmaccess.ModuleSupport;
+import jdk.graal.compiler.vmaccess.VMAccess;
 
 public final class EspressoExternalVMAccessBuilder implements VMAccess.Builder {
     private List<String> classpath;

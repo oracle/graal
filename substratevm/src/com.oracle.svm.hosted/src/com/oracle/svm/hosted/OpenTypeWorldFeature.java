@@ -134,7 +134,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
             return Set.of();
         }
 
-        var resultSet = new HashSet<AnalysisMethod>();
+        var resultSet = new HashSet<AnalysisMethod>(); // noEconomicSet(streaming)
         for (ResolvedJavaMethod m : aType.getWrapped().getDeclaredMethods(false)) {
             assert !m.isConstructor() : Assertions.errorMessage("Unexpected constructor", m);
             if (m.isStatic()) {
@@ -236,7 +236,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
             return result;
         }
 
-        Set<HostedType> allInterfaceSet = new HashSet<>();
+        Set<HostedType> allInterfaceSet = new HashSet<>(); // noEconomicSet(temp)
 
         if (type.isInterface()) {
             allInterfaceSet.add(type);
@@ -291,7 +291,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
             for (HostedType type : types) {
-                if (type.getWrapped().isInBaseLayer()) {
+                if (type.getWrapped().isInSharedLayer()) {
                     var priorInfo = getTypecheckInfo(loader, type);
                     if (!priorInfo.installed()) {
                         // no need to validate this hub, as it was not installed
@@ -317,7 +317,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
     }
 
     static TypeCheckInfo getTypecheckInfo(SVMImageLayerLoader loader, HostedType hType) {
-        if (hType.getWrapped().isInBaseLayer()) {
+        if (hType.getWrapped().isInSharedLayer()) {
             var hubInfo = loader.getDynamicHubInfo(hType.getWrapped());
             var valuesReader = hubInfo.getTypecheckSlotValues();
             int[] typecheckSlots = new int[valuesReader.size()];
@@ -333,7 +333,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
     record TypeCheckInfo(boolean installed, int typeID, int interfaceID, int numClassTypes, int numInterfaceTypes, int[] typecheckSlots) {
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayerTypeCheckInfo.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
     private static final class LayerTypeCheckInfo {
         final int maxTypeID;
         final int maxInterfaceID;
@@ -354,32 +354,32 @@ public class OpenTypeWorldFeature implements InternalFeature {
 
             return new TypeCheckBuilder.StartingTypeIDs(maxTypeID, maxInterfaceID);
         }
-    }
 
-    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
-        @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<>() {
-                @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
-                    writer.writeInt("maxTypeID", DynamicHubSupport.currentLayer().getMaxTypeId());
-                    writer.writeInt("maxInterfaceID", DynamicHubSupport.currentLayer().getMaxInterfaceId());
+        static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+            @Override
+            public SingletonTrait getLayeredCallbacksTrait() {
+                return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<>() {
+                    @Override
+                    public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+                        writer.writeInt("maxTypeID", DynamicHubSupport.currentLayer().getMaxTypeId());
+                        writer.writeInt("maxInterfaceID", DynamicHubSupport.currentLayer().getMaxInterfaceId());
 
-                    return LayeredPersistFlags.CREATE;
-                }
+                        return LayeredPersistFlags.CREATE;
+                    }
 
-                @Override
-                public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
-                    return SingletonInstantiator.class;
-                }
-            });
+                    @Override
+                    public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
+                        return SingletonInstantiator.class;
+                    }
+                });
+            }
         }
-    }
 
-    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayerTypeCheckInfo> {
-        @Override
-        public LayerTypeCheckInfo createFromLoader(ImageSingletonLoader loader) {
-            return new LayerTypeCheckInfo(loader.readInt("maxTypeID"), loader.readInt("maxInterfaceID"));
+        static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayerTypeCheckInfo> {
+            @Override
+            public LayerTypeCheckInfo createFromLoader(ImageSingletonLoader loader) {
+                return new LayerTypeCheckInfo(loader.readInt("maxTypeID"), loader.readInt("maxInterfaceID"));
+            }
         }
     }
 }

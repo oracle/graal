@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.word.WordBase;
@@ -220,7 +221,7 @@ public class AnalysisUniverse implements Universe {
         AnalysisType result = optionalLookup(type);
         if (result == null) {
             result = createType(type);
-            if (hostVM.buildingExtensionLayer() && result.isInBaseLayer()) {
+            if (hostVM.buildingExtensionLayer() && result.isInSharedLayer()) {
                 imageLayerLoader.initializeBaseLayerType(result);
             }
         }
@@ -387,14 +388,14 @@ public class AnalysisUniverse implements Universe {
         }
         AnalysisField newValue = analysisFactory.createField(this, field);
         AnalysisField result = fields.computeIfAbsent(field, f -> {
-            if (newValue.isInBaseLayer()) {
+            if (newValue.isInSharedLayer()) {
                 getImageLayerLoader().addBaseLayerField(newValue);
             }
             return newValue;
         });
 
         if (result.equals(newValue)) {
-            if (newValue.isInBaseLayer()) {
+            if (newValue.isInSharedLayer()) {
                 getImageLayerLoader().initializeBaseLayerField(newValue);
             }
         }
@@ -441,7 +442,7 @@ public class AnalysisUniverse implements Universe {
         }
         AnalysisMethod newValue = analysisFactory.createMethod(this, method);
         AnalysisMethod result = methods.computeIfAbsent(method, m -> {
-            if (newValue.isInBaseLayer()) {
+            if (newValue.isInSharedLayer()) {
                 getImageLayerLoader().addBaseLayerMethod(newValue);
             }
             return newValue;
@@ -781,8 +782,8 @@ public class AnalysisUniverse implements Universe {
      * Since the sub-types are updated continuously as the universe is expanded this method may
      * return different results on each call, until the analysis universe reaches a stable state.
      */
-    public static Set<AnalysisType> reachableSubtypes(AnalysisType baseType) {
-        Set<AnalysisType> result = baseType.getAllSubtypes();
+    public static EconomicSet<AnalysisType> reachableSubtypes(AnalysisType baseType) {
+        EconomicSet<AnalysisType> result = baseType.getAllSubtypes();
         result.removeIf(t -> !t.isReachable());
         return result;
     }

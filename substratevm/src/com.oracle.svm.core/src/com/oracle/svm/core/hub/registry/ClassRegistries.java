@@ -222,7 +222,7 @@ public final class ClassRegistries implements ParsingContext {
             throw new ClassNotFoundException(name);
         }
         if (arrayDimensions > 0) {
-            Class<?> result = getArrayClass(name, elementalResult, arrayDimensions);
+            Class<?> result = getArrayClass(elementalResult, arrayDimensions);
             if (result == null && loader != null) {
                 throw new ClassNotFoundException(name);
             }
@@ -263,22 +263,17 @@ public final class ClassRegistries implements ParsingContext {
         return getRegistry(loader).loadClass(type);
     }
 
-    private static Class<?> getArrayClass(String name, Class<?> elementalResult, int arrayDimensions) {
+    private static Class<?> getArrayClass(Class<?> elementalResult, int arrayDimensions) {
+        assert elementalResult != void.class;
         DynamicHub hub = SubstrateUtil.cast(elementalResult, DynamicHub.class);
         int remainingDims = arrayDimensions;
         while (remainingDims > 0) {
-            if (hub.getArrayHub() == null) {
-                if (RuntimeClassLoading.isSupported()) {
-                    RuntimeClassLoading.getOrCreateArrayHub(hub);
-                } else {
-                    if (throwMissingRegistrationErrors()) {
-                        MissingReflectionRegistrationUtils.reportClassAccess(name);
-                    }
-                    return null;
-                }
+            DynamicHub arrayHub = hub.arrayType();
+            if (arrayHub == null) {
+                return null;
             }
             remainingDims--;
-            hub = hub.getArrayHub();
+            hub = arrayHub;
         }
         return SubstrateUtil.cast(hub, Class.class);
     }
@@ -286,7 +281,7 @@ public final class ClassRegistries implements ParsingContext {
     public static Class<?> defineClass(ClassLoader loader, String name, byte[] b, int off, int len, ClassDefinitionInfo info) {
         // name is a "binary name": `foo.Bar$1`
         assert RuntimeClassLoading.isSupported();
-        if (shouldFollowReflectionConfiguration() && throwMissingRegistrationErrors() && !ClassForNameSupport.isRegisteredClass(name)) {
+        if (throwMissingRegistrationErrors() && shouldFollowReflectionConfiguration() && !ClassForNameSupport.isRegisteredClass(name)) {
             MissingReflectionRegistrationUtils.reportClassAccess(name);
             // The defineClass path usually can't throw ClassNotFoundException
             throw sneakyThrow(new ClassNotFoundException(name));

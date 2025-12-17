@@ -24,26 +24,21 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-
-import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Implements the field value transformation semantics of {@link Kind#FromAlias}.
  */
-public record FromAliasFieldValueTransformer(ResolvedJavaField aliasField) implements FieldValueTransformer {
+public record FromAliasFieldValueTransformer(ResolvedJavaField aliasField) implements JVMCIFieldValueTransformer {
 
     @Override
-    public Object transform(Object receiver, Object originalValue) {
+    public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
         aliasField.getDeclaringClass().initialize();
-        var constant = GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(aliasField, null);
-        if (constant.getJavaKind().isPrimitive()) {
-            return constant.asBoxedPrimitive();
-        } else {
-            return GraalAccess.getOriginalSnippetReflection().asObject(Object.class, constant);
-        }
+        return GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(aliasField, null);
     }
 }

@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter.ristretto;
 
 import java.io.PrintStream;
+import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -47,6 +48,7 @@ import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPhase;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
+import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileProvider;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationWatchDog;
@@ -54,6 +56,7 @@ import jdk.graal.compiler.core.CompilationWrapper;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
@@ -61,17 +64,18 @@ import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.Phase;
+import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
+import jdk.graal.compiler.phases.common.LowTierLoweringPhase;
+import jdk.graal.compiler.phases.common.MidTierLoweringPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.DefaultProfilingInfo;
-import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.meta.TriState;
 
 public class RistrettoUtils {
 
@@ -137,6 +141,24 @@ public class RistrettoUtils {
         return doCompile(debug, RuntimeCompilationSupport.getRuntimeConfig(), RuntimeCompilationSupport.getLIRSuites(), method);
     }
 
+    public static StructuredGraph parseOnly(SubstrateMethod method) {
+        if (method instanceof RistrettoMethod rMethod) {
+            final RuntimeConfiguration runtimeConfig = RuntimeCompilationSupport.getRuntimeConfig();
+            final DebugContext debug = new DebugContext.Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(runtimeConfig.getProviders().getSnippetReflection())).build();
+            final OptionValues options = debug.getOptions();
+            final SpeculationLog speculationLog = new SubstrateSpeculationLog();
+            final ProfileProvider profileProvider = new RistrettoProfileProvider(rMethod);
+            final StructuredGraph.AllowAssumptions allowAssumptions = StructuredGraph.AllowAssumptions.NO;
+            SubstrateCompilationIdentifier compilationId = new SubstrateCompilationIdentifier(method);
+            StructuredGraph graph = new StructuredGraph.Builder(options, debug, allowAssumptions).method(method).speculationLog(speculationLog)
+                            .profileProvider(profileProvider).compilationId(compilationId).build();
+            assert graph != null;
+            parseFromBytecode(graph, runtimeConfig);
+            return graph;
+        }
+        return null;
+    }
+
     public static InstalledCode compileAndInstall(SubstrateMethod method) {
         return compileAndInstall(method, () -> new SubstrateInstalledCodeImpl(method));
     }
@@ -156,20 +178,6 @@ public class RistrettoUtils {
         }
         return (InstalledCode) installedCode;
     }
-
-    private static final ProfileProvider NO_PROFILE_PROVIDER = new ProfileProvider() {
-
-        @Override
-        public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method) {
-            return getProfilingInfo(method, true, true);
-        }
-
-        @Override
-        public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
-            return DefaultProfilingInfo.get(TriState.FALSE);
-        }
-
-    };
 
     public static CompilationResult doCompile(DebugContext initialDebug, RuntimeConfiguration runtimeConfig, LIRSuites lirSuites, SubstrateMethod method) {
         SubstrateGraalUtils.updateGraalArchitectureWithHostCPUFeatures(runtimeConfig.lookupBackend(method));
@@ -202,13 +210,11 @@ public class RistrettoUtils {
                 try (CompilationWatchDog _ = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, SubstrateGraalUtils.COMPILATION_WATCH_DOG_EVENT_HANDLER, null)) {
                     StructuredGraph graph;
                     Suites suites;
-                    if (method instanceof RistrettoMethod) {
+                    if (method instanceof RistrettoMethod rMethod) {
                         final OptionValues options = debug.getOptions();
                         // final int entryBCI = 0;
                         final SpeculationLog speculationLog = new SubstrateSpeculationLog();
-                        // TODO GR-71495 - add branch profiles and combine profile provider with
-                        // crema profiles
-                        final ProfileProvider profileProvider = NO_PROFILE_PROVIDER;
+                        final ProfileProvider profileProvider = new RistrettoProfileProvider(rMethod);
                         final StructuredGraph.AllowAssumptions allowAssumptions = StructuredGraph.AllowAssumptions.NO;
                         // TODO GR-71494 - OSR support will require setting the entry BCI for
                         // parsing
@@ -217,6 +223,11 @@ public class RistrettoUtils {
                         assert graph != null;
                         suites = RuntimeCompilationSupport.getMatchingSuitesForGraph(graph);
                         parseFromBytecode(graph, runtimeConfig);
+                        if (TestingBackdoor.shouldRememberGraph()) {
+                            // override the suites with graph capturing phases
+                            suites = suites.copy();
+                            TestingBackdoor.installLastGraphThieves(suites, graph);
+                        }
                     } else {
                         graph = RuntimeCompilationSupport.decodeGraph(debug, null, compilationId, method, null);
                         suites = RuntimeCompilationSupport.getMatchingSuitesForGraph(graph);
@@ -249,10 +260,66 @@ public class RistrettoUtils {
         Replacements runtimeReplacements = runtimeProviders.getReplacements();
         GraphBuilderConfiguration.Plugins gbp = runtimeReplacements.getGraphBuilderPlugins();
         GraphBuilderConfiguration gpc = GraphBuilderConfiguration.getDefault(gbp);
-        HighTierContext hc = new HighTierContext(runtimeConfig.getProviders(), null, OptimisticOptimizations.NONE);
+        HighTierContext hc = new HighTierContext(runtimeConfig.getProviders(), null, OptimisticOptimizations.ALL);
         RistrettoGraphBuilderPhase graphBuilderPhase = new RistrettoGraphBuilderPhase(gpc);
         graphBuilderPhase.apply(graph, hc);
         assert graph.getNodeCount() > 1 : "Must have nodes after parsing";
     }
 
+    public static final class TestingBackdoor {
+        private TestingBackdoor() {
+            // this type should never be allocated
+        }
+
+        /**
+         * Export access to the last compiled graph of a ristretto compile to be able to white box
+         * test various properties.
+         */
+        public static final ThreadLocal<StructuredGraph> LastCompiledGraph = new ThreadLocal<>();
+        public static final ThreadLocal<StructuredGraph> LastCompiledGraphAfterHighTierLowering = new ThreadLocal<>();
+        public static final ThreadLocal<StructuredGraph> LastCompiledGraphAfterMidTierLowering = new ThreadLocal<>();
+        public static final ThreadLocal<StructuredGraph> LastCompiledGraphAfterLowTierLowering = new ThreadLocal<>();
+
+        public static boolean shouldRememberGraph() {
+            String prop = System.getProperty("com.oracle.svm.interpreter.ristretto.RistrettoUtils.PreserveLastCompiledGraph", "false");
+            return Boolean.parseBoolean(prop);
+        }
+
+        static void installLastGraphThieves(Suites suites, StructuredGraph rootGraph) {
+            TestingBackdoor.LastCompiledGraph.set(rootGraph);
+            suites.getHighTier().insertAfterPhase(HighTierLoweringPhase.class, new Phase() {
+                @Override
+                public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+                    return ALWAYS_APPLICABLE;
+                }
+
+                @Override
+                protected void run(StructuredGraph graph) {
+                    TestingBackdoor.LastCompiledGraphAfterHighTierLowering.set((StructuredGraph) graph.copy(graph.getDebug()));
+                }
+            });
+            suites.getMidTier().insertAfterPhase(MidTierLoweringPhase.class, new Phase() {
+                @Override
+                public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+                    return ALWAYS_APPLICABLE;
+                }
+
+                @Override
+                protected void run(StructuredGraph graph) {
+                    TestingBackdoor.LastCompiledGraphAfterMidTierLowering.set((StructuredGraph) graph.copy(graph.getDebug()));
+                }
+            });
+            suites.getLowTier().insertAfterPhase(LowTierLoweringPhase.class, new Phase() {
+                @Override
+                public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+                    return ALWAYS_APPLICABLE;
+                }
+
+                @Override
+                protected void run(StructuredGraph graph) {
+                    TestingBackdoor.LastCompiledGraphAfterLowTierLowering.set((StructuredGraph) graph.copy(graph.getDebug()));
+                }
+            });
+        }
+    }
 }

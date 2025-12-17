@@ -26,6 +26,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 
 @ExportLibrary(InteropLibrary.class)
 public final class RawPointer implements TruffleObject {
@@ -54,6 +55,22 @@ public final class RawPointer implements TruffleObject {
         return true;
     }
 
+    /**
+     * There is no guarantee that the address actually corresponds to a host-native-address. It
+     * should correspond to one of the following:
+     * <ul>
+     * <li>A {@link NativeMemory} address</li>
+     * <li>A handle, such as in
+     * {@link com.oracle.truffle.espresso.vm.VM#JVM_LoadLibrary(String, boolean)}</li>
+     * <li>A special value, such as:
+     * <ul>
+     * <li>The NULL pointer in {@link RawPointer}</li>
+     * <li>The sentinelPointer in
+     * {@link com.oracle.truffle.espresso.libs.libjvm.impl.LibJVMSubstitutions}</li>
+     * </ul>
+     * </li>
+     * </ul>
+     */
     @ExportMessage
     long asPointer() {
         return rawPtr;

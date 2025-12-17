@@ -39,14 +39,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
@@ -71,6 +69,7 @@ import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.util.json.JsonPrinter;
 import jdk.graal.compiler.util.json.JsonWriter;
+import org.graalvm.collections.EconomicSet;
 
 final class BundleSupport {
 
@@ -502,7 +501,7 @@ final class BundleSupport {
             Path tmpPath = ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT.resolve("tmp");
             boolean subdirInTmp = origPath.startsWith(tmpPath) && !origPath.equals(tmpPath);
             if (!subdirInTmp) {
-                Set<Path> forbiddenPaths = new HashSet<>(ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES);
+                EconomicSet<Path> forbiddenPaths = EconomicSet.create(ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES);
                 forbiddenPaths.add(rootDir);
                 for (Path path : forbiddenPaths) {
                     if (origPath.startsWith(path)) {

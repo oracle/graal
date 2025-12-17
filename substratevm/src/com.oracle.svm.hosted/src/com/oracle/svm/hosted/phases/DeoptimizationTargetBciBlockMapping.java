@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.svm.common.meta.MultiMethod;
@@ -44,6 +43,7 @@ import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * To guarantee DeoptEntryNodes and DeoptProxyNodes are inserted at the correct positions, the bci
@@ -78,12 +78,12 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
      * Keep track of blocks inserted for DeoptEntryPoints so that characteristics of these blocks
      * can be validated later within {@link #verify()}.
      */
-    private final Set<DeoptEntryInsertionPoint> insertedBlocks;
+    private final EconomicSet<DeoptEntryInsertionPoint> insertedBlocks;
 
     private DeoptimizationTargetBciBlockMapping(Bytecode code, DebugContext debug) {
         super(code, debug);
         VMError.guarantee(SubstrateCompilationDirectives.isDeoptTarget(code.getMethod()), "Deoptimization Target expected.");
-        insertedBlocks = new HashSet<>();
+        insertedBlocks = EconomicSet.create();
     }
 
     /**
@@ -468,7 +468,7 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
      */
     @Override
     protected boolean verify() {
-        Set<Long> coveredEncodedBcis = new HashSet<>();
+        EconomicSet<Long> coveredEncodedBcis = EconomicSet.create();
         for (DeoptEntryInsertionPoint deopt : insertedBlocks) {
             BciBlock block = deopt.asBlock();
             int bci = deopt.frameStateBci();

@@ -43,60 +43,63 @@ package org.graalvm.collections;
 import java.util.Iterator;
 
 /**
- * Memory efficient set data structure.
+ * Memory efficient set data structure. It does not support adding, looking up or removing a
+ * {@code null} element.
  *
  * @since 19.0
  */
 public interface EconomicSet<E> extends UnmodifiableEconomicSet<E> {
 
     /**
-     * Adds {@code element} to this set if it is not already present.
+     * Adds non-null {@code element} to this set if it is not already present.
      *
-     * @return {@code true} if this set did not already contain {@code element}.
+     * @return {@code true} if this set did not already contain {@code element}
+     * @throws UnsupportedOperationException if {@code element == null}
      * @since 19.0
      */
     boolean add(E element);
 
     /**
-     * Removes {@code element} from this set if it is present. This set will not contain
+     * Removes non-null {@code element} from this set if it is present. This set will not contain
      * {@code element} once the call returns.
      *
+     * @throws UnsupportedOperationException if {@code element == null}
      * @since 19.0
      */
     void remove(E element);
 
     /**
-     * Removes all of the elements from this set. The set will be empty after this call returns.
+     * Removes all the elements from this set. The set will be empty after this call returns.
      *
      * @since 19.0
      */
     void clear();
 
     /**
-     * Adds all of the elements in {@code other} to this set if they're not already present.
+     * Adds all the elements in {@code other} to this set if they're not already present.
      *
      * @since 19.0
      */
-    default void addAll(EconomicSet<E> other) {
+    default void addAll(EconomicSet<? extends E> other) {
         addAll(other.iterator());
     }
 
     /**
-     * Adds all of the elements in {@code values} to this set if they're not already present.
+     * Adds all the elements in {@code values} to this set if they're not already present.
      *
      * @since 19.0
      */
-    default void addAll(Iterable<E> values) {
+    default void addAll(Iterable<? extends E> values) {
         addAll(values.iterator());
     }
 
     /**
-     * Adds all of the elements enumerated by {@code iterator} to this set if they're not already
+     * Adds all the elements enumerated by {@code iterator} to this set if they're not already
      * present.
      *
      * @since 19.0
      */
-    default void addAll(Iterator<E> iterator) {
+    default void addAll(Iterator<? extends E> iterator) {
         while (iterator.hasNext()) {
             add(iterator.next());
         }
@@ -227,5 +230,11 @@ public interface EconomicSet<E> extends UnmodifiableEconomicSet<E> {
     @SuppressWarnings("unchecked")
     static <E> EconomicSet<E> emptySet() {
         return (EconomicSet<E>) EmptySet.EMPTY_SET;
+    }
+
+    static <E> EconomicSet<E> of(E elem) {
+        EconomicSet<E> set = EconomicSet.create(1);
+        set.add(elem);
+        return set;
     }
 }

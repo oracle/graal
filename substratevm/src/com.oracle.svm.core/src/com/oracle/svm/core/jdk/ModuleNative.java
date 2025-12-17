@@ -171,7 +171,7 @@ public final class ModuleNative {
     private static final String FROM_MODULE_TAG = "from_" + MODULE_TAG;
     private static final String TO_MODULE_TAG = "to_" + MODULE_TAG;
     private static final Object moduleLock = new Object();
-    private static final Map<ClassLoader, Set<Module>> definedModules = new HashMap<>();
+    private static final Map<ClassLoader, Set<Module>> definedModules = new HashMap<>(); // noEconomicMap(streaming)
 
     private static Map<ClassLoader, Set<Module>> getDefinedModules() {
         SubstrateUtil.guaranteeRuntimeOnly();
@@ -179,7 +179,7 @@ public final class ModuleNative {
             for (Module module : ModuleLayer.boot().modules()) {
                 Set<Module> modules = definedModules.get(module.getClassLoader());
                 if (Objects.isNull(modules)) {
-                    modules = new HashSet<>();
+                    modules = new HashSet<>(); // noEconomicSet(streaming)
                     modules.add(module);
                     definedModules.put(module.getClassLoader(), modules);
                 } else {
@@ -223,7 +223,7 @@ public final class ModuleNative {
     private static void addDefinedModule(ClassLoader loader, Module module) {
         Set<Module> modules = getDefinedModules().get(loader);
         if (Objects.isNull(modules)) {
-            modules = new HashSet<>();
+            modules = new HashSet<>(); // noEconomicSet(streaming)
             modules.add(module);
             getDefinedModules().put(loader, modules);
         } else {

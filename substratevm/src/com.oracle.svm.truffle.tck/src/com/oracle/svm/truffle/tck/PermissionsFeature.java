@@ -64,6 +64,7 @@ import com.oracle.svm.util.LogUtils;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.vm.ci.meta.JavaConstant;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativebridge.BinaryMarshaller;
 import org.graalvm.nativebridge.DispatchHandler;
 import org.graalvm.nativebridge.IsolateCreateException;
@@ -196,9 +197,9 @@ public class PermissionsFeature implements Feature {
     /**
      * List of safe packages.
      */
-    private static final Set<String> safePackages;
+    private static final EconomicSet<String> safePackages;
     static {
-        safePackages = new HashSet<>();
+        safePackages = EconomicSet.create();
         safePackages.add("org.graalvm.polyglot.");
         safePackages.add("org.graalvm.home.");
         safePackages.add("jdk.graal.compiler.");
@@ -224,9 +225,9 @@ public class PermissionsFeature implements Feature {
         safePackages.add("com.oracle.svm.enterprise.truffle.");
     }
 
-    private static final Set<ClassLoader> systemClassLoaders;
+    private static final EconomicSet<ClassLoader> systemClassLoaders;
     static {
-        systemClassLoaders = new HashSet<>();
+        systemClassLoaders = EconomicSet.create();
         for (ClassLoader cl = ClassLoader.getSystemClassLoader(); cl != null; cl = cl.getParent()) {
             systemClassLoaders.add(cl);
         }
@@ -235,7 +236,7 @@ public class PermissionsFeature implements Feature {
     /**
      * Methods which should not be found.
      */
-    private final Set<BaseMethodNode> deniedMethods = new HashSet<>();
+    private final Set<BaseMethodNode> deniedMethods = new HashSet<>(); // noEconomicSet(streaming)
 
     /**
      * Path to store report into.
@@ -245,14 +246,14 @@ public class PermissionsFeature implements Feature {
     /**
      * JDK methods which are allowed to do privileged calls without being reported.
      */
-    private Set<? extends BaseMethodNode> platformAllowList;
+    private Set<? extends BaseMethodNode> platformAllowList; // noEconomicSet(streaming)
 
     /**
      * Language methods which are allowed to do privileged calls without being reported.
      */
     private Map<BaseMethodNode, Boolean> languageAllowList;
 
-    private Set<CallGraphFilter> contextFilters;
+    private Set<CallGraphFilter> contextFilters; // noEconomicSet(streaming)
 
     /**
      * Classes for reflective accesses which are opaque for permission analysis.
@@ -283,7 +284,7 @@ public class PermissionsFeature implements Feature {
         initializeDeniedMethods(accessImpl);
 
         BigBang bb = accessImpl.getBigBang();
-        contextFilters = new HashSet<>();
+        contextFilters = new HashSet<>(); // noEconomicSet(streaming)
         Collections.addAll(contextFilters, new SafeInterruptRecognizer(bb), new SafePrivilegedRecognizer(bb),
                         new SafeReflectionRecognizer(bb), new SafeSetThreadNameRecognizer(bb),
                         new SafeLocaleServiceProvider(bb), new SafeSystemGetProperty(bb),
@@ -293,7 +294,7 @@ public class PermissionsFeature implements Feature {
          * Ensure methods which are either deniedMethods or on the allow list are never inlined into
          * methods. These methods are important for identifying violations.
          */
-        Set<AnalysisMethod> preventInlineBeforeAnalysis = new HashSet<>();
+        Set<AnalysisMethod> preventInlineBeforeAnalysis = new HashSet<>(); // noEconomicSet(streaming)
         deniedMethods.stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
         platformAllowList.stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
         languageAllowList.keySet().stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
@@ -397,7 +398,7 @@ public class PermissionsFeature implements Feature {
                     collectViolations(report, deniedMethod,
                                     maxStackDepth, Options.TruffleTCKPermissionsMaxErrors.getValue(),
                                     cg, contextFilters, collectMode,
-                                    new LinkedList<>(), new HashSet<>(), 1, 0);
+                                    new LinkedList<>(), new HashSet<>(), 1, 0);  // noEconomicSet(streaming)
                     if (!report.isEmpty() && collectMode == CollectMode.Single) {
                         break;
                     }
@@ -455,9 +456,9 @@ public class PermissionsFeature implements Feature {
     private Map<BaseMethodNode, Set<BaseMethodNode>> callGraph(BigBang bb, Set<BaseMethodNode> targets,
                     DebugContext debugContext, SVMHost hostVM) {
         Deque<AnalysisMethodNode> todo = new LinkedList<>();
-        Map<BaseMethodNode, Set<BaseMethodNode>> visited = new HashMap<>();
+        Map<BaseMethodNode, Set<BaseMethodNode>> visited = new HashMap<>(); // noEconomicSet(streaming)
         for (AnalysisMethodNode m : findMethods(bb, OptimizedCallTarget.class, (m) -> "profiledPERoot".equals(m.getName()))) {
-            visited.put(m, new HashSet<>());
+            visited.put(m, new HashSet<>()); // noEconomicSet(streaming)
             todo.add(m);
         }
         Deque<BaseMethodNode> path = new LinkedList<>();
@@ -507,7 +508,7 @@ public class PermissionsFeature implements Feature {
                 current = current.getCaller();
             }
             if (!foundSystemClass) {
-                visited.computeIfAbsent(inlinedUnsafeCall, _ -> new HashSet<>()).add(mNode);
+                visited.computeIfAbsent(inlinedUnsafeCall, _ -> new HashSet<>()).add(mNode); // noEconomicSet(streaming)
                 return;
             }
         }
@@ -535,7 +536,7 @@ public class PermissionsFeature implements Feature {
                         String calleeName = getMethodName(callee);
                         debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Callee: %s, new: %b.", calleeName, parents == null);
                         if (parents == null) {
-                            parents = new HashSet<>();
+                            parents = new HashSet<>(); // noEconomicSet(streaming)
                             visited.put(calleeNode, parents);
                             if (targets.contains(calleeNode)) {
                                 parents.add(mNode);
@@ -718,7 +719,7 @@ public class PermissionsFeature implements Feature {
      * @param javaName the {@link AnalysisMethod} to check
      * @param packages the list of packages
      */
-    private static boolean isClassInPackage(String javaName, Collection<? extends String> packages) {
+    private static boolean isClassInPackage(String javaName, EconomicSet<? extends String> packages) {
         for (String pkg : packages) {
             if (javaName.startsWith(pkg)) {
                 return true;
@@ -799,7 +800,7 @@ public class PermissionsFeature implements Feature {
     }
 
     private static Set<AnalysisMethodNode> findImpl(BigBang bb, ResolvedJavaMethod[] methods, Predicate<ResolvedJavaMethod> filter) {
-        Set<AnalysisMethodNode> result = new HashSet<>();
+        Set<AnalysisMethodNode> result = new HashSet<>(); // noEconomicSet(streaming)
         for (ResolvedJavaMethod m : methods) {
             if (filter.test(m)) {
                 result.add(new AnalysisMethodNode(bb.getUniverse().lookup(m)));
@@ -975,10 +976,10 @@ public class PermissionsFeature implements Feature {
      */
     private static final class SafeReflectionRecognizer implements CallGraphFilter {
 
-        private final Set<AnalysisMethodNode> inspectedMethods;
+        private final EconomicSet<BaseMethodNode> inspectedMethods;
 
         SafeReflectionRecognizer(BigBang bb) {
-            inspectedMethods = new HashSet<>();
+            inspectedMethods = EconomicSet.create();
             AnalysisType method = bb.getMetaAccess().lookupJavaType(Method.class);
             Set<AnalysisMethodNode> methods = findMethods(bb, method, (m) -> m.getName().equals("invoke") && m.isPublic() && m.getParameters().length == 2);
             if (methods.size() != 1) {
@@ -1018,7 +1019,11 @@ public class PermissionsFeature implements Feature {
 
         @Override
         public Collection<AnalysisMethod> getInspectedMethods() {
-            return inspectedMethods.stream().map(AnalysisMethodNode::getMethod).toList();
+            List<AnalysisMethod> methods = new ArrayList<>(inspectedMethods.size());
+            for (BaseMethodNode inspectedMethod : inspectedMethods) {
+                methods.add(inspectedMethod.getMethod());
+            }
+            return methods;
         }
     }
 
@@ -1075,7 +1080,7 @@ public class PermissionsFeature implements Feature {
 
         @Override
         public Collection<AnalysisMethod> getInspectedMethods() {
-            Set<AnalysisMethod> set = new HashSet<>(envCreateThread);
+            Set<AnalysisMethod> set = new HashSet<>(envCreateThread); // noEconomicSet(streaming)
             set.addAll(envCreateSystemThread);
             set.add(threadSetName.getMethod());
             return set;

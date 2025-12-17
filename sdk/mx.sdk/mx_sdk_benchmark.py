@@ -888,6 +888,7 @@ class NativeImageVM(StageAwareGraalVm):
         self.profile_inference_call_count = False
         self.force_profile_inference = False
         self.profile_inference_debug = False
+        self.ml_callcount_threshold = None
         self.analysis_context_sensitivity = None
         self.optimization_level = None
         self._configure_comma_separated_configs(config_name)
@@ -972,7 +973,15 @@ class NativeImageVM(StageAwareGraalVm):
         if self.profile_inference_feature_extraction is True:
             config += ["profile-inference-feature-extraction"]
         if self.profile_inference_call_count is True:
-            config += ["profile-inference-call-count"]
+            if self.ml_callcount_threshold is not None:
+                if self.ml_callcount_threshold == 0.1:
+                    config += ["profile-inference-call-count", 'conservative']
+                elif self.ml_callcount_threshold == 0.7:
+                    config += ["profile-inference-call-count", 'aggressive']
+                else:
+                    mx.abort(f"Unsupported ml_callcount_threshold value: {self.ml_callcount_threshold}. Allowed values are 0.1 (conservative) or 0.7 (aggressive).")
+            else:
+                config += ["profile-inference-call-count"]
         if self.pgo_instrumentation is True and self.force_profile_inference is True:
             if self.pgo_exclude_conditional is True:
                 config += ["profile-inference-pgo"]
@@ -1008,7 +1017,8 @@ class NativeImageVM(StageAwareGraalVm):
                r'(?P<future_defaults_all>future-defaults-all-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?' \
                r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-sampler-|pgo-perf-sampler-invoke-multiple-|pgo-perf-sampler-invoke-|pgo-perf-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
-               r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-call-count-|profile-inference-pgo-|profile-inference-debug-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(default-)?(?P<edition>ce-|ee-)?$'
+               r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-call-count-|profile-inference-call-count-conservative-|profile-inference-call-count-aggressive-|profile-inference-pgo-|profile-inference-debug-)?' \
+               r'(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(default-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv(f"== Registering configuration: {config_name}")
         match_name = f"{config_name}-"  # adding trailing dash to simplify the regex
@@ -1156,6 +1166,12 @@ class NativeImageVM(StageAwareGraalVm):
                 self.pgo_instrumentation = True  # extract code features
             elif profile_inference_config == 'profile-inference-call-count':
                 self.profile_inference_call_count = True
+            elif profile_inference_config == 'profile-inference-call-count-conservative':
+                self.profile_inference_call_count = True
+                self.ml_callcount_threshold = 0.1
+            elif profile_inference_config == 'profile-inference-call-count-aggressive':
+                self.profile_inference_call_count = True
+                self.ml_callcount_threshold = 0.7
             elif profile_inference_config == "profile-inference-pgo":
                 # We need to run instrumentation as the profile-inference-pgo JVM config requires dynamically collected
                 # profiles to combine with the ML-inferred branch probabilities.
@@ -1832,6 +1848,8 @@ class NativeImageVM(StageAwareGraalVm):
                         dump_file_flag))
         elif self.profile_inference_call_count:
             ml_args = svm_experimental_options(['-H:+MLCallCountProfileInference'])
+            if self.ml_callcount_threshold is not None:
+                ml_args += svm_experimental_options([f'-H:MLCallCountProfileInferenceClassificationThreshold={self.ml_callcount_threshold:.2f}'])
         elif self.force_profile_inference:
             ml_args = svm_experimental_options(['-H:+MLGraphFeaturesExtraction', '-H:+MLProfileInference'])
         else:

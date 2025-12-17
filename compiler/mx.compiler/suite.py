@@ -316,7 +316,7 @@ suite = {
       "workingSets" : "Graal,HotSpot",
     },
 
-    "com.oracle.graal.vmaccess": {
+    "jdk.graal.compiler.vmaccess": {
       "subDir": "src",
       "sourceDirs": ["src"],
       "dependencies": [
@@ -343,11 +343,11 @@ suite = {
       "spotbugs": "false",
     },
 
-    "com.oracle.graal.hostvmaccess": {
+    "jdk.graal.compiler.hostvmaccess": {
       "subDir": "src",
       "sourceDirs": ["src"],
       "dependencies": [
-        "com.oracle.graal.vmaccess",
+        "jdk.graal.compiler.vmaccess",
       ],
       "requires": [
         "jdk.internal.vm.ci",
@@ -685,7 +685,7 @@ suite = {
           "jdk.graal.compiler",
         ],
         "exports": [
-          "com.oracle.graal.vmaccess",
+          "jdk.graal.compiler.vmaccess",
         ],
         "requiresConcealed": {
           "jdk.internal.vm.ci": [
@@ -698,12 +698,12 @@ suite = {
           ]
         },
         "uses": [
-          "com.oracle.graal.vmaccess.VMAccess",
+          "jdk.graal.compiler.vmaccess.VMAccess",
         ],
       },
       "subDir": "src",
       "dependencies": [
-        "com.oracle.graal.vmaccess",
+        "jdk.graal.compiler.vmaccess",
       ],
       "distDependencies": [
         "GRAAL",
@@ -726,7 +726,7 @@ suite = {
           "jdk.internal.vm.ci",
         ],
         "exports": [
-          "com.oracle.graal.hostvmaccess",
+          "jdk.graal.compiler.hostvmaccess",
         ],
         "requiresConcealed": {
           "java.base": [
@@ -749,7 +749,7 @@ suite = {
       },
       "subDir": "src",
       "dependencies": [
-        "com.oracle.graal.hostvmaccess",
+        "jdk.graal.compiler.hostvmaccess",
       ],
       "distDependencies": [
         "VMACCESS",

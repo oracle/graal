@@ -32,7 +32,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,6 +39,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.option.LayerVerifiedOption;
@@ -228,7 +228,7 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
      * layer compatibility.
      */
     private static void verifyEnvironmentVariablesCompatibility(List<EnvironmentVariable> previousEnvVars, List<EnvironmentVariable> currentEnvVars, boolean strict) {
-        Set<EnvironmentVariable> currentEnvVarsSet = new HashSet<>(currentEnvVars);
+        EconomicSet<EnvironmentVariable> currentEnvVarsSet = EconomicSet.create(currentEnvVars);
         boolean violationsFound = false;
         String messagePrefix = strict ? "Error" : "Warning";
 
@@ -247,7 +247,7 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
     }
 
     private static void verifyBuildPathDigestsCompatibility(List<PathDigestEntry> previousPathDigests, List<PathDigestEntry> currentPathDigests, boolean strict) {
-        Set<String> currentDigests = new HashSet<>(currentPathDigests.size());
+        EconomicSet<String> currentDigests = EconomicSet.create(currentPathDigests.size());
         currentPathDigests.forEach(pathEntry -> currentDigests.add(pathEntry.digest()));
 
         List<PathDigestEntry> previousUnmatchedPathDigests = previousPathDigests.stream()
@@ -260,7 +260,7 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
             return;
         }
 
-        Set<String> currentPathNames = new HashSet<>(currentPathDigests.size());
+        EconomicSet<Path> currentPathNames = EconomicSet.create(currentPathDigests.size());
         currentPathDigests.forEach(pathEntry -> currentPathNames.add(pathEntry.path()));
         String messagePrefix = strict ? "Error" : "Warning";
         for (PathDigestEntry unmatchedDigestEntry : previousUnmatchedPathDigests) {

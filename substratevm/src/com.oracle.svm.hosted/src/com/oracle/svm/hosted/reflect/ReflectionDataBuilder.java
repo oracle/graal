@@ -59,7 +59,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -71,6 +70,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
@@ -760,7 +760,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return;
         }
         try {
-            Set<ResolvedJavaField> subClassFields = new HashSet<>();
+            EconomicSet<ResolvedJavaField> subClassFields = EconomicSet.create();
             subClassFields.addAll(Arrays.asList(subtype.getInstanceFields(false)));
             subClassFields.addAll(Arrays.asList(subtype.getStaticFields()));
             for (ResolvedJavaField javaField : subClassFields) {
@@ -1531,7 +1531,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
         private static boolean isElementRegistered(Map<Integer, Set<Integer>> previousLayerRegisteredElements, AnalysisType declaringClass, int elementId) {
             Set<Integer> previousLayerRegisteredElementIds = previousLayerRegisteredElements.get(declaringClass.getId());
-            if (declaringClass.isInBaseLayer() && previousLayerRegisteredElementIds != null) {
+            if (declaringClass.isInSharedLayer() && previousLayerRegisteredElementIds != null) {
                 return previousLayerRegisteredElementIds.contains(elementId);
             }
             return false;

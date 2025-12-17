@@ -26,6 +26,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_EDETACHED;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_ERR;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_EVERSION;
@@ -1540,10 +1541,15 @@ public final class VM extends NativeEnv {
         if (InteropLibrary.getUncached().isNull(argsPtr)) {
             getLogger().fine("AttachCurrentThread with null args");
         } else {
-            JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(getHandles(), argsPtr);
+            JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(getHandles(), getNativeAccess().nativeMemory(), argsPtr);
             if (JVM_IsSupportedJNIVersion(attachArgs.version())) {
                 group = attachArgs.group();
-                name = NativeUtils.fromUTF8Ptr(attachArgs.name());
+                try {
+                    name = NativeUtils.interopPointerToString(attachArgs.name(), getNativeAccess().nativeMemory());
+                } catch (IllegalMemoryAccessException e) {
+                    getLogger().warning("attachArgs does not point to a valid memory region: " + e);
+                    return JNI_ERR;
+                }
             } else {
                 getLogger().warning(String.format("AttachCurrentThread with unsupported JavaVMAttachArgs version: 0x%08x", attachArgs.version()));
             }
@@ -1552,7 +1558,12 @@ public final class VM extends NativeEnv {
         if (daemon) {
             getContext().getThreadAccess().setDaemon(thread, true);
         }
-        NativeUtils.writeToPointerPointer(getUncached(), penvPtr, jniEnv.getNativePointer());
+        try {
+            NativeUtils.writeToPointerPointer(getUncached(), penvPtr, jniEnv.getNativePointer(), getNativeAccess().nativeMemory());
+        } catch (IllegalMemoryAccessException e) {
+            getLogger().warning("penvPtr does not point to a valid memory region: " + e);
+            return JNI_ERR;
+        }
         return JNI_OK;
     }
 
@@ -1672,7 +1683,12 @@ public final class VM extends NativeEnv {
             interopPtr = jniEnv.getNativePointer();
         }
         if (interopPtr != null) {
-            NativeUtils.writeToPointerPointer(getUncached(), envPtr, interopPtr);
+            try {
+                NativeUtils.writeToPointerPointer(getUncached(), envPtr, interopPtr, getNativeAccess().nativeMemory());
+            } catch (IllegalMemoryAccessException e) {
+                getLogger().warning("envPtr does not point to a valid memory region: " + e);
+                return JNI_ERR;
+            }
             return JNI_OK;
         }
         return JNI_EVERSION;
@@ -1996,7 +2012,7 @@ public final class VM extends NativeEnv {
     // region class loading
 
     private Symbol<Type> namePtrToInternal(TruffleObject namePtr) {
-        String name = NativeUtils.interopPointerToString(namePtr);
+        String name = NativeUtils.interopPointerToStringOrThrow(namePtr, getNativeAccess().nativeMemory(), getMeta());
         return nameToInternal(name);
     }
 
@@ -2032,10 +2048,9 @@ public final class VM extends NativeEnv {
             throw getMeta().throwExceptionWithMessage(getMeta().java_lang_InternalError, "Lookup class is null");
         }
         assert !getUncached().isNull(bufPtr);
-        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         final byte[] bytes = new byte[len];
+        ByteBuffer buf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Byte, getNativeAccess().nativeMemory(), getMeta());
         buf.get(bytes);
-
         return lookupDefineClass(lookup, type, bytes, pd, initialize, flags, classData);
     }
 
@@ -2101,10 +2116,9 @@ public final class VM extends NativeEnv {
                     @JavaType(ClassLoader.class) StaticObject loader,
                     @Pointer TruffleObject bufPtr, int len,
                     @JavaType(internalName = "Ljava/security/ProtectionDomain;") StaticObject pd) {
-        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         final byte[] bytes = new byte[len];
+        ByteBuffer buf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Byte, getNativeAccess().nativeMemory(), getMeta());
         buf.get(bytes);
-
         Symbol<Type> type = namePtrToInternal(namePtr); // can be null
         return defineClass(type, loader, pd, bytes);
     }
@@ -2156,8 +2170,12 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     @TruffleBoundary
     public @JavaType(Class.class) StaticObject JVM_FindClassFromBootLoader(@Pointer TruffleObject namePtr) {
-        String name = NativeUtils.interopPointerToString(namePtr);
-        return findClassFromBootLoader(name);
+        try {
+            String name = NativeUtils.interopPointerToString(namePtr, getNativeAccess().nativeMemory());
+            return findClassFromBootLoader(name);
+        } catch (IllegalMemoryAccessException e) {
+            return StaticObject.NULL;
+        }
     }
 
     public StaticObject findClassFromBootLoader(String name) {
@@ -2227,7 +2245,7 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     public @JavaType(Class.class) StaticObject JVM_FindPrimitiveClass(@Pointer TruffleObject namePtr) {
         Meta meta = getMeta();
-        String hostName = NativeUtils.interopPointerToString(namePtr);
+        String hostName = NativeUtils.interopPointerToStringOrThrow(namePtr, getNativeAccess().nativeMemory(), meta);
         return findPrimitiveClass(meta, hostName);
     }
 
@@ -2299,12 +2317,22 @@ public final class VM extends NativeEnv {
     @VmImpl
     @TruffleBoundary
     public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr) {
-        String name = NativeUtils.interopPointerToString(namePtr);
         // We don't pass `throwException` down due to GR-37925, but even if Sulong would
         // be fixed, it might be garbage if the used base lib has a mismatching signature,
         // so we recompute its value instead on our side.
         boolean throwException = !hasDynamicLoaderCache();
-        return JVM_LoadLibrary(name, throwException);
+
+        try {
+            String name = NativeUtils.interopPointerToString(namePtr, getNativeAccess().nativeMemory());
+            return JVM_LoadLibrary(name, throwException);
+        } catch (IllegalMemoryAccessException e) {
+            if (throwException) {
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary(e.toString());
+            } else {
+                getLogger().warning("namePtr does not point to a valid memory region: " + e);
+                return RawPointer.create(0);
+            }
+        }
     }
 
     @TruffleBoundary
@@ -2374,9 +2402,14 @@ public final class VM extends NativeEnv {
     @TruffleBoundary
     @SuppressFBWarnings(value = "AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION", justification = "benign race")
     public @Pointer TruffleObject JVM_FindLibraryEntry(@Pointer TruffleObject libraryPtr, @Pointer TruffleObject namePtr) {
-        String name = NativeUtils.interopPointerToString(namePtr);
-        long nativePtr = NativeUtils.interopAsPointer(libraryPtr);
-        return RawPointer.create(findLibraryEntry(nativePtr, name));
+        try {
+            String name = NativeUtils.interopPointerToString(namePtr, getNativeAccess().nativeMemory());
+            long nativePtr = NativeUtils.interopAsPointer(libraryPtr);
+            return RawPointer.create(findLibraryEntry(nativePtr, name));
+        } catch (IllegalMemoryAccessException e) {
+            getLogger().warning("namePtr does not point to a valid memory region: " + e);
+            return RawPointer.create(0);
+        }
     }
 
     @TruffleBoundary
@@ -3548,10 +3581,16 @@ public final class VM extends NativeEnv {
             if (getUncached().isNull(vmBufPtr)) {
                 // Pointer should have been pre-null-checked.
                 return JNI_ERR;
+
             }
-            NativeUtils.writeToPointerPointer(getUncached(), vmBufPtr, getVM().getJavaVM());
-            if (!getUncached().isNull(numVMsPtr)) {
-                NativeUtils.writeToIntPointer(getUncached(), numVMsPtr, 1);
+            try {
+                NativeUtils.writeToPointerPointer(getUncached(), vmBufPtr, getVM().getJavaVM(), getNativeAccess().nativeMemory());
+                if (!getUncached().isNull(numVMsPtr)) {
+                    NativeUtils.writeToIntPointer(getUncached(), numVMsPtr, 1, getNativeAccess().nativeMemory());
+                }
+            } catch (IllegalMemoryAccessException e) {
+                getLogger().warning("vmBufPtr or numVMsPtr does not point to a valid memory region: " + e);
+                return JNI_ERR;
             }
         }
         return JNI_OK;
@@ -3654,7 +3693,8 @@ public final class VM extends NativeEnv {
             profiler.profile(0);
             throw getMeta().throwNullPointerException();
         }
-        ModulesHelperVM.addModuleExports(from_module, NativeUtils.interopPointerToString(pkgName), to_module, getMeta(), profiler);
+        String pkgNameString = NativeUtils.interopPointerToStringOrThrow(pkgName, getNativeAccess().nativeMemory(), getMeta());
+        ModulesHelperVM.addModuleExports(from_module, pkgNameString, to_module, getMeta(), profiler);
     }
 
     @VmImpl(isJni = true)
@@ -3665,7 +3705,8 @@ public final class VM extends NativeEnv {
             profiler.profile(0);
             throw getMeta().throwNullPointerException();
         }
-        ModulesHelperVM.addModuleExportsToAllUnnamed(from_module, NativeUtils.interopPointerToString(pkgName), profiler, getMeta());
+        String pkgNameString = NativeUtils.interopPointerToStringOrThrow(pkgName, getNativeAccess().nativeMemory(), getMeta());
+        ModulesHelperVM.addModuleExportsToAllUnnamed(from_module, pkgNameString, profiler, getMeta());
     }
 
     @VmImpl(isJni = true)
@@ -3676,7 +3717,8 @@ public final class VM extends NativeEnv {
             profiler.profile(0);
             throw getMeta().throwNullPointerException();
         }
-        ModulesHelperVM.addModuleExports(from_module, NativeUtils.interopPointerToString(pkgName), StaticObject.NULL, getMeta(), profiler);
+        String pkgNameString = NativeUtils.interopPointerToStringOrThrow(pkgName, getNativeAccess().nativeMemory(), getMeta());
+        ModulesHelperVM.addModuleExports(from_module, pkgNameString, StaticObject.NULL, getMeta(), profiler);
     }
 
     @VmImpl(isJni = true)
@@ -3837,10 +3879,10 @@ public final class VM extends NativeEnv {
         String[] packages = new String[numPackages];
         try {
             for (int i = 0; i < numPackages; i++) {
-                String pkg = NativeUtils.interopPointerToString((TruffleObject) getUncached().execute(getPackageAt, pkgs, i));
+                Meta meta = getMeta();
+                String pkg = NativeUtils.interopPointerToStringOrThrow((TruffleObject) getUncached().execute(getPackageAt, pkgs, i), getNativeAccess().nativeMemory(), meta);
                 if (!Validation.validBinaryName(pkg)) {
                     profiler.profile(7);
-                    Meta meta = getMeta();
                     throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
                                     cat("Invalid package name: ", pkg));
                 }

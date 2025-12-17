@@ -212,7 +212,7 @@ final class ProcessToProcessServiceGenerator extends AbstractServiceGenerator {
             builder.lineStart().write(cacheData.cacheEntryType).space().write(resFieldName).write(" = ").write(cacheSnippets.readCache(builder, cacheFieldName, receiver)).lineEnd(";");
             builder.lineStart("if (").write(resFieldName).lineEnd(" == null) {");
             builder.indent();
-            generateEnter(builder, receiver, receiverProcessPeer, processIsolateVar, scopeVar);
+            generateEnter(builder, methodData, receiver, receiverProcessPeer, processIsolateVar, scopeVar);
             generateByteArrayBinaryOutputInit(builder, binaryOutputVar, allParameters);
             generateMarshallParameters(builder, methodData, binaryOutputVar, allParameters);
             builder.lineStart().write(typeCache.binaryInput).space().write(binaryInputVar).lineEnd(";");
@@ -220,15 +220,15 @@ final class ProcessToProcessServiceGenerator extends AbstractServiceGenerator {
             builder.indent();
             generateSendReceive(builder, scopeVar, binaryOutputVar, binaryInputVar);
             builder.dedent();
-            generateStartPointExceptionHandlers(builder, methodData, receiver, processIsolateVar, throwableMarshallerVar);
+            generateStartPointExceptionHandlers(builder, processIsolateVar, throwableMarshallerVar);
             generateUnmarshallResult(builder, methodData, processIsolateVar, binaryInputVar, resFieldName, false);
             builder.lineStart().write(cacheSnippets.writeCache(builder, cacheFieldName, receiver, resFieldName)).lineEnd(";");
-            generateLeave(builder, scopeVar);
+            generateLeave(builder, methodData, receiver, scopeVar);
             builder.dedent();
             builder.line("}");
             builder.lineStart("return ").write(resFieldName).lineEnd(";");
         } else {
-            generateEnter(builder, receiver, receiverProcessPeer, processIsolateVar, scopeVar);
+            generateEnter(builder, methodData, receiver, receiverProcessPeer, processIsolateVar, scopeVar);
             generateByteArrayBinaryOutputInit(builder, binaryOutputVar, allParameters);
             generateMarshallParameters(builder, methodData, binaryOutputVar, allParameters);
             boolean voidReturnType = methodData.type.getReturnType().getKind() == TypeKind.VOID;
@@ -242,7 +242,7 @@ final class ProcessToProcessServiceGenerator extends AbstractServiceGenerator {
             builder.indent();
             generateSendReceive(builder, scopeVar, binaryOutputVar, binaryInputVar);
             builder.dedent();
-            generateStartPointExceptionHandlers(builder, methodData, receiver, processIsolateVar, throwableMarshallerVar);
+            generateStartPointExceptionHandlers(builder, processIsolateVar, throwableMarshallerVar);
             CharSequence resultVar = null;
             if (!voidReturnType) {
                 resultVar = generateUnmarshallResult(builder, methodData, processIsolateVar, binaryInputVar, null, hasOutParameters);
@@ -254,31 +254,33 @@ final class ProcessToProcessServiceGenerator extends AbstractServiceGenerator {
             if (resultVar != null) {
                 builder.lineStart("return").space().write(resultVar).lineEnd(";");
             }
-            generateLeave(builder, scopeVar);
+            generateLeave(builder, methodData, receiver, scopeVar);
         }
         builder.dedent();
         builder.line("}");
     }
 
-    private void generateEnter(CodeBuilder builder, CharSequence receiver, CharSequence receiverProcessPeer, CharSequence processIsolateVar, CharSequence scopeVar) {
+    private void generateEnter(CodeBuilder builder, MethodData methodData, CharSequence receiver, CharSequence receiverProcessPeer, CharSequence processIsolateVar, CharSequence scopeVar) {
         if (getDefinition().hasCustomDispatch()) {
             CharSequence foreignObject = new CodeBuilder(builder).cast(typeCache.foreignObject, receiver, true).build();
             CharSequence getPeer = new CodeBuilder(builder).invoke(foreignObject, "getPeer").build();
             builder.lineStart().write(typeCache.processPeer).space().write(receiverProcessPeer).write(" = ").cast(typeCache.processPeer, getPeer).lineEnd(";");
         }
         builder.lineStart().write(typeCache.processIsolate).space().write(processIsolateVar).write(" = ").invoke(receiverProcessPeer, "getIsolate").lineEnd(";");
+        generateIsolateDeathHandlerBlockStart(builder, methodData);
         builder.lineStart().write(typeCache.processIsolateThread).space().write(scopeVar).write(" = ").invoke(processIsolateVar, "enter").lineEnd(";");
         builder.line("try {");
         builder.indent();
     }
 
-    private static void generateLeave(CodeBuilder builder, CharSequence scopeVar) {
+    private void generateLeave(CodeBuilder builder, MethodData methodData, CharSequence receiverVar, CharSequence scopeVar) {
         builder.dedent();
         builder.line("} finally {");
         builder.indent();
         builder.lineStart().invoke(scopeVar, "leave").lineEnd(";");
         builder.dedent();
         builder.line("}");
+        generateIsolateDeathHandlerBlockEnd(builder, methodData, receiverVar);
     }
 
     private void generateByteArrayBinaryOutputInit(CodeBuilder builder, CharSequence binaryOutVar, List<MarshalledParameter> parameters) {
@@ -323,16 +325,8 @@ final class ProcessToProcessServiceGenerator extends AbstractServiceGenerator {
         builder.invoke(scopeVar, "sendAndReceive", paramsVar).lineEnd(";");
     }
 
-    private void generateStartPointExceptionHandlers(CodeBuilder builder, MethodData methodData, CharSequence receiverVar, CharSequence processIsolateVar, CharSequence throwableMarshallerVar) {
-        CharSequence isolateDeathExceptionVar = "isolateDeathException";
+    private void generateStartPointExceptionHandlers(CodeBuilder builder, CharSequence processIsolateVar, CharSequence throwableMarshallerVar) {
         CharSequence foreignExceptionVar = "foreignException";
-        if (methodData.isolateDeathHandler != null) {
-            builder.lineStart("} catch (").write(typeCache.isolateDeathException).space().write(isolateDeathExceptionVar).lineEnd(") {");
-            builder.indent();
-            builder.lineStart().invokeStatic(methodData.isolateDeathHandler.handlerType(), "handleIsolateDeath", receiverVar, isolateDeathExceptionVar).lineEnd(";");
-            builder.lineStart("throw ").newInstance(getTypeCache().assertionError, "\"Should not reach here.\"").lineEnd(";");
-            builder.dedent();
-        }
         builder.lineStart("} catch (").write(typeCache.foreignException).space().write(foreignExceptionVar).lineEnd(") {");
         builder.indent();
         builder.lineStart("throw ").invoke(foreignExceptionVar, "throwOriginalException", processIsolateVar, throwableMarshallerVar).lineEnd(";");

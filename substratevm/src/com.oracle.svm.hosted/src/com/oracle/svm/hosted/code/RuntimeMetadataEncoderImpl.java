@@ -67,6 +67,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -96,6 +97,7 @@ import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
@@ -182,7 +184,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     private Map<HostedType, Throwable> constructorLookupErrors = new HashMap<>();
     private Map<HostedType, Throwable> recordComponentLookupErrors = new HashMap<>();
 
-    private Set<AccessibleObjectMetadata> heapData = new HashSet<>();
+    private EconomicSet<AccessibleObjectMetadata> heapData = EconomicSet.create();
 
     public RuntimeMetadataEncoderImpl(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders) {
         this.snippetReflection = snippetReflection;
@@ -383,7 +385,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             return null;
         }
         SubstitutionReflectivityFilter reflectivityFilter = SubstitutionReflectivityFilter.singleton();
-        Set<Class<?>> reachableClasses = new HashSet<>();
+        Set<Class<?>> reachableClasses = new HashSet<>(); // noEconomicSet(temp)
         for (Class<?> clazz : classes) {
             try {
                 if (!reflectivityFilter.shouldExclude(clazz)) {
@@ -524,7 +526,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private HostedType[] registerClassValues(MetaAccessProvider metaAccess, Class<?>[] classes) {
-        Set<HostedType> includedClasses = new HashSet<>();
+        Set<HostedType> includedClasses = new HashSet<>(); // noEconomicSet(temp)
         for (Class<?> clazz : classes) {
             HostedType type;
             try {
@@ -800,7 +802,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
                  */
                 continue;
             }
-            if (!declaringType.getWrapped().isInBaseLayer()) {
+            if (!declaringType.getWrapped().isInSharedLayer()) {
                 int enclosingMethodInfoIndex = classMetadata.enclosingMethodInfo instanceof Throwable
                                 ? encodeErrorIndex((Throwable) classMetadata.enclosingMethodInfo)
                                 : addElement(buf, encodeEnclosingMethodInfo((Object[]) classMetadata.enclosingMethodInfo));
@@ -957,7 +959,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private void encodeConditions(UnsafeArrayTypeWriter buf, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
-        encodeArray(buf, dynamicAccessMetadata.getTypesForEncoding().toArray(Class[]::new), t -> encodeType(buf, t));
+        EconomicSet<Class<?>> typesForEncoding = dynamicAccessMetadata.getTypesForEncoding();
+        encodeArray(buf, typesForEncoding.toArray(new Class<?>[typesForEncoding.size()]), t -> encodeType(buf, t));
     }
 
     private void encodeExecutable(UnsafeArrayTypeWriter buf, ExecutableMetadata executable) {
@@ -1373,7 +1376,12 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     /**
      * Container for data required in later phases. Cleaner separation, rest of
      * RuntimeMetadataEncoderImpl can be cleaned after encoding.
+     *
+     * GR-71595: This class does not need to have a particular behavior for Layered Image, as it
+     * only holds the data produced by RuntimeMetadataEncoderImpl. However, the data needs to be
+     * checked across layers to ensure it is consistent.
      */
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = PartiallyLayerAware.class)
     record EncodedRuntimeMetadataSupplierImpl(Map<AccessibleObject, byte[]> annotationsEncodings,
                     Map<Executable, byte[]> parameterAnnotationsEncodings,
                     Map<Method, byte[]> annotationDefaultEncodings,

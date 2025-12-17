@@ -27,14 +27,13 @@ package com.oracle.svm.hosted.imagelayer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -82,7 +81,7 @@ public class SVMImageLayerSingletonLoader {
         return new ImageSingletonLoaderImpl(keyStore, snapshot);
     }
 
-    public Map<Object, Set<Class<?>>> loadImageSingletons(Function<SingletonTrait[], Object> forbiddenObjectCreator) {
+    public Map<Object, EconomicSet<Class<?>>> loadImageSingletons(Function<SingletonTrait[], Object> forbiddenObjectCreator) {
         ArrayList<Object> singletonObjects = new ArrayList<>(snapshot.getSingletonObjects().size());
         Map<Class<?>, Integer> initialLayerKeyToIdMap = new HashMap<>();
         Map<Class<?>, Integer> singletonKeyToKeyStoreIdMap = new HashMap<>();
@@ -109,7 +108,7 @@ public class SVMImageLayerSingletonLoader {
             singletonObjects.add(result);
         }
 
-        Map<Object, Set<Class<?>>> singletonInitializationMap = new HashMap<>();
+        Map<Object, EconomicSet<Class<?>>> singletonInitializationMap = new HashMap<>();
         SingletonTrait[] initialLayerOnly = new SingletonTrait[]{SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY};
         for (ImageSingletonKey.Reader entry : snapshot.getSingletonKeys()) {
             String className = entry.getKeyClassName().toString();
@@ -119,7 +118,7 @@ public class SVMImageLayerSingletonLoader {
                 assert singletonObjId != SVMImageLayerSnapshotUtil.UNDEFINED_SINGLETON_OBJ_ID : "Create image singletons should be linked to an object";
                 Object singletonObject = singletonObjects.get(singletonObjId);
                 Class<?> clazz = imageLayerBuildingSupport.lookupClass(false, className);
-                singletonInitializationMap.computeIfAbsent(singletonObject, _ -> new HashSet<>());
+                singletonInitializationMap.computeIfAbsent(singletonObject, _ -> EconomicSet.create());
                 singletonInitializationMap.get(singletonObject).add(clazz);
             } else if (persistFlags == LayeredPersistFlags.FORBIDDEN) {
                 assert singletonObjId == SVMImageLayerSnapshotUtil.UNDEFINED_SINGLETON_OBJ_ID : "Unrestored image singleton should not be linked to an object";
@@ -133,7 +132,7 @@ public class SVMImageLayerSingletonLoader {
                 } else {
                     forbiddenObject = forbiddenObjectCreator.apply(SingletonTrait.EMPTY_ARRAY);
                 }
-                singletonInitializationMap.computeIfAbsent(forbiddenObject, _ -> new HashSet<>());
+                singletonInitializationMap.computeIfAbsent(forbiddenObject, _ -> EconomicSet.create());
                 singletonInitializationMap.get(forbiddenObject).add(clazz);
             } else if (persistFlags == LayeredPersistFlags.CALLBACK_ON_REGISTRATION) {
                 Class<?> clazz = imageLayerBuildingSupport.lookupClass(false, className);

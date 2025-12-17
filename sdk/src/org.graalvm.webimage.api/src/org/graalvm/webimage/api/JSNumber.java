@@ -63,11 +63,6 @@ public final class JSNumber extends JSValue {
     private native Double javaDouble();
 
     @Override
-    protected String stringValue() {
-        return String.valueOf(javaDouble());
-    }
-
-    @Override
     public Byte asByte() {
         return javaDouble().byteValue();
     }

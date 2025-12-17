@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.jvmci.meta;
 
 import java.lang.annotation.Annotation;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.annotation.AbstractAnnotated;
@@ -38,6 +39,10 @@ public abstract class EspressoResolvedJavaType extends AbstractAnnotated impleme
     @Override
     public AbstractEspressoResolvedArrayType getArrayClass() {
         if (arrayType == null) {
+            JavaKind kind = getJavaKind();
+            if (kind == JavaKind.Void) {
+                return null;
+            }
             arrayType = getArrayClass0();
         }
         return arrayType;

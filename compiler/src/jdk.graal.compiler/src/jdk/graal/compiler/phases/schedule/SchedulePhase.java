@@ -40,6 +40,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Function;
 
+import jdk.graal.compiler.phases.PhaseSuite;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.word.LocationIdentity;
 
@@ -98,12 +99,88 @@ import jdk.graal.compiler.phases.tiers.LowTierContext;
 
 public final class SchedulePhase extends BasePhase<CoreProviders> {
 
+    /**
+     * Defines the strategies for scheduling nodes in the compiler's intermediate representation.
+     * The chosen strategy affects the order in which nodes are executed, impacting performance and
+     * potentially the effectiveness of other optimizations.
+     */
     public enum SchedulingStrategy {
-        EARLIEST_WITH_GUARD_ORDER,
+
+        /**
+         * Schedules nodes in the earliest possible block. This minimizes the distance between a
+         * node's definition and its usage, reducing register pressure. It can also move nodes out
+         * of loops, decreasing the number of times they are executed. However, if a node is moved
+         * out of a conditional execution (e.g. an if) into the dominating block, it will always be
+         * executed, even if the condition is not satisfied, thereby increasing the number of times
+         * it is executed. In general this effect seems to be greater than the efficiency gains, by
+         * scheduling nodes out of loops.
+         */
         EARLIEST,
+
+        /**
+         * Similar to {@link #EARLIEST}, but preserves the original order of guards. This ensures
+         * that guard-related nodes are not reordered, maintaining the original guarding behavior.
+         */
+        EARLIEST_WITH_GUARD_ORDER,
+
+        /**
+         * Schedules nodes in the latest possible block to minimize unnecessary executions, thereby
+         * reducing register pressure and the number of node executions. However, when sinking a
+         * usage into a loop, this may lead to increased executions and register pressure.
+         *
+         * <p>
+         * Example:
+         * </p>
+         *
+         * <pre>
+         *     b = some calculation
+         *     if (a) {
+         *         some calculation using b
+         *     }
+         *     // no further usages of b
+         * </pre>
+         *
+         * <p>
+         * In this example, deferring the calculation of 'b' until it's actually needed reduces its
+         * execution frequency, resulting in improved performance.
+         * </p>
+         */
         LATEST,
+
+        /**
+         * Similar to {@link #LATEST}, but ensures that nodes are not scheduled into loops. This
+         * balances the benefits of early and late scheduling.
+         */
         LATEST_OUT_OF_LOOPS,
-        LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS;
+
+        /**
+         * Extends {@link #LATEST_OUT_OF_LOOPS} by actively preserving implicit null checks, to
+         * reduce memory access.
+         *
+         * <p>
+         * An implicit null check occurs when a null check is folded into a memory access operation.
+         * For example, accessing a field on a potentially null object reference implicitly checks
+         * for null and throws a NullPointerException if the object is null.
+         *
+         * <pre>
+         *     Consider the following example:
+         *     (1) read(a.length) // implicit null check of 'a'
+         *     (2) read(a.sth) // requires 'a' to be non-null
+         *
+         *     Preserving implicit null checks ensures that (1) remains before (2) in the execution order.
+         *     If (2) is reordered before (1), an additional explicit null check is required before (2).
+         * </pre>
+         *
+         * <p>
+         * This optimization helps reduce the number of null checks required.
+         */
+        LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS,
+
+        /**
+         * This scheduling is run after {@link FinalSchedulePhase} to reduce register pressure or
+         * latency by reordering the nodes within a {@link HIRBlock}.
+         */
+        BASIC_BLOCK_LOCAL_SCHEDULING;
 
         public boolean isEarliest() {
             return this == EARLIEST || this == EARLIEST_WITH_GUARD_ORDER;
@@ -111,6 +188,10 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
         public boolean isLatest() {
             return !isEarliest();
+        }
+
+        public boolean isBasicBlockLocalScheduling() {
+            return this == BASIC_BLOCK_LOCAL_SCHEDULING;
         }
 
         public boolean scheduleOutOfLoops() {
@@ -153,8 +234,27 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
     /**
      * Last schedule to be run in any phase plan in the compiler. After this no further
      * optimizations or transformations must happen that would require a re-scheduling of the graph.
+     *
+     * Optionally, a post-processing phase can be provided via the constructor to perform low-tier
+     * cleanups that rely on a stable schedule. Such a phase must be schedule-preserving and must
+     * not introduce changes that require another scheduling pass. This is typically used to run
+     * local transformations (e.g., {@link SchedulingStrategy#BASIC_BLOCK_LOCAL_SCHEDULING}) as part
+     * of a {@link PhaseSuite} plan.
      */
     public static class FinalSchedulePhase extends BasePhase<LowTierContext> {
+
+        private final BasePhase<LowTierContext> postProcessingPhase;
+
+        /**
+         * Creates a FinalSchedulePhase without any post-processing.
+         */
+        public FinalSchedulePhase() {
+            this(null);
+        }
+
+        public FinalSchedulePhase(final BasePhase<LowTierContext> postProcessingPhase) {
+            this.postProcessingPhase = postProcessingPhase;
+        }
 
         @Override
         public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
@@ -166,7 +266,11 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         @Override
         protected void run(StructuredGraph graph, LowTierContext context) {
             new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS).apply(graph, context);
-
+            // Apply the optional, schedule-preserving post-processing phase. This must not perform
+            // transformations that would invalidate or require recomputing the final schedule.
+            if (postProcessingPhase != null) {
+                postProcessingPhase.apply(graph, context);
+            }
         }
 
         @Override

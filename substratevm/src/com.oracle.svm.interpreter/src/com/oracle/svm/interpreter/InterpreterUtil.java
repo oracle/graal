@@ -24,9 +24,12 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
@@ -49,6 +52,7 @@ public class InterpreterUtil {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void assertion(boolean condition, String message) {
         if (assertionsEnabled && !condition) {
             VMError.guarantee(condition, message);

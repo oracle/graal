@@ -63,7 +63,7 @@ public final class StructsAccess {
                 @CompilerDirectives.TruffleBoundary
                 public Object call(Object... args) {
                     TruffleObject memberInfoPtr = (TruffleObject) args[0];
-                    box[0] = new Structs(context.getHandles(), memberInfoPtr, lookupMemberOffset);
+                    box[0] = new Structs(context.getHandles(), context.getNativeAccess().nativeMemory(), memberInfoPtr, lookupMemberOffset);
                     return RawPointer.nullInstance();
                 }
             });

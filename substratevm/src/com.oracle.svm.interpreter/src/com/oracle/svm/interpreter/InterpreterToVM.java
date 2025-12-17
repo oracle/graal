@@ -37,6 +37,7 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.impl.ClassLoading;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 
@@ -629,7 +630,9 @@ public final class InterpreterToVM {
         // StackOverflowError which are handled specially by the interpreter.
         // GR-55050: Hide/remove the Array.newInstance (and other intermediate) frames
         // e.g. use a DynamicNewArrayInstanceNode intrinsic.
-        return Array.newInstance(componentType.getJavaClass(), length);
+        try (var _ = ClassLoading.allowArbitraryClassLoading(RuntimeClassLoading.isSupported())) {
+            return Array.newInstance(componentType.getJavaClass(), length);
+        }
     }
 
     private static int getDimensions(ResolvedJavaType object) {
@@ -915,7 +918,7 @@ public final class InterpreterToVM {
             }
 
             // wrapping of exceptions is done in leaveInterpreter
-            retObj = InterpreterStubSection.leaveInterpreter(calleeFtnPtr, targetMethod, targetMethod.getDeclaringClass(), calleeArgs);
+            retObj = InterpreterStubSection.leaveInterpreter(calleeFtnPtr, targetMethod, calleeArgs);
         } else {
             try {
                 retObj = Interpreter.execute(targetMethod, calleeArgs, forceStayInInterpreter);

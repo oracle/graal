@@ -22,7 +22,10 @@
  */
 package com.oracle.truffle.espresso.io;
 
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAccessMode;
 import static com.oracle.truffle.espresso.libs.libnio.impl.Target_sun_nio_ch_IOUtil.FD_LIMIT;
+import static com.oracle.truffle.espresso.substitutions.standard.Target_sun_misc_Unsafe.ADDRESS_SIZE;
 
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -58,6 +61,8 @@ import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -74,6 +79,7 @@ import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
@@ -657,14 +663,38 @@ public final class TruffleIO implements ContextAccess {
      * @param self The file descriptor holder.
      * @param fdAccess How to get the file descriptor from the holder.
      * @param bytes The byte buffer containing the bytes to write.
-     * @return The number of bytes written, possibly zero.
-     * @see java.io.FileOutputStream#write(byte[])
+     * @return The number of bytes written, possibly zero. If the channel is in non-blocking mode
+     *         and the operation would block {@link IOStatus_Sync#UNAVAILABLE} is returned.
+     * @see WritableByteChannel#write(ByteBuffer)
      */
     @TruffleBoundary
     public int writeBytes(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess,
                     ByteBuffer bytes) {
         return writeBytes(getFD(self, fdAccess), bytes);
+    }
+
+    /**
+     * Writes bytes from the address specified to the file associated with the given file descriptor
+     * holder in plain mode.
+     *
+     * @param self The file descriptor holder.
+     * @param fdAccess How to get the file descriptor from the holder.
+     * @param address The address containing the bytes to write.
+     * @param length the number of bytes to write.
+     * @return The number of bytes written, possibly zero. If the channel is in non-blocking mode
+     *         and the operation would block {@link IOStatus_Sync#UNAVAILABLE} is returned.
+     * @see java.io.FileOutputStream#write(byte[])
+     */
+    @TruffleBoundary
+    public int writeAddress(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess,
+                    long address, int length) {
+        try {
+            return writeBytes(self, fdAccess, context.getNativeAccess().nativeMemory().wrapNativeMemory(address, length));
+        } catch (IllegalMemoryAccessException e) {
+            throw Throw.throwIOException("Invalid memory access: Trying to access memory outside the allocated region", getContext());
+        }
     }
 
     /**
@@ -675,7 +705,8 @@ public final class TruffleIO implements ContextAccess {
      * @param bytes The byte array containing the bytes to write.
      * @param off The start of the byte sequence to write from {@code bytes}.
      * @param len The length of the byte sequence to write.
-     * @return The number of bytes written, possibly zero.
+     * @return The number of bytes written, possibly zero. If the channel is in non-blocking mode
+     *         and the operation would block {@link IOStatus_Sync#UNAVAILABLE} is returned.
      * @see java.io.FileOutputStream#write(byte[], int, int)
      */
     @TruffleBoundary
@@ -713,65 +744,67 @@ public final class TruffleIO implements ContextAccess {
     }
 
     /**
-     * Writes the content of the ByteBuffers to the file associated with the given file descriptor
-     * holder in the exact order of the ByteBuffers array.
+     * Writes the content of the underlying "native" ByteBuffers to the file associated with the
+     * given file descriptor holder in the exact order of the ByteBuffers array.
      *
      * @param self The file descriptor holder.
      * @param fdAccess How to get the file descriptor from the holder.
-     * @param buffers The ByteBuffer containing the bytes to write.
+     * @param address The base address of the continuous memory region, which contains addresses and
+     *            lengths for the ByteBuffers we write from.
+     * @param length the number of ByteBuffers to extract from address.
      * @return The number of bytes written, possibly zero.
      * @see java.nio.channels.GatheringByteChannel#write(ByteBuffer[])
      */
     @TruffleBoundary
-    public long writeByteBuffers(@JavaType(Object.class) StaticObject self,
+    public long writev(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess,
-                    ByteBuffer[] buffers) {
-        Channel channel = Checks.ensureOpen(getChannel(getFD(self, fdAccess)), getContext());
+                    long address, int length) {
+        NativeMemory nativeMemory = context.getNativeAccess().nativeMemory();
+        AddressLengthPair[] addressLengthPairs = extractAddressLengthPairs(address, length, nativeMemory);
+        StaticObject fileDesc = getFileDesc(self, fdAccess);
+        Channel channel = Checks.ensureOpen(getChannel(getFD(fileDesc)), getContext());
         if (channel instanceof GatheringByteChannel gatheringByteChannel) {
             try {
-                return gatheringByteChannel.write(buffers);
+                return gatheringByteChannel.write(asByteBuffer(addressLengthPairs, nativeMemory));
             } catch (IOException e) {
                 throw Throw.throwIOException(e, context);
             }
         } else {
-            context.getLogger().warning(() -> "No GatheringByteChannel for writev operation!" + channel.getClass());
-            long ret = 0;
-            for (ByteBuffer buf : buffers) {
-                ret += writeBytes(self, fdAccess, buf);
-            }
-            return ret;
+            LibsState.getLogger().warning("No GatheringByteChannel for writev operation! You are using: " + channel.getClass());
         }
+        return sequentialWritev(self, fdAccess, addressLengthPairs);
     }
 
     /**
-     * Reads the content of the file associated with the given file descriptor into the provided
-     * ByteBuffers sequentially.
+     * Reads the content of the file associated with the given file descriptor into the underlying
+     * "native" ByteBuffers.
      *
      * @param self The file descriptor holder.
      * @param fdAccess How to get the file descriptor from the holder.
-     * @param buffers The ByteBuffers we read data into.
+     * @param address The base address of the continuous memory region, which contains addresses and
+     *            lengths for the ByteBuffers we read into.
+     * @param length the number of ByteBuffers to extract from address.
      * @return The number of bytes written, possibly zero.
      * @see java.nio.channels.ScatteringByteChannel#read(ByteBuffer)
      */
     @TruffleBoundary
-    public long readByteBuffers(@JavaType(Object.class) StaticObject self,
+    public long readv(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess,
-                    ByteBuffer[] buffers) {
-        Channel channel = Checks.ensureOpen(getChannel(getFD(self, fdAccess)), getContext());
+                    long address, int length) {
+        NativeMemory nativeMemory = context.getNativeAccess().nativeMemory();
+        AddressLengthPair[] addressLengthPairs = extractAddressLengthPairs(address, length, nativeMemory);
+        StaticObject fileDesc = getFileDesc(self, fdAccess);
+        Channel channel = Checks.ensureOpen(getChannel(getFD(fileDesc)), getContext());
         if (channel instanceof ScatteringByteChannel scatteringByteChannel) {
             try {
-                return scatteringByteChannel.read(buffers);
+                return scatteringByteChannel.read(asByteBuffer(addressLengthPairs, nativeMemory));
             } catch (IOException e) {
                 throw Throw.throwIOException(e, context);
             }
         } else {
-            context.getLogger().warning(() -> "No ScatteringByteChannel for readv operation!" + channel.getClass());
-            long ret = 0;
-            for (ByteBuffer buf : buffers) {
-                ret += readBytes(self, fdAccess, buf);
-            }
-            return ret;
+            LibsState.getLogger().warning("No ScatteringByteChannel for readv operation! You are using: " + channel.getClass());
         }
+        return sequentialReadv(self, fdAccess, addressLengthPairs);
     }
 
     /**
@@ -779,7 +812,9 @@ public final class TruffleIO implements ContextAccess {
      *
      * @param self The file descriptor holder.
      * @param fdAccess How to get the file descriptor from the holder.
-     * @return The byte read, or {@code -1} if reading failed.
+     * @return The byte read, or -1 if the channel has reached end-of-stream. If the channel is in
+     *         non-blocking mode and no data is available {@link IOStatus_Sync#UNAVAILABLE} is
+     *         returned.
      * @see FileInputStream#read()
      */
     @TruffleBoundary
@@ -813,8 +848,9 @@ public final class TruffleIO implements ContextAccess {
      * @param off The start of the byte sequence to write to in {@code bytes}.
      * @param len The length of the byte sequence to read.
      * @return The number of bytes read, possibly zero, or -1 if the channel has reached
-     *         end-of-stream
-     * @see java.io.FileInputStream#read(byte[], int, int)
+     *         end-of-stream. If the channel is in non-blocking mode and no data is available
+     *         {@link IOStatus_Sync#UNAVAILABLE} is returned.
+     * @see ReadableByteChannel#read(ByteBuffer)
      */
     @TruffleBoundary
     public int readBytes(@JavaType(Object.class) StaticObject self,
@@ -838,7 +874,8 @@ public final class TruffleIO implements ContextAccess {
      * @param fdAccess How to get the file descriptor from the holder.
      * @param buffer The ByteBuffer that will contain the bytes read.
      * @return The number of bytes read, possibly zero, or -1 if the channel has reached
-     *         end-of-stream
+     *         end-of-stream. If the channel is in non-blocking mode and no data is available
+     *         {@link IOStatus_Sync#UNAVAILABLE} is returned.
      * @see java.io.FileInputStream#read(byte[], int, int)
      */
     @TruffleBoundary
@@ -864,6 +901,25 @@ public final class TruffleIO implements ContextAccess {
             throw JavaSubstitution.unimplemented();
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
+     * Reads a byte sequence from the file associated with the given file descriptor into the given
+     * memory address in plain mode.
+     *
+     * @param addr the address to read into
+     * @param length how many bytes to read
+     * @see #readBytes(StaticObject, FDAccess, byte[], int, int)
+     */
+    @TruffleBoundary
+    public int readAddress(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, long addr,
+                    int length) {
+        try {
+            return readBytes(self, fdAccess, context.getNativeAccess().nativeMemory().wrapNativeMemory(addr, length));
+        } catch (IllegalMemoryAccessException e) {
+            throw Throw.throwIOException("Invalid memory access: Trying to access memory outside the allocated region", getContext());
         }
     }
 
@@ -1278,6 +1334,106 @@ public final class TruffleIO implements ContextAccess {
             nextFd = currentFd + 1;
         }
         return nextFd;
+    }
+
+    private long sequentialWritev(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, AddressLengthPair[] addressLengthPairs) {
+        long ret = 0;
+        for (AddressLengthPair addressLengthPair : addressLengthPairs) {
+            long currAddr = addressLengthPair.address();
+            long currLength = addressLengthPair.length();
+            long currWritten = 0;
+            do {
+                long nextWrite = Math.min(Integer.MAX_VALUE, currLength - currWritten);
+                // unchecked cast is safe since nextWrite <= Integer.MAX_VALUE
+                int written = writeAddress(self, fdAccess, currAddr + currWritten, (int) nextWrite);
+                if (written <= 0 && currLength > currWritten) {
+                    /*
+                     * The writev() function shall always write a complete area before proceeding to
+                     * the next.
+                     */
+                    return ret + currWritten;
+                }
+                currWritten += written;
+            } while (currWritten < currLength);
+            ret += currWritten;
+        }
+        return ret;
+    }
+
+    private long sequentialReadv(@JavaType(Object.class) StaticObject self,
+                    FDAccess fdAccess, AddressLengthPair[] addressLengthPairs) {
+        long ret = 0;
+        for (AddressLengthPair addressLengthPair : addressLengthPairs) {
+            long currAddr = addressLengthPair.address();
+            long currLength = addressLengthPair.length();
+            long currRead = 0;
+            do {
+                long nextRead = Math.min(Integer.MAX_VALUE, currLength - currRead);
+                // unchecked cast is safe since nextRead <= Integer.MAX_VALUE
+                int read = readAddress(self, fdAccess, currAddr + currRead, (int) nextRead);
+                if (read <= 0 && currRead < currLength) {
+                    /*
+                     * readv() completely fills iov[0] before proceeding to iov[1], and so on.
+                     */
+                    return ret + currRead;
+                }
+                currRead += read;
+            } while (currRead < currLength);
+            ret += currRead;
+        }
+        return ret;
+    }
+
+    @TruffleBoundary
+    private ByteBuffer[] asByteBuffer(AddressLengthPair[] addressLengthPairs, NativeMemory nativeMemory) {
+        List<ByteBuffer> buffs = new ArrayList<>(addressLengthPairs.length);
+        for (int i = 0; i < addressLengthPairs.length; i++) {
+            long bytesToWrap = addressLengthPairs[i].length;
+            long currAddr = addressLengthPairs[i].address();
+            long wrappedBytes = 0;
+            do {
+                long nextWrap = Math.min(Integer.MAX_VALUE, bytesToWrap - wrappedBytes);
+                // unchecked cast is safe as nextWrap <= Integer.MAX_VALUE
+                try {
+                    buffs.add(nativeMemory.wrapNativeMemory(currAddr + wrappedBytes, (int) nextWrap));
+                } catch (IllegalMemoryAccessException e) {
+                    throw Throw.throwIOException("Invalid memory access: Trying to access memory outside the allocated region", getContext());
+                }
+                wrappedBytes += nextWrap;
+            } while (wrappedBytes < bytesToWrap);
+        }
+        return buffs.toArray(new ByteBuffer[0]);
+    }
+
+    private record AddressLengthPair(long address, long length) {
+    }
+
+    private AddressLengthPair[] extractAddressLengthPairs(long address, int len, NativeMemory nativeMemory) {
+        int lenOffset = ADDRESS_SIZE;
+        int sizeOfIOVec = (short) (ADDRESS_SIZE * 2);
+        long curIOVecAddr = address;
+        long nextAddr;
+        long nextLen;
+        long fullLen = 0;
+        AddressLengthPair[] addressLengthPairs = new AddressLengthPair[len];
+        for (int i = 0; i < len; i++) {
+            try {
+                if (ADDRESS_SIZE == 4) {
+                    nextAddr = nativeMemory.getInt(curIOVecAddr, MemoryAccessMode.PLAIN);
+                    nextLen = nativeMemory.getInt(curIOVecAddr + lenOffset, MemoryAccessMode.PLAIN);
+                } else {
+                    nextAddr = nativeMemory.getLong(curIOVecAddr, MemoryAccessMode.PLAIN);
+                    nextLen = nativeMemory.getLong(curIOVecAddr + lenOffset, MemoryAccessMode.PLAIN);
+                }
+            } catch (IllegalMemoryAccessException e) {
+                throw Throw.throwIOException("Invalid memory access: Trying to access memory outside the allocated region", getContext());
+            }
+            fullLen = Math.addExact(fullLen, nextLen);
+            addressLengthPairs[i] = new AddressLengthPair(nextAddr, nextLen);
+            curIOVecAddr += sizeOfIOVec;
+        }
+        return addressLengthPairs;
     }
 
     private ReadableByteChannel getReadableChannel(@JavaType(Object.class) StaticObject self,

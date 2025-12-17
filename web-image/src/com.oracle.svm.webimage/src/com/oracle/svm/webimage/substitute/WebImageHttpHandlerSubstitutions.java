@@ -25,7 +25,6 @@
 
 package com.oracle.svm.webimage.substitute;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Proxy;
@@ -35,10 +34,12 @@ import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.webimage.api.JS;
+import org.graalvm.webimage.api.JSObject;
+import org.graalvm.webimage.api.JSString;
+import org.graalvm.webimage.api.JSValue;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.webimage.annotation.JSRawCall;
 
 /**
  * Handle HTTP and HTTPS URLs using XMLHttpRequest (instead of TCP sockets). The handlers are used
@@ -69,7 +70,7 @@ public final class WebImageHttpHandlerSubstitutions {
     // The first call to connect() creates the request, sends it, and saves the response.
     // The saved response is used to implement getInputStream().
     private static final class XhrUrlConnection extends URLConnection {
-        private byte[] content;
+        private JSObject content;
 
         XhrUrlConnection(URL url) {
             super(url);
@@ -80,59 +81,72 @@ public final class WebImageHttpHandlerSubstitutions {
             if (content != null) {
                 return;
             }
-            if (jsConnect(url.toExternalForm())) {
-                content = jsGetContent();
-            } else {
-                throw new IOException(jsGetMessage());
+            JSValue connectResult = jsConnect(url.toExternalForm());
+            switch (connectResult) {
+                case JSString jsString -> throw new IOException(jsString.asString());
+                case JSObject jsByteArray -> content = jsByteArray;
+                default -> throw new IOException("Got unexpected return value from jsConnect: " + connectResult);
             }
         }
 
         @Override
         public InputStream getInputStream() throws IOException {
             connect();
-            return new ByteArrayInputStream(content);
+            return new JSByteArrayInputStream(content);
         }
 
-        // Creates the request and sends it. In addition to the return value,
-        // a temporary JavaScript field is set and can be retrieved using
-        // jsGetContent (if this method returns true) or
-        // jsGetMessage (if this method returns false).
-        // @formatter:off
-        @JSRawCall
-        @JS(""
-                + "try {\n"
-                + "    if('window' in self) {\n" // are we on the main thread and not worker?
-                + "        this.r = 'HTTP(S) URL connections are not allowed on main thread';\n"
-                + "        return false;\n"
-                + "    }\n"
-                + "    var xhr = new XMLHttpRequest();\n"
-                + "    xhr.open('GET', urlString.toJSString(), false);\n"
-                + "    xhr.responseType = 'arraybuffer';\n"
-                + "    xhr.send();\n"
-                + "    if(xhr.status === 200) {\n"
-                + "        this.r = new Int8Array(xhr.response);\n"
-                + "        return true;\n"
-                + "    } else {\n"
-                + "        this.r = xhr.status + ' ' + xhr.statusText;\n" // e.g. "404 Not Found"
-                + "        return false;\n"
-                + "    }\n"
-                + "} catch(e) {\n"
-                + "    this.r = e.toString();\n"
-                + "    return false;\n"
-                + "}\n"
-        )
-        // @formatter:on
-        private native boolean jsConnect(String urlString);
-
-        // Returns and clears the field set by jsConnect.
+        /// Creates the request and sends it.
+        ///
+        /// @return If the sending returned a 200 status code, returns a [JSObject] that wraps a
+        /// `Uint8Array`, otherwise returns a `JSString` containing the error message.
         @JS.Coerce
-        @JS("var request = this[runtime.symbol.javaNative]; var r = request.r; request.r = null; return r;")
-        private native byte[] jsGetContent();
+        @JS("""
+                        try {
+                            if('window' in self) {
+                                return 'HTTP(S) URL connections are not allowed on main thread';
+                            }
+                            var xhr = new XMLHttpRequest();
+                            xhr.open('GET', urlString, false);
+                            xhr.responseType = 'arraybuffer';
+                            xhr.send();
+                            if(xhr.status === 200) {
+                                return new Uint8Array(xhr.response);
+                            } else {
+                                return xhr.status + ' ' + xhr.statusText;
+                            }
+                        } catch(e) {
+                            return e.toString();
+                        }
+                        """)
+        private native JSValue jsConnect(String urlString);
+    }
 
-        // Returns and clears the field set by jsConnect.
-        @JS.Coerce
-        @JS("var request = this[runtime.symbol.javaNative]; var r = request.r; request.r = null; return r;")
-        private native String jsGetMessage();
+    /// [InputStream] implementation that is backed by a `Uint8Array` from JavaScript.
+    private static final class JSByteArrayInputStream extends InputStream {
+        private final JSObject jsUint8Array;
+        private final int length;
+        private int idx = 0;
+
+        private JSByteArrayInputStream(JSObject jsUint8Array) {
+            this.jsUint8Array = jsUint8Array;
+            this.length = jsUint8Array.get("length", Integer.class);
+        }
+
+        @Override
+        public int read() throws IOException {
+            if (idx >= length) {
+                return -1;
+            }
+
+            int i = jsUint8Array.get(idx, Integer.class);
+
+            if (i < 0 || i > 255) {
+                throw new IOException("Invalid byte value at index " + idx + ": " + i);
+            }
+
+            idx++;
+            return i;
+        }
     }
 }
 

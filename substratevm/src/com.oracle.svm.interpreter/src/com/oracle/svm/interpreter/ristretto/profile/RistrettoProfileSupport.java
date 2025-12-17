@@ -31,16 +31,16 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
-import com.oracle.svm.interpreter.metadata.profile.InterpreterProfile;
+import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
 import com.oracle.svm.interpreter.ristretto.RistrettoFeature;
 import com.oracle.svm.interpreter.ristretto.RistrettoRuntimeOptions;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.PauseNode;
 
 public class RistrettoProfileSupport {
@@ -90,9 +90,12 @@ public class RistrettoProfileSupport {
      *            {@link CremaResolvedJavaMethodImpl}
      * @throws AssertionError if iMethod is not a InterpreterResolvedJavaMethod instance
      */
-    public static void profileMethodCall(InterpreterResolvedJavaMethod iMethod) {
+    public static MethodProfile profileMethodEntry(InterpreterResolvedJavaMethod iMethod) {
+        if (!RistrettoProfileSupport.isEnabled()) {
+            return null;
+        }
         if (!RistrettoRuntimeOptions.JITEnableCompilation.getValue()) {
-            return;
+            return null;
         }
 
         assert iMethod instanceof CremaResolvedJavaMethodImpl;
@@ -103,55 +106,64 @@ public class RistrettoProfileSupport {
             // no need to keep profiling this code, we are done
             trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Should not enter profiling for method %s because of state %s%n", iMethod,
                             RistrettoCompileStateMachine.toString(oldState));
-            return;
+            return null;
         }
 
         // this point is only reached for state=INIT_VAL|INITIALIZING|NEVER_COMPILED
-        while (true) {
-            oldState = COMPILATION_STATE_UPDATER.get(rMethod);
-
+        do {
             /*
              * TODO GR-71597 A note on interpreter performance. Code is abstracted in methods here
              * to ensure better readability. However, for performance we should ensure inlining
              * happens on most of the frequently executed cases here.
              */
-
             switch (oldState) {
-                // profile has not been initialized yet for this method, do so by switching to
-                // INITIALIZING and then wait, if another thread went to initializing in the
-                // meantime we are done
                 case RistrettoConstants.COMPILE_STATE_INIT_VAL: {
+                    /*
+                     * The profile has not been initialized yet for this method. Do so by switching
+                     * to INITIALIZING. If another thread transitioned to initializing in the
+                     * meantime we are done.
+                     */
                     methodEntryInitCase(iMethod, rMethod);
                     break;
                 }
                 case RistrettoConstants.COMPILE_STATE_SUBMITTED:
                 case RistrettoConstants.COMPILE_STATE_COMPILED: {
-                    methodEntrySkipCase(iMethod, rMethod);
-                    return;
+                    profileSkipCase(iMethod, rMethod);
+                    return null;
                 }
                 case RistrettoConstants.COMPILE_STATE_NEVER_COMPILED: {
                     methodEntryNeverCompiledCase(iMethod, rMethod, oldState);
                     // we only increment (and submit if applicable) once, thus return now
-                    return;
+                    MethodProfile profile = rMethod.getProfile();
+                    assert profile != null;
+                    return profile;
                 }
                 case RistrettoConstants.COMPILE_STATE_INITIALIZING: {
-                    // another thread is initializing the compilation data, do a few more spins
-                    // until that is done and then go on
+                    /*
+                     * TODO GR-71948 - investigate an early return here
+                     * 
+                     * another thread is initializing the compilation data, do a few more spins
+                     * until that is done and then go on
+                     */
+                    PauseNode.pause();
                     break;
                 }
                 default:
-                    throw GraalError.shouldNotReachHere("Unknown state " + oldState);
+                    throw VMError.shouldNotReachHere("Unknown state " + oldState);
             }
-        }
+            oldState = COMPILATION_STATE_UPDATER.get(rMethod);
+        } while (true);
     }
 
     private static void methodEntryNeverCompiledCase(InterpreterResolvedJavaMethod iMethod, RistrettoMethod rMethod, int oldState) {
-        InterpreterProfile.CountingProfile methodProfile = (InterpreterProfile.CountingProfile) rMethod.profile;
+        MethodProfile methodProfile = rMethod.getProfile();
         trace(RistrettoRuntimeOptions.JITTraceProfilingIncrements, String.format("[Ristretto Compile Queue]Entering state %s for %s, counter=%s%n",
-                        RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod, methodProfile.counter));
-        // we write without any synchronization to the methodProfile.counter value at
-        // the cost of lost updates
-        if (++methodProfile.counter > RistrettoRuntimeOptions.JITCompilerInvocationThreshold.getValue()) {
+                        RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod, methodProfile.getProfileEntryCount()));
+        /*
+         * We write without any synchronization to the methodProfile.counter value at the cost of
+         * lost updates.
+         */
+        if (methodProfile.profileMethodEntry() > RistrettoRuntimeOptions.JITCompilerInvocationThreshold.getValue()) {
             trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s, profile overflown, trying to submit compile%n",
                             RistrettoCompileStateMachine.toString(oldState), iMethod);
             while (!COMPILATION_STATE_UPDATER.compareAndSet(rMethod, RistrettoConstants.COMPILE_STATE_NEVER_COMPILED, RistrettoConstants.COMPILE_STATE_SUBMITTED)) {
@@ -165,7 +177,7 @@ public class RistrettoProfileSupport {
         }
     }
 
-    private static void methodEntrySkipCase(InterpreterResolvedJavaMethod iMethod, RistrettoMethod rMethod) {
+    private static void profileSkipCase(InterpreterResolvedJavaMethod iMethod, RistrettoMethod rMethod) {
         // in the meantime compilation happened already, we are done
         trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s, skipping any profiling or compilation%n",
                         RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod);
@@ -178,12 +190,8 @@ public class RistrettoProfileSupport {
         if (COMPILATION_STATE_UPDATER.compareAndSet(rMethod, RistrettoConstants.COMPILE_STATE_INIT_VAL, RistrettoConstants.COMPILE_STATE_INITIALIZING)) {
             trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s%n",
                             RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod);
-
-            // we are the one writing
-            rMethod.profile = new InterpreterProfile.CountingProfile();
-            while (!COMPILATION_STATE_UPDATER.compareAndSet(rMethod, RistrettoConstants.COMPILE_STATE_INITIALIZING, RistrettoConstants.COMPILE_STATE_NEVER_COMPILED)) {
-                // spin until we are done writing
-                PauseNode.pause();
+            if (!COMPILATION_STATE_UPDATER.compareAndSet(rMethod, RistrettoConstants.COMPILE_STATE_INITIALIZING, RistrettoConstants.COMPILE_STATE_NEVER_COMPILED)) {
+                throw VMError.shouldNotReachHere("We set transition to COMPILE_STATE_INITIALIZING, we must be allowed to set it to COMPILE_STATE_NEVER_COMPILED");
             }
             // continue to the NEVER_COMPILED state
             trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Finished setting state %s for %s%n",

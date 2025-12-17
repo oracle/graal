@@ -24,16 +24,17 @@
  */
 package com.oracle.svm.util;
 
+import java.lang.reflect.Array;
 import java.net.URL;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.util.stream.Stream;
 
-import com.oracle.graal.vmaccess.ResolvedJavaModule;
-import com.oracle.graal.vmaccess.ResolvedJavaModuleLayer;
-import com.oracle.graal.vmaccess.ResolvedJavaPackage;
-
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
+import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.internal.loader.BootLoader;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -70,5 +71,13 @@ final class JVMCIReflectionUtilFallback {
 
     public static ResolvedJavaModuleLayer bootModuleLayer() {
         return new ResolvedJavaModuleLayerImpl(ModuleLayer.boot());
+    }
+
+    public static JavaConstant newInstance(ResolvedJavaType type) {
+        return GraalAccess.getOriginalSnippetReflection().forObject(ReflectionUtil.newInstance(OriginalClassProvider.getJavaClass(type)));
+    }
+
+    public static JavaConstant newArrayInstance(ResolvedJavaType componentType, int length) {
+        return GraalAccess.getOriginalSnippetReflection().forObject(Array.newInstance(OriginalClassProvider.getJavaClass(componentType), length));
     }
 }

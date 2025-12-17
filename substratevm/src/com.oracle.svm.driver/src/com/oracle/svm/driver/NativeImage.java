@@ -503,13 +503,6 @@ public class NativeImage {
         }
 
         /**
-         * @return base image classpath needed for every image (e.g. LIBRARY_SUPPORT)
-         */
-        public List<Path> getImageProvidedClasspath() {
-            return getImageProvidedJars();
-        }
-
-        /**
          * @return base image module-path needed for every image (e.g. LIBRARY_SUPPORT)
          */
         public List<Path> getImageProvidedModulePath() {
@@ -1420,7 +1413,9 @@ public class NativeImage {
         LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageClasspath);
 
         LinkedHashSet<Path> finalImageProvidedJars = new LinkedHashSet<>(this.imageProvidedJars);
-        finalImageProvidedJars.addAll(config.getImageProvidedModulePath());
+        if (!finalImageModulePath.isEmpty() || !finalImageClasspath.isEmpty()) {
+            finalImageProvidedJars.addAll(config.getImageProvidedModulePath());
+        }
         finalImageModulePath.addAll(finalImageProvidedJars);
         finalImageProvidedJars.forEach(this::processClasspathNativeImageMetaInf);
         imageBuilderJavaArgs.add("-D" + SharedConstants.IMAGE_PROVIDED_JARS_ENV_VARIABLE + "=" + String.join(File.pathSeparator, finalImageProvidedJars.stream().map(Path::toString).toList()));
@@ -1921,17 +1916,15 @@ public class NativeImage {
     }
 
     private Set<String> getImplicitlyRequiredSystemModules(Collection<Path> modulePath) {
-        if (modulePath.isEmpty()) {
-            return Set.of();
+        ModuleFinder finder = ModuleFinder.ofSystem();
+        if (!modulePath.isEmpty()) {
+            ModuleFinder appModuleFinder = ModuleFinder.of(modulePath.toArray(Path[]::new));
+            finder = ModuleFinder.compose(appModuleFinder, finder);
         }
-
-        ModuleFinder systemModuleFinder = ModuleFinder.ofSystem();
-        ModuleFinder appModuleFinder = ModuleFinder.of(modulePath.toArray(Path[]::new));
-        ModuleFinder finder = ModuleFinder.compose(appModuleFinder, systemModuleFinder);
         Map<String, ModuleReference> modules = finder.findAll().stream()
                         .collect(Collectors.toMap(m -> m.descriptor().name(), m -> m));
 
-        Set<String> applicationModulePathRequiredModules = new HashSet<>();
+        Set<String> applicationModulePathRequiredModules = new HashSet<>(); // noEconomicSet(api)
         Queue<ModuleReference> discoveryQueue = new ArrayDeque<>(modules.values());
 
         while (!discoveryQueue.isEmpty()) {

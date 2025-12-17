@@ -80,17 +80,6 @@ class Conversion {
         throw new Error("Unimplemented: Conversion.extractJavaScriptString");
     }
 
-    /**
-     * Converts a Java array to a JavaScript array that contains JavaScript values
-     * that correspond to the Java values of the input array.
-     *
-     * @param jarray A Java array
-     * @returns {*} The resulting JavaScript array
-     */
-    extractJavaScriptArray(jarray) {
-        throw new Error("Unimplemented: Conversion.extractJavaScriptArray");
-    }
-
     // JavaScript-to-Java conversions (standard Java classes)
 
     /**
@@ -351,11 +340,53 @@ class Conversion {
     }
 
     isJavaLangClass(obj) {
-        throw new Error("Unimplemented: Conversion.isJavaLangClassHub");
+        throw new Error("Unimplemented: Conversion.isJavaLangClass");
     }
 
+    /**
+     * Checks if the given object is an instance of the given class. null values also return true.
+     */
     isInstance(obj, hub) {
         throw new Error("Unimplemented: Conversion.isInstance");
+    }
+
+    /**
+     * @return {*} The result of obj.getClass()
+     */
+    getHub(obj) {
+        throw new Error("Unimplemented: Conversion.getHub");
+    }
+
+    /**
+     * Returns the supertype of the type represented by the given hub or null
+     * if and only if the hub represents java.lang.Object.
+     *
+     * This function must only be called with instance or array classes (no
+     * primitive or interface classes).
+     */
+    getSupertype(hub) {
+        throw new Error("Unimplemented: Conversion.getSupertype");
+    }
+
+    /**
+     * @return {*|null} The component type of the given hub, or null if the hub does not represent an array type.
+     */
+    getComponentHub(hub) {
+        throw new Error("Unimplemented: Conversion.getComponentHub");
+    }
+
+    /**
+     * Returns hub.getTypeName().
+     */
+    getTypeNameAsJavaString(hub) {
+        throw new Error("Unimplemented: Conversion.getTypeNameAsJavaString");
+    }
+
+    /**
+     * Returns hub.getTypeName() as a JS string.
+     */
+    getTypeName(hub) {
+        return conversion.extractJavaScriptString(this.getTypeNameAsJavaString(hub));
     }
 
     /**
@@ -382,16 +413,8 @@ class Conversion {
     /**
      * Obtains or creates the proxy handler for the given Java class
      */
-    getOrCreateProxyHandler(arg) {
+    getOrCreateProxyHandler(hub) {
         throw new Error("Unimplemented: Conversion.getOrCreateProxyHandler");
-    }
-
-    /**
-     * For proxying the given object returns value that should be passed to
-     * getOrCreateProxyHandler.
-     */
-    _getProxyHandlerArg(obj) {
-        throw new Error("Unimplemented: Conversion._getProxyHandlerArg");
     }
 
     /**
@@ -401,7 +424,7 @@ class Conversion {
      * @return {*} The proxy around the Java object
      */
     toProxy(obj) {
-        let proxyHandler = this.getOrCreateProxyHandler(this._getProxyHandlerArg(obj));
+        let proxyHandler = this.getOrCreateProxyHandler(this.getHub(obj));
         // The wrapper is a temporary object that allows having the non-identifier name of the target function.
         // We declare the property as a function, to ensure that it is constructable, so that the Proxy handler's construct method is callable.
         let targetWrapper = {
@@ -534,6 +557,97 @@ class Conversion {
         return this.toProxy(rawJavaMirror);
     }
 
+    loadArrayElement(javaArray, componentKindOrdinal, idx) {
+        switch (componentKindOrdinal) {
+            case 0:
+                return this.loadBooleanArrayElement(javaArray, idx);
+            case 1:
+                return this.loadByteArrayElement(javaArray, idx);
+            case 2:
+                return this.loadShortArrayElement(javaArray, idx);
+            case 3:
+                return this.loadCharArrayElement(javaArray, idx);
+            case 4:
+                return this.loadIntArrayElement(javaArray, idx);
+            case 5:
+                return this.loadFloatArrayElement(javaArray, idx);
+            case 6:
+                return this.loadLongArrayElement(javaArray, idx);
+            case 7:
+                return this.loadDoubleArrayElement(javaArray, idx);
+            case 8:
+                return this.javaToJavaScript(this.loadObjectArrayElement(javaArray, idx));
+        }
+    }
+
+    checkNumericType(arrayType, jsValue) {
+        const tpe = typeof jsValue;
+        if (tpe !== "number" && tpe !== "bigint") {
+            throw new TypeError(`Invalid type ${tpe} for insertion into ${arrayType} array`);
+        }
+    }
+
+    checkIntegerValueRange(arrayType, jsValue, lowValue, highValue) {
+        const tpe = typeof jsValue;
+        this.checkNumericType(arrayType, jsValue);
+
+        if (tpe === "number" && !Number.isInteger(jsValue)) {
+            throw new RangeError(`Non-integer number ${jsValue} for insertion into ${arrayType} array`);
+        }
+
+        if (jsValue > highValue || jsValue < lowValue) {
+            throw new RangeError(`Out of range value ${jsValue} for insertion into ${arrayType} array`);
+        }
+    }
+
+    storeArrayElement(javaArray, componentKindOrdinal, idx, jsValue) {
+        if (idx < 0 || idx >= conversion.getArrayLength(javaArray)) {
+            // Silently ignore out of bounds array stores. This matches the
+            // behavior of TypedArray
+            return;
+        }
+        const tpe = typeof jsValue;
+        switch (componentKindOrdinal) {
+            case 0:
+                if (tpe !== "boolean") {
+                    throw new TypeError(`Invalid type ${tpe} for insertion into boolean array`);
+                }
+                this.storeBooleanArrayElement(javaArray, idx, jsValue);
+                break;
+            case 1:
+                this.checkIntegerValueRange("byte", jsValue, -128, 127);
+                this.storeByteArrayElement(javaArray, idx, Number(jsValue));
+                break;
+            case 2:
+                this.checkIntegerValueRange("short", jsValue, -32768, 32767);
+                this.storeShortArrayElement(javaArray, idx, Number(jsValue));
+                break;
+            case 3:
+                this.checkIntegerValueRange("char", jsValue, 0, 65535);
+                this.storeCharArrayElement(javaArray, idx, Number(jsValue));
+                break;
+            case 4:
+                this.checkIntegerValueRange("int", jsValue, -2147483648, 2147483647);
+                this.storeIntArrayElement(javaArray, idx, Number(jsValue));
+                break;
+            case 5:
+                this.checkNumericType("float", jsValue);
+                this.storeFloatArrayElement(javaArray, idx, Number(jsValue));
+                break;
+            case 6:
+                this.checkIntegerValueRange("long", jsValue, -9223372036854775808n, 9223372036854775807n);
+                this.storeLongArrayElement(javaArray, idx, BigInt(jsValue));
+                break;
+            case 7:
+                this.checkNumericType("double", jsValue);
+                this.storeDoubleArrayElement(javaArray, idx, Number(jsValue));
+                break;
+            case 8:
+                this.storeObjectArrayElement(javaArray, idx, conversion.javaScriptToJava(jsValue));
+                break;
+        }
+    }
+
     /**
      * Coerce the specified JavaScript value to the specified Java type.
      *
@@ -542,6 +656,181 @@ class Conversion {
     coerceJavaScriptToJavaType(javaScriptValue, type) {
         throw new Error("Unimplemented: Conversion.coerceJavaScriptToJavaType");
     }
+
+    /**
+     * Reads the length of a Java array and returns it as a JS number.
+     */
+    getArrayLength(_javaArray) {
+        throw new Error("Unimplemented: Conversion.getArrayLength");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @return {boolean} Boolean value at index idx as a JS boolean
+     */
+    loadBooleanArrayElement(_javaArray, _idx) {
+        throw new Error("Unimplemented: loadBooleanArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @return {number} Byte value at index idx as a JS number
+     */
+    loadByteArrayElement(_javaArray, _idx) {
+        throw new Error("Unimplemented: loadByteArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @return {number} Short value at index idx as a JS number
+     */
+    loadShortArrayElement(_javaArray, _idx) {
+        throw new Error("Unimplemented: loadShortArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @return {number} Char value at index idx as a JS number
+     */
+    loadCharArrayElement(_javaArray, _idx) {
+        throw new Error("Unimplemented: loadCharArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @return {number} Int value at index idx as a JS number
+     */
+    loadIntArrayElement(_javaArray, _idx) {
+        throw new Error("Unimplemented: loadIntArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @return {number} Float value at index idx as a JS number
+     */
+    loadFloatArrayElement(_javaArray, _idx) {
+        throw new Error("Unimplemented: loadFloatArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @return {bigint} Long value at index idx as a JS bigint
+     */
+    loadLongArrayElement(_javaArray, _idx) {
+        throw new Error("Unimplemented: loadLongArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @return {number} Double value at index idx as a JS number
+     */
+    loadDoubleArrayElement(_javaArray, _idx) {
+        throw new Error("Unimplemented: loadDoubleArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @return {*} Java object at index idx (caller is responsible for conversion to JS value).
+     */
+    loadObjectArrayElement(_javaArray, _idx) {
+        throw new Error("Unimplemented: loadObjectArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @param {boolean} _jsBoolean JS Boolean value to store at index idx.
+     */
+    storeBooleanArrayElement(_javaArray, _idx, _jsBoolean) {
+        throw new Error("Unimplemented: storeByteArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @param {number} _jsNumber JS number value to store at index idx.
+     */
+    storeByteArrayElement(_javaArray, _idx, _jsNumber) {
+        throw new Error("Unimplemented: storeByteArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @param {number} _jsNumber JS number value to store at index idx.
+     */
+    storeShortArrayElement(_javaArray, _idx, _jsNumber) {
+        throw new Error("Unimplemented: storeShortArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @param {number} _jsNumber JS number value to store at index idx.
+     */
+    storeCharArrayElement(_javaArray, _idx, _jsNumber) {
+        throw new Error("Unimplemented: storeCharArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @param {number} _jsNumber JS number value to store at index idx.
+     */
+    storeIntArrayElement(_javaArray, _idx, _jsNumber) {
+        throw new Error("Unimplemented: storeIntArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @param {number} _jsNumber JS number value to store at index idx.
+     */
+    storeFloatArrayElement(_javaArray, _idx, _jsNumber) {
+        throw new Error("Unimplemented: storeFloatArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @param {bigint} _jsBigInt JS bigint value to store at index idx.
+     */
+    storeLongArrayElement(_javaArray, _idx, _jsBigInt) {
+        throw new Error("Unimplemented: storeLongArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @param {number} _jsNumber JS number value to store at index idx.
+     */
+    storeDoubleArrayElement(_javaArray, _idx, _jsNumber) {
+        throw new Error("Unimplemented: storeDoubleArrayElement");
+    }
+
+    /**
+     * @param {number} _idx In bounds index
+     * @param {*} _javaObjectValue Java object instance to store at index idx (caller is responsible for conversion to Java object).
+     */
+    storeObjectArrayElement(_javaArray, _idx, _javaObjectValue) {
+        throw new Error("Unimplemented: storeObjectArrayElement");
+    }
+}
+
+/**
+ * Checks if the given string is an array index and returns the numeric index
+ * (otherwise undefined).
+ *
+ * Proxied accesses always get a string property (even for indexed accesses) so
+ * we need to check if the property access is an indexed access.
+ *
+ * A property is an index if the numeric index it is refering to has the same
+ * string representation as the original property.
+ * E.g the string '010' is a property while '10' is an index.
+ */
+function getArrayIndex(propertyName) {
+    try {
+        const idx = Number(propertyName);
+        if (idx.toString() === propertyName) {
+            return idx;
+        }
+    } catch (e) {
+        // Catch clause because not all property keys (e.g. symbols) can be
+        // converted to a number.
+    }
+    return undefined;
 }
 
 /**
@@ -564,16 +853,24 @@ class Conversion {
  * objects respectively, but no coercion is done.
  */
 class ProxyHandler {
-    constructor() {
+    constructor(javaHub) {
+        if (javaHub === null || javaHub === undefined) {
+            throw new Error("Got undefined or null javaHub");
+        }
         this._initialized = false;
-        this._methods = {};
+        this._methods = null;
         this._staticMethods = {};
         this._javaConstructorMethod = null;
+        this.javaHub = javaHub;
+        this.componentHub = conversion.getComponentHub(javaHub);
+        this.isArray = this.componentHub !== null;
+        this.componentKindOrdinal = this.isArray ? conversion.getHubKindOrdinal(this.componentHub) : -1;
     }
 
-    ensureInitialized() {
+    _ensureInitialized() {
         if (!this._initialized) {
             this._initialized = true;
+            this._methods = this._createLinkedMethodsObject();
             // Function properties derived from accessible Java methods.
             this._createProxyMethods();
             // Default function properties.
@@ -582,17 +879,17 @@ class ProxyHandler {
     }
 
     _getMethods() {
-        this.ensureInitialized();
+        this._ensureInitialized();
         return this._methods;
     }
 
     _getStaticMethods() {
-        this.ensureInitialized();
+        this._ensureInitialized();
         return this._staticMethods;
     }
 
     _getJavaConstructorMethod() {
-        this.ensureInitialized();
+        this._ensureInitialized();
         return this._javaConstructorMethod;
     }
 
@@ -615,14 +912,24 @@ class ProxyHandler {
      * String that can be printed as part of the toString and valueOf functions.
      */
     _getClassName() {
-        throw new Error("Unimplemented: ProxyHandler._getClassName");
+        return conversion.getTypeName(this.javaHub);
     }
 
     /**
-     * Link the methods object to the prototype chain of the methods object of the superclass' proxy handler.
+     * Creates an empty object for the _methods field with the prototype being
+     * the _methods object from the superclass' proxy handler.
      */
-    _linkMethodPrototype() {
-        throw new Error("Unimplemented: ProxyHandler._linkMethodPrototype");
+    _createLinkedMethodsObject() {
+        // Link the prototype chain of the superclass' proxy handler, to include super methods.
+        const parentClass = conversion.getSupertype(this.javaHub);
+        if (parentClass === null) {
+            // This is the handler for java.lang.Object, no linking to supertype necessary.
+            return {};
+        } else {
+            const parentProxyHandler = conversion.getOrCreateProxyHandler(parentClass);
+            // Link the prototype chain of the superclass' proxy handler, to include super methods.
+            return Object.create(parentProxyHandler._getMethods());
+        }
     }
 
     _createProxyMethods() {
@@ -670,8 +977,6 @@ class ProxyHandler {
                 );
             };
         }
-
-        this._linkMethodPrototype();
     }
 
     /**
@@ -741,12 +1046,10 @@ class ProxyHandler {
 
         const proxyHandlerThis = this;
         const asProperty = function (tpe) {
-            // Note: this will be bound to the Proxy object.
+            // Note: 'this' will usually be bound to the Proxy object.
             return conversion.coerceJavaProxyToJavaScriptType(proxyHandlerThis, this, tpe);
         };
-        if (!("$as" in this._methods)) {
-            this._methods["$as"] = asProperty;
-        }
+        this._methods["$as"] = asProperty;
         this._methods[runtime.symbol.javaScriptCoerceAs] = asProperty;
 
         const vmProperty = vm;
@@ -856,33 +1159,47 @@ class ProxyHandler {
     }
 
     get(target, key) {
+        const javaObject = target(runtime.symbol.javaNative);
         if (key === runtime.symbol.javaNative) {
-            return target(runtime.symbol.javaNative);
-        } else {
-            const javaObject = target(runtime.symbol.javaNative);
-            // TODO GR-60603 Deal with arrays in WasmGC backend
-            if (Array.isArray(javaObject) && typeof key === "string") {
-                const index = Number(key);
-                if (0 <= index && index < javaObject.length) {
-                    return conversion.javaToJavaScript(javaObject[key]);
-                } else if (key === "length") {
-                    return javaObject.length;
+            return javaObject;
+        } else if (this.isArray) {
+            const componentKindOrdinal = this.componentKindOrdinal;
+            const length = conversion.getArrayLength(javaObject);
+            if (key === "length") {
+                return length;
+            } else if (key === Symbol.iterator) {
+                return function () {
+                    return (function* () {
+                        for (let i = 0; i < length; i++) {
+                            yield conversion.loadArrayElement(javaObject, componentKindOrdinal, i);
+                        }
+                    })();
+                };
+            }
+
+            const potentialIdx = getArrayIndex(key);
+
+            if (potentialIdx !== undefined) {
+                if (potentialIdx < 0 || potentialIdx >= length) {
+                    return undefined;
                 }
+                return conversion.loadArrayElement(javaObject, componentKindOrdinal, potentialIdx);
             }
         }
         return this._loadMethod(target, key);
     }
 
-    set(target, key, value, receiver) {
-        const javaObject = target(runtime.symbol.javaNative);
-        // TODO GR-60603 Deal with arrays in WasmGC backend
-        if (Array.isArray(javaObject)) {
-            const index = Number(key);
-            if (0 <= index && index < javaObject.length) {
-                javaObject[key] = conversion.javaScriptToJava(value);
+    set(target, key, value) {
+        if (this.isArray) {
+            const potentialIdx = getArrayIndex(key);
+
+            if (potentialIdx !== undefined) {
+                const javaObject = target(runtime.symbol.javaNative);
+                conversion.storeArrayElement(javaObject, this.componentKindOrdinal, potentialIdx, value);
                 return true;
             }
         }
+
         return false;
     }
 
@@ -932,13 +1249,20 @@ class ProxyHandler {
                 "Cannot invoke the 'new' operator. The 'new' operator can only be used on Java Proxies that represent the 'java.lang.Class' type."
             );
         }
+
+        if (conversion.getComponentHub(javaThis) !== null) {
+            throw new TypeError(
+                "Cannot invoke the 'new' operator on a Java proxy that represents the 'java.lang.Class' instance for an array."
+            );
+        }
+
         // Allocate the Java object from Class instance
         const javaInstance = this._createInstance(javaThis);
         // Lookup constructor method of the target class.
         // This proxy handler is for java.lang.Class while javaThis is a
         // java.lang.Class instance for some object type for which we want to
         // lookup the constructor.
-        const instanceProxyHandler = conversion.getOrCreateProxyHandler(conversion._getProxyHandlerArg(javaInstance));
+        const instanceProxyHandler = conversion.getOrCreateProxyHandler(conversion.getHub(javaInstance));
         const javaConstructorMethod = instanceProxyHandler._getJavaConstructorMethod();
         // Convert the Java instance to JS (usually creates a proxy)
         const javaScriptInstance = conversion.javaToJavaScript(javaInstance);

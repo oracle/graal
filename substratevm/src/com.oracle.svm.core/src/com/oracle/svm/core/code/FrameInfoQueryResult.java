@@ -114,6 +114,10 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
         protected long data;
         protected JavaConstant value;
 
+        public ValueInfo() {
+            clear();
+        }
+
         /**
          * Returns the type of the value, describing how to access the value.
          */
@@ -185,6 +189,17 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
             copy.data = data + offset;
             copy.value = value;
             return copy;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public void clear() {
+            type = null;
+            kind = null;
+            isCompressedReference = false;
+            isEliminatedMonitor = false;
+            isAutoBoxedPrimitive = false;
+            data = 0;
+            value = null;
         }
     }
 

@@ -36,15 +36,14 @@ import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Type;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.management.MBeanServerBuilder;
 import javax.management.openmbean.OpenType;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -217,8 +216,8 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         List<MemoryPoolMXBean> memoryPools = managementSupport.getPlatformMXBeans(MemoryPoolMXBean.class);
         List<MemoryManagerMXBean> memoryManagers = managementSupport.getPlatformMXBeans(MemoryManagerMXBean.class);
 
-        Set<String> memoryManagerNames = new HashSet<>();
-        Set<String> memoryPoolNames = new HashSet<>();
+        EconomicSet<String> memoryManagerNames = EconomicSet.create();
+        EconomicSet<String> memoryPoolNames = EconomicSet.create();
         for (MemoryPoolMXBean memoryPool : memoryPools) {
             String memoryPoolName = memoryPool.getName();
             assert verifyObjectName(memoryPoolName);

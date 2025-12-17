@@ -26,13 +26,12 @@ package com.oracle.svm.core.heap;
 
 import java.util.BitSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageInfo;
 
@@ -59,7 +58,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
     private int shift;
 
     /* Maps base references with references pointing to the interior of that object */
-    private EconomicMap<Integer, Set<Integer>> derived;
+    private EconomicMap<Integer, EconomicSet<Integer>> derived;
 
     private Map<Integer, Object> debugAllUsedRegisters;
     private Map<Integer, Object> debugAllUsedStackSlots;
@@ -111,9 +110,9 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
         if (derived == null) {
             derived = EconomicMap.create(Equivalence.DEFAULT);
         }
-        Set<Integer> derivedOffsets = derived.get(baseOffset);
+        EconomicSet<Integer> derivedOffsets = derived.get(baseOffset);
         if (derivedOffsets == null) {
-            derivedOffsets = new HashSet<>();
+            derivedOffsets = EconomicSet.create();
             derived.put(baseOffset, derivedOffsets);
         }
 
@@ -209,7 +208,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
             }
 
             @Override
-            public Set<Integer> getDerivedOffsets(int baseOffset) {
+            public EconomicSet<Integer> getDerivedOffsets(int baseOffset) {
                 if (derived == null || !derived.containsKey(baseOffset)) {
                     throw new NoSuchElementException();
                 }

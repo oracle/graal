@@ -29,9 +29,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -104,7 +102,7 @@ public class HostedOptionParser implements HostedOptionProvider {
 
     public List<String> parse() {
         List<String> remainingArgs = new ArrayList<>();
-        Set<String> errors = new HashSet<>();
+        EconomicSet<String> errors = EconomicSet.create();
         InterruptImageBuilding interrupt = null;
         for (String arg : arguments) {
             try {
@@ -142,7 +140,10 @@ public class HostedOptionParser implements HostedOptionProvider {
     private OptionParseResult tryParseHostedOption(String arg) {
         if (arg.startsWith(SubstrateOptionsParser.HOSTED_OPTION_PREFIX)) {
             /* All options can be set via -H:<OptionName>. */
-            OptionParseResult result = SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allOptions, hostedValues, PLUS_MINUS, arg);
+            OptionParseResult result = SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allHostedOptions, hostedValues, PLUS_MINUS, arg);
+            if (result.optionUnrecognized()) {
+                result = SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allRuntimeOptions, runtimeValues, PLUS_MINUS, arg);
+            }
             maybePrintOptions(result, SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allOptions, false);
             return result;
         } else if (arg.startsWith(SubstrateOptionsParser.RUNTIME_OPTION_PREFIX)) {

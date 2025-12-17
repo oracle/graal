@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
@@ -95,6 +96,8 @@ import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -385,8 +388,9 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
          * These transformers have to be registered before registering methods below which causes
          * the analysis to already see SubstrateMethodAccessor.vtableIndex.
          */
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(SubstrateMethodAccessor.class, "vtableIndex"), new ComputeVTableIndex());
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(SubstrateMethodAccessor.class, "interfaceTypeID"), new ComputeInterfaceTypeID());
+        ResolvedJavaType substrateMethodAccessorType = GraalAccess.lookupType(SubstrateMethodAccessor.class);
+        analysisAccess.registerFieldValueTransformer(JVMCIReflectionUtil.getUniqueDeclaredField(substrateMethodAccessorType, "vtableIndex"), new ComputeVTableIndex());
+        analysisAccess.registerFieldValueTransformer(JVMCIReflectionUtil.getUniqueDeclaredField(substrateMethodAccessorType, "interfaceTypeID"), new ComputeInterfaceTypeID());
 
         /* Make sure array classes don't need to be registered for reflection. */
         RuntimeReflection.register(Object.class.getDeclaredMethods());

@@ -32,12 +32,11 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
 
 public class StandaloneAnalysisFeatureManager {
@@ -48,8 +47,8 @@ public class StandaloneAnalysisFeatureManager {
     }
 
     private final List<Feature> features = new ArrayList<>();
-    private final Set<String> featureClassNames = new HashSet<>();
-    private final Set<Class<? extends Feature>> featureClasses = new HashSet<>();
+    private final EconomicSet<String> featureClassNames = EconomicSet.create();
+    private final EconomicSet<Class<? extends Feature>> featureClasses = EconomicSet.create();
     private boolean inited = false;
     private final OptionValues options;
 

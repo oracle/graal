@@ -409,40 +409,52 @@ public final class SubprocessTestUtils {
         /**
          * Returns the process execution as a string with a header line followed by one or more body
          * lines followed by a trailer with a new line.
-         *
-         * The header is {@code "----------subprocess[<pid>]:(<lines>/<chars>)----------"} where
+         * <p>
+         * The header is
+         * {@code "----------subprocess[pid=<pid>]:(lines=<lines>, chars=<chars>)----------"} where
          * {@code pid} is the id of the process and {@code chars} and {@code lines} provide the
          * dimensions of the body.
-         *
-         * The sections in the body are the environment variables {@link Section#ENVIRONMENT}, the
-         * command line {@link Section#COMMAND}, the lines of output produced {@link Section#OUTPUT}
-         * and the exit code {@link Section#EXIT_CODE}.
-         *
-         * The trailer is {@code "==========subprocess[<pid>]=========="}
+         * <p>
+         * The sections in the body are the environment variables (key: "env"), the command line
+         * (key: "cmd"), the lines of output produced (key: "output") and the exit code (key:
+         * "exitCode").
+         * <p>
+         * The trailer is {@code "==========subprocess[pid=<pid>]=========="}
          *
          * @param sections selects which sections are in the body.
          */
         private String asString(Set<Section> sections) {
+            String subSectionSeparator = "--------------";
             Formatter msg = new Formatter();
             if (sections.contains(Section.ENVIRONMENT)) {
                 if (env != null && !env.isEmpty()) {
-                    msg.format("env");
+                    Formatter envBuf = new Formatter();
+                    envBuf.format("env");
                     for (Map.Entry<String, String> e : env.entrySet()) {
-                        msg.format(" %s=%s", e.getKey(), quoteShellArg(e.getValue()));
+                        envBuf.format(" %s=%s", e.getKey(), quoteShellArg(e.getValue()));
                     }
-                    msg.format("\\%n");
+                    String envSection = envBuf.toString();
+                    msg.format("%sEnvironment[length=%d]%s%n", subSectionSeparator, envSection.length(), subSectionSeparator);
+                    msg.format("%s%n", envSection);
                 }
             }
             if (sections.contains(Section.COMMAND)) {
-                msg.format("%s%n", command.stream().map((e) -> quoteShellArg(String.valueOf(e))).collect(Collectors.joining(" ")));
+                String cmdSection = command.stream().map((e) -> quoteShellArg(String.valueOf(e))).collect(Collectors.joining(" "));
+                msg.format("%sCommand[length=%d]%s%n", subSectionSeparator, cmdSection.length(), subSectionSeparator);
+                msg.format("%s%n", cmdSection);
             }
             if (sections.contains(Section.OUTPUT)) {
+                Formatter outputBuf = new Formatter();
                 for (String line : output) {
-                    msg.format("%s%n", line);
+                    outputBuf.format("%s%n", line);
                 }
+                String outputSection = outputBuf.toString();
+                msg.format("%sOutput[length=%d]%s%n", subSectionSeparator, outputSection.length(), subSectionSeparator);
+                msg.format("%s", outputSection);
             }
             if (sections.contains(Section.EXIT_CODE)) {
-                msg.format("exit code: %s%n", exitCode);
+                msg.format("%sExit code%s%n", subSectionSeparator, subSectionSeparator);
+                msg.format("%d%n", exitCode);
             }
             String body = msg.toString();
             if (!body.endsWith(System.lineSeparator())) {
@@ -450,8 +462,8 @@ public final class SubprocessTestUtils {
             }
             long lines = body.chars().filter(ch -> ch == '\n').count();
             int chars = body.length();
-            String head = String.format("----------subprocess[%d]:(%d/%d)----------", pid, lines, chars);
-            String tail = String.format("==========subprocess[%d]==========", pid);
+            String head = String.format("----------Subprocess[pid=%d]:(lines=%d, chars=%d)----------", pid, lines, chars);
+            String tail = String.format("==========Subprocess[pid=%d]==========", pid);
             return String.format("%s%n%s%s%n", head, body, tail);
         }
 
@@ -857,6 +869,7 @@ public final class SubprocessTestUtils {
             outputReader.start();
             boolean finishedOnTime = process.waitFor(timeout.getSeconds(), TimeUnit.SECONDS);
             if (!finishedOnTime) {
+                printError("Subprocess %d did not finish within the specified timeout: %s.", process.pid(), timeout);
                 dumpThreads(process.toHandle());
                 process.destroyForcibly().waitFor();
             }
@@ -999,11 +1012,12 @@ public final class SubprocessTestUtils {
                         CompositeData[] result = (CompositeData[]) mbeanConnection.invoke(new ObjectName("java.lang:type=Threading"), "dumpAllThreads",
                                         new Object[]{true, true}, new String[]{boolean.class.getName(), boolean.class.getName()});
                         StringWriter messageBuilder = new StringWriter();
-                        PrintWriter out = new PrintWriter(new StringWriter());
-                        out.printf("%nDumping subprocess threads on timeout%n");
+                        PrintWriter out = new PrintWriter(messageBuilder);
+                        out.printf("Dumping subprocess threads on timeout%n");
                         for (CompositeData element : result) {
                             dumpThread(ThreadInfo.from(element), out);
                         }
+                        out.flush();
                         printError(messageBuilder.toString());
                     }
                 } finally {

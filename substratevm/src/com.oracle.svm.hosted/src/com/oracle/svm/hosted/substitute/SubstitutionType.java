@@ -58,21 +58,22 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
 
     /**
      * This field is used in the {@link com.oracle.svm.hosted.SubstitutionReportFeature} class to
-     * determine {@link SubstitutionType} objects which correspond to type.
+     * determine {@link SubstitutionType} objects are user-defined substitutions (from the
+     * classpath).
      */
-    private final boolean isUserSubstitution;
+    private final boolean userSubstitution;
 
     private final ResolvedJavaField[][] instanceFields;
 
-    public SubstitutionType(ResolvedJavaType original, ResolvedJavaType annotated, boolean isUserSubstitution) {
+    public SubstitutionType(ResolvedJavaType original, ResolvedJavaType annotated, boolean userSubstitution) {
         this.annotated = annotated;
         this.original = original;
-        this.isUserSubstitution = isUserSubstitution;
+        this.userSubstitution = userSubstitution;
         this.instanceFields = new ResolvedJavaField[][]{annotated.getInstanceFields(false), annotated.getInstanceFields(true)};
     }
 
     public boolean isUserSubstitution() {
-        return isUserSubstitution;
+        return userSubstitution;
     }
 
     public ResolvedJavaType getOriginal() {

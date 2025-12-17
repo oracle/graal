@@ -27,6 +27,7 @@ package jdk.graal.compiler.truffle.test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.Duration;
 import java.util.function.Consumer;
 
 import org.junit.Assert;
@@ -75,7 +76,8 @@ public class TruffleHostInliningTest {
             inProcess.run();
         } else {
             File logFile = File.createTempFile(getClass().getSimpleName(), "test");
-            SubprocessTestUtils.newBuilder(getClass(), inProcess).failOnNonZeroExit(true).//
+            SubprocessTestUtils.newBuilder(getClass(), inProcess).//
+                            failOnNonZeroExit(true).//
                             prefixVmOption("-Djdk.graal.Log=HostInliningPhase,~CanonicalizerPhase,~InlineGraph",
                                             "-Djdk.graal.MethodFilter=" + TruffleHostInliningTest.class.getSimpleName() + ".*",
                                             "-Djdk.graal.CompilationFailureAction=Print",
@@ -83,6 +85,8 @@ public class TruffleHostInliningTest {
                                             String.format("-XX:CompileCommand=compileonly,%s::*", TruffleHostInliningTest.class.getName()),
                                             "-Xbatch").// force synchronous compilation
                             postfixVmOption("-XX:+UseJVMCICompiler").// force Graal host compilation
+                            // The default 2 minutes timeout is not enough on linux-aarch gates
+                            timeout(Duration.ofMinutes(5)).//
                             onExit((_) -> {
                                 try {
                                     log.accept((Files.readString(logFile.toPath())));
@@ -90,7 +94,8 @@ public class TruffleHostInliningTest {
                                     throw new AssertionError(e);
                                 }
                                 logFile.delete();
-                            }).run();
+                            }).//
+                            run();
         }
     }
 

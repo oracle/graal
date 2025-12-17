@@ -1396,6 +1396,7 @@ svm = mx_sdk_vm.GraalVmJreComponent(
         'substratevm:SVM_CAPNPROTO_RUNTIME',
         'substratevm:NATIVE_IMAGE_BASE',
         'compiler:VMACCESS',
+        'compiler:HOSTVMACCESS',
     ] + (['substratevm:SVM_FOREIGN'] if mx_sdk_vm.base_jdk().javaCompliance >= '22' else []),
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
     extra_native_targets=['linux-default-glibc', 'linux-default-musl'] if mx.is_linux() and not mx.get_arch() == 'riscv64' else None,
@@ -1812,6 +1813,47 @@ libsvmjdwp = mx_sdk_vm.GraalVmJreComponent(
 )
 
 mx_sdk_vm.register_graalvm_component(libsvmjdwp)
+
+lib_jvm_preserved_packages = [
+    'java.util',
+    'java.util.stream',
+    'java.util.concurrent.locks',
+    'java.lang',
+    'java.lang.invoke',
+    'java.io'
+]
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=suite,
+    name='SubstrateVM java',
+    short_name='svmjava',
+    dir_name='svm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    jar_distributions=[],
+    builder_jar_distributions=[],
+    support_distributions=[],
+    priority=0,
+    library_configs=[
+        mx_sdk_vm.LibraryConfig(
+            destination='<lib:jvm>',
+            jar_distributions=[],
+            build_args=[
+                '--features=com.oracle.svm.hosted.libjvm.LibJVMFeature'
+            ] + svm_experimental_options([
+                '-H:+RuntimeClassLoading',
+                '-H:+InterpreterTraceSupport',
+                '-H:+AllowJRTFileSystem'
+                ] + ['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages]),
+            headers=False,
+            home_finder=False,
+        ),
+    ],
+    support_libraries_distributions=[],
+    stability="experimental",
+    jlink=False,
+))
 
 def _native_image_utils_extra_jvm_args():
     packages = ['jdk.graal.compiler/jdk.graal.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.graal.compiler/jdk.graal.compiler.core.common.util']

@@ -65,9 +65,13 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     private static final AtomicReferenceFieldUpdater<AnalysisField, Object> isUnsafeAccessedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisField.class, Object.class, "isUnsafeAccessed");
+    /**
+     * Unique id assigned to each {@link AnalysisField}. This id is consistent across layers and can
+     * be used to load or match a field in an extension layer.
+     */
     private final int id;
-    /** Marks a field loaded from a base layer. */
-    private final boolean isInBaseLayer;
+    /** Marks a field loaded from a shared layer. */
+    private final boolean isInSharedLayer;
 
     public final ResolvedJavaField wrapped;
 
@@ -81,7 +85,10 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     private ConcurrentMap<Object, Boolean> readBy;
     private ConcurrentMap<Object, Boolean> writtenBy;
 
-    /** Field's position in the list of declaring type's fields, including inherited fields. */
+    /**
+     * Field's position in the list of declaring type's fields, including inherited fields. The
+     * position needs to be consistent across layers.
+     */
     protected int position;
 
     protected final AnalysisType declaringClass;
@@ -117,22 +124,22 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         declaringClass = universe.lookup(wrappedField.getDeclaringClass());
         fieldType = getDeclaredType(universe, wrappedField);
 
-        if (universe.hostVM().buildingExtensionLayer() && declaringClass.isInBaseLayer()) {
+        if (universe.hostVM().buildingExtensionLayer() && declaringClass.isInSharedLayer()) {
             int fid = universe.getImageLayerLoader().lookupHostedFieldInBaseLayer(this);
             if (fid != -1) {
                 /*
-                 * This id is the actual link between the corresponding field from the base layer
+                 * This id is the actual link between the corresponding field from the shared layer
                  * and this new field.
                  */
                 id = fid;
-                isInBaseLayer = true;
+                isInSharedLayer = true;
             } else {
                 id = universe.computeNextFieldId();
-                isInBaseLayer = false;
+                isInSharedLayer = false;
             }
         } else {
             id = universe.computeNextFieldId();
-            isInBaseLayer = false;
+            isInSharedLayer = false;
         }
         isLayeredStaticField = isStatic() && universe.hostVM.buildingImageLayer();
     }
@@ -167,8 +174,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return id;
     }
 
-    public boolean isInBaseLayer() {
-        return isInBaseLayer;
+    public boolean isInSharedLayer() {
+        return isInSharedLayer;
     }
 
     public boolean installableInLayer() {

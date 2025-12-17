@@ -77,6 +77,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
      *
      * @return the previous value associated with {@code key}, or {@code null} if there was no
      *         mapping for {@code key}.
+     * @throws UnsupportedOperationException if {@code key == null}
      * @since 19.0
      */
     V put(K key, V value);
@@ -85,12 +86,13 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
      * If the specified key is not already associated with a value (or is mapped to {@code null})
      * associates it with the given value and returns {@code null}, else returns the current value.
      *
-     * @param key key with which the specified value is to be associated
+     * @param key non-null key with which the specified value is to be associated
      * @param value value to be associated with the specified key
      *
      * @return the previous value associated with the specified key, or {@code null} if there was no
      *         mapping for the key. (A {@code null} return can also indicate that the map previously
      *         associated {@code null} with the key, if the implementation supports null values.)
+     * @throws UnsupportedOperationException if {@code key == null}
      *
      * @since 20.2
      */
@@ -104,7 +106,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
     }
 
     /**
-     * Copies all of the mappings from {@code other} to this map.
+     * Copies all the mappings from {@code other} to this map.
      *
      * @since 19.0
      */
@@ -116,7 +118,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
     }
 
     /**
-     * Copies all of the mappings from {@code other} to this map.
+     * Copies all the mappings from {@code other} to this map.
      *
      * @since 19.0
      */
@@ -128,7 +130,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
     }
 
     /**
-     * Removes all of the mappings from this map. The map will be empty after this call returns.
+     * Removes all the mappings from this map. The map will be empty after this call returns.
      *
      * @since 19.0
      */

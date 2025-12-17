@@ -42,6 +42,7 @@ import java.util.function.BiFunction;
 
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
@@ -236,7 +237,7 @@ public final class TypeCheckBuilder {
         subtypeMap = computeSubtypeInformation();
 
         /* Finding subtype graph roots. */
-        HashSet<HostedType> hasParent = new HashSet<>();
+        EconomicSet<HostedType> hasParent = EconomicSet.create();
         subtypeMap.forEach((_, subtypes) -> hasParent.addAll(subtypes));
         allIncludedRoots = allIncludedTypes.stream().filter(t -> !hasParent.contains(t)).toList();
 
@@ -337,14 +338,14 @@ public final class TypeCheckBuilder {
      * array types.
      */
     private Map<HostedType, List<HostedType>> computeSubtypeInformation() {
-        Map<HostedType, Set<HostedType>> subtypes = new HashMap<>();
+        Map<HostedType, EconomicSet<HostedType>> subtypes = new HashMap<>();
 
         /* Creating an element parent map, where each element type points to its parents. */
         List<HostedType> allElementTypes = allTypes.stream().filter(t -> !t.isArray()).toList();
         Map<HostedType, List<HostedType>> elementParentMap = computeElementParentMap(allElementTypes);
 
         /* Finding the roots of the parent map. */
-        Set<HostedType> hasSubtype = new HashSet<>();
+        EconomicSet<HostedType> hasSubtype = EconomicSet.create();
         elementParentMap.forEach((_, parents) -> hasSubtype.addAll(parents));
         List<HostedType> elementParentMapRoots = allElementTypes.stream().filter(t -> !hasSubtype.contains(t)).toList();
 
@@ -361,7 +362,7 @@ public final class TypeCheckBuilder {
 
         /* Convert values into a sorted list. */
         Map<HostedType, List<HostedType>> result = new HashMap<>();
-        subtypes.forEach((k, v) -> result.put(k, v.stream().sorted(TYPECHECK_COMPARATOR).toList()));
+        subtypes.forEach((k, v) -> result.put(k, v.toHashSet().stream().sorted(TYPECHECK_COMPARATOR).toList()));
 
         return result;
     }
@@ -400,7 +401,7 @@ public final class TypeCheckBuilder {
      * included subtypes to their first included parents.
      */
     private boolean addDimensionSubtypeEntries(int dimension,
-                    Map<HostedType, Set<HostedType>> subtypes,
+                    Map<HostedType, EconomicSet<HostedType>> subtypes,
                     Map<HostedType, List<HostedType>> elementParentMap,
                     List<HostedType> heightOrderedElements) {
 
@@ -412,15 +413,15 @@ public final class TypeCheckBuilder {
          * included, then the array subtype b) otherwise, it holds the subtype's first included
          * array subtypes.
          */
-        Map<HostedType, Set<HostedType>> includedArraySubtypesMap = new HashMap<>();
-        heightOrderedElements.forEach(t -> includedArraySubtypesMap.put(t, new HashSet<>()));
+        Map<HostedType, EconomicSet<HostedType>> includedArraySubtypesMap = new HashMap<>();
+        heightOrderedElements.forEach(t -> includedArraySubtypesMap.put(t, EconomicSet.create()));
 
         for (HostedType type : heightOrderedElements) {
-            Set<HostedType> includedArraySubtypes;
+            EconomicSet<HostedType> includedArraySubtypes;
             HostedType arrayType = type.getArrayClass(dimension);
             if (isTypePresent(arrayType)) {
                 /* Since this array type is included, it's parents should point to it. */
-                includedArraySubtypes = new HashSet<>();
+                includedArraySubtypes = EconomicSet.create(1);
                 includedArraySubtypes.add(arrayType);
                 typePresent = true;
             } else {
@@ -440,7 +441,7 @@ public final class TypeCheckBuilder {
         if (typePresent) {
 
             /* Filtering out types which are not included and converting keys to array types. */
-            Map<HostedType, Set<HostedType>> filteredArraySubtypesMap = new HashMap<>();
+            Map<HostedType, EconomicSet<HostedType>> filteredArraySubtypesMap = new HashMap<>();
             includedArraySubtypesMap.forEach((k, v) -> {
                 HostedType arrayType = k.getArrayClass(dimension);
                 if (isTypePresent(arrayType)) {
@@ -455,7 +456,7 @@ public final class TypeCheckBuilder {
                  */
 
                 /* Getting filteredArraySubtypesMap roots. */
-                Set<HostedType> typesWithSubtypes = new HashSet<>();
+                EconomicSet<HostedType> typesWithSubtypes = EconomicSet.create();
                 filteredArraySubtypesMap.forEach((_, v) -> typesWithSubtypes.addAll(v));
                 List<HostedType> roots = filteredArraySubtypesMap.keySet().stream().filter(t -> !typesWithSubtypes.contains(t)).toList();
 
@@ -880,7 +881,7 @@ public final class TypeCheckBuilder {
             final HostedType type;
             final boolean isInterface;
 
-            Set<HostedType> duplicates;
+            EconomicSet<HostedType> duplicates;
 
             Node(int id, HostedType type, boolean isInterface) {
                 this.id = id;
@@ -914,7 +915,7 @@ public final class TypeCheckBuilder {
             void mergeDuplicates() {
                 Map<Integer, ArrayList<Node>> interfaceHashMap = new HashMap<>();
                 Map<Integer, ArrayList<Node>> classHashMap = new HashMap<>();
-                Map<Node, Set<HostedType>> duplicateMap = new HashMap<>();
+                Map<Node, EconomicSet<HostedType>> duplicateMap = new HashMap<>();
 
                 /*
                  * First group each node based on a hash of its ancestors. This hashing reduces the
@@ -1001,7 +1002,7 @@ public final class TypeCheckBuilder {
                 }
 
                 /* Recording all duplicates within the merged node. */
-                for (Map.Entry<Node, Set<HostedType>> entry : duplicateMap.entrySet()) {
+                for (Map.Entry<Node, EconomicSet<HostedType>> entry : duplicateMap.entrySet()) {
                     entry.getKey().duplicates = entry.getValue();
                 }
 
@@ -1026,7 +1027,7 @@ public final class TypeCheckBuilder {
                 return (length << 16) + Arrays.stream(ancestors).mapToInt(n -> n.id * n.id).sum();
             }
 
-            boolean tryMergeNodes(Map<Node, Set<HostedType>> duplicateMap, Node node, Node duplicateCandidate) {
+            boolean tryMergeNodes(Map<Node, EconomicSet<HostedType>> duplicateMap, Node node, Node duplicateCandidate) {
                 if (areDuplicates(node, duplicateCandidate)) {
                     /* removing node b and marking it as a duplicate of node a */
                     recordDuplicateRelation(duplicateMap, node, duplicateCandidate);
@@ -1060,9 +1061,9 @@ public final class TypeCheckBuilder {
             /**
              * Recording duplicate information which later will be placed into the merged nodes.
              */
-            static void recordDuplicateRelation(Map<Node, Set<HostedType>> duplicateMap, Node node, Node duplicate) {
+            static void recordDuplicateRelation(Map<Node, EconomicSet<HostedType>> duplicateMap, Node node, Node duplicate) {
                 assert !duplicateMap.containsKey(duplicate) : "By removing this node, duplicate records are being lost.";
-                duplicateMap.computeIfAbsent(node, _ -> new HashSet<>()).add(duplicate.type);
+                duplicateMap.computeIfAbsent(node, _ -> EconomicSet.create(1)).add(duplicate.type);
             }
 
             /**
@@ -1079,7 +1080,7 @@ public final class TypeCheckBuilder {
                     Node node = nodes[i];
                     if (node.isInterface) {
                         // recording descendant information
-                        Set<Node> descendants = descendantMap.computeIfAbsent(node, _ -> new HashSet<>());
+                        Set<Node> descendants = descendantMap.computeIfAbsent(node, _ -> new HashSet<>()); // noEconomicSet
                         descendants.add(node);
                         Node[] descendantArray = descendants.toArray(Node.EMPTY_ARRAY);
                         Arrays.sort(descendantArray, Comparator.comparingInt(n -> n.id));
@@ -1095,7 +1096,7 @@ public final class TypeCheckBuilder {
                      * ancestors, due to the guarantees about the interface graph
                      */
                     for (Node ancestor : node.sortedAncestors) {
-                        descendantMap.computeIfAbsent(ancestor, _ -> new HashSet<>()).add(node);
+                        descendantMap.computeIfAbsent(ancestor, _ -> new HashSet<>()).add(node); // noEconomicSet
                     }
                 }
                 this.interfaceNodes = interfaceList.toArray(Node.EMPTY_ARRAY);
@@ -1106,14 +1107,14 @@ public final class TypeCheckBuilder {
              * appropriate interface graph.
              */
             static Graph buildInterfaceGraph(List<HostedType> heightOrderedTypes, Map<HostedType, List<HostedType>> subtypeMap) {
-                Map<HostedType, Set<Node>> interfaceAncestors = new HashMap<>();
+                Map<HostedType, EconomicSet<Node>> interfaceAncestors = new HashMap<>();
 
                 /* By the time a node is reached, it will have all needed parent information. */
                 ArrayList<Node> nodes = new ArrayList<>();
                 for (HostedType type : heightOrderedTypes) {
 
                     boolean isTypeInterface = isInterface(type);
-                    Set<Node> ancestors = interfaceAncestors.computeIfAbsent(type, _ -> isTypeInterface ? new HashSet<>() : null);
+                    EconomicSet<Node> ancestors = interfaceAncestors.computeIfAbsent(type, _ -> isTypeInterface ? EconomicSet.create() : null);
                     if (ancestors == null) {
                         /* This node does not need to be part of the interface graph */
                         continue;
@@ -1126,13 +1127,13 @@ public final class TypeCheckBuilder {
                     if (isTypeInterface) {
                         ancestors.add(newNode);
                     }
-                    Node[] sortedAncestors = ancestors.toArray(Node.EMPTY_ARRAY);
+                    Node[] sortedAncestors = ancestors.toArray(new Node[ancestors.size()]);
                     Arrays.sort(sortedAncestors, Comparator.comparingInt(n -> n.id));
                     newNode.sortedAncestors = sortedAncestors;
 
                     /* Passing ancestor information to children. */
                     for (HostedType child : subtypeMap.get(type)) {
-                        interfaceAncestors.computeIfAbsent(child, _ -> new HashSet<>()).addAll(ancestors);
+                        interfaceAncestors.computeIfAbsent(child, _ -> EconomicSet.create()).addAll(ancestors);
                     }
                 }
 
@@ -1185,11 +1186,11 @@ public final class TypeCheckBuilder {
              * The prime matrices currently associated with this slot. See {@link PrimeMatrix} for
              * its definition.
              */
-            Set<PrimeMatrix> matrices = new HashSet<>();
+            Set<PrimeMatrix> matrices = new HashSet<>(); // noEconomicSet(streaming)
             /**
              * A map from an id to all of the ContiguousGroups which contain that id.
              */
-            Map<Integer, Set<ContiguousGroup>> columnToGroupingMap = new HashMap<>();
+            Map<Integer, EconomicSet<ContiguousGroup>> columnToGroupingMap = new HashMap<>();
 
             InterfaceSlot(int id) {
                 this.id = id;
@@ -1214,10 +1215,10 @@ public final class TypeCheckBuilder {
                  */
                 int timestamp = ++currentTimeStamp;
                 ArrayList<ContiguousGroup> edges = new ArrayList<>();
-                Set<PrimeMatrix> linkedPrimeMatrices = new HashSet<>();
+                Set<PrimeMatrix> linkedPrimeMatrices = new HashSet<>(); // noEconomicSet(streaming)
 
                 for (int column : sortedGroupIds) {
-                    Set<ContiguousGroup> groupings = columnToGroupingMap.get(column);
+                    EconomicSet<ContiguousGroup> groupings = columnToGroupingMap.get(column);
                     if (groupings != null) {
                         for (ContiguousGroup existingGrouping : groupings) {
                             // only check group if it hasn't been checked already during this phase
@@ -1278,7 +1279,7 @@ public final class TypeCheckBuilder {
 
                 // add new relation to proper columnToGroupingMap keys
                 for (int connection : sortedGroupIds) {
-                    columnToGroupingMap.computeIfAbsent(connection, _ -> new HashSet<>()).add(newGrouping);
+                    columnToGroupingMap.computeIfAbsent(connection, _ -> EconomicSet.create()).add(newGrouping);
                 }
 
                 return AddGroupingResult.SUCCESS;
@@ -1448,7 +1449,7 @@ public final class TypeCheckBuilder {
             List<ContiguousGroup> containedGroups;
 
             /* all of the strictly ordered edges within this prime matrix */
-            Map<ContiguousGroup, Set<ContiguousGroup>> edgeMap;
+            Map<ContiguousGroup, EconomicSet<ContiguousGroup>> edgeMap;
 
             /**
              * To verify the consecutive ones property (C1P), two data structures are needed, the
@@ -1541,10 +1542,10 @@ public final class TypeCheckBuilder {
                     assert otherGroup.stream().noneMatch(containedGroups::contains) : "the intersection between all prime matrices should be null";
                     containedGroups.addAll(otherGroup);
 
-                    Map<ContiguousGroup, Set<ContiguousGroup>> otherEdgeMap = matrix.edgeMap;
-                    for (Map.Entry<ContiguousGroup, Set<ContiguousGroup>> entry : otherEdgeMap.entrySet()) {
+                    Map<ContiguousGroup, EconomicSet<ContiguousGroup>> otherEdgeMap = matrix.edgeMap;
+                    for (Map.Entry<ContiguousGroup, EconomicSet<ContiguousGroup>> entry : otherEdgeMap.entrySet()) {
                         ContiguousGroup key = entry.getKey();
-                        edgeMap.computeIfAbsent(key, _ -> new HashSet<>()).addAll(entry.getValue());
+                        edgeMap.computeIfAbsent(key, _ -> EconomicSet.create()).addAll(entry.getValue());
                     }
                 }
 
@@ -1552,10 +1553,10 @@ public final class TypeCheckBuilder {
                  * Adding the edges between the initialGroup and ContiguousGroups within the other
                  * prime matrices.
                  */
-                edgeMap.put(initialGroup, new HashSet<>());
+                edgeMap.put(initialGroup, EconomicSet.create());
                 for (ContiguousGroup edge : edges) {
                     edgeMap.get(initialGroup).add(edge);
-                    edgeMap.computeIfAbsent(edge, _ -> new HashSet<>()).add(initialGroup);
+                    edgeMap.computeIfAbsent(edge, _ -> EconomicSet.create()).add(initialGroup);
                 }
 
                 return true;
@@ -1576,7 +1577,7 @@ public final class TypeCheckBuilder {
                  */
                 list.add(initialGroup);
 
-                Set<PrimeMatrix> coveredMatrices = new HashSet<>();
+                EconomicSet<PrimeMatrix> coveredMatrices = EconomicSet.create();
                 if (largestMatrix != null) {
                     coveredMatrices.add(largestMatrix);
                 }
@@ -1598,16 +1599,16 @@ public final class TypeCheckBuilder {
              * reachable from any given node within the matrix.
              */
             List<ContiguousGroup> getSpanningTree(ContiguousGroup startingNode) {
-                Set<ContiguousGroup> seenNodes = new HashSet<>();
+                EconomicSet<ContiguousGroup> seenNodes = EconomicSet.create();
                 List<ContiguousGroup> list = new ArrayList<>();
                 getSpanningTreeHelper(startingNode, list, seenNodes);
                 return list;
             }
 
-            void getSpanningTreeHelper(ContiguousGroup node, List<ContiguousGroup> list, Set<ContiguousGroup> seenNodes) {
+            void getSpanningTreeHelper(ContiguousGroup node, List<ContiguousGroup> list, EconomicSet<ContiguousGroup> seenNodes) {
                 list.add(node);
                 seenNodes.add(node);
-                Set<ContiguousGroup> edges = this.edgeMap.get(node);
+                EconomicSet<ContiguousGroup> edges = this.edgeMap.get(node);
                 if (edges != null) {
                     for (ContiguousGroup edge : edges) {
                         if (!seenNodes.contains(edge)) {
@@ -1948,7 +1949,7 @@ public final class TypeCheckBuilder {
          * Within {@link com.oracle.svm.core.hub.DynamicHub} typecheck metadata the ids of the
          * interfaces will be appended to the end of the {@link #classDisplay}.
          */
-        Set<HostedType> implementedInterfaces = new HashSet<>();
+        Set<HostedType> implementedInterfaces = new HashSet<>(); // noEconomicSet(streaming)
 
         /**
          * This is the <a href="https://dl.acm.org/doi/10.1145/115372.115297">Cohen display</a> used

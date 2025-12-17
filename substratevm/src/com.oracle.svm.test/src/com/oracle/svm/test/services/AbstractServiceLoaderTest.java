@@ -84,7 +84,7 @@ public class AbstractServiceLoaderTest {
 
     @Test(expected = ServiceConfigurationError.class)
     public void testEagerIterator() {
-        Set<String> simpleNames = new HashSet<>();
+        Set<String> simpleNames = new HashSet<>(); // noEconomicSet(test)
         ServiceLoader.load(ServiceInterface.class).iterator()
                         .forEachRemaining(s -> simpleNames.add(s.getClass().getSimpleName()));
         Assert.assertNull("should not reach", simpleNames);

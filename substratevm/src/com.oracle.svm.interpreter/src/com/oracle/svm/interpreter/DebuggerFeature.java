@@ -320,7 +320,7 @@ public class DebuggerFeature implements InternalFeature {
 
             if (method.isReachable() && !methodsProcessedDuringAnalysis.contains(method)) {
                 methodsProcessedDuringAnalysis.add(method);
-                if (method.wrapped instanceof SubstitutionMethod subMethod && subMethod.isUserSubstitution()) {
+                if (method.wrapped instanceof SubstitutionMethod subMethod) {
                     if (subMethod.getOriginal().isNative()) {
                         accessImpl.registerAsRoot(method, isInvokeSpecial(method), "compiled entry point of substitution needed for interpreter");
                         continue;
@@ -472,7 +472,7 @@ public class DebuggerFeature implements InternalFeature {
                 boolean needsMethodBody = InterpreterFeature.executableByInterpreter(aMethod) && InterpreterFeature.callableByInterpreter(hMethod, hMetaAccess);
                 // Test if the methods needs to be compiled for execution in the interpreter:
                 if (aMethod.getAnalyzedGraph() != null && //
-                                (aMethod.wrapped instanceof SubstitutionMethod subMethod && subMethod.isUserSubstitution() ||
+                                (aMethod.wrapped instanceof SubstitutionMethod ||
                                                 invocationPlugins.lookupInvocation(aMethod, invocationLookupOptions) != null)) {
                     // The method is substituted, or an invocation plugin is registered
                     SubstrateCompilationDirectives.singleton().registerForcedCompilation(hMethod);
@@ -508,6 +508,8 @@ public class DebuggerFeature implements InternalFeature {
         AnalysisMethod arraycopy = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(aMetaAccess,
                         systemClass.getWrapped(), "arraycopy", Object.class, int.class, Object.class, int.class, int.class);
         SubstrateCompilationDirectives.singleton().registerForcedCompilation(arraycopy);
+
+        InterpreterFeature.prepareSignatures();
     }
 
     @Override

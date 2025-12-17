@@ -30,8 +30,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
-import com.oracle.graal.vmaccess.InvocationException;
-import com.oracle.graal.vmaccess.VMAccess;
 import com.oracle.truffle.espresso.graal.DummyForeignCallsProvider;
 import com.oracle.truffle.espresso.graal.DummyLoweringProvider;
 import com.oracle.truffle.espresso.graal.DummyPlatformConfigurationProvider;
@@ -53,6 +51,8 @@ import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.vmaccess.InvocationException;
+import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;
@@ -199,6 +199,55 @@ final class EspressoExternalVMAccess implements VMAccess {
             throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaMethod, got " + safeGetClass(method));
         }
         return espressoMethod.invoke(receiver, arguments);
+    }
+
+    @Override
+    public JavaConstant asArrayConstant(ResolvedJavaType componentType, JavaConstant... elements) {
+        if (!(componentType.getArrayClass() instanceof EspressoExternalResolvedArrayType arrayType)) {
+            throw new IllegalArgumentException("Invalid component type");
+        }
+        EspressoResolvedJavaType elementalType = arrayType.getElementalType();
+        Value array;
+        boolean isPrimitiveArray;
+        int dimensions = arrayType.getDimensions();
+        if (elementalType instanceof EspressoExternalResolvedInstanceType elementalInstanceType) {
+            array = invokeJVMCIHelper("newObjectArray", elementalInstanceType.getMetaObject(), dimensions, elements.length);
+            isPrimitiveArray = false;
+        } else {
+            JavaKind javaKind = elementalType.getJavaKind();
+            assert javaKind.isPrimitive() && javaKind != JavaKind.Void;
+            array = invokeJVMCIHelper("newPrimitiveArray", (int) javaKind.getTypeChar(), dimensions, elements.length);
+            isPrimitiveArray = dimensions == 1;
+        }
+        if (isPrimitiveArray) {
+            JavaKind javaKind = elementalType.getJavaKind();
+            for (int i = 0; i < elements.length; i++) {
+                JavaConstant element = elements[i];
+                if (javaKind != element.getJavaKind()) {
+                    throw new IllegalArgumentException("Element " + i + " should be a " + javaKind + " but was " + element.getJavaKind());
+                }
+                if (element.isDefaultForKind()) {
+                    continue;
+                }
+                array.setArrayElement(i, element.asBoxedPrimitive());
+            }
+        } else {
+            for (int i = 0; i < elements.length; i++) {
+                JavaConstant element = elements[i];
+                if (element.isNull()) {
+                    continue;
+                }
+                if (!(element instanceof EspressoExternalObjectConstant objectElement)) {
+                    throw new IllegalArgumentException("Element " + i + " should be an espresso object constant, got " + safeGetClass(element));
+                }
+                try {
+                    array.setArrayElement(i, objectElement.getValue());
+                } catch (ClassCastException e) {
+                    throw new IllegalArgumentException("Element " + i + " is not an instance of the component type", e);
+                }
+            }
+        }
+        return new EspressoExternalObjectConstant(this, array);
     }
 
     static RuntimeException throwHostException(PolyglotException e) {

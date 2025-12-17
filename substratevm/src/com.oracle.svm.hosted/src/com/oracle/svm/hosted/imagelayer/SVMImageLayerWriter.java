@@ -91,8 +91,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
-import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
-import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
@@ -161,6 +159,8 @@ import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.reflect.proxy.ProxySubstitutionType;
 import com.oracle.svm.hosted.substitute.PolymorphicSignatureWrapperMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.shaded.org.capnproto.ListBuilder;
 import com.oracle.svm.shaded.org.capnproto.MessageBuilder;
 import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
@@ -408,7 +408,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         Map.Entry<ImageHeapConstant, ConstantParent>[] constantsToPersist = (Map.Entry<ImageHeapConstant, ConstantParent>[]) constantsMap.entrySet().stream()
                         .sorted(Comparator.comparingInt(a -> ImageHeapConstant.getConstantID(a.getKey())))
                         .toArray(Map.Entry[]::new);
-        Set<Integer> constantsToRelink = new HashSet<>();
+        Set<Integer> constantsToRelink = new HashSet<>(); // noEconomicSet(streaming)
         initSortedArray(snapshotBuilder::initConstants, constantsToPersist,
                         (entry, bsupplier) -> persistConstant(entry.getKey(), entry.getValue(), bsupplier.get(), constantsToRelink));
         initInts(snapshotBuilder::initConstantsToRelink, constantsToRelink.stream().mapToInt(i -> i).sorted());

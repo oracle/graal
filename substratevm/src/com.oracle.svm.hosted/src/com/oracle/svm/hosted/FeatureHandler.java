@@ -28,7 +28,6 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +36,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.APIDeprecationSupport;
@@ -87,7 +87,7 @@ public class FeatureHandler {
     }
 
     private final ArrayList<Feature> featureInstances = new ArrayList<>();
-    private final HashSet<Class<?>> registeredFeatures = new HashSet<>();
+    private final EconomicSet<Class<?>> registeredFeatures = EconomicSet.create();
 
     public void forEachFeature(Consumer<Feature> consumer) {
         for (Feature feature : featureInstances) {

@@ -551,15 +551,15 @@ public class ProgressReporter {
     }
 
     public static List<AnalysisType> reportedReachableTypes(AnalysisUniverse universe) {
-        return reportedElements(universe, universe.getTypes(), AnalysisType::isReachable, t -> !t.isInBaseLayer());
+        return reportedElements(universe, universe.getTypes(), AnalysisType::isReachable, t -> !t.isInSharedLayer());
     }
 
     public static List<AnalysisField> reportedReachableFields(AnalysisUniverse universe) {
-        return reportedElements(universe, universe.getFields(), AnalysisField::isAccessed, f -> !f.isInBaseLayer());
+        return reportedElements(universe, universe.getFields(), AnalysisField::isAccessed, f -> !f.isInSharedLayer());
     }
 
     public static List<AnalysisMethod> reportedReachableMethods(AnalysisUniverse universe) {
-        return reportedElements(universe, universe.getMethods(), AnalysisMethod::isReachable, m -> !m.isInBaseLayer());
+        return reportedElements(universe, universe.getMethods(), AnalysisMethod::isReachable, m -> !m.isInSharedLayer());
     }
 
     private static <T extends AnalysisElement> List<T> reportedElements(AnalysisUniverse universe, Collection<T> elements, Predicate<T> elementsFilter, Predicate<T> baseLayerFilter) {

@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.vmaccess;
 
+import static com.oracle.truffle.espresso.vmaccess.EspressoExternalConstantReflectionProvider.safeGetClass;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -169,7 +171,13 @@ final class EspressoExternalMetaAccessProvider implements MetaAccessProvider {
 
     @Override
     public ResolvedJavaType lookupJavaType(JavaConstant constant) {
-        throw JVMCIError.unimplemented();
+        if (constant.isNull() || constant.getJavaKind().isPrimitive()) {
+            return null;
+        }
+        if (!(constant instanceof EspressoExternalObjectConstant objectConstant)) {
+            throw new IllegalArgumentException("expected an EspressoExternalObjectConstant got " + safeGetClass(constant));
+        }
+        return objectConstant.getType();
     }
 
     @Override

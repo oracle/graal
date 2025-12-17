@@ -83,14 +83,19 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport.WrappedFieldValueTransformer;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -148,7 +153,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions;
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> polymorphicMethodSubstitutions;
     private final Map<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
-    private Map<Field, Object> unsafeAccessedFields = new HashMap<>();
+    private Map<ResolvedJavaField, Object> unsafeAccessedFields = new HashMap<>();
     private final ClassInitializationSupport classInitializationSupport;
     private final Set<String> disabledSubstitutions;
     private final boolean reportUnsupportedElementAtRuntime;
@@ -327,7 +332,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 }
 
                 PolymorphicSignatureWrapperMethod wrapperMethod = new PolymorphicSignatureWrapperMethod(substitutionBaseMethod, method);
-                SubstitutionMethod substitutionMethod = new SubstitutionMethod(method, wrapperMethod, false, true);
+                SubstitutionMethod substitutionMethod = new SubstitutionMethod(method, wrapperMethod, false, false);
                 synchronized (methodSubstitutions) {
                     /*
                      * It may happen that, during analysis, two threads are trying to register the
@@ -353,7 +358,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
      */
     public void registerUnsafeAccessedFields(BigBang bb) {
         for (var entry : unsafeAccessedFields.entrySet()) {
-            AnalysisField targetField = bb.getMetaAccess().lookupJavaField(entry.getKey());
+            AnalysisField targetField = bb.getUniverse().lookup(entry.getKey());
             assert !AnnotationUtil.isAnnotationPresent(targetField, Delete.class);
             targetField.registerAsUnsafeAccessed(entry.getValue());
         }
@@ -373,8 +378,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         /* Sort by name to make processing order predictable for debugging. */
         annotatedClasses.sort(Comparator.comparing(Class::getName));
 
+        Set<Module> builderModules = NativeImageGeneratorRunner.getNativeImageBuilderModules();
         for (Class<?> annotatedClass : annotatedClasses) {
-            handleClass(annotatedClass);
+            handleClass(annotatedClass, builderModules);
         }
     }
 
@@ -382,7 +388,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return imageClassLoader.findAnnotatedClasses(TargetClass.class, false);
     }
 
-    protected void handleClass(Class<?> annotatedClass) {
+    protected void handleClass(Class<?> annotatedClass, Set<Module> builderModules) {
         guarantee(Modifier.isFinal(annotatedClass.getModifiers()) || annotatedClass.isInterface(), "Annotated class must be final: %s", annotatedClass);
         guarantee(annotatedClass.getSuperclass() == Object.class || annotatedClass.isInterface(), "Annotated class must inherit directly from Object: %s", annotatedClass);
         guarantee(annotatedClass.getDeclaringClass() == null || Modifier.isStatic(annotatedClass.getModifiers()),
@@ -409,12 +415,13 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         int numAnnotations = (deleteAnnotation != null ? 1 : 0) + (substituteAnnotation != null ? 1 : 0);
         guarantee(numAnnotations <= 1, "Only one of @Delete or @Substitute can be used: %s", annotatedClass);
 
+        boolean userSubstitution = !builderModules.contains(annotatedClass.getModule());
         if (deleteAnnotation != null) {
             handleDeletedClass(originalClass, deleteAnnotation);
         } else if (substituteAnnotation != null) {
-            handleSubstitutionClass(annotatedClass, originalClass);
+            handleSubstitutionClass(annotatedClass, originalClass, userSubstitution);
         } else {
-            handleAliasClass(annotatedClass, originalClass, targetClassAnnotation);
+            handleAliasClass(annotatedClass, originalClass, targetClassAnnotation, userSubstitution);
         }
     }
 
@@ -422,7 +429,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return "Target_" + originalClass.getName().replace('.', '_').replace('$', '_');
     }
 
-    private void handleAliasClass(Class<?> annotatedClass, Class<?> originalClass, TargetClass targetClassAnnotation) {
+    private void handleAliasClass(Class<?> annotatedClass, Class<?> originalClass, TargetClass targetClassAnnotation, boolean userSubstitution) {
         if (VerifyNamingConventions.getValue() && targetClassAnnotation.classNameProvider() == TargetClass.NoClassNameProvider.class) {
             String expectedName = substitutionName(originalClass);
             // Checkstyle: allow Class.getSimpleName
@@ -441,17 +448,17 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         /* The aliases for array types are registered on demand. */
 
         for (Method annotatedMethod : annotatedClass.getDeclaredMethods()) {
-            handleMethodInAliasClass(annotatedMethod, originalClass);
+            handleMethodInAliasClass(annotatedMethod, originalClass, userSubstitution);
         }
         for (Constructor<?> annotatedMethod : annotatedClass.getDeclaredConstructors()) {
-            handleMethodInAliasClass(annotatedMethod, originalClass);
+            handleMethodInAliasClass(annotatedMethod, originalClass, userSubstitution);
         }
         for (Field annotatedField : annotatedClass.getDeclaredFields()) {
             handleFieldInAliasClass(annotatedField, originalClass);
         }
     }
 
-    private void handleMethodInAliasClass(Executable annotatedMethod, Class<?> originalClass) {
+    private void handleMethodInAliasClass(Executable annotatedMethod, Class<?> originalClass, boolean userSubstitution) {
         if (skipExcludedPlatform(annotatedMethod) || annotatedMethod.isSynthetic()) {
             return;
         }
@@ -512,7 +519,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 throw UserError.abort("@Uninterruptible may only be combined with @Substitute if the original method is effectively final: %s", annotatedMethod);
             }
 
-            SubstitutionMethod substitution = new SubstitutionMethod(original, annotated, false, true);
+            SubstitutionMethod substitution = new SubstitutionMethod(original, annotated, false, userSubstitution);
             if (substituteAnnotation.polymorphicSignature()) {
                 register(polymorphicMethodSubstitutions, annotated, original, substitution);
             }
@@ -735,8 +742,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
      *
      * @param substituteClass a {@link Substitute} annotated class whose {@link TargetElement}
      *            annotation denotes {@code originalClass}
+     * @param userSubstitution is the substitution coming from the classpath or the module path
      */
-    private void handleSubstitutionClass(Class<?> substituteClass, Class<?> originalClass) {
+    private void handleSubstitutionClass(Class<?> substituteClass, Class<?> originalClass, boolean userSubstitution) {
         // Not sure what happens if the target class is in a hierarchy - so prohibit that for now.
         guarantee(substituteClass.isInterface() == originalClass.isInterface(), "if original is interface, target must also be interface: %s", substituteClass);
         guarantee(originalClass.getSuperclass() == Object.class || originalClass.isInterface(), "target class must inherit directly from Object: %s", originalClass);
@@ -745,16 +753,16 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         ResolvedJavaType original = metaAccess.lookupJavaType(originalClass);
         ResolvedJavaType substitute = metaAccess.lookupJavaType(substituteClass);
 
-        SubstitutionType substitution = new SubstitutionType(original, substitute, true);
+        SubstitutionType substitution = new SubstitutionType(original, substitute, userSubstitution);
         register(typeSubstitutions, substitute, original, substitution);
 
-        registerArrayTypes(original, substitute);
+        registerArrayTypes(original, substitute, userSubstitution);
 
         for (Method m : substituteClass.getDeclaredMethods()) {
-            handleAnnotatedMethodInSubstitutionClass(m, originalClass);
+            handleAnnotatedMethodInSubstitutionClass(m, originalClass, userSubstitution);
         }
         for (Constructor<?> c : substituteClass.getDeclaredConstructors()) {
-            handleAnnotatedMethodInSubstitutionClass(c, originalClass);
+            handleAnnotatedMethodInSubstitutionClass(c, originalClass, userSubstitution);
         }
         for (Method m : originalClass.getDeclaredMethods()) {
             handleOriginalMethodInSubstitutionClass(m, keepOriginalElements);
@@ -771,7 +779,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 guarantee(originalField == null || !(alias.isFinal() && !originalField.isFinal()), "a non-final field cannot be redeclared as final through substitution: %s", field);
                 register(fieldSubstitutions, field, originalField, alias);
             } else {
-                handleAnnotatedFieldInSubstitutionClass(f, originalClass);
+                handleAnnotatedFieldInSubstitutionClass(f, originalClass, userSubstitution);
             }
         }
 
@@ -785,19 +793,20 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
      * {@link #SUBSTITUTE_ARRAY_DIMENSIONS} dimensions.
      *
      * @param substitute the substitute class for {@code original}
+     * @param userSubstitution is the substitution coming from the classpath or the module path
      */
-    private void registerArrayTypes(ResolvedJavaType original, ResolvedJavaType substitute) {
+    private void registerArrayTypes(ResolvedJavaType original, ResolvedJavaType substitute, boolean userSubstitution) {
         ResolvedJavaType originalArray = original;
         ResolvedJavaType substituteArray = substitute;
         for (int i = 1; i <= SUBSTITUTE_ARRAY_DIMENSIONS; i++) {
             originalArray = originalArray.getArrayClass();
             substituteArray = substituteArray.getArrayClass();
-            SubstitutionType arrayTypeSubstitution = new SubstitutionType(originalArray, substituteArray, true);
+            SubstitutionType arrayTypeSubstitution = new SubstitutionType(originalArray, substituteArray, userSubstitution);
             register(typeSubstitutions, substituteArray, originalArray, arrayTypeSubstitution);
         }
     }
 
-    private void handleAnnotatedMethodInSubstitutionClass(Executable annotatedMethod, Class<?> originalClass) {
+    private void handleAnnotatedMethodInSubstitutionClass(Executable annotatedMethod, Class<?> originalClass, boolean userSubstitution) {
         if (skipExcludedPlatform(annotatedMethod)) {
             return;
         }
@@ -827,7 +836,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (original == null) {
             /* Optional target that is not present, so nothing to do. */
         } else if (substituteAnnotation != null) {
-            SubstitutionMethod substitution = new SubstitutionMethod(original, annotated, true, true);
+            SubstitutionMethod substitution = new SubstitutionMethod(original, annotated, true, userSubstitution);
             if (substituteAnnotation.polymorphicSignature()) {
                 register(polymorphicMethodSubstitutions, annotated, original, substitution);
             }
@@ -837,7 +846,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
     }
 
-    private void handleAnnotatedFieldInSubstitutionClass(Field annotatedField, Class<?> originalClass) {
+    private void handleAnnotatedFieldInSubstitutionClass(Field annotatedField, Class<?> originalClass, boolean userSubstitution) {
         if (skipExcludedPlatform(annotatedField)) {
             return;
         }
@@ -855,7 +864,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (original == null) {
             /* Optional target that is not present, so nothing to do. */
         } else {
-            register(fieldSubstitutions, annotated, original, new SubstitutionField(original, annotated, true));
+            register(fieldSubstitutions, annotated, original, new SubstitutionField(original, annotated, userSubstitution));
         }
     }
 
@@ -1040,13 +1049,14 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 targetClass = imageClassLoader.findClassOrFail(recomputeAnnotation.declClassName());
             }
         }
-        Class<?> transformedValueAllowedType = getTargetClass(annotatedField.getType());
+        ResolvedJavaType targetType = GraalAccess.lookupType(targetClass);
+        ResolvedJavaType transformedValueAllowedType = GraalAccess.lookupType(getTargetClass(annotatedField.getType()));
 
-        var newTransformer = switch (kind) {
+        JVMCIFieldValueTransformer newTransformer = switch (kind) {
             case None, Manual -> null;
             case Reset -> ConstantValueFieldValueTransformer.defaultValueForField(original);
-            case NewInstance -> new NewInstanceOfFixedClassFieldValueTransformer(targetClass, false);
-            case NewInstanceWhenNotNull -> new NewInstanceOfFixedClassFieldValueTransformer(targetClass, true);
+            case NewInstance -> new NewInstanceOfFixedClassFieldValueTransformer(targetType, false);
+            case NewInstanceWhenNotNull -> new NewInstanceOfFixedClassFieldValueTransformer(targetType, true);
             case FromAlias -> {
                 if (!Modifier.isStatic(annotated.getModifiers())) {
                     throw UserError.abort("Cannot use " + kind + " on non-static alias " + annotated.format("%H.%n"));
@@ -1054,30 +1064,37 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 yield new FromAliasFieldValueTransformer(annotated);
             }
             case FieldOffset -> {
-                var targetField = getField(annotated, targetClass, targetName);
+                var targetField = getField(annotated, targetType, targetName);
                 unsafeAccessedFields.put(targetField, original);
-                yield new FieldOffsetFieldValueTransformer(targetField, original.getType().getJavaKind());
+                yield new FieldOffsetFieldValueTransformer(OriginalFieldProvider.getJavaField(targetField), original.getType().getJavaKind());
             }
             case StaticFieldBase -> {
-                var targetField = getField(annotated, targetClass, targetName);
+                var targetField = getField(annotated, targetType, targetName);
                 if (!Modifier.isStatic(targetField.getModifiers())) {
                     throw UserError.abort("Target field must be static for " + kind + " computation of alias " + annotated.format("%H.%n"));
                 }
-                yield new StaticFieldBaseFieldValueTransformer(targetField);
+                yield new StaticFieldBaseFieldValueTransformer(OriginalFieldProvider.getJavaField(targetField));
             }
             case ArrayBaseOffset ->
-                new ArrayBaseOffsetFieldValueTransformer(targetClass, original.getType().getJavaKind());
+                new ArrayBaseOffsetFieldValueTransformer(targetType, original.getType().getJavaKind());
             case ArrayIndexScale ->
-                new ArrayIndexScaleFieldValueTransformer(targetClass, original.getType().getJavaKind());
+                new ArrayIndexScaleFieldValueTransformer(targetType, original.getType().getJavaKind());
             case ArrayIndexShift ->
-                new ArrayIndexShiftFieldValueTransformer(targetClass, original.getType().getJavaKind());
+                new ArrayIndexShiftFieldValueTransformer(targetType, original.getType().getJavaKind());
             case AtomicFieldUpdaterOffset -> new AtomicFieldUpdaterOffsetFieldValueTransformer(original, targetClass);
             case TranslateFieldOffset -> new TranslateFieldOffsetFieldValueTransformer(original, targetClass);
-            case Custom -> (FieldValueTransformer) ReflectionUtil.newInstance(targetClass);
+            case Custom -> {
+                if (JVMCIFieldValueTransformer.class.isAssignableFrom(targetClass)) {
+                    yield (JVMCIFieldValueTransformer) ReflectionUtil.newInstance(targetClass);
+                } else {
+                    var fieldValueTransformer = (FieldValueTransformer) ReflectionUtil.newInstance(targetClass);
+                    yield WrappedFieldValueTransformer.create(fieldValueTransformer);
+                }
+            }
         };
 
         if (newTransformer != null) {
-            FieldValueTransformer existingTransformer = fieldValueInterceptionSupport.lookupAlreadyRegisteredTransformer(original);
+            JVMCIFieldValueTransformer existingTransformer = fieldValueInterceptionSupport.lookupAlreadyRegisteredTransformer(original);
             if (existingTransformer != null) {
                 if (existingTransformer.equals(newTransformer)) {
                     /* Equivalent transformations are allowed, nothing to do. */
@@ -1092,11 +1109,11 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return new AliasField(original, annotated, isFinal);
     }
 
-    private static Field getField(ResolvedJavaField annotated, Class<?> targetClass, String targetName) {
+    private static ResolvedJavaField getField(ResolvedJavaField annotated, ResolvedJavaType targetType, String targetName) {
         try {
-            return ReflectionUtil.lookupField(targetClass, targetName);
-        } catch (ReflectionUtilError e) {
-            throw UserError.abort("Could not find target field %s.%s for alias %s.", targetClass.getName(), targetName, annotated == null ? null : annotated.format("%H.%n"));
+            return JVMCIReflectionUtil.getUniqueDeclaredField(targetType, targetName);
+        } catch (NoSuchFieldError e) {
+            throw UserError.abort("Could not find target field %s.%s for alias %s.", targetType.toClassName(), targetName, annotated == null ? null : annotated.format("%H.%n"));
         }
     }
 

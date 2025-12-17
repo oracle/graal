@@ -24,15 +24,13 @@
  */
 package com.oracle.svm.diagnosticsagent;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import com.oracle.svm.core.util.VMError;
+import org.graalvm.collections.EconomicSet;
 
 public class TracingAdvisor {
 
-    private final Set<String> classesForInitializationTracing = new HashSet<>();
-    private final Set<String> classesForObjectInstantiationTracing = new HashSet<>();
+    private final EconomicSet<String> classesForInitializationTracing = EconomicSet.create();
+    private final EconomicSet<String> classesForObjectInstantiationTracing = EconomicSet.create();
 
     public TracingAdvisor(String options) {
         String[] optionPairs = options.split(",");

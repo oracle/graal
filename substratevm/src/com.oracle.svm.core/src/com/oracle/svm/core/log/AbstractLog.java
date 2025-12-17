@@ -569,12 +569,12 @@ abstract class AbstractLog implements Log {
         }
     }
 
-    @Uninterruptible(reason = "Some implementations are interruptible.", callerMustBe = true, calleeMustBe = false)
-    private Log writeBytes0(CCharPointer bytes, UnsignedWord length) {
-        return rawBytes(bytes, length);
+    @Uninterruptible(reason = "Some implementations are interruptible.", calleeMustBe = false)
+    protected void writeBytes0(CCharPointer bytes, UnsignedWord length) {
+        rawBytes(bytes, length);
     }
 
-    @Uninterruptible(reason = "Some implementations are interruptible.", callerMustBe = true, calleeMustBe = false)
+    @Uninterruptible(reason = "Some implementations are interruptible.", calleeMustBe = false)
     private int printBacktrace0(Throwable t, int maxFrames) {
         return printBacktrace(t, maxFrames);
     }

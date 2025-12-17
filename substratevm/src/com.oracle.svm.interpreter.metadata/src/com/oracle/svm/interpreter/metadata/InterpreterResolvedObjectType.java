@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter.metadata;
 
 import static com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.Arrays;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
@@ -160,12 +162,6 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     }
 
     @VisibleForSerialization
-    public static InterpreterResolvedObjectType create(ParserKlass parserKlass, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
-                    InterpreterResolvedObjectType[] interfaces, Class<?> javaClass, boolean isWordType) {
-        return new InterpreterResolvedObjectType(parserKlass.getType(), modifiers, componentType, superclass, interfaces, null, javaClass, isWordType);
-    }
-
-    @VisibleForSerialization
     public static InterpreterResolvedObjectType createWithOpaqueClass(String name, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
                     InterpreterResolvedObjectType[] interfaces, InterpreterConstantPool constantPool,
                     JavaConstant clazzConstant,
@@ -270,6 +266,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
      * Returns the virtual dispatch table. For interfaces this returns the interface dispatch table
      * prototype.
      */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public final InterpreterResolvedJavaMethod[] getVtable() {
         if (vtableHolder == null) {
             return null;

@@ -837,7 +837,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                  * We intentionally do not call getFullDeoptVersion because we want to wait until
                  * all deopt entries are registered before triggering the flow update.
                  */
-                Collection<ResolvedJavaMethod> recomputeMethods = DeoptimizationUtils.registerDeoptEntries(graph, registeredRuntimeCompilations.contains(origMethod),
+                Iterable<ResolvedJavaMethod> recomputeMethods = DeoptimizationUtils.registerDeoptEntries(graph, registeredRuntimeCompilations.contains(origMethod),
                                 (deoptEntryMethod -> ((PointsToAnalysisMethod) deoptEntryMethod).getOrCreateMultiMethod(DEOPT_TARGET_METHOD)));
 
                 /*

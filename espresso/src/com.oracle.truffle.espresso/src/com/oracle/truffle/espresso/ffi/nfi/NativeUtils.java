@@ -22,10 +22,9 @@
  */
 package com.oracle.truffle.espresso.ffi.nfi;
 
-import static com.oracle.truffle.espresso.substitutions.standard.Target_sun_misc_Unsafe.ADDRESS_SIZE;
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 
@@ -38,58 +37,84 @@ import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.vm.UnsafeAccess;
+import com.oracle.truffle.espresso.meta.Meta;
 
-import sun.misc.Unsafe;
-
+/**
+ * Utility class for performing low-level operations.
+ */
 public final class NativeUtils {
-
-    private static final Unsafe UNSAFE = UnsafeAccess.get();
-
-    private static final Class<?> DIRECT_BYTE_BUFFER_CLASS;
-    private static final long ADDRESS_FIELD_OFFSET;
-    private static final long CAPACITY_FIELD_OFFSET;
-
-    @SuppressWarnings("deprecation")
-    private static long getBufferFieldOffset(String name) throws NoSuchFieldException {
-        // TODO replace with panama?
-        return UNSAFE.objectFieldOffset(java.nio.Buffer.class.getDeclaredField(name));
+    /**
+     * Returns a MemoryBuffer of the address represented by the given addressPtr with the capacity
+     * to hold size many elements of the kind specified by the argument.
+     *
+     * @param addressPtr the address pointer
+     * @param size How many elements the buffer can store.
+     * @param kind the kind of elements the buffer should store
+     * @param nativeMemory the NativeMemory implementation
+     * @return The MemoryBuffer of the specified memory region.
+     * @throws IllegalMemoryAccessException if {@code addressPtr} does not point to a valid memory
+     *             region.
+     */
+    public static ByteBuffer wrapNativeMemory(@Pointer TruffleObject addressPtr, long size, JavaKind kind, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+        return wrapNativeMemory(addressPtr, Math.multiplyExact(size, kind.getByteCount()), nativeMemory);
     }
 
-    static {
+    /**
+     * Works as specified by
+     * {@link NativeUtils#wrapNativeMemory(TruffleObject, long, JavaKind, NativeMemory)} with the
+     * only difference that the returned {@link ByteBuffer} will hold exactly capacity many bytes.
+     */
+    @TruffleBoundary
+    public static ByteBuffer wrapNativeMemory(@Pointer TruffleObject addressPtr, long capacity, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+        return wrapNativeMemory(interopAsPointer(addressPtr), capacity, nativeMemory);
+    }
+
+    /**
+     * Works as specified by
+     * {@link NativeUtils#wrapNativeMemory(TruffleObject, long, JavaKind, NativeMemory)} with the
+     * only difference that the returned {@link ByteBuffer} will hold exactly capacity many bytes.
+     */
+    @TruffleBoundary
+    public static ByteBuffer wrapNativeMemory(long address, long longCapacity, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+        return nativeMemory.wrapNativeMemory(address, Math.toIntExact(longCapacity));
+    }
+
+    /**
+     * Performs {@link NativeUtils#wrapNativeMemory(TruffleObject, long, JavaKind, NativeMemory)}
+     * but throws a guest {@link InternalError} if a host {@link IllegalMemoryAccessException}
+     * occurs.
+     */
+    @TruffleBoundary
+    public static ByteBuffer wrapNativeMemoryOrThrow(@Pointer TruffleObject addressPtr, long size, JavaKind kind, NativeMemory nativeMemory, Meta meta) {
+        return wrapNativeMemoryOrThrow(addressPtr, Math.multiplyExact(size, kind.getByteCount()), nativeMemory, meta);
+    }
+
+    /**
+     * Performs {@link NativeUtils#wrapNativeMemory(long, long, NativeMemory)} but throws a guest
+     * {@link InternalError} if a host {@link IllegalMemoryAccessException} occurs.
+     */
+    @TruffleBoundary
+    public static ByteBuffer wrapNativeMemoryOrThrow(@Pointer TruffleObject addressPtr, long capacity, NativeMemory nativeMemory, Meta meta) {
         try {
-            ADDRESS_FIELD_OFFSET = getBufferFieldOffset("address");
-            CAPACITY_FIELD_OFFSET = getBufferFieldOffset("capacity");
-            DIRECT_BYTE_BUFFER_CLASS = Class.forName("java.nio.DirectByteBuffer");
-        } catch (ClassNotFoundException | NoSuchFieldException e) {
-            throw EspressoError.shouldNotReachHere(e);
+            return wrapNativeMemory(addressPtr, capacity, nativeMemory);
+        } catch (IllegalMemoryAccessException e) {
+            throw meta.throwInternalErrorBoundary(e.toString());
         }
     }
 
-    public static ByteBuffer directByteBuffer(@Pointer TruffleObject addressPtr, long size, JavaKind kind) {
-        return directByteBuffer(addressPtr, Math.multiplyExact(size, kind.getByteCount()));
-    }
-
+    /**
+     * Performs {@link NativeUtils#interopPointerToString(TruffleObject, NativeMemory)} but throws a
+     * guest {@link InternalError} if a host {@link IllegalMemoryAccessException} occurs.
+     */
     @TruffleBoundary
-    public static ByteBuffer directByteBuffer(@Pointer TruffleObject addressPtr, long capacity) {
-        return directByteBuffer(interopAsPointer(addressPtr), capacity);
-    }
-
-    @TruffleBoundary
-    public static ByteBuffer directByteBuffer(long address, long longCapacity) {
-        int capacity = Math.toIntExact(longCapacity);
-        ByteBuffer buffer = null;
+    public static String interopPointerToStringOrThrow(@Pointer TruffleObject interopPtr, NativeMemory nativeMemory, Meta meta) {
         try {
-            buffer = (ByteBuffer) UNSAFE.allocateInstance(DIRECT_BYTE_BUFFER_CLASS);
-        } catch (InstantiationException e) {
-            throw EspressoError.shouldNotReachHere(e);
+            return NativeUtils.interopPointerToString(interopPtr, nativeMemory);
+        } catch (IllegalMemoryAccessException e) {
+            throw meta.throwInternalErrorBoundary(e.toString());
         }
-        UNSAFE.putLong(buffer, ADDRESS_FIELD_OFFSET, address);
-        UNSAFE.putInt(buffer, CAPACITY_FIELD_OFFSET, capacity);
-        buffer.clear();
-        buffer.order(ByteOrder.nativeOrder());
-        return buffer;
     }
 
     @TruffleBoundary
@@ -102,77 +127,21 @@ public final class NativeUtils {
         }
     }
 
-    public static String interopPointerToString(@Pointer TruffleObject interopPtr) {
-        return fromUTF8Ptr(interopAsPointer(interopPtr));
-    }
-
-    public static void writeToIntPointer(TruffleObject pointer, int value) {
-        writeToIntPointer(InteropLibrary.getUncached(), pointer, value);
-    }
-
-    @TruffleBoundary
-    public static void writeToIntPointer(InteropLibrary library, TruffleObject pointer, int value) {
-        if (library.isNull(pointer)) {
-            throw new NullPointerException();
-        }
-        IntBuffer resultPointer = NativeUtils.directByteBuffer(pointer, 1, JavaKind.Int).asIntBuffer();
-        resultPointer.put(value);
-    }
-
-    public static void writeToLongPointer(TruffleObject pointer, long value) {
-        writeToLongPointer(InteropLibrary.getUncached(), pointer, value);
-    }
-
-    @TruffleBoundary
-    public static void writeToLongPointer(InteropLibrary library, TruffleObject pointer, long value) {
-        if (library.isNull(pointer)) {
-            throw new NullPointerException();
-        }
-        LongBuffer resultPointer = NativeUtils.directByteBuffer(pointer, 1, JavaKind.Long).asLongBuffer();
-        resultPointer.put(value);
-    }
-
-    public static void writeToPointerPointer(TruffleObject pointer, TruffleObject value) {
-        writeToPointerPointer(InteropLibrary.getUncached(), pointer, value);
-    }
-
-    public static void writeToPointerPointer(InteropLibrary library, TruffleObject pointer, TruffleObject value) {
-        writeToLongPointer(library, pointer, NativeUtils.interopAsPointer(value));
-    }
-
-    public static TruffleObject dereferencePointerPointer(TruffleObject pointer) {
-        return dereferencePointerPointer(InteropLibrary.getUncached(), pointer);
-    }
-
-    @TruffleBoundary
-    public static TruffleObject dereferencePointerPointer(InteropLibrary library, TruffleObject pointer) {
-        if (library.isNull(pointer)) {
-            throw new NullPointerException();
-        }
-        LongBuffer buffer = NativeUtils.directByteBuffer(pointer, 1, JavaKind.Long).asLongBuffer();
-        return RawPointer.create(buffer.get());
-    }
-
-    @TruffleBoundary
-    public static long byteBufferAddress(ByteBuffer byteBuffer) {
-        assert byteBuffer.isDirect();
-        return UNSAFE.getLong(byteBuffer, ADDRESS_FIELD_OFFSET);
-    }
-
-    public static @Pointer TruffleObject byteBufferPointer(ByteBuffer byteBuffer) {
-        return new RawPointer(byteBufferAddress(byteBuffer));
-    }
-
-    public static String fromUTF8Ptr(@Pointer TruffleObject buffPtr) {
-        return fromUTF8Ptr(interopAsPointer(buffPtr));
-    }
-
-    @TruffleBoundary
-    public static String fromUTF8Ptr(long rawBytesPtr) {
+    /**
+     * Returns a String by decoding the memory region of interopPtr using UTF-8.
+     *
+     * @param interopPtr the interop pointer to decode
+     * @param nativeMemory the native memory implementation
+     * @return the decoded string
+     * @throws IllegalMemoryAccessException if {@code interopPtr} does not point to a valid memory
+     *             region.
+     */
+    public static String interopPointerToString(@Pointer TruffleObject interopPtr, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+        long rawBytesPtr = interopAsPointer(interopPtr);
         if (rawBytesPtr == 0) {
             return null;
         }
-        ByteBuffer buf = directByteBuffer(rawBytesPtr, Integer.MAX_VALUE);
+        ByteBuffer buf = wrapNativeMemory(rawBytesPtr, Integer.MAX_VALUE, nativeMemory);
         while (buf.get() != 0) {
             // find the end of the utf8
         }
@@ -181,33 +150,62 @@ public final class NativeUtils {
         return ModifiedUTF8.toJavaStringSafe(buf);
     }
 
+    /**
+     * Writes the provided int to the pointer.
+     * 
+     * @throws IllegalMemoryAccessException if {@code pointer} does not point to a valid memory
+     *             region.
+     */
     @TruffleBoundary
-    public static ByteBuffer allocateDirect(int capacity) {
-        return ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
+    public static void writeToIntPointer(InteropLibrary library, TruffleObject pointer, int value, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+        if (library.isNull(pointer)) {
+            throw new NullPointerException();
+        }
+        IntBuffer resultPointer = NativeUtils.wrapNativeMemory(pointer, 1, JavaKind.Int, nativeMemory).asIntBuffer();
+        resultPointer.put(value);
     }
 
+    /**
+     * Writes the provided long to the pointer.
+     *
+     * @throws IllegalMemoryAccessException if {@code pointer} does not point to a valid memory
+     *             region.
+     */
     @TruffleBoundary
-    public static ByteBuffer[] getByteBuffersFromIOVec(long address, int len) {
-        // constants
-        int lenOffset = ADDRESS_SIZE;
-        int sizeOfIOVec = (short) (ADDRESS_SIZE * 2);
-        int baseOffset = 0;
-
-        long curIOVecAddr = address;
-        long nextAddr;
-        long nextLen;
-        ByteBuffer[] buffs = new ByteBuffer[len];
-        for (int i = 0; i < len; i++) {
-            if (ADDRESS_SIZE == 4) {
-                nextAddr = UNSAFE.getInt(curIOVecAddr + baseOffset);
-                nextLen = UNSAFE.getInt(curIOVecAddr + lenOffset);
-            } else {
-                nextAddr = UNSAFE.getLong(curIOVecAddr + baseOffset);
-                nextLen = UNSAFE.getLong(curIOVecAddr + lenOffset);
-            }
-            buffs[i] = directByteBuffer(nextAddr, nextLen);
-            curIOVecAddr += sizeOfIOVec;
+    public static void writeToLongPointer(InteropLibrary library, TruffleObject pointer, long value, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+        if (library.isNull(pointer)) {
+            throw new NullPointerException();
         }
-        return buffs;
+        LongBuffer resultPointer = NativeUtils.wrapNativeMemory(pointer, 1, JavaKind.Long, nativeMemory).asLongBuffer();
+        resultPointer.put(value);
+    }
+
+    /**
+     * Writes the long value of the value pointer to the address given by the address pointer.
+     *
+     * @param library the InteropLibrary
+     * @param pointer the address pointer
+     * @param value the value provided as a pointer
+     * @param nativeMemory the NativeMemory implementation
+     * @throws IllegalMemoryAccessException if {@code pointer} or {@code value} does not point to a
+     *             valid memory region.
+     */
+    public static void writeToPointerPointer(InteropLibrary library, TruffleObject pointer, TruffleObject value, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+        writeToLongPointer(library, pointer, NativeUtils.interopAsPointer(value), nativeMemory);
+    }
+
+    /**
+     * Dereferences the given pointer.
+     * 
+     * @throws IllegalMemoryAccessException if {@code pointer} does not point to a valid memory
+     *             region.
+     */
+    @TruffleBoundary
+    public static TruffleObject dereferencePointerPointer(InteropLibrary library, TruffleObject pointer, NativeMemory nativeMemory) throws IllegalMemoryAccessException {
+        if (library.isNull(pointer)) {
+            throw new NullPointerException();
+        }
+        LongBuffer buffer = NativeUtils.wrapNativeMemory(pointer, 1, JavaKind.Long, nativeMemory).asLongBuffer();
+        return RawPointer.create(buffer.get());
     }
 }

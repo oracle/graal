@@ -41,18 +41,19 @@ public class SubstitutionField implements ResolvedJavaField, OriginalFieldProvid
 
     /**
      * This field is used in the {@link com.oracle.svm.hosted.SubstitutionReportFeature} class to
-     * determine {@link SubstitutionMethod} objects which correspond to annotated substitutions.
+     * determine {@link SubstitutionMethod} objects are user-defined substitutions (from the
+     * classpath).
      */
-    private final boolean isUserSubstitution;
+    private final boolean userSubstitution;
 
-    public SubstitutionField(ResolvedJavaField original, ResolvedJavaField annotated, boolean isUserSubstitution) {
+    public SubstitutionField(ResolvedJavaField original, ResolvedJavaField annotated, boolean userSubstitution) {
         this.original = original;
         this.annotated = annotated;
-        this.isUserSubstitution = isUserSubstitution;
+        this.userSubstitution = userSubstitution;
     }
 
     public boolean isUserSubstitution() {
-        return isUserSubstitution;
+        return userSubstitution;
     }
 
     public ResolvedJavaField getOriginal() {

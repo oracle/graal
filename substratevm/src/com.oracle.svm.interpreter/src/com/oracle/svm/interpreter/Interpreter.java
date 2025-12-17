@@ -291,6 +291,7 @@ import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import com.oracle.svm.interpreter.metadata.TableSwitch;
 import com.oracle.svm.interpreter.metadata.UnsupportedResolutionException;
+import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -622,10 +623,7 @@ public final class Interpreter {
         @NeverInline("needed far stack walking")
         private static Object executeBodyFromBCI(InterpreterFrame frame, InterpreterResolvedJavaMethod method, int startBCI, int startTop,
                         boolean forceStayInInterpreter) {
-
-            if (RistrettoProfileSupport.isEnabled()) {
-                RistrettoProfileSupport.profileMethodCall(method);
-            }
+            final MethodProfile methodProfile = RistrettoProfileSupport.profileMethodEntry(method);
 
             int curBCI = startBCI;
             int top = startTop;
@@ -748,7 +746,7 @@ public final class Interpreter {
                         case BALOAD: // fall through
                         case CALOAD: // fall through
                         case SALOAD: // fall through
-                        case AALOAD: arrayLoad(frame, top, curOpcode); break;
+                        case AALOAD: arrayLoad(frame, methodProfile, curBCI,  top, curOpcode); break;
 
                         case ISTORE: setLocalInt(frame, BytecodeStream.readLocalIndex1(code, curBCI), popInt(frame, top - 1)); break;
                         case LSTORE: setLocalLong(frame, BytecodeStream.readLocalIndex1(code, curBCI), popLong(frame, top - 1)); break;
@@ -788,7 +786,7 @@ public final class Interpreter {
                         case AASTORE: // fall through
                         case BASTORE: // fall through
                         case CASTORE: // fall through
-                        case SASTORE: arrayStore(frame, top, curOpcode); break;
+                        case SASTORE: arrayStore(frame, methodProfile, curBCI, top, curOpcode); break;
 
                         case POP2:
                             clear(frame, top - 1);
@@ -888,7 +886,9 @@ public final class Interpreter {
                         case IFGE: // fall through
                         case IFGT: // fall through
                         case IFLE:
-                            if (takeBranchPrimitive1(popInt(frame, top - 1), curOpcode)) {
+                            final boolean branchTaken1 = takeBranchPrimitive1(popInt(frame, top - 1), curOpcode);
+                            profileBranch(methodProfile, curBCI, branchTaken1);
+                            if (branchTaken1) {
                                 top += ConstantBytecodes.stackEffectOf(IFLE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
@@ -901,7 +901,9 @@ public final class Interpreter {
                         case IF_ICMPGE: // fall through
                         case IF_ICMPGT: // fall through
                         case IF_ICMPLE:
-                            if (takeBranchPrimitive2(popInt(frame, top - 1), popInt(frame, top - 2), curOpcode)) {
+                            final boolean branchTaken2 = takeBranchPrimitive2(popInt(frame, top - 1), popInt(frame, top - 2), curOpcode);
+                            profileBranch(methodProfile, curBCI, branchTaken2);
+                            if (branchTaken2) {
                                 top += ConstantBytecodes.stackEffectOf(IF_ICMPLE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
@@ -910,7 +912,9 @@ public final class Interpreter {
 
                         case IF_ACMPEQ: // fall through
                         case IF_ACMPNE:
-                            if (takeBranchRef2(popObject(frame, top - 1), popObject(frame, top - 2), curOpcode)) {
+                            final boolean branchTakenRef2 = takeBranchRef2(popObject(frame, top - 1), popObject(frame, top - 2), curOpcode);
+                            profileBranch(methodProfile, curBCI, branchTakenRef2);
+                            if (branchTakenRef2) {
                                 top += ConstantBytecodes.stackEffectOf(IF_ACMPNE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
@@ -919,7 +923,9 @@ public final class Interpreter {
 
                         case IFNULL: // fall through
                         case IFNONNULL:
-                            if (takeBranchRef1(popObject(frame, top - 1), curOpcode)) {
+                            final boolean branchTakenRef1 = takeBranchRef1(popObject(frame, top - 1), curOpcode);
+                            profileBranch(methodProfile, curBCI, branchTakenRef1);
+                            if (branchTakenRef1) {
                                 top += ConstantBytecodes.stackEffectOf(IFNONNULL);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
@@ -1055,7 +1061,7 @@ public final class Interpreter {
                             }
 
                             try {
-                                top += invoke(frame, method, code, top, curBCI, curOpcode, forceStayInInterpreter, preferStayInInterpreter);
+                                top += invoke(frame, methodProfile, method, code, top, curBCI, curOpcode, forceStayInInterpreter, preferStayInInterpreter);
                             } finally {
                                 SteppingControl newSteppingControl = DebuggerEvents.singleton().getSteppingControl(currentThread);
                                 if (newSteppingControl != null) {
@@ -1080,6 +1086,7 @@ public final class Interpreter {
 
                         case CHECKCAST : {
                             Object receiver = peekObject(frame, top - 1);
+                            profileType(methodProfile, curBCI, receiver);
                             // Resolve type iff receiver != null.
                             if (receiver != null) {
                                 InterpreterToVM.checkCast(receiver, resolveType(method, CHECKCAST, BytecodeStream.readCPI2(code, curBCI)));
@@ -1088,6 +1095,7 @@ public final class Interpreter {
                         }
                         case INSTANCEOF : {
                             Object receiver = popObject(frame, top - 1);
+                            profileType(methodProfile, curBCI, receiver);
                             // Resolve type iff receiver != null.
                             putInt(frame, top - 1, (receiver != null && InterpreterToVM.instanceOf(receiver, resolveType(method, INSTANCEOF, BytecodeStream.readCPI2(code, curBCI)))) ? 1 : 0);
                             break;
@@ -1166,6 +1174,18 @@ public final class Interpreter {
         }
     }
 
+    private static void profileType(MethodProfile methodProfile, int bci, Object o) {
+        if (methodProfile != null) {
+            methodProfile.profileReceiver(bci, o);
+        }
+    }
+
+    private static void profileBranch(MethodProfile methodProfile, int curBCI, boolean branchTaken1) {
+        if (methodProfile != null) {
+            methodProfile.profileBranch(curBCI, branchTaken1);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private static <T extends Throwable> RuntimeException uncheckedThrow(Throwable e) throws T {
         throw (T) e;
@@ -1241,7 +1261,7 @@ public final class Interpreter {
         };
     }
 
-    private static void arrayLoad(InterpreterFrame frame, int top, int loadOpcode) {
+    private static void arrayLoad(InterpreterFrame frame, MethodProfile methodProfile, int bci, int top, int loadOpcode) {
         assert IALOAD <= loadOpcode && loadOpcode <= SALOAD;
         int index = popInt(frame, top - 1);
         Object array = nullCheck(popObject(frame, top - 2));
@@ -1253,12 +1273,16 @@ public final class Interpreter {
             case FALOAD -> putFloat(frame, top - 2, InterpreterToVM.getArrayFloat(index, (float[]) array));
             case LALOAD -> putLong(frame, top - 2, InterpreterToVM.getArrayLong(index, (long[]) array));
             case DALOAD -> putDouble(frame, top - 2, InterpreterToVM.getArrayDouble(index, (double[]) array));
-            case AALOAD -> putObject(frame, top - 2, InterpreterToVM.getArrayObject(index, (Object[]) array));
+            case AALOAD -> {
+                Object o = InterpreterToVM.getArrayObject(index, (Object[]) array);
+                profileType(methodProfile, bci, o);
+                putObject(frame, top - 2, o);
+            }
             default -> throw VMError.shouldNotReachHereAtRuntime();
         }
     }
 
-    private static void arrayStore(InterpreterFrame frame, int top, int storeOpcode) {
+    private static void arrayStore(InterpreterFrame frame, MethodProfile methodProfile, int bci, int top, int storeOpcode) {
         assert IASTORE <= storeOpcode && storeOpcode <= SASTORE;
         int offset = (storeOpcode == LASTORE || storeOpcode == DASTORE) ? 2 : 1;
         int index = popInt(frame, top - 1 - offset);
@@ -1271,7 +1295,11 @@ public final class Interpreter {
             case FASTORE -> InterpreterToVM.setArrayFloat(popFloat(frame, top - 1), index, (float[]) array);
             case LASTORE -> InterpreterToVM.setArrayLong(popLong(frame, top - 1), index, (long[]) array);
             case DASTORE -> InterpreterToVM.setArrayDouble(popDouble(frame, top - 1), index, (double[]) array);
-            case AASTORE -> InterpreterToVM.setArrayObject(popObject(frame, top - 1), index, (Object[]) array);
+            case AASTORE -> {
+                Object o = popObject(frame, top - 1);
+                profileType(methodProfile, bci, o);
+                InterpreterToVM.setArrayObject(o, index, (Object[]) array);
+            }
             default -> throw VMError.shouldNotReachHereAtRuntime();
         }
     }
@@ -1280,6 +1308,7 @@ public final class Interpreter {
     private static int beforeJumpChecks(InterpreterFrame frame, int curBCI, int targetBCI, int top) {
         if (targetBCI <= curBCI) {
             // GR-55055: Safepoint poll needed?
+            // TODO GR-71799 - add ristretto backedge profiles
         }
         return targetBCI;
     }
@@ -1383,7 +1412,8 @@ public final class Interpreter {
         return method.getConstantPool();
     }
 
-    private static int invoke(InterpreterFrame callerFrame, InterpreterResolvedJavaMethod method, byte[] code, int top, int curBCI, int opcode, boolean forceStayInInterpreter,
+    private static int invoke(InterpreterFrame callerFrame, MethodProfile methodProfile, InterpreterResolvedJavaMethod method, byte[] code, int top, int curBCI, int opcode,
+                    boolean forceStayInInterpreter,
                     boolean preferStayInInterpreter) {
         int invokeTop = top;
 
@@ -1464,8 +1494,11 @@ public final class Interpreter {
 
         Object[] calleeArgs = EspressoFrame.popArguments(callerFrame, invokeTop, hasReceiver, seedSignature);
         if (!seedMethod.isStatic()) {
-            nullCheck(calleeArgs[0]);
+            final Object receiver = calleeArgs[0];
+            profileType(methodProfile, curBCI, receiver);
+            nullCheck(receiver);
         }
+
         Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, isVirtual, forceStayInInterpreter, preferStayInInterpreter, opcode == INVOKEINTERFACE, false);
 
         retStackEffect += EspressoFrame.putKind(callerFrame, resultAt, retObj, seedSignature.getReturnKind());

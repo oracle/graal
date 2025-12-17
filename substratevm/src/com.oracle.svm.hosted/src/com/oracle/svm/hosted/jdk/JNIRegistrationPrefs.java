@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.graal.vmaccess.ResolvedJavaModule;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
@@ -48,6 +47,7 @@ import com.oracle.svm.util.HostModuleUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
 
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms({InternalPlatform.PLATFORM_JNI.class})

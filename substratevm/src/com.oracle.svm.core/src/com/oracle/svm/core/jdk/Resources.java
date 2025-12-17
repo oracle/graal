@@ -758,7 +758,7 @@ public final class Resources {
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Resources singleton) {
                     List<String> resourceKeys = new ArrayList<>();
                     List<Boolean> resourceRegistrationStates = new ArrayList<>();
-                    Set<String> patterns = new HashSet<>(singleton.previousLayerPatterns);
+                    Set<String> patterns = new HashSet<>(singleton.previousLayerPatterns); // noEconomicSet(streaming)
 
                     var cursor = singleton.resources.getEntries();
                     while (cursor.advance()) {

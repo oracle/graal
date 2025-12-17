@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import com.oracle.svm.core.graal.code.StubCallingConvention;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -54,6 +55,7 @@ import com.oracle.svm.core.graal.amd64.AMD64InterpreterStubs;
 import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -107,6 +109,13 @@ public class InterpreterFeature implements InternalFeature {
             } else {
                 return false;
             }
+        }
+        if (StubCallingConvention.Utils.hasStubCallingConvention(m)) {
+            /*
+             * enterstub can only deal with the internal Java calling convention of SVM. If ever
+             * needed, the enterstub can be adapted.
+             */
+            return false;
         }
 
         return true;
@@ -177,6 +186,11 @@ public class InterpreterFeature implements InternalFeature {
     }
 
     @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ThreadListenerSupport.get().register(new ThreadListenerThreadLocalHandlesAllocator());
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess access) {
         if (Platform.includedIn(Platform.AARCH64.class)) {
             ImageSingletons.add(InterpreterStubSection.class, new AArch64InterpreterStubSection());
@@ -232,7 +246,7 @@ public class InterpreterFeature implements InternalFeature {
         SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(interpreterRoot);
         SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(intrinsicRoot);
 
-        Method leaveMethod = ReflectionUtil.lookupMethod(InterpreterStubSection.class, "leaveInterpreterStub", CFunctionPointer.class, Pointer.class, long.class, long.class);
+        Method leaveMethod = ReflectionUtil.lookupMethod(InterpreterStubSection.class, "leaveInterpreterStub", CFunctionPointer.class, Pointer.class, long.class);
         leaveStub = metaAccess.lookupJavaMethod(leaveMethod);
         accessImpl.registerAsRoot(leaveStub, true, "low level entry point");
     }
@@ -249,8 +263,28 @@ public class InterpreterFeature implements InternalFeature {
         InterpreterMethodPointerHolder.setMethodNotCompiledHandler(new MethodPointer(methodNotCompiledHandler));
     }
 
+    /**
+     * Must be called by all features that depend on InterpreterFeature in
+     * {@link #beforeCompilation(BeforeCompilationAccess)}.
+     */
+    public static void prepareSignatures() {
+        InterpreterSupport interpreterSingleton = InterpreterSupport.singleton();
+        for (InterpreterResolvedJavaMethod interpreterMethod : BuildTimeInterpreterUniverse.singleton().getMethods()) {
+            interpreterMethod.setPreparedSignature(interpreterSingleton.prepareSignature(interpreterMethod));
+        }
+    }
+
+    private static boolean verifyPreparedSignatures() {
+        for (InterpreterResolvedJavaMethod interpreterMethod : BuildTimeInterpreterUniverse.singleton().getMethods()) {
+            assert interpreterMethod.getPreparedSignature() != null;
+        }
+        return true;
+    }
+
     @Override
     public void afterCompilation(AfterCompilationAccess access) {
+        assert verifyPreparedSignatures();
+
         FeatureImpl.AfterCompilationAccessImpl accessImpl = (FeatureImpl.AfterCompilationAccessImpl) access;
 
         HostedMethod hLeaveStub = accessImpl.getUniverse().lookup(leaveStub);

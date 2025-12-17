@@ -35,9 +35,10 @@ import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.graalvm.collections.EconomicSet;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -190,7 +191,7 @@ public class WebImageHostedConfiguration extends HostedConfiguration {
     }
 
     @Override
-    public void collectMonitorFieldInfo(BigBang bb, HostedUniverse hUniverse, Set<AnalysisType> immutableTypes) {
+    public void collectMonitorFieldInfo(BigBang bb, HostedUniverse hUniverse, EconomicSet<AnalysisType> immutableTypes) {
         // Do nothing. We do not have/need monitor fields in Web Image
     }
 

@@ -86,7 +86,7 @@ public final class CodeInfoDecoder {
     private CodeInfoDecoder() {
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long lookupCodeInfoEntryOffset(CodeInfo info, long relativeIP) {
         long entryIP = lookupEntryIP(relativeIP);
         long entryOffset = loadEntryOffset(info, relativeIP);
@@ -103,7 +103,7 @@ public final class CodeInfoDecoder {
         return INVALID_FRAME_INFO_ENTRY_OFFSET;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long lookupCodeInfoEntryOffsetOrDefault(CodeInfo info, long relativeIP) {
         int chunksToSearch = 0;
         while (true) {
@@ -166,7 +166,7 @@ public final class CodeInfoDecoder {
         codeInfoQueryResult.frameInfo = CodeInfoQueryResult.NO_FRAME_INFO;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void lookupCodeInfo(CodeInfo info, long relativeIP, SimpleCodeInfoQueryResult codeInfoQueryResult) {
         long sizeEncoding = INVALID_SIZE_ENCODING;
         long entryIP = lookupEntryIP(relativeIP);
@@ -240,7 +240,7 @@ public final class CodeInfoDecoder {
         return -1;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static long lookupStackReferenceMapIndex(CodeInfo info, long relativeIP) {
         long entryIP = lookupEntryIP(relativeIP);
         long entryOffset = loadEntryOffset(info, relativeIP);
@@ -262,12 +262,12 @@ public final class CodeInfoDecoder {
         return Options.CodeInfoIndexGranularity.getValue();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static long lookupEntryIP(long relativeIP) {
         return Long.divideUnsigned(relativeIP, indexGranularity()) * indexGranularity();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long loadEntryOffset(CodeInfo info, long relativeIP) {
         counters().lookupEntryOffsetCount.inc();
         long index = Long.divideUnsigned(relativeIP, indexGranularity());
@@ -275,7 +275,7 @@ public final class CodeInfoDecoder {
     }
 
     @AlwaysInline("Make IP-lookup loop call free")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static int loadEntryFlags(CodeInfo info, long curOffset) {
         counters().loadEntryFlagsCount.inc();
         return NonmovableByteArrayReader.getU1(CodeInfoAccess.getCodeInfoEncodings(info), curOffset);
@@ -295,7 +295,7 @@ public final class CodeInfoDecoder {
     private static final int INVALID_FRAME_INFO_ENTRY_OFFSET = -1;
 
     @AlwaysInline("Make IP-lookup loop call free")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long updateSizeEncoding(CodeInfo info, long entryOffset, int entryFlags, long sizeEncoding) {
         switch (extractFS(entryFlags)) {
             case FS_NO_CHANGE:
@@ -311,7 +311,7 @@ public final class CodeInfoDecoder {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long loadExceptionOffset(CodeInfo info, long entryOffset, int entryFlags) {
         switch (extractEX(entryFlags)) {
             case EX_NO_HANDLER:
@@ -327,7 +327,7 @@ public final class CodeInfoDecoder {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long loadReferenceMapIndex(CodeInfo info, long entryOffset, int entryFlags) {
         switch (extractRM(entryFlags)) {
             case RM_NO_MAP:
@@ -349,19 +349,19 @@ public final class CodeInfoDecoder {
 
     public static final int FRAME_SIZE_STATUS_MASK = FRAME_SIZE_METHOD_START | FRAME_SIZE_ENTRY_POINT | FRAME_SIZE_HAS_CALLEE_SAVED_REGISTERS;
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean decodeIsEntryPoint(long sizeEncoding) {
         assert sizeEncoding != INVALID_SIZE_ENCODING;
         return (sizeEncoding & FRAME_SIZE_ENTRY_POINT) != 0;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static boolean decodeHasCalleeSavedRegisters(long sizeEncoding) {
         assert sizeEncoding != INVALID_SIZE_ENCODING;
         return (sizeEncoding & FRAME_SIZE_HAS_CALLEE_SAVED_REGISTERS) != 0;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static long decodeTotalFrameSize(long sizeEncoding) {
         assert sizeEncoding != INVALID_SIZE_ENCODING;
         return sizeEncoding & ~FRAME_SIZE_STATUS_MASK;
@@ -432,7 +432,7 @@ public final class CodeInfoDecoder {
      *
      * @see CodeInfoEncoder.Encoders#encodeMethodTable
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void fillSourceFields(FrameInfoQueryResult result) {
         int methodId = result.sourceMethodId;
         CodeInfo info;
@@ -489,7 +489,7 @@ public final class CodeInfoDecoder {
     }
 
     @AlwaysInline("Make IP-lookup loop call free")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long advanceIP(CodeInfo info, long entryOffset, long entryIP) {
         int deltaIP = NonmovableByteArrayReader.getU1(CodeInfoAccess.getCodeInfoEncodings(info), offsetIP(entryOffset));
         if (deltaIP == DELTA_END_OF_TABLE) {
@@ -588,62 +588,62 @@ public final class CodeInfoDecoder {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static int extractFS(int entryFlags) {
         return (entryFlags & FS_MASK_IN_PLACE) >> FS_SHIFT;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static int extractEX(int entryFlags) {
         return (entryFlags & EX_MASK_IN_PLACE) >> EX_SHIFT;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static int extractRM(int entryFlags) {
         return (entryFlags & RM_MASK_IN_PLACE) >> RM_SHIFT;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static int extractFI(int entryFlags) {
         return (entryFlags & FI_MASK_IN_PLACE) >> FI_SHIFT;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long offsetIP(long entryOffset) {
         return entryOffset + IP_OFFSET;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long offsetFS(long entryOffset, int entryFlags) {
         assert extractFS(entryFlags) != FS_NO_CHANGE;
         return entryOffset + FS_OFFSET;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long getU1(byte[] data, long byteIndex) {
         return data[(int) byteIndex] & 0xFF;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long offsetEX(long entryOffset, int entryFlags) {
         assert extractEX(entryFlags) != EX_NO_HANDLER;
         return entryOffset + getU1(EX_OFFSET, entryFlags);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long offsetRM(long entryOffset, int entryFlags) {
         assert extractRM(entryFlags) != RM_NO_MAP && extractRM(entryFlags) != RM_EMPTY_MAP;
         return entryOffset + getU1(RM_OFFSET, entryFlags);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long offsetFI(long entryOffset, int entryFlags) {
         assert extractFI(entryFlags) != FI_NO_DEOPT;
         return entryOffset + getU1(FI_OFFSET, entryFlags);
     }
 
     @AlwaysInline("Make IP-lookup loop call free")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long advanceOffset(long entryOffset, int entryFlags) {
         counters().advanceOffset.inc();
         long returnValueIsObjectSize = 0;
@@ -668,15 +668,21 @@ public final class CodeInfoDecoder {
         private final ReusableTypeReader frameInfoReader = new ReusableTypeReader();
         private final SingleShotFrameInfoQueryResultAllocator singleShotFrameInfoQueryResultAllocator = new SingleShotFrameInfoQueryResultAllocator();
         private final FrameInfoState state = new FrameInfoState();
+        private final FrameInfoDecoder.ValueInfoAllocator valueInfoAllocator;
 
         private CodeInfo info;
         private FrameInfoQueryResult result;
         private boolean canDecode;
 
         public FrameInfoCursor() {
+            this(DummyValueInfoAllocator.SINGLETON);
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public FrameInfoCursor(FrameInfoDecoder.ValueInfoAllocator valueInfoAllocator) {
+            this.valueInfoAllocator = valueInfoAllocator;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         @SuppressWarnings("hiding")
         public void initialize(CodeInfo info, CodePointer ip, boolean exactIPMatch) {
             this.info = info;
@@ -691,13 +697,13 @@ public final class CodeInfoDecoder {
          * invalidates the data of all {@link FrameInfoQueryResult} objects that were previously
          * returned by {@link FrameInfoCursor#get}.
          */
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public boolean advance() {
             decodeNextEntry();
             return result != null;
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public boolean hasCaller() {
             assert result != null;
             return !state.isDone;
@@ -706,21 +712,25 @@ public final class CodeInfoDecoder {
         /**
          * Returns the information for the current frame.
          *
-         * Please note there is no caller and no value information present in the
+         * Please note there is no caller and (almost) no value information present in the
          * {@link FrameInfoQueryResult} object (i.e., the methods
-         * {@link FrameInfoQueryResult#getCaller()}, {@link FrameInfoQueryResult#getValueInfos()},
-         * and {@link FrameInfoQueryResult#getVirtualObjects()} will return {@code null}).
+         * {@link FrameInfoQueryResult#getCaller()} and
+         * {@link FrameInfoQueryResult#getVirtualObjects()} will return {@code null},
+         * {@link FrameInfoQueryResult#getValueInfos()} might return {@code null} and will not
+         * contain decoded constants).
          *
          * Every {@link FrameInfoCursor} object uses only a single {@link FrameInfoQueryResult}
          * object internally. Therefore, the values of that object are overwritten when
-         * {@link #advance()} is called to move to the next frame.
+         * {@link #advance()} is called to move to the next frame. This is also true for
+         * {@link FrameInfoQueryResult.ValueInfo} array and objects from
+         * {@link FrameInfoQueryResult#getValueInfos()}.
          */
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public FrameInfoQueryResult get() {
             return result;
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         private void decodeNextEntry() {
             if (!canDecode) {
                 return;
@@ -729,7 +739,7 @@ public final class CodeInfoDecoder {
             singleShotFrameInfoQueryResultAllocator.reload();
             int entryFlags = loadEntryFlags(info, state.entryOffset);
             boolean isDeoptEntry = extractFI(entryFlags) == FI_DEOPT_ENTRY_INDEX_S4;
-            result = FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, frameInfoReader, info, singleShotFrameInfoQueryResultAllocator, DummyValueInfoAllocator.SINGLETON,
+            result = FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, frameInfoReader, info, singleShotFrameInfoQueryResultAllocator, valueInfoAllocator,
                             FrameInfoDecoder.SubstrateConstantAccess, state);
             if (result == null) {
                 /* No more entries. */
@@ -737,7 +747,7 @@ public final class CodeInfoDecoder {
             }
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         private boolean initFrameInfoReader(CodePointer ip, boolean exactIPMatch) {
             long relativeIP = CodeInfoAccess.relativeIP(info, ip);
             long entryOffset = exactIPMatch ? lookupCodeInfoEntryOffset(info, relativeIP) : lookupCodeInfoEntryOffsetOrDefault(info, relativeIP);
@@ -771,7 +781,7 @@ public final class CodeInfoDecoder {
             reset();
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public FrameInfoState reset() {
             entryOffset = INVALID_FRAME_INFO_ENTRY_OFFSET;
             isFirstFrame = true;
@@ -786,14 +796,14 @@ public final class CodeInfoDecoder {
         private final FrameInfoQueryResult frameInfoQueryResult = new FrameInfoQueryResult();
         private boolean fired;
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public SingleShotFrameInfoQueryResultAllocator reload() {
             fired = false;
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public FrameInfoQueryResult newFrameInfoQueryResult() {
             if (fired) {
                 return null;
@@ -804,33 +814,114 @@ public final class CodeInfoDecoder {
         }
     }
 
-    private static final class DummyValueInfoAllocator implements FrameInfoDecoder.ValueInfoAllocator {
-        static final DummyValueInfoAllocator SINGLETON = new DummyValueInfoAllocator();
+    /**
+     * This limited implementation of {@code FrameInfoDecoder.ValueInfoAllocator} doesn't need to
+     * allocate anything at runtime but only supports a limited number of
+     * {@link FrameInfoQueryResult.ValueInfo} objects (20).
+     * <p>
+     * Those objects are re-used so they should not be held onto cross calls to
+     * {@link #newValueInfoArray}.
+     * <p>
+     * Constants are not {@linkplain #decodeConstant decoded} so
+     * {@link FrameInfoQueryResult.ValueInfo#getValue()} will return {@code null}.
+     * <p>
+     * {@link #newValueInfoArrayArray} always returns null (this is currently only used for virtual
+     * objects).
+     */
+    public static final class SingleShotValueInfoAllocator implements FrameInfoDecoder.ValueInfoAllocator {
+        private static final int NUM_PREALLOCATED_VALUE_INFO = 20;
+        /**
+         * The pre-allocated array to be returned by {@code #newValueInfoArray}.
+         */
+        private final FrameInfoQueryResult.ValueInfo[] valueInfos;
+        /**
+         * The pre-allocated objects to be returned by {@code #newValueInfo}.
+         */
+        private final FrameInfoQueryResult.ValueInfo[] preAllocatedValueInfos;
+        private int nextPreAllocatedValueInfo;
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public SingleShotValueInfoAllocator() {
+            valueInfos = new FrameInfoQueryResult.ValueInfo[NUM_PREALLOCATED_VALUE_INFO];
+            preAllocatedValueInfos = new FrameInfoQueryResult.ValueInfo[valueInfos.length];
+            for (int i = 0; i < preAllocatedValueInfos.length; i++) {
+                preAllocatedValueInfos[i] = new FrameInfoQueryResult.ValueInfo();
+            }
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        private void reset() {
+            for (int i = 0, len = valueInfos.length; i < len; i++) {
+                valueInfos[i] = null;
+            }
+            nextPreAllocatedValueInfo = 0;
+            /*
+             * The is no need to eagerly clear the elements of preAllocatedValueInfos: they do not
+             * hold onto objects since constants are not decoded. They are cleared when returned by
+             * newValueInfo.
+             */
+        }
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public FrameInfoQueryResult.ValueInfo[] newValueInfoArray(int len) {
+            if (len > valueInfos.length) {
+                return null;
+            }
+            reset();
+            return valueInfos;
+        }
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public FrameInfoQueryResult.ValueInfo newValueInfo() {
+            if (nextPreAllocatedValueInfo < preAllocatedValueInfos.length) {
+                FrameInfoQueryResult.ValueInfo valueInfo = preAllocatedValueInfos[nextPreAllocatedValueInfo++];
+                valueInfo.clear();
+                return valueInfo;
+            }
+            return null;
+        }
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public FrameInfoQueryResult.ValueInfo[][] newValueInfoArrayArray(int len) {
+            return null;
+        }
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public void decodeConstant(FrameInfoQueryResult.ValueInfo valueInfo, NonmovableObjectArray<?> frameInfoObjectConstants, ConstantAccess constantAccess) {
+        }
+    }
+
+    public static final class DummyValueInfoAllocator implements FrameInfoDecoder.ValueInfoAllocator {
+        public static final DummyValueInfoAllocator SINGLETON = new DummyValueInfoAllocator();
 
         @Platforms(Platform.HOSTED_ONLY.class)
         private DummyValueInfoAllocator() {
         }
 
         @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public FrameInfoQueryResult.ValueInfo newValueInfo() {
             return null;
         }
 
         @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public FrameInfoQueryResult.ValueInfo[] newValueInfoArray(int len) {
             return null;
         }
 
         @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public FrameInfoQueryResult.ValueInfo[][] newValueInfoArrayArray(int len) {
             return null;
         }
 
         @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public void decodeConstant(FrameInfoQueryResult.ValueInfo valueInfo, NonmovableObjectArray<?> frameInfoObjectConstants, ConstantAccess constantAccess) {
         }
     }

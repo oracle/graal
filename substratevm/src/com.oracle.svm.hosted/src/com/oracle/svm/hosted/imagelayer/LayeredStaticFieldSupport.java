@@ -266,7 +266,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
             processAppLayerDeferredClassFilters(aField.getDeclaringClass());
         }
         return assignmentStatusMap.computeIfAbsent(aField, _ -> {
-            if (!(inAppLayer && aField.isInBaseLayer())) {
+            if (!(inAppLayer && aField.isInSharedLayer())) {
                 return LayerAssignmentStatus.UNSPECIFIED;
             }
             throw VMError.shouldNotReachHere(String.format("Base analysis field assignment status queried before it is initialized: %s", aField));
@@ -274,7 +274,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
     }
 
     public int getPriorInstalledLayerNum(AnalysisField analysisField) {
-        if (!(inAppLayer && analysisField.isInBaseLayer())) {
+        if (!(inAppLayer && analysisField.isInSharedLayer())) {
             return MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
         }
 
@@ -298,7 +298,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
                 yield true;
             }
             case PRIOR_LAYER -> {
-                assert aField.isInBaseLayer();
+                assert aField.isInSharedLayer();
                 yield false;
             }
             case APP_LAYER_REQUESTED, APP_LAYER_DEFERRED -> inAppLayer;
@@ -441,7 +441,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
 
         @Override
         public LayeredStaticFieldSupport createFromLoader(ImageSingletonLoader loader) {
-            Set<Object> appLayerFieldsWithKnownLocations = new HashSet<>();
+            Set<Object> appLayerFieldsWithKnownLocations = new HashSet<>(); // noEconomicSet(concurrency)
             for (int id : loader.readIntList("appLayerFieldsWithKnownLocations")) {
                 Supplier<AnalysisField> aFieldSupplier = () -> HostedImageLayerBuildingSupport.singleton().getLoader().getAnalysisFieldForBaseLayerId(id);
                 appLayerFieldsWithKnownLocations.add(aFieldSupplier);

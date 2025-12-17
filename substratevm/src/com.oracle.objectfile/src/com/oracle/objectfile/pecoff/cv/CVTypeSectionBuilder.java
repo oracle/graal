@@ -67,7 +67,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +86,7 @@ import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 
 import jdk.graal.compiler.debug.GraalError;
+import org.graalvm.collections.EconomicSet;
 
 class CVTypeSectionBuilder {
 
@@ -342,8 +342,8 @@ class CVTypeSectionBuilder {
             log("building methods");
 
             /* first build a list of all overloaded functions */
-            HashSet<String> overloaded = new HashSet<>(methods.size());
-            HashSet<String> allFunctions = new HashSet<>(methods.size());
+            EconomicSet<String> overloaded = EconomicSet.create(methods.size());
+            EconomicSet<String> allFunctions = EconomicSet.create(methods.size());
             methods.forEach(m -> {
                 if (allFunctions.contains(m.getMethodName())) {
                     overloaded.add(m.getMethodName());

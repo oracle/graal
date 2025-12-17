@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.vm;
 
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 
 import java.lang.management.GarbageCollectorMXBean;
@@ -350,9 +351,14 @@ public final class Management extends NativeEnv {
         if (getUncached().isNull(supportPtr)) {
             return -1;
         }
-        ByteBuffer supportBuf = NativeUtils.directByteBuffer(supportPtr, 8);
+        ByteBuffer supportBuf;
+        try {
+            supportBuf = NativeUtils.wrapNativeMemory(supportPtr, 8, getNativeAccess().nativeMemory());
+        } catch (IllegalMemoryAccessException e) {
+            return -1;
+        }
         supportBuf.putInt(0); // clear
-        JmmOptionalSupport.JmmOptionalSupportWrapper optionalSupport = getVM().getStructs().jmmOptionalSupport.wrap(getHandles(), supportPtr);
+        JmmOptionalSupport.JmmOptionalSupportWrapper optionalSupport = getVM().getStructs().jmmOptionalSupport.wrap(getHandles(), getNativeAccess().nativeMemory(), supportPtr);
 
         OptionalSupportRecord record = getOptionalSupportRecord();
         if (record.compTimeMonitoringSupport) {
@@ -810,8 +816,8 @@ public final class Management extends NativeEnv {
                     int count,
                     /* long* */ @Pointer TruffleObject result) {
         int numAtts = 0;
-        ByteBuffer attsBuffer = NativeUtils.directByteBuffer(atts, count, JavaKind.Int);
-        ByteBuffer resBuffer = NativeUtils.directByteBuffer(result, count, JavaKind.Long);
+        ByteBuffer attsBuffer = NativeUtils.wrapNativeMemoryOrThrow(atts, count, JavaKind.Int, getNativeAccess().nativeMemory(), getMeta());
+        ByteBuffer resBuffer = NativeUtils.wrapNativeMemoryOrThrow(result, count, JavaKind.Long, getNativeAccess().nativeMemory(), getMeta());
         for (int i = 0; i < count; i++) {
             int att = attsBuffer.getInt();
             long res = GetLongAttribute(obj, att);

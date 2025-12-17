@@ -36,7 +36,6 @@ import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import java.util.Arrays;
 import java.util.Map;
 
-import com.oracle.svm.core.metadata.MetadataTracer;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
@@ -50,13 +49,17 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
+import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -64,6 +67,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
@@ -112,26 +116,31 @@ import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.graal.compiler.word.ObjectAccess;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateAllocationSnippets extends AllocationSnippets {
     public static final LocationIdentity TLAB_START_IDENTITY = NamedLocationIdentity.mutable("TLAB.start");
     public static final LocationIdentity TLAB_TOP_IDENTITY = NamedLocationIdentity.mutable("TLAB.top");
     public static final LocationIdentity TLAB_END_IDENTITY = NamedLocationIdentity.mutable("TLAB.end");
-    public static final Object[] ALLOCATION_LOCATIONS = new Object[]{TLAB_START_IDENTITY, TLAB_TOP_IDENTITY, TLAB_END_IDENTITY, IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION,
+    public static final Object[] ALLOCATION_LOCATIONS = {TLAB_START_IDENTITY, TLAB_TOP_IDENTITY, TLAB_END_IDENTITY, IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION,
                     AllocationCounter.COUNT_FIELD, AllocationCounter.SIZE_FIELD};
-    public static final LocationIdentity[] GC_LOCATIONS = new LocationIdentity[]{TLAB_START_IDENTITY, TLAB_TOP_IDENTITY, TLAB_END_IDENTITY, IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION};
+    public static final LocationIdentity[] GC_LOCATIONS = {TLAB_START_IDENTITY, TLAB_TOP_IDENTITY, TLAB_END_IDENTITY, IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION};
 
     private static final SubstrateForeignCallDescriptor NEW_MULTI_ARRAY = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "newMultiArrayStub", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor TRACE_UNSAFE_ALLOCATION = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "traceUnsafeAllocation", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class,
                     "slowPathHubOrUnsafeInstantiationError", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor ARRAY_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "arrayHubErrorStub", NO_SIDE_EFFECT);
-    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{NEW_MULTI_ARRAY, TRACE_UNSAFE_ALLOCATION, SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR,
-                    ARRAY_HUB_ERROR};
+    private static final SubstrateForeignCallDescriptor[] UNCONDITIONAL_FOREIGN_CALLS = {NEW_MULTI_ARRAY, TRACE_UNSAFE_ALLOCATION, SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR, ARRAY_HUB_ERROR};
+
+    private static final SubstrateForeignCallDescriptor GET_OR_CREATE_ARRAY_HUB = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "getOrCreateArrayHub", NO_SIDE_EFFECT);
 
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(FOREIGN_CALLS);
+        foreignCalls.register(UNCONDITIONAL_FOREIGN_CALLS);
+        if (RuntimeClassLoading.isSupported()) {
+            foreignCalls.register(GET_OR_CREATE_ARRAY_HUB);
+        }
     }
 
     @Snippet
@@ -394,6 +403,11 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 if (probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullArrayHub.isInstantiated())) {
                     return nonNullArrayHub;
                 }
+            } else if (RuntimeClassLoading.isSupported()) {
+                arrayHub = callCreateArrayHubStub(GET_OR_CREATE_ARRAY_HUB, DynamicHub.toClass(elementType));
+                if (probability(EXTREMELY_FAST_PATH_PROBABILITY, arrayHub != null)) {
+                    return (DynamicHub) PiNode.piCastNonNull(arrayHub, SnippetAnchorNode.anchor());
+                }
             }
         }
 
@@ -403,6 +417,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     private static native void callArrayHubErrorStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType);
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    private static native DynamicHub callCreateArrayHubStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType);
 
     /** Foreign call: {@link #ARRAY_HUB_ERROR}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
@@ -416,6 +433,13 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         } else {
             VMError.shouldNotReachHereUnexpectedInput(elementType); // ExcludeFromJacocoGeneratedReport
         }
+    }
+
+    /** Foreign call: {@link #GET_OR_CREATE_ARRAY_HUB}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static DynamicHub getOrCreateArrayHub(DynamicHub componentType) {
+        assert RuntimeClassLoading.isSupported();
+        return componentType.getOrCreateArrayHub();
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
@@ -676,12 +700,13 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                             null,
                             receiver,
                             ALLOCATION_LOCATIONS);
+
             allocateArrayDynamic = snippet(providers,
                             SubstrateAllocationSnippets.class,
                             "allocateArrayDynamic",
                             null,
                             receiver,
-                            ALLOCATION_LOCATIONS);
+                            getDynamicArrayAllocationLocations(providers));
             newmultiarray = snippet(providers,
                             SubstrateAllocationSnippets.class,
                             "newmultiarray",
@@ -719,6 +744,25 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                                 podLocations);
             }
             allocatePod = allocatePodSnippet;
+        }
+
+        private static Object[] getDynamicArrayAllocationLocations(Providers providers) {
+            if (!RuntimeClassLoading.isSupported()) {
+                return ALLOCATION_LOCATIONS;
+            }
+            /*
+             * Since crema can allocate array types at runtime, the DynamicHubCompanion.arrayHub
+             * location is not immutable. It instead needs to be considered "private" for this
+             * snippet. This is OK because any code that sees arrayHub being null will call
+             * createArrayHub and use its return value.
+             */
+            ResolvedJavaType dynamicHubCompanionType = providers.getMetaAccess().lookupJavaType(DynamicHubCompanion.class);
+            ResolvedJavaField arrayHubField = JVMCIReflectionUtil.getUniqueDeclaredField(dynamicHubCompanionType, "arrayHub");
+            LocationIdentity arrayHubIdentity = new SubstrateFieldLocationIdentity(arrayHubField, false);
+
+            Object[] dynamicArrayAllocationLocations = Arrays.copyOf(ALLOCATION_LOCATIONS, ALLOCATION_LOCATIONS.length + 1);
+            dynamicArrayAllocationLocations[ALLOCATION_LOCATIONS.length] = arrayHubIdentity;
+            return dynamicArrayAllocationLocations;
         }
 
         public void registerLowering(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {

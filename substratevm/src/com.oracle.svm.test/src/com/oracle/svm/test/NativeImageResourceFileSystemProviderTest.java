@@ -85,7 +85,7 @@ public class NativeImageResourceFileSystemProviderTest {
     public void createNewFileSystem() {
         URI resource = resourceNameToURI(RESOURCE_FILE_1, true);
 
-        Map<String, String> env = new HashMap<>();
+        Map<String, String> env = new HashMap<>(); // no EconomicSet: api
         env.put("create", "true");
 
         boolean exceptionThrown = false;
@@ -339,7 +339,7 @@ public class NativeImageResourceFileSystemProviderTest {
 
         Set<StandardOpenOption> readPermissions = Collections.singleton(StandardOpenOption.READ);
         Set<StandardOpenOption> writePermissions = Collections.singleton(StandardOpenOption.WRITE);
-        Set<StandardOpenOption> readWritePermissions = new HashSet<>(Collections.emptySet());
+        Set<StandardOpenOption> readWritePermissions = new HashSet<>(Collections.emptySet()); // noEconomicSet(api)
         readWritePermissions.addAll(readPermissions);
         readWritePermissions.addAll(writePermissions);
 
@@ -482,7 +482,7 @@ public class NativeImageResourceFileSystemProviderTest {
 
         FileSystemProvider provider = fileSystem.provider();
 
-        Set<StandardOpenOption> permissions = new HashSet<>(Collections.emptySet());
+        Set<StandardOpenOption> permissions = new HashSet<>(Collections.emptySet()); // noEconomicSet(api)
         permissions.add(StandardOpenOption.READ);
         permissions.add(StandardOpenOption.WRITE);
         permissions.add(StandardOpenOption.CREATE);
@@ -507,7 +507,7 @@ public class NativeImageResourceFileSystemProviderTest {
         // 3. Writing in the copied file.
         FileSystemProvider provider = fileSystem.provider();
 
-        Set<StandardOpenOption> permissions = new HashSet<>(Collections.emptySet());
+        Set<StandardOpenOption> permissions = new HashSet<>(Collections.emptySet()); // noEconomicSet(api)
         permissions.add(StandardOpenOption.READ);
         permissions.add(StandardOpenOption.WRITE);
 

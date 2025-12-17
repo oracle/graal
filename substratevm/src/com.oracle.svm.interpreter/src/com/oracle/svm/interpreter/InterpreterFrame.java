@@ -24,8 +24,11 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.Arrays;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -75,22 +78,27 @@ public final class InterpreterFrame {
         return Double.longBitsToDouble(primitives[slot]);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setObjectStatic(int slot, Object value) {
         references[slot] = value;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setIntStatic(int slot, int value) {
         primitives[slot] = value;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setFloatStatic(int slot, float value) {
         primitives[slot] = Float.floatToRawIntBits(value);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setLongStatic(int slot, long value) {
         primitives[slot] = value;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setDoubleStatic(int slot, double value) {
         primitives[slot] = Double.doubleToRawLongBits(value);
     }

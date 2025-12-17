@@ -52,7 +52,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -66,6 +65,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
@@ -249,7 +249,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     private ClassLoader imageClassLoader;
     private AnalysisMetaAccess metaAccess;
     private GraalGraphObjectReplacer graalGraphObjectReplacer;
-    private final Set<Class<?>> registeredClasses = new HashSet<>();
+    private final EconomicSet<Class<?>> registeredClasses = EconomicSet.create();
     private final Map<Class<?>, PossibleReplaceCandidatesSubtypeHandler> subtypeChecks = new HashMap<>();
     private boolean profilingEnabled;
     private Field uncachedDispatchField;
@@ -974,7 +974,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
     }
 
-    private final Set<Class<?>> dynamicObjectClasses = new HashSet<>();
+    private final EconomicSet<Class<?>> dynamicObjectClasses = EconomicSet.create();
 
     private void initializeDynamicObjectLayouts(AnalysisType type) {
         if (type.isInstantiated()) {

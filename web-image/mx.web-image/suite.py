@@ -159,6 +159,7 @@ suite = {
                 "substratevm:SVM",
                 "WEBIMAGE_LIBRARY_SUPPORT",
                 "mx:JUNIT",
+                "mx:JUNIT-JUPITER-API",
                 "NET_JAVA_HTML",
                 "NET_JAVA_HTML_BOOT",
                 "NET_JAVA_HTML_JSON",
@@ -237,6 +238,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "mx:JUNIT",
+                "mx:JUNIT-JUPITER-API",
                 "compiler:GRAAL_TEST",
                 "com.oracle.svm.webimage.jtt",
                 "com.oracle.svm.hosted.webimage",
@@ -389,6 +391,7 @@ suite = {
             ],
             "exclude": [
                 "mx:JUNIT",
+                "mx:JUNIT-JUPITER-API",
             ],
             "maven": False,
             "testDistribution": True,
@@ -404,6 +407,7 @@ suite = {
             ],
             "exclude": [
                 "mx:JUNIT",
+                "mx:JUNIT-JUPITER-API",
             ],
             "maven": False,
             "testDistribution": True,

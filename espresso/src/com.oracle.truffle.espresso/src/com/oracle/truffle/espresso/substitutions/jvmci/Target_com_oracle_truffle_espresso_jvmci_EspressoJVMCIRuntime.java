@@ -70,13 +70,16 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
         if (meta.jvmci.DummyEspressoGraalJVMCICompiler == null) {
             throw meta.throwNoClassDefFoundErrorBoundary("com.oracle.truffle.espresso.graal.DummyEspressoGraalJVMCICompiler is missing");
         }
-        openJVMCITo(meta.jvmci.GraalJVMCICompiler.module(), meta);
+        /*
+         * JVMCI.initializeRuntime has already opened JVMCI to jdk.graal.compiler. Let's further
+         * open it to jdk.graal.compiler.espresso.
+         */
         openJVMCITo(meta.jvmci.DummyEspressoGraalJVMCICompiler.module(), meta);
         LOGGER.fine("Creating DummyEspressoGraalJVMCICompiler");
         return (StaticObject) meta.jvmci.DummyEspressoGraalJVMCICompiler_create.invokeDirectStatic(self);
     }
 
-    private static void openJVMCITo(ModuleTable.ModuleEntry compilerModuleEntry, Meta meta) {
+    static void openJVMCITo(ModuleTable.ModuleEntry compilerModuleEntry, Meta meta) {
         LOGGER.finer(() -> "Opening JVMCI to " + compilerModuleEntry.getNameAsString());
         StaticObject compilerModule = compilerModuleEntry.module();
         meta.jvmci.Services_openJVMCITo.invokeDirectStatic(compilerModule);

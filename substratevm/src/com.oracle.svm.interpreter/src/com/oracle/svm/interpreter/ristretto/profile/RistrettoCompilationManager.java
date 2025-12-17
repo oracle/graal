@@ -175,7 +175,7 @@ public class RistrettoCompilationManager {
                     task.getRMethod().installedCode.invalidate();
                 }
                 task.getRMethod().installedCode = null;
-                task.getRMethod().profile = null;
+                task.getRMethod().resetProfile();
             }
             m.performedCompilations.clear();
             m.submittedRequests.set(0);

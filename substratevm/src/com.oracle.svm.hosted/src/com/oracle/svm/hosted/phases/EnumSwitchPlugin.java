@@ -52,7 +52,6 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
-import com.oracle.svm.hosted.phases.EnumSwitchFeature.LayeredCallbacks;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -133,7 +132,7 @@ final class EnumSwitchPlugin implements NodePlugin {
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = EnumSwitchFeature.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
 final class EnumSwitchFeature implements InternalFeature {
 
     private static final String METHODS_ID = "methodsId";

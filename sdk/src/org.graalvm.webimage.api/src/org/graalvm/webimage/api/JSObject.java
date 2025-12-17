@@ -409,10 +409,6 @@ public class JSObject extends JSValue {
         return typeofString().asString();
     }
 
-    @Override
-    @JS("return conversion.toProxy(toJavaString(this.toString()));")
-    protected native String stringValue();
-
     /**
      * Returns the value of the key passed as the argument in the JavaScript object.
      *
@@ -457,7 +453,7 @@ public class JSObject extends JSValue {
      *            underlying JavaScript function
      * @return The result of the JavaScript function, converted to the corresponding Java value
      */
-    @JS("return this.apply(this, conversion.extractJavaScriptArray(args[runtime.symbol.javaNative]));")
+    @JS("return this.apply(this, [...args]);")
     public native Object invoke(Object... args);
 
     /**
@@ -469,108 +465,8 @@ public class JSObject extends JSValue {
      *            underlying JavaScript function
      * @return The result of the JavaScript function, converted to the corresponding Java value
      */
-    @JS("return this.apply(thisArg, conversion.extractJavaScriptArray(args[runtime.symbol.javaNative]));")
+    @JS("return this.apply(thisArg, [...args]);")
     public native Object call(Object thisArg, Object... args);
-
-    private ClassCastException classCastException(String targetType) {
-        return new ClassCastException(this + " cannot be coerced to '" + targetType + "'.");
-    }
-
-    @JS("if (this.constructor === Uint8Array) { this.hub = booleanArrayHub; return conversion.toProxy(this); } else { return null; };")
-    private native boolean[] extractBooleanArray();
-
-    @Override
-    public boolean[] asBooleanArray() {
-        boolean[] array = extractBooleanArray();
-        if (array != null) {
-            return array;
-        }
-        throw classCastException("boolean[]");
-    }
-
-    @JS("if (this.constructor === Int8Array) { this.hub = byteArrayHub; return conversion.toProxy(this); } else { return null; };")
-    private native byte[] extractByteArray();
-
-    @Override
-    public byte[] asByteArray() {
-        byte[] array = extractByteArray();
-        if (array != null) {
-            return array;
-        }
-        throw classCastException("byte[]");
-    }
-
-    @JS("if (this.constructor === Int16Array) { this.hub = shortArrayHub; return conversion.toProxy(this); } else { return null; };")
-    private native short[] extractShortArray();
-
-    @Override
-    public short[] asShortArray() {
-        short[] array = extractShortArray();
-        if (array != null) {
-            return array;
-        }
-        throw classCastException("short[]");
-    }
-
-    @JS("if (this.constructor === Uint16Array) { this.hub = charArrayHub; return conversion.toProxy(this); } else { return null; };")
-    private native char[] extractCharArray();
-
-    @Override
-    public char[] asCharArray() {
-        char[] array = extractCharArray();
-        if (array != null) {
-            return array;
-        }
-        throw classCastException("char[]");
-    }
-
-    @JS("if (this.constructor === Int32Array) { this.hub = intArrayHub; return conversion.toProxy(this); } else { return null; };")
-    private native int[] extractIntArray();
-
-    @Override
-    public int[] asIntArray() {
-        int[] array = extractIntArray();
-        if (array != null) {
-            return array;
-        }
-        throw classCastException("int[]");
-    }
-
-    @JS("if (this.constructor === Float32Array) { this.hub = floatArrayHub; return conversion.toProxy(this); } else { return null; };")
-    private native float[] extractFloatArray();
-
-    @Override
-    public float[] asFloatArray() {
-        float[] array = extractFloatArray();
-        if (array != null) {
-            return array;
-        }
-        throw classCastException("float[]");
-    }
-
-    @JS("if (this.constructor === BigInt64Array) { this.hub = longArrayHub; initComponentView(this); return conversion.toProxy(this); } else { return null; };")
-    private native long[] extractLongArray();
-
-    @Override
-    public long[] asLongArray() {
-        long[] array = extractLongArray();
-        if (array != null) {
-            return array;
-        }
-        throw classCastException("long[]");
-    }
-
-    @JS("if (this.constructor === Float64Array) { this.hub = doubleArrayHub; return conversion.toProxy(this); } else { return null; };")
-    private native double[] extractDoubleArray();
-
-    @Override
-    public double[] asDoubleArray() {
-        double[] array = extractDoubleArray();
-        if (array != null) {
-            return array;
-        }
-        throw classCastException("double[]");
-    }
 
     @JS("return conversion.coerceToFacadeClass(this, cls);")
     private native <T extends JSObject> T coerceToFacadeClass(Class<T> cls);

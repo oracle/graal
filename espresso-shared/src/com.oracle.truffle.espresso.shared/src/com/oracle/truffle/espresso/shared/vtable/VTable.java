@@ -32,7 +32,7 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.UnmodifiableMapCursor;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
@@ -126,7 +126,7 @@ public final class VTable {
 
         private void buildLocations() {
             registerFromTable(targetClass.getParentTable(), LocationKind.V);
-            MapCursor<C, List<M>> cursor = targetClass.getInterfacesData().getEntries();
+            UnmodifiableMapCursor<C, List<M>> cursor = targetClass.getInterfacesData().getEntries();
             while (cursor.advance()) {
                 registerFromTable(cursor.getValue(), LocationKind.I);
             }
@@ -220,7 +220,7 @@ public final class VTable {
         }
 
         private void resolveInterfaces() {
-            MapCursor<C, List<M>> cursor = targetClass.getInterfacesData().getEntries();
+            UnmodifiableMapCursor<C, List<M>> cursor = targetClass.getInterfacesData().getEntries();
             while (cursor.advance()) {
                 List<M> parentTable = cursor.getValue();
                 List<PartialMethod<C, M, F>> table = new ArrayList<>(cursor.getValue().size());

@@ -177,7 +177,7 @@ final class InterpreterDirectivesSupportImpl implements InterpreterDirectivesSup
     public Object callIntoUnknown(Object method, Object... args) {
         InterpreterResolvedJavaMethod interpreterMethod = getInterpreterMethod(method);
         MethodPointer calleeFtnPtr = interpreterMethod.getNativeEntryPoint();
-        return InterpreterStubSection.leaveInterpreter(calleeFtnPtr, interpreterMethod, interpreterMethod.getDeclaringClass(), args);
+        return InterpreterStubSection.leaveInterpreter(calleeFtnPtr, interpreterMethod, args);
     }
 
     private static String getDescriptor(Class<?> returnType, Class<?>... parameterTypes) {

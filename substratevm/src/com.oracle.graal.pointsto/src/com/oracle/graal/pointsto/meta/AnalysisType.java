@@ -28,7 +28,6 @@ import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +37,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
 
@@ -133,9 +133,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @SuppressWarnings("unused") private volatile Object subTypes;
     AnalysisType superClass;
 
+    /**
+     * Unique id assigned to each {@link AnalysisType}. This id is consistent across layers and can
+     * be used to load or match a type in an extension layer.
+     */
     private final int id;
-    /** Marks a type loaded from a base layer. */
-    private final boolean isInBaseLayer;
+    /** Marks a type loaded from a shared layer. */
+    private final boolean isInSharedLayer;
 
     private final JavaKind storageKind;
     private final boolean isCloneableWithAllocation;
@@ -302,24 +306,24 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             int tid = universe.getImageLayerLoader().lookupHostedTypeInBaseLayer(this);
             if (tid != -1) {
                 /*
-                 * This id is the actual link between the corresponding type from the base layer and
-                 * this new type.
+                 * This id is the actual link between the corresponding type from the shared layer
+                 * and this new type.
                  */
                 this.id = tid;
-                this.isInBaseLayer = true;
+                this.isInSharedLayer = true;
             } else {
                 this.id = universe.computeNextTypeId();
                 /*
                  * If both the BaseLayerType and the complete type are created at the same time,
-                 * there can be a race for the base layer id. It is possible that the complete type
-                 * gets the base layer id even though the BaseLayerType is created. In this case,
-                 * the AnalysisType should still be marked as isInBaseLayer.
+                 * there can be a race for the shared layer id. It is possible that the complete
+                 * type gets the shared layer id even though the BaseLayerType is created. In this
+                 * case, the AnalysisType should still be marked as isInSharedLayer.
                  */
-                this.isInBaseLayer = wrapped instanceof BaseLayerType;
+                this.isInSharedLayer = wrapped instanceof BaseLayerType;
             }
         } else {
             this.id = universe.computeNextTypeId();
-            this.isInBaseLayer = false;
+            this.isInSharedLayer = false;
         }
 
         /*
@@ -398,8 +402,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return id;
     }
 
-    public boolean isInBaseLayer() {
-        return isInBaseLayer;
+    public boolean isInSharedLayer() {
+        return isInSharedLayer;
     }
 
     public AnalysisObject getContextInsensitiveAnalysisObject() {
@@ -595,7 +599,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             scheduledTypeReachableNotifications = futures;
         }
 
-        if (isInBaseLayer && !(wrapped instanceof BaseLayerType)) {
+        if (isInSharedLayer && !(wrapped instanceof BaseLayerType)) {
             /*
              * Since the analysis of the type is skipped, the fields have to be created manually to
              * ensure their flags are loaded from the base layer. Not creating the fields would
@@ -1096,13 +1100,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * Since the subtypes are updated continuously as the universe is expanded this method may
      * return different results on each call, until the analysis universe reaches a stable state.
      */
-    public Set<AnalysisType> getAllSubtypes() {
-        HashSet<AnalysisType> result = new HashSet<>();
+    public EconomicSet<AnalysisType> getAllSubtypes() {
+        EconomicSet<AnalysisType> result = EconomicSet.create();
         collectSubtypes(this, result);
         return result;
     }
 
-    private static void collectSubtypes(AnalysisType baseType, Set<AnalysisType> result) {
+    private static void collectSubtypes(AnalysisType baseType, EconomicSet<AnalysisType> result) {
         for (AnalysisType subType : baseType.getSubTypes()) {
             if (result.add(subType)) {
                 collectSubtypes(subType, result);

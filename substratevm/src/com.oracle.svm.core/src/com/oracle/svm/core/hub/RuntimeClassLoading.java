@@ -169,15 +169,6 @@ public class RuntimeClassLoading {
                                         DEFINITION_NOT_SUPPORTED_MESSAGE);
     }
 
-    public static DynamicHub getOrCreateArrayHub(DynamicHub hub) {
-        if (hub.getArrayHub() == null) {
-            VMError.guarantee(RuntimeClassLoading.isSupported());
-            // GR-63452
-            throw VMError.unimplemented("array hub creation");
-        }
-        return hub.getArrayHub();
-    }
-
     public static final class ClassDefinitionInfo {
         public static final ClassDefinitionInfo EMPTY = new ClassDefinitionInfo(null, null, null, false, false, false);
 

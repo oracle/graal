@@ -31,11 +31,10 @@ import java.net.URLStreamHandler;
 import java.net.URLStreamHandlerFactory;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
-import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -150,7 +149,7 @@ class JavaNetFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        Set<String> disabledURLProtocols = new HashSet<>(SubstrateOptions.DisableURLProtocols.getValue().values());
+        EconomicSet<String> disabledURLProtocols = EconomicSet.create(SubstrateOptions.DisableURLProtocols.getValue().values());
 
         JavaNetSubstitutions.defaultProtocols.forEach(protocol -> {
             if (!disabledURLProtocols.contains(protocol)) {

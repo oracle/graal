@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.impl.jvmci.external;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -43,6 +44,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
@@ -56,7 +58,9 @@ import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -94,6 +98,8 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.ESPRESSO_SINGLE_IMPLEMENTOR,
                         InvokeMember.TO_GUEST_STRING,
                         InvokeMember.MAKE_IDENTITY_HASH_CODE,
+                        InvokeMember.NEW_OBJECT_ARRAY,
+                        InvokeMember.NEW_PRIMITIVE_ARRAY,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -137,6 +143,8 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String ESPRESSO_SINGLE_IMPLEMENTOR = "espressoSingleImplementor";
         static final String TO_GUEST_STRING = "toGuestString";
         static final String MAKE_IDENTITY_HASH_CODE = "makeIdentityHashCode";
+        static final String NEW_OBJECT_ARRAY = "newObjectArray";
+        static final String NEW_PRIMITIVE_ARRAY = "newPrimitiveArray";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -525,7 +533,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         @Specialization(guards = "MAKE_IDENTITY_HASH_CODE.equals(member)")
         static Object makeIdentityHashCode(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
                         @Bind Node node,
-                        @CachedLibrary(limit = "1") @Exclusive InteropLibrary intInterop,
+                        @CachedLibrary(limit = "1") @Shared InteropLibrary intInterop,
                         @Cached @Shared InlinedBranchProfile typeError,
                         @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
             assert receiver != null;
@@ -542,10 +550,106 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             try {
                 requestedValue = intInterop.asInt(arguments[1]);
             } catch (UnsupportedMessageException e) {
+                typeError.enter(node);
                 throw UnsupportedTypeException.create(arguments, "Expected an int as second argument");
             }
             Meta meta = EspressoContext.get(node).getMeta();
             return Target_org_graalvm_continuations_IdentityHashCodes.setHashCode(o, requestedValue, meta, meta.getLanguage());
+        }
+
+        @Specialization(guards = "NEW_OBJECT_ARRAY.equals(member)")
+        static Object newObjectArray(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @CachedLibrary(limit = "1") @Shared InteropLibrary intInterop,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
+            if (arguments.length != 3) {
+                arityError.enter(node);
+                throw ArityException.create(3, 3, arguments.length);
+            }
+            if (!(arguments[0] instanceof ObjectKlass elementKlass)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an espresso object class as first argument");
+            }
+            int dimensions;
+            try {
+                dimensions = intInterop.asInt(arguments[1]);
+            } catch (UnsupportedMessageException e) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an int as second argument");
+            }
+            int length;
+            try {
+                length = intInterop.asInt(arguments[2]);
+            } catch (UnsupportedMessageException e) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an int as third argument");
+            }
+            assert dimensions > 0;
+            return elementKlass.getArrayKlass(dimensions).getComponentType().allocateReferenceArray(length);
+        }
+
+        @Specialization(guards = "NEW_PRIMITIVE_ARRAY.equals(member)")
+        static Object newPrimitiveArray(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @CachedLibrary(limit = "1") @Shared InteropLibrary intInterop,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
+            if (arguments.length != 3) {
+                arityError.enter(node);
+                throw ArityException.create(3, 3, arguments.length);
+            }
+            int typeChar;
+            try {
+                typeChar = intInterop.asInt(arguments[0]);
+            } catch (UnsupportedMessageException e) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected a primitive JavaKind type char as an int as first argument (not an int)");
+            }
+            JavaKind javaKind = JavaKind.fromPrimitiveOrVoidTypeCharOrNull((char) typeChar);
+            if (javaKind == null || !javaKind.isPrimitive() || javaKind == JavaKind.Void) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected a primitive JavaKind type char as an int as first argument (not a valid type char or kind)");
+            }
+            int dimensions;
+            try {
+                dimensions = intInterop.asInt(arguments[1]);
+            } catch (UnsupportedMessageException e) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an int as second argument");
+            }
+            int length;
+            try {
+                length = intInterop.asInt(arguments[2]);
+            } catch (UnsupportedMessageException e) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an int as third argument");
+            }
+            Meta meta = EspressoContext.get(node).getMeta();
+            PrimitiveKlass elementType = switch (javaKind) {
+                case Boolean -> meta._boolean;
+                case Byte -> meta._byte;
+                case Char -> meta._char;
+                case Short -> meta._short;
+                case Int -> meta._int;
+                case Long -> meta._long;
+                case Double -> meta._double;
+                case Float -> meta._float;
+                default -> {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere(javaKind.toString());
+                }
+            };
+            assert dimensions > 0;
+            if (dimensions > 1) {
+                return elementType.getArrayKlass(dimensions).getComponentType().allocateReferenceArray(length);
+            } else {
+                return elementType.allocatePrimitiveArray(length);
+            }
         }
 
         @Fallback

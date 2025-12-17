@@ -63,7 +63,7 @@ public final class ModuleSupport {
     }
 
     public static Set<String> parseModuleSetModifierProperty(String prop) {
-        Set<String> specifiedModules = new HashSet<>();
+        Set<String> specifiedModules = new HashSet<>(); // noEconomicSet(streaming)
         String args = System.getProperty(prop, "");
         if (!args.isEmpty()) {
             specifiedModules.addAll(Arrays.asList(args.split(",")));

@@ -29,9 +29,11 @@ import java.util.function.Function;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
 import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 
+import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -58,10 +60,11 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     // JIT COMPILER SUPPORT START
     /**
-     * Field exposed for profiling support for this method. May be written and read in a
-     * multithreaded fashion.
+     * Field exposed for profiling support for this method. Initialized once upon first profiling
+     * under heavy synchronization. Never written again. If a ristretto method is GCed profile is
+     * lost.
      */
-    public volatile Object profile;
+    private MethodProfile profile;
     /**
      * State-machine for compilation handling of this crema method. Every methods starts in a
      * NEVER_COMPILED state and than can cycle through different states.
@@ -93,6 +96,31 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     public static RistrettoMethod create(InterpreterResolvedJavaMethod interpreterMethod) {
         return (RistrettoMethod) interpreterMethod.getRistrettoMethod(RISTRETTO_METHOD_FUNCTION);
+    }
+
+    public MethodProfile getProfile() {
+        if (profile == null) {
+            initializeProfile();
+        }
+        return profile;
+    }
+
+    /**
+     * Allocate the profile once per method. Apart from test scenarios the profile is never set to
+     * null again. Thus, the heavy locking code below is normally not run in a fast path.
+     */
+    private synchronized void initializeProfile() {
+        if (profile == null) {
+            MethodProfile newProfile = new MethodProfile(this);
+            // ensure everything is allocated and initialized before we signal the barrier
+            // for the publishing write
+            MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
+            profile = newProfile;
+        }
+    }
+
+    public synchronized void resetProfile() {
+        profile = null;
     }
 
     @Override
