@@ -132,7 +132,7 @@ public final class PointsToAnalyzer {
                         analysisPolicy, SubstitutionProcessor.IDENTITY, originalMetaAccess, new PointsToAnalysisFactory(), new StandaloneAnnotationExtractor());
         AnalysisMetaAccess aMetaAccess = new StandaloneAnalysisMetaAccess(aUniverse, originalMetaAccess);
         StandaloneConstantReflectionProvider aConstantReflection = new StandaloneConstantReflectionProvider(aMetaAccess, aUniverse, originalProviders.getConstantReflection(),
-                        originalProviders.getSnippetReflection());
+                        originalProviders.getSnippetReflection(), false);
         StandaloneConstantFieldProvider aConstantFieldProvider = new StandaloneConstantFieldProvider(aMetaAccess, originalProviders.getConstantFieldProvider(), false);
         AnalysisMetaAccessExtensionProvider aMetaAccessExtensionProvider = new AnalysisMetaAccessExtensionProvider(aUniverse);
         HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider,

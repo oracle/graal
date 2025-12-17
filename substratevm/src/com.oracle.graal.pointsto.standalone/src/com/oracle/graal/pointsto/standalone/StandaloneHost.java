@@ -28,7 +28,6 @@ package com.oracle.graal.pointsto.standalone;
 
 import java.util.Comparator;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
@@ -48,8 +47,6 @@ import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class StandaloneHost extends HostVM {
-    private final ConcurrentHashMap<AnalysisType, Class<?>> typeToClass = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<Class<?>, AnalysisType> classToType = new ConcurrentHashMap<>();
     private final String imageName;
     /*
      * By default, there is no eager class initialization nor delayed class initialization in
@@ -65,26 +62,6 @@ public class StandaloneHost extends HostVM {
         this.imageName = imageName;
         this.initializeClasses = initializeClasses;
         this.isClosedTypeWorld = isClosedTypeWorld;
-    }
-
-    @Override
-    public void registerType(AnalysisType analysisType) {
-        Class<?> clazz = analysisType.getJavaClass();
-        Object existing = typeToClass.put(analysisType, clazz);
-        assert existing == null;
-        existing = classToType.put(clazz, analysisType);
-        assert existing == null;
-    }
-
-    @Override
-    public void registerType(AnalysisType analysisType, int identityHashCode) {
-        registerType(analysisType);
-    }
-
-    @Deprecated
-    public AnalysisType lookupType(Class<?> clazz) {
-        assert clazz != null : "Class must not be null";
-        return classToType.get(clazz);
     }
 
     @Override
@@ -128,6 +105,6 @@ public class StandaloneHost extends HostVM {
 
     @Override
     public String loaderName(AnalysisType type) {
-        return loaderName(typeToClass.get(type).getClassLoader());
+        return loaderName(type.getJavaClass().getClassLoader());
     }
 }
