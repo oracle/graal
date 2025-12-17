@@ -51,6 +51,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotException;
@@ -90,6 +91,7 @@ final class PolyglotExceptionImpl {
     private final boolean syntaxError;
     private final boolean resourceExhausted;
     private final boolean interrupted;
+    private final boolean hostException;
     private final int exitStatus;
     private final Object guestObject;
     private final String qualifiedName;
@@ -132,11 +134,13 @@ final class PolyglotExceptionImpl {
         } else {
             creationStackTrace = null;
         }
-        Error resourceLimitError = getResourceLimitError(exception);
+        InteropLibrary interop = InteropLibrary.getUncached();
+        boolean isException = interop.isException(exception);
+        this.hostException = isException && interop.isHostObject(exception);
+        Error resourceLimitError = getResourceLimitError(exception, hostException);
         String exceptionQualifiedName = null;
         String exceptionMessage = null;
-        InteropLibrary interop;
-        if (allowInterop && (interop = InteropLibrary.getUncached()).isException(exception)) {
+        if (allowInterop && isException) {
             try {
                 ExceptionType exceptionType = interop.getExceptionType(exception);
                 this.internal = false;
@@ -159,7 +163,7 @@ final class PolyglotExceptionImpl {
                 } else {
                     this.sourceLocation = null;
                 }
-                if (entered && languageContext != null && languageContext.isCreated() && !isHostException(exception)) {
+                if (entered && languageContext != null && languageContext.isCreated() && !hostException) {
                     this.guestObject = languageContext.asValue(exception);
                 } else {
                     this.guestObject = null;
@@ -187,7 +191,7 @@ final class PolyglotExceptionImpl {
              * InterruptExecution was thrown before the context was made invalid.
              */
             boolean interruptException = (exception instanceof PolyglotEngineImpl.InterruptExecution) || (exception != null && exception.getCause() instanceof InterruptedException) ||
-                            (isHostException(exception) && asHostException() instanceof InterruptedException);
+                            (hostException && asHostException() instanceof InterruptedException);
             boolean truffleException = exception instanceof com.oracle.truffle.api.exception.AbstractTruffleException;
             boolean cancelInducedTruffleOrInterruptException = (polyglotContextState != null &&
                             (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED) &&
@@ -243,10 +247,10 @@ final class PolyglotExceptionImpl {
         qualifiedName = exceptionQualifiedName;
     }
 
-    private static Error getResourceLimitError(Throwable e) {
+    private static Error getResourceLimitError(Throwable e, boolean isHostException) {
         if (e instanceof CancelExecution) {
             return ((CancelExecution) e).isResourceLimit() ? (Error) e : null;
-        } else if (isHostException(e)) {
+        } else if (isHostException) {
             Error toCheck = toHostResourceError(e);
             assert toCheck == null || toCheck instanceof StackOverflowError || toCheck instanceof OutOfMemoryError;
             return toCheck;
@@ -300,7 +304,7 @@ final class PolyglotExceptionImpl {
     }
 
     public boolean isHostException() {
-        return isHostException(exception);
+        return hostException;
     }
 
     public Throwable asHostException() {
@@ -574,14 +578,11 @@ final class PolyglotExceptionImpl {
         return new FrameGuestObjectIterator(impl.polyglot.getAPIAccess(), impl, stackTrace);
     }
 
-    private static boolean isHostException(Throwable cause) {
-        InteropLibrary interop = InteropLibrary.getUncached(cause);
-        return interop.isHostObject(cause) && interop.isException(cause);
-    }
-
     private static Throwable unboxHostException(Throwable cause) {
         try {
             return (Throwable) InteropLibrary.getUncached(cause).asHostObject(cause);
+        } catch (HeapIsolationException ex) {
+            return null;
         } catch (Exception e) {
             throw CompilerDirectives.shouldNotReachHere(e);
         }
