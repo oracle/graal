@@ -27,7 +27,6 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.heap.DynamicHeapSizeManager;
 
 /**
@@ -46,8 +45,7 @@ class DynamicCollectionPolicy extends AdaptiveCollectionPolicy {
         if (ImageSingletons.contains(DynamicHeapSizeManager.class)) {
             return ImageSingletons.lookup(DynamicHeapSizeManager.class).maxHeapSize().rawValue();
         }
-
-        return SubstrateGCOptions.MaxHeapSize.getValue();
+        return super.getMaximumHeapSizeOptionValue();
     }
 
     @Override
