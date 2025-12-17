@@ -32,7 +32,6 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
@@ -104,11 +103,6 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
     @Override
     public ForeignCallDescriptor getNewPodInstanceStub() {
         return SLOW_NEW_POD_INSTANCE;
-    }
-
-    @Override
-    public boolean useTLAB() {
-        return SubstrateGCOptions.UseTLAB.getValue();
     }
 
     @Override

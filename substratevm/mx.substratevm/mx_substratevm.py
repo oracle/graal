@@ -1735,7 +1735,7 @@ libgraal_build_args = [
 
     # Reduce image size by outlining all write barriers.
     # Benchmarking showed no performance degradation.
-    '-H:+OutlineWriteBarriers',
+    '-H:WriteBarrierOutlining=Always',
 
     # Libgraal must not change the process-wide locale settings.
     '-H:-UseSystemLocale',

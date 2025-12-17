@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.c.type.CShortPointer;
 
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.JavaMainWrapper;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.ReplacingLocatableMultiOptionValue;
 import com.oracle.svm.core.util.ExitStatus;
@@ -127,6 +128,7 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
 
         // We do not need to compile a GC because the JavaScript environment provides one.
         optionProvider.getHostedValues().put(SubstrateOptions.SupportedGCs, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter());
+        optionProvider.getHostedValues().put(SubstrateGCOptions.UseTLAB, false);
 
         // Forcibly turn off CAnnotation processor cache
         optionProvider.getHostedValues().put(CAnnotationProcessorCache.Options.UseCAPCache, false);

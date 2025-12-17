@@ -184,7 +184,6 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         }
 
         Word addr = Word.fromAddress(address);
-
         if (shouldOutline && !eliminated) {
             callPostWriteBarrierStub(POST_WRITE_BARRIER, fixedObject, addr);
             return;
@@ -287,14 +286,23 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     }
 
     private static boolean shouldOutline(WriteBarrierNode barrier) {
-        if (SerialGCOptions.OutlineWriteBarriers.getValue() != null) {
-            return SerialGCOptions.OutlineWriteBarriers.getValue();
+        SerialGCOptions.OutlineWriteBarriers outlining = SerialGCOptions.WriteBarrierOutlining.getValue();
+        if (outlining == SerialGCOptions.OutlineWriteBarriers.Always) {
+            return true;
+        } else if (outlining == SerialGCOptions.OutlineWriteBarriers.Never) {
+            return false;
         }
-        if (GraalOptions.ReduceCodeSize.getValue(barrier.getOptions())) {
+
+        OptionValues graphOptions = barrier.graph().getOptions();
+        if (GraalOptions.ReduceCodeSize.getValue(graphOptions) && outlining == SerialGCOptions.OutlineWriteBarriers.Auto) {
             return true;
         }
-        // Newly allocated objects are likely young, so we can outline the execution after
-        // checking hasRememberedSet
+
+        /*
+         * Newly allocated objects are likely in the young generation, so we can outline the write
+         * barrier with minimal performance impact.
+         */
+        assert outlining == SerialGCOptions.OutlineWriteBarriers.Auto || outlining == SerialGCOptions.OutlineWriteBarriers.YoungOnly;
         return barrier instanceof SerialWriteBarrierNode serialBarrier && serialBarrier.getBaseStatus().likelyYoung();
     }
 

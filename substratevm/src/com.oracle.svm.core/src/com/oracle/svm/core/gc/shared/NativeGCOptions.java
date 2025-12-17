@@ -327,9 +327,10 @@ public class NativeGCOptions {
                     Class<?> type = field.getType();
                     if (HostedOptionKey.class.isAssignableFrom(type)) {
                         HostedOptionKey<?> key = (HostedOptionKey<?>) field.get(null);
-                        if (shouldPassToCpp(key)) {
+                        Object value = key.getValueOrDefault(map);
+                        if (shouldPassToCpp(key) && value != null) {
                             buffer.putString(key.getName());
-                            buffer.putPrimitive(key.getValueOrDefault(map));
+                            buffer.putPrimitive(value);
                         }
                     }
                 } catch (IllegalArgumentException | IllegalAccessException e) {
@@ -402,8 +403,6 @@ public class NativeGCOptions {
         }
 
         public void putPrimitive(Object value) {
-            ensureCapacity(8);
-
             long rawLong = switch (value) {
                 case Boolean _ -> ((boolean) value) ? 1L : 0L;
                 case Byte _ -> ((byte) value) & 0xFFL;
@@ -415,6 +414,7 @@ public class NativeGCOptions {
                 default -> throw VMError.shouldNotReachHere("Unexpected type: " + value.getClass());
             };
 
+            ensureCapacity(Long.BYTES);
             buffer.putLong(rawLong);
         }
 

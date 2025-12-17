@@ -29,7 +29,6 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapParameters;
@@ -87,11 +86,6 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
     @Override
     public ForeignCallDescriptor getNewPodInstanceStub() {
         return SLOW_NEW_POD_INSTANCE;
-    }
-
-    @Override
-    public boolean useTLAB() {
-        return SubstrateGCOptions.UseTLAB.getValue();
     }
 
     @Override

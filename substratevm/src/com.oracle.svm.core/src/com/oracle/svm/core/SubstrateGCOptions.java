@@ -119,8 +119,8 @@ public class SubstrateGCOptions {
     @Option(help = "Determines if references from runtime-compiled code to Java heap objects should be treated as strong or weak.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> TreatRuntimeCodeInfoReferencesAsWeak = new HostedOptionKey<>(true);
 
-    @Option(help = "Use thread-local object allocation.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> UseTLAB = new HostedOptionKey<>(true);
+    @Option(help = "Use a thread-local allocation buffer.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> UseTLAB = new HostedOptionKey<>(null);
 
     @Option(help = "Dynamically resize TLAB size for threads.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> ResizeTLAB = new RuntimeOptionKey<>(true, IsolateCreationOnly);
