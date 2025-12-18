@@ -359,6 +359,12 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             return;
         }
 
+        if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Yield)) {
+            // Since the frame escapes, yields always store the bytecode index.
+            custom.setStoreBytecodeIndex(true);
+            return;
+        }
+
         AnnotationMirror proxyableMirror = resolveProxyableAnnotationMirror(mirror);
         custom.setStoreBytecodeIndex(ElementUtils.getAnnotationValue(Boolean.class, proxyableMirror, "storeBytecodeIndex", false));
 
@@ -382,6 +388,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             MessageContainer targetMessageContainer;
             AnnotationMirror proxyMirror;
             AnnotationValue proxyValue;
+            DeclaredType declaredAnnotationType;
             if (isExternal(custom.getTemplateType())) {
                 /*
                  * It is important to emit this warning on the proxy of the parent model so we do
@@ -390,13 +397,15 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                 targetMessageContainer = parent;
                 proxyMirror = mirror;
                 proxyValue = resolveProxyableAnnotationValue(mirror);
+                declaredAnnotationType = types.OperationProxy_Proxyable;
             } else {
                 // for internal operations
                 targetMessageContainer = custom;
                 proxyMirror = null;
                 proxyValue = null;
+                declaredAnnotationType = mirror.getAnnotationType();
             }
-            String type = getSimpleName(this.annotationType);
+            String type = getSimpleName(declaredAnnotationType);
             String message = String.format("For this operation it is recommended to specify @%s(storeBytecodeIndex=true|false). " +
                             "For example, the bytecode index may need to be stored for correct stack trace locations when guest level calls are performed. " +
                             "By default the DSL assumes that if any node receiver is bound then the bytecode index needs to be stored. " +

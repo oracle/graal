@@ -62,9 +62,11 @@ import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
+import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.StoreBytecodeIndex;
+import com.oracle.truffle.api.bytecode.Yield;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectWarning;
 import com.oracle.truffle.api.dsl.Bind;
@@ -544,7 +546,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
 
     }
 
-    // make sure validation works for instrumentations too
+    // make sure validation works for proxies too
     // it is the same code so we do not perform additional testing.
     @OperationProxy.Proxyable(allowUncached = true)
     public static final class NoStoreBytecodeIndexProxyTest1 {
@@ -592,12 +594,64 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
     }
 
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
-    @ExpectError("For this operation it is recommended to specify @Operation(storeBytecodeIndex=true|false).%")
+    @ExpectError("For this operation it is recommended to specify @Proxyable(storeBytecodeIndex=true|false).%")
     @ShortCircuitOperation(name = "BoolAnd", booleanConverter = ExternalProxyNode.class, operator = Operator.AND_RETURN_VALUE)
     abstract static class StoreBytecodeEliminationWarningTestRootNode2 extends RootNode implements BytecodeRootNode {
 
         protected StoreBytecodeEliminationWarningTestRootNode2(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
+        }
+
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
+    abstract static class StoreBytecodeEliminationWarningTestRootNode3 extends RootNode implements BytecodeRootNode {
+
+        protected StoreBytecodeEliminationWarningTestRootNode3(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        // No warning about specifying storeBytecodeIndex; yields always store the bytecode index.
+        @Yield
+        public static final class CustomYield {
+            @Specialization
+            public static Object doYield(@SuppressWarnings("unused") @Bind Node node) {
+                return null;
+            }
+        }
+
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
+    abstract static class StoreBytecodeEliminationWarningTestRootNode4 extends RootNode implements BytecodeRootNode {
+
+        protected StoreBytecodeEliminationWarningTestRootNode4(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @ExpectWarning("For this operation it is recommended to specify @Instrumentation(storeBytecodeIndex=true|false).%")
+        @Instrumentation
+        public static final class CustomInstrumentation {
+            @Specialization
+            public static void doInstrument(@SuppressWarnings("unused") @Bind Node node) {
+            }
+        }
+
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
+    abstract static class StoreBytecodeEliminationWarningTestRootNode5 extends RootNode implements BytecodeRootNode {
+
+        protected StoreBytecodeEliminationWarningTestRootNode5(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @ExpectWarning("For this operation it is recommended to specify @Prolog(storeBytecodeIndex=true|false).%")
+        @Prolog
+        public static final class CustomProlog {
+            @Specialization
+            public static void doProlog(@SuppressWarnings("unused") @Bind Node node) {
+            }
         }
 
     }
