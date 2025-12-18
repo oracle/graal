@@ -36,7 +36,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
@@ -99,6 +98,7 @@ import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -111,6 +111,7 @@ import jdk.internal.reflect.Reflection;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticallyRegisteredFeature
 public class ReflectionFeature implements InternalFeature, ReflectionSubstitutionSupport {
@@ -431,6 +432,12 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
             return -1;
         }
         return hostedField.getLocation();
+    }
+
+    @Override
+    public int getFieldOffset(ResolvedJavaField field, boolean checkUnsafeAccessed) {
+        // GR-71897: convert to JVMCI
+        return getFieldOffset(OriginalFieldProvider.getJavaField(field), checkUnsafeAccessed);
     }
 
     @Override
