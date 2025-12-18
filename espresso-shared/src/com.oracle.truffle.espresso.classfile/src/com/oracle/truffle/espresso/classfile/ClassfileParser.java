@@ -1494,6 +1494,12 @@ public final class ClassfileParser {
             if (innerClassIndex != 0) {
                 innerClassName = pool.className(innerClassIndex);
             }
+            if (outerClassIndex != 0) {
+                Symbol<Name> outerClassName = pool.className(outerClassIndex);
+                if (outerClassName.length() > 0 && outerClassName.byteAt(0) == '[') {
+                    throw classFormatError("Outer class is an array class");
+                }
+            }
 
             for (int j = 0; j < i; ++j) {
                 // Inner class info is often small: better to use array lookup for startup.

@@ -27,12 +27,15 @@ import java.util.function.IntFunction;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.constantpool.ResolvedConstant;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -42,6 +45,11 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class JVMCIUtils {
     public static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, "JVMCI");
+    // These constants should be synchronized with those in AbstractEspressoResolvedInstanceType
+    public static final int DECLARED_ANNOTATIONS = 0;
+    public static final int PARAMETER_ANNOTATIONS = 1;
+    public static final int TYPE_ANNOTATIONS = 2;
+    public static final int ANNOTATION_DEFAULT_VALUE = 3;
 
     private JVMCIUtils() {
     }
@@ -135,5 +143,33 @@ public final class JVMCIUtils {
             }
         }
         return result;
+    }
+
+    /**
+     * Gets the raw bytes of a class file annotations attribute (e.g. `RuntimeVisibleAnnotations`)
+     * aasociated with {@code attributed}.
+     *
+     * @param category {@link #DECLARED_ANNOTATIONS}, {@link #PARAMETER_ANNOTATIONS},
+     *            {@link #TYPE_ANNOTATIONS} or {@link #ANNOTATION_DEFAULT_VALUE}
+     * @return {@code null} if the attribute denoted by {@code category} does not exist for
+     *         {@code attributed}
+     */
+    public static byte[] getRawAnnotationBytes(AttributedElement attributed, int category, Meta meta) {
+        Attribute annotations;
+        if (category == TYPE_ANNOTATIONS) {
+            annotations = attributed.getAttribute(EspressoSymbols.Names.RuntimeVisibleTypeAnnotations);
+        } else if (category == DECLARED_ANNOTATIONS) {
+            annotations = attributed.getAttribute(EspressoSymbols.Names.RuntimeVisibleAnnotations);
+        } else if (category == PARAMETER_ANNOTATIONS) {
+            annotations = attributed.getAttribute(EspressoSymbols.Names.RuntimeVisibleParameterAnnotations);
+        } else if (category == ANNOTATION_DEFAULT_VALUE) {
+            annotations = attributed.getAttribute(EspressoSymbols.Names.AnnotationDefault);
+        } else {
+            throw meta.throwIllegalArgumentExceptionBoundary();
+        }
+        if (annotations == null) {
+            return null;
+        }
+        return annotations.getData();
     }
 }

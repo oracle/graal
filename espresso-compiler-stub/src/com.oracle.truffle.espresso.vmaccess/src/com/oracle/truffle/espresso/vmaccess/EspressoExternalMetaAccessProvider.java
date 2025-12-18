@@ -47,23 +47,14 @@ import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
 final class EspressoExternalMetaAccessProvider implements MetaAccessProvider {
-    private static final ClassLoader PLATFORM_CLASS_LOADER = ClassLoader.getPlatformClassLoader();
-    private static final ClassLoader SYSTEM_CLASS_LOADER = ClassLoader.getSystemClassLoader();
     private final EspressoExternalVMAccess access;
 
     EspressoExternalMetaAccessProvider(EspressoExternalVMAccess access) {
         this.access = access;
     }
 
-    private static boolean isKnownLoader(ClassLoader loader) {
-        return loader == null || loader == PLATFORM_CLASS_LOADER || loader == SYSTEM_CLASS_LOADER;
-    }
-
     @Override
     public EspressoResolvedJavaType lookupJavaType(Class<?> clazz) {
-        if (!isKnownLoader(clazz.getClassLoader())) {
-            throw new IllegalArgumentException("Cannot lookup types with unknown class loader");
-        }
         if (clazz.isArray()) {
             int dims = 0;
             Class<?> elemental = clazz;
@@ -82,7 +73,7 @@ final class EspressoExternalMetaAccessProvider implements MetaAccessProvider {
             return access.forPrimitiveKind(JavaKind.fromJavaClass(clazz));
         }
         Value value = access.lookupMetaObject(clazz.getName());
-        if (value.isNull()) {
+        if (value == null || value.isNull()) {
             throw new NoClassDefFoundError(clazz.getName());
         }
         return new EspressoExternalResolvedInstanceType(access, value);

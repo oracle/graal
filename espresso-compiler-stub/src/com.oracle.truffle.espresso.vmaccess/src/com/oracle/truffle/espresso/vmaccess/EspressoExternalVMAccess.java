@@ -56,6 +56,7 @@ import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -95,10 +96,10 @@ final class EspressoExternalVMAccess implements VMAccess {
         constantReflection = new EspressoExternalConstantReflectionProvider(this);
         metaAccessExtensionProvider = new EspressoMetaAccessExtensionProvider(constantReflection);
         primitives = createPrimitiveTypes();
-        javaLangObject = new EspressoExternalResolvedInstanceType(this, lookupMetaObject(context, "java.lang.Object"));
+        javaLangObject = new EspressoExternalResolvedInstanceType(this, requireMetaObject(context, "java.lang.Object"));
         arrayInterfaces = new EspressoExternalResolvedInstanceType[]{
-                        new EspressoExternalResolvedInstanceType(this, lookupMetaObject(context, "java.io.Serializable")),
-                        new EspressoExternalResolvedInstanceType(this, lookupMetaObject(context, "java.lang.Cloneable")),
+                        new EspressoExternalResolvedInstanceType(this, requireMetaObject(context, "java.io.Serializable")),
+                        new EspressoExternalResolvedInstanceType(this, requireMetaObject(context, "java.lang.Cloneable")),
         };
         providers = createProviders();
 
@@ -114,9 +115,11 @@ final class EspressoExternalVMAccess implements VMAccess {
 
         ResolvedJavaType unsafeType = lookupBootClassLoaderType("jdk.internal.misc.Unsafe");
         unsafeAllocateInstance = unsafeType.findMethod("allocateInstance", providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/Class;)Ljava/lang/Object;"));
-        assert unsafeAllocateInstance != null;
         ResolvedJavaMethod unsafeGetter = unsafeType.findMethod("getUnsafe", providers.getMetaAccess().parseMethodDescriptor("()Ljdk/internal/misc/Unsafe;"));
         unsafe = invoke(unsafeGetter, null);
+
+        JVMCIError.guarantee(forName != null, "Required method: forName");
+        JVMCIError.guarantee(unsafeAllocateInstance != null, "Required method: unsafeAllocateInstance");
     }
 
     private EspressoExternalResolvedPrimitiveType[] createPrimitiveTypes() {
@@ -141,7 +144,7 @@ final class EspressoExternalVMAccess implements VMAccess {
         LoweringProvider lowerer = new DummyLoweringProvider(target);
         StampProvider stampProvider = new DummyStampProvider();
         PlatformConfigurationProvider platformConfigurationProvider = new DummyPlatformConfigurationProvider();
-        SnippetReflectionProvider snippetReflection = new EspressoExternalSnippetReflectionProvider();
+        SnippetReflectionProvider snippetReflection = new EspressoExternalSnippetReflectionProvider(this, metaAccess, constantReflection);
         WordTypes wordTypes = new WordTypes(metaAccess, target.wordJavaKind);
         LoopsDataProvider loopsDataProvider = new LoopsDataProviderImpl();
         Providers newProviders = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls,
@@ -177,7 +180,7 @@ final class EspressoExternalVMAccess implements VMAccess {
         JavaConstant cls;
         try {
             cls = invoke(forName, null, nameConstant, JavaConstant.FALSE, classLoader);
-            assert !cls.isNull();
+            JVMCIError.guarantee(!cls.isNull(), "forName should return a result or throw");
         } catch (InvocationException e) {
             JavaConstant exceptionObject = e.getExceptionObject();
             if (classNotFoundExceptionType.isInstance(exceptionObject)) {
@@ -297,21 +300,29 @@ final class EspressoExternalVMAccess implements VMAccess {
 
     private Value getPrimitiveClass(String boxName) {
         String identifier = "java.lang." + boxName;
-        Value result = lookupMetaObject(context, identifier).getMember("TYPE");
-        assert result != null && !result.isNull() : "Couldn't find TYPE for " + identifier;
+        Value result = requireMetaObject(context, identifier).getMember("TYPE");
         assert result.getMember("static").isMetaObject() : result;
+        return result;
+    }
+
+    private static Value requireMetaObject(Context context, String name) {
+        Value result = lookupMetaObject(context, name);
+        JVMCIError.guarantee(result != null && !result.isNull(), "Couldn't find %s", name);
         return result;
     }
 
     private static Value lookupMetaObject(Context context, String name) {
         Value result = context.getBindings("java").getMember(name);
-        assert result != null && !result.isNull() : " Couldn't find " + name;
-        assert result.isMetaObject() : result;
+        JVMCIError.guarantee(result == null || result.isMetaObject(), "Unexpected result: %s", result);
         return result;
     }
 
     Value lookupMetaObject(String name) {
         return lookupMetaObject(context, name);
+    }
+
+    Value requireMetaObject(String name) {
+        return requireMetaObject(context, name);
     }
 
     JavaType lookupType(String name, ResolvedJavaType accessingClass, boolean resolve) {
@@ -332,7 +343,7 @@ final class EspressoExternalVMAccess implements VMAccess {
     }
 
     JavaType lookupType(String name, EspressoExternalResolvedInstanceType accessingClass, boolean resolve) {
-        assert !name.isEmpty();
+        JVMCIError.guarantee(!name.isEmpty(), "Name must not be empty");
         if (name.charAt(0) == '[') {
             int dims = 0;
             do {
@@ -359,11 +370,10 @@ final class EspressoExternalVMAccess implements VMAccess {
             JavaKind kind = JavaKind.fromPrimitiveOrVoidTypeChar(name.charAt(0));
             return forPrimitiveKind(kind);
         }
-        assert name.charAt(0) == 'L' && name.charAt(name.length() - 1) == ';';
+        JVMCIError.guarantee(name.charAt(0) == 'L' && name.charAt(name.length() - 1) == ';', "Invalid type: " + name);
         Value meta = invokeJVMCIHelper("lookupInstanceType", name, accessingClass.getMetaObject(), resolve);
-        assert meta != null;
         if (meta.isNull()) {
-            assert !resolve;
+            JVMCIError.guarantee(!resolve, "Expected a resolved type");
             return UnresolvedJavaType.create(name);
         }
         return new EspressoExternalResolvedInstanceType(this, meta);
@@ -399,8 +409,6 @@ final class EspressoExternalVMAccess implements VMAccess {
 
     private EspressoResolvedJavaType toResolvedJavaType(Value value) {
         // See com.oracle.truffle.espresso.impl.jvmci.external.TypeWrapper
-        assert !value.isNull();
-        assert !value.isString();
         char kindChar = (char) value.getMember("kind").asInt();
         if (kindChar == '[') {
             EspressoResolvedJavaType elemental = toResolvedJavaType(value.getMember("elemental"));
@@ -416,5 +424,16 @@ final class EspressoExternalVMAccess implements VMAccess {
 
     public EspressoExternalObjectConstant unsafeAllocateInstance(EspressoExternalResolvedInstanceType type) {
         return (EspressoExternalObjectConstant) invoke(unsafeAllocateInstance, unsafe, getProviders().getConstantReflection().asJavaClass(type));
+    }
+
+    byte[] getRawAnnotationBytes(Value metaObject, int category) {
+        Value bytes = invokeJVMCIHelper("getRawAnnotationBytes", metaObject, category);
+        if (bytes.isNull()) {
+            return null;
+        }
+        long size = bytes.getBufferSize();
+        byte[] result = new byte[Math.toIntExact(size)];
+        bytes.readBuffer(0, result, 0, result.length);
+        return result;
     }
 }

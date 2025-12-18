@@ -62,7 +62,7 @@ public abstract class AbstractEspressoResolvedInstanceType extends EspressoResol
         }
     }
 
-    private static final AbstractEspressoResolvedInstanceType[] NO_INSTANCE_TYPES = new AbstractEspressoResolvedInstanceType[0];
+    protected static final AbstractEspressoResolvedInstanceType[] NO_INSTANCE_TYPES = new AbstractEspressoResolvedInstanceType[0];
 
     private AbstractEspressoResolvedJavaField[] instanceFields;
     private AbstractEspressoResolvedJavaField[] staticFields;

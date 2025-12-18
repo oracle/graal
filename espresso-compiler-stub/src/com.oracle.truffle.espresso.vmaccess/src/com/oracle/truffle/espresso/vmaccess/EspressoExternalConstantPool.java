@@ -151,7 +151,11 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
 
     @Override
     public String lookupUtf8(int cpi) {
-        throw JVMCIError.unimplemented();
+        try {
+            return cpMirror.invokeMember("lookupUtf8", cpi).asString();
+        } catch (PolyglotException e) {
+            throw throwHostException(e);
+        }
     }
 
     @Override

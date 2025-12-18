@@ -26,6 +26,7 @@ import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedObjectType;
 
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -34,7 +35,7 @@ final class EspressoExternalObjectConstant implements JavaConstant {
     private final org.graalvm.polyglot.Value value;
 
     EspressoExternalObjectConstant(EspressoExternalVMAccess access, org.graalvm.polyglot.Value value) {
-        assert !value.isNull();
+        JVMCIError.guarantee(!value.isNull(), "Value must not be null");
         this.access = access;
         this.value = value;
     }
@@ -90,7 +91,7 @@ final class EspressoExternalObjectConstant implements JavaConstant {
     }
 
     public EspressoResolvedObjectType getType() {
-        Value cls = value.getMetaObject().getMember("class");
+        Value cls = value.getMetaObject();
         return (EspressoResolvedObjectType) EspressoExternalConstantReflectionProvider.classAsType(cls, access);
     }
 

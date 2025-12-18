@@ -22,9 +22,13 @@
  */
 package com.oracle.truffle.espresso.vmaccess;
 
+import static com.oracle.truffle.espresso.vmaccess.EspressoExternalConstantReflectionProvider.safeGetClass;
+
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.Objects;
+
+import org.graalvm.polyglot.Value;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.GraalError;
@@ -35,17 +39,56 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 final class EspressoExternalSnippetReflectionProvider implements SnippetReflectionProvider {
+    private final EspressoExternalVMAccess access;
+    private final Value byteArrayClass;
+    private final Value stringClass;
+
+    EspressoExternalSnippetReflectionProvider(EspressoExternalVMAccess access, EspressoExternalMetaAccessProvider metaAccess, EspressoExternalConstantReflectionProvider constantReflection) {
+        this.access = access;
+        byteArrayClass = constantReflection.asJavaClass(metaAccess.lookupJavaType(byte[].class)).getValue();
+        stringClass = constantReflection.asJavaClass(metaAccess.lookupJavaType(String.class)).getValue();
+    }
+
     @Override
     public JavaConstant forObject(Object object) {
         throw JVMCIError.shouldNotReachHere("Cannot create JavaConstant for external JVMCI");
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T> T asObject(Class<T> type, JavaConstant constant) {
-        if (constant.isNull()) {
+        if (constant.isNull() || !constant.getJavaKind().isObject()) {
             return null;
         }
-        throw JVMCIError.shouldNotReachHere("Cannot extract object for external JVMCI");
+        if ((!(constant instanceof EspressoExternalObjectConstant objConstant))) {
+            throw new IllegalArgumentException("Expected an espresso constant got a " + safeGetClass(constant));
+        }
+        Value value = objConstant.getValue();
+        Value metaObject = value.getMetaObject();
+        if (stringClass.equals(metaObject)) {
+            if (!type.isAssignableFrom(String.class)) {
+                return null;
+            }
+            return (T) value.asString();
+        }
+        if (byteArrayClass.equals(metaObject)) {
+            if (!type.isAssignableFrom(byte[].class)) {
+                return null;
+            }
+            int size = Math.toIntExact(value.getArraySize());
+            byte[] result = new byte[size];
+            access.invokeJVMCIHelper("copyByteArray", value, result);
+            return (T) result;
+        }
+        try {
+            ResolvedJavaType guestType = access.getProviders().getMetaAccess().lookupJavaType(type);
+            if (!guestType.isAssignableFrom(objConstant.getType())) {
+                return null;
+            }
+        } catch (NoClassDefFoundError e) {
+            // ignore
+        }
+        throw JVMCIError.shouldNotReachHere("Cannot extract object of type " + metaObject.getMetaQualifiedName() + " for external JVMCI");
     }
 
     @Override
