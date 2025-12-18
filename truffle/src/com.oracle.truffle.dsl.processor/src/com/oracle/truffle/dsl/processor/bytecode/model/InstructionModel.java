@@ -596,6 +596,10 @@ public final class InstructionModel implements PrettyPrintable {
         return new InstructionEncoding(this);
     }
 
+    public String getName() {
+        return name;
+    }
+
     public String getInternalName() {
         String operationName = switch (kind) {
             case CUSTOM -> {
@@ -806,4 +810,5 @@ public final class InstructionModel implements PrettyPrintable {
             default -> (signature.isVoid ? 0 : 1) - signature.dynamicOperandCount;
         };
     }
+
 }

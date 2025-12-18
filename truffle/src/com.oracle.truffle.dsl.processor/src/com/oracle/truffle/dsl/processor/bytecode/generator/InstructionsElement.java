@@ -46,7 +46,6 @@ import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createCo
 import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
-import static javax.lang.model.element.Modifier.PROTECTED;
 import static javax.lang.model.element.Modifier.SEALED;
 import static javax.lang.model.element.Modifier.STATIC;
 
@@ -83,6 +82,7 @@ final class InstructionsElement extends AbstractElement {
 
     private ArgumentDescriptorElement argumentDescriptorImpl;
     private CodeTypeElement abstractArgument;
+    private Map<String, CodeVariableElement> constants;
 
     void lazyInit() {
         /*
@@ -90,13 +90,14 @@ final class InstructionsElement extends AbstractElement {
          */
         List<List<InstructionModel>> instructionPartitions = BytecodeRootNodeElement.partitionInstructions(parent.model.getInstructions());
         int index = 1;
+        constants = new HashMap<>();
         for (List<InstructionModel> partition : instructionPartitions) {
             for (InstructionModel instruction : partition) {
                 CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(short.class), instruction.getConstantName());
-
                 fld.createInitBuilder().string(index++).end();
                 fld.createDocBuilder().startDoc().lines(instruction.pp()).end(2);
                 this.add(fld);
+                constants.put(instruction.getName(), fld);
             }
         }
 
@@ -127,6 +128,10 @@ final class InstructionsElement extends AbstractElement {
         this.add(createIsInstrumentation());
         this.add(createGetArguments());
         this.add(createGetArgumentDescriptors());
+    }
+
+    public CodeVariableElement getConstant(InstructionModel instruction) {
+        return constants.get(instruction.getName());
     }
 
     public CodeTree call(String methodName, String argumentName) {
@@ -502,11 +507,6 @@ final class InstructionsElement extends AbstractElement {
             CodeTreeBuilder b = constructor.createBuilder();
             b.startStatement().startSuperCall().staticReference(InstructionsElement.this.parent.bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
             b.tree(tree);
-
-            this.add(new CodeVariableElement(Set.of(PROTECTED, STATIC, FINAL), InstructionsElement.this.types.BytecodeDSLAccess, "SAFE_ACCESS")) //
-                            .createInitBuilder().tree(parent.createFastAccessFieldInitializer(false));
-            this.add(new CodeVariableElement(Set.of(PROTECTED, STATIC, FINAL), InstructionsElement.this.types.ByteArraySupport, "SAFE_BYTES")) //
-                            .createInitBuilder().startCall("SAFE_ACCESS.getByteArraySupport").end();
             this.add(createGetDescriptor());
         }
 
@@ -571,26 +571,6 @@ final class InstructionsElement extends AbstractElement {
             }
         }
 
-        private static String readByteSafe(String array, String index) {
-            return String.format("SAFE_BYTES.getByte(%s, %s)", array, index);
-        }
-
-        private static String readShortSafe(String array, String index) {
-            return String.format("SAFE_BYTES.getShort(%s, %s)", array, index);
-        }
-
-        private static String readIntSafe(String array, String index) {
-            return String.format("SAFE_BYTES.getInt(%s, %s)", array, index);
-        }
-
-        private static String readLongSafe(String array, String index) {
-            return String.format("SAFE_BYTES.getLong(%s, %s)", array, index);
-        }
-
-        private static String readConstSafe(String index) {
-            return String.format("SAFE_ACCESS.readObject(constants, %s)", index);
-        }
-
         private CodeExecutableElement createAsBytecodeIndex() {
             CodeExecutableElement ex = GeneratorUtils.override(InstructionsElement.this.types.Instruction_Argument, "asBytecodeIndex");
             ex.getModifiers().add(Modifier.FINAL);
@@ -598,7 +578,7 @@ final class InstructionsElement extends AbstractElement {
             b.declaration(InstructionsElement.this.type(byte[].class), "bc", "this.bytecodes");
             b.startReturn();
 
-            b.string(readIntSafe("bc", "bci"));
+            b.string(BytecodeRootNodeElement.readIntSafe("bc", "bci"));
             b.end();
             return ex;
         }
@@ -611,11 +591,11 @@ final class InstructionsElement extends AbstractElement {
             b.declaration(InstructionsElement.this.type(byte[].class), "bc", "this.bytecodes");
             b.startSwitch().string("width").end().startBlock();
             b.startCase().string("1").end();
-            b.startCaseBlock().startReturn().string(readByteSafe("bc", "bci")).end(2);
+            b.startCaseBlock().startReturn().string(BytecodeRootNodeElement.readByteSafe("bc", "bci")).end(2);
             b.startCase().string("2").end();
-            b.startCaseBlock().startReturn().string(readShortSafe("bc", "bci")).end(2);
+            b.startCaseBlock().startReturn().string(BytecodeRootNodeElement.readShortSafe("bc", "bci")).end(2);
             b.startCase().string("4").end();
-            b.startCaseBlock().startReturn().string(readIntSafe("bc", "bci")).end(2);
+            b.startCaseBlock().startReturn().string(BytecodeRootNodeElement.readIntSafe("bc", "bci")).end(2);
             b.caseDefault().startCaseBlock();
             BytecodeRootNodeElement.emitThrowAssertionError(b, "\"Unexpected integer width \" + width");
             b.end();
@@ -632,7 +612,7 @@ final class InstructionsElement extends AbstractElement {
             if (ImmediateKind.FRAME_INDEX.width != ImmediateWidth.SHORT) {
                 throw new AssertionError("encoding changed");
             }
-            b.string(readShortSafe("bc", "bci")).string(" - USER_LOCALS_START_INDEX");
+            b.string(BytecodeRootNodeElement.readShortSafe("bc", "bci")).string(" - USER_LOCALS_START_INDEX");
             b.end();
             return ex;
         }
@@ -646,7 +626,7 @@ final class InstructionsElement extends AbstractElement {
             if (ImmediateKind.LOCAL_INDEX.width != ImmediateWidth.SHORT) {
                 throw new AssertionError("encoding changed");
             }
-            b.string(readShortSafe("bc", "bci"));
+            b.string(BytecodeRootNodeElement.readShortSafe("bc", "bci"));
             b.end();
             return ex;
         }
@@ -660,7 +640,7 @@ final class InstructionsElement extends AbstractElement {
             if (ImmediateKind.CONSTANT.width != ImmediateWidth.INT) {
                 throw new AssertionError("encoding changed");
             }
-            b.string(readConstSafe(readIntSafe("bc", "bci")));
+            b.string(BytecodeRootNodeElement.readConstSafe(BytecodeRootNodeElement.readIntSafe("bc", "bci")));
             b.end();
             return ex;
         }
@@ -689,10 +669,10 @@ final class InstructionsElement extends AbstractElement {
             b.declaration(InstructionsElement.this.type(byte[].class), "bc", "this.bytecodes");
             b.startReturn();
             CodeTree read = CodeTreeBuilder.singleString(switch (kind.width) {
-                case BYTE -> readByteSafe("bc", "bci");
-                case SHORT -> readShortSafe("bc", "bci");
-                case INT -> readIntSafe("bc", "bci");
-                case LONG -> readLongSafe("bc", "bci");
+                case BYTE -> BytecodeRootNodeElement.readByteSafe("bc", "bci");
+                case SHORT -> BytecodeRootNodeElement.readShortSafe("bc", "bci");
+                case INT -> BytecodeRootNodeElement.readIntSafe("bc", "bci");
+                case LONG -> BytecodeRootNodeElement.readLongSafe("bc", "bci");
             });
             b.tree(InstructionsElement.this.parent.decodeInlinedConstant(kind, read));
             b.end();
@@ -726,7 +706,7 @@ final class InstructionsElement extends AbstractElement {
             if (ImmediateKind.NODE_PROFILE.width != ImmediateWidth.INT) {
                 throw new AssertionError("encoding changed");
             }
-            b.string("cachedNodes[", readIntSafe("bc", "bci"), "]");
+            b.string("cachedNodes[", BytecodeRootNodeElement.readIntSafe("bc", "bci"), "]");
             b.end();
             return ex;
         }
@@ -748,7 +728,7 @@ final class InstructionsElement extends AbstractElement {
             if (ImmediateKind.TAG_NODE.width != ImmediateWidth.INT) {
                 throw new AssertionError("encoding changed");
             }
-            b.tree(BytecodeRootNodeElement.readTagNodeSafe(CodeTreeBuilder.singleString(readIntSafe("bc", "bci"))));
+            b.tree(BytecodeRootNodeElement.readTagNodeSafe(CodeTreeBuilder.singleString(BytecodeRootNodeElement.readIntSafe("bc", "bci"))));
             b.end();
             return ex;
         }
@@ -765,7 +745,7 @@ final class InstructionsElement extends AbstractElement {
             if (ImmediateKind.BRANCH_PROFILE.width != ImmediateWidth.INT) {
                 throw new AssertionError("encoding changed");
             }
-            b.declaration(InstructionsElement.this.type(int.class), "index", readIntSafe("bc", "bci"));
+            b.declaration(InstructionsElement.this.type(int.class), "index", BytecodeRootNodeElement.readIntSafe("bc", "bci"));
             b.declaration(InstructionsElement.this.type(int[].class), "profiles", "this.bytecode.getBranchProfiles()");
             b.startIf().string("profiles == null").end().startBlock();
 

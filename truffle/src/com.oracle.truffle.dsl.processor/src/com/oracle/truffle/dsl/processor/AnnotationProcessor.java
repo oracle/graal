@@ -75,6 +75,10 @@ public final class AnnotationProcessor<M extends Template> {
         this.factory = factory;
     }
 
+    public static <M extends Template> AnnotationProcessor<M> create(AbstractParser<M> parser, CodeTypeElementFactory<M> factory) {
+        return new AnnotationProcessor<>(parser, factory);
+    }
+
     public AbstractParser<M> getParser() {
         return parser;
     }

@@ -111,6 +111,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableSerialization = true, //
                                 enableTagInstrumentation = true, //
                                 enableSpecializationIntrospection = true, //
+                                enableInstructionRewriting = false, //
                                 allowUnsafe = false, //
                                 variadicStackLimit = "4")),
                 @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //

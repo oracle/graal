@@ -706,6 +706,75 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @Test
+    public void testPopRewrite() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot();
+            b.beginBlock();
+
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(123);
+            b.endTag(ExpressionTag.class);
+
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadNull();
+            b.endTag(ExpressionTag.class);
+
+            b.beginReturn();
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadArgument(0);
+            b.endTag(ExpressionTag.class);
+            b.endReturn();
+
+            b.endBlock();
+            b.endRoot();
+        });
+        node.getBytecodeNode().setUncachedThreshold(0);
+
+        assertInstructions(node,
+                        // load.constant, pop deleted
+                        // load.null, pop deleted
+                        "load.argument",
+                        "return");
+        assertEquals(42, node.getCallTarget().call(42));
+
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build());
+
+        assertInstructions(node,
+                        // deleted loads are kept when results are consumed by tag instructions
+                        "tag.enter",
+                        "load.constant",
+                        "tag.leave",
+                        "pop",
+                        "tag.enter",
+                        "load.null",
+                        "tag.leave",
+                        "pop",
+                        "tag.enter",
+                        "load.argument",
+                        "tag.leave",
+                        "return");
+
+        assertEquals(42, node.getCallTarget().call(42));
+
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        int enter1 = instructions.get(0).getBytecodeIndex();
+        int leave1 = instructions.get(2).getBytecodeIndex();
+        int enter2 = instructions.get(4).getBytecodeIndex();
+        int leave2 = instructions.get(6).getBytecodeIndex();
+        int enter3 = instructions.get(8).getBytecodeIndex();
+        int leave3 = instructions.get(10).getBytecodeIndex();
+
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, enter1, leave1, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter1, leave1, 123, ExpressionTag.class),
+                        new Event(EventKind.ENTER, enter2, leave2, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter2, leave2, null, ExpressionTag.class),
+                        new Event(EventKind.ENTER, enter3, leave3, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter3, leave3, 42, ExpressionTag.class));
+    }
+
+    @Test
     public void testImplicitRootTagsNoProlog() {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot();
@@ -942,15 +1011,12 @@ public class TagTest extends AbstractInstructionTest {
     public void testUnwindInRootBody() {
         TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
             b.beginRoot();
-            b.emitLoadConstant(40);
             b.emitLoadConstant(41);
             b.endRoot();
         });
         assertEquals(41, node.getCallTarget().call());
         assertInstructions(node,
                         "c.EnterMethod",
-                        "load.constant",
-                        "pop",
                         "load.constant",
                         "c.LeaveValue",
                         "return");
@@ -972,8 +1038,6 @@ public class TagTest extends AbstractInstructionTest {
         assertInstructions(node,
                         "c.EnterMethod",
                         "tag.enter",
-                        "load.constant",
-                        "pop",
                         "load.constant",
                         "tag.leave",
                         "c.LeaveValue",
@@ -1435,15 +1499,33 @@ public class TagTest extends AbstractInstructionTest {
             b.endTag(ExpressionTag.class);
 
             // Test printing of array constants.
+            b.beginIdentity();
             b.emitLoadConstant(new Object[]{"Hello", "world"});
+            b.endIdentity();
+            b.beginIdentity();
             b.emitLoadConstant(new long[]{123L, 456L});
+            b.endIdentity();
+            b.beginIdentity();
             b.emitLoadConstant(new int[]{123, 456});
+            b.endIdentity();
+            b.beginIdentity();
             b.emitLoadConstant(new short[]{12, 34});
+            b.endIdentity();
+            b.beginIdentity();
             b.emitLoadConstant(new char[]{'a', 'b'});
+            b.endIdentity();
+            b.beginIdentity();
             b.emitLoadConstant(new byte[]{1, 2});
+            b.endIdentity();
+            b.beginIdentity();
             b.emitLoadConstant(new double[]{3.14d, 12.3d});
+            b.endIdentity();
+            b.beginIdentity();
             b.emitLoadConstant(new float[]{4.0f, 6.28f});
+            b.endIdentity();
+            b.beginIdentity();
             b.emitLoadConstant(new boolean[]{true, false});
+            b.endIdentity();
 
             b.endRoot();
 
@@ -1882,7 +1964,9 @@ public class TagTest extends AbstractInstructionTest {
             b.beginTag(StatementTag.class);
             b.beginTryFinally(() -> {
                 b.beginTag(StatementTag.class);
+                b.beginIdentity();
                 b.emitLoadConstant(123L);
+                b.endIdentity();
                 b.endTag(StatementTag.class);
             });
 
@@ -1909,9 +1993,11 @@ public class TagTest extends AbstractInstructionTest {
                         "load.argument",
                         "c.ValueOrThrow",
                         "load.constant", // inline finally handler
+                        "c.Identity",
                         "pop",
                         "return",
                         "load.constant", // exception handler
+                        "c.Identity",
                         "pop",
                         "throw");
 
@@ -1935,31 +2021,31 @@ public class TagTest extends AbstractInstructionTest {
         cont = (ContinuationResult) node.getCallTarget().call(false);
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x00b2, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0006, 0x006c, null, ExpressionTag.class),
-                        new Event(EventKind.YIELD, 0x0006, 0x006c, 42L, ExpressionTag.class),
-                        new Event(EventKind.YIELD, 0x0000, 0x00b2, 42L, StatementTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x00b8, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0006, 0x006e, null, ExpressionTag.class),
+                        new Event(EventKind.YIELD, 0x0006, 0x006e, 42L, ExpressionTag.class),
+                        new Event(EventKind.YIELD, 0x0000, 0x00b8, 42L, StatementTag.class));
         assertEquals(42L, cont.getResult());
         events.clear();
         assertEquals(456L, cont.continueWith(456L));
         assertEvents(node,
                         events,
-                        new Event(EventKind.RESUME, 0x0000, 0x00b2, null, StatementTag.class),
-                        new Event(EventKind.RESUME, 0x0006, 0x006c, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0006, 0x006c, 456L, ExpressionTag.class),
-                        new Event(EventKind.ENTER, 0x0044, 0x0050, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0044, 0x0050, 123L, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x00b2, 456L, StatementTag.class));
+                        new Event(EventKind.RESUME, 0x0000, 0x00b8, null, StatementTag.class),
+                        new Event(EventKind.RESUME, 0x0006, 0x006e, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0006, 0x006e, 456L, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x0044, 0x0052, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0044, 0x0052, 123L, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x00b8, 456L, StatementTag.class));
 
         events.clear();
 
         cont = (ContinuationResult) node.getCallTarget().call(true);
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x00b2, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0006, 0x006c, null, ExpressionTag.class),
-                        new Event(EventKind.YIELD, 0x0006, 0x006c, 42L, ExpressionTag.class),
-                        new Event(EventKind.YIELD, 0x0000, 0x00b2, 42L, StatementTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x00b8, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0006, 0x006e, null, ExpressionTag.class),
+                        new Event(EventKind.YIELD, 0x0006, 0x006e, 42L, ExpressionTag.class),
+                        new Event(EventKind.YIELD, 0x0000, 0x00b8, 42L, StatementTag.class));
         assertEquals(42L, cont.getResult());
         events.clear();
         try {
@@ -1970,12 +2056,12 @@ public class TagTest extends AbstractInstructionTest {
         }
         assertEvents(node,
                         events,
-                        new Event(EventKind.RESUME, 0x0000, 0x00b2, null, StatementTag.class),
-                        new Event(EventKind.RESUME, 0x0006, 0x006c, null, ExpressionTag.class),
-                        new Event(EventKind.EXCEPTIONAL, 0x0006, 0x006c, TestException.class, ExpressionTag.class),
-                        new Event(EventKind.ENTER, 0x0094, 0x00a0, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0094, 0x00a0, 123L, StatementTag.class),
-                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x00b2, TestException.class, StatementTag.class));
+                        new Event(EventKind.RESUME, 0x0000, 0x00b8, null, StatementTag.class),
+                        new Event(EventKind.RESUME, 0x0006, 0x006e, null, ExpressionTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0006, 0x006e, TestException.class, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x0098, 0x00a6, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0098, 0x00a6, 123L, StatementTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x00b8, TestException.class, StatementTag.class));
     }
 
     @Test
@@ -2588,6 +2674,47 @@ public class TagTest extends AbstractInstructionTest {
         }
     }
 
+    @Test
+    public void testTagTreeRange() {
+        /*
+         * This is a regression test. Previously, the tag enter bci was set before calling
+         * beforeChild, which caused the tag tree to cover more instructions than it should have (in
+         * this test case, it included the preceding pop instruction).
+         */
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot();
+            b.beginBlock();
+
+            b.emitSomeValue();
+
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(42L);
+            b.endTag(ExpressionTag.class);
+
+            b.endBlock();
+            b.endRoot();
+        });
+
+        assertEquals(42L, node.getCallTarget().call());
+        attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class,
+                        StatementTag.class).build());
+
+        assertEquals(42L, node.getCallTarget().call());
+
+        assertInstructions(node,
+                        "c.SomeValue",
+                        "pop",
+                        "tag.enter",
+                        "load.constant",
+                        "tag.leave",
+                        "return");
+
+        TagTree tagTree = node.getBytecodeNode().getTagTree();
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        assertEquals(instructions.get(2).getBytecodeIndex(), tagTree.getEnterBytecodeIndex());
+        assertEquals(instructions.get(4).getBytecodeIndex(), tagTree.getReturnBytecodeIndex());
+    }
+
     @SuppressWarnings("serial")
     static class TestException extends AbstractTruffleException {
 
@@ -2707,6 +2834,23 @@ public class TagTest extends AbstractInstructionTest {
                     throw new TestException(node);
                 }
                 return value;
+            }
+        }
+
+        // Simple operation to prevent rewriting of load instructions.
+        @Operation
+        static final class Identity {
+            @Specialization
+            public static Object perform(Object obj) {
+                return obj;
+            }
+        }
+
+        @Operation
+        static final class SomeValue {
+            @Specialization
+            public static Object perform() {
+                return null;
             }
         }
     }
