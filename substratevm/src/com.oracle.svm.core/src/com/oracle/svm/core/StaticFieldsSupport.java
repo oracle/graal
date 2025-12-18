@@ -69,6 +69,7 @@ import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -112,6 +113,17 @@ public final class StaticFieldsSupport {
         protected abstract int getInstalledLayerNum(ResolvedJavaField field);
 
         protected abstract ResolvedJavaField toResolvedField(Field field);
+
+        public abstract ResolvedJavaField toHostedField(ResolvedJavaField field);
+
+        /**
+         * Looks up the {@code field} using the {@code UniverseMetaAccess} instance passed via the
+         * {code metaAccess} parameter. For example, if the {@code metaAccess} comes from the Hosted
+         * Universe, it will return a {@code HostedField}, if it origins from the Analysis Universe,
+         * it will return an {code AnalysisField}. The method throws an error if the provided
+         * {@link MetaAccessProvider} is not a {@code UniverseMetaAccess}.
+         */
+        public abstract ResolvedJavaField toUniverseField(MetaAccessProvider metaAccess, ResolvedJavaField field);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -147,9 +159,15 @@ public final class StaticFieldsSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static Object getStaticFieldBaseTransformation(ResolvedJavaField field) {
         var hostedSupport = HostedStaticFieldSupport.singleton();
-        boolean primitive = hostedSupport.isPrimitive(field);
-        int layerNum = getInstalledLayerNum(field);
+        ResolvedJavaField hField = hostedSupport.toHostedField(field);
+        boolean primitive = hostedSupport.isPrimitive(hField);
+        int layerNum = getInstalledLayerNum(hField);
         return hostedSupport.getStaticFieldBaseTransformation(layerNum, primitive);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static ResolvedJavaField toUniverseField(MetaAccessProvider metaAccess, ResolvedJavaField field) {
+        return HostedStaticFieldSupport.singleton().toUniverseField(metaAccess, field);
     }
 
     public static int getInstalledLayerNum(ResolvedJavaField field) {

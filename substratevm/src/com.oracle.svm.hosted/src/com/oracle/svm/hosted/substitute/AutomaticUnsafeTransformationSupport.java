@@ -898,7 +898,7 @@ public class AutomaticUnsafeTransformationSupport {
                 case ArrayIndexScale -> new ArrayIndexScaleFieldValueTransformer(targetType, field.getType().getJavaKind());
                 case ArrayIndexShift -> new ArrayIndexShiftFieldValueTransformer(targetType, field.getType().getJavaKind());
                 case FieldOffset -> new FieldOffsetFieldValueTransformer(targetField, field.getType().getJavaKind());
-                case StaticFieldBase -> new StaticFieldBaseFieldValueTransformer(targetField);
+                case StaticFieldBase -> new StaticFieldBaseFieldValueTransformer(GraalAccess.lookupField(targetField));
                 default -> throw VMError.shouldNotReachHere("Unexpected kind: " + kind);
             };
 

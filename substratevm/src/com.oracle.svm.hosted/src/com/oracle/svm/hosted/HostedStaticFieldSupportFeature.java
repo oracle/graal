@@ -28,7 +28,9 @@ import java.lang.reflect.Field;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.StaticFieldsSupport.HostedStaticFieldSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -42,21 +44,27 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredStaticFieldSupport;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 final class HostedStaticFieldSupportFeature extends HostedStaticFieldSupport implements InternalFeature {
+
+    private AnalysisUniverse aUniverse;
+    private HostedUniverse hUniverse;
 
     private enum State {
         UNUSED,
@@ -74,7 +82,12 @@ final class HostedStaticFieldSupportFeature extends HostedStaticFieldSupport imp
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        hostedMetaAccess = ((FeatureImpl.BeforeCompilationAccessImpl) access).getMetaAccess();
+        FeatureImpl.BeforeCompilationAccessImpl accessImpl = (FeatureImpl.BeforeCompilationAccessImpl) access;
+        hostedMetaAccess = accessImpl.getMetaAccess();
+        aUniverse = accessImpl.aUniverse;
+        hUniverse = accessImpl.hUniverse;
+        VMError.guarantee(aUniverse != null, "Analysis universe is null");
+        VMError.guarantee(hUniverse != null, "Hosted universe is null");
     }
 
     private State determineState(int layerNum) {
@@ -164,5 +177,40 @@ final class HostedStaticFieldSupportFeature extends HostedStaticFieldSupport imp
     @Override
     protected ResolvedJavaField toResolvedField(Field field) {
         return hostedMetaAccess.lookupJavaField(field);
+    }
+
+    @Override
+    public HostedField toHostedField(ResolvedJavaField field) {
+        if (field instanceof HostedField hField) {
+            return hField;
+        }
+        VMError.guarantee(hUniverse != null, "Analysis Universe not yet set");
+        return hUniverse.lookup(toAnalysisField(field));
+    }
+
+    private AnalysisField toAnalysisField(ResolvedJavaField field) {
+        if (field instanceof AnalysisField aField) {
+            return aField;
+        }
+        VMError.guarantee(aUniverse != null, "Analysis Universe not yet set");
+        return aUniverse.lookup(field);
+    }
+
+    @Override
+    public ResolvedJavaField toUniverseField(MetaAccessProvider metaAccess, ResolvedJavaField field) {
+        if (metaAccess instanceof UniverseMetaAccess uMetaAccess) {
+            return lookupFieldRecursive(field, uMetaAccess);
+        }
+        throw VMError.shouldNotReachHere("Unexpected meta access: %s", metaAccess);
+    }
+
+    private static ResolvedJavaField lookupFieldRecursive(ResolvedJavaField field, MetaAccessProvider metaAccess) {
+        if (metaAccess instanceof UniverseMetaAccess uMetaAccess) {
+            // first lookup the field in the wrapped universe (if there is one)
+            ResolvedJavaField wrappedField = lookupFieldRecursive(field, uMetaAccess.getWrapped());
+            // then look up the result in the current universe
+            return uMetaAccess.getUniverse().lookup(wrappedField);
+        }
+        return field;
     }
 }

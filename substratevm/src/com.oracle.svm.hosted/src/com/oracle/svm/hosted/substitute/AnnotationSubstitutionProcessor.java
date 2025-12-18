@@ -1073,7 +1073,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 if (!Modifier.isStatic(targetField.getModifiers())) {
                     throw UserError.abort("Target field must be static for " + kind + " computation of alias " + annotated.format("%H.%n"));
                 }
-                yield new StaticFieldBaseFieldValueTransformer(OriginalFieldProvider.getJavaField(targetField));
+                yield new StaticFieldBaseFieldValueTransformer(targetField);
             }
             case ArrayBaseOffset ->
                 new ArrayBaseOffsetFieldValueTransformer(targetType, original.getType().getJavaKind());
