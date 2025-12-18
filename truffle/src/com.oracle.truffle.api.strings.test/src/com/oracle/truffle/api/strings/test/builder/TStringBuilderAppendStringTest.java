@@ -80,7 +80,7 @@ public class TStringBuilderAppendStringTest extends TStringTestBase {
 
     @Test
     public void testNull() throws Exception {
-        expectNullPointerException(() -> node.execute(null, S_UTF8));
+        expectNullPointerException(() -> node.execute((TruffleStringBuilder) null, S_UTF8));
         expectNullPointerException(() -> node.execute(TruffleStringBuilder.create(TruffleString.Encoding.UTF_8), null));
     }
 }

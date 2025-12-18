@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.strings;
 
 import static com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
-import static com.oracle.truffle.api.strings.AbstractTruffleString.checkArrayRange;
 import static com.oracle.truffle.api.strings.AbstractTruffleString.checkByteLengthUTF16;
 import static com.oracle.truffle.api.strings.AbstractTruffleString.checkByteLengthUTF32;
 import static com.oracle.truffle.api.strings.Encodings.UTF8_ACCEPT;
@@ -64,12 +63,10 @@ import static com.oracle.truffle.api.strings.TStringGuards.isBuiltin;
 import static com.oracle.truffle.api.strings.TStringGuards.isBytes;
 import static com.oracle.truffle.api.strings.TStringGuards.isFixedWidth;
 import static com.oracle.truffle.api.strings.TStringGuards.isReturnNegative;
-import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16FE;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32FE;
-import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 import static com.oracle.truffle.api.strings.TStringGuards.isUnsupportedEncoding;
 import static com.oracle.truffle.api.strings.TStringGuards.isUpTo16Bit;
 import static com.oracle.truffle.api.strings.TStringGuards.isValid;
@@ -88,17 +85,15 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.profiles.InlinedByteValueProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.AbstractTruffleString.NativePointer;
 import com.oracle.truffle.api.strings.TStringOpsNodes.RawIndexOfStringNode;
@@ -109,47 +104,24 @@ import com.oracle.truffle.api.strings.TruffleString.ErrorHandling;
 
 final class TStringInternalNodes {
 
-    abstract static class ToIndexableNode extends AbstractInternalNode {
-
-        abstract Object execute(Node node, AbstractTruffleString a, Object data);
-
-        @Specialization
-        static byte[] doByteArray(@SuppressWarnings("unused") AbstractTruffleString a, byte[] data) {
-            return data;
-        }
-
-        @Specialization
-        static NativePointer doNativePointer(@SuppressWarnings("unused") AbstractTruffleString a, NativePointer data) {
-            return data;
-        }
-
-        @Fallback
-        static byte[] slowpath(Node node, AbstractTruffleString a, Object data) {
-            return a.materializeLazy(node, data);
-        }
-
-        static ToIndexableNode getUncached() {
-            return TStringInternalNodesFactory.ToIndexableNodeGen.getUncached();
-        }
-    }
-
     /**
      * Gets a string's code range with enough precision to decide whether the code range makes the
      * string fixed-width.
      */
-    abstract static class GetCodeRangeForIndexCalculationNode extends AbstractInternalNode {
-
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, Encoding encoding);
-
-        @Specialization
-        static int get(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, Encoding encoding,
-                        @Cached InlinedConditionProfile impreciseProfile) {
-            int codeRange = a.codeRange();
-            if (impreciseProfile.profile(node, !TSCodeRange.isPrecise(codeRange) && !isFixedWidth(codeRange))) {
-                return StringAttributes.getCodeRange(updateAttributes(node, a, arrayA, offsetA, encoding, codeRange));
-            }
-            return codeRange;
+    static int getCodeRangeForIndexCalculation(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, Encoding encoding, InlinedConditionProfile impreciseProfile) {
+        int codeRange = a.codeRange();
+        if (impreciseProfile.profile(node, !TSCodeRange.isPrecise(codeRange) && !isFixedWidth(codeRange))) {
+            return StringAttributes.getCodeRange(updateAttributes(node, a, arrayA, offsetA, encoding, codeRange));
         }
+        return codeRange;
+    }
+
+    static int getPreciseCodeRange(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, Encoding encoding, InlinedConditionProfile impreciseProfile) {
+        int codeRange = a.codeRange();
+        if (impreciseProfile.profile(node, !TSCodeRange.isPrecise(codeRange))) {
+            return StringAttributes.getCodeRange(updateAttributes(node, a, arrayA, offsetA, encoding, codeRange));
+        }
+        return codeRange;
     }
 
     /**
@@ -190,21 +162,6 @@ final class TStringInternalNodes {
         }
     }
 
-    abstract static class GetPreciseCodeRangeNode extends AbstractInternalNode {
-
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, Encoding encoding);
-
-        @Specialization
-        static int get(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, Encoding encoding,
-                        @Cached InlinedConditionProfile impreciseProfile) {
-            int codeRange = a.codeRange();
-            if (impreciseProfile.profile(node, !TSCodeRange.isPrecise(codeRange))) {
-                return StringAttributes.getCodeRange(updateAttributes(node, a, arrayA, offsetA, encoding, codeRange));
-            }
-            return codeRange;
-        }
-    }
-
     abstract static class GetPreciseCodeRangeWithMaterializationNode extends AbstractInternalNode {
 
         abstract int execute(Node node, AbstractTruffleString a, Encoding encoding);
@@ -240,23 +197,12 @@ final class TStringInternalNodes {
         }
     }
 
-    abstract static class GetCodePointLengthNode extends AbstractInternalNode {
-
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, Encoding encoding);
-
-        @Specialization
-        static int get(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, Encoding encoding,
-                        @Cached InlinedConditionProfile cacheMissProfile) {
-            int codePointLength = a.codePointLength();
-            if (cacheMissProfile.profile(node, codePointLength < 0)) {
-                return StringAttributes.getCodePointLength(updateAttributes(node, a, arrayA, offsetA, encoding, a.codeRange()));
-            }
-            return codePointLength;
+    static int getCodePointLength(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, Encoding encoding, InlinedConditionProfile calcCodePointLengthProfile) {
+        int codePointLength = a.codePointLength();
+        if (calcCodePointLengthProfile.profile(node, codePointLength < 0)) {
+            return StringAttributes.getCodePointLength(updateAttributes(node, a, arrayA, offsetA, encoding, a.codeRange()));
         }
-
-        static GetCodePointLengthNode getUncached() {
-            return TStringInternalNodesFactory.GetCodePointLengthNodeGen.getUncached();
-        }
+        return codePointLength;
     }
 
     abstract static class GetCodePointLengthWithMaterializationNode extends AbstractInternalNode {
@@ -302,21 +248,14 @@ final class TStringInternalNodes {
         return attrs;
     }
 
-    abstract static class FromBufferWithStringCompactionNode extends AbstractInternalNode {
+    static final class FromBufferWithStringCompaction {
 
-        abstract TruffleString execute(Node node, Object dataA, int strOffsetA, int byteLength, Encoding encoding, boolean copy, boolean isCacheHead);
-
-        @Specialization
-        static TruffleString fromBufferWithStringCompaction(Node node, Object dataA, int strOffsetA, int byteLength, Encoding encoding, boolean copy, boolean isCacheHead,
-                        @Cached InlinedConditionProfile utf8Profile,
-                        @Cached InlinedConditionProfile utf8BrokenProfile,
-                        @Cached InlinedConditionProfile utf16Profile,
-                        @Cached InlinedConditionProfile utf16CompactProfile,
-                        @Cached InlinedConditionProfile utf32Profile,
-                        @Cached InlinedConditionProfile utf32Compact0Profile,
-                        @Cached InlinedConditionProfile utf32Compact1Profile,
-                        @Cached InlinedConditionProfile singleByteProfile,
-                        @Cached InlinedByteValueProfile unlikelyEncodingProfile) {
+        static TruffleString fromBufferWithStringCompaction(Node node, Object dataA, int strOffsetA, int byteLength, Encoding encoding, boolean copy,
+                        InlinedConditionProfile utf8BrokenProfile,
+                        InlinedConditionProfile utf16CompactProfile,
+                        InlinedConditionProfile utf32Compact0Profile,
+                        InlinedConditionProfile utf32Compact1Profile,
+                        InlinedConditionProfile singleByteProfile) {
             assert dataA instanceof byte[] || dataA instanceof NativePointer;
             try {
                 final byte[] arrayA;
@@ -328,88 +267,131 @@ final class TStringInternalNodes {
                     arrayA = null;
                     offsetA = NativePointer.unwrap(dataA) + strOffsetA;
                 }
-                final int offset;
-                final int length;
-                final int stride;
-                final int codePointLength;
-                final int codeRange;
-                final byte[] array;
-                if (utf16Profile.profile(node, isUTF16(encoding))) {
-                    checkByteLengthUTF16(byteLength);
-                    length = byteLength >> 1;
-                    long attrs = TStringOps.calcStringAttributesUTF16(node, arrayA, offsetA, length, false);
-                    codePointLength = StringAttributes.getCodePointLength(attrs);
-                    codeRange = StringAttributes.getCodeRange(attrs);
-                    stride = Stride.fromCodeRangeUTF16(codeRange);
-                    if (copy || stride == 0) {
-                        if (singleByteProfile.profile(node, isCacheHead && length == 1 && stride == 0)) {
-                            return TStringConstants.getSingleByte(Encoding.UTF_16, readS1(arrayA, offsetA, 1, 0));
-                        }
-                        offset = 0;
-                        array = new byte[length << stride];
-                        if (utf16CompactProfile.profile(node, stride == 0)) {
-                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 1, 0, array, byteArrayBaseOffset(), 0, 0, length);
-                        } else {
-                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 1, 0, array, byteArrayBaseOffset(), 1, 0, length);
-                        }
-                    } else {
-                        offset = strOffsetA;
-                        array = arrayA;
-                    }
-                } else if (utf32Profile.profile(node, isUTF32(encoding))) {
-                    checkByteLengthUTF32(byteLength);
-                    length = byteLength >> 2;
-                    codeRange = TStringOps.calcStringAttributesUTF32(node, arrayA, offsetA, length);
-                    codePointLength = length;
-                    stride = Stride.fromCodeRangeUTF32(codeRange);
-                    if (copy || stride < 2) {
-                        if (singleByteProfile.profile(node, isCacheHead && length == 1 && stride == 0)) {
-                            return TStringConstants.getSingleByte(Encoding.UTF_32, TStringOps.readS2(arrayA, offsetA, 1, 0));
-                        }
-                        offset = 0;
-                        array = new byte[length << stride];
-                        if (utf32Compact0Profile.profile(node, stride == 0)) {
-                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 2, 0, array, byteArrayBaseOffset(), 0, 0, length);
-                        } else if (utf32Compact1Profile.profile(node, stride == 1)) {
-                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 2, 0, array, byteArrayBaseOffset(), 1, 0, length);
-                        } else {
-                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 2, 0, array, byteArrayBaseOffset(), 2, 0, length);
-                        }
-                    } else {
-                        offset = strOffsetA;
-                        array = arrayA;
-                    }
+                if (encoding == Encoding.UTF_8) {
+                    return utf8(node, dataA, strOffsetA, byteLength, copy, arrayA, offsetA, utf8BrokenProfile, singleByteProfile);
+                } else if (encoding == Encoding.UTF_16) {
+                    return utf16(node, dataA, strOffsetA, byteLength, copy, arrayA, offsetA, utf16CompactProfile, singleByteProfile);
+                } else if (encoding == Encoding.UTF_32) {
+                    return utf32(node, dataA, strOffsetA, byteLength, copy, arrayA, offsetA, utf32Compact0Profile, utf32Compact1Profile, singleByteProfile);
                 } else {
-                    stride = encoding.naturalStride;
-                    length = byteLength >> stride;
-                    final long attrs;
-                    if (utf8Profile.profile(node, isUTF8(encoding))) {
-                        if (singleByteProfile.profile(node, isCacheHead && length == 1)) {
-                            return TStringConstants.getSingleByte(Encoding.UTF_8, TStringOps.readS0(arrayA, offsetA, 1, 0));
-                        }
-                        attrs = TStringOps.calcStringAttributesUTF8(node, arrayA, offsetA, length, false, false, utf8BrokenProfile);
-                    } else {
-                        attrs = unlikelyCases(node, arrayA, offsetA, byteLength, encoding, unlikelyEncodingProfile.profile(node, encoding.id));
-                    }
-                    codeRange = StringAttributes.getCodeRange(attrs);
-                    codePointLength = StringAttributes.getCodePointLength(attrs);
-                    if (copy) {
-                        offset = 0;
-                        array = TStringOps.arraycopyOfWithStride(node, arrayA, offsetA, byteLength, 0, byteLength, 0);
-                    } else {
-                        offset = strOffsetA;
-                        array = arrayA;
-                    }
+                    return unlikelyCases(node, dataA, strOffsetA, byteLength, encoding, copy, arrayA, offsetA);
                 }
-                Object data = array == null ? dataA : array;
-                return TruffleString.createFromArray(data, offset, length, stride, encoding, codePointLength, codeRange, isCacheHead);
             } finally {
                 Reference.reachabilityFence(dataA);
             }
         }
 
+        private static TruffleString utf8(Node node, Object dataA, int strOffsetA, int byteLength, boolean copy, byte[] arrayA, long offsetA,
+                        InlinedConditionProfile utf8BrokenProfile,
+                        InlinedConditionProfile singleByteProfile) {
+            if (singleByteProfile.profile(node, byteLength == 1)) {
+                return TStringConstants.getSingleByte(Encoding.UTF_8, TStringOps.readS0(arrayA, offsetA, 1, 0));
+            }
+            final long attrs = TStringOps.calcStringAttributesUTF8(node, arrayA, offsetA, byteLength, false, false, utf8BrokenProfile);
+            final int codeRange = StringAttributes.getCodeRange(attrs);
+            final int codePointLength = StringAttributes.getCodePointLength(attrs);
+            final int offset;
+            final byte[] array;
+            if (copy) {
+                offset = 0;
+                array = TStringOps.arraycopyOfWithStride(node, arrayA, offsetA, byteLength, 0, byteLength, 0);
+            } else {
+                offset = strOffsetA;
+                array = arrayA;
+            }
+            Object data = array == null ? dataA : array;
+            return TruffleString.createFromArray(data, offset, byteLength, 0, Encoding.UTF_8, codePointLength, codeRange, true);
+        }
+
+        private static TruffleString utf16(Node node, Object dataA, int strOffsetA, int byteLength, boolean copy, byte[] arrayA, long offsetA,
+                        InlinedConditionProfile utf16CompactProfile,
+                        InlinedConditionProfile singleByteProfile) {
+            checkByteLengthUTF16(byteLength);
+            final int length = byteLength >> 1;
+            long attrs = TStringOps.calcStringAttributesUTF16(node, arrayA, offsetA, length, false);
+            final int codePointLength = StringAttributes.getCodePointLength(attrs);
+            final int codeRange = StringAttributes.getCodeRange(attrs);
+            final int stride = Stride.fromCodeRangeUTF16(codeRange);
+            final byte[] array;
+            final int offset;
+            if (copy || stride == 0) {
+                if (singleByteProfile.profile(node, length == 1 && stride == 0)) {
+                    return TStringConstants.getSingleByte(Encoding.UTF_16, readS1(arrayA, offsetA, 1, 0));
+                }
+                offset = 0;
+                array = new byte[length << stride];
+                if (utf16CompactProfile.profile(node, stride == 0)) {
+                    TStringOps.arraycopyWithStride(node, arrayA, offsetA, 1, 0, array, byteArrayBaseOffset(), 0, 0, length);
+                } else {
+                    TStringOps.arraycopyWithStride(node, arrayA, offsetA, 1, 0, array, byteArrayBaseOffset(), 1, 0, length);
+                }
+            } else {
+                offset = strOffsetA;
+                array = arrayA;
+            }
+            Object data = array == null ? dataA : array;
+            return TruffleString.createFromArray(data, offset, length, stride, Encoding.UTF_16, codePointLength, codeRange, true);
+        }
+
+        private static TruffleString utf32(Node node, Object dataA, int strOffsetA, int byteLength, boolean copy, byte[] arrayA, long offsetA,
+                        InlinedConditionProfile utf32Compact0Profile,
+                        InlinedConditionProfile utf32Compact1Profile,
+                        InlinedConditionProfile singleByteProfile) {
+            checkByteLengthUTF32(byteLength);
+            final int length = byteLength >> 2;
+            final int codeRange = TStringOps.calcStringAttributesUTF32(node, arrayA, offsetA, length);
+            final int stride = Stride.fromCodeRangeUTF32(codeRange);
+            final int offset;
+            final byte[] array;
+            if (copy || stride < 2) {
+                if (singleByteProfile.profile(node, length == 1 && stride == 0)) {
+                    return TStringConstants.getSingleByte(Encoding.UTF_32, TStringOps.readS2(arrayA, offsetA, 1, 0));
+                }
+                offset = 0;
+                array = new byte[length << stride];
+                if (utf32Compact0Profile.profile(node, stride == 0)) {
+                    TStringOps.arraycopyWithStride(node, arrayA, offsetA, 2, 0, array, byteArrayBaseOffset(), 0, 0, length);
+                } else if (utf32Compact1Profile.profile(node, stride == 1)) {
+                    TStringOps.arraycopyWithStride(node, arrayA, offsetA, 2, 0, array, byteArrayBaseOffset(), 1, 0, length);
+                } else {
+                    TStringOps.arraycopyWithStride(node, arrayA, offsetA, 2, 0, array, byteArrayBaseOffset(), 2, 0, length);
+                }
+            } else {
+                offset = strOffsetA;
+                array = arrayA;
+            }
+            Object data = array == null ? dataA : array;
+            return TruffleString.createFromArray(data, offset, length, stride, Encoding.UTF_32, length, codeRange, true);
+        }
+
         @InliningCutoff
-        private static long unlikelyCases(Node node, byte[] arrayA, long offsetA, int byteLength, Encoding encodingObj, int encoding) {
+        private static TruffleString unlikelyCases(Node node, Object dataA, int strOffsetA, int byteLength, Encoding encoding, boolean copy, byte[] arrayA,
+                        long offsetA) {
+            final int codePointLength;
+            final byte[] array;
+            final int stride;
+            final int codeRange;
+            final int offset;
+            final int length;
+            stride = encoding.naturalStride;
+            length = byteLength >> stride;
+            final long attrs;
+            attrs = calcAttrsUnlikelyCases(node, arrayA, offsetA, byteLength, encoding);
+            codeRange = StringAttributes.getCodeRange(attrs);
+            codePointLength = StringAttributes.getCodePointLength(attrs);
+            if (copy) {
+                offset = 0;
+                array = TStringOps.arraycopyOfWithStride(node, arrayA, offsetA, byteLength, 0, byteLength, 0);
+            } else {
+                offset = strOffsetA;
+                array = arrayA;
+            }
+            Object data = array == null ? dataA : array;
+            return TruffleString.createFromArray(data, offset, length, stride, encoding, codePointLength, codeRange, true);
+        }
+
+        @InliningCutoff
+        private static long calcAttrsUnlikelyCases(Node node, byte[] arrayA, long offsetA, int byteLength, Encoding encoding) {
             if (isAsciiBytesOrLatin1(encoding)) {
                 int cr = TStringOps.calcStringAttributesLatin1(node, arrayA, offsetA, byteLength);
                 return StringAttributes.create(byteLength, is8Bit(cr) ? TSCodeRange.asciiLatinBytesNonAsciiCodeRange(encoding) : cr);
@@ -420,7 +402,7 @@ final class TStringInternalNodes {
                 checkByteLengthUTF32(byteLength);
                 return StringAttributes.create(byteLength >> 2, TStringOps.calcStringAttributesUTF32FE(node, arrayA, offsetA, byteLength >> 2));
             } else {
-                return JCodings.getInstance().calcStringAttributes(node, null, arrayA, offsetA, byteLength, encodingObj, 0);
+                return JCodings.getInstance().calcStringAttributes(node, null, arrayA, offsetA, byteLength, encoding, 0);
             }
         }
     }
@@ -437,11 +419,9 @@ final class TStringInternalNodes {
         static TruffleString fromBufferWithStringCompaction(Node node, AbstractTruffleString a, boolean isCacheHead, Encoding encoding,
                         @Cached InlinedConditionProfile managedProfileA,
                         @Cached InlinedConditionProfile nativeProfileA,
-                        @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
-                        @Cached GetPreciseCodeRangeNode getPreciseCodeRangeNode,
-                        @Cached InlinedConditionProfile utf16Profile,
+                        @Cached InlinedConditionProfile calcCodePointLengthProfile,
+                        @Cached InlinedConditionProfile impreciseProfile,
                         @Cached InlinedConditionProfile utf16CompactProfile,
-                        @Cached InlinedConditionProfile utf32Profile,
                         @Cached InlinedConditionProfile utf32Compact0Profile,
                         @Cached InlinedConditionProfile utf32Compact1Profile) {
             Object dataA = a.data();
@@ -461,7 +441,7 @@ final class TStringInternalNodes {
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
-                final int codeRange = getPreciseCodeRangeNode.execute(node, a, arrayA, offsetA, encoding);
+                final int codeRange = getPreciseCodeRange(node, a, arrayA, offsetA, encoding, impreciseProfile);
                 a.looseCheckEncoding(encoding, codeRange);
                 final int length = a.length();
                 if (length == 0) {
@@ -471,7 +451,7 @@ final class TStringInternalNodes {
                 final int offset = byteArrayBaseOffset();
                 final int stride;
                 final byte[] array;
-                if (utf16Profile.profile(node, isUTF16(encoding))) {
+                if (encoding == Encoding.UTF_16) {
                     stride = Stride.fromCodeRangeUTF16(codeRange);
                     array = new byte[length << stride];
                     if (utf16CompactProfile.profile(node, strideA == 1 && stride == 0)) {
@@ -480,7 +460,7 @@ final class TStringInternalNodes {
                         assert stride == strideA;
                         TStringOps.arraycopyWithStride(node, arrayA, offsetA, 0, 0, array, offset, 0, 0, length << stride);
                     }
-                } else if (utf32Profile.profile(node, isUTF32(encoding))) {
+                } else if (encoding == Encoding.UTF_32) {
                     stride = Stride.fromCodeRangeUTF32(codeRange);
                     array = new byte[length << stride];
                     if (utf32Compact0Profile.profile(node, strideA == 2 && stride == 0)) {
@@ -496,7 +476,7 @@ final class TStringInternalNodes {
                     assert a.stride() == stride;
                     array = TStringOps.arraycopyOfWithStride(node, arrayA, offsetA, length << stride, 0, length << stride, 0);
                 }
-                int codePointLength = getCodePointLengthNode.execute(node, a, arrayA, offsetA, encoding);
+                int codePointLength = getCodePointLength(node, a, arrayA, offsetA, encoding, calcCodePointLengthProfile);
                 return TruffleString.createFromByteArray(array, 0, length, stride, encoding, codePointLength, codeRange, isCacheHead);
             } finally {
                 Reference.reachabilityFence(dataA);
@@ -515,71 +495,64 @@ final class TStringInternalNodes {
         abstract TruffleString execute(long rawPointer, int byteOffset, int byteLength, Encoding encoding, boolean copy);
 
         @Specialization
-        final TruffleString fromNativePointer(long rawPointer, int byteOffset, int byteLength, Encoding enc, boolean copy,
-                        @Cached TStringInternalNodes.FromNativePointerNode fromNativePointerNode,
-                        @Cached TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode) {
+        final TruffleString fromNativePointerEmbedder(long rawPointer, int byteOffset, int byteLength, Encoding enc, boolean copy,
+                        @Cached InlinedConditionProfile utf8BrokenProfile,
+                        @Cached InlinedConditionProfile utf16CompactProfile,
+                        @Cached InlinedConditionProfile utf32Compact0Profile,
+                        @Cached InlinedConditionProfile utf32Compact1Profile,
+                        @Cached InlinedConditionProfile singleByteProfile) {
             NativePointer pointer = new NativePointer(TruffleString.ETERNAL_POINTER, rawPointer);
             if (copy) {
-                return fromBufferWithStringCompactionNode.execute(this, pointer, byteOffset, byteLength, enc, true, true);
+                return FromBufferWithStringCompaction.fromBufferWithStringCompaction(this, pointer, byteOffset, byteLength, enc, true,
+                                utf8BrokenProfile,
+                                utf16CompactProfile,
+                                utf32Compact0Profile,
+                                utf32Compact1Profile,
+                                singleByteProfile);
             }
-            return fromNativePointerNode.execute(this, pointer, byteOffset, byteLength, enc, true);
+            return fromNativePointer(this, pointer, byteOffset, byteLength, enc, utf8BrokenProfile);
         }
 
     }
 
-    abstract static class FromNativePointerNode extends AbstractInternalNode {
-
-        abstract TruffleString execute(Node node, NativePointer pointer, int byteOffset, int byteLength, Encoding encoding, boolean isCacheHead);
-
-        @Specialization
-        static TruffleString fromNativePointerInternal(Node node, NativePointer pointer, int byteOffset, int byteLength, Encoding encoding, boolean isCacheHead,
-                        @Cached InlinedConditionProfile utf8Profile,
-                        @Cached InlinedConditionProfile utf8BrokenProfile,
-                        @Cached InlinedConditionProfile utf16Profile,
-                        @Cached InlinedConditionProfile utf32Profile,
-                        @Cached InlinedByteValueProfile unlikelyEncodingProfile) {
-            final long offsetA = pointer.pointer + byteOffset;
-            final int length;
-            final int stride;
-            final int codePointLength;
-            final int codeRange;
-            if (utf16Profile.profile(node, isUTF16(encoding))) {
-                checkByteLengthUTF16(byteLength);
-                length = byteLength >> 1;
-                long attrs = TStringOps.calcStringAttributesUTF16(node, null, offsetA, length, false);
-                codePointLength = StringAttributes.getCodePointLength(attrs);
-                codeRange = StringAttributes.getCodeRange(attrs);
-                stride = 1;
-            } else if (utf32Profile.profile(node, isUTF32(encoding))) {
-                checkByteLengthUTF32(byteLength);
-                length = byteLength >> 2;
-                codeRange = TStringOps.calcStringAttributesUTF32(node, null, offsetA, length);
-                codePointLength = length;
-                stride = 2;
+    static TruffleString fromNativePointer(Node node, NativePointer pointer, int byteOffset, int byteLength, Encoding encoding, InlinedConditionProfile utf8BrokenProfile) {
+        final long offsetA = pointer.pointer + byteOffset;
+        final int length;
+        final int stride;
+        final int codePointLength;
+        final int codeRange;
+        if (encoding == Encoding.UTF_16) {
+            checkByteLengthUTF16(byteLength);
+            length = byteLength >> 1;
+            long attrs = TStringOps.calcStringAttributesUTF16(node, null, offsetA, length, false);
+            codePointLength = StringAttributes.getCodePointLength(attrs);
+            codeRange = StringAttributes.getCodeRange(attrs);
+            stride = 1;
+        } else if (encoding == Encoding.UTF_32) {
+            checkByteLengthUTF32(byteLength);
+            length = byteLength >> 2;
+            codeRange = TStringOps.calcStringAttributesUTF32(node, null, offsetA, length);
+            codePointLength = length;
+            stride = 2;
+        } else {
+            stride = encoding.naturalStride;
+            length = byteLength >> stride;
+            final long attrs;
+            if (encoding == Encoding.UTF_8) {
+                attrs = TStringOps.calcStringAttributesUTF8(node, null, offsetA, length, false, false, utf8BrokenProfile);
             } else {
-                stride = encoding.naturalStride;
-                length = byteLength >> stride;
-                final long attrs;
-                if (utf8Profile.profile(node, isUTF8(encoding))) {
-                    attrs = TStringOps.calcStringAttributesUTF8(node, null, offsetA, length, false, false, utf8BrokenProfile);
-                } else {
-                    attrs = FromBufferWithStringCompactionNode.unlikelyCases(node, null, offsetA, byteLength, encoding, unlikelyEncodingProfile.profile(node, encoding.id));
-                }
-                codeRange = StringAttributes.getCodeRange(attrs);
-                codePointLength = StringAttributes.getCodePointLength(attrs);
+                attrs = FromBufferWithStringCompaction.calcAttrsUnlikelyCases(node, null, offsetA, byteLength, encoding);
             }
-            return TruffleString.createFromArray(pointer, byteOffset, length, stride, encoding, codePointLength, codeRange, isCacheHead);
+            codeRange = StringAttributes.getCodeRange(attrs);
+            codePointLength = StringAttributes.getCodePointLength(attrs);
         }
+        return TruffleString.createFromArray(pointer, byteOffset, length, stride, encoding, codePointLength, codeRange, true);
     }
 
-    abstract static class ByteLengthOfCodePointNode extends AbstractInternalNode {
+    static final class ByteLengthOfCodePoint {
 
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int index, ErrorHandling errorHandling);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"isUTF8(encoding)"})
-        static int utf8(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int index, ErrorHandling errorHandling,
-                        @Cached @Exclusive InlinedConditionProfile validProfile) {
+        static int utf8(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int index, ErrorHandling errorHandling,
+                        InlinedConditionProfile validProfile) {
             assert strideA == 0;
             int firstByte = readS0(arrayA, offsetA, lengthA, index);
             if (firstByte <= 0x7f) {
@@ -591,11 +564,9 @@ final class TStringInternalNodes {
             }
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"isUTF16(encoding)"})
-        static int utf16(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int index, ErrorHandling errorHandling,
-                        @Cached @Exclusive InlinedConditionProfile fixedProfile,
-                        @Cached @Exclusive InlinedConditionProfile validProfile) {
+        static int utf16(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int index, ErrorHandling errorHandling,
+                        InlinedConditionProfile fixedProfile,
+                        InlinedConditionProfile validProfile) {
             if (fixedProfile.profile(node, isFixedWidth(codeRangeA))) {
                 return 2;
             } else {
@@ -609,11 +580,9 @@ final class TStringInternalNodes {
             }
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"isUTF32(encoding)"})
-        static int utf32(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int index, ErrorHandling errorHandling,
-                        @Cached @Exclusive InlinedConditionProfile returnNegativeProfile) {
-            if (returnNegativeProfile.profile(node, !(isBestEffort(errorHandling) || isUpToValid(codeRangeA)))) {
+        static int utf32(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int index, ErrorHandling errorHandling,
+                        InlinedConditionProfile validProfile) {
+            if (validProfile.profile(node, !(isBestEffort(errorHandling) || isUpToValid(codeRangeA)))) {
                 assert strideA == 2;
                 int c = TStringOps.readS2(arrayA, offsetA, lengthA, index);
                 if (errorHandling == ErrorHandling.RETURN_NEGATIVE && !Encodings.isValidUnicodeCodepoint(c)) {
@@ -623,43 +592,39 @@ final class TStringInternalNodes {
             return 4;
         }
 
-        @Fallback
-        static int unlikelyCases(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int index, ErrorHandling errorHandling,
-                        @Cached @Exclusive InlinedConditionProfile fixedProfile,
-                        @Cached @Exclusive InlinedConditionProfile asciiBrokenReturnNegativeProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf16FEProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf16FEBrokenProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf32FEProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf32FEBrokenProfile) {
+        static int unlikelyCases(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int index,
+                        ErrorHandling errorHandling,
+                        InlinedConditionProfile fixedProfile,
+                        InlinedConditionProfile validProfile) {
             boolean isBroken = isBroken(codeRangeA);
             if (fixedProfile.profile(node, isFixedWidth(codeRangeA) && (isUpToValid(codeRangeA) || isBestEffort(errorHandling)))) {
                 return 1 << encoding.naturalStride;
-            } else if (asciiBrokenReturnNegativeProfile.profile(node, isAscii(encoding))) {
+            } else if (encoding == Encoding.US_ASCII) {
                 assert strideA == 0;
                 assert isBroken && isReturnNegative(errorHandling);
                 return readS0(arrayA, offsetA, lengthA, index) < 0x80 ? 1 : -1;
-            } else if (utf16FEProfile.profile(node, isUTF16FE(encoding))) {
+            } else if (encoding == Encoding.UTF_16_FOREIGN_ENDIAN) {
                 assert strideA == 1;
-                if (utf16FEBrokenProfile.profile(node, isBroken)) {
+                if (validProfile.profile(node, isBroken)) {
                     return Encodings.utf16FEBrokenGetCodePointByteLength(arrayA, offsetA, lengthA, index, errorHandling);
                 } else {
                     return Encodings.isUTF16HighSurrogate(Character.reverseBytes(readS1(arrayA, offsetA, lengthA, index))) ? 4 : 2;
                 }
-            } else if (utf32FEProfile.profile(node, isUTF32FE(encoding))) {
+            } else if (encoding == Encoding.UTF_32_FOREIGN_ENDIAN) {
                 assert strideA == 2;
-                if (utf32FEBrokenProfile.profile(node, isBroken && isReturnNegative(errorHandling))) {
-                    return CodePointAtRawNode.utf32FE(arrayA, offsetA, lengthA, strideA, index, ErrorHandling.RETURN_NEGATIVE) < 0 ? -1 : 4;
+                if (validProfile.profile(node, isBroken && isReturnNegative(errorHandling))) {
+                    return CodePointAtRaw.utf32FE(arrayA, offsetA, lengthA, strideA, index, ErrorHandling.RETURN_NEGATIVE) < 0 ? -1 : 4;
                 } else {
                     return 4;
                 }
             } else {
                 assert isUnsupportedEncoding(encoding);
-                return unsupported(a, arrayA, lengthA, encoding, index, errorHandling);
+                return byteLengthOfCodePointUnsupported(a, arrayA, lengthA, encoding, index, errorHandling);
             }
         }
 
         @TruffleBoundary
-        private static int unsupported(AbstractTruffleString a, byte[] arrayA, int lengthA, Encoding encoding, int index, ErrorHandling errorHandling) {
+        private static int byteLengthOfCodePointUnsupported(AbstractTruffleString a, byte[] arrayA, int lengthA, Encoding encoding, int index, ErrorHandling errorHandling) {
             JCodings jcodings = JCodings.getInstance();
             int cpLength = jcodings.getCodePointLength(encoding, JCodings.asByteArray(a, arrayA), a.byteArrayOffset() + index, a.byteArrayOffset() + lengthA);
             int regionLength = lengthA - index;
@@ -680,79 +645,25 @@ final class TStringInternalNodes {
         }
     }
 
-    abstract static class RawIndexToCodePointIndexNode extends AbstractInternalNode {
+    static final class CodePointIndexToRaw {
 
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int byteOffset, int index);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isFixedWidth(codeRangeA)")
-        static int doFixed(AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int byteOffset, int index) {
-            return index;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"isUTF8(encoding)", "!isFixedWidth(codeRangeA)"})
-        static int utf8(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int byteOffset, int index,
-                        @Cached @Exclusive InlinedConditionProfile validProfile,
-                        @Cached @Exclusive InlinedConditionProfile brokenProfile) {
-            if (validProfile.profile(node, isValid(codeRangeA))) {
-                return StringAttributes.getCodePointLength(TStringOps.calcStringAttributesUTF8(node, arrayA, offsetA + byteOffset, index, true, byteOffset + index == lengthA, brokenProfile));
-            } else {
-                return StringAttributes.getCodePointLength(TStringOps.calcStringAttributesUTF8(node, arrayA, offsetA + byteOffset, index, false, false, brokenProfile));
-            }
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"isUTF16(encoding)", "!isFixedWidth(codeRangeA)"})
-        static int utf16(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int byteOffset, int index,
-                        @Cached @Exclusive InlinedConditionProfile validProfile) {
-            assert strideA == 1;
-            if (validProfile.profile(node, isValid(codeRangeA))) {
-                return StringAttributes.getCodePointLength(TStringOps.calcStringAttributesUTF16(node, arrayA, offsetA + byteOffset, index, true));
-            } else {
-                return StringAttributes.getCodePointLength(TStringOps.calcStringAttributesUTF16(node, arrayA, offsetA + byteOffset, index, false));
-            }
-        }
-
-        @SuppressWarnings("unused")
-        @Fallback
-        static int unlikelyCases(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, @SuppressWarnings("unused") int codeRangeA, Encoding encoding,
-                        int byteOffset, int index,
-                        @Cached @Exclusive InlinedConditionProfile utf16FEProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf16FEValidProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf32FEProfile) {
-            if (utf16FEProfile.profile(node, isUTF16FE(encoding))) {
-                assert strideA == 1;
-                if (utf16FEValidProfile.profile(node, isValid(codeRangeA))) {
-                    return StringAttributes.getCodePointLength(TStringOps.calcStringAttributesUTF16FEAssumeValid(node, arrayA, offsetA + byteOffset, index));
-                } else {
-                    return StringAttributes.getCodePointLength(TStringOps.calcStringAttributesUTF16FE(node, arrayA, offsetA + byteOffset, index));
-                }
-            } else if (utf32FEProfile.profile(node, isUTF32FE(encoding))) {
-                assert strideA == 2;
+        static int codePointIndexToRaw(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int extraOffsetRaw, int index,
+                        boolean isLength,
+                        InlinedConditionProfile fixedProfile,
+                        InlinedConditionProfile validProfile) {
+            if (encoding == Encoding.UTF_32 || encoding == Encoding.UTF_32_FOREIGN_ENDIAN || index == 0 || fixedProfile.profile(node, TSCodeRange.isFixedWidth(codeRangeA))) {
                 return index;
+            } else if (encoding == Encoding.UTF_8) {
+                return utf8(node, arrayA, offsetA, lengthA, strideA, codeRangeA, extraOffsetRaw, index, isLength, validProfile);
+            } else if (encoding == Encoding.UTF_16) {
+                return utf16(node, arrayA, offsetA, lengthA, strideA, codeRangeA, extraOffsetRaw, index, isLength, validProfile);
             } else {
-                assert isUnsupportedEncoding(encoding);
-                return StringAttributes.getCodePointLength(JCodings.getInstance().calcStringAttributes(node, a, arrayA, offsetA, index, encoding, byteOffset));
+                return unlikelyCases(node, a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, extraOffsetRaw, index, isLength, validProfile);
             }
         }
-    }
 
-    abstract static class CodePointIndexToRawNode extends AbstractInternalNode {
-
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int extraOffsetRaw, int index,
-                        boolean isLength);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isFixedWidth(codeRangeA)")
-        static int doFixed(AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int extraOffsetRaw, int index, boolean isLength) {
-            return index;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"isUTF8(encoding)", "!isFixedWidth(codeRangeA)"})
-        static int utf8(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int extraOffsetRaw, int index, boolean isLength,
-                        @Cached @Exclusive InlinedConditionProfile validProfile) {
+        static int utf8(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int extraOffsetRaw, int index, boolean isLength,
+                        InlinedConditionProfile validProfile) {
             if (validProfile.profile(node, isValid(codeRangeA))) {
                 assert strideA == 0;
                 long regionOffset = offsetA + extraOffsetRaw;
@@ -767,10 +678,8 @@ final class TStringInternalNodes {
             }
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"isUTF16(encoding)", "!isFixedWidth(codeRangeA)"})
-        static int utf16(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int extraOffsetRaw, int index, boolean isLength,
-                        @Cached @Exclusive InlinedConditionProfile validProfile) {
+        static int utf16(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int extraOffsetRaw, int index, boolean isLength,
+                        InlinedConditionProfile validProfile) {
             if (validProfile.profile(node, isValid(codeRangeA))) {
                 assert strideA == 1;
                 long regionOffset = offsetA + ((long) extraOffsetRaw << 1);
@@ -785,16 +694,11 @@ final class TStringInternalNodes {
             }
         }
 
-        @Fallback
-        static int unlikelyCases(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, @SuppressWarnings("unused") int codeRangeA, Encoding encoding,
-                        int extraOffsetRaw,
-                        int index,
+        static int unlikelyCases(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int extraOffsetRaw, int index,
                         boolean isLength,
-                        @Cached @Exclusive InlinedConditionProfile utf16FEProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf16FEValidProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf32FEProfile) {
-            if (utf16FEProfile.profile(node, isUTF16FE(encoding))) {
-                if (utf16FEValidProfile.profile(node, isValid(codeRangeA))) {
+                        InlinedConditionProfile validProfile) {
+            if (encoding == Encoding.UTF_16_FOREIGN_ENDIAN) {
+                if (validProfile.profile(node, isValid(codeRangeA))) {
                     assert strideA == 1;
                     long regionOffset = offsetA + ((long) extraOffsetRaw << 1);
                     int regionLength = lengthA - extraOffsetRaw;
@@ -806,8 +710,6 @@ final class TStringInternalNodes {
                 } else {
                     return utf16FEBroken(node, arrayA, offsetA, lengthA, strideA, extraOffsetRaw, index, isLength);
                 }
-            } else if (utf32FEProfile.profile(node, isUTF32FE(encoding))) {
-                return index;
             } else {
                 assert isUnsupportedEncoding(encoding);
                 return unsupported(node, a, arrayA, encoding, extraOffsetRaw, index, isLength);
@@ -876,13 +778,10 @@ final class TStringInternalNodes {
         }
     }
 
-    abstract static class ReadByteNode extends AbstractInternalNode {
+    static final class ReadByte {
 
-        abstract int execute(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int i, Encoding encoding);
-
-        @Specialization(guards = "isUTF16(encoding)")
-        static int doUTF16(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int i, @SuppressWarnings("unused") Encoding encoding,
-                        @Cached @Exclusive InlinedConditionProfile stride0Profile) {
+        static int utf16(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int i,
+                        InlinedConditionProfile stride0Profile) {
             TruffleString.boundsCheckByteIndexUTF16(lengthA, i);
             final int index;
             if (stride0Profile.profile(node, strideA == 0)) {
@@ -900,10 +799,9 @@ final class TStringInternalNodes {
             return readS0(arrayA, offsetA, lengthA << strideA, index);
         }
 
-        @Specialization(guards = "isUTF32(encoding)")
-        static int doUTF32(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int i, @SuppressWarnings("unused") Encoding encoding,
-                        @Cached @Exclusive InlinedConditionProfile stride0Profile,
-                        @Cached @Exclusive InlinedConditionProfile stride1Profile) {
+        static int utf32(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int i,
+                        InlinedConditionProfile stride0Profile,
+                        InlinedConditionProfile stride1Profile) {
             TruffleString.boundsCheckByteIndexUTF32(lengthA, i);
             final int index;
             if (stride0Profile.profile(node, strideA == 0)) {
@@ -930,24 +828,14 @@ final class TStringInternalNodes {
             }
             return readS0(arrayA, offsetA, lengthA << strideA, index);
         }
-
-        @Specialization(guards = "!isUTF16Or32(encoding)")
-        static int doRest(byte[] arrayA, long offsetA, int lengthA, int strideA, int i, @SuppressWarnings("unused") Encoding encoding) {
-            TruffleString.boundsCheckByteIndex(lengthA, strideA, i);
-            return readS0(arrayA, offsetA, lengthA << strideA, i);
-        }
     }
 
-    abstract static class CodePointAtNode extends AbstractInternalNode {
+    static final class CodePointAt {
 
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int i, ErrorHandling errorHandling);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isUTF8(encoding)")
-        static int utf8(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int i,
+        static int utf8(Node node, byte[] arrayA, long offsetA, int lengthA, int codeRangeA, int i,
                         ErrorHandling errorHandling,
-                        @Cached @Exclusive InlinedConditionProfile fixedWidthProfile,
-                        @Cached @Exclusive InlinedConditionProfile validProfile) {
+                        InlinedConditionProfile fixedWidthProfile,
+                        InlinedConditionProfile validProfile) {
             if (fixedWidthProfile.profile(node, is7Bit(codeRangeA))) {
                 return readS0(arrayA, offsetA, lengthA, i);
             } else {
@@ -963,13 +851,11 @@ final class TStringInternalNodes {
             }
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isUTF16(encoding)")
-        static int utf16(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int i,
+        static int utf16(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int i,
                         ErrorHandling errorHandling,
-                        @Cached @Exclusive InlinedConditionProfile fixedWidthProfile,
-                        @Cached @Exclusive InlinedConditionProfile stride0Profile,
-                        @Cached @Exclusive InlinedConditionProfile validProfile) {
+                        InlinedConditionProfile fixedWidthProfile,
+                        InlinedConditionProfile stride0Profile,
+                        InlinedConditionProfile validProfile) {
             if (fixedWidthProfile.profile(node, isFixedWidth(codeRangeA))) {
                 if (stride0Profile.profile(node, strideA == 0)) {
                     return readS0(arrayA, offsetA, lengthA, i);
@@ -990,32 +876,20 @@ final class TStringInternalNodes {
             }
         }
 
-        @Specialization(guards = "isUTF32(encoding)")
-        static int utf32(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int i, ErrorHandling errorHandling,
-                        @Cached @Exclusive InlinedConditionProfile stride0Profile,
-                        @Cached @Exclusive InlinedConditionProfile stride1Profile) {
-            return CodePointAtRawNode.utf32(node, a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, i, errorHandling, stride0Profile, stride1Profile);
-        }
-
-        @Fallback
         static int unlikelyCases(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int i, ErrorHandling errorHandling,
-                        @Cached @Exclusive InlinedConditionProfile fixedProfile,
-                        @Cached @Exclusive InlinedConditionProfile asciiBrokenProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf16FEProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf16FEFixedProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf16FEValidProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf32FEProfile) {
-            if (utf16FEProfile.profile(node, isUTF16FE(encoding))) {
+                        InlinedConditionProfile fixedProfile,
+                        InlinedConditionProfile validProfile) {
+            if (encoding == Encoding.UTF_16_FOREIGN_ENDIAN) {
                 assert strideA == 1;
-                return utf16FE(node, arrayA, offsetA, lengthA, strideA, codeRangeA, i, errorHandling, utf16FEFixedProfile, utf16FEValidProfile);
-            } else if (utf32FEProfile.profile(node, isUTF32FE(encoding))) {
+                return utf16FE(node, arrayA, offsetA, lengthA, strideA, codeRangeA, i, errorHandling, fixedProfile, validProfile);
+            } else if (encoding == Encoding.UTF_32_FOREIGN_ENDIAN) {
                 assert strideA == 2;
-                return CodePointAtRawNode.utf32FE(arrayA, offsetA, lengthA, strideA, i, errorHandling);
-            } else if (fixedProfile.profile(node, isBytes(encoding) || is7Or8Bit(codeRangeA))) {
+                return CodePointAtRaw.utf32FE(arrayA, offsetA, lengthA, strideA, i, errorHandling);
+            } else if (encoding == Encoding.BYTES || fixedProfile.profile(node, is7Or8Bit(codeRangeA))) {
                 assert strideA == 0;
                 return readS0(arrayA, offsetA, lengthA, i);
-            } else if (asciiBrokenProfile.profile(node, isAscii(encoding))) {
-                return CodePointAtRawNode.asciiBroken(arrayA, offsetA, lengthA, strideA, codeRangeA, i, errorHandling);
+            } else if (encoding == Encoding.US_ASCII) {
+                return CodePointAtRaw.asciiBroken(arrayA, offsetA, lengthA, strideA, codeRangeA, i, errorHandling);
             } else {
                 assert isUnsupportedEncoding(encoding);
                 assert strideA == 0;
@@ -1046,17 +920,13 @@ final class TStringInternalNodes {
         }
     }
 
-    abstract static class CodePointAtRawNode extends AbstractInternalNode {
+    static final class CodePointAtRaw {
 
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int i, ErrorHandling errorHandling);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isUTF8(encoding)")
-        static int utf8(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int i,
+        static int utf8(Node node, byte[] arrayA, long offsetA, int lengthA, int codeRangeA, int i,
                         ErrorHandling errorHandling,
-                        @Exclusive @Cached InlinedConditionProfile fixedWidthProfile,
-                        @Exclusive @Cached InlinedConditionProfile validProfile) {
-            if (fixedWidthProfile.profile(node, is7Bit(codeRangeA))) {
+                        InlinedConditionProfile fixedProfile,
+                        InlinedConditionProfile validProfile) {
+            if (fixedProfile.profile(node, is7Bit(codeRangeA))) {
                 return readS0(arrayA, offsetA, lengthA, i);
             } else if (validProfile.profile(node, isValid(codeRangeA))) {
                 return Encodings.utf8DecodeValid(arrayA, offsetA, lengthA, i);
@@ -1066,16 +936,14 @@ final class TStringInternalNodes {
             }
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isUTF16(encoding)")
-        static int utf16(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int i,
+        static int utf16(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int i,
                         ErrorHandling errorHandling,
-                        @Exclusive @Cached InlinedConditionProfile fixedWidthProfile,
-                        @Exclusive @Cached InlinedConditionProfile validProfile,
-                        @Exclusive @Cached InlinedConditionProfile stride0Profile) {
+                        InlinedConditionProfile fixedProfile,
+                        InlinedConditionProfile stride0Profile,
+                        InlinedConditionProfile validProfile) {
             if (stride0Profile.profile(node, strideA == 0)) {
                 return readS0(arrayA, offsetA, lengthA, i);
-            } else if (fixedWidthProfile.profile(node, isFixedWidth(codeRangeA))) {
+            } else if (fixedProfile.profile(node, isFixedWidth(codeRangeA))) {
                 assert strideA == 1;
                 return readS1(arrayA, offsetA, lengthA, i);
             } else if (validProfile.profile(node, isValid(codeRangeA))) {
@@ -1086,13 +954,10 @@ final class TStringInternalNodes {
             }
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isUTF32(encoding)")
-        static int utf32(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA,
-                        @SuppressWarnings("unused") Encoding encoding, int i,
+        static int utf32(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int i,
                         ErrorHandling errorHandling,
-                        @Exclusive @Cached InlinedConditionProfile stride0Profile,
-                        @Exclusive @Cached InlinedConditionProfile stride1Profile) {
+                        InlinedConditionProfile stride0Profile,
+                        InlinedConditionProfile stride1Profile) {
             if (stride0Profile.profile(node, strideA == 0)) {
                 return readS0(arrayA, offsetA, lengthA, i);
             } else if (stride1Profile.profile(node, strideA == 1)) {
@@ -1111,32 +976,19 @@ final class TStringInternalNodes {
             }
         }
 
-        @Fallback
         static int unlikelyCases(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int i,
                         ErrorHandling errorHandling,
-                        @Cached @Exclusive InlinedConditionProfile fixedProfile,
-                        @Cached @Exclusive InlinedConditionProfile asciiBrokenProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf16FEProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf16FEFixedProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf16FEValidProfile,
-                        @Cached @Exclusive InlinedConditionProfile utf32FEProfile) {
-            if (utf16FEProfile.profile(node, isUTF16FE(encoding))) {
-                assert strideA == 1;
-                if (utf16FEFixedProfile.profile(node, isFixedWidth(codeRangeA))) {
-                    return Character.reverseBytes(readS1(arrayA, offsetA, lengthA, i));
-                } else if (utf16FEValidProfile.profile(node, isValid(codeRangeA))) {
-                    return Encodings.utf16FEDecodeValid(arrayA, offsetA, lengthA, i);
-                } else {
-                    assert TStringGuards.isBroken(codeRangeA);
-                    return Encodings.utf16FEDecodeBroken(arrayA, offsetA, lengthA, i, errorHandling);
-                }
-            } else if (utf32FEProfile.profile(node, isUTF32FE(encoding))) {
+                        InlinedConditionProfile fixedProfile,
+                        InlinedConditionProfile validProfile) {
+            if (encoding == Encoding.UTF_16_FOREIGN_ENDIAN) {
+                return utf16FE(node, arrayA, offsetA, lengthA, strideA, codeRangeA, i, errorHandling, fixedProfile, validProfile);
+            } else if (encoding == Encoding.UTF_32_FOREIGN_ENDIAN) {
                 assert strideA == 2;
                 return utf32FE(arrayA, offsetA, lengthA, strideA, i, errorHandling);
-            } else if (fixedProfile.profile(node, isBytes(encoding) || is7Or8Bit(codeRangeA))) {
+            } else if (encoding == Encoding.BYTES || fixedProfile.profile(node, is7Or8Bit(codeRangeA))) {
                 assert strideA == 0;
                 return readS0(arrayA, offsetA, lengthA, i);
-            } else if (asciiBrokenProfile.profile(node, isAscii(encoding))) {
+            } else if (encoding == Encoding.US_ASCII) {
                 assert strideA == 0;
                 return asciiBroken(arrayA, offsetA, lengthA, strideA, codeRangeA, i, errorHandling);
             } else {
@@ -1156,6 +1008,20 @@ final class TStringInternalNodes {
             return c;
         }
 
+        private static int utf16FE(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int i, ErrorHandling errorHandling,
+                        InlinedConditionProfile fixedProfile,
+                        InlinedConditionProfile validProfile) {
+            assert strideA == 1;
+            if (fixedProfile.profile(node, isFixedWidth(codeRangeA))) {
+                return Character.reverseBytes(readS1(arrayA, offsetA, lengthA, i));
+            } else if (validProfile.profile(node, isValid(codeRangeA))) {
+                return Encodings.utf16FEDecodeValid(arrayA, offsetA, lengthA, i);
+            } else {
+                assert TStringGuards.isBroken(codeRangeA);
+                return Encodings.utf16FEDecodeBroken(arrayA, offsetA, lengthA, i, errorHandling);
+            }
+        }
+
         static int utf32FE(byte[] arrayA, long offsetA, int lengthA, int strideA, int i, ErrorHandling errorHandling) {
             assert strideA == 2;
             int c = Integer.reverseBytes(TStringOps.readS2(arrayA, offsetA, lengthA, i));
@@ -1171,20 +1037,10 @@ final class TStringInternalNodes {
         }
     }
 
-    static int indexOfFixedWidth(Node node, byte[] arrayA, long offsetA, int strideA, int codeRangeA, int codepoint, int fromIndex, int toIndex,
-                    TStringOpsNodes.RawIndexOfCodePointNode indexOfNode) {
-        return indexOfFixedWidth(node, arrayA, offsetA, strideA, codeRangeA, codepoint, codepoint, fromIndex, toIndex, indexOfNode);
-    }
-
-    static int indexOfFixedWidthFE(Node node, byte[] arrayA, long offsetA, int strideA, int codeRangeA, Encoding encoding, int codepoint, int fromIndex, int toIndex,
-                    TStringOpsNodes.RawIndexOfCodePointNode indexOfNode) {
-        return indexOfFixedWidth(node, arrayA, offsetA, strideA, codeRangeA, codepoint, getCodepointFE(encoding, codepoint), fromIndex, toIndex, indexOfNode);
-    }
-
     /**
      * @param codepoint the codepoint to search for.
-     * @param codepointSearchValue possibly byte-swapped version of the codepoint passed by
-     *            {@link #indexOfFixedWidthFE}.
+     * @param codepointSearchValue possibly byte-swapped version of the codepoint for foreign-endian
+     *            encodings.
      */
     static int indexOfFixedWidth(Node node, byte[] arrayA, long offsetA, int strideA, int codeRangeA, int codepoint, int codepointSearchValue, int fromIndex, int toIndex,
                     TStringOpsNodes.RawIndexOfCodePointNode indexOfNode) {
@@ -1199,11 +1055,6 @@ final class TStringInternalNodes {
         return lastIndexOfFixedWidth(node, arrayA, offsetA, strideA, codeRangeA, codepoint, codepoint, fromIndex, toIndex, indexOfNode);
     }
 
-    static int lastIndexOfFixedWidthFE(Node node, byte[] arrayA, long offsetA, int strideA, int codeRangeA, Encoding encoding, int codepoint, int fromIndex, int toIndex,
-                    TStringOpsNodes.RawLastIndexOfCodePointNode indexOfNode) {
-        return lastIndexOfFixedWidth(node, arrayA, offsetA, strideA, codeRangeA, codepoint, getCodepointFE(encoding, codepoint), fromIndex, toIndex, indexOfNode);
-    }
-
     static int lastIndexOfFixedWidth(Node node, byte[] arrayA, long offsetA, int strideA, int codeRangeA, int codepoint, int codepointSearchValue, int fromIndex, int toIndex,
                     TStringOpsNodes.RawLastIndexOfCodePointNode indexOfNode) {
         if (fromIndex == toIndex || !TSCodeRange.isInCodeRange(codepoint, codeRangeA)) {
@@ -1212,65 +1063,38 @@ final class TStringInternalNodes {
         return indexOfNode.execute(node, arrayA, offsetA, strideA, codepointSearchValue, fromIndex, toIndex);
     }
 
-    private static int getCodepointFE(Encoding encoding, int codepoint) {
+    static int getCodepointFE(Encoding encoding, int codepoint) {
         assert isUTF16FE(encoding) || isUTF32FE(encoding);
         return isUTF16FE(encoding) ? Character.reverseBytes((char) codepoint) : Integer.reverseBytes(codepoint);
     }
 
     abstract static class IndexOfCodePointNode extends AbstractInternalNode {
 
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint, int fromIndex, int toIndex);
+        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint, int fromIndex,
+                        int fromIndexRaw, int toIndex);
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!encoding.isForeignEndian()", "isFixedWidth(codeRangeA)"})
-        static int doFixedWidth(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint, int fromIndex, int toIndex,
-                        @Cached @Shared TStringOpsNodes.RawIndexOfCodePointNode indexOfNode) {
-            return indexOfFixedWidth(node, arrayA, offsetA, strideA, codeRangeA, codepoint, fromIndex, toIndex, indexOfNode);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"encoding.isForeignEndian()", "isFixedWidth(codeRangeA)"})
-        static int doFixedWidthFE(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint,
-                        int fromIndex,
-                        int toIndex,
-                        @Cached @Shared TStringOpsNodes.RawIndexOfCodePointNode indexOfNode) {
-            return indexOfFixedWidthFE(node, arrayA, offsetA, strideA, codeRangeA, encoding, codepoint, fromIndex, toIndex, indexOfNode);
+        @Specialization(guards = "isFixedWidth(codeRangeA)")
+        static int doFixedWidth(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint, int fromIndex,
+                        int fromIndexRaw, int toIndex,
+                        @Cached TStringOpsNodes.RawIndexOfCodePointNode indexOfNode) {
+            return indexOfFixedWidth(node, arrayA, offsetA, strideA, codeRangeA, codepoint, encoding.isForeignEndian() ? getCodepointFE(encoding, codepoint) : codepoint, fromIndexRaw, toIndex,
+                            indexOfNode);
         }
 
         @Specialization(guards = "!isFixedWidth(codeRangeA)")
-        static int decode(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint, int fromIndex, int toIndex,
+        static int decode(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint, int fromIndex, int fromIndexRaw,
+                        int toIndex,
                         @Cached TruffleStringIterator.InternalNextNode nextNode) {
             TruffleStringIterator it = AbstractTruffleString.forwardIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding);
+            it.setRawIndex(fromIndexRaw);
             return TruffleStringIterator.indexOf(node, it, encoding, codepoint, fromIndex, toIndex, nextNode);
         }
     }
 
-    abstract static class IndexOfCodePointRawNode extends AbstractInternalNode {
+    static final class IndexOfCodePointRaw {
 
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint, int fromIndex, int toIndex);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"!encoding.isForeignEndian()", "isFixedWidth(codeRangeA)"})
-        static int doFixedWidth(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint, int fromIndex, int toIndex,
-                        @Cached @Shared TStringOpsNodes.RawIndexOfCodePointNode indexOfNode) {
-            return indexOfFixedWidth(node, arrayA, offsetA, strideA, codeRangeA, codepoint, fromIndex, toIndex, indexOfNode);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"encoding.isForeignEndian()", "isFixedWidth(codeRangeA)"})
-        static int doFixedWidthFE(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint,
-                        int fromIndex,
-                        int toIndex,
-                        @Cached @Shared TStringOpsNodes.RawIndexOfCodePointNode indexOfNode) {
-            return indexOfFixedWidthFE(node, arrayA, offsetA, strideA, codeRangeA, encoding, codepoint, fromIndex, toIndex, indexOfNode);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"isUTF8(encoding)", "!isFixedWidth(codeRangeA)"})
-        static int utf8Variable(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA,
-                        @SuppressWarnings("unused") Encoding encoding,
-                        int codepoint, int fromIndex,
-                        int toIndex) {
+        static int utf8(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int codepoint, int fromIndex, int toIndex) {
             assert strideA == 0;
             int encodedSize = Encodings.utf8EncodedSize(codepoint);
             if (encodedSize > toIndex - fromIndex) {
@@ -1283,12 +1107,7 @@ final class TStringInternalNodes {
             return TStringOps.indexOfStringWithOrMaskWithStride(node, arrayA, offsetA, lengthA, 0, encoded, byteArrayBaseOffset(), encoded.length, 0, fromIndex, toIndex, null);
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"isUTF16(encoding)", "!isFixedWidth(codeRangeA)"})
-        static int utf16Variable(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA,
-                        @SuppressWarnings("unused") Encoding encoding,
-                        int codepoint, int fromIndex,
-                        int toIndex) {
+        static int utf16(Node node, byte[] arrayA, long offsetA, int strideA, int codepoint, int fromIndex, int toIndex) {
             assert strideA == 1;
             int encodedSize = Encodings.utf16EncodedSize(codepoint);
             if (encodedSize > toIndex - fromIndex) {
@@ -1301,12 +1120,9 @@ final class TStringInternalNodes {
                             node, arrayA, offsetA, 1, fromIndex, toIndex, Character.highSurrogate(codepoint), Character.lowSurrogate(codepoint));
         }
 
-        @Fallback
         static int unlikelyCases(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint, int fromIndex,
-                        int toIndex,
-                        @Cached InlinedConditionProfile utf16FEProfile,
-                        @Cached InlinedConditionProfile utf32FEProfile) {
-            if (utf16FEProfile.profile(node, isUTF16FE(encoding))) {
+                        int toIndex) {
+            if (encoding == Encoding.UTF_16_FOREIGN_ENDIAN) {
                 assert strideA == 1;
                 int encodedSize = Encodings.utf16EncodedSize(codepoint);
                 if (encodedSize > toIndex - fromIndex) {
@@ -1318,12 +1134,6 @@ final class TStringInternalNodes {
                 char hiSurrogate = Character.reverseBytes(Character.highSurrogate(codepoint));
                 char loSurrogate = Character.reverseBytes(Character.lowSurrogate(codepoint));
                 return TStringOps.indexOf2ConsecutiveWithStride(node, arrayA, offsetA, 1, fromIndex, toIndex, hiSurrogate, loSurrogate);
-            } else if (utf32FEProfile.profile(node, isUTF32FE(encoding))) {
-                assert strideA == 2;
-                if (fromIndex == toIndex || !TSCodeRange.isInCodeRange(codepoint, codeRangeA)) {
-                    return -1;
-                }
-                return TStringOps.indexOfCodePointWithStride(node, arrayA, offsetA, 2, fromIndex, toIndex, Integer.reverseBytes(codepoint));
             } else {
                 assert strideA == 0;
                 return unsupported(node, a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, codepoint, fromIndex, toIndex);
@@ -1353,19 +1163,12 @@ final class TStringInternalNodes {
                         Encoding encoding, int codepoint, int fromIndex, int toIndex);
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!encoding.isForeignEndian()", "isFixedWidth(codeRangeA)"})
+        @Specialization(guards = "isFixedWidth(codeRangeA)")
         static int doFixedWidth(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA,
                         Encoding encoding, int codepoint, int fromIndex, int toIndex,
-                        @Cached @Shared TStringOpsNodes.RawLastIndexOfCodePointNode lastIndexOfNode) {
-            return lastIndexOfFixedWidth(node, arrayA, offsetA, strideA, codeRangeA, codepoint, fromIndex, toIndex, lastIndexOfNode);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"encoding.isForeignEndian()", "isFixedWidth(codeRangeA)"})
-        static int doFixedWidthFE(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA,
-                        Encoding encoding, int codepoint, int fromIndex, int toIndex,
-                        @Cached @Shared TStringOpsNodes.RawLastIndexOfCodePointNode lastIndexOfNode) {
-            return lastIndexOfFixedWidthFE(node, arrayA, offsetA, strideA, codeRangeA, encoding, codepoint, fromIndex, toIndex, lastIndexOfNode);
+                        @Cached TStringOpsNodes.RawLastIndexOfCodePointNode lastIndexOfNode) {
+            return lastIndexOfFixedWidth(node, arrayA, offsetA, strideA, codeRangeA, codepoint, encoding.isForeignEndian() ? getCodepointFE(encoding, codepoint) : codepoint, fromIndex, toIndex,
+                            lastIndexOfNode);
         }
 
         @Specialization(guards = "!isFixedWidth(codeRangeA)")
@@ -1377,31 +1180,10 @@ final class TStringInternalNodes {
         }
     }
 
-    abstract static class LastIndexOfCodePointRawNode extends AbstractInternalNode {
+    static final class LastIndexOfCodePointRaw {
 
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint, int fromIndex, int toIndex);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"!encoding.isForeignEndian()", "isFixedWidth(codeRangeA)"})
-        static int doFixedWidth(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint,
-                        int fromIndex, int toIndex,
-                        @Cached @Shared("lastIndexOfNode") TStringOpsNodes.RawLastIndexOfCodePointNode lastIndexOfNode) {
-            return lastIndexOfFixedWidth(node, arrayA, offsetA, strideA, codeRangeA, codepoint, fromIndex, toIndex, lastIndexOfNode);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"encoding.isForeignEndian()", "isFixedWidth(codeRangeA)"})
-        static int doFixedWidthFE(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint,
-                        int fromIndex, int toIndex,
-                        @Cached @Shared("lastIndexOfNode") TStringOpsNodes.RawLastIndexOfCodePointNode lastIndexOfNode) {
-            return lastIndexOfFixedWidthFE(node, arrayA, offsetA, strideA, codeRangeA, encoding, codepoint, fromIndex, toIndex, lastIndexOfNode);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"isUTF8(encoding)", "!isFixedWidth(codeRangeA)"})
-        static int utf8Variable(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint,
-                        int fromIndex, int toIndex,
-                        @Cached @Shared("lastIndexOfNode") TStringOpsNodes.RawLastIndexOfCodePointNode lastIndexOfNode) {
+        static int utf8(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int codepoint, int fromIndex, int toIndex,
+                        TStringOpsNodes.RawLastIndexOfCodePointNode lastIndexOfNode) {
             int encodedSize = Encodings.utf8EncodedSize(codepoint);
             if (encodedSize > fromIndex - toIndex) {
                 return -1;
@@ -1415,11 +1197,8 @@ final class TStringInternalNodes {
                             encoded, byteArrayBaseOffset(), encoded.length, 0, fromIndex, toIndex, null);
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"isUTF16(encoding)", "!isFixedWidth(codeRangeA)"})
-        static int utf16Variable(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding,
-                        int codepoint, int fromIndex, int toIndex,
-                        @Cached @Shared("lastIndexOfNode") TStringOpsNodes.RawLastIndexOfCodePointNode lastIndexOfNode) {
+        static int utf16(Node node, byte[] arrayA, long offsetA, int strideA, int codeRangeA, int codepoint, int fromIndex, int toIndex,
+                        TStringOpsNodes.RawLastIndexOfCodePointNode lastIndexOfNode) {
             assert strideA == 1;
             int encodedSize = Encodings.utf16EncodedSize(codepoint);
             if (encodedSize > fromIndex - toIndex) {
@@ -1432,12 +1211,9 @@ final class TStringInternalNodes {
                             node, arrayA, offsetA, 1, fromIndex, toIndex, Character.highSurrogate(codepoint), Character.lowSurrogate(codepoint), 0, 0);
         }
 
-        @Fallback
         static int unlikelyCases(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int codepoint, int fromIndex,
-                        int toIndex,
-                        @Cached InlinedConditionProfile utf16FEProfile,
-                        @Cached InlinedConditionProfile utf32FEProfile) {
-            if (utf16FEProfile.profile(node, isUTF16FE(encoding))) {
+                        int toIndex) {
+            if (encoding == Encoding.UTF_16_FOREIGN_ENDIAN) {
                 assert strideA == 1;
                 int encodedSize = Encodings.utf16EncodedSize(codepoint);
                 if (encodedSize > fromIndex - toIndex) {
@@ -1452,12 +1228,6 @@ final class TStringInternalNodes {
                 char hiSurrogate = Character.reverseBytes(Character.highSurrogate(codepoint));
                 char loSurrogate = Character.reverseBytes(Character.lowSurrogate(codepoint));
                 return TStringOps.lastIndexOf2ConsecutiveWithOrMaskWithStride(node, arrayA, offsetA, 1, fromIndex, toIndex, hiSurrogate, loSurrogate, 0, 0);
-            } else if (utf32FEProfile.profile(node, isUTF32FE(encoding))) {
-                assert strideA == 2;
-                if (fromIndex == toIndex || !TSCodeRange.isInCodeRange(codepoint, codeRangeA)) {
-                    return -1;
-                }
-                return TStringOps.lastIndexOfCodePointWithOrMaskWithStride(node, arrayA, offsetA, 2, fromIndex, toIndex, Integer.reverseBytes(codepoint), 0);
             } else {
                 assert strideA == 0;
                 return unsupported(node, a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, codepoint, fromIndex, toIndex);
@@ -1480,244 +1250,158 @@ final class TStringInternalNodes {
         }
     }
 
-    @ImportStatic({TStringGuards.class, Encoding.class})
-    abstract static class IndexOfCodePointSetNode extends Node {
+    abstract static class IndexOfCodePointSetNode extends AbstractInternalNode {
 
-        static final int POSSIBLE_STRIDE_VALUES = 3;
+        abstract int execute(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, TruffleString.CodePointSet codePointSet,
+                        BranchProfile[] branchProfiles);
 
-        @Children IndexOfCodePointSet.IndexOfNode[] indexOfNodes;
-        final Encoding encoding;
-        final boolean isUTF16Or32;
-
-        IndexOfCodePointSetNode(IndexOfCodePointSet.IndexOfNode[] indexOfNodes, Encoding encoding) {
-            this.indexOfNodes = indexOfNodes;
-            this.encoding = encoding;
-            this.isUTF16Or32 = isUTF16Or32(encoding) || isUTF16FE(encoding) || isUTF32FE(encoding);
-        }
-
-        abstract int execute(byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex);
-
-        @Specialization(guards = "!isUTF16Or32")
-        int stride0(byte[] arrayA, long offsetA, int lengthA, @SuppressWarnings("unused") int strideA, int codeRangeA, int fromIndex, int toIndex) {
-            return doIndexOf(arrayA, offsetA, lengthA, 0, codeRangeA, fromIndex, toIndex);
-        }
-
-        @Specialization(guards = {"isUTF16Or32", "strideA == cachedStride"}, limit = "POSSIBLE_STRIDE_VALUES")
-        int dynamicStride(byte[] arrayA, long offsetA, int lengthA, @SuppressWarnings("unused") int strideA, int codeRangeA, int fromIndex, int toIndex,
-                        @Cached(value = "strideA", allowUncached = true) int cachedStride) {
-            return doIndexOf(arrayA, offsetA, lengthA, cachedStride, codeRangeA, fromIndex, toIndex);
-        }
-
-        @ExplodeLoop
-        private int doIndexOf(byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex) {
-            CompilerAsserts.partialEvaluationConstant(indexOfNodes);
-            // generate an if-else cascade checking increasing code range values
-            for (int i = 0; i < indexOfNodes.length - 1; i++) {
-                CompilerAsserts.partialEvaluationConstant(i);
-                IndexOfCodePointSet.IndexOfNode node = indexOfNodes[i];
-                CompilerAsserts.partialEvaluationConstant(node);
-                if (TSCodeRange.isMoreRestrictiveOrEqual(codeRangeA, Byte.toUnsignedInt(node.maxCodeRange))) {
-                    return node.execute(this, arrayA, offsetA, lengthA, strideA, codeRangeA, fromIndex, toIndex, encoding);
-                }
-            }
-            // last node is always the else-branch
-            return indexOfNodes[indexOfNodes.length - 1].execute(this, arrayA, offsetA, lengthA, strideA, codeRangeA, fromIndex, toIndex, encoding);
+        @SuppressWarnings("unused")
+        @Specialization(guards = "compaction == cachedCompaction", limit = Stride.STRIDE_CACHE_LIMIT)
+        static int dynamicStride(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, TruffleString.CodePointSet codePointSet,
+                        BranchProfile[] branchProfiles,
+                        @Bind("fromStride(strideA)") CompactionLevel compaction,
+                        @Cached("compaction") CompactionLevel cachedCompaction) {
+            return codePointSet.doIndexOf(node, arrayA, offsetA, lengthA, cachedCompaction.getStride(), codeRangeA, fromIndex, toIndex, branchProfiles);
         }
     }
 
-    abstract static class SubstringNode extends AbstractInternalNode {
-
-        abstract TruffleString execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int strideA, int codeRangeA, Encoding encoding, int fromIndex, int length, boolean lazy);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "length == 0")
-        static TruffleString lengthZero(AbstractTruffleString a, byte[] arrayA, long offsetA, int strideA, int codeRangeA, Encoding encoding, int fromIndex, int length, boolean lazy) {
-            return encoding.getEmpty();
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"fromIndex == 0", "length == length(a)"})
-        static TruffleString sameStr(TruffleString a, byte[] arrayA, long offsetA, int strideA, int codeRangeA, Encoding encoding, int fromIndex, int length, boolean lazy) {
-            return a;
-        }
-
-        @Specialization(guards = {"length > 0", "length != length(a) || a.isMutable()", "!lazy"})
-        static TruffleString materializeSubstring(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int strideA, int codeRangeA, Encoding encoding, int fromIndex, int length,
-                        @SuppressWarnings("unused") boolean lazy,
-                        @Shared @Cached CalcStringAttributesNode calcAttributesNode,
-                        @Shared @Cached InlinedConditionProfile utf16Profile,
-                        @Shared @Cached InlinedConditionProfile utf32Profile,
-                        @Shared @Cached InlinedConditionProfile singleByteProfile) {
-            final long attrs;
-            final int codeRange;
-            final int stride;
-            final int newStride;
-            if (utf16Profile.profile(node, isUTF16(encoding))) {
-                stride = strideA;
-                attrs = calcAttributesNode.execute(node, a, arrayA, offsetA, length, stride, Encoding.UTF_16, fromIndex, codeRangeA);
-                codeRange = StringAttributes.getCodeRange(attrs);
-                newStride = Stride.fromCodeRangeUTF16(codeRange);
-            } else if (utf32Profile.profile(node, isUTF32(encoding))) {
-                stride = strideA;
-                attrs = calcAttributesNode.execute(node, a, arrayA, offsetA, length, stride, Encoding.UTF_32, fromIndex, codeRangeA);
-                codeRange = StringAttributes.getCodeRange(attrs);
-                newStride = Stride.fromCodeRangeUTF32(codeRange);
-            } else {
-                stride = encoding.naturalStride;
-                attrs = calcAttributesNode.execute(node, a, arrayA, offsetA, length, stride, encoding, fromIndex, codeRangeA);
-                codeRange = StringAttributes.getCodeRange(attrs);
-                newStride = encoding.naturalStride;
-            }
-            if (singleByteProfile.profile(node, length == 1 && newStride == 0 && encoding.isSupported())) {
-                return TStringConstants.getSingleByte(encoding, TStringOps.readValue(arrayA, offsetA, a.length(), stride, fromIndex));
-            }
-            byte[] newBytes = TStringOps.arraycopyOfWithStride(node, arrayA, offsetA + ((long) fromIndex << stride), length, stride, length, newStride);
-            return TruffleString.createFromByteArray(newBytes, length, newStride, encoding, StringAttributes.getCodePointLength(attrs), codeRange);
-        }
-
-        @Specialization(guards = {"length > 0", "length != length(a)", "lazy"})
-        static TruffleString createLazySubstring(Node node, TruffleString a, byte[] arrayA, long offsetA, int strideA, int codeRangeA, Encoding encoding, int fromIndex, int length,
-                        @SuppressWarnings("unused") boolean lazy,
-                        @Shared @Cached CalcStringAttributesNode calcAttributesNode,
-                        @Shared @Cached InlinedConditionProfile stride1MustMaterializeProfile,
-                        @Shared @Cached InlinedConditionProfile stride2MustMaterializeProfile,
-                        @Shared @Cached InlinedConditionProfile singleByteProfile) {
-            long lazyOffset = offsetA + (fromIndex << strideA);
+    static TruffleString substring(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, Encoding encoding, int fromIndex, int length,
+                    boolean lazy,
+                    CalcStringAttributesNode calcAttributesNode,
+                    InlinedConditionProfile stride1MustMaterializeProfile,
+                    InlinedConditionProfile stride2MustMaterializeProfile,
+                    InlinedConditionProfile singleByteProfile) {
+        assert length > 0;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, fromIndex == 0 && length == lengthA && a instanceof TruffleString)) {
+            return (TruffleString) a;
+        } else {
             long attrs = calcAttributesNode.execute(node, a, arrayA, offsetA, length, strideA, encoding, fromIndex, codeRangeA);
             int codeRange = StringAttributes.getCodeRange(attrs);
             int codePointLength = StringAttributes.getCodePointLength(attrs);
-            if (singleByteProfile.profile(node, length == 1 && Stride.fromCodeRange(codeRange, encoding) == 0 && encoding.isSupported())) {
-                return TStringConstants.getSingleByte(encoding, TStringOps.readValue(arrayA, offsetA, a.length(), a.stride(), fromIndex));
+            final int newStride = Stride.fromCodeRange(codeRange, encoding);
+            if (singleByteProfile.profile(node, length == 1 && newStride == 0 && encoding.isSupported())) {
+                return TStringConstants.getSingleByte(encoding, TStringOps.readValue(arrayA, offsetA, lengthA, strideA, fromIndex));
             }
+            CompilerAsserts.partialEvaluationConstant(lazy);
             final Object data;
             final int offset;
-            final int stride;
-            if (stride1MustMaterializeProfile.profile(node, isUTF16Or32(encoding) && strideA == 1 && TSCodeRange.isMoreRestrictiveOrEqual(codeRange, TSCodeRange.get8Bit()))) {
-                stride = 0;
-                offset = 0;
-                final byte[] newBytes = new byte[length];
-                TStringOps.arraycopyWithStride(node,
-                                arrayA, lazyOffset, 1, 0,
-                                newBytes, byteArrayBaseOffset(), 0, 0, length);
-                data = newBytes;
-            } else if (stride2MustMaterializeProfile.profile(node, isUTF32(encoding) && strideA == 2 && TSCodeRange.isMoreRestrictiveOrEqual(codeRange, TSCodeRange.get16Bit()))) {
-                // Always materialize 4-byte UTF-32 strings when they can be compacted. Otherwise,
-                // they could get re-interpreted as UTF-16 and break the assumption that all UTF-16
-                // strings are stride 0 or 1.
-                stride = Stride.fromCodeRangeUTF32(StringAttributes.getCodeRange(attrs));
-                offset = 0;
-                final byte[] newBytes = new byte[length << stride];
-                if (stride == 0) {
+            final long regionOffset = offsetA + (fromIndex << strideA);
+            if (lazy) {
+                if (isUTF16Or32(encoding) && stride1MustMaterializeProfile.profile(node, strideA == 1 && newStride == 0)) {
+                    offset = 0;
+                    final byte[] newBytes = new byte[length];
                     TStringOps.arraycopyWithStride(node,
-                                    arrayA, lazyOffset, 2, 0,
+                                    arrayA, regionOffset, 1, 0,
                                     newBytes, byteArrayBaseOffset(), 0, 0, length);
-                } else {
-                    assert stride == 1;
-                    TStringOps.arraycopyWithStride(node,
-                                    arrayA, lazyOffset, 2, 0,
-                                    newBytes, byteArrayBaseOffset(), 1, 0, length);
-                }
-                data = newBytes;
-            } else {
-                if (arrayA == null) {
-                    if (isUnsupportedEncoding(encoding)) {
-                        if (!JCodings.JCODINGS_ENABLED) {
-                            throw CompilerDirectives.shouldNotReachHere();
-                        }
-                        // avoid conflicts in NativePointer#getBytes
-                        data = ((NativePointer) a.data()).copy();
+                    data = newBytes;
+                } else if (encoding == Encoding.UTF_32 && stride2MustMaterializeProfile.profile(node, strideA == 2 && newStride < 2)) {
+                    // Always materialize 4-byte UTF-32 strings when they can be compacted.
+                    // Otherwise, they could get re-interpreted as UTF-16 and break the
+                    // assumption that all UTF-16 strings are stride 0 or 1.
+                    offset = 0;
+                    final byte[] newBytes = new byte[length << newStride];
+                    if (newStride == 0) {
+                        TStringOps.arraycopyWithStride(node,
+                                        arrayA, regionOffset, 2, 0,
+                                        newBytes, byteArrayBaseOffset(), 0, 0, length);
                     } else {
-                        data = a.data();
+                        assert newStride == 1;
+                        TStringOps.arraycopyWithStride(node,
+                                        arrayA, regionOffset, 2, 0,
+                                        newBytes, byteArrayBaseOffset(), 1, 0, length);
                     }
+                    data = newBytes;
                 } else {
-                    data = arrayA;
+                    if (arrayA == null) {
+                        if (isUnsupportedEncoding(encoding)) {
+                            if (!JCodings.JCODINGS_ENABLED) {
+                                throw CompilerDirectives.shouldNotReachHere();
+                            }
+                            // avoid conflicts in NativePointer#getBytes
+                            data = ((NativePointer) a.data()).copy();
+                        } else {
+                            data = a.data();
+                        }
+                    } else {
+                        data = arrayA;
+                    }
+                    offset = a.offset() + (fromIndex << strideA);
                 }
-                offset = a.offset() + (fromIndex << strideA);
-                stride = strideA;
+            } else {
+                data = TStringOps.arraycopyOfWithStride(node, arrayA, regionOffset, length, strideA, length, newStride);
+                offset = 0;
             }
-            return TruffleString.createFromArray(data, offset, length, stride, encoding, codePointLength, codeRange);
+            return TruffleString.createFromArray(data, offset, length, newStride, encoding, codePointLength, codeRange);
         }
     }
 
-    abstract static class ConcatEagerNode extends AbstractInternalNode {
-
-        abstract TruffleString execute(Node node, AbstractTruffleString a, AbstractTruffleString b, Encoding encoding, int concatLength, int concatStride, int concatCodeRange);
-
-        @Specialization
-        static TruffleString concat(Node node, AbstractTruffleString a, AbstractTruffleString b, Encoding encoding, int concatLength, int concatStride, int concatCodeRange,
-                        @Cached InlinedConditionProfile managedProfileA,
-                        @Cached InlinedConditionProfile nativeProfileA,
-                        @Cached InlinedConditionProfile managedProfileB,
-                        @Cached InlinedConditionProfile nativeProfileB,
-                        @Cached GetCodePointLengthNode getCodePointLengthANode,
-                        @Cached GetCodePointLengthNode getCodePointLengthBNode,
-                        @Cached ConcatMaterializeBytesNode materializeBytesNode,
-                        @Cached CalcStringAttributesNode calculateAttributesNode,
-                        @Cached InlinedConditionProfile brokenProfile) {
-            Object dataA = a.data();
-            Object dataB = b.data();
-            try {
-                final byte[] arrayA;
-                final long addOffsetA;
-                if (managedProfileA.profile(node, dataA instanceof byte[])) {
-                    arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
-                } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
-                    arrayA = null;
-                    addOffsetA = NativePointer.unwrap(dataA);
-                } else {
-                    arrayA = a.materializeLazy(node, dataA);
-                    addOffsetA = byteArrayBaseOffset();
-                }
-                final long offsetA = a.offset() + addOffsetA;
-                final int lengthA = a.length();
-                final int strideA = a.stride();
-
-                final byte[] arrayB;
-                final long addOffsetB;
-                if (managedProfileB.profile(node, dataB instanceof byte[])) {
-                    arrayB = (byte[]) dataB;
-                    addOffsetB = byteArrayBaseOffset();
-                } else if (nativeProfileB.profile(node, dataB instanceof NativePointer)) {
-                    arrayB = null;
-                    addOffsetB = NativePointer.unwrap(dataB);
-                } else {
-                    arrayB = b.materializeLazy(node, dataB);
-                    addOffsetB = byteArrayBaseOffset();
-                }
-                final long offsetB = b.offset() + addOffsetB;
-                final int lengthB = b.length();
-                final int strideB = b.stride();
-
-                final byte[] bytes = materializeBytesNode.execute(node, arrayA, offsetA, lengthA, strideA, arrayB, offsetB, lengthB, strideB, encoding, concatLength, concatStride);
-                final int codeRange;
-                final int codePointLength;
-                if (brokenProfile.profile(node, isBrokenMultiByte(concatCodeRange))) {
-                    final long attrs = calculateAttributesNode.execute(node, null, bytes, byteArrayBaseOffset(), concatLength, concatStride, encoding, 0, TSCodeRange.getBrokenMultiByte());
-                    codePointLength = StringAttributes.getCodePointLength(attrs);
-                    codeRange = StringAttributes.getCodeRange(attrs);
-                } else {
-                    codePointLength = getCodePointLengthANode.execute(node, a, arrayA, offsetA, encoding) + getCodePointLengthBNode.execute(node, b, arrayB, offsetB, encoding);
-                    codeRange = concatCodeRange;
-                }
-                return TruffleString.createFromByteArray(bytes, concatLength, concatStride, encoding, codePointLength, codeRange);
-            } finally {
-                Reference.reachabilityFence(dataA);
-                Reference.reachabilityFence(dataB);
+    static TruffleString concat(Node node, AbstractTruffleString a, AbstractTruffleString b, Encoding encoding, int concatLength, int concatStride, int concatCodeRange,
+                    InlinedConditionProfile managedProfileA,
+                    InlinedConditionProfile nativeProfileA,
+                    InlinedConditionProfile managedProfileB,
+                    InlinedConditionProfile nativeProfileB,
+                    InlinedConditionProfile calcCodePointLengthAProfile,
+                    InlinedConditionProfile calcCodePointLengthBProfile,
+                    CalcStringAttributesNode calculateAttributesNode,
+                    InlinedConditionProfile brokenProfile) {
+        Object dataA = a.data();
+        Object dataB = b.data();
+        try {
+            final byte[] arrayA;
+            final long addOffsetA;
+            if (managedProfileA.profile(node, dataA instanceof byte[])) {
+                arrayA = (byte[]) dataA;
+                addOffsetA = byteArrayBaseOffset();
+            } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
+                arrayA = null;
+                addOffsetA = NativePointer.unwrap(dataA);
+            } else {
+                arrayA = a.materializeLazy(node, dataA);
+                addOffsetA = byteArrayBaseOffset();
             }
+            final long offsetA = a.offset() + addOffsetA;
+            final int lengthA = a.length();
+            final int strideA = a.stride();
+
+            final byte[] arrayB;
+            final long addOffsetB;
+            if (managedProfileB.profile(node, dataB instanceof byte[])) {
+                arrayB = (byte[]) dataB;
+                addOffsetB = byteArrayBaseOffset();
+            } else if (nativeProfileB.profile(node, dataB instanceof NativePointer)) {
+                arrayB = null;
+                addOffsetB = NativePointer.unwrap(dataB);
+            } else {
+                arrayB = b.materializeLazy(node, dataB);
+                addOffsetB = byteArrayBaseOffset();
+            }
+            final long offsetB = b.offset() + addOffsetB;
+            final int lengthB = b.length();
+            final int strideB = b.stride();
+
+            final byte[] bytes = concatMaterializeBytes(node, arrayA, offsetA, lengthA, strideA, arrayB, offsetB, lengthB, strideB, encoding, concatLength, concatStride);
+            final int codeRange;
+            final int codePointLength;
+            if (brokenProfile.profile(node, isBrokenMultiByte(concatCodeRange))) {
+                final long attrs = calculateAttributesNode.execute(node, null, bytes, byteArrayBaseOffset(), concatLength, concatStride, encoding, 0, TSCodeRange.getBrokenMultiByte());
+                codePointLength = StringAttributes.getCodePointLength(attrs);
+                codeRange = StringAttributes.getCodeRange(attrs);
+            } else {
+                codePointLength = getCodePointLength(node, a, arrayA, offsetA, encoding, calcCodePointLengthAProfile) +
+                                getCodePointLength(node, b, arrayB, offsetB, encoding, calcCodePointLengthBProfile);
+                codeRange = concatCodeRange;
+            }
+            return TruffleString.createFromByteArray(bytes, concatLength, concatStride, encoding, codePointLength, codeRange);
+        } finally {
+            Reference.reachabilityFence(dataA);
+            Reference.reachabilityFence(dataB);
         }
     }
 
-    abstract static class ConcatMaterializeBytesNode extends AbstractInternalNode {
-
-        abstract byte[] execute(Node node,
-                        byte[] arrayA, long offsetA, int lengthA, int strideA,
-                        byte[] arrayB, long offsetB, int lengthB, int strideB, Encoding encoding, int concatLength, int concatStride);
-
-        @Specialization(guards = "isUTF16(encoding) || isUTF32(encoding)")
-        static byte[] doWithCompression(Node node,
-                        byte[] arrayA, long offsetA, int lengthA, int strideA,
-                        byte[] arrayB, long offsetB, int lengthB, int strideB, @SuppressWarnings("unused") Encoding encoding, int concatLength, int concatStride) {
+    static byte[] concatMaterializeBytes(Node node,
+                    byte[] arrayA, long offsetA, int lengthA, int strideA,
+                    byte[] arrayB, long offsetB, int lengthB, int strideB, Encoding encoding, int concatLength, int concatStride) {
+        if (encoding == Encoding.UTF_16 || encoding == Encoding.UTF_32) {
             final byte[] bytes = new byte[concatLength << concatStride];
             TStringOps.arraycopyWithStride(node,
                             arrayA, offsetA, strideA, 0,
@@ -1726,12 +1410,7 @@ final class TStringInternalNodes {
                             arrayB, offsetB, strideB, 0,
                             bytes, byteArrayBaseOffset(), concatStride, lengthA, lengthB);
             return bytes;
-        }
-
-        @Specialization(guards = {"!isUTF16(encoding)", "!isUTF32(encoding)"})
-        byte[] doNoCompression(Node node,
-                        byte[] arrayA, long offsetA, int lengthA, int strideA,
-                        byte[] arrayB, long offsetB, int lengthB, int strideB, @SuppressWarnings("unused") Encoding encoding, int concatLength, int concatStride) {
+        } else {
             final byte[] bytes = new byte[concatLength << concatStride];
             TStringOps.arraycopyWithStride(node,
                             arrayA, offsetA, 0, 0,
@@ -1818,48 +1497,18 @@ final class TStringInternalNodes {
         }
     }
 
-    abstract static class IndexOfStringRawNode extends AbstractInternalNode {
+    static final class IndexOfStringRaw {
 
-        abstract int execute(Node node,
+        @TruffleBoundary
+        static int unsupported(Node node,
                         AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA,
-                        AbstractTruffleString b, byte[] arrayB, long offsetB, int lengthB, int strideB, int codeRangeB, int fromIndex, int toIndex, byte[] mask, Encoding encoding);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"isSupportedEncodingWithCompaction(encoding) || isFixedWidth(codeRangeA)"})
-        static int supported(Node node,
-                        AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA,
-                        AbstractTruffleString b, byte[] arrayB, long offsetB, int lengthB, int strideB, int codeRangeB, int fromIndex, int toIndex, byte[] mask,
-                        Encoding encoding,
-                        @Cached RawIndexOfStringNode indexOfStringNode) {
-            return indexOfStringNode.execute(node, arrayA, offsetA, lengthA, strideA, arrayB, offsetB, lengthB, strideB, fromIndex, toIndex, mask);
-        }
-
-        @Fallback
-        static int unlikelyCases(Node node,
-                        AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA,
-                        AbstractTruffleString b, byte[] arrayB, long offsetB, int lengthB, int strideB, int codeRangeB, int fromIndex, int toIndex, byte[] mask, Encoding encoding,
-                        @Cached TruffleStringIterator.InternalNextNode nextNodeA,
-                        @Cached TruffleStringIterator.InternalNextNode nextNodeB,
-                        @Cached InlinedConditionProfile utf16FEProfile,
-                        @Cached InlinedConditionProfile utf32FEProfile,
-                        @Cached InlinedConditionProfile oneLengthProfile) {
+                        AbstractTruffleString b, byte[] arrayB, long offsetB, int lengthB, int strideB, int codeRangeB, int fromIndex, int toIndex, byte[] mask, Encoding encoding) {
             assert mask == null;
-            if (utf16FEProfile.profile(node, isUTF16FE(encoding))) {
-                return RawIndexOfStringNode.runIndexOf(node,
-                                arrayA, offsetA, lengthA, 1,
-                                arrayB, offsetB, lengthB, 1, fromIndex, toIndex, null, oneLengthProfile);
-            } else if (utf32FEProfile.profile(node, isUTF32FE(encoding))) {
-                return RawIndexOfStringNode.runIndexOf(node,
-                                arrayA, offsetA, lengthA, 2,
-                                arrayB, offsetB, lengthB, 2, fromIndex, toIndex, null, oneLengthProfile);
-            } else {
-                if (!JCodings.JCODINGS_ENABLED) {
-                    throw CompilerDirectives.shouldNotReachHere();
-                }
-                TruffleStringIterator aIt = AbstractTruffleString.forwardIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding);
-                TruffleStringIterator bIt = AbstractTruffleString.forwardIterator(b, arrayB, offsetB, lengthB, strideB, codeRangeB, encoding);
-                return TruffleStringIterator.byteIndexOfString(node, aIt, bIt, encoding, fromIndex, toIndex, nextNodeA, nextNodeB);
-            }
+            TruffleStringIterator aIt = AbstractTruffleString.forwardIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding);
+            TruffleStringIterator bIt = AbstractTruffleString.forwardIterator(b, arrayB, offsetB, lengthB, strideB, codeRangeB, encoding);
+            return TruffleStringIterator.byteIndexOfString(node, aIt, bIt, encoding, fromIndex, toIndex,
+                            TruffleStringIterator.InternalNextNode.getUncached(),
+                            TruffleStringIterator.InternalNextNode.getUncached());
         }
     }
 
@@ -1893,73 +1542,20 @@ final class TStringInternalNodes {
         }
     }
 
-    abstract static class LastIndexOfStringRawNode extends AbstractInternalNode {
+    static final class LastIndexOfStringRaw {
 
-        abstract int execute(Node node,
+        @TruffleBoundary
+        static int unsupported(Node node,
                         AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA,
-                        AbstractTruffleString b, byte[] arrayB, long offsetB, int lengthB, int strideB, int codeRangeB, int fromIndex, int toIndex, byte[] mask, Encoding encoding);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"isSupportedEncodingWithCompaction(encoding) || isFixedWidth(codeRangeA)"})
-        static int direct(Node node,
-                        AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA,
-                        AbstractTruffleString b, byte[] arrayB, long offsetB, int lengthB, int strideB, int codeRangeB, int fromIndex, int toIndex, byte[] mask,
-                        Encoding encoding,
-                        @Cached TStringOpsNodes.RawLastIndexOfStringNode indexOfStringNode) {
-            assert lengthB > 0 && !indexOfCannotMatch(codeRangeA, lengthB, codeRangeB, mask, fromIndex - toIndex);
-            return indexOfStringNode.execute(node,
-                            arrayA, offsetA, lengthA, strideA,
-                            arrayB, offsetB, lengthB, strideB, fromIndex, toIndex, mask);
-        }
-
-        @Fallback
-        static int unlikelyCases(Node node,
-                        AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA,
-                        AbstractTruffleString b, byte[] arrayB, long offsetB, int lengthB, int strideB, int codeRangeB, int fromIndex, int toIndex, byte[] mask, Encoding encoding,
-                        @Cached TruffleStringIterator.InternalNextNode nextNodeA,
-                        @Cached TruffleStringIterator.InternalPreviousNode prevNodeA,
-                        @Cached TruffleStringIterator.InternalPreviousNode prevNodeB,
-                        @Cached InlinedConditionProfile utf16FEProfile,
-                        @Cached InlinedConditionProfile utf32FEProfile,
-                        @Cached InlinedConditionProfile oneLengthProfile) {
+                        AbstractTruffleString b, byte[] arrayB, long offsetB, int lengthB, int strideB, int codeRangeB, int fromIndex, int toIndex, byte[] mask, Encoding encoding) {
             assert mask == null;
             assert lengthB > 0 && !indexOfCannotMatch(codeRangeA, lengthB, codeRangeB, null, fromIndex - toIndex);
-            if (utf16FEProfile.profile(node, isUTF16FE(encoding))) {
-                return RawLastIndexOfStringNode.runIndexOf(node,
-                                arrayA, offsetA, lengthA, 1,
-                                arrayB, offsetB, lengthB, 1, fromIndex, toIndex, null, oneLengthProfile);
-            } else if (utf32FEProfile.profile(node, isUTF32FE(encoding))) {
-                return RawLastIndexOfStringNode.runIndexOf(node,
-                                arrayA, offsetA, lengthA, 2,
-                                arrayB, offsetB, lengthB, 2, fromIndex, toIndex, null, oneLengthProfile);
-            } else {
-                if (!JCodings.JCODINGS_ENABLED) {
-                    throw CompilerDirectives.shouldNotReachHere();
-                }
-                TruffleStringIterator aIt = AbstractTruffleString.forwardIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding);
-                TruffleStringIterator bIt = AbstractTruffleString.backwardIterator(b, arrayB, offsetB, lengthB, strideB, codeRangeB, encoding);
-                return TruffleStringIterator.lastByteIndexOfString(node, aIt, bIt, encoding, fromIndex, toIndex, nextNodeA, prevNodeA, prevNodeB);
-            }
-        }
-    }
-
-    abstract static class StrideFromCodeRangeNode extends AbstractInternalNode {
-
-        abstract int execute(Node node, int codeRange, Encoding encoding);
-
-        @Specialization(guards = "isUTF16(encoding)")
-        int doUTF16(int codeRange, @SuppressWarnings("unused") Encoding encoding) {
-            return Stride.fromCodeRangeUTF16(codeRange);
-        }
-
-        @Specialization(guards = "isUTF32(encoding)")
-        int doUTF32(int codeRange, @SuppressWarnings("unused") Encoding encoding) {
-            return Stride.fromCodeRangeUTF32(codeRange);
-        }
-
-        @Specialization(guards = {"!isUTF16(encoding)", "!isUTF32(encoding)"})
-        int doOther(@SuppressWarnings("unused") int codeRange, Encoding encoding) {
-            return encoding.naturalStride;
+            TruffleStringIterator aIt = AbstractTruffleString.forwardIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding);
+            TruffleStringIterator bIt = AbstractTruffleString.backwardIterator(b, arrayB, offsetB, lengthB, strideB, codeRangeB, encoding);
+            return TruffleStringIterator.lastByteIndexOfString(node, aIt, bIt, encoding, fromIndex, toIndex,
+                            TruffleStringIterator.InternalNextNode.getUncached(),
+                            TruffleStringIterator.InternalPreviousNode.getUncached(),
+                            TruffleStringIterator.InternalPreviousNode.getUncached());
         }
     }
 
@@ -1969,29 +1565,27 @@ final class TStringInternalNodes {
 
         @Specialization
         static long calc(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int length, int stride, Encoding encoding, int fromIndex, int knownCodeRange,
-                        @Cached CalcStringAttributesInnerNode calcNode) {
+                        @Cached InlinedConditionProfile codeRangeProfile1,
+                        @Cached InlinedConditionProfile codeRangeProfile2,
+                        @Cached InlinedConditionProfile codeRangeProfile3) {
             if (length == 0) {
                 return StringAttributes.create(length, TSCodeRange.getAsciiCodeRange(encoding));
             } else if (is7Bit(knownCodeRange)) {
                 assert TSCodeRange.isFixedWidth(knownCodeRange);
                 return StringAttributes.create(length, TSCodeRange.markPrecise(knownCodeRange));
             }
-            return calcNode.execute(node, a, arrayA, offsetA, length, stride, encoding, fromIndex, knownCodeRange);
+            if (encoding == Encoding.UTF_8) {
+                return utf8(node, a, arrayA, offsetA, length, stride, fromIndex, knownCodeRange, codeRangeProfile1, codeRangeProfile2);
+            } else if (encoding == Encoding.UTF_16 || encoding == Encoding.UTF_32) {
+                return utf16Or32(node, arrayA, offsetA, length, stride, encoding, fromIndex, knownCodeRange, codeRangeProfile1, codeRangeProfile2, codeRangeProfile3);
+            } else {
+                return unlikelyCases(node, a, arrayA, offsetA, length, stride, encoding, fromIndex, knownCodeRange, codeRangeProfile1);
+            }
         }
 
-        static CalcStringAttributesNode getUncached() {
-            return TStringInternalNodesFactory.CalcStringAttributesNodeGen.getUncached();
-        }
-    }
-
-    abstract static class CalcStringAttributesInnerNode extends AbstractInternalNode {
-
-        abstract long execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int length, int stride, Encoding encoding, int fromIndex, int knownCodeRange);
-
-        @Specialization(guards = {"isUTF8(encoding)"})
-        static long utf8(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int length, int stride, @SuppressWarnings("unused") Encoding encoding, int fromIndex, int knownCodeRange,
-                        @Exclusive @Cached InlinedConditionProfile validProfile,
-                        @Exclusive @Cached InlinedConditionProfile brokenProfile) {
+        static long utf8(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int length, int stride, int fromIndex, int knownCodeRange,
+                        InlinedConditionProfile validProfile,
+                        InlinedConditionProfile brokenProfile) {
             assert stride == 0;
             long off = offsetA + fromIndex;
             if (validProfile.profile(node, isValid(knownCodeRange) && a != null)) {
@@ -2001,18 +1595,16 @@ final class TStringInternalNodes {
             }
         }
 
-        @Specialization(guards = {"isUTF16Or32(encoding)"})
-        static long utf16Or32(Node node, @SuppressWarnings("unused") AbstractTruffleString a, byte[] arrayA, long offsetA, int length, int stride, Encoding encoding, int fromIndex,
+        static long utf16Or32(Node node, byte[] arrayA, long offsetA, int length, int stride, Encoding encoding, int fromIndex,
                         int knownCodeRange,
-                        @Exclusive @Cached InlinedConditionProfile oneByteProfile,
-                        @Exclusive @Cached InlinedConditionProfile twoByteProfile,
-                        @Exclusive @Cached InlinedConditionProfile utf16Profile,
-                        @Exclusive @Cached InlinedConditionProfile utf16ValidProfile) {
+                        InlinedConditionProfile oneByteProfile,
+                        InlinedConditionProfile twoByteProfile,
+                        InlinedConditionProfile utf16ValidProfile) {
             if (oneByteProfile.profile(node, is8Bit(knownCodeRange) && stride == 0)) {
                 return StringAttributes.create(length, TStringOps.calcStringAttributesLatin1(node, arrayA, offsetA + fromIndex, length));
             } else if (twoByteProfile.profile(node, isUpTo16Bit(knownCodeRange) && stride == 1)) {
                 return StringAttributes.create(length, TStringOps.calcStringAttributesBMP(node, arrayA, offsetA + (fromIndex << 1), length));
-            } else if (utf16Profile.profile(node, isUTF16(encoding))) {
+            } else if (encoding == Encoding.UTF_16) {
                 assert stride == 1;
                 if (utf16ValidProfile.profile(node, isValid(knownCodeRange))) {
                     return TStringOps.calcStringAttributesUTF16(node, arrayA, offsetA + (fromIndex << 1), length, true);
@@ -2027,30 +1619,30 @@ final class TStringInternalNodes {
             }
         }
 
-        @Fallback
-        static long unlikelyCases(Node node, @SuppressWarnings("unused") AbstractTruffleString a, byte[] arrayA, long offsetA, int length, int stride, Encoding encoding, int fromIndex,
-                        int knownCodeRange,
-                        @Exclusive @Cached InlinedConditionProfile asciiBytesLatinProfile,
-                        @Exclusive @Cached InlinedConditionProfile utf16FEProfile,
-                        @Exclusive @Cached InlinedConditionProfile utf16FEValidProfile,
-                        @Exclusive @Cached InlinedConditionProfile utf32FEProfile) {
-            if (asciiBytesLatinProfile.profile(node, isAsciiBytesOrLatin1(encoding))) {
+        @InliningCutoff
+        static long unlikelyCases(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int length, int stride, Encoding encoding, int fromIndex, int knownCodeRange,
+                        InlinedConditionProfile validProfile) {
+            if (isAsciiBytesOrLatin1(encoding)) {
                 assert stride == 0;
                 int codeRange = TStringOps.calcStringAttributesLatin1(node, arrayA, offsetA + fromIndex, length);
                 return StringAttributes.create(length, is8Bit(codeRange) ? TSCodeRange.asciiLatinBytesNonAsciiCodeRange(encoding) : codeRange);
-            } else if (utf16FEProfile.profile(node, isUTF16FE(encoding))) {
-                if (utf16FEValidProfile.profile(node, isValid(knownCodeRange))) {
+            } else if (encoding == Encoding.UTF_16_FOREIGN_ENDIAN) {
+                if (validProfile.profile(node, isValid(knownCodeRange))) {
                     return TStringOps.calcStringAttributesUTF16FEAssumeValid(node, arrayA, offsetA + ((long) fromIndex << 1), length);
                 } else {
                     return TStringOps.calcStringAttributesUTF16FE(node, arrayA, offsetA + ((long) fromIndex << 1), length);
                 }
-            } else if (utf32FEProfile.profile(node, isUTF32FE(encoding))) {
+            } else if (encoding == Encoding.UTF_32_FOREIGN_ENDIAN) {
                 return StringAttributes.create(length, TStringOps.calcStringAttributesUTF32FE(node, arrayA, offsetA + ((long) fromIndex << 2), length));
             } else {
                 assert stride == 0;
                 assert isUnsupportedEncoding(encoding);
                 return JCodings.getInstance().calcStringAttributes(node, a, arrayA, offsetA, length, encoding, fromIndex);
             }
+        }
+
+        static CalcStringAttributesNode getUncached() {
+            return TStringInternalNodesFactory.CalcStringAttributesNodeGen.getUncached();
         }
     }
 
@@ -2111,99 +1703,27 @@ final class TStringInternalNodes {
         }
     }
 
-    abstract static class FromJavaStringUTF16Node extends AbstractInternalNode {
-
-        FromJavaStringUTF16Node() {
+    static String createJavaString(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA,
+                    InlinedConditionProfile reuseProfile) {
+        assert TSCodeRange.is7Or8Bit(a.codeRange()) || TSCodeRange.isPrecise(a.codeRange());
+        assert a.isLooselyCompatibleTo(Encoding.UTF_16);
+        final int stride = TStringUnsafe.COMPACT_STRINGS_ENABLED ? Stride.fromCodeRangeUTF16(a.codeRange()) : 1;
+        final byte[] bytes;
+        if (reuseProfile.profile(node, a instanceof TruffleString && arrayA != null && lengthA << strideA == arrayA.length && strideA == stride)) {
+            assert offsetA == byteArrayBaseOffset();
+            bytes = arrayA;
+        } else {
+            bytes = new byte[lengthA << stride];
+            TStringOps.arraycopyWithStride(node,
+                            arrayA, offsetA, strideA, 0,
+                            bytes, byteArrayBaseOffset(), stride, 0, lengthA);
         }
-
-        abstract TruffleString execute(Node node, String value, int charOffset, int length, boolean copy);
-
-        @Specialization
-        static TruffleString doNonEmpty(Node node, String javaString, int charOffset, int length, final boolean copy,
-                        @Cached InlinedConditionProfile utf16CompactProfile,
-                        @Cached InlinedConditionProfile length1Profile,
-                        @Cached InlinedConditionProfile fullLengthProfile,
-                        @Cached InlinedConditionProfile equalStrideProfile) {
-            checkArrayRange(javaString.length(), charOffset, length);
-            CompilerAsserts.partialEvaluationConstant(copy);
-            if (length == 0) {
-                return Encoding.UTF_16.getEmpty();
-            }
-            final byte[] array;
-            final int offset;
-            final int stride;
-            final int codeRange;
-            final int codePointLength;
-            int strideJS = TStringUnsafe.getJavaStringStride(javaString);
-            int offsetJS = charOffset << strideJS;
-            byte[] arrayJS = TStringUnsafe.getJavaStringArray(javaString);
-            boolean fullLength = fullLengthProfile.profile(node, length == javaString.length());
-            if (utf16CompactProfile.profile(node, strideJS == 0)) {
-                if (length1Profile.profile(node, length == 1)) {
-                    return TStringConstants.getSingleByte(Encoding.UTF_16, Byte.toUnsignedInt(arrayJS[charOffset]));
-                }
-                codeRange = TSCodeRange.markImprecise(TSCodeRange.get8Bit());
-                codePointLength = length;
-            } else {
-                assert strideJS == 1;
-                if (length1Profile.profile(node, length == 1 && TStringOps.readFromByteArrayS1(arrayJS, charOffset) <= 0xff)) {
-                    return TStringConstants.getSingleByte(Encoding.UTF_16, TStringOps.readFromByteArrayS1(arrayJS, charOffset));
-                }
-                if (TStringUnsafe.COMPACT_STRINGS_ENABLED && fullLength) {
-                    codePointLength = -1;
-                    codeRange = TSCodeRange.markImprecise(TSCodeRange.getBrokenMultiByte());
-                } else {
-                    final long attrs = TStringOps.calcStringAttributesUTF16(node, arrayJS, offsetJS + byteArrayBaseOffset(), length, false);
-                    codePointLength = StringAttributes.getCodePointLength(attrs);
-                    codeRange = StringAttributes.getCodeRange(attrs);
-                }
-            }
-            stride = Stride.fromCodeRangeUTF16AllowImprecise(codeRange);
-            if (TStringUnsafe.COMPACT_STRINGS_ENABLED && (fullLength || !copy && equalStrideProfile.profile(node, stride == strideJS))) {
-                offset = offsetJS;
-                array = arrayJS;
-            } else {
-                array = new byte[length << stride];
-                offset = 0;
-                if (strideJS == 1 && stride == 0) {
-                    TStringOps.arraycopyWithStride(node, arrayJS, offsetJS + byteArrayBaseOffset(), 1, 0, array, offset + byteArrayBaseOffset(), 0, 0, length);
-                } else {
-                    assert strideJS == stride;
-                    TStringOps.arraycopyWithStride(node, arrayJS, offsetJS + byteArrayBaseOffset(), 0, 0, array, offset + byteArrayBaseOffset(), 0, 0, length << stride);
-                }
-            }
-            int hash = fullLength ? TStringUnsafe.getJavaStringHashMasked(javaString) : 0;
-            return TruffleString.createFromByteArray(array, offset, length, stride, Encoding.UTF_16, codePointLength, codeRange, hash, true);
+        int javaStringHash = a.hashCode;
+        if (javaStringHash == AbstractTruffleString.MASKED_ZERO_HASH_CODE) {
+            // hash code could be 0 or -1, treat the hash code as uninitialized
+            javaStringHash = 0;
         }
-    }
-
-    abstract static class CreateJavaStringNode extends AbstractInternalNode {
-
-        abstract String execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA);
-
-        @Specialization
-        static String createJavaString(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA,
-                        @Cached InlinedConditionProfile reuseProfile) {
-            assert TSCodeRange.is7Or8Bit(a.codeRange()) || TSCodeRange.isPrecise(a.codeRange());
-            assert a.isLooselyCompatibleTo(Encoding.UTF_16);
-            final int stride = TStringUnsafe.COMPACT_STRINGS_ENABLED ? Stride.fromCodeRangeUTF16(a.codeRange()) : 1;
-            final byte[] bytes;
-            if (reuseProfile.profile(node, a instanceof TruffleString && arrayA != null && lengthA << strideA == arrayA.length && strideA == stride)) {
-                assert offsetA == byteArrayBaseOffset();
-                bytes = arrayA;
-            } else {
-                bytes = new byte[lengthA << stride];
-                TStringOps.arraycopyWithStride(node,
-                                arrayA, offsetA, strideA, 0,
-                                bytes, byteArrayBaseOffset(), stride, 0, lengthA);
-            }
-            int javaStringHash = a.hashCode;
-            if (javaStringHash == AbstractTruffleString.MASKED_ZERO_HASH_CODE) {
-                // hash code could be 0 or -1, treat the hash code as uninitialized
-                javaStringHash = 0;
-            }
-            return TStringUnsafe.createJavaString(bytes, stride, javaStringHash);
-        }
+        return TStringUnsafe.createJavaString(bytes, stride, javaStringHash);
     }
 
     abstract static class ToValidStringNode extends AbstractInternalNode {
@@ -2373,6 +1893,7 @@ final class TStringInternalNodes {
 
     abstract static class TransCodeNode extends AbstractInternalNode {
 
+        @InliningCutoff
         abstract TruffleString execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codePointLengthA, int codeRangeA, Encoding targetEncoding,
                         TranscodingErrorHandler errorHandler);
 
@@ -2555,7 +2076,7 @@ final class TStringInternalNodes {
             assert !is7Bit(codeRangeA) || isUTF16FE(sourceEncoding) || isUTF32FE(sourceEncoding);
             TruffleStringIterator it = AbstractTruffleString.forwardIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, sourceEncoding);
             boolean allowUTF16Surrogates = errorHandler == TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8;
-            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler);
+            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler, codeRangeA);
             byte[] buffer = new byte[isLarge ? TStringConstants.MAX_ARRAY_SIZE : codePointLengthA * 4];
             int codeRange = TSCodeRange.get7Bit();
             int length = 0;
@@ -2652,7 +2173,8 @@ final class TStringInternalNodes {
         }
 
         @Specialization(guards = {"isUTF32FE(sourceEncoding)", "isUTF32(targetEncoding) || isMoreRestrictiveThan(codeRangeA, targetEncoding.maxCompatibleCodeRange)"})
-        static TruffleString utf32ByteSwap(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, @SuppressWarnings("unused") int codePointLengthA, int codeRangeA,
+        static TruffleString utf32ByteSwap(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, @SuppressWarnings("unused") int codePointLengthA,
+                        int codeRangeA,
                         @SuppressWarnings("unused") Encoding sourceEncoding,
                         @SuppressWarnings("unused") Encoding targetEncoding,
                         @SuppressWarnings("unused") TranscodingErrorHandler errorHandler) {
@@ -2691,7 +2213,8 @@ final class TStringInternalNodes {
         }
 
         @Specialization(guards = {"isSupportedEncodingWithCompaction(sourceEncoding) || isUTF32FE(sourceEncoding)", "!isUpTo16Bit(codeRangeA)", "isUTF16(targetEncoding)"})
-        static TruffleString utf16Transcode(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codePointLengthA, int codeRangeA, Encoding sourceEncoding,
+        static TruffleString utf16Transcode(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codePointLengthA, int codeRangeA,
+                        Encoding sourceEncoding,
                         @SuppressWarnings("unused") Encoding targetEncoding,
                         TranscodingErrorHandler errorHandler,
                         @Cached @Shared("iteratorNextNode") TruffleStringIterator.InternalNextNode iteratorNextNode,
@@ -2715,7 +2238,7 @@ final class TStringInternalNodes {
             int codePointLength = codePointLengthA;
             int length = 0;
             int codeRange = TSCodeRange.get7Bit();
-            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler);
+            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler, codeRangeA);
             while (it.hasNext()) {
                 int curIndex = it.getRawIndex();
                 int codepoint = iteratorNextNode.execute(node, it, sourceEncoding, decodingErrorHandler);
@@ -2787,7 +2310,8 @@ final class TStringInternalNodes {
         }
 
         @Specialization(guards = {"isSupportedEncodingWithCompaction(sourceEncoding) || isUTF32FE(sourceEncoding)", "!isUTF16(sourceEncoding)", "isUTF16FE(targetEncoding)"})
-        static TruffleString utf16FETranscode(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codePointLengthA, int codeRangeA, Encoding sourceEncoding,
+        static TruffleString utf16FETranscode(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codePointLengthA, int codeRangeA,
+                        Encoding sourceEncoding,
                         @SuppressWarnings("unused") Encoding targetEncoding,
                         TranscodingErrorHandler errorHandler,
                         @Cached @Shared("iteratorNextNode") TruffleStringIterator.InternalNextNode iteratorNextNode,
@@ -2810,7 +2334,7 @@ final class TStringInternalNodes {
             int codePointLength = 0;
             int length = 0;
             int codeRange = TSCodeRange.get7Bit();
-            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler);
+            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler, codeRangeA);
             int loopCount = 0;
             while (it.hasNext()) {
                 int codepoint = iteratorNextNode.execute(node, it, sourceEncoding, decodingErrorHandler);
@@ -2866,7 +2390,7 @@ final class TStringInternalNodes {
                         @Cached @Shared("iteratorNextNode") TruffleStringIterator.InternalNextNode iteratorNextNode) {
             assert containsSurrogates(a);
             boolean allowUTF16Surrogates = isAllowUTF16SurrogatesUTF16Or32(errorHandler);
-            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler);
+            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler, codeRangeA);
             TruffleStringIterator it = AbstractTruffleString.forwardIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, sourceEncoding);
             byte[] buffer = new byte[codePointLengthA << 2];
             int length = 0;
@@ -2892,7 +2416,7 @@ final class TStringInternalNodes {
                         TruffleStringIterator.InternalNextNode iteratorNextNode) {
             assert TStringGuards.isValidOrBrokenMultiByte(codeRangeA);
             TruffleStringIterator it = AbstractTruffleString.forwardIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, sourceEncoding);
-            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler);
+            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler, codeRangeA);
             byte[] buffer = new byte[codePointLengthA];
             int offsetBuf = byteArrayBaseOffset();
             int length = 0;
@@ -2978,7 +2502,7 @@ final class TStringInternalNodes {
                         TranscodingErrorHandler errorHandler,
                         TruffleStringIterator.InternalNextNode iteratorNextNode) {
             TruffleStringIterator it = AbstractTruffleString.forwardIterator(a, arrayA, offsetA, lengthA, strideA, codeRangeA, sourceEncoding);
-            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler);
+            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler, codeRangeA);
             byte[] buffer = new byte[codePointLengthA << 2];
             int length = 0;
             int codeRange = TSCodeRange.get7Bit();
@@ -3015,8 +2539,8 @@ final class TStringInternalNodes {
             return array;
         }
 
-        private static DecodingErrorHandler getDecodingErrorHandler(TranscodingErrorHandler errorHandler) {
-            assert errorHandler == TranscodingErrorHandler.DEFAULT || errorHandler == TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8;
+        private static DecodingErrorHandler getDecodingErrorHandler(TranscodingErrorHandler errorHandler, int codeRangeA) {
+            assert errorHandler == TranscodingErrorHandler.DEFAULT || errorHandler == TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8 || !TSCodeRange.isBroken(codeRangeA);
             CompilerAsserts.partialEvaluationConstant(errorHandler);
             DecodingErrorHandler decodingErrorHandler = errorHandler == TranscodingErrorHandler.DEFAULT ? DecodingErrorHandler.DEFAULT_UTF8_INCOMPLETE_SEQUENCES
                             : DecodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8;
@@ -3048,7 +2572,8 @@ final class TStringInternalNodes {
         }
 
         private static TruffleString create(AbstractTruffleString a, byte[] buffer, int length, int stride, Encoding encoding, int codePointLength, int codeRange, boolean replacedChars) {
-            return TruffleString.createFromByteArray(buffer, length, stride, encoding, codePointLength, codeRange, isBroken(a.codeRange()) || isBroken(codeRange) || a.isMutable() || replacedChars);
+            return TruffleString.createFromByteArray(buffer, length, stride, encoding, codePointLength, codeRange,
+                            isBroken(a.codeRange()) || isBroken(codeRange) || a.isMutable() || replacedChars);
         }
 
         @TruffleBoundary

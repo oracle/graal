@@ -949,17 +949,10 @@ public final class TruffleStringIterator {
     }
 
     static int indexOf(Node location, TruffleStringIterator it, Encoding encoding, int codepoint, int fromIndex, int toIndex, InternalNextNode nextNode) {
-        int aCodepointIndex = 0;
-        while (aCodepointIndex < fromIndex && it.hasNext()) {
-            nextNode.execute(location, it, encoding);
-            aCodepointIndex++;
-            TStringConstants.truffleSafePointPoll(location, aCodepointIndex);
-        }
-        if (aCodepointIndex < fromIndex) {
-            return -1;
-        }
+        int aCodepointIndex = fromIndex;
         while (it.hasNext() && aCodepointIndex < toIndex) {
-            if (nextNode.execute(location, it, encoding) == codepoint) {
+            int c = nextNode.execute(location, it, encoding);
+            if (c == codepoint) {
                 return aCodepointIndex;
             }
             aCodepointIndex++;
