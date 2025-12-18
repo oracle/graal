@@ -892,6 +892,10 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
         b.end(); // while
 
+        b.startIf().string("bci != bc.length").end().startBlock();
+        b.tree(createValidationError("index after walking bytecode array does not match bytecode array length", null, true));
+        b.end();
+
         // Exception handler validation
         b.declaration(arrayOf(type(int.class)), "ex", "this.handlers");
 

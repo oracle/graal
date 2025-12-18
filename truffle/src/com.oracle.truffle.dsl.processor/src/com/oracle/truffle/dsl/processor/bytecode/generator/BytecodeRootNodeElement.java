@@ -2148,8 +2148,13 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         b.startStatement().startStaticCall(type(VarHandle.class), "storeStoreFence").end(2);
     }
 
-    static void emitThrowAssertionError(CodeTreeBuilder b, String reason) {
-        b.startThrow().startCall("assertionFailed").string(reason).end(2);
+    static void emitThrowAssertionError(CodeTreeBuilder b, String reason, String... args) {
+        b.startThrow().startCall("assertionFailed");
+        b.string(reason);
+        for (String arg : args) {
+            b.string(arg);
+        }
+        b.end(2);
     }
 
     void emitThrowEncodingException(CodeTreeBuilder b, String reason) {

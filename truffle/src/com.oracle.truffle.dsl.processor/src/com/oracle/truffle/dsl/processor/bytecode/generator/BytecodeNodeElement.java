@@ -1290,7 +1290,9 @@ final class BytecodeNodeElement extends AbstractElement {
         b.end(); // switch
         b.end(); // } while
 
-        b.startAssert().string("bci == bc.length").end();
+        b.startIf().string("bci != bc.length").end().startBlock();
+        BytecodeRootNodeElement.emitThrowAssertionError(b, "\"%d != %d\"", "bci", "bc.length");
+        b.end();
         b.startAssign("this.cachedNodes_").string("result").end();
         b.startAssign("this.branchProfiles_").startCall("allocateBranchProfiles").string("numConditionalBranches").end(2);
         b.startAssign("this.exceptionProfiles_").string("handlers.length == 0 ? EMPTY_EXCEPTION_PROFILES : new boolean[handlers.length / 5]").end();
