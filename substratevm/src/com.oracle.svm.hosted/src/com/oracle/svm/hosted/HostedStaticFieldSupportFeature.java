@@ -104,8 +104,12 @@ final class HostedStaticFieldSupportFeature extends HostedStaticFieldSupport imp
     @Override
     protected JavaConstant getStaticFieldBaseTransformation(int layerNum, boolean primitive) {
         return switch (determineState(layerNum)) {
-            case UNUSED, CURRENT_LAYER -> GraalAccess.getOriginalSnippetReflection().forObject(
-                            primitive ? StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields() : StaticFieldsSupport.getCurrentLayerStaticObjectFields());
+            case UNUSED, CURRENT_LAYER ->
+                /*
+                 * Eventually, `getCurrentLayerStatic*Fields` need to change to JavaConstant
+                 * (GR-72049, GR-72050).
+                 */
+                GraalAccess.getOriginalSnippetReflection().forObject(primitive ? StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields() : StaticFieldsSupport.getCurrentLayerStaticObjectFields());
             case PRIOR_LAYER ->
                 primitive ? HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticPrimitiveFields()
                                 : HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticObjectFields();
