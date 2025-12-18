@@ -74,12 +74,10 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
             if (!declaredMethod.getName().equals(methodName) || declaredMethod.isSynthetic()) {
                 continue;
             }
-            if (found != null) {
-                throw new IllegalStateException("More than one method found: " + found + " and " + declaredMethod);
-            }
+            JVMCIError.guarantee(found == null, "More than one method found: %s and %s", found, declaredMethod);
             found = declaredMethod;
         }
-        assert found != null;
+        JVMCIError.guarantee(found != null, "Method not found: %s.%s", className, methodName);
         return (EspressoExternalResolvedJavaMethod) found;
     }
 
@@ -96,13 +94,11 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
                 continue;
             }
             if (signature.getParameterKind(0).isPrimitive()) {
-                if (found != null) {
-                    throw new IllegalStateException("More than one box method found: " + found + " and " + declaredMethod);
-                }
+                JVMCIError.guarantee(found == null, "More than one box method found: %s and %s", found, declaredMethod);
                 found = declaredMethod;
             }
         }
-        assert found != null;
+        JVMCIError.guarantee(found != null, "Boxing method not found for %s", name);
         return (EspressoExternalResolvedJavaMethod) found;
     }
 

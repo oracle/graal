@@ -49,7 +49,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
     private EspressoExternalConstantPool constantPool;
 
     EspressoExternalResolvedInstanceType(EspressoExternalVMAccess access, Value metaObject) {
-        assert metaObject.isMetaObject();
+        JVMCIError.guarantee(metaObject.isMetaObject(), "metaObject must be a meta object: %s", metaObject);
         this.metaObject = metaObject;
         this.flags = access.invokeJVMCIHelper("getFlags", metaObject).asInt();
         this.access = access;
@@ -86,7 +86,6 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
     @Override
     protected EspressoExternalResolvedInstanceType getSuperclass0() {
         Value value = metaObject.getMember("super");
-        assert value != null : this;
         return new EspressoExternalResolvedInstanceType(access, value);
     }
 
@@ -155,7 +154,6 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
     }
 
     private EspressoExternalResolvedJavaField[] translateFieldArray(Value value) {
-        assert value.hasArrayElements();
         int size = Math.toIntExact(value.getArraySize());
         EspressoExternalResolvedJavaField[] result = new EspressoExternalResolvedJavaField[size];
         for (int i = 0; i < size; i++) {
@@ -187,7 +185,6 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
         if (value.isNull()) {
             return EspressoExternalResolvedJavaMethod.EMPTY_ARRAY;
         }
-        assert value.hasArrayElements();
         int size = Math.toIntExact(value.getArraySize());
         EspressoExternalResolvedJavaMethod[] result = new EspressoExternalResolvedJavaMethod[size];
         for (int i = 0; i < size; i++) {
@@ -201,7 +198,6 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
         if (value.isNull()) {
             return EspressoExternalResolvedJavaMethod.EMPTY_ARRAY;
         }
-        assert value.hasArrayElements();
         int size = Math.toIntExact(value.getArraySize());
         EspressoExternalResolvedJavaMethod[] result = new EspressoExternalResolvedJavaMethod[size];
         for (int i = 0; i < size; i++) {

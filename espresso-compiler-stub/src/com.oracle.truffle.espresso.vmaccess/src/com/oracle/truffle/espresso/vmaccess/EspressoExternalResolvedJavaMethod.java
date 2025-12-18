@@ -66,8 +66,6 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
     @Override
     protected byte[] getCode0() {
         Value value = methodMirror.getMember("code");
-        assert !value.isNull() : this;
-        assert value.hasBufferElements() : this + " " + value;
         int size = Math.toIntExact(value.getBufferSize());
         byte[] buf = new byte[size];
         value.readBuffer(0, buf, 0, size);
@@ -120,7 +118,6 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
         if (handlers.isNull()) {
             return NO_HANDLERS;
         }
-        assert handlers.hasArrayElements();
         int size = Math.toIntExact(handlers.getArraySize());
         ExceptionHandler[] result = new ExceptionHandler[size];
         for (int i = 0; i < size; i++) {
@@ -169,11 +166,9 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
         if (rawData.isNull()) {
             return null;
         }
-        assert rawData.hasArrayElements() && rawData.getArraySize() % 2 == 0;
         int size = Math.toIntExact(rawData.getArraySize() / 2);
         int[] lineNumbers = new int[size];
         int[] bcis = new int[size];
-        assert size * 2L + 1L < Integer.MAX_VALUE;
         for (int i = 0; i < size; i++) {
             lineNumbers[i] = rawData.getArrayElement(i * 2L).asInt();
             bcis[i] = rawData.getArrayElement(i * 2L + 1L).asInt();
@@ -187,7 +182,6 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
         if (table.isNull()) {
             return EMPTY_LVT;
         }
-        assert table.hasArrayElements();
         int size = Math.toIntExact(table.getArraySize());
         Local[] result = new Local[size];
         for (int i = 0; i < size; i++) {
