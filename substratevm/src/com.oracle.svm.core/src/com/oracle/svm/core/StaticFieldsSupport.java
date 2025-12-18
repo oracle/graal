@@ -28,7 +28,6 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import java.lang.reflect.Field;
 import java.util.Objects;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -104,15 +103,13 @@ public final class StaticFieldsSupport {
             return ImageSingletons.lookup(HostedStaticFieldSupport.class);
         }
 
-        protected abstract Object getStaticFieldBaseTransformation(int layerNum, boolean primitive);
+        protected abstract JavaConstant getStaticFieldBaseTransformation(int layerNum, boolean primitive);
 
         protected abstract FloatingNode getStaticFieldsBaseReplacement(int layerNum, boolean primitive, LoweringTool tool, StructuredGraph graph);
 
         protected abstract boolean isPrimitive(ResolvedJavaField field);
 
         protected abstract int getInstalledLayerNum(ResolvedJavaField field);
-
-        protected abstract ResolvedJavaField toResolvedField(Field field);
 
         public abstract ResolvedJavaField toHostedField(ResolvedJavaField field);
 
@@ -151,13 +148,7 @@ public final class StaticFieldsSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static Object getStaticFieldBaseTransformation(Field field) {
-        var hostedSupport = HostedStaticFieldSupport.singleton();
-        return getStaticFieldBaseTransformation(hostedSupport.toResolvedField(field));
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static Object getStaticFieldBaseTransformation(ResolvedJavaField field) {
+    public static JavaConstant getStaticFieldBaseTransformation(ResolvedJavaField field) {
         var hostedSupport = HostedStaticFieldSupport.singleton();
         ResolvedJavaField hField = hostedSupport.toHostedField(field);
         boolean primitive = hostedSupport.isPrimitive(hField);

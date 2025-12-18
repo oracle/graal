@@ -45,7 +45,7 @@ public record StaticFieldBaseFieldValueTransformer(ResolvedJavaField targetField
 
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        return StaticFieldsSupport.getStaticFieldBaseTransformation(targetField);
+        return new JavaConstantWrapper(StaticFieldsSupport.getStaticFieldBaseTransformation(targetField));
     }
 
     @Override

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.reflect.Field;
-
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
@@ -35,7 +33,6 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.StaticFieldsSupport.HostedStaticFieldSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -48,8 +45,8 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredStaticFieldSupport;
 import com.oracle.svm.hosted.meta.HostedField;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.util.GraalAccess;
 
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -63,9 +60,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 final class HostedStaticFieldSupportFeature extends HostedStaticFieldSupport implements InternalFeature {
 
-    private AnalysisUniverse aUniverse;
-    private HostedUniverse hUniverse;
-
     private enum State {
         UNUSED,
         CURRENT_LAYER,
@@ -73,7 +67,8 @@ final class HostedStaticFieldSupportFeature extends HostedStaticFieldSupport imp
         FUTURE_APP_LAYER,
     }
 
-    private HostedMetaAccess hostedMetaAccess;
+    private AnalysisUniverse aUniverse;
+    private HostedUniverse hUniverse;
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -83,7 +78,6 @@ final class HostedStaticFieldSupportFeature extends HostedStaticFieldSupport imp
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         FeatureImpl.BeforeCompilationAccessImpl accessImpl = (FeatureImpl.BeforeCompilationAccessImpl) access;
-        hostedMetaAccess = accessImpl.getMetaAccess();
         aUniverse = accessImpl.aUniverse;
         hUniverse = accessImpl.hUniverse;
         VMError.guarantee(aUniverse != null, "Analysis universe is null");
@@ -108,17 +102,15 @@ final class HostedStaticFieldSupportFeature extends HostedStaticFieldSupport imp
     }
 
     @Override
-    protected Object getStaticFieldBaseTransformation(int layerNum, boolean primitive) {
+    protected JavaConstant getStaticFieldBaseTransformation(int layerNum, boolean primitive) {
         return switch (determineState(layerNum)) {
-            case UNUSED, CURRENT_LAYER ->
-                primitive ? StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields() : StaticFieldsSupport.getCurrentLayerStaticObjectFields();
-            case PRIOR_LAYER -> {
-                var value = primitive ? HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticPrimitiveFields()
+            case UNUSED, CURRENT_LAYER -> GraalAccess.getOriginalSnippetReflection().forObject(
+                            primitive ? StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields() : StaticFieldsSupport.getCurrentLayerStaticObjectFields());
+            case PRIOR_LAYER ->
+                primitive ? HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticPrimitiveFields()
                                 : HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticObjectFields();
-                yield new JavaConstantWrapper(value);
-            }
             case FUTURE_APP_LAYER ->
-                new JavaConstantWrapper(LayeredStaticFieldSupport.singleton().getAppLayerStaticFieldBaseConstant(primitive));
+                LayeredStaticFieldSupport.singleton().getAppLayerStaticFieldBaseConstant(primitive);
         };
     }
 
@@ -172,11 +164,6 @@ final class HostedStaticFieldSupportFeature extends HostedStaticFieldSupport imp
                 case APP_LAYER_REQUESTED, APP_LAYER_DEFERRED -> LayeredStaticFieldSupport.getAppLayerNumber();
             };
         }
-    }
-
-    @Override
-    protected ResolvedJavaField toResolvedField(Field field) {
-        return hostedMetaAccess.lookupJavaField(field);
     }
 
     @Override

@@ -35,6 +35,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.util.VMError;
 
@@ -120,7 +121,7 @@ class VarHandleStaticBaseComputer implements FieldValueTransformerWithAvailabili
     public Object transform(Object receiver, Object originalValue) {
         ResolvedJavaField varHandleField = VarHandleSupport.singleton().findVarHandleField(receiver, false);
         StaticFieldsSupport.StaticFieldValidator.checkFieldOffsetAllowed(varHandleField);
-        return StaticFieldsSupport.getStaticFieldBaseTransformation(varHandleField);
+        return new JavaConstantWrapper(StaticFieldsSupport.getStaticFieldBaseTransformation(varHandleField));
     }
 
     @Override
