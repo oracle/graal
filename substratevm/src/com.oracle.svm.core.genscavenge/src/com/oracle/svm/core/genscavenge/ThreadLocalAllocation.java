@@ -78,14 +78,15 @@ import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
 import jdk.graal.compiler.word.Word;
 
 /**
- * Multiple threads may execute the methods in this class concurrently. All code that is
- * transitively reachable from those method can get executed as a side effect of an allocation slow
- * path. To prevent hard to debug transient issues, we execute as little code as possible in these
- * methods.
- *
- * If the executed code is too complex, then it can happen that we unexpectedly change some shared
- * global state as a side effect of an allocation. This may result in issues that look similar to
- * races but that can even happen in single-threaded environments, e.g.:
+ * Implements the thread-local allocation logic for serial and epsilon GC.
+ * <p>
+ * Multiple threads may execute the methods in this class concurrently. All code transitively
+ * reachable from these methods can be executed as a side effect of any Java heap allocation. To
+ * prevent hard to debug transient issues, we execute as little code as possible in these methods.
+ * <p>
+ * Executing complex logic in the allocation slow path can modify shared global state, causing
+ * issues that look similar to race conditions but that can even happen in single-threaded
+ * environments. For example:
  *
  * <pre>
  * {@code
@@ -94,14 +95,14 @@ import jdk.graal.compiler.word.Word;
  * private static synchronized Object createSingleton() {
  *     if (singleton == null) {
  *         Object o = new Object();
- *         // If the allocation above enters the allocation slow path code, and executes a
- *         // complex slow path hook, then it is possible that createSingleton() gets
- *         // recursively execute by the current thread. So, the assertion below may fail
- *         // because the singleton got already initialized by the same thread in the meanwhile.
+ *         // If the allocation above enters the slow path, and if that slow
+ *         // path executes code that calls createSingleton() as well, then
+ *         // the assertion below will fail because the singleton already
+ *         // got initialized by the same thread in the meanwhile.
  *         assert singleton == null;
  *         singleton = o;
  *     }
- *     return result;
+ *     return singleton;
  * }
  * }
  * </pre>

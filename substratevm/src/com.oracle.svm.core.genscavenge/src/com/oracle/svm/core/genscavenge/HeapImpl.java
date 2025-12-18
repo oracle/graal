@@ -711,6 +711,7 @@ public final class HeapImpl extends Heap {
         GCImpl.getPolicy().updateSizeParameters();
     }
 
+    /** For the GC policy, mainly heap-size-related GC options are relevant. */
     private static boolean isIrrelevantForGCPolicy(RuntimeOptionKey<?> key) {
         return key == SubstrateGCOptions.DisableExplicitGC ||
                         key == SubstrateGCOptions.PrintGC ||

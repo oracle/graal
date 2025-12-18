@@ -30,6 +30,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.Timer;
@@ -264,45 +265,45 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     protected void computeEdenSpaceSize(@SuppressWarnings("unused") boolean completeCollection, @SuppressWarnings("unused") GCCause cause) {
-        UnsignedWord curEdenSize = sizes.getEdenSize();
-        UnsignedWord curPromoSize = sizes.getPromoSize();
+        UnsignedWord curEden = sizes.getEdenSize();
+        UnsignedWord curPromo = sizes.getPromoSize();
 
         boolean expansionReducesCost = true; // general assumption
         if (shouldUseEstimator(youngGenChangeForMinorThroughput, minorGcCost())) {
-            expansionReducesCost = expansionSignificantlyReducesTotalCost(minorCostEstimator, curEdenSize, majorGcCost(), curPromoSize);
+            expansionReducesCost = expansionSignificantlyReducesTotalCost(minorCostEstimator, curEden, majorGcCost(), curPromo);
             /*
              * Note that if the estimator thinks expanding does not lead to significant improvement,
              * shrink so to not get stuck in a supposed optimum and to keep collecting data points.
              */
         }
 
-        UnsignedWord desiredEdenSize = curEdenSize;
+        UnsignedWord desiredEdenSize = curEden;
         if (expansionReducesCost && adjustedMutatorCost() < THROUGHPUT_GOAL && gcCost() > 0) {
             // from adjust_eden_for_throughput():
-            UnsignedWord edenHeapDelta = edenIncrementWithSupplementAlignedUp(curEdenSize);
+            UnsignedWord edenHeapDelta = edenIncrementWithSupplementAlignedUp(curEden);
             double scaleByRatio = minorGcCost() / gcCost();
             assert scaleByRatio >= 0 && scaleByRatio <= 1;
             UnsignedWord scaledEdenHeapDelta = UnsignedUtils.fromDouble(scaleByRatio * UnsignedUtils.toDouble(edenHeapDelta));
 
             desiredEdenSize = alignUp(desiredEdenSize.add(scaledEdenHeapDelta));
-            desiredEdenSize = UnsignedUtils.max(desiredEdenSize, curEdenSize);
+            desiredEdenSize = UnsignedUtils.max(desiredEdenSize, curEden);
             youngGenChangeForMinorThroughput++;
         }
         if (!expansionReducesCost || (USE_ADAPTIVE_SIZE_POLICY_FOOTPRINT_GOAL && youngGenPolicyIsReady && adjustedMutatorCost() >= THROUGHPUT_GOAL)) {
-            UnsignedWord desiredSum = curEdenSize.add(curPromoSize);
-            desiredEdenSize = adjustEdenForFootprint(curEdenSize, desiredSum);
+            UnsignedWord desiredSum = curEden.add(curPromo);
+            desiredEdenSize = adjustEdenForFootprint(curEden, desiredSum);
         }
         assert isAligned(desiredEdenSize);
         desiredEdenSize = minSpaceSize(desiredEdenSize);
 
-        UnsignedWord edenLimit = getMaximumEdenSize();
+        UnsignedWord edenLimit = computeEdenLimit();
         if (desiredEdenSize.aboveThan(edenLimit)) {
             /*
              * If the policy says to get a larger eden but is hitting the limit, don't decrease
              * eden. This can lead to a general drifting down of the eden size. Let the tenuring
              * calculation push more into the old gen.
              */
-            desiredEdenSize = UnsignedUtils.max(edenLimit, curEdenSize);
+            desiredEdenSize = UnsignedUtils.max(edenLimit, curEden);
         }
         sizes.setEdenSize(desiredEdenSize);
     }
@@ -486,40 +487,40 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     private void computeOldGenSpaceSize(UnsignedWord oldLive) { // compute_old_gen_free_space
-        UnsignedWord curEdenSize = sizes.getEdenSize();
-        UnsignedWord curMaxOldSize = sizes.getMaxOldSize();
-        UnsignedWord curPromoSize = sizes.getPromoSize();
+        UnsignedWord curEden = sizes.getEdenSize();
+        UnsignedWord curPromo = sizes.getPromoSize();
+        UnsignedWord curMaxOld = sizes.getMaxOldSize();
 
         avgOldLive.sample(oldLive);
 
         // NOTE: if maxOldSize shrunk and difference is negative, unsigned conversion results in 0
-        UnsignedWord promoLimit = UnsignedUtils.fromDouble(UnsignedUtils.toDouble(curMaxOldSize) - avgOldLive.getAverage());
-        promoLimit = alignDown(UnsignedUtils.max(curPromoSize, promoLimit));
+        UnsignedWord promoLimit = UnsignedUtils.fromDouble(UnsignedUtils.toDouble(curMaxOld) - avgOldLive.getAverage());
+        promoLimit = alignDown(UnsignedUtils.max(curPromo, promoLimit));
 
         boolean expansionReducesCost = true; // general assumption
         if (shouldUseEstimator(oldGenChangeForMajorThroughput, majorGcCost())) {
-            expansionReducesCost = expansionSignificantlyReducesTotalCost(majorCostEstimator, curPromoSize, minorGcCost(), curEdenSize);
+            expansionReducesCost = expansionSignificantlyReducesTotalCost(majorCostEstimator, curPromo, minorGcCost(), curEden);
             /*
              * Note that if the estimator thinks expanding does not lead to significant improvement,
              * shrink so to not get stuck in a supposed optimum and to keep collecting data points.
              */
         }
 
-        UnsignedWord desiredPromoSize = curPromoSize;
+        UnsignedWord desiredPromoSize = curPromo;
         if (expansionReducesCost && adjustedMutatorCost() < THROUGHPUT_GOAL && gcCost() > 0) {
             // from adjust_promo_for_throughput():
-            UnsignedWord promoHeapDelta = promoIncrementWithSupplementAlignedUp(curPromoSize);
+            UnsignedWord promoHeapDelta = promoIncrementWithSupplementAlignedUp(curPromo);
             double scaleByRatio = majorGcCost() / gcCost();
             assert scaleByRatio >= 0 && scaleByRatio <= 1;
             UnsignedWord scaledPromoHeapDelta = UnsignedUtils.fromDouble(scaleByRatio * UnsignedUtils.toDouble(promoHeapDelta));
 
-            desiredPromoSize = alignUp(curPromoSize.add(scaledPromoHeapDelta));
-            desiredPromoSize = UnsignedUtils.max(desiredPromoSize, curPromoSize);
+            desiredPromoSize = alignUp(curPromo.add(scaledPromoHeapDelta));
+            desiredPromoSize = UnsignedUtils.max(desiredPromoSize, curPromo);
             oldGenChangeForMajorThroughput++;
         }
         if (!expansionReducesCost || (USE_ADAPTIVE_SIZE_POLICY_FOOTPRINT_GOAL && youngGenPolicyIsReady && adjustedMutatorCost() >= THROUGHPUT_GOAL)) {
-            UnsignedWord desiredSum = curEdenSize.add(curPromoSize);
-            desiredPromoSize = adjustPromoForFootprint(curPromoSize, desiredSum);
+            UnsignedWord desiredSum = curEden.add(curPromo);
+            desiredPromoSize = adjustPromoForFootprint(curPromo, desiredSum);
         }
         assert isAligned(desiredPromoSize);
         desiredPromoSize = minSpaceSize(desiredPromoSize);
@@ -530,7 +531,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         // from PSOldGen::resize
         UnsignedWord desiredFreeSpace = calculatedOldFreeSizeInBytes();
         UnsignedWord desiredOldSize = alignUp(oldLive.add(desiredFreeSpace));
-        sizes.setOldSize(UnsignedUtils.clamp(desiredOldSize, minSpaceSize(), curMaxOldSize));
+        sizes.setOldSize(UnsignedUtils.clamp(desiredOldSize, minSpaceSize(), curMaxOld));
     }
 
     UnsignedWord calculatedOldFreeSizeInBytes() {
@@ -578,6 +579,11 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
     protected boolean shouldUpdateStats(GCCause cause) { // should_update_{eden,promo}_stats
         return cause == GenScavengeGCCause.OnAllocation || USE_ADAPTIVE_SIZE_POLICY_WITH_SYSTEM_GC;
+    }
+
+    protected UnsignedWord computeEdenLimit() {
+        assert VMOperation.isGCInProgress() : "result wouldn't be consistent otherwise";
+        return alignDown(sizes.getMaxYoungSize().subtract(sizes.getSurvivorSize().multiply(2)));
     }
 
     private void updateCollectionEndAverages(AdaptiveWeightedAverage costAverage, AdaptivePaddedAverage pauseAverage, ReciprocalLeastSquareFit costEstimator,
