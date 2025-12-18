@@ -28,12 +28,12 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.reflect.Modifier;
 
-import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
+import com.oracle.svm.util.GraalAccess;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * Implements the field value transformation semantics of {@link Kind#AtomicFieldUpdaterOffset}.
  */
-public record AtomicFieldUpdaterOffsetFieldValueTransformer(ResolvedJavaField original, Class<?> updaterClass) implements FieldValueTransformerWithAvailability {
+public record AtomicFieldUpdaterOffsetFieldValueTransformer(ResolvedJavaField original) implements JVMCIFieldValueTransformerWithAvailability {
 
     @Override
     public boolean isAvailable() {
@@ -49,7 +49,7 @@ public record AtomicFieldUpdaterOffsetFieldValueTransformer(ResolvedJavaField or
     }
 
     @Override
-    public Object transform(Object receiver, Object originalValue) {
+    public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
         assert !Modifier.isStatic(original.getModifiers());
 
         /*
@@ -58,11 +58,10 @@ public record AtomicFieldUpdaterOffsetFieldValueTransformer(ResolvedJavaField or
          * cached offset in this atomic updater object.
          */
         ResolvedJavaField tclassField = findField(original.getDeclaringClass(), "tclass");
-        SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
-        JavaConstant receiverConstant = GraalAccess.getOriginalSnippetReflection().forObject(receiver);
-        Class<?> tclass = originalSnippetReflection.asObject(Class.class, GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(tclassField, receiverConstant));
+        ConstantReflectionProvider constantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
+        ResolvedJavaType tclass = constantReflection.asJavaType(constantReflection.readFieldValue(tclassField, receiver));
 
-        return TranslateFieldOffsetFieldValueTransformer.translateFieldOffset(original, receiverConstant, tclass);
+        return TranslateFieldOffsetFieldValueTransformer.translateFieldOffset(original, receiver, tclass);
     }
 
     private static ResolvedJavaField findField(ResolvedJavaType declaringClass, String name) {
