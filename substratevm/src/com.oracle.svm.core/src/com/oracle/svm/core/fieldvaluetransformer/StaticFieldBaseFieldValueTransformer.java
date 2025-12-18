@@ -36,7 +36,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 /**
  * Implements the field value transformation semantics of {@link Kind#StaticFieldBase}.
  */
-public record StaticFieldBaseFieldValueTransformer(ResolvedJavaField targetField) implements FieldValueTransformerWithAvailability {
+public record StaticFieldBaseFieldValueTransformer(ResolvedJavaField targetField) implements JVMCIFieldValueTransformerWithAvailability {
 
     @Override
     public boolean isAvailable() {
@@ -44,8 +44,8 @@ public record StaticFieldBaseFieldValueTransformer(ResolvedJavaField targetField
     }
 
     @Override
-    public Object transform(Object receiver, Object originalValue) {
-        return new JavaConstantWrapper(StaticFieldsSupport.getStaticFieldBaseTransformation(targetField));
+    public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
+        return StaticFieldsSupport.getStaticFieldBaseTransformation(targetField);
     }
 
     @Override
