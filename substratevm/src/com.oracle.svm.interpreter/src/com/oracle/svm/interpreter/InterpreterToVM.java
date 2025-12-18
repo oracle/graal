@@ -920,7 +920,11 @@ public final class InterpreterToVM {
             // wrapping of exceptions is done in leaveInterpreter
             retObj = InterpreterStubSection.leaveInterpreter(calleeFtnPtr, targetMethod, calleeArgs);
         } else {
-            retObj = InterpreterStubSection.call(targetMethod, calleeArgs, true);
+            try {
+                retObj = InterpreterStubSection.call(targetMethod, calleeArgs);
+            } catch (Throwable t) {
+                throw SemanticJavaException.raise(t);
+            }
         }
         return retObj;
     }

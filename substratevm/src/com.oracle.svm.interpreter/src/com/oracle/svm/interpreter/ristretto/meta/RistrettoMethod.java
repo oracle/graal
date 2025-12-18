@@ -26,6 +26,7 @@ package com.oracle.svm.interpreter.ristretto.meta;
 
 import java.util.function.Function;
 
+import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -34,7 +35,6 @@ import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
 import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 
 import jdk.graal.compiler.nodes.extended.MembarNode;
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.LineNumberTable;
@@ -78,7 +78,7 @@ public final class RistrettoMethod extends SubstrateMethod {
      * <p>
      * TODO - deoptimization and retirement of this pointer not implemented yet.
      */
-    public volatile InstalledCode installedCode;
+    public volatile SubstrateInstalledCodeImpl installedCode;
     // JIT COMPILER SUPPORT END
 
     private RistrettoMethod(InterpreterResolvedJavaMethod interpreterMethod) {

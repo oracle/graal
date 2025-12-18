@@ -73,7 +73,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -160,24 +159,24 @@ public class RistrettoUtils {
         return null;
     }
 
-    public static InstalledCode compileAndInstall(SubstrateMethod method) {
+    public static SubstrateInstalledCodeImpl compileAndInstall(SubstrateMethod method) {
         return compileAndInstall(method, () -> new SubstrateInstalledCodeImpl(method));
     }
 
-    public static InstalledCode compileAndInstall(SubstrateMethod method, SubstrateInstalledCode.Factory installedCodeFactory) {
+    public static SubstrateInstalledCodeImpl compileAndInstall(SubstrateMethod method, SubstrateInstalledCode.Factory installedCodeFactory) {
         if (RistrettoOptions.JITTraceCompilation.getValue()) {
             Log.log().string("[Ristretto Compiler] Starting compilation of").string(method.format("%H.%n(%p)")).newline();
         }
         RuntimeConfiguration runtimeConfiguration = RuntimeCompilationSupport.getRuntimeConfig();
         DebugContext debug = new DebugContext.Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(runtimeConfiguration.getProviders().getSnippetReflection())).build();
-        SubstrateInstalledCode installedCode = installedCodeFactory.createSubstrateInstalledCode();
+        SubstrateInstalledCodeImpl installedCode = (SubstrateInstalledCodeImpl) installedCodeFactory.createSubstrateInstalledCode();
         CompilationResult compilationResult = doCompile(debug, RuntimeCompilationSupport.getRuntimeConfig(), RuntimeCompilationSupport.getLIRSuites(), method);
         RuntimeCodeInstaller.install(method, compilationResult, installedCode);
         if (RistrettoOptions.JITTraceCompilation.getValue()) {
             Log.log().string("[Ristretto Compiler] Finished compilation, code for ").string(method.format("%H.%n(%p)")).string(": ").signed(compilationResult.getTargetCodeSize()).string(" bytes")
                             .newline();
         }
-        return (InstalledCode) installedCode;
+        return installedCode;
     }
 
     public static CompilationResult doCompile(DebugContext initialDebug, RuntimeConfiguration runtimeConfig, LIRSuites lirSuites, SubstrateMethod method) {

@@ -60,11 +60,14 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.memory.NativeMemory;
+import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
@@ -75,7 +78,6 @@ import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 
 import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.RegisterConfig;
@@ -90,6 +92,8 @@ public abstract class InterpreterStubSection {
     private static final CGlobalData<Pointer> BASE = CGlobalDataFactory.forSymbol(nameForVTableIndex(0));
 
     private static final String REASON_REFERENCES_ON_STACK = "stack frame might contain object references that are not known to the GC";
+
+    private static final String REASON_DEOPT_INSTALLED_CODE = "InstalledCode can be deoptimized or freed at a safepoint.";
 
     /* '-3' to reduce padding due to alignment in .svm_interp section */
     static final int MAX_VTABLE_STUBS = 2 * 1024 - 3;
@@ -410,7 +414,7 @@ public abstract class InterpreterStubSection {
         VMError.guarantee(handles.getHandleCount() == handleCount);
         VMError.guarantee(handleFrameId == handles.popFrame());
 
-        return call(interpreterMethod, args, false);
+        return call(interpreterMethod, args);
     }
 
     @Uninterruptible(reason = "Raw object pointer.")
@@ -441,6 +445,9 @@ public abstract class InterpreterStubSection {
         return (Pointer) entryPoint;
     }
 
+    // note that this method is not callerMustBeUninterruptible because only the caller with
+    // ristretto code must not be interrupted
+    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
     public static Object leaveInterpreter(CFunctionPointer compiledEntryPoint, InterpreterResolvedJavaMethod seedMethod, Object[] args) {
         PreparedSignature compiledSignature = seedMethod.getPreparedSignature();
         VMError.guarantee(compiledSignature != null);
@@ -449,20 +456,20 @@ public abstract class InterpreterStubSection {
         InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
         Pointer leaveData = StackValue.get(accessHelper.allocateStubDataSize());
 
-        int stackSize = NumUtil.roundUp(compiledSignature.getStackSize(), stubSection.target.stackAlignment);
+        int stackSize = UninterruptibleUtils.NumUtil.roundUp(compiledSignature.getStackSize(), stubSection.target.stackAlignment);
 
         Pointer stackBuffer = Word.nullPointer();
         if (stackSize > 0) {
-            stackBuffer = NativeMemory.malloc(Word.unsigned(stackSize), NmtCategory.Interpreter);
+            stackBuffer = NullableNativeMemory.malloc(Word.unsigned(stackSize), NmtCategory.Interpreter);
+            if (stackBuffer.isNull()) {
+                throw NativeMemory.CACHED_MALLOC_OOME;
+            }
             accessHelper.setSp(leaveData, stackSize, stackBuffer);
         }
 
         try {
             // GR-55022: Stack overflow check should be done here
             return leaveInterpreter0(compiledEntryPoint, args, compiledSignature, accessHelper, leaveData, stackSize);
-        } catch (Throwable e) {
-            // native code threw exception, wrap it
-            throw SemanticJavaException.raise(e);
         } finally {
             if (stackSize > 0) {
                 VMError.guarantee(stackBuffer.isNonNull());
@@ -572,53 +579,34 @@ public abstract class InterpreterStubSection {
      * {@code Uninterruptible}. Callers must ensure no safepoint happens between the return and the
      * call to the installed code.
      */
-    @Uninterruptible(reason = "InstalledCode can be deoptimized concurrently to accessing and and checking its validity.", calleeMustBe = false)
-    private static InstalledCode getInstalledCode(InterpreterResolvedJavaMethod interpreterMethod) {
+    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
+    private static SubstrateInstalledCodeImpl getInstalledCode(InterpreterResolvedJavaMethod interpreterMethod) {
         RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
         if (rMethod != null) {
-            InstalledCode ic = rMethod.installedCode;
-            if (ic != null && ic.isValid()) {
+            SubstrateInstalledCodeImpl ic = rMethod.installedCode;
+            // entryPoint != isValid (means it is not deoptimized yet)
+            if (ic != null && ic.getEntryPoint() != 0) {
                 return ic;
             }
         }
         return null;
     }
 
-    public static Object call(InterpreterResolvedJavaMethod interpreterMethod, Object[] args, boolean wrapInterpreterExceptions) {
+    public static Object call(InterpreterResolvedJavaMethod interpreterMethod, Object[] args) {
         /*
          * Determine if a JIT compiled version is available and if so execute this one instead. This
          * could be more optimized, see GR-71160.
          */
-        InstalledCode ic = getInstalledCode(interpreterMethod);
+        SubstrateInstalledCodeImpl ic = getInstalledCode(interpreterMethod);
         if (ic != null) {
+            /*
+             * Note that getInstalledCode is Uninterruptible and leaveInterpreter is as well so now
+             * deopt can happen between the call to ic.isValid and leaveInterpreter.
+             */
             CFunctionPointer entryPoint = Word.pointer(ic.getEntryPoint());
-            try {
-                /*
-                 * TODO GR-71501 - deoptimization support
-                 * 
-                 * While getInstalledCode is Uninterruptible - leaveInterpreter is not, the callees
-                 * of leaveInterpreter are, but in between a safepoint can happen and code could be
-                 * deoptimized
-                 */
-                return leaveInterpreter(entryPoint, interpreterMethod, args);
-            } catch (Throwable t) {
-                Throwable rethrow = t;
-                if (!wrapInterpreterExceptions && t instanceof SemanticJavaException sem) {
-                    rethrow = sem.getCause();
-                }
-                throw uncheckedThrow(rethrow);
-            }
+            return leaveInterpreter(entryPoint, interpreterMethod, args);
         } else {
-            try {
-                return Interpreter.execute(interpreterMethod, args);
-            } catch (Throwable t) {
-                if (wrapInterpreterExceptions) {
-                    // Exceptions coming from calls are valid, semantic Java exceptions.
-                    throw SemanticJavaException.raise(t);
-                } else {
-                    throw t;
-                }
-            }
+            return Interpreter.execute(interpreterMethod, args);
         }
     }
 

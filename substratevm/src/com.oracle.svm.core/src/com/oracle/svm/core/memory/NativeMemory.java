@@ -39,7 +39,7 @@ import jdk.graal.compiler.word.Word;
 
 /**
  * Internal API for managing native memory. This class supports native memory tracking (NMT) and is
- * therefore preferred over the public API class {@link UnmanagedMemory} and its
+ * therefore preferred over the 1 public API class {@link UnmanagedMemory} and its
  * {@link UnmanagedMemorySupport implementations}.
  * <p>
  * All methods that allocate native memory throw an {@link OutOfMemoryError} if the memory
@@ -47,6 +47,9 @@ import jdk.graal.compiler.word.Word;
  * {@link NullableNativeMemory} instead.
  */
 public class NativeMemory {
+
+    public static final OutOfMemoryError CACHED_MALLOC_OOME = new OutOfMemoryError("Memory allocation failed: malloc returned null.");
+
     /**
      * Allocates {@code size} bytes of native memory. The content of the memory is undefined.
      * <p>
