@@ -142,19 +142,19 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
     protected void computeEdenSpaceSize(boolean completeCollection, GCCause cause) {
         if (cause == GCCause.HintedGC) {
             if (completeCollection && lastGCCause == GCCause.HintedGC) {
-                UnsignedWord curEdenSize = sizes.getEdenSize();
-                UnsignedWord newEdenSize = UnsignedUtils.max(sizes.getInitialEdenSize(), alignUp(curEdenSize.unsignedDivide(2)));
-                if (curEdenSize.aboveThan(newEdenSize)) {
-                    sizes.setEdenSize(newEdenSize);
+                UnsignedWord curEden = sizes.getEdenSize();
+                UnsignedWord newEden = UnsignedUtils.max(sizes.getInitialEdenSize(), alignUp(curEden.unsignedDivide(2)));
+                if (curEden.aboveThan(newEden)) {
+                    sizes.setEdenSize(newEden);
                 }
             }
         } else {
             UnsignedWord sizeAfter = GCImpl.getChunkBytes();
             if (sizeBefore.notEqual(0) && sizeBefore.belowThan(sizeAfter.multiply(2))) {
-                UnsignedWord curEdenSize = sizes.getEdenSize();
-                UnsignedWord newEdenSize = UnsignedUtils.min(getMaximumEdenSize(), alignUp(curEdenSize.multiply(2)));
-                if (curEdenSize.belowThan(newEdenSize)) {
-                    sizes.setEdenSize(newEdenSize);
+                UnsignedWord curEden = sizes.getEdenSize();
+                UnsignedWord newEden = UnsignedUtils.min(computeEdenLimit(), alignUp(curEden.multiply(2)));
+                if (curEden.belowThan(newEden)) {
+                    sizes.setEdenSize(newEden);
                 }
             } else {
                 super.computeEdenSpaceSize(completeCollection, cause);
