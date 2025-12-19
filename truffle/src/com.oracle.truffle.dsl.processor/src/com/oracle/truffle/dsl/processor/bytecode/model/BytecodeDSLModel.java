@@ -308,9 +308,9 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return operation(kind, name, javadoc, builderName, false);
     }
 
-    public OperationModel operation(OperationKind kind, String name, String javadoc, String builderName, boolean optionalBuilltin) {
+    public OperationModel operation(OperationKind kind, String name, String javadoc, String builderName, boolean optionalBuiltin) {
         if (operations.containsKey(name)) {
-            if (optionalBuilltin) {
+            if (optionalBuiltin) {
                 addSuppressableWarning(TruffleSuppressedWarnings.HIDE_BUILTIN, "Custom operation with name %s conflicts with a built-in operation with the same name. " +
                                 "The built-in operation will not be generated. ", name);
             } else {

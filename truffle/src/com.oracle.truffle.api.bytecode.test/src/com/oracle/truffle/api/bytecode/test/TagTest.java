@@ -2317,6 +2317,51 @@ public class TagTest extends AbstractInstructionTest {
         node.getCallTarget().call();
     }
 
+    @Test
+    public void testNodeLibraryContinuation() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot();
+
+            BytecodeLocal l1 = b.createLocal("l1", "l1_info");
+            b.beginStoreLocal(l1);
+            b.emitLoadConstant(42);
+            b.endStoreLocal();
+
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadNull();
+            b.endTag(ExpressionTag.class);
+
+            b.beginYield();
+            b.emitLoadNull();
+            b.endYield();
+
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadNull();
+            b.endTag(ExpressionTag.class);
+
+            b.beginReturn();
+            b.emitLoadLocal(l1);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        // The state of the frame should be identical before and after the yield.
+        List<List<ExpectedLocal>> onEnterLocalsExpression = List.of(
+                        List.of(new ExpectedLocal("l1", 42)),
+                        List.of(new ExpectedLocal("l1", 42)));
+
+        List<List<ExpectedLocal>> onReturnLocalsExpression = List.of(
+                        List.of(new ExpectedLocal("l1", 42)),
+                        List.of(new ExpectedLocal("l1", 42)));
+        assertLocals(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(),
+                        onEnterLocalsExpression,
+                        onReturnLocalsExpression);
+
+        ContinuationResult r = (ContinuationResult) node.getCallTarget().call();
+        assertEquals(42, r.continueWith(null));
+    }
+
     private void assertLocals(SourceSectionFilter filter, List<List<ExpectedLocal>> onEnterLocals, List<List<ExpectedLocal>> onLeaveLocals) {
         AtomicInteger enterIndex = new AtomicInteger(0);
         AtomicInteger returnIndex = new AtomicInteger(0);

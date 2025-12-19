@@ -47,6 +47,7 @@ import static org.junit.Assert.assertTrue;
 import java.lang.reflect.Field;
 import java.util.List;
 
+import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -55,14 +56,17 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
+import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.StoreBytecodeIndex;
+import com.oracle.truffle.api.bytecode.Yield;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectWarning;
 import com.oracle.truffle.api.dsl.Bind;
@@ -70,6 +74,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -183,7 +193,76 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
         assertEquals(-1, t.get(0).getBytecodeIndex());
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true, enableSpecializationIntrospection = true)
+    @Test
+    public void testTags() {
+        try (Context context = Context.create(BytecodeDSLTestLanguage.ID)) {
+            context.initialize(BytecodeDSLTestLanguage.ID);
+            context.enter();
+            Instrumenter instrumenter = context.getEngine().getInstruments().get(TagTestInstrumentation.ID).lookup(Instrumenter.class);
+
+            BytecodeConfig config = StoreBytecodeEliminationRootNodeGen.BYTECODE.newConfigBuilder().addTag(ExpressionTag.class).build();
+            StoreBytecodeEliminationRootNode root = StoreBytecodeEliminationRootNodeGen.create(BytecodeDSLTestLanguage.REF.get(null), config, b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.beginTag(ExpressionTag.class);
+                b.beginYield();
+                b.emitLoadNull();
+                b.endYield();
+                b.endTag(ExpressionTag.class);
+                b.endReturn();
+                b.endRoot();
+            }).getNode(0);
+
+            assertInstructions(root,
+                            "tag.enter",
+                            "load.null",
+                            "tag.yield",
+                            "yield",
+                            "tag.resume",
+                            "tag.leave",
+                            "return");
+
+            List<Instruction> instructions = root.getBytecodeNode().getInstructionsAsList();
+
+            instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(), (e) -> {
+                return new ExecutionEventNode() {
+                    @Override
+                    public void onEnter(VirtualFrame f) {
+                        assertEquals(instructions.get(0).getBytecodeIndex(), StoreBytecodeEliminationRootNode.readBCI(f));
+                    }
+
+                    @Override
+                    public void onReturnValue(VirtualFrame f, Object arg) {
+                        assertEquals(instructions.get(5).getBytecodeIndex(), StoreBytecodeEliminationRootNode.readBCI(f));
+                    }
+
+                    @Override
+                    public void onYield(VirtualFrame f, Object result) {
+                        assertEquals(instructions.get(2).getBytecodeIndex(), StoreBytecodeEliminationRootNode.readBCI(f));
+                    }
+
+                    @Override
+                    public void onResume(VirtualFrame f) {
+                        assertEquals(instructions.get(4).getBytecodeIndex(), StoreBytecodeEliminationRootNode.readBCI(f));
+                    }
+
+                };
+            });
+
+            ContinuationResult cont = (ContinuationResult) root.getCallTarget().call();
+            assertEquals(42, cont.continueWith(42));
+        }
+
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                    enableQuickening = true, //
+                    enableUncachedInterpreter = true, //
+                    storeBytecodeIndexInFrame = true, //
+                    enableSpecializationIntrospection = true, //
+                    enableTagInstrumentation = true, //
+                    enableYield = true //
+    )
     abstract static class StoreBytecodeEliminationRootNode extends RootNode implements BytecodeRootNode {
 
         private static final int BCI_INDEX;
@@ -467,7 +546,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
 
     }
 
-    // make sure validation works for instrumentations too
+    // make sure validation works for proxies too
     // it is the same code so we do not perform additional testing.
     @OperationProxy.Proxyable(allowUncached = true)
     public static final class NoStoreBytecodeIndexProxyTest1 {
@@ -515,7 +594,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
     }
 
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
-    @ExpectError("For this operation it is recommended to specify @Operation(storeBytecodeIndex=true|false).%")
+    @ExpectError("For this operation it is recommended to specify @Proxyable(storeBytecodeIndex=true|false).%")
     @ShortCircuitOperation(name = "BoolAnd", booleanConverter = ExternalProxyNode.class, operator = Operator.AND_RETURN_VALUE)
     abstract static class StoreBytecodeEliminationWarningTestRootNode2 extends RootNode implements BytecodeRootNode {
 
@@ -523,6 +602,69 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
             super(language, frameDescriptor);
         }
 
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
+    abstract static class StoreBytecodeEliminationWarningTestRootNode3 extends RootNode implements BytecodeRootNode {
+
+        protected StoreBytecodeEliminationWarningTestRootNode3(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        // No warning about specifying storeBytecodeIndex; yields always store the bytecode index.
+        @Yield
+        public static final class CustomYield {
+            @Specialization
+            public static Object doYield(@SuppressWarnings("unused") @Bind Node node) {
+                return null;
+            }
+        }
+
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
+    abstract static class StoreBytecodeEliminationWarningTestRootNode4 extends RootNode implements BytecodeRootNode {
+
+        protected StoreBytecodeEliminationWarningTestRootNode4(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @ExpectWarning("For this operation it is recommended to specify @Instrumentation(storeBytecodeIndex=true|false).%")
+        @Instrumentation
+        public static final class CustomInstrumentation {
+            @Specialization
+            public static void doInstrument(@SuppressWarnings("unused") @Bind Node node) {
+            }
+        }
+
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
+    abstract static class StoreBytecodeEliminationWarningTestRootNode5 extends RootNode implements BytecodeRootNode {
+
+        protected StoreBytecodeEliminationWarningTestRootNode5(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @ExpectWarning("For this operation it is recommended to specify @Prolog(storeBytecodeIndex=true|false).%")
+        @Prolog
+        public static final class CustomProlog {
+            @Specialization
+            public static void doProlog(@SuppressWarnings("unused") @Bind Node node) {
+            }
+        }
+
+    }
+
+    @TruffleInstrument.Registration(id = TagTestInstrumentation.ID, services = Instrumenter.class)
+    public static class TagTestInstrumentation extends TruffleInstrument {
+
+        public static final String ID = "bytecode_TagTestInstrument";
+
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(env.getInstrumenter());
+        }
     }
 
 }

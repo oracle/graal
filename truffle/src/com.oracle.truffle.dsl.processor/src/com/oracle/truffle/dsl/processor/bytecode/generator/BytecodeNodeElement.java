@@ -1290,7 +1290,9 @@ final class BytecodeNodeElement extends AbstractElement {
         b.end(); // switch
         b.end(); // } while
 
-        b.startAssert().string("bci == bc.length").end();
+        b.startIf().string("bci != bc.length").end().startBlock();
+        BytecodeRootNodeElement.emitThrowAssertionError(b, "\"%d != %d\"", "bci", "bc.length");
+        b.end();
         b.startAssign("this.cachedNodes_").string("result").end();
         b.startAssign("this.branchProfiles_").startCall("allocateBranchProfiles").string("numConditionalBranches").end(2);
         b.startAssign("this.exceptionProfiles_").string("handlers.length == 0 ? EMPTY_EXCEPTION_PROFILES : new boolean[handlers.length / 5]").end();
@@ -1708,13 +1710,6 @@ final class BytecodeNodeElement extends AbstractElement {
         // register early to support recursive use
         instructionHandlers.put(instr, method);
 
-        String localFrame;
-        if (parent.model.hasYieldOperation()) {
-            localFrame = "localFrame";
-        } else {
-            localFrame = "frame";
-        }
-
         CodeTreeBuilder b = method.createBuilder();
 
         if (instr.kind != InstructionKind.CUSTOM && BytecodeRootNodeElement.isStoreBciBeforeExecute(parent.model, tier, instr)) {
@@ -1744,14 +1739,14 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.startDeclaration(parent.tagNode.asType(), "tagNode");
                 b.tree(BytecodeRootNodeElement.readTagNode(parent.tagNode.asType(), BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.TAG_NODE))));
                 b.end();
-                b.statement("tagNode.findProbe().onResume(frame)");
+                b.startStatement().startCall("tagNode.findProbe().onResume").string(parent.localFrame()).end(2);
                 break;
             case TAG_ENTER:
                 method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
                 b.startDeclaration(parent.tagNode.asType(), "tagNode");
                 b.tree(BytecodeRootNodeElement.readTagNode(parent.tagNode.asType(), BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.TAG_NODE))));
                 b.end();
-                b.statement("tagNode.findProbe().onEnter(frame)");
+                b.startStatement().startCall("tagNode.findProbe().onEnter").string(parent.localFrame()).end(2);
                 break;
             case TAG_YIELD:
             case TAG_YIELD_NULL:
@@ -1759,7 +1754,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 if (instr.kind == InstructionKind.TAG_YIELD) {
                     b.startDeclaration(type(Object.class), "returnValue");
                     BytecodeRootNodeElement.startRequireFrame(b, type(Object.class));
-                    b.string("frame");
+                    b.string(parent.localFrame());
                     b.string("sp - 1");
                     b.end();
                     b.end(); // declaration
@@ -1770,7 +1765,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.end();
 
                 b.startStatement().startCall("tagNode.findProbe().onYield");
-                b.string("frame");
+                b.string(parent.localFrame());
                 switch (instr.kind) {
                     case TAG_YIELD -> b.string("returnValue");
                     case TAG_YIELD_NULL -> b.string("null");
@@ -1791,7 +1786,10 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.startDeclaration(parent.tagNode.asType(), "tagNode");
                 b.tree(BytecodeRootNodeElement.readTagNode(parent.tagNode.asType(), BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.TAG_NODE))));
                 b.end();
-                b.statement("tagNode.findProbe().onReturnValue(frame, null)");
+                b.startStatement().startCall("tagNode.findProbe().onReturnValue");
+                b.string(parent.localFrame());
+                b.string("null");
+                b.end(2);
                 break;
             case LOAD_ARGUMENT:
                 emitLoadArgumentHandler(instr, b);
@@ -1819,12 +1817,12 @@ final class BytecodeNodeElement extends AbstractElement {
                 break;
             case LOAD_LOCAL:
             case LOAD_LOCAL_MATERIALIZED:
-                emitLoadLocalHandler(instr, localFrame, b);
+                emitLoadLocalHandler(instr, b);
                 break;
             case STORE_LOCAL:
             case STORE_LOCAL_MATERIALIZED:
                 emitDefaultReturn = false;
-                emitStoreLocalHandler(instr, localFrame, b);
+                emitStoreLocalHandler(instr, b);
                 break;
             case MERGE_CONDITIONAL:
                 emitMergeConditionalHandler(instr, b);
@@ -1901,7 +1899,7 @@ final class BytecodeNodeElement extends AbstractElement {
             case TRACE_INSTRUCTION:
                 b.startStatement();
                 b.tree(parent.readConstFastPath(CodeTreeBuilder.singleString("Builder.INSTRUCTION_TRACER_CONSTANT_INDEX"), "this.constants", parent.instructionTracerAccessImplElement.asType()));
-                b.startCall(".onInstructionEnter").string("this").string("bci").string(localFrame).end();
+                b.startCall(".onInstructionEnter").string("this").string("bci").string(parent.localFrame()).end();
                 b.end(); // statement
                 break;
             case YIELD:
@@ -2090,7 +2088,14 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.startCase().string("HANDLER_TAG_EXCEPTIONAL").end().startCaseBlock();
 
                 b.declaration(parent.tagNode.asType(), "node", "this.tagRoot.tagNodes[handlerTable[handler + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]]");
-                b.statement("Object result = doTagExceptional(frame, node, handlerTable[handler + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], bc, bci, throwable)");
+                b.startDeclaration(type(Object.class), "result").startCall("doTagExceptional");
+                b.string(parent.localFrame());
+                b.string("node");
+                b.string("handlerTable[handler + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
+                b.string("bc");
+                b.string("bci");
+                b.string("throwable");
+                b.end(2);
 
                 b.startIf().string("result == null").end().startBlock();
                 b.startThrow().string("throwable").end();
@@ -2722,8 +2727,8 @@ final class BytecodeNodeElement extends AbstractElement {
         }
     }
 
-    private void emitStoreLocalHandler(InstructionModel instr, String currentLocalFrame, CodeTreeBuilder b) throws AssertionError {
-        String localsFrame = currentLocalFrame;
+    private void emitStoreLocalHandler(InstructionModel instr, CodeTreeBuilder b) throws AssertionError {
+        String localsFrame = parent.localFrame();
         boolean materialized = instr.kind.isLocalVariableMaterializedAccess();
         if (instr.isQuickening() || tier.isUncached() || !parent.model.usesBoxingElimination()) {
 
@@ -3047,9 +3052,9 @@ final class BytecodeNodeElement extends AbstractElement {
         }
     }
 
-    private void emitLoadLocalHandler(InstructionModel instr, String currentLocalsFrame, CodeTreeBuilder b) {
+    private void emitLoadLocalHandler(InstructionModel instr, CodeTreeBuilder b) {
         boolean materialized = instr.kind.isLocalVariableMaterializedAccess();
-        String localsFrame = currentLocalsFrame;
+        String localsFrame = parent.localFrame();
         if (instr.isQuickening() || tier.isUncached() || !parent.model.usesBoxingElimination()) {
             if (materialized) {
                 localsFrame = "materializedFrame";
@@ -3394,7 +3399,10 @@ final class BytecodeNodeElement extends AbstractElement {
         b.startDeclaration(parent.tagNode.asType(), "tagNode");
         b.tree(BytecodeRootNodeElement.readTagNode(parent.tagNode.asType(), BytecodeRootNodeElement.readImmediate("bc", "bci", imm)));
         b.end();
-        b.statement("tagNode.findProbe().onReturnValue(frame, value)");
+        b.startStatement().startCall("tagNode.findProbe().onReturnValue");
+        b.string(parent.localFrame());
+        b.string("value");
+        b.end(2);
     }
 
     private void emitTagLeaveHandler(InstructionModel instr, CodeTreeBuilder b) {
@@ -3431,7 +3439,10 @@ final class BytecodeNodeElement extends AbstractElement {
         b.startDeclaration(parent.tagNode.asType(), "tagNode");
         b.tree(BytecodeRootNodeElement.readTagNode(parent.tagNode.asType(), BytecodeRootNodeElement.readImmediate("bc", "bci", imm)));
         b.end();
-        b.statement("tagNode.findProbe().onReturnValue(frame, returnValue)");
+        b.startStatement().startCall("tagNode.findProbe().onReturnValue");
+        b.string(parent.localFrame());
+        b.string("returnValue");
+        b.end(2);
 
         if (isSpecialized && !ElementUtils.typeEquals(inputType, returnType)) {
             b.startStatement();
@@ -3772,7 +3783,7 @@ final class BytecodeNodeElement extends AbstractElement {
         CodeExecutableElement method = new CodeExecutableElement(
                         Set.of(PRIVATE),
                         type(Object.class), "doTagExceptional",
-                        new CodeVariableElement(types.FrameWithoutBoxing, "frame"),
+                        new CodeVariableElement(types.FrameWithoutBoxing, parent.localFrame()),
                         new CodeVariableElement(parent.tagNode.asType(), "node"),
                         new CodeVariableElement(type(int.class), "nodeId"),
                         new CodeVariableElement(type(byte[].class), "bc"),
@@ -3803,7 +3814,11 @@ final class BytecodeNodeElement extends AbstractElement {
         b.end(); // case default
         b.end(); // switch
 
-        b.statement("return node.findProbe().onReturnExceptionalOrUnwind(frame, exception, wasOnReturnExecuted)");
+        b.startReturn().startCall("node.findProbe().onReturnExceptionalOrUnwind");
+        b.string(parent.localFrame());
+        b.string("exception");
+        b.string("wasOnReturnExecuted");
+        b.end(2);
 
         return method;
 
