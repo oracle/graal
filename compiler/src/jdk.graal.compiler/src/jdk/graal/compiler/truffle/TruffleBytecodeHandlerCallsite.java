@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -59,6 +60,7 @@ import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.nodes.virtual.FieldAliasNode;
 import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 import jdk.graal.compiler.replacements.GraphKit;
+import jdk.graal.compiler.truffle.nodes.TruffleBytecodeHandlerDispatchAddressNode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -407,7 +409,7 @@ public final class TruffleBytecodeHandlerCallsite {
      * "https://github.com/oracle/graal/blob/master/truffle/docs/OneCompilationPerBytecodeHandler.md">
      * One Compilation per Bytecode Handler documentation</a>.
      */
-    public StructuredGraph createStub(GraphKit kit, ResolvedJavaMethod frameOwner) {
+    public StructuredGraph createStub(GraphKit kit, ResolvedJavaMethod frameOwner, boolean threading, ResolvedJavaMethod nextOpcodeMethod, Supplier<Object> bytecodeHandlerTableSupplier) {
         StructuredGraph graph = kit.getGraph();
         FrameStateBuilder frameStateBuilder = new FrameStateBuilder(kit, frameOwner, graph);
         graph.start().setStateAfter(frameStateBuilder.create(bci, graph.start()));
@@ -419,7 +421,15 @@ public final class TruffleBytecodeHandlerCallsite {
         ValueNode[] argumentsToOriginalHandler = createCalleeArguments(kit, parameterNodes);
         ValueNode handlerResult = appendInvoke(targetMethod, argumentsToOriginalHandler, frameStateBuilder, kit);
 
-        kit.append(new ReturnNode(createStubReturn(kit, parameterNodes, handlerResult, null, argumentsToOriginalHandler)));
+        TruffleBytecodeHandlerDispatchAddressNode tailCallTarget = null;
+        if (threading) {
+            // Invoke nextOpcodeMethod
+            ValueNode[] updatedArguments = updateArguments(handlerResult, argumentsToOriginalHandler);
+            ValueNode nextOpcode = appendInvoke(nextOpcodeMethod, updatedArguments, frameStateBuilder, kit);
+            tailCallTarget = kit.append(new TruffleBytecodeHandlerDispatchAddressNode(nextOpcode, bytecodeHandlerTableSupplier));
+        }
+
+        kit.append(new ReturnNode(createStubReturn(kit, parameterNodes, handlerResult, tailCallTarget, argumentsToOriginalHandler)));
         graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "Initial graph for bytecode handler stub");
         return graph;
     }

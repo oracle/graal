@@ -108,7 +108,7 @@ public final class SubstrateTruffleBytecodeHandlerStub extends NonBytecodeMethod
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
-        return callsite.createStub(kit, method);
+        return callsite.createStub(kit, method, threading, nextOpcodeMethod, () -> stubHolder.getBytecodeHandlers(callsite.getEnclosingMethod()));
     }
 
     public TruffleBytecodeHandlerCallsite getCallsite() {

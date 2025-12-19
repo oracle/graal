@@ -63,13 +63,15 @@ public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
 
     private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers;
     private final SubstrateTruffleBytecodeHandlerStubHolder stubHolder;
+    private final boolean threadingEnabled;
 
     private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> nextOpcodeCache = EconomicMap.create();
 
     public TruffleBytecodeHandlerInvokePlugin(EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers,
-                    SubstrateTruffleBytecodeHandlerStubHolder stubHolder) {
+                    SubstrateTruffleBytecodeHandlerStubHolder stubHolder, boolean threadingEnabled) {
         this.registeredBytecodeHandlers = registeredBytecodeHandlers;
         this.stubHolder = stubHolder;
+        this.threadingEnabled = threadingEnabled;
     }
 
     private static ResolvedJavaMethod nextOpcodeMethod(ResolvedJavaType typeBytecodeInterpreterFetchOpcode, ResolvedJavaType holder) {
@@ -105,11 +107,22 @@ public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
             return false;
         }
 
+        boolean threading = threadingEnabled && handlerAnnotationValue.getBoolean("threading");
         boolean safepoint = handlerAnnotationValue.getBoolean("safepoint");
+        ResolvedJavaMethod nextOpcode = null;
+        if (threading) {
+            if (!nextOpcodeCache.containsKey(enclosingMethod)) {
+                ResolvedJavaMethod temp = nextOpcodeMethod(truffleTypes.typeBytecodeInterpreterFetchOpcode(), target.getDeclaringClass());
+                synchronized (nextOpcodeCache) {
+                    nextOpcodeCache.putIfAbsent(enclosingMethod, temp);
+                }
+            }
+            nextOpcode = nextOpcodeCache.get(enclosingMethod);
+        }
 
         TruffleBytecodeHandlerCallsite callSite = new TruffleBytecodeHandlerCallsite(enclosingMethod, b.bci(), target, truffleTypes);
-        SubstrateTruffleBytecodeHandlerStub stub = new SubstrateTruffleBytecodeHandlerStub(stubHolder, unwrap(b.getMetaAccess().lookupJavaType(SubstrateTruffleBytecodeHandlerStubHolder.class)),
-                        callSite, false, null, safepoint);
+        SubstrateTruffleBytecodeHandlerStub stub = new SubstrateTruffleBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
+                        callSite, threading, nextOpcode, safepoint);
 
         AnalysisUniverse universe = ((AnalysisMetaAccess) b.getMetaAccess()).getUniverse();
         AnalysisMethod stubWrapper = universe.lookup(stub);
