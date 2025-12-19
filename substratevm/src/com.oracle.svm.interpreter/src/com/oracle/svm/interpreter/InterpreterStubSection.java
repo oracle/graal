@@ -245,14 +245,14 @@ public abstract class InterpreterStubSection {
      * The "enter stub" pretends to be like a compiled method, with the advantage that the caller
      * does not need to know where the call ends up. Therefore, it has to look like a compiled
      * entrypoint.
-     *
+     * <p>
      * The low-level stubs calling this helper spill native ABI arguments to the stack frame, see
      * {@link com.oracle.svm.core.graal.amd64.AMD64InterpreterStubs.InterpreterEnterStubContext} and
      * {@link com.oracle.svm.core.graal.aarch64.AArch64InterpreterStubs.InterpreterEnterStubContext}.
      * Its layout is defined in
      * {@link com.oracle.svm.core.graal.amd64.AMD64InterpreterStubs.InterpreterDataAMD64} and
      * {@link com.oracle.svm.core.graal.aarch64.AArch64InterpreterStubs.InterpreterDataAArch64}.
-     *
+     * <p>
      * The ABI arguments can contain references which the GC is not aware of, so until they are
      * moved to a known location, a safepoint must be avoided. ThreadLocalHandles are used for that.
      *
@@ -445,8 +445,6 @@ public abstract class InterpreterStubSection {
         return (Pointer) entryPoint;
     }
 
-    // note that this method is not callerMustBeUninterruptible because only the caller with
-    // ristretto code must not be interrupted
     @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
     public static Object leaveInterpreter(CFunctionPointer compiledEntryPoint, InterpreterResolvedJavaMethod seedMethod, Object[] args) {
         PreparedSignature compiledSignature = seedMethod.getPreparedSignature();
@@ -461,12 +459,9 @@ public abstract class InterpreterStubSection {
         Pointer stackBuffer = Word.nullPointer();
         if (stackSize > 0) {
             stackBuffer = NullableNativeMemory.malloc(Word.unsigned(stackSize), NmtCategory.Interpreter);
-            if (stackBuffer.isNull()) {
-                throw NativeMemory.CACHED_MALLOC_OOME;
-            }
+            VMError.guarantee(stackBuffer.isNonNull(), "Out-of-memory while allocating interpreter-internal data.");
             accessHelper.setSp(leaveData, stackSize, stackBuffer);
         }
-
         try {
             // GR-55022: Stack overflow check should be done here
             return leaveInterpreter0(compiledEntryPoint, args, compiledSignature, accessHelper, leaveData, stackSize);
@@ -579,35 +574,34 @@ public abstract class InterpreterStubSection {
      * {@code Uninterruptible}. Callers must ensure no safepoint happens between the return and the
      * call to the installed code.
      */
-    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
-    private static SubstrateInstalledCodeImpl getInstalledCode(InterpreterResolvedJavaMethod interpreterMethod) {
+    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE, callerMustBe = true)
+    private static CFunctionPointer getInstalledCodeEntryPoint(InterpreterResolvedJavaMethod interpreterMethod) {
         RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
         if (rMethod != null) {
             SubstrateInstalledCodeImpl ic = rMethod.installedCode;
             // entryPoint != isValid (means it is not deoptimized yet)
             if (ic != null && ic.getEntryPoint() != 0) {
-                return ic;
+                return Word.pointer(ic.getEntryPoint());
             }
         }
-        return null;
+        return Word.nullPointer();
     }
 
-    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE, calleeMustBe = false)
+    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
     public static Object call(InterpreterResolvedJavaMethod interpreterMethod, Object[] args) {
         /*
          * Determine if a JIT compiled version is available and if so execute this one instead. This
          * could be more optimized, see GR-71160.
          */
-        SubstrateInstalledCodeImpl ic = getInstalledCode(interpreterMethod);
-        if (ic != null) {
-            /*
-             * Note that getInstalledCode is Uninterruptible and leaveInterpreter is as well so now
-             * deopt can happen between the call to ic.isValid and leaveInterpreter.
-             */
-            CFunctionPointer entryPoint = Word.pointer(ic.getEntryPoint());
+        CFunctionPointer entryPoint = getInstalledCodeEntryPoint(interpreterMethod);
+        if (entryPoint.isNonNull()) {
             return leaveInterpreter(entryPoint, interpreterMethod, args);
-        } else {
-            return Interpreter.execute(interpreterMethod, args);
         }
+        return callInterpreterInterruptibly(interpreterMethod, args);
+    }
+
+    @Uninterruptible(reason = "No JIT compiled code found, so it is safe to switch to interruptible code.", calleeMustBe = false)
+    private static Object callInterpreterInterruptibly(InterpreterResolvedJavaMethod interpreterMethod, Object[] args) {
+        return Interpreter.execute(interpreterMethod, args);
     }
 }

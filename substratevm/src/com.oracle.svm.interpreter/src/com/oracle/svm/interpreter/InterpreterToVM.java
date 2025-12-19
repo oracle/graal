@@ -904,7 +904,6 @@ public final class InterpreterToVM {
                             .newline();
         }
 
-        Object retObj = null;
         if (callCompiledTarget) {
             VMError.guarantee(!forceStayInInterpreter);
             if (calleeFtnPtr.isNull()) {
@@ -919,14 +918,13 @@ public final class InterpreterToVM {
         }
         try {
             if (callCompiledTarget) {
-                retObj = InterpreterStubSection.leaveInterpreter(calleeFtnPtr, targetMethod, calleeArgs);
+                return InterpreterStubSection.leaveInterpreter(calleeFtnPtr, targetMethod, calleeArgs);
             } else {
-                retObj = InterpreterStubSection.call(targetMethod, calleeArgs);
+                return InterpreterStubSection.call(targetMethod, calleeArgs);
             }
         } catch (Throwable t) {
             throw SemanticJavaException.raise(t);
         }
-        return retObj;
     }
 
     public static Object nullCheck(Object value) throws SemanticJavaException {

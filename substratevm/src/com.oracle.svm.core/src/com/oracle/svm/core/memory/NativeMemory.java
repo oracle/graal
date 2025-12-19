@@ -47,9 +47,6 @@ import jdk.graal.compiler.word.Word;
  * {@link NullableNativeMemory} instead.
  */
 public class NativeMemory {
-
-    public static final OutOfMemoryError CACHED_MALLOC_OOME = new OutOfMemoryError("Memory allocation failed: malloc returned null.");
-
     /**
      * Allocates {@code size} bytes of native memory. The content of the memory is undefined.
      * <p>

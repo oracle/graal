@@ -628,7 +628,6 @@ public class AArch64InterpreterStubs {
 
         @Override
         @Fold
-        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public int allocateStubDataSize() {
             return sizeOfInterpreterData();
         }
