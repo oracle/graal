@@ -273,7 +273,8 @@ public class MethodTypeFlowBuilder {
                 /*
                  * Deoptimization Targets cannot have virtual objects in frame states.
                  *
-                 * Also, more work is needed to enable PEA in Runtime Compiled Methods.
+                 * For runtime compiled methods, PEA should run after analysis, since
+                 * InlinedInvokeArgumentNodes from early inlining would keep objects materialized.
                  */
                 new BoxNodeIdentityPhase().apply(graph, bb.getProviders(method));
                 new PartialEscapePhase(false, canonicalizerPhase, bb.getOptions()).apply(graph, bb.getProviders(method));

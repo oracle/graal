@@ -829,7 +829,8 @@ public class SVMHost extends HostVM {
                 /*
                  * Deoptimization Targets cannot have virtual objects in frame states.
                  *
-                 * Also, more work is needed to enable PEA in Runtime Compiled Methods.
+                 * For runtime compiled methods, PEA should run after analysis, since
+                 * InlinedInvokeArgumentNodes from early inlining would keep objects materialized.
                  */
                 new BoxNodeIdentityPhase().apply(graph, getProviders(method.getMultiMethodKey()));
                 new PartialEscapePhase(false, false, CanonicalizerPhase.create(), null, options).apply(graph, getProviders(method.getMultiMethodKey()));

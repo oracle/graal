@@ -28,6 +28,7 @@ import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,6 +45,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -62,6 +64,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.code.AnalysisToHostedGraphTransplanter;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.DeoptimizationUtils;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
@@ -131,6 +134,7 @@ public class RuntimeCompiledMethodSupport {
     private record CompilationState(
                     GraalGraphObjectReplacer objectReplacer,
                     GraphEncoder graphEncoder,
+                    HostedUniverse hUniverse,
                     HostedProviders runtimeCompilationProviders,
                     ImageHeapScanner heapScanner,
                     Map<HostedMethod, StructuredGraph> runtimeGraphs,
@@ -155,7 +159,7 @@ public class RuntimeCompiledMethodSupport {
 
         SubstrateCompilationDirectives.singleton().resetDeoptEntries();
 
-        CompilationState compilationState = new CompilationState(objectReplacer, graphEncoder, runtimeCompilationProviders, imageScanner, new ConcurrentHashMap<>(),
+        CompilationState compilationState = new CompilationState(objectReplacer, graphEncoder, hUniverse, runtimeCompilationProviders, imageScanner, new ConcurrentHashMap<>(),
                         registeredRuntimeCompilations);
 
         /*
@@ -217,7 +221,7 @@ public class RuntimeCompiledMethodSupport {
                     Function<ResolvedJavaMethod, ResolvedJavaMethod> targetResolver, CanonicalizerPhase canonicalizer, Providers providers) {
     }
 
-    private static class RuntimeCompileTask implements CompletionExecutor.DebugContextRunnable {
+    private class RuntimeCompileTask implements CompletionExecutor.DebugContextRunnable {
         final HostedMethod method;
         final CompilationState compilationState;
 
@@ -247,7 +251,7 @@ public class RuntimeCompiledMethodSupport {
 
             AnalysisMethod aMethod = method.getWrapped();
             StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, trackNodeSourcePosition, false,
-                            (arch, analyzedGraph) -> RuntimeCompiledMethodSupport.singleton().createDecoder(arch, analyzedGraph, compilationState.heapScanner));
+                            (arch, analyzedGraph) -> createDecoder(arch, analyzedGraph, compilationState.heapScanner));
             if (graph == null) {
                 throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)"));
             }
@@ -270,21 +274,7 @@ public class RuntimeCompiledMethodSupport {
 
             try (DebugContext.Scope _ = debug.scope("RuntimeOptimize", graph, method, this)) {
                 CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
-                canonicalizer.apply(graph, compilationState.runtimeCompilationProviders);
-
-                new DominatorBasedGlobalValueNumberingPhase(canonicalizer).apply(graph, compilationState.runtimeCompilationProviders);
-
-                new IterativeConditionalEliminationPhase(canonicalizer, true).apply(graph, compilationState.runtimeCompilationProviders);
-
-                /*
-                 * ConvertDeoptimizeToGuardPhase was already executed after parsing, but
-                 * optimizations applied in between can provide new potential.
-                 */
-                new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, compilationState.runtimeCompilationProviders);
-
-                /*
-                 * More optimizations can be added here.
-                 */
+                optimizeBeforeEncoding(graph, compilationState.runtimeCompilationProviders, canonicalizer);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -301,15 +291,56 @@ public class RuntimeCompiledMethodSupport {
                                 return deoptMethod;
                             }));
 
-            assert RuntimeCompiledMethodSupport.singleton().verifyNodes(graph);
+            assert verifyNodes(graph);
             var previous = compilationState.runtimeGraphs.put(method, graph);
             assert previous == null;
+
+            /*
+             * Any escape analysis artifacts (VirtualObjectNodes, VirtualObjectStates, etc.) in the
+             * graph must be patched, because they were built with the instance field order of the
+             * analysis universe. This patching reorders explicitly stored fields (as in
+             * VirtualInstanceNode) and field values (as in VirtualObjectState) based on the hosted
+             * order, but fields remain AnalysisField and do not become HostedField. This introduces
+             * inconsistencies in the graph wrt the analysis universe and must therefore happen
+             * immediately before encoding. After decoding at image runtime for runtime compilation,
+             * the GraalGraphObjectReplacer will have replaced all AnalysisTypes, AnalysisFields,
+             * etc., with their runtime SubstrateType, SubstrateField, etc. counterparts which is
+             * then consistent with the patched order.
+             *
+             * This is a workaround to support EA at build time for runtime compiled methods. At
+             * some point, a larger refactoring of the universe transitions (analysis->hosted,
+             * analysis->runtime) would be necessary to unify the logic currently spread across
+             * GraalGraphObjectReplacer and AnalysisToHostedGraphTransplanter (see GR-72146).
+             */
+            AnalysisToHostedGraphTransplanter.patchEscapeAnalysisState(graph, compilationState.hUniverse, aType -> hostedOrderedFields(aType, compilationState.hUniverse));
 
             // graph encoder is not currently threadsafe
             synchronized (compilationState.graphEncoder) {
                 compilationState.graphEncoder.prepare(graph);
             }
         }
+
+        private static ResolvedJavaField[] hostedOrderedFields(AnalysisType aType, HostedUniverse universe) {
+            return Arrays.stream(universe.lookup(aType).getInstanceFields(true)).map(h -> h.wrapped).toArray(ResolvedJavaField[]::new);
+        }
+    }
+
+    protected void optimizeBeforeEncoding(StructuredGraph graph, Providers providers, CanonicalizerPhase canonicalizer) {
+        canonicalizer.apply(graph, providers);
+
+        new DominatorBasedGlobalValueNumberingPhase(canonicalizer).apply(graph, providers);
+
+        new IterativeConditionalEliminationPhase(canonicalizer, true).apply(graph, providers);
+
+        /*
+         * ConvertDeoptimizeToGuardPhase was already executed after parsing, but optimizations
+         * applied in between can provide new potential.
+         */
+        new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, providers);
+
+        /*
+         * More optimizations can be added here.
+         */
     }
 
     /**
