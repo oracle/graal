@@ -317,6 +317,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean allowsPublicAccess(Object hostAccess);
 
+        public abstract boolean allowsHostStackTrace(Object hostAccess);
+
         public abstract boolean allowsAccessInheritance(Object hostAccess);
 
         public abstract Object getHostAccessImpl(Object hostAccess);
@@ -1055,10 +1057,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean allowsPublicAccess();
 
-        public final boolean isHostStackTraceVisibleToGuest() {
-            return allowsPublicAccess();
-        }
+        public abstract boolean isHostStackTraceVisibleToGuest();
 
+        public abstract boolean isGuestToHostRootNode(Object rootNode);
     }
 
     public abstract static class AbstractValueDispatch extends AbstractDispatchClass {
@@ -1446,6 +1447,14 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public void validateVirtualThreadCreation(OptionValues engineOptions) {
+    }
+
+    public <T extends Throwable> T mergeHostStackTrace(Throwable forException, T hostException) {
+        return getNext().mergeHostStackTrace(forException, hostException);
+    }
+
+    public Object getEmbedderExceptionStackTrace(Object engine, Throwable exception, boolean inHost) {
+        return getNext().getEmbedderExceptionStackTrace(engine, exception, inHost);
     }
 
     /**

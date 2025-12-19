@@ -43,6 +43,8 @@ package com.oracle.truffle.api.test.wrapper;
 import java.lang.reflect.Type;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.TestAPIAccessor;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 
@@ -153,4 +155,13 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
         return false;
     }
 
+    @Override
+    public boolean isHostStackTraceVisibleToGuest() {
+        return false;
+    }
+
+    @Override
+    public boolean isGuestToHostRootNode(Object rootNode) {
+        return TestAPIAccessor.HOST.isGuestToHostRootNode((RootNode) rootNode);
+    }
 }
