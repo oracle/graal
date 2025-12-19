@@ -592,6 +592,7 @@ public abstract class InterpreterStubSection {
         return null;
     }
 
+    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE, calleeMustBe = false)
     public static Object call(InterpreterResolvedJavaMethod interpreterMethod, Object[] args) {
         /*
          * Determine if a JIT compiled version is available and if so execute this one instead. This
@@ -608,10 +609,5 @@ public abstract class InterpreterStubSection {
         } else {
             return Interpreter.execute(interpreterMethod, args);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T extends Throwable> T uncheckedThrow(Throwable t) throws T {
-        throw (T) t;
     }
 }

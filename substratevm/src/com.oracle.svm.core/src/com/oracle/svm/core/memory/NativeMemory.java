@@ -39,7 +39,7 @@ import jdk.graal.compiler.word.Word;
 
 /**
  * Internal API for managing native memory. This class supports native memory tracking (NMT) and is
- * therefore preferred over the 1 public API class {@link UnmanagedMemory} and its
+ * therefore preferred over the public API class {@link UnmanagedMemory} and its
  * {@link UnmanagedMemorySupport implementations}.
  * <p>
  * All methods that allocate native memory throw an {@link OutOfMemoryError} if the memory
