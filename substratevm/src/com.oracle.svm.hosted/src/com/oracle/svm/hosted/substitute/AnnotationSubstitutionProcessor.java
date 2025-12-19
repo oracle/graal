@@ -95,7 +95,6 @@ import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
-import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -1066,7 +1065,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             case FieldOffset -> {
                 var targetField = getField(annotated, targetType, targetName);
                 unsafeAccessedFields.put(targetField, original);
-                yield new FieldOffsetFieldValueTransformer(OriginalFieldProvider.getJavaField(targetField), original.getType().getJavaKind());
+                yield new FieldOffsetFieldValueTransformer(targetField, original.getType().getJavaKind());
             }
             case StaticFieldBase -> {
                 var targetField = getField(annotated, targetType, targetName);
