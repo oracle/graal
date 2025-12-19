@@ -125,8 +125,8 @@ suite = {
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.macosx.x86_64"
                     },
                     "aarch64": {
-                        # GR-34811
-                        "optional": True,
+                        "digest": "sha512:c16b112ad4418e02336840fd3b87983a30dd1ddf24a45a6bac40d4ba5c471c2837c7556b014c06564aa389c094aba1030daea44181fb340eea1f352ffb111c2a",
+                        "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7-macosx-arm64.jar"],
                     },
                 },
                 "<others>": {
@@ -166,8 +166,8 @@ suite = {
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.javacpp.macosx.x86_64"
                     },
                     "aarch64": {
-                        # GR-34811
-                        "optional": True,
+                        "digest": "sha512:7c8631137616f4a29d4a692a99673c551137b0ff2f251909a2ab6468484accbc8f1ccfa6ead2c30b0c425f824b37d68e0a350ac23882f9fcc75d9ed7dd4b08a6",
+                        "urls": ["{urlbase}/javacpp-shadowed-1.5.7-macosx-arm64.jar"],
                     },
                 },
                 "<others>": {
