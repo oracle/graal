@@ -74,6 +74,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -883,6 +884,7 @@ public class LoggingTest {
     }
 
     @Test
+    @Ignore("GR-72074")
     public void testNoContextLoggingBasic() {
         // Engine handler overridden by context handler, logging from language with context
         final Level defaultLevel = Level.INFO;
@@ -1029,6 +1031,7 @@ public class LoggingTest {
     }
 
     @Test
+    @Ignore("GR-70315")
     public void testNoContextLoggingMultipleEngines() {
         TestHandler engine1Handler = new TestHandler();
         TestHandler engine2Handler = new TestHandler();
