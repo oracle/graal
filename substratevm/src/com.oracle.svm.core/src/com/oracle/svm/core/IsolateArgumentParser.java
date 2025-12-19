@@ -372,6 +372,11 @@ public class IsolateArgumentParser {
         return parsedOptionValues[index];
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void setLongOptionValue(int optionIndex, long newValue) {
+        parsedOptionValues[optionIndex] = newValue;
+    }
+
     protected CCharPointer getCCharPointerOptionValue(int index) {
         return Word.pointer(parsedOptionValues[index]);
     }

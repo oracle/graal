@@ -78,11 +78,39 @@ import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
 import jdk.graal.compiler.word.Word;
 
 /**
- * Bump-pointer allocation from thread-local top and end Pointers. Many of these methods are called
- * from allocation snippets, so they can not do anything fancy. It happens that prefetch
- * instructions access memory outside the TLAB. At the moment, this is not an issue as we only
- * support architectures where the prefetch instructions never cause a segfault, even if they try to
- * access memory that is not accessible.
+ * Implements the thread-local allocation logic for serial and epsilon GC.
+ * <p>
+ * Multiple threads may execute the methods in this class concurrently. All code transitively
+ * reachable from these methods can be executed as a side effect of any Java heap allocation. To
+ * prevent hard to debug transient issues, we execute as little code as possible in these methods.
+ * <p>
+ * Executing complex logic in the allocation slow path can modify shared global state, causing
+ * issues that look similar to race conditions but that can even happen in single-threaded
+ * environments. For example:
+ *
+ * <pre>
+ * {@code
+ * private static Object singleton;
+ *
+ * private static synchronized Object createSingleton() {
+ *     if (singleton == null) {
+ *         Object o = new Object();
+ *         // If the allocation above enters the slow path, and if that slow
+ *         // path executes code that calls createSingleton() as well, then
+ *         // the assertion below will fail because the singleton already
+ *         // got initialized by the same thread in the meanwhile.
+ *         assert singleton == null;
+ *         singleton = o;
+ *     }
+ *     return singleton;
+ * }
+ * }
+ * </pre>
+ *
+ * The allocation fast-path emits prefetch instructions. Those instructions may try to access memory
+ * that is outside the TLAB and therefore not necessarily accessible. At the moment, this is not an
+ * issue as we only support architectures where prefetch instructions never cause segfaults, even if
+ * they access memory that is not accessible.
  */
 public final class ThreadLocalAllocation {
     @RawStructure
@@ -183,46 +211,14 @@ public final class ThreadLocalAllocation {
         return allocatedAlignedBytes.getVolatile(thread);
     }
 
-    /**
-     * NOTE: Multiple threads may execute this method concurrently. All code that is transitively
-     * reachable from this method may get executed as a side effect of an allocation slow path. To
-     * prevent hard to debug transient issues, we execute as little code as possible in this method.
-     *
-     * If the executed code is too complex, then it can happen that we unexpectedly change some
-     * shared global state as a side effect of an allocation. This may result in issues that look
-     * similar to races but that can even happen in single-threaded environments, e.g.:
-     *
-     * <pre>
-     * {@code
-     * private static Object singleton;
-     *
-     * private static synchronized Object createSingleton() {
-     *     if (singleton == null) {
-     *         Object o = new Object();
-     *         // If the allocation above enters the allocation slow path code, and executes a
-     *         // complex slow path hook, then it is possible that createSingleton() gets
-     *         // recursively execute by the current thread. So, the assertion below may fail
-     *         // because the singleton got already initialized by the same thread in the meanwhile.
-     *         assert singleton == null;
-     *         singleton = o;
-     *     }
-     *     return result;
-     * }
-     * }
-     * </pre>
-     */
-    private static void runSlowPathHooks() {
-        GCImpl.getPolicy().updateSizeParameters();
-    }
-
     public static Object slowPathNewInstance(Word objectHeader) {
         DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
 
         UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
         Object result = allocateInstanceInCurrentTlab(hub, size);
         if (result == null) {
+            GCImpl.getPolicy().ensureSizeParametersInitialized();
             result = slowPathNewInstanceWithoutAllocating(hub, size);
-            runSlowPathHooks();
             sampleSlowPathAllocation(result, size, Integer.MIN_VALUE);
         }
         return result;
@@ -269,10 +265,7 @@ public final class ThreadLocalAllocation {
         }
 
         Object result = slowPathNewArrayLikeObjectWithoutAllocating(hub, length, size, podReferenceMap);
-
-        runSlowPathHooks();
         sampleSlowPathAllocation(result, size, length);
-
         return result;
     }
 
