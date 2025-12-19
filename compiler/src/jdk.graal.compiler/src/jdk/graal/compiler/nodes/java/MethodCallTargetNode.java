@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -220,6 +221,13 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         if (specialCallTarget != null) {
             this.setTargetMethod(specialCallTarget);
             setInvokeKind(InvokeKind.Special);
+            if (invoke() != null) {
+                /*
+                 * Notify the graph that the invoke's input changed. The community inliner listens
+                 * for this event and adds the invoke to its worklist.
+                 */
+                graph().fireNodeEvent(Graph.NodeEvent.INPUT_CHANGED, invoke().asNode());
+            }
             return true;
         }
         return false;
