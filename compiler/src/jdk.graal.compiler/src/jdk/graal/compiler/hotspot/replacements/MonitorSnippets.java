@@ -740,7 +740,7 @@ public class MonitorSnippets implements Snippets {
     private static void checkCounter(@ConstantParameter CStringConstant errMsg) {
         final Word counter = MonitorCounterNode.counter();
         final int count = counter.readInt(0, MONITOR_COUNTER_LOCATION);
-        if (count != 0) {
+        if (probability(SLOW_PATH_PROBABILITY, count != 0)) {
             vmError(errMsg, count);
         }
     }

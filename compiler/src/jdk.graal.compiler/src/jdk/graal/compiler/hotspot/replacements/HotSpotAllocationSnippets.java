@@ -287,9 +287,9 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     private void verifyHeap() {
         Word tlabInfo = getTLABInfo();
         Word topValue = readTlabTop(tlabInfo);
-        if (!topValue.equal(Word.zero())) {
+        if (probability(FAST_PATH_PROBABILITY, !topValue.equal(Word.zero()))) {
             Word topValueContents = topValue.readWord(0, MARK_WORD_LOCATION);
-            if (topValueContents.equal(Word.zero())) {
+            if (probability(SLOW_PATH_PROBABILITY, topValueContents.equal(Word.zero()))) {
                 AssertionSnippets.vmMessageC(VM_MESSAGE_C, true, cstring("overzeroing of TLAB detected"), 0L, 0L, 0L);
             }
         }
