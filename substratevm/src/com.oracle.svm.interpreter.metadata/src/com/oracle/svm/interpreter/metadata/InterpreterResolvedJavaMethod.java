@@ -77,7 +77,6 @@ import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.LineNumberTable;
@@ -88,6 +87,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
+import org.graalvm.word.Word;
 
 /**
  * Encapsulates resolved methods used under close-world assumptions, compiled and interpretable, but

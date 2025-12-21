@@ -41,8 +41,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.VMThreads;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.Word;
 
 /** Walk the stack and verify all objects that are referenced from stack frames. */
 final class StackVerifier {

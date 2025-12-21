@@ -28,7 +28,7 @@ import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 
 import org.graalvm.word.LocationIdentity;
 
-import jdk.graal.compiler.core.common.memory.BarrierType;
+import org.graalvm.word.BarrierType;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.NodeClass;

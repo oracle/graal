@@ -55,7 +55,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.PauseNode;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.Word;
 
 /**
  * The locale is a process-wide setting. This class uses {@link LocaleCHelper C code} to initialize

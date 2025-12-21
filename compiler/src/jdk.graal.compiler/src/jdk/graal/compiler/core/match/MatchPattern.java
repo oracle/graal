@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.core.match;
 
-import jdk.graal.compiler.core.common.memory.BarrierType;
+import org.graalvm.word.BarrierType;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;

@@ -60,7 +60,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.Word;
 
 /**
  * The following classes aim to provide full support for time zones for native-image. This

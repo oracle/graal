@@ -51,8 +51,7 @@ import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.Word;
 
 public class PosixRawFileOperationSupport extends AbstractRawFileOperationSupport {
     @Platforms(Platform.HOSTED_ONLY.class)

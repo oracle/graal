@@ -46,7 +46,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.Word;
 
 /**
  * Provides functionality to query information about a unit of compiled code from a {@link CodeInfo}

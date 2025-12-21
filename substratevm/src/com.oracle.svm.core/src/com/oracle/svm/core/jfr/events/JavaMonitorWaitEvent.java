@@ -26,6 +26,8 @@
 
 package com.oracle.svm.core.jfr.events;
 
+import org.graalvm.word.Word;
+
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -35,8 +37,6 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_management_HiddenWait;
-
-import jdk.graal.compiler.word.Word;
 
 public class JavaMonitorWaitEvent {
     public static void emit(long startTicks, Object obj, long notifierTid, long timeout, boolean timedOut) {

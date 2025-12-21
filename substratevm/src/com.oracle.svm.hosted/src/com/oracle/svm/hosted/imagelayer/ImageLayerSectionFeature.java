@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import static jdk.graal.compiler.word.Word.signed;
+import static org.graalvm.word.Word.signed;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
+import org.graalvm.word.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
@@ -65,7 +66,6 @@ import com.oracle.svm.hosted.image.NativeImage;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
 

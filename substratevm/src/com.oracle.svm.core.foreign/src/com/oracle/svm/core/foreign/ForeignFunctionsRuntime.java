@@ -79,12 +79,12 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
-import jdk.graal.compiler.word.Word;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.CapturableState;
 import jdk.internal.foreign.abi.LinkerOptions;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.word.Word;
 
 public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedArenaConfig {
     @Fold
@@ -419,7 +419,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
          * We never allow memory sessions with state 'OPEN' to be included in the image heap because
          * native memory may be associated with them which will be attempted to be free'd if the
          * session is closed. Non-closable or closed sessions are allowed.
-         * 
+         *
          * Note: This assumes that there is only one implementor of interface Scope which is
          * MemorySessionImpl. If JDK's class hierarchy changes, we need to adapt this as well.
          */

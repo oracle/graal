@@ -27,6 +27,7 @@
 package com.oracle.svm.core.jfr.events;
 
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.Word;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.HasJfrSupport;
@@ -36,8 +37,6 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-
-import jdk.graal.compiler.word.Word;
 
 public class JavaMonitorEnterEvent {
     public static void emit(Object obj, long previousOwnerTid, long startTicks) {

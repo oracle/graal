@@ -32,7 +32,7 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.graal.compiler.core.common.memory.BarrierType;
+import org.graalvm.word.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;

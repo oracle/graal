@@ -48,7 +48,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
 
 import jdk.graal.compiler.core.common.calc.FloatConvert;
-import jdk.graal.compiler.core.common.memory.BarrierType;
+import org.graalvm.word.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;

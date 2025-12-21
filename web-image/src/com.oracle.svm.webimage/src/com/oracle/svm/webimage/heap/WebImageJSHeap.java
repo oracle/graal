@@ -43,8 +43,7 @@ import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.Word;
 
 /**
  * SVM requires a {@link Heap} to be in the {@link ImageSingletons}. This class acts as a dummy

@@ -44,7 +44,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.test.Graal;
-import jdk.graal.compiler.core.common.memory.BarrierType;
+import org.graalvm.word.BarrierType;
 import jdk.graal.compiler.core.test.TestPhase;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotBackend;

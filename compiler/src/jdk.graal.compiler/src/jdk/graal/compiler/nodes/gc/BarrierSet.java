@@ -27,7 +27,7 @@ package jdk.graal.compiler.nodes.gc;
 
 import org.graalvm.word.LocationIdentity;
 
-import jdk.graal.compiler.core.common.memory.BarrierType;
+import org.graalvm.word.BarrierType;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
@@ -58,7 +58,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * and customization for pre-write and post-allocation initialization write behaviors.
  * <p>
  *
- * @see jdk.graal.compiler.core.common.memory.BarrierType
+ * @see BarrierType
  * @see jdk.graal.compiler.nodes.memory.FixedAccessNode
  * @see jdk.graal.compiler.nodes.java.AbstractNewObjectNode
  * @see jdk.graal.compiler.nodes.extended.ArrayRangeWrite

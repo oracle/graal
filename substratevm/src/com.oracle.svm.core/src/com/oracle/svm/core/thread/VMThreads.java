@@ -83,8 +83,8 @@ import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.PauseNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.aarch64.AArch64;
+import org.graalvm.word.Word;
 
 /**
  * Utility methods for the manipulation and iteration of {@link IsolateThread}s.

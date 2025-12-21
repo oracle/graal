@@ -38,7 +38,7 @@ import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIBoxingUtils;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIType;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIUtils;
 
-import jdk.graal.compiler.core.common.memory.BarrierType;
+import org.graalvm.word.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;

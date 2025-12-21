@@ -28,7 +28,7 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.core.common.memory.BarrierType;
+import org.graalvm.word.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.DebugOptions.PrintGraphTarget;

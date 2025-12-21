@@ -31,6 +31,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.Word;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -50,7 +51,6 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import jdk.graal.compiler.word.Word;
 
 /**
  * This class contains the {@link SubstrateForeignCallTarget}s for the allocation slow path. These

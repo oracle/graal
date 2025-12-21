@@ -89,16 +89,17 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 import static jdk.graal.compiler.nodes.extended.MembarNode.memoryBarrier;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static jdk.graal.compiler.replacements.nodes.CStringConstant.cstring;
-import static jdk.graal.compiler.word.Word.nullPointer;
-import static jdk.graal.compiler.word.Word.unsigned;
-import static jdk.graal.compiler.word.Word.zero;
 import static org.graalvm.word.LocationIdentity.any;
+import static org.graalvm.word.Word.nullPointer;
+import static org.graalvm.word.Word.unsigned;
+import static org.graalvm.word.Word.zero;
 
 import java.util.List;
 import java.util.Objects;
 
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.Word;
 import org.graalvm.word.WordBase;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -154,7 +155,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.DeoptimizationAction;

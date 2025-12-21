@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -40,8 +41,6 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.webimage.platform.WebImagePlatform;
-
-import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton(VirtualMemoryProvider.class)
 @Platforms(WebImagePlatform.class)

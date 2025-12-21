@@ -24,12 +24,12 @@
  */
 package jdk.graal.compiler.word;
 
-import jdk.graal.compiler.word.Word.Opcode;
-import jdk.graal.compiler.word.Word.Operation;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.Word.Opcode;
+import org.graalvm.word.Word.Operation;
 import org.graalvm.word.WordBase;
 
 /**

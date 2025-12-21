@@ -53,8 +53,8 @@ import jdk.graal.compiler.hotspot.nodes.StubForeignCallNode;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.nodes.UnwindNode;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.Register;
+import org.graalvm.word.Word;
 
 /**
  * Stub called by an {@link UnwindNode}. This stub executes in the frame of the method throwing an

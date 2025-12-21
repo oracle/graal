@@ -41,7 +41,7 @@ import com.oracle.svm.core.util.UserError;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.Word;
 
 /**
  * Garbage collection-specific options that are supported by all garbage collectors. Some of these

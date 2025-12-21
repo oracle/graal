@@ -378,7 +378,7 @@ public class BFDNameProvider implements UniqueShortNameProvider {
          *
          * int Arrays.NaturalOrder.compare(Object first, Object second)
          *      -> _ZN19Arrays$NaturalOrder7compareEJiPP16java.lang.ObjectPS_2
-         * 
+         *
          * In this case the class name symbol 19Arrays$NaturalOrder binds $_ to Arrays$NaturalOrder,
          * the method name symbol 7compare binds $1_ to Arrays$NaturalOrder::compareTo and the
          * first parameter type name symbol 16java.lang.Object binds $2_ to java.lang.Object.
