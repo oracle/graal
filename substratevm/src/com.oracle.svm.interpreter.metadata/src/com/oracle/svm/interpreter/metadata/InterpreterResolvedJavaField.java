@@ -30,6 +30,7 @@ import java.util.function.Function;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Word;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.SubstrateMetadata;
@@ -190,8 +191,8 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
 
     /**
      * A field is undefined when it is unmaterialized, and the value is not preserved for the
-     * interpreter. Examples of undefined fields include: {@link jdk.graal.compiler.word.Word}
-     * subtypes, {@link DynamicHub}'s vtable.
+     * interpreter. Examples of undefined fields include: {@link Word} subtypes,
+     * {@link DynamicHub}'s vtable.
      */
     public final boolean isUndefined() {
         return this.isUnmaterializedConstant() &&

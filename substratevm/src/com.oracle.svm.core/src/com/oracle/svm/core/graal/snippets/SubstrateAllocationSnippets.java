@@ -39,6 +39,7 @@ import java.util.Map;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.Word;
 
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.core.MissingRegistrationUtils;
@@ -116,7 +117,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -316,7 +316,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @Snippet
     protected Object newmultiarray(DynamicHub hub, @ConstantParameter int rank, @ConstantParameter boolean withException, @VarargsParameter int[] dimensions) {
-        return newMultiArrayImpl(Word.objectToUntrackedPointer(hub), rank, withException, dimensions);
+        return newMultiArrayImpl(Word.objectToUntrackedWord(hub), rank, withException, dimensions);
     }
 
     @Snippet

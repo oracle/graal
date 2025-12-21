@@ -28,10 +28,14 @@ import static jdk.graal.compiler.nodes.ConstantNode.forInt;
 import static jdk.graal.compiler.nodes.ConstantNode.forIntegerKind;
 import static org.graalvm.word.LocationIdentity.any;
 
-import java.lang.reflect.Constructor;
 import java.util.Arrays;
+import java.util.Locale;
 
+import org.graalvm.word.BarrierType;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Word;
+import org.graalvm.word.Word.Opcode;
+import org.graalvm.word.Word.Operation;
 import org.graalvm.word.impl.WordFactoryOpcode;
 import org.graalvm.word.impl.WordFactoryOperation;
 
@@ -42,7 +46,6 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.Condition.CanonicalizedCondition;
-import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -54,13 +57,25 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
+import jdk.graal.compiler.nodes.calc.LeftShiftNode;
+import jdk.graal.compiler.nodes.calc.MulNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
+import jdk.graal.compiler.nodes.calc.OrNode;
+import jdk.graal.compiler.nodes.calc.RightShiftNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
+import jdk.graal.compiler.nodes.calc.SignedDivNode;
+import jdk.graal.compiler.nodes.calc.SignedRemNode;
+import jdk.graal.compiler.nodes.calc.SubNode;
+import jdk.graal.compiler.nodes.calc.UnsignedDivNode;
+import jdk.graal.compiler.nodes.calc.UnsignedRemNode;
+import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
@@ -82,7 +97,6 @@ import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-import jdk.graal.compiler.word.Word.Opcode;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -93,8 +107,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * A plugin for calls to {@linkplain Word.Operation word operations}, as well as all other nodes
- * that need special handling for {@link Word} types.
+ * A plugin for calls to {@linkplain Operation word operations}, as well as all other nodes that
+ * need special handling for {@link Word} types.
  */
 public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvokePlugin {
     protected final WordTypes wordTypes;
@@ -121,8 +135,8 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
      * Processes a call to a method if it is annotated as a word operation by adding nodes to the
      * graph being built that implement the denoted operation.
      *
-     * @return {@code true} iff {@code method} is annotated with {@link Word.Operation} (and was
-     *         thus processed by this method)
+     * @return {@code true} iff {@code method} is annotated with {@link Operation} (and was thus
+     *         processed by this method)
      */
     @Override
     public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
@@ -292,19 +306,47 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
             throw bailout(b, "Cannot call method on a word value: " + wordMethod.format("%H.%n(%p)"));
         }
         Opcode opcode = operation.getEnum(Opcode.class, "opcode");
+        String name = wordMethod.getName();
         switch (opcode) {
-            case NODE_CLASS:
-            case INTEGER_DIVISION_NODE_CLASS:
+            case ARITHMETIC:
                 assert NumUtil.assertArrayLength(args, 2);
-                ValueNode left = args[0];
-                ValueNode right = operation.getBoolean("rightOperandIsInt") ? toUnsigned(b, args[1], JavaKind.Int) : fromSigned(b, args[1]);
-                ResolvedJavaType nodeType = operation.getType("node");
-                b.addPush(returnKind, createBinaryNodeInstance(b, nodeType, left, right, opcode == Word.Opcode.INTEGER_DIVISION_NODE_CLASS));
+                ValueNode x = args[0];
+                ValueNode y = name.toLowerCase(Locale.ROOT).contains("shift") ? toUnsigned(b, args[1], JavaKind.Int) : fromSigned(b, args[1]);
+                ValueNode binaryNodeInstance = switch (name) {
+                    case "and" -> new AndNode(x, y);
+                    case "or" -> new OrNode(x, y);
+                    case "xor" -> new XorNode(x, y);
+                    case "add" -> new AddNode(x, y);
+                    case "subtract" -> new SubNode(x, y);
+                    case "multiply" -> new MulNode(x, y);
+                    case "shiftLeft" -> new LeftShiftNode(x, y);
+                    case "signedShiftRight" -> new RightShiftNode(x, y);
+                    case "unsignedShiftRight" -> new UnsignedRightShiftNode(x, y);
+                    case "signedDivide" -> new SignedDivNode(x, y, b.maybeEmitExplicitDivisionByZeroCheck(y));
+                    case "unsignedDivide" -> new UnsignedDivNode(x, y, b.maybeEmitExplicitDivisionByZeroCheck(y));
+                    case "signedRemainder" -> new SignedRemNode(x, y, b.maybeEmitExplicitDivisionByZeroCheck(y));
+                    case "unsignedRemainder" -> new UnsignedRemNode(x, y, b.maybeEmitExplicitDivisionByZeroCheck(y));
+                    default -> throw new IllegalStateException("Unexpected value: " + name);
+                };
+
+                b.addPush(returnKind, binaryNodeInstance);
                 break;
 
             case COMPARISON:
                 assert NumUtil.assertArrayLength(args, 2);
-                Condition condition = operation.getEnum(Condition.class, "condition");
+                Condition condition = switch (name) {
+                    case "equal" -> Condition.EQ;
+                    case "notEqual" -> Condition.NE;
+                    case "aboveThan" -> Condition.AT;
+                    case "aboveOrEqual" -> Condition.AE;
+                    case "belowThan" -> Condition.BT;
+                    case "belowOrEqual" -> Condition.BE;
+                    case "greaterThan" -> Condition.GT;
+                    case "greaterOrEqual" -> Condition.GE;
+                    case "lessThan" -> Condition.LT;
+                    case "lessOrEqual" -> Condition.LE;
+                    default -> throw new IllegalStateException("Unexpected value: " + name);
+                };
                 b.push(returnKind, comparisonOp(b, condition, args[0], fromSigned(b, args[1])));
                 break;
 
@@ -452,25 +494,6 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 break;
             default:
                 throw new GraalError("Unknown opcode: %s", opcode);
-        }
-    }
-
-    /**
-     * Create an instance of a binary node which is used to lower {@link Word} operations. This
-     * method is called for all {@link Word} operations which are annotated with @Operation(node =
-     * ...) and encapsulates the reflective allocation of the node.
-     */
-    @SuppressWarnings("unchecked")
-    private static ValueNode createBinaryNodeInstance(GraphBuilderContext b, ResolvedJavaType nodeType, ValueNode left, ValueNode right, boolean isIntegerDivision) {
-        try {
-            Class<? extends ValueNode> nodeClass = (Class<? extends ValueNode>) Class.forName(nodeType.toClassName());
-            GuardingNode zeroCheck = isIntegerDivision ? b.maybeEmitExplicitDivisionByZeroCheck(right) : null;
-            Class<?>[] parameterTypes = isIntegerDivision ? new Class<?>[]{ValueNode.class, ValueNode.class, GuardingNode.class} : new Class<?>[]{ValueNode.class, ValueNode.class};
-            Constructor<?> cons = nodeClass.getDeclaredConstructor(parameterTypes);
-            Object[] initargs = isIntegerDivision ? new Object[]{left, right, zeroCheck} : new Object[]{left, right};
-            return (ValueNode) cons.newInstance(initargs);
-        } catch (Throwable ex) {
-            throw new GraalError(ex).addContext(nodeType.toClassName());
         }
     }
 

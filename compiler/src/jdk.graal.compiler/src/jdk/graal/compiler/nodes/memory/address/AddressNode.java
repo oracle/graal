@@ -28,6 +28,8 @@ import static jdk.graal.compiler.nodeinfo.InputType.Association;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import org.graalvm.word.AddressInput;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node.IndirectInputChangedCanonicalization;
 import jdk.graal.compiler.graph.NodeClass;
@@ -47,7 +49,7 @@ public abstract class AddressNode extends FloatingNode implements IndirectInputC
         super(c, StampFactory.pointer());
     }
 
-    public abstract static class Address extends StructuralInput.Association {
+    public abstract static class Address extends StructuralInput.Association implements AddressInput {
     }
 
     public abstract ValueNode getBase();

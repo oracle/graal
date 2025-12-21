@@ -27,6 +27,7 @@ package com.oracle.svm.core.c;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.Word;
 
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.SubstrateUtil;
@@ -42,7 +43,6 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.Word;
 
 /**
  * Support for allocating and accessing primitive element arrays created in unmanaged memory. They
@@ -139,7 +139,8 @@ public final class UnmanagedPrimitiveArrays {
         VMError.guarantee(srcPos >= 0 && destPos >= 0 && length >= 0 && srcPos + length <= ArrayLengthNode.arrayLength(src));
         Pointer srcAddressAtPos = Word.objectToUntrackedPointer(src).add(LayoutEncoding.getArrayElementOffset(srcHub.getLayoutEncoding(), srcPos));
         Pointer destAddressAtPos = getAddressOf(dest, srcHub.getLayoutEncoding(), destPos);
-        JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos, destAddressAtPos, Word.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(srcHub.getLayoutEncoding())));
+        JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos, destAddressAtPos,
+                        Word.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(srcHub.getLayoutEncoding())));
         return dest;
     }
 

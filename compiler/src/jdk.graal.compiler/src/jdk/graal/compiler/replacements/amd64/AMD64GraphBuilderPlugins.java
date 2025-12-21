@@ -40,7 +40,7 @@ import java.util.Arrays;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.calc.Condition;
-import jdk.graal.compiler.core.common.memory.BarrierType;
+import org.graalvm.word.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
@@ -399,8 +399,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 //        }
                 //
                 //        // Offset calc. outside of the actual intrinsic.
-                //        Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * byteArrayIndexScale(INJECTED));
-                //        Pointer destPointer = Word.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * 2 * byteArrayIndexScale(INJECTED));
+                //        Pointer srcPointer = WordFactory.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * byteArrayIndexScale(INJECTED));
+                //        Pointer destPointer = WordFactory.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * 2 * byteArrayIndexScale(INJECTED));
                 //        StringLatin1InflateNode.inflate(srcPointer, destPointer, len, JavaKind.Byte);
                 // @formatter:on
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
@@ -429,8 +429,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 //        }
                 //
                 //        // Offset calc. outside of the actual intrinsic.
-                //        Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * byteArrayIndexScale(INJECTED));
-                //        Pointer destPointer = Word.objectToTrackedPointer(dest).add(charArrayBaseOffset(INJECTED)).add(destIndex * charArrayIndexScale(INJECTED));
+                //        Pointer srcPointer = WordFactory.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * byteArrayIndexScale(INJECTED));
+                //        Pointer destPointer = WordFactory.objectToTrackedPointer(dest).add(charArrayBaseOffset(INJECTED)).add(destIndex * charArrayIndexScale(INJECTED));
                 //        StringLatin1InflateNode.inflate(srcPointer, destPointer, len, JavaKind.Char);
                 // @formatter:on
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
@@ -481,8 +481,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 //            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
                 //        }
                 //
-                //        Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * charArrayIndexScale(INJECTED));
-                //        Pointer destPointer = Word.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * byteArrayIndexScale(INJECTED));
+                //        Pointer srcPointer = WordFactory.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * charArrayIndexScale(INJECTED));
+                //        Pointer destPointer = WordFactory.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * byteArrayIndexScale(INJECTED));
                 //        return StringUTF16CompressNode.compress(srcPointer, destPointer, len, JavaKind.Byte);
                 // @formatter:on
 
@@ -511,8 +511,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 //            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
                 //        }
                 //
-                //        Pointer srcPointer = Word.objectToTrackedPointer(src).add(charArrayBaseOffset(INJECTED)).add(srcIndex * charArrayIndexScale(INJECTED));
-                //        Pointer destPointer = Word.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * byteArrayIndexScale(INJECTED));
+                //        Pointer srcPointer = WordFactory.objectToTrackedPointer(src).add(charArrayBaseOffset(INJECTED)).add(srcIndex * charArrayIndexScale(INJECTED));
+                //        Pointer destPointer = WordFactory.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * byteArrayIndexScale(INJECTED));
                 //        return StringUTF16CompressNode.compress(srcPointer, destPointer, len, JavaKind.Char);
                 // @formatter:on
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {

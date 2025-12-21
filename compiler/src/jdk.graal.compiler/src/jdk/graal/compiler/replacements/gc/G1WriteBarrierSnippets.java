@@ -28,15 +28,16 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_P
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
+import org.graalvm.word.BarrierType;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.Word;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
@@ -62,7 +63,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
-import jdk.graal.compiler.word.Word;
 
 /**
  * Implementation of the write barriers for the G1 garbage collector.
@@ -408,8 +408,8 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
      */
     private void validateObject(Object parent, Object child) {
         if (verifyOops() && child != null) {
-            Word parentWord = Word.objectToTrackedPointer(parent);
-            Word childWord = Word.objectToTrackedPointer(child);
+            Word parentWord = Word.objectToTrackedWord(parent);
+            Word childWord = Word.objectToTrackedWord(child);
             boolean success = validateOop(validateObjectCallDescriptor(), parentWord, childWord);
             AssertionNode.dynamicAssert(success, "Verification ERROR, Parent: %p Child: %p\n", parentWord.rawValue(), childWord.rawValue());
         }

@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.Word;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
@@ -43,7 +44,6 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class ReferenceAccessImpl implements ReferenceAccess {
@@ -57,7 +57,7 @@ public class ReferenceAccessImpl implements ReferenceAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Word readObjectAsUntrackedPointer(Pointer p, boolean compressed) {
         Object obj = readObjectAt(p, compressed);
-        return Word.objectToUntrackedPointer(obj);
+        return Word.objectToUntrackedWord(obj);
     }
 
     @Override
