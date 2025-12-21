@@ -48,6 +48,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
 
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -300,7 +301,7 @@ public final class DeoptimizedFrame {
         // We assume that the frame will be pinned if and only if we are deoptimizing eagerly
         this.pin = isEagerDeopt ? PinnedObject.create(this) : null;
         StringBuilderLog sbl = new StringBuilderLog();
-        sbl.string("deoptStub: completed ").string(isEagerDeopt ? "eagerly" : "lazily").string(" for DeoptimizedFrame at ").hex(Word.objectToUntrackedPointer(this)).newline();
+        sbl.string("deoptStub: completed ").string(isEagerDeopt ? "eagerly" : "lazily").string(" for DeoptimizedFrame at ").hex(ObjectAccess.objectToUntrackedPointer(this)).newline();
         this.completedMessage = sbl.getResult().toCharArray();
         this.rethrowException = rethrowException;
     }

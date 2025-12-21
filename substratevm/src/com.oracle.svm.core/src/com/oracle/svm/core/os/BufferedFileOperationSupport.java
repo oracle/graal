@@ -60,6 +60,8 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonTraits;
 
+import jdk.graal.compiler.word.ObjectAccess;
+
 /**
  * Provides buffered, OS-independent operations on files. Most of the code is implemented in a way
  * that it can be used from uninterruptible code.
@@ -99,7 +101,7 @@ public class BufferedFileOperationSupport {
 
     /**
      * Allocate a {@link BufferedFile} for a {@link RawFileDescriptor}.
-     * 
+     *
      * @return a {@link BufferedFile} if the {@link RawFileDescriptor} was
      *         {@link RawFileOperationSupport#isValid valid} and if the allocation was successful.
      *         Returns a null pointer otherwise.
@@ -223,7 +225,7 @@ public class BufferedFileOperationSupport {
     public boolean write(BufferedFile f, byte[] data) {
         DynamicHub hub = KnownIntrinsics.readHub(data);
         UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
-        Pointer dataPtr = Word.objectToUntrackedPointer(data).add(baseOffset);
+        Pointer dataPtr = ObjectAccess.objectToUntrackedPointer(data).add(baseOffset);
         return write(f, dataPtr, Word.unsigned(data.length));
     }
 

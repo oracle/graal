@@ -67,6 +67,7 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.ObjectAccess;
 
 /** Helper for allocating and accessing {@link StoredContinuation} instances. */
 public final class StoredContinuationAccess {
@@ -103,7 +104,7 @@ public final class StoredContinuationAccess {
     public static Pointer getFramesStart(StoredContinuation s) {
         int layout = KnownIntrinsics.readHub(s).getLayoutEncoding();
         UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(layout);
-        return Word.objectToUntrackedPointer(s).add(baseOffset);
+        return ObjectAccess.objectToUntrackedPointer(s).add(baseOffset);
     }
 
     @Uninterruptible(reason = "Prevent GC during accesses via object address.", callerMustBe = true)

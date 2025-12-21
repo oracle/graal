@@ -26,8 +26,6 @@
 
 package com.oracle.svm.core.jfr.events;
 
-import org.graalvm.word.Word;
-
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -37,6 +35,8 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_management_HiddenWait;
+
+import jdk.graal.compiler.word.ObjectAccess;
 
 public class JavaMonitorWaitEvent {
     public static void emit(long startTicks, Object obj, long notifierTid, long timeout, boolean timedOut) {
@@ -61,7 +61,7 @@ public class JavaMonitorWaitEvent {
             JfrNativeEventWriter.putThread(data, notifierTid);
             JfrNativeEventWriter.putLong(data, timeout);
             JfrNativeEventWriter.putBoolean(data, timedOut);
-            JfrNativeEventWriter.putLong(data, Word.objectToUntrackedPointer(obj).rawValue());
+            JfrNativeEventWriter.putLong(data, ObjectAccess.objectToUntrackedPointer(obj).rawValue());
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }

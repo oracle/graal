@@ -26,7 +26,6 @@ package jdk.graal.compiler.replacements.test;
 
 import java.util.Objects;
 
-import org.graalvm.word.Word;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.StringContains;
 import org.junit.Assert;
@@ -43,6 +42,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -121,7 +121,7 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
     }
 
     static long getRawPointerIntrinsic(Object obj) {
-        return Word.objectToTrackedPointer(obj).rawValue();
+        return ObjectAccess.objectToTrackedPointer(obj).rawValue();
     }
 
     public static Result fieldOffsetSnippet(Result obj, long offset) {

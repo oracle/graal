@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.Word;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
@@ -48,6 +47,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
 import jdk.vm.ci.code.stack.StackIntrospection;
@@ -385,7 +385,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
                         result.append("  null");
                     } else {
                         result.append("  class: ").append(val.getClass().getName());
-                        result.append("  address: 0x").append(Long.toHexString(Word.objectToUntrackedPointer(val).rawValue()));
+                        result.append("  address: 0x").append(Long.toHexString(ObjectAccess.objectToUntrackedPointer(val).rawValue()));
                     }
                 } else {
                     result.append("  kind: ").append(con.getJavaKind().toString());

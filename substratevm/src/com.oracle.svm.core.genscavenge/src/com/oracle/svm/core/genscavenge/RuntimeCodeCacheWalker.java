@@ -38,7 +38,8 @@ import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.genscavenge.RuntimeCodeCacheReachabilityAnalyzer.UnreachableObjectsException;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
-import org.graalvm.word.Word;
+
+import jdk.graal.compiler.word.ObjectAccess;
 
 /**
  * References from the runtime compiled code to the Java heap must be considered either strong or
@@ -119,7 +120,7 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean isReachable(Object possiblyForwardedObject) {
-        return RuntimeCodeCacheReachabilityAnalyzer.isReachable(Word.objectToUntrackedPointer(possiblyForwardedObject));
+        return RuntimeCodeCacheReachabilityAnalyzer.isReachable(ObjectAccess.objectToUntrackedPointer(possiblyForwardedObject));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -45,6 +44,7 @@ import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.ObjectAccess;
 
 public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport {
     private final AtomicReference<PinnedObjectImpl> pinnedObjects = new AtomicReference<>();
@@ -181,7 +181,7 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
                 throw new UnsupportedOperationException("Pinned object addressing has been disabled.");
             }
             assert open : "Should not call addressOfObject() on a closed PinnedObject.";
-            return Word.objectToUntrackedPointer(referent);
+            return ObjectAccess.objectToUntrackedPointer(referent);
         }
 
         @Override

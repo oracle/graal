@@ -93,6 +93,7 @@ import jdk.graal.compiler.lir.asm.FrameContext;
 import jdk.graal.compiler.nodes.UnreachableNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -894,7 +895,7 @@ public final class Deoptimizer {
 
     /**
      * The handler for lazy deoptimization.
-     * 
+     *
      * Despite being marked Uninterruptible, this contains interruptible sections when we look up
      * the code info, and construct the {@link DeoptimizedFrame}.
      */
@@ -945,7 +946,7 @@ public final class Deoptimizer {
         // From this point on, only uninterruptible code may be executed.
         UnsignedWord updatedGpReturnValue = gpReturnValue;
         if (gpReturnValueObject != null) {
-            updatedGpReturnValue = Word.objectToUntrackedPointer(gpReturnValueObject);
+            updatedGpReturnValue = ObjectAccess.objectToUntrackedPointer(gpReturnValueObject);
         }
 
         /* Do the stack rewriting. Return directly to the deopt target. */
@@ -1321,7 +1322,7 @@ public final class Deoptimizer {
 
     private static void logDeoptSourceFrameOperation(Pointer sp, DeoptimizedFrame deoptimizedFrame, FrameInfoQueryResult frameInfo) {
         StringBuilderLog log = new StringBuilderLog();
-        Pointer deoptimizedFrameAddress = Word.objectToUntrackedPointer(deoptimizedFrame);
+        Pointer deoptimizedFrameAddress = ObjectAccess.objectToUntrackedPointer(deoptimizedFrame);
         log.string("deoptSourceFrameOperation: DeoptimizedFrame at ").zhex(deoptimizedFrameAddress).string(": ");
         printDeoptimizedFrame(log, sp, deoptimizedFrame, frameInfo, true);
         recentDeoptimizationEvents.append(log.getResult().toCharArray());
@@ -1730,7 +1731,7 @@ public final class Deoptimizer {
         /* Return &contentArray[0] as a Pointer. */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         private Pointer addressOfFrameArray0() {
-            return Word.objectToUntrackedPointer(frameBuffer).add(arrayBaseOffset);
+            return ObjectAccess.objectToUntrackedPointer(frameBuffer).add(arrayBaseOffset);
         }
     }
 

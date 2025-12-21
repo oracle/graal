@@ -43,6 +43,7 @@ import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.word.ObjectAccess;
 
 /**
  * An UnalignedHeapChunk holds exactly one Object.
@@ -139,7 +140,7 @@ public final class UnalignedHeapChunk {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static UnalignedHeader getEnclosingChunk(Object obj) {
-        Pointer objPointer = Word.objectToUntrackedPointer(obj);
+        Pointer objPointer = ObjectAccess.objectToUntrackedPointer(obj);
         return getEnclosingChunkFromObjectPointer(objPointer);
     }
 

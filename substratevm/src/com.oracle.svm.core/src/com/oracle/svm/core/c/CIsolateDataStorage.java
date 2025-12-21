@@ -41,6 +41,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -86,7 +87,7 @@ public final class CIsolateDataStorage {
     public <T extends PointerBase> T get(CIsolateData<T> ptr) {
         VMError.guarantee(ptr != null, "null isolate data section entry");
 
-        Pointer base = Word.objectToUntrackedPointer(managedIsolateSectionData).add(arrayBaseOffset());
+        Pointer base = ObjectAccess.objectToUntrackedPointer(managedIsolateSectionData).add(arrayBaseOffset());
 
         return (T) base.add(ptr.getOffset());
     }

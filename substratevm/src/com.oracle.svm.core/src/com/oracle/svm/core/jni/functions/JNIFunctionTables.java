@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
@@ -51,6 +50,7 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerO
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -145,7 +145,7 @@ public final class JNIFunctionTables {
     private static Pointer dataAddress(WordBase[] dataArray) {
         final DynamicHub hub = DynamicHub.fromClass(dataArray.getClass());
         final UnsignedWord offsetOfFirstArrayElement = LayoutEncoding.getArrayElementOffset(hub.getLayoutEncoding(), 0);
-        return Word.objectToUntrackedPointer(dataArray).add(offsetOfFirstArrayElement);
+        return ObjectAccess.objectToUntrackedPointer(dataArray).add(offsetOfFirstArrayElement);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

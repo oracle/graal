@@ -709,7 +709,7 @@ public class HeapDumpWriter {
     }
 
     private void writeFieldData(Object dataHolder, FieldInfo field) {
-        Pointer p = Word.objectToUntrackedPointer(dataHolder);
+        Pointer p = ObjectAccess.objectToUntrackedPointer(dataHolder);
         int location = FieldInfoAccess.getLocation(field);
         HProfType type = FieldInfoAccess.getType(field);
         switch (type) {
@@ -1034,7 +1034,7 @@ public class HeapDumpWriter {
     }
 
     private static Pointer getArrayData(Object array, int arrayBaseOffset) {
-        return Word.objectToUntrackedPointer(array).add(arrayBaseOffset);
+        return ObjectAccess.objectToUntrackedPointer(array).add(arrayBaseOffset);
     }
 
     private void writeByte(byte value) {
@@ -1077,7 +1077,7 @@ public class HeapDumpWriter {
     }
 
     private void writeObjectId(Object obj) {
-        writeId0(Word.objectToUntrackedPointer(obj).rawValue());
+        writeId0(ObjectAccess.objectToUntrackedPointer(obj).rawValue());
     }
 
     private void writeClassId(Class<?> clazz) {
@@ -1095,7 +1095,7 @@ public class HeapDumpWriter {
          * GC_CLASS_DUMP and a GC_INSTANCE_DUMP record with the same id but that breaks VisualVM in
          * a weird way. So, we generate an artificial id for GC_CLASS_DUMP entries.
          */
-        Word hubAddress = Word.objectToUntrackedWord(hub);
+        Word hubAddress = ObjectAccess.objectToUntrackedWord(hub);
         if (hubAddress.isNonNull()) {
             hubAddress = hubAddress.add(1);
         }
@@ -1375,7 +1375,7 @@ public class HeapDumpWriter {
             }
 
             if (isLarge(obj)) {
-                boolean added = GrowableWordArrayAccess.add(largeObjects, Word.objectToUntrackedWord(obj), NmtCategory.HeapDump);
+                boolean added = GrowableWordArrayAccess.add(largeObjects, ObjectAccess.objectToUntrackedWord(obj), NmtCategory.HeapDump);
                 if (!added) {
                     Log.log().string("Failed to add an element to the large object list. Heap dump will be incomplete.").newline();
                 }

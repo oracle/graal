@@ -63,6 +63,7 @@ import com.oracle.svm.core.util.Utf8.WrappedAsciiCString;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.util.SignatureUtil;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.Signature;
 
@@ -317,7 +318,7 @@ public final class JNIReflectionDictionary {
             return Word.nullPointer();
         }
         assert Heap.getHeap().isInImageHeap(method);
-        return (JNIMethodId) Word.objectToUntrackedPointer(method).subtract(KnownIntrinsics.heapBase());
+        return (JNIMethodId) ObjectAccess.objectToUntrackedPointer(method).subtract(KnownIntrinsics.heapBase());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

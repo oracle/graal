@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.Word;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AddressRangeCommittedMemoryProvider;
@@ -53,7 +54,7 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
 import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.Word;
+import jdk.graal.compiler.word.ObjectAccess;
 
 /**
  * {@link Metaspace} implementation for serial and epsilon GC. The metaspace uses the same address
@@ -89,7 +90,7 @@ public class MetaspaceImpl implements Metaspace {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isInAllocatedMemory(Object obj) {
-        return isInAllocatedMemory(Word.objectToTrackedPointer(obj));
+        return isInAllocatedMemory(ObjectAccess.objectToTrackedPointer(obj));
     }
 
     @Override
@@ -101,7 +102,7 @@ public class MetaspaceImpl implements Metaspace {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isInAddressSpace(Object obj) {
-        return isInAddressSpace(Word.objectToTrackedPointer(obj));
+        return isInAddressSpace(ObjectAccess.objectToTrackedPointer(obj));
     }
 
     @Override

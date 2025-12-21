@@ -276,7 +276,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
          * All DynamicHub instances are in the native image heap and therefore do not move, so we
          * can convert the hub to a Pointer without any precautions.
          */
-        Word result = Word.objectToUntrackedWord(hub);
+        Word result = ObjectAccess.objectToUntrackedWord(hub);
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             result = result.subtract(KnownIntrinsics.heapBase());
             result = result.shiftLeft(numReservedExtraHubBits);
@@ -464,10 +464,10 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void installForwardingPointer(Object original, Object copy) {
-        assert !isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
+        assert !isPointerToForwardedObject(ObjectAccess.objectToUntrackedPointer(original));
         UnsignedWord forwardHeader = getForwardHeader(copy);
         ObjectAccess.writeLong(original, getHubOffset(), forwardHeader.rawValue());
-        assert isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
+        assert isPointerToForwardedObject(ObjectAccess.objectToUntrackedPointer(original));
     }
 
     @AlwaysInline("GC performance")
@@ -484,7 +484,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
                 result = compressedCopy;
             }
         } else {
-            result = Word.objectToUntrackedPointer(copy);
+            result = ObjectAccess.objectToUntrackedPointer(copy);
         }
 
         assert getHeaderBitsFromHeader(result).equal(0);

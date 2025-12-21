@@ -43,6 +43,7 @@ import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -75,7 +76,7 @@ public class ImageCodeInfoStorage {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CodeInfoImpl getCodeInfo() {
-        Pointer base = Word.objectToUntrackedPointer(data).add(Word.unsigned(getAlignedOffsetInArray()));
+        Pointer base = ObjectAccess.objectToUntrackedPointer(data).add(Word.unsigned(getAlignedOffsetInArray()));
         return (CodeInfoImpl) base;
     }
 }

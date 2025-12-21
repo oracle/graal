@@ -42,6 +42,7 @@ import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
+import jdk.graal.compiler.word.ObjectAccess;
 
 public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets implements Snippets {
     static class Counters {
@@ -58,12 +59,12 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
         if (verifyBarrier()) {
             verifyNotArray(object);
         }
-        serialWriteBarrier(Word.objectToTrackedPointer(object), counters, verifyOnly);
+        serialWriteBarrier(ObjectAccess.objectToTrackedPointer(object), counters, verifyOnly);
     }
 
     @Snippet
     public void serialPreciseWriteBarrier(Address address, @ConstantParameter Counters counters, @ConstantParameter boolean verifyOnly) {
-        serialWriteBarrier(Word.fromAddress(address), counters, verifyOnly);
+        serialWriteBarrier(ObjectAccess.fromAddress(address), counters, verifyOnly);
     }
 
     @Snippet
@@ -74,7 +75,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
 
         int cardShift = cardTableShift();
         Word cardTableAddress = cardTableAddress();
-        Word addr = Word.fromAddress(address);
+        Word addr = ObjectAccess.fromAddress(address);
         Word start = cardTableAddress.add(getPointerToFirstArrayElement(addr, length, elementStride).unsignedShiftRight(cardShift));
         Word end = cardTableAddress.add(getPointerToLastArrayElement(addr, length, elementStride).unsignedShiftRight(cardShift));
 

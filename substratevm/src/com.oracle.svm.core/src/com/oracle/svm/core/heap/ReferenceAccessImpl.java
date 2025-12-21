@@ -57,7 +57,7 @@ public class ReferenceAccessImpl implements ReferenceAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Word readObjectAsUntrackedPointer(Pointer p, boolean compressed) {
         Object obj = readObjectAt(p, compressed);
-        return Word.objectToUntrackedWord(obj);
+        return ObjectAccess.objectToUntrackedWord(obj);
     }
 
     @Override

@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.Word;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.MemoryWalker;
@@ -41,7 +42,8 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.UnsignedUtils;
-import org.graalvm.word.Word;
+
+import jdk.graal.compiler.word.ObjectAccess;
 
 public final class ImageHeapWalker {
     private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> ALIGNED_READ_ONLY_WALKER = new AlignedReadOnlyMemoryWalkerAccess();
@@ -111,8 +113,8 @@ public final class ImageHeapWalker {
             assert firstObject == null && lastObject == null;
             return;
         }
-        Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
-        Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
+        Pointer firstPointer = ObjectAccess.objectToUntrackedPointer(firstObject);
+        Pointer lastPointer = ObjectAccess.objectToUntrackedPointer(lastObject);
         Pointer current = firstPointer;
 
         // Assumption: the order of chunks in their linked list is the same order as in memory,
@@ -147,7 +149,7 @@ public final class ImageHeapWalker {
     /** Computes the enclosing chunk without assuming that the image heap is aligned. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static HeapChunk.Header<?> getImageHeapChunkForObject(Object object, boolean alignedChunks) {
-        Pointer objPtr = Word.objectToUntrackedPointer(object);
+        Pointer objPtr = ObjectAccess.objectToUntrackedPointer(object);
         Pointer base = Heap.getHeap().getImageHeapStart();
         Pointer offset = objPtr.subtract(base);
         UnsignedWord chunkOffset = alignedChunks ? UnsignedUtils.roundDown(offset, HeapParameters.getAlignedHeapChunkAlignment())
@@ -168,7 +170,7 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
 
     @Override
     public UnsignedWord getSize(ImageHeapInfo info) {
-        Pointer firstStart = Word.objectToUntrackedPointer(getFirstObject(info));
+        Pointer firstStart = ObjectAccess.objectToUntrackedPointer(getFirstObject(info));
         if (firstStart.isNull()) { // no objects
             return Word.zero();
         }

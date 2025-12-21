@@ -65,7 +65,6 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
@@ -134,6 +133,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 
 import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -498,7 +498,7 @@ public class CremaSupportImpl implements CremaSupport {
         int wordSize = ConfigurationValues.getTarget().wordSize;
         assert KnownOffsets.singleton().getVTableEntrySize() == wordSize : "only word size is implemented at the moment";
 
-        Pointer hubStart = Word.objectToUntrackedPointer(hub);
+        Pointer hubStart = ObjectAccess.objectToUntrackedPointer(hub);
         Pointer hubEnd = LayoutEncoding.getMetaspaceObjectEnd(hub);
 
         Pointer pos = hubStart.add(KnownOffsets.singleton().getVTableBaseOffset());

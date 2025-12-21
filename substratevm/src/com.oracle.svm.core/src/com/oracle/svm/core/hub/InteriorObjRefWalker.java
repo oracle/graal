@@ -48,6 +48,7 @@ import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.ObjectAccess;
 
 public class InteriorObjRefWalker {
     /**
@@ -138,7 +139,7 @@ public class InteriorObjRefWalker {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void walkInstanceInline(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub) {
         // Visit Object reference in the fields of the Object.
-        Pointer objPointer = Word.objectToUntrackedPointer(obj);
+        Pointer objPointer = ObjectAccess.objectToUntrackedPointer(obj);
         InstanceReferenceMap referenceMap = DynamicHubSupport.getInstanceReferenceMap(objHub);
         InstanceReferenceMapDecoder.walkReferencesInline(objPointer, referenceMap, visitor, obj);
     }
@@ -146,7 +147,7 @@ public class InteriorObjRefWalker {
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void walkReferenceSpecificFieldsInline(Object obj, ObjectReferenceVisitor visitor) {
-        Pointer objPointer = Word.objectToUntrackedPointer(obj);
+        Pointer objPointer = ObjectAccess.objectToUntrackedPointer(obj);
         long discoveredOffset = ReferenceInternals.getNextDiscoveredFieldOffset();
         Pointer objRef = objPointer.add(Word.unsigned(discoveredOffset));
 
@@ -164,7 +165,7 @@ public class InteriorObjRefWalker {
             throw VMError.shouldNotReachHere("Pod objects cannot be in the heap if the pod support is disabled.");
         }
 
-        Pointer objPointer = Word.objectToUntrackedPointer(obj);
+        Pointer objPointer = ObjectAccess.objectToUntrackedPointer(obj);
         PodReferenceMapDecoder.walkOffsetsFromPointer(objPointer, objHub.getLayoutEncoding(), visitor, obj);
     }
 
@@ -180,7 +181,7 @@ public class InteriorObjRefWalker {
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void walkObjectArrayRangeInline(Object obj, DynamicHub objHub, int firstIndex, int count, ObjectReferenceVisitor visitor) {
-        Pointer objPointer = Word.objectToUntrackedPointer(obj);
+        Pointer objPointer = ObjectAccess.objectToUntrackedPointer(obj);
         Pointer firstObjRef = objPointer.add(LayoutEncoding.getArrayElementOffset(objHub.getLayoutEncoding(), firstIndex));
         callVisitorInline(obj, visitor, firstObjRef, count);
     }

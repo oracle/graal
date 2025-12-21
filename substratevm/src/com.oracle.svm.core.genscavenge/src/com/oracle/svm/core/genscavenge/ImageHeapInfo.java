@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.Word;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.Uninterruptible;
@@ -40,7 +41,8 @@ import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.core.traits.SingletonTraits;
-import org.graalvm.word.Word;
+
+import jdk.graal.compiler.word.ObjectAccess;
 
 /**
  * Information on the multiple partitions that make up the image heap, which don't necessarily form
@@ -161,13 +163,13 @@ public final class ImageHeapInfo {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInAlignedReadOnly(Pointer ptr) {
         assert ptr.isNonNull();
-        return Word.objectToUntrackedPointer(firstAlignedReadOnlyObject).belowOrEqual(ptr) && ptr.belowThan(objEnd(lastAlignedReadOnlyObject));
+        return ObjectAccess.objectToUntrackedPointer(firstAlignedReadOnlyObject).belowOrEqual(ptr) && ptr.belowThan(objEnd(lastAlignedReadOnlyObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInAlignedReadOnlyRelocatable(Pointer ptr) {
         assert ptr.isNonNull();
-        boolean result = Word.objectToUntrackedPointer(firstAlignedReadOnlyRelocatableObject).belowOrEqual(ptr) && ptr.belowThan(objEnd(lastAlignedReadOnlyRelocatableObject));
+        boolean result = ObjectAccess.objectToUntrackedPointer(firstAlignedReadOnlyRelocatableObject).belowOrEqual(ptr) && ptr.belowThan(objEnd(lastAlignedReadOnlyRelocatableObject));
         assert !result || isInAlignedReadOnly(ptr);
         return result;
     }
@@ -175,13 +177,13 @@ public final class ImageHeapInfo {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInAlignedWritable(Pointer ptr) {
         assert ptr.isNonNull();
-        return Word.objectToUntrackedPointer(firstAlignedWritableObject).belowOrEqual(ptr) && ptr.belowThan(objEnd(lastAlignedWritableObject));
+        return ObjectAccess.objectToUntrackedPointer(firstAlignedWritableObject).belowOrEqual(ptr) && ptr.belowThan(objEnd(lastAlignedWritableObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInAlignedWritablePatched(Pointer ptr) {
         assert ptr.isNonNull();
-        boolean result = Word.objectToUntrackedPointer(firstAlignedWritablePatchedObject).belowOrEqual(ptr) && ptr.belowThan(objEnd(lastAlignedWritablePatchedObject));
+        boolean result = ObjectAccess.objectToUntrackedPointer(firstAlignedWritablePatchedObject).belowOrEqual(ptr) && ptr.belowThan(objEnd(lastAlignedWritablePatchedObject));
         assert !result || isInAlignedWritable(ptr);
         return result;
     }
@@ -189,13 +191,13 @@ public final class ImageHeapInfo {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInUnalignedWritable(Pointer ptr) {
         assert ptr.isNonNull();
-        return Word.objectToUntrackedPointer(firstUnalignedWritableObject).belowOrEqual(ptr) && ptr.belowThan(objEnd(lastUnalignedWritableObject));
+        return ObjectAccess.objectToUntrackedPointer(firstUnalignedWritableObject).belowOrEqual(ptr) && ptr.belowThan(objEnd(lastUnalignedWritableObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInUnalignedReadOnly(Pointer ptr) {
         assert ptr.isNonNull();
-        return Word.objectToUntrackedPointer(firstUnalignedReadOnlyObject).belowOrEqual(ptr) && ptr.belowThan(objEnd(lastUnalignedReadOnlyObject));
+        return ObjectAccess.objectToUntrackedPointer(firstUnalignedReadOnlyObject).belowOrEqual(ptr) && ptr.belowThan(objEnd(lastUnalignedReadOnlyObject));
     }
 
     /**
@@ -205,7 +207,7 @@ public final class ImageHeapInfo {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInImageHeap(Pointer objectPointer) {
-        return objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstObject)) && objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastObject));
+        return objectPointer.aboveOrEqual(ObjectAccess.objectToUntrackedPointer(firstObject)) && objectPointer.belowOrEqual(ObjectAccess.objectToUntrackedPointer(lastObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -243,13 +245,14 @@ public final class ImageHeapInfo {
 
     public void print(Log log) {
         log.string("Objects in aligned chunks").indent(true);
-        log.string("read-only: ").zhex(Word.objectToUntrackedPointer(firstAlignedReadOnlyObject)).string(" - ").zhex(objEnd(lastAlignedReadOnlyObject)).newline();
-        log.string("read-only relocatables: ").zhex(Word.objectToUntrackedPointer(firstAlignedReadOnlyRelocatableObject)).string(" - ").zhex(objEnd(lastAlignedReadOnlyRelocatableObject)).newline();
-        log.string("writable: ").zhex(Word.objectToUntrackedPointer(firstAlignedWritableObject)).string(" - ").zhex(objEnd(lastAlignedWritableObject)).newline();
-        log.string("writeable patched: ").zhex(Word.objectToUntrackedPointer(firstAlignedWritablePatchedObject)).string(" - ").zhex(objEnd(lastAlignedWritablePatchedObject)).indent(false);
+        log.string("read-only: ").zhex(ObjectAccess.objectToUntrackedPointer(firstAlignedReadOnlyObject)).string(" - ").zhex(objEnd(lastAlignedReadOnlyObject)).newline();
+        log.string("read-only relocatables: ").zhex(ObjectAccess.objectToUntrackedPointer(firstAlignedReadOnlyRelocatableObject)).string(" - ").zhex(objEnd(lastAlignedReadOnlyRelocatableObject))
+                        .newline();
+        log.string("writable: ").zhex(ObjectAccess.objectToUntrackedPointer(firstAlignedWritableObject)).string(" - ").zhex(objEnd(lastAlignedWritableObject)).newline();
+        log.string("writeable patched: ").zhex(ObjectAccess.objectToUntrackedPointer(firstAlignedWritablePatchedObject)).string(" - ").zhex(objEnd(lastAlignedWritablePatchedObject)).indent(false);
 
         log.string("Objects in unaligned chunks").indent(true);
-        log.string("writable: ").zhex(Word.objectToUntrackedPointer(firstUnalignedWritableObject)).string(" - ").zhex(objEnd(lastUnalignedWritableObject)).newline();
-        log.string("read-only: ").zhex(Word.objectToUntrackedPointer(firstUnalignedReadOnlyObject)).string(" - ").zhex(objEnd(lastUnalignedReadOnlyObject)).indent(false);
+        log.string("writable: ").zhex(ObjectAccess.objectToUntrackedPointer(firstUnalignedWritableObject)).string(" - ").zhex(objEnd(lastUnalignedWritableObject)).newline();
+        log.string("read-only: ").zhex(ObjectAccess.objectToUntrackedPointer(firstUnalignedReadOnlyObject)).string(" - ").zhex(objEnd(lastUnalignedReadOnlyObject)).indent(false);
     }
 }

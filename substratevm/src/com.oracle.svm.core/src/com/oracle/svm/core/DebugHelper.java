@@ -46,6 +46,8 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
+import jdk.graal.compiler.word.ObjectAccess;
+
 /**
  * All {@link CEntryPoint} methods in here can be directly called from a debugger.
  *
@@ -148,7 +150,7 @@ public class DebugHelper {
         @CEntryPointOptions(prologue = InitializeReservedRegistersPrologue.class, epilogue = NoEpilogue.class)
         public static long getHub(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             Object obj = objPtr.toObject();
-            return Word.objectToUntrackedPointer(KnownIntrinsics.readHub(obj)).rawValue();
+            return ObjectAccess.objectToUntrackedPointer(KnownIntrinsics.readHub(obj)).rawValue();
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")
@@ -226,7 +228,7 @@ public class DebugHelper {
         @CEntryPoint(name = "svm_dbg_obj_uncompress", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = InitializeReservedRegistersPrologue.class, epilogue = NoEpilogue.class)
         public static long uncompressObjectPointer(@SuppressWarnings("unused") IsolateThread thread, Pointer compressedPtr) {
-            return Word.objectToUntrackedPointer(ReferenceAccess.singleton().uncompressReference(compressedPtr)).rawValue();
+            return ObjectAccess.objectToUntrackedPointer(ReferenceAccess.singleton().uncompressReference(compressedPtr)).rawValue();
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.")

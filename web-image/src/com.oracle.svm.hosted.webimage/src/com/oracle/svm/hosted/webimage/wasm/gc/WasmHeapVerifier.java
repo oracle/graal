@@ -47,6 +47,8 @@ import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
+import jdk.graal.compiler.word.ObjectAccess;
+
 /**
  * Verifies correctness of objects in the heap (see {@link #verifyObject}).
  */
@@ -101,7 +103,7 @@ public class WasmHeapVerifier {
      * </ul>
      */
     private static boolean verifyObject(Object obj) {
-        Pointer ptr = Word.objectToUntrackedPointer(obj);
+        Pointer ptr = ObjectAccess.objectToUntrackedPointer(obj);
         if (ptr.isNull()) {
             Log.log().string("Encounter a null pointer while walking the heap objects.").newline();
             return false;
@@ -122,7 +124,7 @@ public class WasmHeapVerifier {
 
         DynamicHub hub = KnownIntrinsics.readHub(obj);
         if (!Heap.getHeap().isInImageHeap(hub)) {
-            Log.log().string("Object ").zhex(ptr).string(" references a hub that is not in the image heap: ").zhex(Word.objectToUntrackedPointer(hub)).newline();
+            Log.log().string("Object ").zhex(ptr).string(" references a hub that is not in the image heap: ").zhex(ObjectAccess.objectToUntrackedPointer(hub)).newline();
             return false;
         }
 
@@ -238,7 +240,7 @@ public class WasmHeapVerifier {
 
         @Override
         public void visitObject(Object object) {
-            Word pointer = Word.objectToUntrackedPointer(object);
+            Word pointer = ObjectAccess.objectToUntrackedWord(object);
             if (!Heap.getHeap().isInImageHeap(object)) {
                 Log.log().string("Image heap object ").zhex(pointer).string(" is not considered as part of the image heap.").newline();
                 result = false;

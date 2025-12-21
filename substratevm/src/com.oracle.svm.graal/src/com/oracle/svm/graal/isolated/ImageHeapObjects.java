@@ -34,6 +34,8 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.word.ObjectAccess;
+
 /**
  * Functionality for referring to an image heap object using its isolate-independent location.
  */
@@ -53,11 +55,11 @@ public final class ImageHeapObjects {
             return Word.nullPointer();
         }
         VMError.guarantee(isInImageHeap(t));
-        Word result = Word.objectToUntrackedWord(t);
+        UnsignedWord result = ObjectAccess.objectToUntrackedWord(t);
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             result = result.subtract(KnownIntrinsics.heapBase());
         }
-        return (ImageHeapRef<T>) (UnsignedWord) result;
+        return (ImageHeapRef<T>) result;
     }
 
     /**

@@ -69,6 +69,8 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.word.ObjectAccess;
+
 public class PosixUtils {
     /** This method is unsafe and should not be used, see {@link LocaleSupport}. */
     static String setLocale(String category, String locale) {
@@ -223,7 +225,7 @@ public class PosixUtils {
     public static boolean writeUninterruptibly(int fd, byte[] data) {
         DynamicHub hub = KnownIntrinsics.readHub(data);
         UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
-        Pointer dataPtr = Word.objectToUntrackedPointer(data).add(baseOffset);
+        Pointer dataPtr = ObjectAccess.objectToUntrackedPointer(data).add(baseOffset);
         return writeUninterruptibly(fd, dataPtr, Word.unsigned(data.length));
     }
 

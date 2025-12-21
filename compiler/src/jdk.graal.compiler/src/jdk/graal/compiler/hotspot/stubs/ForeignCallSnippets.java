@@ -47,6 +47,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.vm.ci.meta.DeoptimizationAction;
 
 public class ForeignCallSnippets implements Snippets {
@@ -87,7 +88,7 @@ public class ForeignCallSnippets implements Snippets {
             Word verifyOopCounter = Word.unsigned(HotSpotReplacementsUtil.verifyOopCounterAddress(GraalHotSpotVMConfig.INJECTED_VMCONFIG));
             verifyOopCounter.writeInt(0, verifyOopCounter.readInt(0) + 1);
 
-            Pointer oop = Word.objectToTrackedPointer(object);
+            Pointer oop = ObjectAccess.objectToTrackedPointer(object);
             if (object != null) {
                 GuardingNode anchorNode = SnippetAnchorNode.anchor();
                 // make sure object is 'reasonable'

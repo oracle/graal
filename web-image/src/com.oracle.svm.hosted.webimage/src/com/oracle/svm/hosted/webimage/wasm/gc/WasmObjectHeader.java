@@ -163,7 +163,7 @@ public class WasmObjectHeader extends ObjectHeader {
          * All DynamicHub instances are in the native image heap and therefore do not move, so we
          * can convert the hub to a Pointer without any precautions.
          */
-        return Word.objectToUntrackedPointer(hub);
+        return ObjectAccess.objectToUntrackedWord(hub);
     }
 
     @Override

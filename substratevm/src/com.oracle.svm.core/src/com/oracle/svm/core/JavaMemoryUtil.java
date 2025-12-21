@@ -33,6 +33,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.ObjectAccess;
 
 /**
  * The methods in this class are mainly used to fill or copy Java heap memory. All methods guarantee
@@ -83,8 +84,8 @@ public final class JavaMemoryUtil {
      */
     @Uninterruptible(reason = "Objects must not move")
     public static void copyForward(Object from, UnsignedWord fromOffset, Object to, UnsignedWord toOffset, UnsignedWord size) {
-        Pointer fromPtr = Word.objectToUntrackedPointer(from).add(fromOffset);
-        Pointer toPtr = Word.objectToUntrackedPointer(to).add(toOffset);
+        Pointer fromPtr = ObjectAccess.objectToUntrackedPointer(from).add(fromOffset);
+        Pointer toPtr = ObjectAccess.objectToUntrackedPointer(to).add(toOffset);
         copyForward(fromPtr, toPtr, size);
     }
 
@@ -98,8 +99,8 @@ public final class JavaMemoryUtil {
      */
     @Uninterruptible(reason = "Objects must not move")
     public static void copyBackward(Object from, UnsignedWord fromOffset, Object to, UnsignedWord toOffset, UnsignedWord size) {
-        Pointer fromPtr = Word.objectToUntrackedPointer(from).add(fromOffset);
-        Pointer toPtr = Word.objectToUntrackedPointer(to).add(toOffset);
+        Pointer fromPtr = ObjectAccess.objectToUntrackedPointer(from).add(fromOffset);
+        Pointer toPtr = ObjectAccess.objectToUntrackedPointer(to).add(toOffset);
         copyBackward(fromPtr, toPtr, size);
     }
 
@@ -269,8 +270,8 @@ public final class JavaMemoryUtil {
 
     @Uninterruptible(reason = "Memory is on the heap, copying must not be interrupted.")
     public static void copyOnHeap(Object srcBase, UnsignedWord srcOffset, Object destBase, UnsignedWord destOffset, UnsignedWord size) {
-        Pointer fromPtr = Word.objectToUntrackedPointer(srcBase).add(srcOffset);
-        Pointer toPtr = Word.objectToUntrackedPointer(destBase).add(destOffset);
+        Pointer fromPtr = ObjectAccess.objectToUntrackedPointer(srcBase).add(srcOffset);
+        Pointer toPtr = ObjectAccess.objectToUntrackedPointer(destBase).add(destOffset);
         UnmanagedMemoryUtil.copy(fromPtr, toPtr, size);
     }
 
@@ -348,7 +349,7 @@ public final class JavaMemoryUtil {
 
     @Uninterruptible(reason = "Accessed memory is on the heap, code must not be interrupted.")
     static void fillOnHeap(Object destBase, long destOffset, long bytes, byte bvalue) {
-        Pointer fromPtr = Word.objectToUntrackedPointer(destBase).add(Word.unsigned(destOffset));
+        Pointer fromPtr = ObjectAccess.objectToUntrackedPointer(destBase).add(Word.unsigned(destOffset));
         fill(fromPtr, Word.unsigned(bytes), bvalue);
     }
 
@@ -379,8 +380,8 @@ public final class JavaMemoryUtil {
 
     @Uninterruptible(reason = "Accessed memory is on the heap, code must not be interrupted.")
     static void copySwapOnHeap(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
-        Pointer fromPtr = Word.objectToUntrackedPointer(srcBase).add(Word.unsigned(srcOffset));
-        Pointer toPtr = Word.objectToUntrackedPointer(destBase).add(Word.unsigned(destOffset));
+        Pointer fromPtr = ObjectAccess.objectToUntrackedPointer(srcBase).add(Word.unsigned(srcOffset));
+        Pointer toPtr = ObjectAccess.objectToUntrackedPointer(destBase).add(Word.unsigned(destOffset));
         copySwap(fromPtr, toPtr, Word.unsigned(bytes), Word.unsigned(elemSize));
     }
 
@@ -517,8 +518,8 @@ public final class JavaMemoryUtil {
     @IntrinsicCandidate
     @Uninterruptible(reason = "Arrays must not move")
     public static void copyPrimitiveArrayForward(Object fromArray, UnsignedWord fromOffset, Object toArray, UnsignedWord toOffset, UnsignedWord size) {
-        Pointer fromPtr = Word.objectToUntrackedPointer(fromArray).add(fromOffset);
-        Pointer toPtr = Word.objectToUntrackedPointer(toArray).add(toOffset);
+        Pointer fromPtr = ObjectAccess.objectToUntrackedPointer(fromArray).add(fromOffset);
+        Pointer toPtr = ObjectAccess.objectToUntrackedPointer(toArray).add(toOffset);
         copyPrimitiveArrayForward(fromPtr, toPtr, size);
     }
 
@@ -552,8 +553,8 @@ public final class JavaMemoryUtil {
     @IntrinsicCandidate
     @Uninterruptible(reason = "Arrays must not move")
     private static void copyPrimitiveArrayBackward(Object fromArray, UnsignedWord fromOffset, Object toArray, UnsignedWord toOffset, UnsignedWord size) {
-        Pointer fromPtr = Word.objectToUntrackedPointer(fromArray).add(fromOffset);
-        Pointer toPtr = Word.objectToUntrackedPointer(toArray).add(toOffset);
+        Pointer fromPtr = ObjectAccess.objectToUntrackedPointer(fromArray).add(fromOffset);
+        Pointer toPtr = ObjectAccess.objectToUntrackedPointer(toArray).add(toOffset);
         copyPrimitiveArrayBackward(fromPtr, toPtr, size);
     }
 

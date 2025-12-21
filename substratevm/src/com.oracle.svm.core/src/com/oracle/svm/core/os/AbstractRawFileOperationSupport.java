@@ -45,6 +45,8 @@ import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonTraits;
 
+import jdk.graal.compiler.word.ObjectAccess;
+
 public abstract class AbstractRawFileOperationSupport implements RawFileOperationSupport {
     private final boolean useNativeByteOrder;
 
@@ -68,7 +70,7 @@ public abstract class AbstractRawFileOperationSupport implements RawFileOperatio
     public boolean write(RawFileDescriptor fd, byte[] data) {
         DynamicHub hub = KnownIntrinsics.readHub(data);
         UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
-        Pointer dataPtr = Word.objectToUntrackedPointer(data).add(baseOffset);
+        Pointer dataPtr = ObjectAccess.objectToUntrackedPointer(data).add(baseOffset);
         return write(fd, dataPtr, Word.unsigned(data.length));
     }
 

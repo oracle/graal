@@ -109,6 +109,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -1239,7 +1240,7 @@ public abstract class PlatformThreads {
             if (threadObj == null) {
                 log.string(" null");
             } else {
-                log.string(" \"").string(threadObj.getName()).string("\" - ").zhex(Word.objectToUntrackedPointer(threadObj));
+                log.string(" \"").string(threadObj.getName()).string("\" - ").zhex(ObjectAccess.objectToUntrackedPointer(threadObj));
 
                 Thread.State status = threadObj.getState();
                 log.string(" (").string(status.name()).string(")");

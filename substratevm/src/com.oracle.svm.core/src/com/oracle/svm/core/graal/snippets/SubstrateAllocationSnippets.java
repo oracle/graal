@@ -316,7 +316,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @Snippet
     protected Object newmultiarray(DynamicHub hub, @ConstantParameter int rank, @ConstantParameter boolean withException, @VarargsParameter int[] dimensions) {
-        return newMultiArrayImpl(Word.objectToUntrackedWord(hub), rank, withException, dimensions);
+        return newMultiArrayImpl(ObjectAccess.objectToUntrackedWord(hub), rank, withException, dimensions);
     }
 
     @Snippet

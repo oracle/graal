@@ -155,6 +155,7 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -252,7 +253,7 @@ public class MonitorSnippets implements Snippets {
         final Word lock = beginLockScope(lockDepth);
         final Word thread = registerAsWord(threadRegister);
 
-        trace(trace, "           object: 0x%016lx\n", Word.objectToTrackedPointer(object));
+        trace(trace, "           object: 0x%016lx\n", ObjectAccess.objectToTrackedPointer(object));
         trace(trace, "             lock: 0x%016lx\n", lock);
         trace(trace, "             mark: 0x%016lx\n", mark);
 
@@ -305,7 +306,7 @@ public class MonitorSnippets implements Snippets {
 
         if (useObjectMonitorTable(INJECTED_VMCONFIG)) {
             // Check first two entries outside the loop
-            Pointer objectPointer = Word.objectToTrackedPointer(object);
+            Pointer objectPointer = ObjectAccess.objectToTrackedPointer(object);
             final Word oomCache = thread.add(javaThreadOomCacheOffset(INJECTED_VMCONFIG));
             final int stepSize = omCacheOopToOopDifference(INJECTED_VMCONFIG);
             final int oomCacheOffset = omCacheOopToMonitorDifference(INJECTED_VMCONFIG);
@@ -382,7 +383,7 @@ public class MonitorSnippets implements Snippets {
             return tryEnterInflated(object, lock, mark, thread, trace, counters);
         }
 
-        Pointer objectPointer = Word.objectToTrackedPointer(object);
+        Pointer objectPointer = ObjectAccess.objectToTrackedPointer(object);
 
         // Create the unlocked mark word pattern
         Word unlockedMark = mark.or(unlockedValue(INJECTED_VMCONFIG));
@@ -460,7 +461,7 @@ public class MonitorSnippets implements Snippets {
             return false;
         }
 
-        Pointer objectPointer = Word.objectToTrackedPointer(object);
+        Pointer objectPointer = ObjectAccess.objectToTrackedPointer(object);
         if (probability(FAST_PATH_PROBABILITY, tryLightweightLockingHelper(object, objectPointer, mark, thread, trace, counters, lockStackTop))) {
             if (useObjectMonitorTable(INJECTED_VMCONFIG)) {
                 // Need to reload top, clobbered by CAS.
@@ -506,7 +507,7 @@ public class MonitorSnippets implements Snippets {
         final Word thread = registerAsWord(threadRegister);
         final Word lock = CurrentLockNode.currentLock(lockDepth);
 
-        trace(trace, "           object: 0x%016lx\n", Word.objectToTrackedPointer(object));
+        trace(trace, "           object: 0x%016lx\n", ObjectAccess.objectToTrackedPointer(object));
         trace(trace, "             lock: 0x%016lx\n", lock);
 
         if (tryFastPathUnlocking(object, trace, counters, thread, lock)) {
@@ -548,7 +549,7 @@ public class MonitorSnippets implements Snippets {
             return tryExitInflated(object, mark, thread, lock, trace, counters);
         }
 
-        if (probability(VERY_FAST_PATH_PROBABILITY, Word.objectToTrackedPointer(object).logicCompareAndSwapWord(markOffset(INJECTED_VMCONFIG),
+        if (probability(VERY_FAST_PATH_PROBABILITY, ObjectAccess.objectToTrackedPointer(object).logicCompareAndSwapWord(markOffset(INJECTED_VMCONFIG),
                         lock, displacedMark, MARK_WORD_LOCATION))) {
             traceObject(trace, "-lock{stack:cas}", object, false);
             counters.unlockFastCas.inc();
@@ -574,7 +575,7 @@ public class MonitorSnippets implements Snippets {
         Word mark = loadWordFromObject(object, markOffset(INJECTED_VMCONFIG));
 
         // Check if obj is top of lock-stack.
-        Pointer objectPointer = Word.objectToTrackedPointer(object);
+        Pointer objectPointer = ObjectAccess.objectToTrackedPointer(object);
 
         if (probability(SLOW_PATH_PROBABILITY, objectPointer.notEqual(thread.readWord(newLockStackTop, JAVA_THREAD_LOCK_STACK_LOCATION)))) {
             if (isCAssertEnabled(INJECTED_VMCONFIG)) {

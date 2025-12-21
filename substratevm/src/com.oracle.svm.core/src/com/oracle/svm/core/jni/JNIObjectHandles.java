@@ -46,6 +46,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.word.ObjectAccess;
 
 /**
  * Centralized management of {@linkplain JNIObjectHandle JNI handles for Java objects}. There are
@@ -410,7 +411,7 @@ final class JNIImageHeapHandles {
     static JNIObjectHandle asLocal(Object target) {
         assert isInImageHeap(target);
         SignedWord base = (SignedWord) KnownIntrinsics.heapBase();
-        SignedWord offset = Word.objectToUntrackedWord(target).subtract(base);
+        SignedWord offset = ObjectAccess.objectToUntrackedWord(target).subtract(base);
         // NOTE: we could support further bits due to the object alignment in the image heap
         assert offset.and(OBJ_OFFSET_BITS_MASK).equal(offset) : "does not fit in range";
         return (JNIObjectHandle) LOCAL_RANGE_MIN.add(offset);

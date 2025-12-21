@@ -79,6 +79,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.ValueKindFactory;
@@ -342,7 +343,7 @@ public abstract class InterpreterStubSection {
                 accessHelper.setFpReturn(enterData, Double.doubleToRawLongBits((double) retVal));
                 break;
             case Object:
-                accessHelper.setGpReturn(enterData, Word.objectToTrackedPointer(retVal).rawValue());
+                accessHelper.setGpReturn(enterData, ObjectAccess.objectToTrackedPointer(retVal).rawValue());
                 break;
             case Void:
                 break;
@@ -509,7 +510,7 @@ public abstract class InterpreterStubSection {
                     gpIdx++;
                     break;
                 case Object:
-                    accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, Word.objectToTrackedPointer(arg).rawValue());
+                    accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, ObjectAccess.objectToTrackedPointer(arg).rawValue());
                     gpIdx++;
                     break;
 

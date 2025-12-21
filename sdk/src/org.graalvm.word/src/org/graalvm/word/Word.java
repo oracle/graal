@@ -57,7 +57,7 @@ public final class Word implements SignedWord, UnsignedWord, Pointer {
 
     private final long rawValue;
 
-    Word(long val) {
+    private Word(long val) {
         this.rawValue = val;
     }
 
@@ -65,50 +65,6 @@ public final class Word implements SignedWord, UnsignedWord, Pointer {
     static <T extends WordBase> T box(long val) {
         return (T) new Word(val);
     }
-
-    /**
-     * Converts the {@link Object} value in {@code val} to a {@link Pointer} value representing the
-     * object's current address. If the object is subsequently moved (e.g. by the garbage
-     * collector), the returned pointer value is updated accordingly. If a derived pointer value is
-     * obtained by applying pointer arithmetic to the returned pointer value, it will also be
-     * updated accordingly. If derived pointers are not supported, an error is thrown. In the case
-     * of Native Image, the error is thrown at build time.
-     * <p>
-     * This is an optional operation that will throw an {@link UnsupportedOperationException} if not
-     * supported.
-     */
-    @Operation(opcode = Opcode.OBJECT_TO_TRACKED)
-    public static Pointer objectToTrackedPointer(Object val) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Same as {@link #objectToTrackedPointer(Object)} but with {@link Word} return type.
-     */
-    @Operation(opcode = Opcode.OBJECT_TO_TRACKED)
-    public static native Word objectToTrackedWord(Object val);
-
-    /**
-     * Converts the {@link Object} value in {@code val} to a {@link Pointer} value representing the
-     * object's current address. If the object is subsequently moved (e.g. by the garbage
-     * collector), the pointer value is not updated. As such, this method must only be used when the
-     * address is being used for purely information purposes (e.g. printing out the object's
-     * address) or when the caller guarantees the object will not be moved (e.g. the caller is the
-     * garbage collector or the caller guarantees not to use the value across a safepoint).
-     *
-     * @see #objectToTrackedPointer(Object)
-     */
-    @Operation(opcode = Opcode.OBJECT_TO_UNTRACKED)
-    public static native Pointer objectToUntrackedPointer(Object val);
-
-    /**
-     * Same as {@link #objectToUntrackedPointer(Object)} but with {@link Word} return type.
-     */
-    @Operation(opcode = Opcode.OBJECT_TO_UNTRACKED)
-    public static native Word objectToUntrackedWord(Object val);
-
-    @Operation(opcode = Opcode.FROM_ADDRESS)
-    public static native Word fromAddress(AddressInput address);
 
     /**
      * The constant 0, i.e., the word with no bits set. There is no difference between a signed and

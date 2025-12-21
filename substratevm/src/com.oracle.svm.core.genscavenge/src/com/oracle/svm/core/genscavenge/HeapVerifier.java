@@ -53,6 +53,7 @@ import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.ObjectAccess;
 
 public class HeapVerifier {
     private static final ObjectVerifier OBJECT_VERIFIER = new ObjectVerifier();
@@ -201,7 +202,7 @@ public class HeapVerifier {
         while (aChunk.isNonNull()) {
             if (space != aChunk.getSpace()) {
                 Log.log().string("Space ").string(space.getName()).string(" contains aligned chunk ").zhex(aChunk).string(" but the chunk does not reference the correct space: ")
-                                .zhex(Word.objectToUntrackedPointer(aChunk.getSpace())).newline();
+                                .zhex(ObjectAccess.objectToUntrackedPointer(aChunk.getSpace())).newline();
                 success = false;
             }
 
@@ -229,7 +230,7 @@ public class HeapVerifier {
         while (uChunk.isNonNull()) {
             if (space != uChunk.getSpace()) {
                 Log.log().string("Space ").string(space.getName()).string(" contains unaligned chunk ").zhex(uChunk).string(" but the chunk does not reference the correct space: ")
-                                .zhex(Word.objectToUntrackedPointer(uChunk.getSpace())).newline();
+                                .zhex(ObjectAccess.objectToUntrackedPointer(uChunk.getSpace())).newline();
                 success = false;
             }
 
@@ -247,7 +248,7 @@ public class HeapVerifier {
 
     // This method is executed exactly once per object in the heap.
     private static boolean verifyObject(Object obj, AlignedHeader aChunk, UnalignedHeader uChunk) {
-        Pointer ptr = Word.objectToUntrackedPointer(obj);
+        Pointer ptr = ObjectAccess.objectToUntrackedPointer(obj);
         if (ptr.isNull()) {
             Log.log().string("Encounter a null pointer while walking the heap objects.").newline();
             return false;

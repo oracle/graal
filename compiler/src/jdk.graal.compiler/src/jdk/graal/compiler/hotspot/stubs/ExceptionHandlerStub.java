@@ -54,6 +54,7 @@ import jdk.graal.compiler.hotspot.nodes.PatchReturnAddressNode;
 import jdk.graal.compiler.hotspot.nodes.StubForeignCallNode;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.vm.ci.code.Register;
 
 /**
@@ -87,8 +88,8 @@ public class ExceptionHandlerStub extends SnippetStub {
         HotSpotReplacementsUtil.writeExceptionOop(thread, exception);
         HotSpotReplacementsUtil.writeExceptionPc(thread, exceptionPc);
         if (logging) {
-            printf("handling exception %p (", Word.objectToTrackedPointer(exception).rawValue());
-            decipher(Word.objectToTrackedPointer(exception).rawValue());
+            printf("handling exception %p (", ObjectAccess.objectToTrackedPointer(exception).rawValue());
+            decipher(ObjectAccess.objectToTrackedPointer(exception).rawValue());
             printf(") at %p (", exceptionPc.rawValue());
             decipher(exceptionPc.rawValue());
             printf(")\n");
@@ -100,7 +101,7 @@ public class ExceptionHandlerStub extends SnippetStub {
         Word handlerPc = exceptionHandlerForPc(EXCEPTION_HANDLER_FOR_PC, thread);
 
         if (logging) {
-            printf("handler for exception %p at %p is at %p (", Word.objectToTrackedPointer(exception).rawValue(), exceptionPc.rawValue(), handlerPc.rawValue());
+            printf("handler for exception %p at %p is at %p (", ObjectAccess.objectToTrackedPointer(exception).rawValue(), exceptionPc.rawValue(), handlerPc.rawValue());
             decipher(handlerPc.rawValue());
             printf(")\n");
         }
@@ -113,7 +114,7 @@ public class ExceptionHandlerStub extends SnippetStub {
         if (enabled) {
             Object currentException = HotSpotReplacementsUtil.readExceptionOop(thread);
             if (currentException != null) {
-                fatal("exception object in thread must be null, not %p", Word.objectToTrackedPointer(currentException).rawValue());
+                fatal("exception object in thread must be null, not %p", ObjectAccess.objectToTrackedPointer(currentException).rawValue());
             }
             if (cAssertionsEnabled(GraalHotSpotVMConfig.INJECTED_VMCONFIG)) {
                 // This thread-local is only cleared in DEBUG builds of the VM

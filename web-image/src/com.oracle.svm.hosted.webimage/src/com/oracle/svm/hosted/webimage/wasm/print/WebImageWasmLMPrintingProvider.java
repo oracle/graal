@@ -28,6 +28,7 @@ package com.oracle.svm.hosted.webimage.wasm.print;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.Word;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -39,7 +40,8 @@ import com.oracle.svm.hosted.webimage.wasm.nodes.WasmPrintNode;
 import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.webimage.print.WebImagePrintingProvider;
-import org.graalvm.word.Word;
+
+import jdk.graal.compiler.word.ObjectAccess;
 
 /**
  * Printing functionality for the Wasm backend.
@@ -55,7 +57,7 @@ public class WebImageWasmLMPrintingProvider extends WebImagePrintingProvider {
     public void print(Descriptor fd, char[] chars) {
         DynamicHub hub = KnownIntrinsics.readHub(chars);
         UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
-        CShortPointer dataPtr = (CShortPointer) Word.objectToUntrackedPointer(chars).add(baseOffset);
+        CShortPointer dataPtr = (CShortPointer) ObjectAccess.objectToUntrackedPointer(chars).add(baseOffset);
         WasmPrintNode.print(fd.num, 2, dataPtr, Word.unsigned(chars.length));
     }
 

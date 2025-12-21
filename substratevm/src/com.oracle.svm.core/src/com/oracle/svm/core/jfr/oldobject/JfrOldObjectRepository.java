@@ -50,6 +50,8 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
 
+import jdk.graal.compiler.word.ObjectAccess;
+
 public final class JfrOldObjectRepository implements JfrRepository {
     private static final int OBJECT_DESCRIPTION_MAX_LENGTH = 100;
 
@@ -79,7 +81,7 @@ public final class JfrOldObjectRepository implements JfrRepository {
             }
 
             long id = JfrOldObjectEpochData.nextId;
-            Word pointer = Word.objectToUntrackedWord(obj);
+            Word pointer = ObjectAccess.objectToUntrackedWord(obj);
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initialize(data, epochData.buffer);
             JfrNativeEventWriter.putLong(data, id);

@@ -45,6 +45,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -392,7 +393,7 @@ public class LayoutEncoding {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean hasOptionalIdentityHashField(Object obj) {
         ObjectHeader oh = Heap.getHeap().getObjectHeader();
-        Word header = oh.readHeaderFromPointer(Word.objectToUntrackedPointer(obj));
+        Word header = oh.readHeaderFromPointer(ObjectAccess.objectToUntrackedPointer(obj));
         return oh.hasOptionalIdentityHashField(header);
     }
 
@@ -405,7 +406,7 @@ public class LayoutEncoding {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getObjectEndInlineInGC(Object obj) {
         UnsignedWord size = getSizeFromObjectInlineInGC(obj, false);
-        return Word.objectToUntrackedPointer(obj).add(size);
+        return ObjectAccess.objectToUntrackedPointer(obj).add(size);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -413,7 +414,7 @@ public class LayoutEncoding {
         assert Heap.getHeap().isInImageHeap(obj);
         /* Image heap objects never move and always have an identity hash code field. */
         UnsignedWord size = getSizeFromObjectInline(obj, true);
-        return Word.objectToUntrackedPointer(obj).add(size);
+        return ObjectAccess.objectToUntrackedPointer(obj).add(size);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -421,7 +422,7 @@ public class LayoutEncoding {
         assert Metaspace.isSupported() && Metaspace.singleton().isInAddressSpace(obj);
         /* Metaspace objects don't move and have no identity hash code field. */
         UnsignedWord size = getSizeFromObjectInline(obj, false);
-        return Word.objectToUntrackedPointer(obj).add(size);
+        return ObjectAccess.objectToUntrackedPointer(obj).add(size);
     }
 
     public static boolean isArray(Object obj) {

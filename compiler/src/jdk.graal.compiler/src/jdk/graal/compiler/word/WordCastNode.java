@@ -56,8 +56,8 @@ import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
 /**
- * Casts between Word and Object exposed by the {@link Word#fromAddress},
- * {@link Word#objectToTrackedPointer}, {@link Word#objectToUntrackedPointer} and
+ * Casts between Word and Object exposed by the {@link ObjectAccess#fromAddress},
+ * {@link ObjectAccess#objectToTrackedPointer}, {@link ObjectAccess#objectToUntrackedPointer} and
  * {@link Word#toObject()} operations. It has an impact on the pointer maps for the GC, so it must
  * not be scheduled or optimized away.
  */

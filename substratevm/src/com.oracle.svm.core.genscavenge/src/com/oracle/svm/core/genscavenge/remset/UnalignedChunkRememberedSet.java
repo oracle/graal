@@ -59,6 +59,7 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
+import jdk.graal.compiler.word.ObjectAccess;
 
 final class UnalignedChunkRememberedSet {
 
@@ -141,7 +142,7 @@ final class UnalignedChunkRememberedSet {
     public static void dirtyCardForObject(Object obj, Pointer address, boolean verifyOnly) {
         UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunk(obj);
         Pointer cardTableStart = getCardTableStart(chunk);
-        UnsignedWord objectIndex = CardTable.memoryOffsetToIndex(address.subtract(Word.objectToUntrackedPointer(obj)));
+        UnsignedWord objectIndex = CardTable.memoryOffsetToIndex(address.subtract(ObjectAccess.objectToUntrackedPointer(obj)));
         if (verifyOnly) {
             AssertionNode.assertion(false, CardTable.isDirty(cardTableStart, objectIndex), "card must be dirty", "", "", 0L, 0L);
         } else {
@@ -158,7 +159,7 @@ final class UnalignedChunkRememberedSet {
         UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunk(obj);
         Pointer cardTableStart = getCardTableStart(chunk);
 
-        Pointer objPtr = Word.objectToUntrackedPointer(obj);
+        Pointer objPtr = ObjectAccess.objectToUntrackedPointer(obj);
         UnsignedWord startIndex = CardTable.memoryOffsetToIndex(startAddress.subtract(objPtr));
         UnsignedWord endIndex = CardTable.memoryOffsetToIndex(endAddress.subtract(objPtr));
 
@@ -174,7 +175,7 @@ final class UnalignedChunkRememberedSet {
         DynamicHub hub = KnownIntrinsics.readHub(obj);
         int hubType = hub.getHubType();
 
-        Pointer objPtr = Word.objectToUntrackedPointer(obj);
+        Pointer objPtr = ObjectAccess.objectToUntrackedPointer(obj);
         Pointer chunk = objPtr.subtract(getOffsetForObject(objPtr));
 
         switch (hubType) {
@@ -277,7 +278,7 @@ final class UnalignedChunkRememberedSet {
             UnsignedWord startOffset = UnsignedUtils.max(dirtyStartOffset, elementStartOffset);
             UnsignedWord endOffset = UnsignedUtils.min(dirtyEndOffset, elementEndOffset);
 
-            Pointer refPtr = Word.objectToUntrackedPointer(obj).add(startOffset);
+            Pointer refPtr = ObjectAccess.objectToUntrackedPointer(obj).add(startOffset);
             UnsignedWord nReferences = (endOffset.subtract(startOffset)).unsignedDivide(referenceSize);
             refVisitor.visitObjectReferences(refPtr, isCompressed, referenceSize, obj, UnsignedUtils.safeToInt(nReferences));
 

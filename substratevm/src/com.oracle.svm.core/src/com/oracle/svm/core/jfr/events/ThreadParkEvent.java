@@ -27,7 +27,6 @@
 package com.oracle.svm.core.jfr.events;
 
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.Word;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.HasJfrSupport;
@@ -38,6 +37,8 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.JavaMonitorQueuedSynchronizer;
+
+import jdk.graal.compiler.word.ObjectAccess;
 
 public class ThreadParkEvent {
     public static void emit(long startTicks, Object obj, boolean isAbsolute, long time) {
@@ -73,7 +74,7 @@ public class ThreadParkEvent {
             JfrNativeEventWriter.putClass(data, parkedClass);
             JfrNativeEventWriter.putLong(data, timeout);
             JfrNativeEventWriter.putLong(data, until);
-            JfrNativeEventWriter.putLong(data, Word.objectToUntrackedPointer(obj).rawValue());
+            JfrNativeEventWriter.putLong(data, ObjectAccess.objectToUntrackedPointer(obj).rawValue());
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }

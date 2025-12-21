@@ -28,9 +28,12 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.Word;
 import org.graalvm.word.Word.Opcode;
 import org.graalvm.word.Word.Operation;
 import org.graalvm.word.WordBase;
+
+import jdk.graal.compiler.nodes.memory.address.AddressNode.Address;
 
 /**
  * Low-level memory access for Objects. Similarly to the readXxx and writeXxx methods defined for
@@ -939,4 +942,91 @@ public final class ObjectAccess {
      */
     @Operation(opcode = Opcode.WRITE_OBJECT)
     public static native void writeObject(Object object, int offset, Object val);
+
+    @SuppressWarnings("unused")
+    @Operation(opcode = Opcode.FROM_ADDRESS)
+    public static Word fromAddress(Address address) {
+        throw new UnsupportedOperationException();
+    }
+
+    /// Converts the [Object] value in `val` to a [Pointer] value representing the
+    /// object's current address. If the object is subsequently moved (e.g. by the garbage
+    /// collector), the returned pointer value is updated accordingly. If a derived pointer value is
+    /// obtained by applying pointer arithmetic to the returned pointer value, it will also be
+    /// updated accordingly. If derived pointers are not supported, an error is thrown. In the case
+    /// of Native Image, the error is thrown at build time.
+    ///
+    /// Examples of expected usage:
+    /// ```
+    /// // Pointer value is tracked across a garbage collection
+    /// Pointer oop = ObjectAccess.objectToTrackedPointer(obj);
+    /// System.gc();
+    /// Pointer oop2 = ObjectAccess.objectToTrackedPointer(obj);
+    /// assert oop.equal(oop2); // `oop` will have been updated if `obj` was moved
+    ///
+    /// // Derived pointer value is tracked across a garbage collection
+    /// Pointer oop = ObjectAccess.objectToTrackedPointer(obj);
+    /// Pointer derived1 = oop.add(1);
+    /// Pointer derived2 = oop.add(7);
+    /// assert derived1.equal(oop.add(1)); // No safepoint between def and use of derived1
+    /// System.gc();
+    /// Pointer oop2 = ObjectAccess.objectToTrackedPointer(obj);
+    /// assert oop.equal(oop2);
+    /// assert derived2.equal(oop2.add(7)); // JIT: ok, Native Image: build failure
+    /// ```
+    ///
+    /// This is an optional operation that will throw an [UnsupportedOperationException] if
+    /// not supported.
+    ///
+    /// @see #objectToUntrackedPointer(Object)
+    @SuppressWarnings("unused")
+    @Operation(opcode = Opcode.OBJECT_TO_TRACKED)
+    public static Pointer objectToTrackedPointer(Object val) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Same as {@link #objectToTrackedPointer(Object)} but with {@link Word} return type.
+     */
+    @SuppressWarnings("unused")
+    @Operation(opcode = Opcode.OBJECT_TO_TRACKED)
+    public static Word objectToTrackedWord(Object val) {
+        throw new UnsupportedOperationException();
+    }
+
+    /// Converts the [Object] value in `val` to a [Pointer] value representing the
+    /// object's current address. If the object is subsequently moved (e.g. by the garbage
+    /// collector), the pointer value is not updated. As such, this method **must only be used when
+    /// the address is being used for purely informational purposes** (e.g. printing out the
+    /// object's address) or when the **caller guarantees the object will not be moved** (e.g. the
+    /// caller is part of the garbage collector implementation or the caller guarantees not to
+    /// use the value across a safepoint).
+    ///
+    /// Examples of expected usage:
+    /// ```
+    /// // Pointer value is not tracked across a garbage collection
+    /// Pointer oop = ObjectAccess.objectToUntrackedPointer(obj);
+    /// System.gc();
+    /// Pointer oop2 = ObjectAccess.objectToUntrackedPointer(obj);
+    /// if (oop.equal(oop2)) System.out.println(obj + " was moved");
+    /// ```
+    ///
+    /// This is an optional operation that will throw an [UnsupportedOperationException] if
+    /// not supported.
+    ///
+    /// @see #objectToTrackedPointer(Object)
+    @SuppressWarnings("unused")
+    @Operation(opcode = Opcode.OBJECT_TO_UNTRACKED)
+    public static Pointer objectToUntrackedPointer(Object val) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Same as {@link #objectToUntrackedPointer(Object)} but with {@link Word} return type.
+     */
+    @SuppressWarnings("unused")
+    @Operation(opcode = Opcode.OBJECT_TO_UNTRACKED)
+    public static Word objectToUntrackedWord(Object val) {
+        throw new UnsupportedOperationException();
+    }
 }

@@ -45,6 +45,7 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.nmt.NmtCategory;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.word.ObjectAccess;
 
 /**
  * In Native Image, we use {@link java.lang.String} objects that live in the image heap as symbols.
@@ -85,7 +86,7 @@ public class JfrSymbolRepository implements JfrRepository {
         symbol.setValue(imageHeapString);
         symbol.setReplaceDotWithSlash(replaceDotWithSlash);
 
-        long rawPointerValue = Word.objectToUntrackedPointer(imageHeapString).rawValue();
+        long rawPointerValue = ObjectAccess.objectToUntrackedPointer(imageHeapString).rawValue();
         symbol.setHash(UninterruptibleUtils.Long.hashCode(rawPointerValue));
 
         /*

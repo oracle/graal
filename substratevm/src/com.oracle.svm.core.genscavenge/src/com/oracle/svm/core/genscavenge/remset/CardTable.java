@@ -30,6 +30,7 @@ import java.lang.ref.Reference;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.Word;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
@@ -51,7 +52,7 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import org.graalvm.word.Word;
+import jdk.graal.compiler.word.ObjectAccess;
 
 /**
  * A card table is a remembered set that summarizes pointer stores into a region. A card is "dirty"
@@ -225,9 +226,9 @@ final class CardTable {
         /* Fail if we find a reference to the young generation. */
         boolean fromImageHeap = HeapImpl.getHeapImpl().isInImageHeap(parentObject);
         if (fromImageHeap || HeapChunk.getSpace(objChunk).isYoungSpace()) {
-            UnsignedWord cardTableIndex = memoryOffsetToIndex(Word.objectToUntrackedPointer(parentObject).subtract(objectsStart));
+            UnsignedWord cardTableIndex = memoryOffsetToIndex(ObjectAccess.objectToUntrackedPointer(parentObject).subtract(objectsStart));
             Pointer cardTableAddress = cardTableStart.add(cardTableIndex);
-            Log.log().string("Object ").zhex(Word.objectToUntrackedPointer(parentObject)).string(" (").string(parentObject.getClass().getName()).character(')')
+            Log.log().string("Object ").zhex(ObjectAccess.objectToUntrackedPointer(parentObject)).string(" (").string(parentObject.getClass().getName()).character(')')
                             .string(fromImageHeap ? ", which is in the image heap, " : " ")
                             .string("has an object reference at ")
                             .zhex(reference).string(" that points to ").zhex(referencedObject).string(" (").string(obj.getClass().getName()).string("), ")

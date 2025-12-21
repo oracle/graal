@@ -56,6 +56,7 @@ import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.ObjectAccess;
 
 /**
  * Only one thread at a time can execute {@linkplain VMOperation}s. The execution order of VM
@@ -203,7 +204,7 @@ public final class VMOperationControl {
             log.string("ExecutingThread: ").zhex(control.inProgress.executingThread).newline();
             log.redent(false);
         } else {
-            log.string("VMOperation in progress: ").zhex(Word.objectToUntrackedPointer(op)).newline();
+            log.string("VMOperation in progress: ").zhex(ObjectAccess.objectToUntrackedPointer(op)).newline();
         }
     }
 

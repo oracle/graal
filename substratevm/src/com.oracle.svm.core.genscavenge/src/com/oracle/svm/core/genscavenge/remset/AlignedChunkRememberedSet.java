@@ -56,6 +56,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
+import jdk.graal.compiler.word.ObjectAccess;
 
 public final class AlignedChunkRememberedSet {
     private AlignedChunkRememberedSet() {
@@ -102,7 +103,7 @@ public final class AlignedChunkRememberedSet {
         Pointer fotStart = getFirstObjectTableStart(chunk);
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
 
-        Word objPtr = Word.objectToUntrackedWord(obj);
+        Word objPtr = ObjectAccess.objectToUntrackedWord(obj);
         UnsignedWord startOffset = objPtr.subtract(objectsStart);
         UnsignedWord endOffset = startOffset.add(objSize);
 
@@ -138,7 +139,7 @@ public final class AlignedChunkRememberedSet {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void dirtyCardForObject(Object object, boolean verifyOnly) {
-        Pointer objectPointer = Word.objectToUntrackedPointer(object);
+        Pointer objectPointer = ObjectAccess.objectToUntrackedPointer(object);
         AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(objectPointer);
         Pointer cardTableStart = getCardTableStart(chunk);
         UnsignedWord index = getObjectIndex(chunk, objectPointer);
