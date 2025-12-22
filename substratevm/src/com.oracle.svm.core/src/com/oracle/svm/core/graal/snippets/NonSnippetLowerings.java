@@ -66,6 +66,7 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.nodes.BeginNode;
@@ -136,7 +137,7 @@ public abstract class NonSnippetLowerings {
                     Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         this.mustNotAllocatePredicate = mustNotAllocatePredicate;
 
-        if (hosted) {
+        if (hosted || SubstrateOptions.useRistretto()) {
             // These nodes create a FrameState which cannot be deoptimized from
             lowerings.put(BytecodeExceptionNode.class, new BytecodeExceptionLowering());
             lowerings.put(ThrowBytecodeExceptionNode.class, new ThrowBytecodeExceptionLowering());
@@ -242,7 +243,7 @@ public abstract class NonSnippetLowerings {
             }
             outArguments.addAll(exceptionArguments);
         }
-        VMError.guarantee(descriptor != null, "No ForeignCallDescriptor for ByteCodeExceptionKind %s", exceptionKind);
+        GraalError.guarantee(descriptor != null, "No ForeignCallDescriptor for ByteCodeExceptionKind %s", exceptionKind);
         assert descriptor.getArgumentTypes().length == outArguments.size();
         return descriptor;
     }

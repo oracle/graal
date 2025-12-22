@@ -60,11 +60,14 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.memory.NativeMemory;
+import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
@@ -75,8 +78,8 @@ import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 
 import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.word.Word;
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.ValueKindFactory;
 import jdk.vm.ci.meta.JavaKind;
@@ -89,6 +92,8 @@ public abstract class InterpreterStubSection {
     private static final CGlobalData<Pointer> BASE = CGlobalDataFactory.forSymbol(nameForVTableIndex(0));
 
     private static final String REASON_REFERENCES_ON_STACK = "stack frame might contain object references that are not known to the GC";
+
+    private static final String REASON_DEOPT_INSTALLED_CODE = "InstalledCode can be deoptimized or freed at a safepoint.";
 
     /* '-3' to reduce padding due to alignment in .svm_interp section */
     static final int MAX_VTABLE_STUBS = 2 * 1024 - 3;
@@ -240,14 +245,14 @@ public abstract class InterpreterStubSection {
      * The "enter stub" pretends to be like a compiled method, with the advantage that the caller
      * does not need to know where the call ends up. Therefore, it has to look like a compiled
      * entrypoint.
-     *
+     * <p>
      * The low-level stubs calling this helper spill native ABI arguments to the stack frame, see
      * {@link com.oracle.svm.core.graal.amd64.AMD64InterpreterStubs.InterpreterEnterStubContext} and
      * {@link com.oracle.svm.core.graal.aarch64.AArch64InterpreterStubs.InterpreterEnterStubContext}.
      * Its layout is defined in
      * {@link com.oracle.svm.core.graal.amd64.AMD64InterpreterStubs.InterpreterDataAMD64} and
      * {@link com.oracle.svm.core.graal.aarch64.AArch64InterpreterStubs.InterpreterDataAArch64}.
-     *
+     * <p>
      * The ABI arguments can contain references which the GC is not aware of, so until they are
      * moved to a known location, a safepoint must be avoided. ThreadLocalHandles are used for that.
      *
@@ -409,18 +414,7 @@ public abstract class InterpreterStubSection {
         VMError.guarantee(handles.getHandleCount() == handleCount);
         VMError.guarantee(handleFrameId == handles.popFrame());
 
-        RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
-        if (rMethod != null && rMethod.installedCode != null && rMethod.installedCode.isValid()) {
-            /*
-             * A JIT compiled version is available, execute this one instead. This could be more
-             * optimized, see GR-71160.
-             */
-
-            CFunctionPointer entryPoint = Word.pointer(rMethod.installedCode.getEntryPoint());
-            return leaveInterpreter(entryPoint, interpreterMethod, args);
-        } else {
-            return Interpreter.execute(interpreterMethod, args);
-        }
+        return call(interpreterMethod, args);
     }
 
     @Uninterruptible(reason = "Raw object pointer.")
@@ -451,6 +445,7 @@ public abstract class InterpreterStubSection {
         return (Pointer) entryPoint;
     }
 
+    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
     public static Object leaveInterpreter(CFunctionPointer compiledEntryPoint, InterpreterResolvedJavaMethod seedMethod, Object[] args) {
         PreparedSignature compiledSignature = seedMethod.getPreparedSignature();
         VMError.guarantee(compiledSignature != null);
@@ -459,20 +454,17 @@ public abstract class InterpreterStubSection {
         InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
         Pointer leaveData = StackValue.get(accessHelper.allocateStubDataSize());
 
-        int stackSize = NumUtil.roundUp(compiledSignature.getStackSize(), stubSection.target.stackAlignment);
+        int stackSize = UninterruptibleUtils.NumUtil.roundUp(compiledSignature.getStackSize(), stubSection.target.stackAlignment);
 
         Pointer stackBuffer = Word.nullPointer();
         if (stackSize > 0) {
-            stackBuffer = NativeMemory.malloc(Word.unsigned(stackSize), NmtCategory.Interpreter);
+            stackBuffer = NullableNativeMemory.malloc(Word.unsigned(stackSize), NmtCategory.Interpreter);
+            VMError.guarantee(stackBuffer.isNonNull(), "Out-of-memory while allocating interpreter-internal data.");
             accessHelper.setSp(leaveData, stackSize, stackBuffer);
         }
-
         try {
             // GR-55022: Stack overflow check should be done here
             return leaveInterpreter0(compiledEntryPoint, args, compiledSignature, accessHelper, leaveData, stackSize);
-        } catch (Throwable e) {
-            // native code threw exception, wrap it
-            throw SemanticJavaException.raise(e);
         } finally {
             if (stackSize > 0) {
                 VMError.guarantee(stackBuffer.isNonNull());
@@ -573,5 +565,43 @@ public abstract class InterpreterStubSection {
                 Heap.getHeap().getGC().collectCompletely(GCCause.UnitTest);
             }
         }
+    }
+
+    /**
+     * Try to query {@link InstalledCode} for the given {@link InterpreterResolvedJavaMethod}. In
+     * order to guarantee that no safepoint happens during this operation and the execution of the
+     * first instruction inside {@code installedCode} this method is marked as
+     * {@code Uninterruptible}. Callers must ensure no safepoint happens between the return and the
+     * call to the installed code.
+     */
+    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE, callerMustBe = true)
+    private static CFunctionPointer getInstalledCodeEntryPoint(InterpreterResolvedJavaMethod interpreterMethod) {
+        RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
+        if (rMethod != null) {
+            SubstrateInstalledCodeImpl ic = rMethod.installedCode;
+            // entryPoint != isValid (means it is not deoptimized yet)
+            if (ic != null && ic.getEntryPoint() != 0) {
+                return Word.pointer(ic.getEntryPoint());
+            }
+        }
+        return Word.nullPointer();
+    }
+
+    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
+    public static Object call(InterpreterResolvedJavaMethod interpreterMethod, Object[] args) {
+        /*
+         * Determine if a JIT compiled version is available and if so execute this one instead. This
+         * could be more optimized, see GR-71160.
+         */
+        CFunctionPointer entryPoint = getInstalledCodeEntryPoint(interpreterMethod);
+        if (entryPoint.isNonNull()) {
+            return leaveInterpreter(entryPoint, interpreterMethod, args);
+        }
+        return callInterpreterInterruptibly(interpreterMethod, args);
+    }
+
+    @Uninterruptible(reason = "No JIT compiled code found, so it is safe to switch to interruptible code.", calleeMustBe = false)
+    private static Object callInterpreterInterruptibly(InterpreterResolvedJavaMethod interpreterMethod, Object[] args) {
+        return Interpreter.execute(interpreterMethod, args);
     }
 }

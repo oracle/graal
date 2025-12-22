@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
-import com.oracle.svm.interpreter.ristretto.RistrettoRuntimeOptions;
+import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
 
 public class RistrettoCompilationManager {
     /**
@@ -95,7 +95,7 @@ public class RistrettoCompilationManager {
 
     public RistrettoCompilationManager() {
         compilerExceptions = Collections.synchronizedList(new ArrayList<>());
-        final int compilerThreadCount = RistrettoRuntimeOptions.JITCompilerThreadCount.getValue();
+        final int compilerThreadCount = RistrettoOptions.JITCompilerThreadCount.getValue();
         compilerExecutorService = Executors.newFixedThreadPool(compilerThreadCount);
         compilationQueue = new PriorityBlockingQueue<>();
         performedCompilations = Collections.synchronizedList(new ArrayList<>());
@@ -112,7 +112,11 @@ public class RistrettoCompilationManager {
                         try {
                             task.call();
                         } catch (Throwable e) {
-                            RistrettoProfileSupport.trace(RistrettoRuntimeOptions.JITTraceCompilation, "[Ristretto Compiler]Compiler saw exception %s %s", Thread.currentThread(), e.getMessage());
+                            /*
+                             * TODO GR-72048 - CompilationExceptionAreFatal support missing at the
+                             * moment
+                             */
+                            RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilation, "[Ristretto Compiler]Compiler saw exception %s %s", Thread.currentThread(), e.getMessage());
                             compilerExceptions.add(e);
                         } finally {
                             // even if we fail we want to record the compilation
@@ -133,9 +137,9 @@ public class RistrettoCompilationManager {
 
     public void submitCompilationRequest(RistrettoCompilationRequest request) {
         submittedRequests.incrementAndGet();
-        RistrettoProfileSupport.trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Submitting compilation request %s %n", request);
+        RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Submitting compilation request %s %n", request);
         compilationQueue.add(request);
-        RistrettoProfileSupport.trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Queue size after submitting %s =%s %n", request, compilationQueue.size());
+        RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Queue size after submitting %s =%s %n", request, compilationQueue.size());
     }
 
     public void shutDown() {
@@ -161,11 +165,11 @@ public class RistrettoCompilationManager {
 
         public static synchronized void reset() {
             RistrettoCompilationManager m = get();
-            RistrettoProfileSupport.trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "Invalidating and resetting %s compilations%n",
+            RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "Invalidating and resetting %s compilations%n",
                             m.performedCompilations.size());
 
             for (var task : m.performedCompilations) {
-                RistrettoProfileSupport.trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "Invalidating and resetting %s%n", task.getRMethod());
+                RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "Invalidating and resetting %s%n", task.getRMethod());
                 task.getRMethod().compilationState = RistrettoConstants.COMPILE_STATE_INIT_VAL;
                 if (task.getRMethod().installedCode != null) {
                     /*
@@ -188,10 +192,10 @@ public class RistrettoCompilationManager {
          */
         public static void blockUntilCompileQueueDrained() {
             final RistrettoCompilationManager m = get();
-            RistrettoProfileSupport.trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Draining compile queue, submitted=%s, started=%s, finished=%s%n",
+            RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Draining compile queue, submitted=%s, started=%s, finished=%s%n",
                             m.submittedRequests.get(), m.startedRequests.get(), m.finishedRequests.get());
 
-            final boolean startLogDuringDrain = RistrettoRuntimeOptions.JITTraceCompilationQueuing.getValue();
+            final boolean startLogDuringDrain = RistrettoOptions.JITTraceCompilationQueuing.getValue();
             long msWaited = 0;
             final long msWaitTime = 50/* ms */;
             while (m.finishedRequests.get() != m.submittedRequests.get()) {
@@ -199,7 +203,7 @@ public class RistrettoCompilationManager {
                     TimeUnit.MILLISECONDS.sleep(msWaitTime);
                     msWaited += msWaitTime;
                     if (startLogDuringDrain && msWaited > 0 && msWaited % 5_000L == 0) {
-                        RistrettoProfileSupport.trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing,
+                        RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing,
                                         "[Ristretto Compile Queue]Still draining compile queue, submitted=%s, started=%s, finished=%s%n",
                                         m.submittedRequests.get(), m.startedRequests.get(), m.finishedRequests.get());
                     }
@@ -207,7 +211,7 @@ public class RistrettoCompilationManager {
                     throw new RuntimeException(e);
                 }
             }
-            RistrettoProfileSupport.trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing,
+            RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing,
                             "[Ristretto Compile Queue]Done draining compile queue, submitted=%s, started=%s, finished=%s%n",
                             m.submittedRequests.get(), m.startedRequests.get(), m.finishedRequests.get());
 

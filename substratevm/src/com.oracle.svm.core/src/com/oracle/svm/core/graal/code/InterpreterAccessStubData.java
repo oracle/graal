@@ -34,6 +34,7 @@ import com.oracle.svm.core.Uninterruptible;
 public interface InterpreterAccessStubData {
     String REASON_RAW_POINTER = "raw pointer to object";
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setSp(Pointer data, int stackSize, Pointer stackBuffer);
 
     @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
@@ -70,5 +71,6 @@ public interface InterpreterAccessStubData {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setFpReturn(Pointer data, long fpReturn);
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     int allocateStubDataSize();
 }

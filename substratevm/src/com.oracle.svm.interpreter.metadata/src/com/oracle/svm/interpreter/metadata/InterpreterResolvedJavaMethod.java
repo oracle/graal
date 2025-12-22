@@ -323,6 +323,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
                         exceptionHandlers, lineNumberTable, localVariableTable, nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public ResolvedJavaMethod getRistrettoMethod() {
         return this.ristrettoMethod;
     }

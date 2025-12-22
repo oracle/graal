@@ -58,6 +58,7 @@ import com.oracle.svm.core.c.struct.OffsetOf;
 import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
 import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.graal.code.PreparedArgumentType;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.util.VMError;
 
@@ -65,7 +66,6 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.aarch64.AArch64;
@@ -246,8 +246,9 @@ public class AArch64InterpreterStubs {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static int sizeOfInterpreterData() {
-        return NumUtil.roundUp(SizeOf.get(InterpreterDataAArch64.class), 0x10);
+        return UninterruptibleUtils.NumUtil.roundUp(SizeOf.get(InterpreterDataAArch64.class), 0x10);
     }
 
     public static int additionalFrameSizeEnterStub() {
@@ -484,6 +485,7 @@ public class AArch64InterpreterStubs {
     public static class AArch64InterpreterAccessStubData implements InterpreterAccessStubData {
 
         @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public void setSp(Pointer data, int stackSize, Pointer stackBuffer) {
             VMError.guarantee(stackBuffer.isNonNull());
 
@@ -626,6 +628,7 @@ public class AArch64InterpreterStubs {
 
         @Override
         @Fold
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public int allocateStubDataSize() {
             return sizeOfInterpreterData();
         }

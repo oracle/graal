@@ -904,7 +904,6 @@ public final class InterpreterToVM {
                             .newline();
         }
 
-        Object retObj = null;
         if (callCompiledTarget) {
             VMError.guarantee(!forceStayInInterpreter);
             if (calleeFtnPtr.isNull()) {
@@ -916,19 +915,16 @@ public final class InterpreterToVM {
             if (calleeFtnPtr.equal(InterpreterMethodPointerHolder.getMethodNotCompiledHandler())) {
                 throw VMError.shouldNotReachHere("Trying to dispatch to compiled code for AOT method " + seedMethod + " but it was not compiled because it was not seen as reachable by analysis");
             }
-
-            // wrapping of exceptions is done in leaveInterpreter
-            retObj = InterpreterStubSection.leaveInterpreter(calleeFtnPtr, targetMethod, calleeArgs);
-        } else {
-            try {
-                retObj = Interpreter.execute(targetMethod, calleeArgs, forceStayInInterpreter);
-            } catch (Throwable e) {
-                // Exceptions coming from calls are valid, semantic Java exceptions.
-                throw SemanticJavaException.raise(e);
-            }
         }
-
-        return retObj;
+        try {
+            if (callCompiledTarget) {
+                return InterpreterStubSection.leaveInterpreter(calleeFtnPtr, targetMethod, calleeArgs);
+            } else {
+                return InterpreterStubSection.call(targetMethod, calleeArgs);
+            }
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
+        }
     }
 
     public static Object nullCheck(Object value) throws SemanticJavaException {

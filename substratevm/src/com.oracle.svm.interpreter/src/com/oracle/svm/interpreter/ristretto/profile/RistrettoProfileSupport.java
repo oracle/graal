@@ -37,7 +37,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
 import com.oracle.svm.interpreter.ristretto.RistrettoFeature;
-import com.oracle.svm.interpreter.ristretto.RistrettoRuntimeOptions;
+import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -77,7 +77,7 @@ public class RistrettoProfileSupport {
      * accepting lost updates for performance. This may cause slight variations in exact threshold
      * triggering but ensures scalability</li>
      * <li><strong>Non-Blocking Submission:</strong> Compilation submission only occurs when the
-     * invocation count exceeds {@link RistrettoRuntimeOptions#JITCompilerInvocationThreshold}</li>
+     * invocation count exceeds {@link RistrettoOptions#JITCompilerInvocationThreshold}</li>
      * </ul>
      *
      * <h3>Integration with Compilation Manager</h3> When compilation is triggered, a
@@ -94,7 +94,7 @@ public class RistrettoProfileSupport {
         if (!RistrettoProfileSupport.isEnabled()) {
             return null;
         }
-        if (!RistrettoRuntimeOptions.JITEnableCompilation.getValue()) {
+        if (!RistrettoOptions.JITEnableCompilation.getValue()) {
             return null;
         }
 
@@ -104,7 +104,7 @@ public class RistrettoProfileSupport {
         int oldState = COMPILATION_STATE_UPDATER.get(rMethod);
         if (!RistrettoCompileStateMachine.shouldEnterProfiling(oldState)) {
             // no need to keep profiling this code, we are done
-            trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Should not enter profiling for method %s because of state %s%n", iMethod,
+            trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Should not enter profiling for method %s because of state %s%n", iMethod,
                             RistrettoCompileStateMachine.toString(oldState));
             return null;
         }
@@ -157,20 +157,20 @@ public class RistrettoProfileSupport {
 
     private static void methodEntryNeverCompiledCase(InterpreterResolvedJavaMethod iMethod, RistrettoMethod rMethod, int oldState) {
         MethodProfile methodProfile = rMethod.getProfile();
-        trace(RistrettoRuntimeOptions.JITTraceProfilingIncrements, String.format("[Ristretto Compile Queue]Entering state %s for %s, counter=%s%n",
+        trace(RistrettoOptions.JITTraceProfilingIncrements, String.format("[Ristretto Compile Queue]Entering state %s for %s, counter=%s%n",
                         RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod, methodProfile.getProfileEntryCount()));
         /*
          * We write without any synchronization to the methodProfile.counter value at the cost of
          * lost updates.
          */
-        if (methodProfile.profileMethodEntry() > RistrettoRuntimeOptions.JITCompilerInvocationThreshold.getValue()) {
-            trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s, profile overflown, trying to submit compile%n",
+        if (methodProfile.profileMethodEntry() > RistrettoOptions.JITCompilerInvocationThreshold.getValue()) {
+            trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s, profile overflown, trying to submit compile%n",
                             RistrettoCompileStateMachine.toString(oldState), iMethod);
             while (!COMPILATION_STATE_UPDATER.compareAndSet(rMethod, RistrettoConstants.COMPILE_STATE_NEVER_COMPILED, RistrettoConstants.COMPILE_STATE_SUBMITTED)) {
                 // wait until we are allowed to submit
                 PauseNode.pause();
             }
-            trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s%n",
+            trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s%n",
                             RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod);
             RistrettoCompilationManager.get()
                             .submitCompilationRequest(new RistrettoCompilationRequest(rMethod, RistrettoCompilationRequest.DEFAULT_TOP_TIER_COMPILATION_PRIORITY));
@@ -179,22 +179,22 @@ public class RistrettoProfileSupport {
 
     private static void profileSkipCase(InterpreterResolvedJavaMethod iMethod, RistrettoMethod rMethod) {
         // in the meantime compilation happened already, we are done
-        trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s, skipping any profiling or compilation%n",
+        trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s, skipping any profiling or compilation%n",
                         RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod);
     }
 
     private static void methodEntryInitCase(InterpreterResolvedJavaMethod iMethod, RistrettoMethod rMethod) {
-        trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s%n",
+        trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s%n",
                         RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod);
 
         if (COMPILATION_STATE_UPDATER.compareAndSet(rMethod, RistrettoConstants.COMPILE_STATE_INIT_VAL, RistrettoConstants.COMPILE_STATE_INITIALIZING)) {
-            trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s%n",
+            trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s%n",
                             RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod);
             if (!COMPILATION_STATE_UPDATER.compareAndSet(rMethod, RistrettoConstants.COMPILE_STATE_INITIALIZING, RistrettoConstants.COMPILE_STATE_NEVER_COMPILED)) {
                 throw VMError.shouldNotReachHere("We set transition to COMPILE_STATE_INITIALIZING, we must be allowed to set it to COMPILE_STATE_NEVER_COMPILED");
             }
             // continue to the NEVER_COMPILED state
-            trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Finished setting state %s for %s%n",
+            trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Finished setting state %s for %s%n",
                             RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod);
         }
     }
