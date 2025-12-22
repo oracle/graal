@@ -1476,6 +1476,16 @@ public class SubstrateOptions {
     @Option(help = "Number of context lines printed for each missing registration error in Warn mode")//
     public static final RuntimeOptionKey<Integer> MissingRegistrationWarnContextLines = new RuntimeOptionKey<>(8);
 
+    @Option(help = "Remove all Native-Image-specific behavior from build time or runtime for classpath/module-path classes.")//
+    public static final HostedOptionKey<Boolean> CompatibilityMode = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            super.onValueUpdate(values, oldValue, newValue);
+            FutureDefaultsOptions.FutureDefaults.update(values, "all");
+            RuntimeClassLoading.Options.RuntimeClassLoading.update(values, true);
+        }
+    };
+
     @Option(help = "Instead of warning, throw IOExceptions for link-at-build-time resources at build time")//
     public static final HostedOptionKey<Boolean> ThrowLinkAtBuildTimeIOExceptions = new HostedOptionKey<>(false);
 

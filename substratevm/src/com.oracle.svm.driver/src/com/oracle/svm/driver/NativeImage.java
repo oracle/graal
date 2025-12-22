@@ -757,9 +757,11 @@ public class NativeImage {
                 if (imageNameValue != null) {
                     addPlainImageBuilderArg(oHName + resolver.apply(imageNameValue), resourcePath.toUri().toString());
                 }
-                forEachPropertyValue(properties.get("JavaArgs"), NativeImage.this::addImageBuilderJavaArgs, resolver);
-                forEachPropertyValue(properties.get("Args"), args, resolver);
-                forEachPropertyValue(properties.get("ProvidedHostedOptions"), apiOptionHandler::injectKnownHostedOption, resolver);
+                if (!isCompatibilityModeEnabled()) {
+                    forEachPropertyValue(properties.get("JavaArgs"), NativeImage.this::addImageBuilderJavaArgs, resolver);
+                    forEachPropertyValue(properties.get("Args"), args, resolver);
+                    forEachPropertyValue(properties.get("ProvidedHostedOptions"), apiOptionHandler::injectKnownHostedOption, resolver);
+                }
             } else {
                 args.accept(oH(type.optionKey) + resourceRoot.relativize(resourcePath));
             }
@@ -1508,6 +1510,10 @@ public class NativeImage {
             }
         }
         return result;
+    }
+
+    private boolean isCompatibilityModeEnabled() {
+        return Boolean.TRUE.equals(getHostedOptionBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.CompatibilityMode));
     }
 
     private boolean shouldAddCWDToCP() {
