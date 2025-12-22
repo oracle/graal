@@ -43,7 +43,7 @@ public final class SweepingVisitor implements ObjectMoveInfo.Visitor {
         if (nextObjSeq.isNonNull()) {
             Pointer gapStart = objSeq.add(size);
             assert gapStart.belowThan(nextObjSeq);
-            FillerObjectUtil.writeFillerObjectAt(gapStart, nextObjSeq.subtract(gapStart));
+            FillerObjectUtil.writeFillerObjectAt(gapStart, nextObjSeq.subtract(gapStart), true);
             // Note that we have already added first object table entries for fillers during fixup.
         } else {
             AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(objSeq);
