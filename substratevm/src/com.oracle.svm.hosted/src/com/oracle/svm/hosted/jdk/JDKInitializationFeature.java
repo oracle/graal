@@ -73,6 +73,9 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("com.sun.nio.sctp", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.nio.zipfs", JDK_CLASS_REASON);
 
+        rci.initializeAtBuildTime("com.sun.net.httpserver.HttpHandler", JDK_CLASS_REASON);
+        rci.initializeAtRunTime("sun.net.httpserver.simpleserver", JDK_CLASS_REASON);
+
         rci.initializeAtBuildTime("java.io", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("java.lang", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("java.math", JDK_CLASS_REASON);
