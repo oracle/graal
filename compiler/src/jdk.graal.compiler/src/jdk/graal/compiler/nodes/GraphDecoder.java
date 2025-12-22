@@ -1146,7 +1146,7 @@ public class GraphDecoder {
             LoopExplosionKey key = createLoopExplosionKey(loopScope, frameState);
             LoopExplosionState existingState = methodScope.iterationStates.get(key);
             if (existingState != null) {
-                if (!frameStateEquals(frameState, existingState.state)) {
+                if (loopScope.loopExplosionMergeKeySlots != null && !frameStateEquals(frameState, existingState.state)) {
                     throw new PermanentBailoutException("Graal implementation restriction: Method with %s loop explosion has differing values in non-key locals",
                                     LoopExplosionPlugin.LoopExplosionKind.MERGE_EXPLODE);
                 }

@@ -48,6 +48,7 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 
 /**
  * Directives that influence the optimizations of the Truffle compiler. All of the operations have
@@ -792,9 +793,9 @@ public final class CompilerDirectives {
     }
 
     /**
-     * Marks a local variable as part of the key used for merging exploded loop iterations. This
-     * method must be used directly before a loop and the return value has to be assigned back to
-     * the variable.
+     * Marks a local variable as part of the key used for merging
+     * {@linkplain LoopExplosionKind#MERGE_EXPLODE exploded loop} iterations. This method must be
+     * used directly before a loop and the return value has to be assigned back to the variable.
      *
      * <pre>
      * int bci = 0;
