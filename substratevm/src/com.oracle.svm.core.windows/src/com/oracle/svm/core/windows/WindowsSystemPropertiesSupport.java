@@ -28,6 +28,7 @@ import java.nio.ByteOrder;
 import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
 
+import com.oracle.svm.hosted.NativeImageOptions;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -73,6 +74,10 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
     private static final int VER_NT_WORKSTATION = 0x0000001;
     private static final int VER_PLATFORM_WIN32_WINDOWS = 1;
     private static final int VER_PLATFORM_WIN32_NT = 2;
+
+    public WindowsSystemPropertiesSupport(boolean compatibilityMode) {
+        super(compatibilityMode);
+    }
 
     @Override
     protected String userNameValue() {
@@ -406,7 +411,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 class WindowsSystemPropertiesFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(RuntimeSystemPropertiesSupport.class, new WindowsSystemPropertiesSupport());
+        ImageSingletons.add(RuntimeSystemPropertiesSupport.class, new WindowsSystemPropertiesSupport(NativeImageOptions.compatibilityMode()));
         ImageSingletons.add(SystemPropertiesSupport.class, (SystemPropertiesSupport) ImageSingletons.lookup(RuntimeSystemPropertiesSupport.class));
     }
 }

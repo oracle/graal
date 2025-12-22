@@ -121,7 +121,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("this-escape")
-    protected SystemPropertiesSupport() {
+    protected SystemPropertiesSupport(boolean compatibilityMode) {
         for (String key : HOSTED_PROPERTIES) {
             String value = System.getProperty(key);
             if (value != null) {
@@ -146,13 +146,15 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         initializeProperty("java.ext.dirs", "");
         initializeProperty("sun.arch.data.model", Integer.toString(ConfigurationValues.getTarget().wordJavaKind.getBitCount()));
 
-        initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
+        if (compatibilityMode) {
+            initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
 
-        for (String futureDefault : FutureDefaultsOptions.getFutureDefaults()) {
-            initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
-        }
-        for (String futureDefault : FutureDefaultsOptions.getRetiredFutureDefaults()) {
-            initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
+            for (String futureDefault : FutureDefaultsOptions.getFutureDefaults()) {
+                initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
+            }
+            for (String futureDefault : FutureDefaultsOptions.getRetiredFutureDefaults()) {
+                initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
+            }
         }
 
         ArrayList<LazySystemProperty> lazyProperties = new ArrayList<>();
