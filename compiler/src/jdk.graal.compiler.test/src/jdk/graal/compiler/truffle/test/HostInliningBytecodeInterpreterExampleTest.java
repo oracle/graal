@@ -150,7 +150,7 @@ public class HostInliningBytecodeInterpreterExampleTest extends TruffleCompilerI
                         inliningCutoff();
                         break;
                     default:
-                        // propagates transferToInterpeter from within the call
+                        // propagates transferToInterpreter from within the call
                         throw CompilerDirectives.shouldNotReachHere();
                 }
             }

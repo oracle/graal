@@ -454,7 +454,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                      * Some if conditions may have already been converted to guards at this point.
                      * For guards that are protected inInterpreter blocks we need to mark all
                      * following blocks as inInterpreter blocks. We also mark all following fixed
-                     * nodes as inInterpeter by setting a local variable guardedByInInterpreter to
+                     * nodes as inInterpreter by setting a local variable guardedByInInterpreter to
                      * true.
                      */
                     FixedGuardNode guard = (FixedGuardNode) node;

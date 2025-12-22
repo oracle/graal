@@ -66,14 +66,14 @@ public final class TruffleKnownHostTypes extends AbstractKnownTruffleTypes {
     }
 
     /**
-     * Determines if {@code method} is the inInterpeter method from CompilerDirectives.
+     * Determines if {@code method} is the inInterpreter method from CompilerDirectives.
      */
     public boolean isInInterpreter(ResolvedJavaMethod method) {
         return method.equals(CompilerDirectives_inInterpreter);
     }
 
     /**
-     * Determines if {@code method} is the inInterpeterFastPath method from HostCompilerDirectives.
+     * Determines if {@code method} is the inInterpreterFastPath method from HostCompilerDirectives.
      */
     public boolean isInInterpreterFastPath(ResolvedJavaMethod method) {
         return method.equals(HostCompilerDirectives_inInterpreterFastPath);

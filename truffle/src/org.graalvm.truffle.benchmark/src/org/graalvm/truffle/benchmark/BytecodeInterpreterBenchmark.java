@@ -323,7 +323,7 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
                     case RETURN:
                         return unsafeRead(stack, sp - 1);
                     default:
-                        // propagates transferToInterpeter from within the call
+                        // propagates transferToInterpreter from within the call
                         throw CompilerDirectives.shouldNotReachHere();
                 }
             }
@@ -386,7 +386,7 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
                     case RETURN:
                         return frame.getInt(sp - 1);
                     default:
-                        // propagates transferToInterpeter from within the call
+                        // propagates transferToInterpreter from within the call
                         throw CompilerDirectives.shouldNotReachHere();
                 }
             }
@@ -450,7 +450,7 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
                     case RETURN:
                         return frame.getInt(sp - 1);
                     default:
-                        // propagates transferToInterpeter from within the call
+                        // propagates transferToInterpreter from within the call
                         throw CompilerDirectives.shouldNotReachHere();
                 }
             }
@@ -511,7 +511,7 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
                     case RETURN:
                         return frame.getIntStatic(sp - 1);
                     default:
-                        // propagates transferToInterpeter from within the call
+                        // propagates transferToInterpreter from within the call
                         throw CompilerDirectives.shouldNotReachHere();
                 }
             }
