@@ -1278,7 +1278,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
         if self._contents is None:
             image_config = self.subject.image_config
             build_args = [
-                '--no-fallback',
                 '-march=compatibility',  # Target maximum portability of all GraalVM images.
                 '-Dorg.graalvm.version={}'.format(_suite.release_version()),
             ] + svm_experimental_options([

@@ -56,7 +56,6 @@ import com.oracle.graal.pointsto.util.ParallelExecutionException;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.JavaVersionUtil;
@@ -589,13 +588,6 @@ public class NativeImageGeneratorRunner {
                 }
             }
             throw e;
-        } catch (FallbackFeature.FallbackImageRequest e) {
-            if (FallbackExecutor.class.getName().equals(SubstrateOptions.Class.getValue())) {
-                NativeImageGeneratorRunner.reportFatalError(e, "FallbackImageRequest while building fallback image.");
-                return ExitStatus.BUILDER_ERROR.getValue();
-            }
-            reportUserException(e, parsedHostedOptions);
-            return ExitStatus.FALLBACK_IMAGE.getValue();
         } catch (ParsingError e) {
             NativeImageGeneratorRunner.reportFatalError(e);
             return ExitStatus.BUILDER_ERROR.getValue();

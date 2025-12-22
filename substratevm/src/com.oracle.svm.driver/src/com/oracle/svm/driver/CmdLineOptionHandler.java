@@ -26,7 +26,6 @@ package com.oracle.svm.driver;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -231,12 +230,5 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String javaVMVersion = System.getProperty("java.vm.version");
         String javaVMInfo = System.getProperty("java.vm.info");
         nativeImage.showMessage("%s%s (%sbuild %s, %s)", javaVMName, vendorVersion, jdkDebugLevel, javaVMVersion, javaVMInfo);
-    }
-
-    @Override
-    void addFallbackBuildArgs(List<String> buildArgs) {
-        if (nativeImage.isVerbose()) {
-            buildArgs.add(VERBOSE_OPTION);
-        }
     }
 }

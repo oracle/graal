@@ -518,7 +518,6 @@ Here is a Maven profile configuration example:
                         <imageName>${project.artifactId}</imageName>
                         <mainClass>org.example.embedding.Main</mainClass>
                         <buildArgs>
-                            <buildArg>--no-fallback</buildArg>
                             <buildArg>-J-Xmx20g</buildArg>
                         </buildArgs>
                     </configuration>

@@ -74,7 +74,6 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.ConfigurationTypeResolver;
-import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -105,7 +104,6 @@ public class SerializationFeature implements InternalFeature {
     final Set<Class<?>> capturingClasses = ConcurrentHashMap.newKeySet();
     private SerializationBuilder serializationBuilder;
     private SerializationDenyRegistry serializationDenyRegistry;
-    private int loadedConfigurations;
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
@@ -133,7 +131,7 @@ public class SerializationFeature implements InternalFeature {
         AccessConditionResolver<AccessCondition> conditionResolver = new NativeImageConditionResolver(imageClassLoader, ClassInitializationSupport.singleton());
         EnumSet<ConfigurationParserOption> parserOptions = ConfigurationFiles.Options.getConfigurationParserOptions();
         SerializationConfigurationParser<AccessCondition> parser = SerializationConfigurationParser.create(true, conditionResolver, serializationBuilder, parserOptions);
-        List<String> originalLoadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, imageClassLoader, "serialization");
+        ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, imageClassLoader, "serialization");
 
         SerializationConfigurationParser<AccessCondition> denyCollectorParser = SerializationConfigurationParser.create(false, conditionResolver, serializationDenyRegistry, parserOptions);
         ConfigurationParserUtils.parseAndRegisterConfigurations(denyCollectorParser, imageClassLoader, "serialization",
@@ -141,11 +139,9 @@ public class SerializationFeature implements InternalFeature {
                         ConfigurationFile.SERIALIZATION_DENY.getFileName());
 
         SerializationConfigurationParser<AccessCondition> legacyParser = SerializationConfigurationParser.create(false, conditionResolver, serializationBuilder, parserOptions);
-        originalLoadedConfigurations.addAll(ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, imageClassLoader, "serialization",
+        ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, imageClassLoader, "serialization",
                         ConfigurationFiles.Options.SerializationConfigurationFiles, ConfigurationFiles.Options.SerializationConfigurationResources,
-                        ConfigurationFile.SERIALIZATION.getFileName()));
-        loadedConfigurations = FallbackFeature.adjustLoadedConfigurations(originalLoadedConfigurations);
-
+                        ConfigurationFile.SERIALIZATION.getFileName());
     }
 
     private static void registerLambdasFromConstantNodesInGraph(StructuredGraph graph, SerializationBuilder serializationBuilder) {
@@ -200,12 +196,6 @@ public class SerializationFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        if (ImageSingletons.contains(FallbackFeature.class)) {
-            FallbackFeature.FallbackImageRequest serializationFallback = ImageSingletons.lookup(FallbackFeature.class).serializationFallback;
-            if (serializationFallback != null && loadedConfigurations == 0) {
-                throw serializationFallback;
-            }
-        }
         serializationBuilder.serializationSupport.replaceHubKeyWithTypeID();
     }
 

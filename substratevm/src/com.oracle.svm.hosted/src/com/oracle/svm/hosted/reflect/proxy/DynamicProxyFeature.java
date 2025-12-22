@@ -24,15 +24,18 @@
  */
 package com.oracle.svm.hosted.reflect.proxy;
 
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.ProxyConfigurationParser;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
+import com.oracle.svm.core.configure.ConfigurationFiles;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 
-import com.oracle.svm.configure.ConfigurationFile;
-import com.oracle.svm.configure.ProxyConfigurationParser;
-import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
-import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
@@ -41,18 +44,13 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.config.ConfigurationParserUtils;
-import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public final class DynamicProxyFeature implements InternalFeature {
-    private int loadedConfigurations;
     private ProxyRegistry proxyRegistry;
 
     @Override
@@ -78,9 +76,8 @@ public final class DynamicProxyFeature implements InternalFeature {
         AccessConditionResolver<AccessCondition> conditionResolver = new NativeImageConditionResolver(imageClassLoader, ClassInitializationSupport.singleton());
 
         ProxyConfigurationParser<AccessCondition> parser = new ProxyConfigurationParser<>(conditionResolver, ConfigurationFiles.Options.getConfigurationParserOptions(), proxyRegistry);
-        loadedConfigurations = FallbackFeature.adjustLoadedConfigurations(ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
-                        ConfigurationFiles.Options.DynamicProxyConfigurationFiles, ConfigurationFiles.Options.DynamicProxyConfigurationResources,
-                        ConfigurationFile.DYNAMIC_PROXY.getFileName()));
+        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy", ConfigurationFiles.Options.DynamicProxyConfigurationFiles,
+                        ConfigurationFiles.Options.DynamicProxyConfigurationResources, ConfigurationFile.DYNAMIC_PROXY.getFileName());
     }
 
     private static ProxyRegistry proxyRegistry() {
@@ -90,17 +87,6 @@ public final class DynamicProxyFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         proxyRegistry().setAnalysisAccess(access);
-    }
-
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        if (!ImageSingletons.contains(FallbackFeature.class)) {
-            return;
-        }
-        FallbackFeature.FallbackImageRequest proxyFallback = ImageSingletons.lookup(FallbackFeature.class).proxyFallback;
-        if (proxyFallback != null && loadedConfigurations == 0) {
-            throw proxyFallback;
-        }
     }
 
     @Override

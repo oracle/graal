@@ -78,7 +78,6 @@ import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -133,7 +132,6 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     private ReflectionDataBuilder reflectionData;
     private ImageClassLoader loader;
     private AnalysisUniverse aUniverse;
-    private int loadedConfigurations;
     private UniverseMetaAccess metaAccess;
 
     private record AccessorKey(Executable member, Class<?> targetClass) {
@@ -335,13 +333,12 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         RuntimeJNIAccessSupport jniSupport = SubstrateOptions.JNI.getValue() ? ImageSingletons.lookup(RuntimeJNIAccessSupport.class) : null;
         ReflectionConfigurationParser<AccessCondition, Class<?>> parser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, true, conditionResolver, reflectionData, proxyRegistry,
                         serializationSupport, jniSupport, access.getImageClassLoader());
-        List<String> originalLoadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, access.getImageClassLoader(), "reflection");
+        ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, access.getImageClassLoader(), "reflection");
         ReflectionConfigurationParser<AccessCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, false, conditionResolver, reflectionData,
                         proxyRegistry, serializationSupport, jniSupport, access.getImageClassLoader());
-        originalLoadedConfigurations.addAll(ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, access.getImageClassLoader(), "reflection",
+        ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, access.getImageClassLoader(), "reflection",
                         ConfigurationFiles.Options.ReflectionConfigurationFiles, ConfigurationFiles.Options.ReflectionConfigurationResources,
-                        ConfigurationFile.REFLECTION.getFileName()));
-        loadedConfigurations = FallbackFeature.adjustLoadedConfigurations(originalLoadedConfigurations);
+                        ConfigurationFile.REFLECTION.getFileName());
 
         loader = access.getImageClassLoader();
         annotationSubstitutions = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
@@ -405,13 +402,6 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         metaAccess = ((BeforeCompilationAccessImpl) access).getMetaAccess();
-
-        if (ImageSingletons.contains(FallbackFeature.class)) {
-            FallbackFeature.FallbackImageRequest reflectionFallback = ImageSingletons.lookup(FallbackFeature.class).reflectionFallback;
-            if (reflectionFallback != null && loadedConfigurations == 0) {
-                throw reflectionFallback;
-            }
-        }
     }
 
     public HostedMetaAccess hostedMetaAccess() {
@@ -450,9 +440,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
-        FallbackFeature fallbackFeature = ImageSingletons.contains(FallbackFeature.class) ? ImageSingletons.lookup(FallbackFeature.class) : null;
-        ReflectionPlugins.registerInvocationPlugins(loader, annotationSubstitutions,
-                        plugins.getClassInitializationPlugin(), plugins.getInvocationPlugins(), aUniverse, reason, fallbackFeature);
+        ReflectionPlugins.registerInvocationPlugins(loader, annotationSubstitutions, plugins.getClassInitializationPlugin(), plugins.getInvocationPlugins(), aUniverse, reason);
     }
 }
 

@@ -93,7 +93,6 @@ import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
-import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityCallbackNode;
 import com.oracle.svm.hosted.SharedArenaSupport;
@@ -508,15 +507,10 @@ public class SubstrateGraphBuilderPlugins {
         Class<?>[] interfaces = extractClassArray(b, annotationSubstitutions, interfacesNode);
         if (interfaces != null) {
             var caller = b.getGraph().method();
-            var method = b.getMethod();
-            var bci = b.bci();
 
             return () -> {
                 /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
                 RuntimeProxyCreation.register(interfaces);
-                if (ImageSingletons.contains(FallbackFeature.class)) {
-                    ImageSingletons.lookup(FallbackFeature.class).addAutoProxyInvoke(method, bci);
-                }
                 if (Options.DynamicProxyTracing.getValue()) {
                     System.out.println("Successfully determined constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
                                     " reached from " + caller.format("%H.%n(%p)") + ". " + "Registered proxy class for " + Arrays.toString(interfaces) + ".");

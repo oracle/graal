@@ -455,7 +455,6 @@ class NativeImageBuildTask(mx.BuildTask):
             experimental_build_args += ['-H:NativeLinkerOption=' + e for e in self.args.alt_ldflags.split()]
         classpath_and_modulepath = mx.get_runtime_jvm_args(self.subject.deps, include_system_properties=False)
         build_args += classpath_and_modulepath + [
-            '--no-fallback',
             '-march=compatibility',  # Target maximum portability
             '--parallelism=' + str(self.parallelism),
             '--link-at-build-time',

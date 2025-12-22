@@ -847,7 +847,6 @@ def native_truffle_unittest(args):
             'org.junit.internal.matchers.ThrowableCauseMatcher'
         ])
         native_image_args = parsed_args.build_args + [
-            '--no-fallback',
             '-J-ea',
             '-J-esa',
             '-o', tests_executable,

@@ -175,7 +175,6 @@ public class ResourcesFeature implements InternalFeature {
     private Set<ConditionalPattern> globWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<ConditionalPattern> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-    private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
 
     private DynamicAccessInferenceLog inferenceLog;
@@ -420,14 +419,13 @@ public class ResourcesFeature implements InternalFeature {
 
         ResourceConfigurationParser<AccessCondition> parser = ResourceConfigurationParser.create(true, conditionResolver, ResourcesRegistry.singleton(),
                         ConfigurationFiles.Options.getConfigurationParserOptions());
-        List<String> originalLoadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, imageClassLoader, "resource");
+        ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, imageClassLoader, "resource");
 
         ResourceConfigurationParser<AccessCondition> legacyParser = ResourceConfigurationParser.create(false, conditionResolver, ResourcesRegistry.singleton(),
                         ConfigurationFiles.Options.getConfigurationParserOptions());
-        originalLoadedConfigurations.addAll(ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, imageClassLoader, "resource",
+        ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, imageClassLoader, "resource",
                         ConfigurationFiles.Options.ResourceConfigurationFiles, ConfigurationFiles.Options.ResourceConfigurationResources,
-                        ConfigurationFile.RESOURCES.getFileName()));
-        loadedConfigurations = FallbackFeature.adjustLoadedConfigurations(originalLoadedConfigurations);
+                        ConfigurationFile.RESOURCES.getFileName());
 
         /* prepare globs for resource registration */
         List<CompressedGlobTrie.GlobWithInfo<ConditionWithOrigin>> patternsWithInfo = globWorkSet
@@ -676,17 +674,6 @@ public class ResourcesFeature implements InternalFeature {
         GlobTrieNode<ConditionWithOrigin> root = Resources.currentLayer().getResourcesTrieRoot();
         CompressedGlobTrie.removeNodes(root, (conditionWithOrigin) -> !access.isReachable(((TypeReachabilityCondition) conditionWithOrigin.condition()).getType()));
         CompressedGlobTrie.finalize(root);
-    }
-
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        if (!ImageSingletons.contains(FallbackFeature.class)) {
-            return;
-        }
-        FallbackFeature.FallbackImageRequest resourceFallback = ImageSingletons.lookup(FallbackFeature.class).resourceFallback;
-        if (resourceFallback != null && Options.IncludeResources.getValue().values().isEmpty() && loadedConfigurations == 0) {
-            throw resourceFallback;
-        }
     }
 
     @Override

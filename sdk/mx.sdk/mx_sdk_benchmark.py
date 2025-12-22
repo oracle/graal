@@ -362,7 +362,7 @@ class NativeImageBenchmarkConfig:
         self.config_dir: Path = self.output_dir / "config"
         self.log_dir: Path = self.output_dir
         self.ml_log_dump_path: Path = self.output_dir / f"{base_image_name}.ml.log.csv"
-        base_image_build_args = ['--no-fallback']
+        base_image_build_args = []
         if not vm.pgo_use_perf:
             # Can only have debug info when not using perf, [GR-66850]
             base_image_build_args.append('-g')
@@ -5920,7 +5920,6 @@ class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, BaseMicroserviceBe
                 '-J--add-opens=java.base/java.util=ALL-UNNAMED',
                 '-H:+AllowFoldMethods',
                 '-J-Djava.awt.headless=true',
-                '--no-fallback',
                 '--link-at-build-time',
                 '-H:+ReportExceptionStackTraces',
                 '-H:-AddAllCharsets',

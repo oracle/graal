@@ -260,7 +260,6 @@ def _maybe_convert_to_args_file(args):
 def native_image_context(common_args=None, hosted_assertions=True, native_image_cmd='', config=None, build_if_missing=False):
     common_args = [] if common_args is None else common_args
     base_args = [
-        '--no-fallback',
         '-H:+ReportExceptionStackTraces',
     ] + svm_experimental_options([
         '-H:+EnforceMaxRuntimeCompileMethods',
