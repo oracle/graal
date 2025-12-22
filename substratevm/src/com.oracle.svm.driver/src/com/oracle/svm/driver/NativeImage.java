@@ -103,6 +103,7 @@ import com.oracle.svm.driver.metainf.NativeImageMetaInfResourceProcessor;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 import com.oracle.svm.hosted.CommonPoolUncaughtExceptionHandler;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.hosted.util.JDKArgsUtils;
 import com.oracle.svm.shared.util.StringUtil;
@@ -124,6 +125,9 @@ public class NativeImage {
     private static final String CUSTOM_COMMON_FORK_JOIN_POOL_EXCEPTION_HANDLER = CommonPoolUncaughtExceptionHandler.class.getName();
 
     static final String platform = getPlatform();
+
+    // to avoid pulling in hosted classes
+    public static final String COMPATIBILITY_MODE_FLAG_NAME = NativeImageOptions.CompatibilityMode.getName();
 
     private static String getPlatform() {
         return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase(Locale.ROOT);
@@ -671,6 +675,12 @@ public class NativeImage {
     }
 
     class DriverMetaInfProcessor implements NativeImageMetaInfResourceProcessor {
+        private final Path graalvmRootDir;
+
+        DriverMetaInfProcessor(Path graalvmRootDir) {
+            this.graalvmRootDir = graalvmRootDir;
+        }
+
         @Override
         public boolean processMetaInfResource(Path classpathEntry, Path resourceRoot, Path resourcePath, MetaInfFileType type) throws IOException {
             boolean isNativeImagePropertiesFile = type.equals(MetaInfFileType.Properties);
@@ -720,9 +730,11 @@ public class NativeImage {
                 if (imageNameValue != null) {
                     addPlainImageBuilderArg(oHName + resolver.apply(imageNameValue), resourcePath.toUri().toString());
                 }
-                forEachPropertyValue(properties.get("JavaArgs"), NativeImage.this::addImageBuilderJavaArgs, resolver);
-                forEachPropertyValue(properties.get("Args"), args, resolver);
-                forEachPropertyValue(properties.get("ProvidedHostedOptions"), apiOptionHandler::injectKnownHostedOption, resolver);
+                if (classpathEntry.startsWith(graalvmRootDir) || !isCompatibilityModeEnabled()) {
+                    forEachPropertyValue(properties.get("JavaArgs"), NativeImage.this::addImageBuilderJavaArgs, resolver);
+                    forEachPropertyValue(properties.get("Args"), args, resolver);
+                    forEachPropertyValue(properties.get("ProvidedHostedOptions"), apiOptionHandler::injectKnownHostedOption, resolver);
+                }
             } else {
                 args.accept(oH(type.optionKey) + resourceRoot.relativize(resourcePath));
             }
@@ -760,7 +772,7 @@ public class NativeImage {
     @SuppressWarnings("this-escape")
     protected NativeImage(BuildConfiguration config) {
         this.config = config;
-        this.metaInfProcessor = new DriverMetaInfProcessor();
+        this.metaInfProcessor = new DriverMetaInfProcessor(config.rootDir);
         this.archiveSupport = new ArchiveSupport(isVerbose());
 
         String configFile = System.getenv(CONFIG_FILE_ENV_VAR_KEY);
@@ -1419,7 +1431,12 @@ public class NativeImage {
     }
 
     private static Boolean getHostedOptionBooleanArgumentValue(List<String> args, OptionKey<Boolean> option) {
-        String locationAgnosticBooleanPattern = "^" + oH + "[+-]" + option.getName() + "(@[^=]*)?$";
+        String name = option.getName();
+        return getHostedOptionBooleanArgumentValue(args, name);
+    }
+
+    private static Boolean getHostedOptionBooleanArgumentValue(List<String> args, String optionName) {
+        String locationAgnosticBooleanPattern = "^" + oH + "[+-]" + optionName + "(@[^=]*)?$";
         Pattern pattern = Pattern.compile(locationAgnosticBooleanPattern);
         Boolean result = null;
         for (String arg : args) {
@@ -1429,6 +1446,10 @@ public class NativeImage {
             }
         }
         return result;
+    }
+
+    private boolean isCompatibilityModeEnabled() {
+        return Boolean.TRUE.equals(getHostedOptionBooleanArgumentValue(imageBuilderArgs, COMPATIBILITY_MODE_FLAG_NAME));
     }
 
     private boolean shouldAddCWDToCP() {

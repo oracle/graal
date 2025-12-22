@@ -51,6 +51,11 @@ public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionK
         this(defaultValue, null, flags);
     }
 
+    /**
+     * Hosted option with build-time validation.
+     * <p/>
+     * Note: <code>buildTimeValidation</code> is called even when the option is not passed in.
+     */
     public HostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> buildTimeValidation, HostedOptionKeyFlag... flags) {
         super(defaultValue);
         this.buildTimeValidation = buildTimeValidation;

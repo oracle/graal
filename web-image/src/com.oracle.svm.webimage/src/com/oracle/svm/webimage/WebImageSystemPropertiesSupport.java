@@ -30,6 +30,10 @@ import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
 
 public class WebImageSystemPropertiesSupport extends SystemPropertiesSupport {
 
+    public WebImageSystemPropertiesSupport() {
+        super(false);
+    }
+
     @Override
     protected String userNameValue() {
         return "No user name";
