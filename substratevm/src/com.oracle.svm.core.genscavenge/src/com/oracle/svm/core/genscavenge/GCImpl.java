@@ -189,11 +189,7 @@ public final class GCImpl implements GC {
         if (!hasNeverCollectPolicy()) {
             boolean outOfMemory = collectWithoutAllocating(cause, forceFullGC);
             if (outOfMemory) {
-                if (getPolicy().isOutOfMemory(HeapImpl.getAccounting().getUsedBytes())) {
-                    throw OutOfMemoryUtil.heapSizeExceeded();
-                } else {
-                    GCImpl.getPolicy().updateSizeParameters();
-                }
+                getPolicy().onMaximumHeapSizeExceeded();
             }
         }
     }
