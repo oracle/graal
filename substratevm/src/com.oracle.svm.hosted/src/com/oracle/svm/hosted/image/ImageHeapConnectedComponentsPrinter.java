@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,6 @@ import java.util.stream.Collectors;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.core.util.ByteFormattingUtil;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.image.NativeImageHeap.HeapInclusionReason;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectReachabilityGroup;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectReachabilityInfo;
@@ -60,6 +59,7 @@ public class ImageHeapConnectedComponentsPrinter {
     private final BigBang bb;
     private final String imageName;
     private final EnumMap<ObjectReachabilityGroup, GroupEntry> groups;
+    private final ImageHeapReasonSupport reasonSupport;
 
     private static class GroupEntry {
         final Set<ObjectInfo> objects;
@@ -80,14 +80,15 @@ public class ImageHeapConnectedComponentsPrinter {
         this.imageName = imageName;
         this.totalHeapSizeInBytes = image.getImageHeapSize();
         this.bb = bigBang;
-        this.groups = groupObjectsByReachability(heap);
+        this.reasonSupport = heap.reasonSupport;
+        this.groups = groupObjectsByReachability();
 
         ObjectInfoGraph objectInfoGraph = constructGraph(groups.get(ObjectReachabilityGroup.MethodOrStaticField).objects);
         this.connectedComponents = computeConnectedComponents(objectInfoGraph);
     }
 
-    private static boolean shouldIncludeObjectInTheReport(ObjectInfo objectInfo) {
-        return !objectInfo.getMainReason().equals(HeapInclusionReason.FillerObject);
+    private boolean shouldIncludeObjectInTheReport(ObjectInfo objectInfo) {
+        return !reasonSupport.isFillerObject(objectInfo);
     }
 
     /**
@@ -99,7 +100,7 @@ public class ImageHeapConnectedComponentsPrinter {
      * that belong to {@link ObjectReachabilityGroup#MethodOrStaticField} and compute the connected
      * components of that objectInfoGraph.
      */
-    private static EnumMap<ObjectReachabilityGroup, GroupEntry> groupObjectsByReachability(NativeImageHeap heap) {
+    private EnumMap<ObjectReachabilityGroup, GroupEntry> groupObjectsByReachability() {
         ObjectReachabilityGroup[] objectReachabilityGroupOrder = {
                         ObjectReachabilityGroup.Resources,
                         ObjectReachabilityGroup.DynamicHubs,
@@ -107,13 +108,13 @@ public class ImageHeapConnectedComponentsPrinter {
                         ObjectReachabilityGroup.MethodOrStaticField
         };
 
-        EnumMap<ObjectReachabilityGroup, GroupEntry> groups = new EnumMap<>(ObjectReachabilityGroup.class);
+        EnumMap<ObjectReachabilityGroup, GroupEntry> reachabilityGroups = new EnumMap<>(ObjectReachabilityGroup.class);
         for (ObjectReachabilityGroup group : objectReachabilityGroupOrder) {
-            groups.put(group, new GroupEntry());
+            reachabilityGroups.put(group, new GroupEntry());
         }
         Set<ObjectInfo> objects = Collections.newSetFromMap(new IdentityHashMap<>());
         heap.getObjects().stream()
-                        .filter(ImageHeapConnectedComponentsPrinter::shouldIncludeObjectInTheReport)
+                        .filter(this::shouldIncludeObjectInTheReport)
                         .forEach(objects::add);
 
         /*
@@ -121,11 +122,11 @@ public class ImageHeapConnectedComponentsPrinter {
          * strings to be merged into a single component, that's why we remove it first and then
          * compute connected components.
          */
-        Optional<ObjectInfo> internedStringsTable = objects.stream().filter(o -> o.getMainReason().equals(HeapInclusionReason.InternedStringsTable)).findFirst();
+        Optional<ObjectInfo> internedStringsTable = objects.stream().filter(reasonSupport::isInternedStringsTable).findFirst();
         if (internedStringsTable.isPresent()) {
             GroupEntry entry = new GroupEntry();
             entry.addObject(internedStringsTable.get());
-            groups.put(ObjectReachabilityGroup.InternedStringsTable, entry);
+            reachabilityGroups.put(ObjectReachabilityGroup.InternedStringsTable, entry);
             objects.remove(internedStringsTable.get());
         }
 
@@ -133,12 +134,12 @@ public class ImageHeapConnectedComponentsPrinter {
             for (ObjectInfo object : objects) {
                 ObjectReachabilityInfo reachabilityInfo = heap.objectReachabilityInfo.get(object);
                 if (reachabilityInfo.objectReachableFrom(group)) {
-                    groups.get(group).addObject(object);
+                    reachabilityGroups.get(group).addObject(object);
                 }
             }
-            objects.removeAll(groups.get(group).objects);
+            objects.removeAll(reachabilityGroups.get(group).objects);
         }
-        return groups;
+        return reachabilityGroups;
     }
 
     private ObjectInfoGraph constructGraph(Set<ObjectInfo> objects) {
@@ -147,8 +148,11 @@ public class ImageHeapConnectedComponentsPrinter {
             objectInfoGraph.addNode(objectInfo);
             ObjectReachabilityInfo reachabilityInfo = heap.objectReachabilityInfo.get(objectInfo);
             for (Object referencesToThisObject : reachabilityInfo.getAllReasons()) {
-                if (referencesToThisObject instanceof ObjectInfo && objects.contains(referencesToThisObject)) {
-                    objectInfoGraph.connect((ObjectInfo) referencesToThisObject, objectInfo);
+                if (reasonSupport.isObject(referencesToThisObject)) {
+                    ObjectInfo info = reasonSupport.getObject(referencesToThisObject);
+                    if (objects.contains(info)) {
+                        objectInfoGraph.connect(info, objectInfo);
+                    }
                 }
             }
         }
@@ -323,8 +327,8 @@ public class ImageHeapConnectedComponentsPrinter {
         for (ObjectInfo object : objects) {
             ObjectReachabilityInfo reachabilityInfo = heap.objectReachabilityInfo.get(object);
             for (Object reason : reachabilityInfo.getAllReasons()) {
-                if (reason instanceof String) {
-                    methods.add((String) reason);
+                if (reasonSupport.isMethod(reason)) {
+                    methods.add(reasonSupport.getMethod(reason));
                 }
             }
         }
@@ -345,8 +349,8 @@ public class ImageHeapConnectedComponentsPrinter {
         for (ObjectInfo object : objects) {
             ObjectReachabilityInfo reachabilityInfo = heap.objectReachabilityInfo.get(object);
             for (Object reason : reachabilityInfo.getAllReasons()) {
-                if (reason instanceof HostedField) {
-                    HostedField field = (HostedField) reason;
+                if (reasonSupport.isStaticField(reason)) {
+                    HostedField field = reasonSupport.getStaticField(reason);
                     hostedFields.add(field.format("%H#%n"));
                 }
             }
@@ -357,43 +361,20 @@ public class ImageHeapConnectedComponentsPrinter {
     private void printObjectsToJson(JsonWriter writer, Collection<ObjectInfo> objects) throws IOException {
         for (Iterator<ObjectInfo> iterator = objects.iterator(); iterator.hasNext();) {
             ObjectInfo objectInfo = iterator.next();
+            Object reason = objectInfo.getMainReason();
             writer.append('{');
             writer.quote("className").append(':').quote(objectInfo.getObjectClass().getName()).append(',');
             writer.quote("identityHashCode").append(':').quote(String.valueOf(objectInfo.getIdentityHashCode())).append(',');
             writer.quote("constantValue").append(':').quote(constantAsRawString(bb, objectInfo.getConstant())).append(',');
-            printReasonToJson(objectInfo.getMainReason(), writer);
+            writer.quote("reason").append(":{");
+            writer.quote("kind").append(':').quote(reasonSupport.kind(reason)).append(',');
+            writer.quote("value").append(':').quote(reasonSupport.value(reason));
+            writer.append('}');
             writer.append('}');
             if (iterator.hasNext()) {
                 writer.append(',').newline();
             }
         }
-    }
-
-    private static void printReasonToJson(Object reason, JsonWriter writer) throws IOException {
-        String kind = null;
-        String value = null;
-        if (reason instanceof String) {
-            kind = "method";
-            value = reason.toString();
-        } else if (reason instanceof ObjectInfo) {
-            ObjectInfo r = (ObjectInfo) reason;
-            kind = "object";
-            value = String.valueOf(r.getIdentityHashCode());
-        } else if (reason instanceof HostedField) {
-            HostedField r = (HostedField) reason;
-            kind = "staticField";
-            value = r.format("%H#%n");
-        } else if (reason instanceof HeapInclusionReason) {
-            kind = "svmInternal";
-            value = reason.toString();
-        } else {
-            VMError.shouldNotReachHere("Unhandled type");
-        }
-
-        writer.quote("reason").append(":{");
-        writer.quote("kind").append(':').quote(kind).append(',');
-        writer.quote("value").append(':').quote(value);
-        writer.append('}');
     }
 
     private static Object constantAsObject(BigBang bb, JavaConstant constant) {

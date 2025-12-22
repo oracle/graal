@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -135,6 +135,9 @@ public final class DynamicHubCompanion {
     @UnknownObjectField(canBeNull = true, types = ImageDynamicHubMetadata.class, availability = BuildPhaseProvider.AfterCompilation.class) //
     @Stable DynamicHubMetadata hubMetadata;
 
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    @Stable DynamicHub dynamicHub;
+
     /**
      * Classloader used for loading this class. Most classes have the correct class loader set
      * already at image build time. {@link PredefinedClassesSupport Predefined classes} get their
@@ -157,8 +160,15 @@ public final class DynamicHubCompanion {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static DynamicHubCompanion createHosted(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
-                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, Object classData) {
-        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature, classData, null);
+                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, Object classData, DynamicHub dynamicHub) {
+        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature, classData, dynamicHub);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private DynamicHubCompanion(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
+                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, Object classData, DynamicHub dynamicHub) {
+        this(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature, classData, (ProtectionDomain) null);
+        this.dynamicHub = dynamicHub;
     }
 
     static DynamicHubCompanion createAtRuntime(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
@@ -189,6 +199,11 @@ public final class DynamicHubCompanion {
 
     public void setReflectionMetadata(RuntimeReflectionMetadata reflectionMetadata) {
         this.reflectionMetadata = reflectionMetadata;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public DynamicHub getDynamicHub() {
+        return dynamicHub;
     }
 
     /**

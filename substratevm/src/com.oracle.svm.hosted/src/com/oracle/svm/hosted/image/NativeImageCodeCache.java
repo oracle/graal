@@ -151,7 +151,7 @@ public abstract class NativeImageCodeCache {
 
     private final DataSection dataSection;
 
-    private final Map<Constant, String> constantReasons = new HashMap<>();
+    private final Map<Constant, Object> constantReasons = new HashMap<>();
 
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilationResultMap, NativeImageHeap imageHeap) {
         this(compilationResultMap, imageHeap, ImageSingletons.lookup(Platform.class));
@@ -239,13 +239,14 @@ public abstract class NativeImageCodeCache {
     public abstract void layoutMethods(DebugContext debug, BigBang bb);
 
     public void layoutConstants() {
+        ImageHeapReasonSupport reasonSupport = imageHeap.reasonSupport;
         DeadlockWatchdog watchdog = ImageSingletons.lookup(DeadlockWatchdog.class);
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             CompilationResult compilation = pair.getRight();
             for (DataSection.Data data : compilation.getDataSection()) {
                 if (data instanceof SubstrateDataBuilder.ObjectData) {
                     JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
-                    constantReasons.put(constant, compilation.getName());
+                    constantReasons.put(constant, reasonSupport.compilation(compilation));
                 }
             }
 
@@ -254,7 +255,7 @@ public abstract class NativeImageCodeCache {
             for (DataPatch patch : compilation.getDataPatches()) {
                 if (patch.reference instanceof ConstantReference) {
                     VMConstant constant = ((ConstantReference) patch.reference).getConstant();
-                    constantReasons.put(constant, compilation.getName());
+                    constantReasons.put(constant, reasonSupport.compilation(compilation));
                 }
             }
             watchdog.recordActivity();
@@ -266,10 +267,11 @@ public abstract class NativeImageCodeCache {
     public Map<Constant, Object> initAndGetEmbeddedConstants() {
         VMError.guarantee(BuildPhaseProvider.isCompilationFinished(), "Code cache embedded constants are available only after compilation.");
         VMError.guarantee(embeddedConstants.isEmpty(), "Embedded constants are already computed.");
+        ImageHeapReasonSupport reasonSupport = imageHeap.reasonSupport;
 
         for (DataSection.Data data : dataSection) {
             if (data instanceof SubstrateDataBuilder.ObjectData objectData) {
-                embeddedConstants.put(objectData.getConstant(), NativeImageHeap.HeapInclusionReason.DataSection);
+                embeddedConstants.put(objectData.getConstant(), reasonSupport.dataSection());
             }
         }
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
@@ -305,7 +307,13 @@ public abstract class NativeImageCodeCache {
     }
 
     public void addConstantsToHeap() {
-        getEmbeddedConstants().forEach((constant, reason) -> addConstantToHeap(constant, reason instanceof BytecodePosition position ? position.getMethod().getName() : reason));
+        ImageHeapReasonSupport reasonSupport = imageHeap.reasonSupport;
+        getEmbeddedConstants().forEach((constant, reason) -> {
+            Object addReason = reason instanceof BytecodePosition position
+                            ? reasonSupport.bytecodePosition(position)
+                            : reason;
+            addConstantToHeap(constant, addReason);
+        });
     }
 
     private void addConstantToHeap(Constant constant, Object reason) {

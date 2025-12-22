@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.hosted.image.ImageHeapReasonSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -139,7 +140,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Cross
     }
 
     private void addInitialObjects(NativeImageHeap heap, HostedUniverse hUniverse) {
-        String addReason = "Registered as a required heap constant within the CrossLayerConstantRegistry";
+        Object addReason = ImageHeapReasonSupport.singleton().description("Registered as a required heap constant within the CrossLayerConstantRegistry");
 
         for (Object constant : requiredConstants.values()) {
             ImageHeapConstant singletonConstant = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(constant);

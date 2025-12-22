@@ -38,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import com.oracle.svm.hosted.image.ImageHeapReasonSupport;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
@@ -378,7 +379,7 @@ public class LoadImageSingletonFeature implements InternalFeature {
      * {@link SingletonLayeredInstallationKind#APP_LAYER_ONLY}s are installed in the heap.
      */
     private void addInitialObjects(NativeImageHeap heap, HostedUniverse hUniverse) {
-        String addReason = "Read via the layered image singleton support";
+        Object addReason = ImageHeapReasonSupport.singleton().description("Read via the layered image singleton support");
 
         /*
          * Record the id of all multilayered image singleton entries which may be referenced.
