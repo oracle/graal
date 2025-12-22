@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -105,6 +106,13 @@ public final class RuntimeSupport implements VMRuntimeSupport {
 
             IsolateArgumentParser.singleton().verifyOptionValues();
             HeapSizeVerifier.verifyHeapOptions();
+
+            if (SubstrateOptions.classpath() != null) {
+                System.setProperty("java.class.path", SubstrateOptions.classpath());
+            }
+            if (SubstrateOptions.modulepath() != null) {
+                System.setProperty("jdk.module.path", SubstrateOptions.modulepath());
+            }
 
             executeHooks(startupHooks);
             VMError.guarantee(initializationState.compareAndSet(InitializationState.InProgress, InitializationState.Done), "Only one thread can call the initialization");

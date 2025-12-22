@@ -1695,4 +1695,17 @@ public class SubstrateOptions {
         return ConcealedOptions.GraalJITCompileAtRuntime.getValue();
     }
 
+    @Option(help = "Value of the 'java.class.path' system property.", type = OptionType.User)//
+    public static final RuntimeOptionKey<String> Classpath = new RuntimeOptionKey<>(null);
+
+    @Option(help = "Value of the 'jdk.module.path' system property.", type = OptionType.User)//
+    public static final RuntimeOptionKey<String> Modulepath = new RuntimeOptionKey<>(null);
+
+    public static String classpath() {
+        return Classpath.getValue();
+    }
+
+    public static String modulepath() {
+        return Modulepath.getValue();
+    }
 }

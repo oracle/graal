@@ -41,10 +41,12 @@ For diagnosing shared libraries built with Native Image, you can either:
 * specify `-R:MissingRegistrationReportingMode=Exit` when building a native shared library;
 * or specify `-XX:MissingRegistrationReportingMode=Exit` when the isolate is created. `graal_create_isolate_params_t` has `argc (_reserved_1)` and `argv (_reserved_2)` fields that can be used to pass C-style command-line options at run time. However, note that both fields are currently not public APIs.
 
-### 2. Set java.home Explicitly
+### 2. Set java.home and Classpath Explicitly
 
 If your application code uses the `java.home` property, set it explicitly with `-Djava.home=<path>` when running a native executable.
-Otherwise, the `System.getProperty("java.home")` call will return a `null` value.
+Otherwise, the `System.getProperty("java.home")` call will return a `null` value. 
+
+Some applications also need access to the classpath and module path at run time. Those can be set with `-XX:Classpath=<class-path>` and `-XX:Modulepath=<module-path>` when running the executable. 
 
 ### 3. Enable URL Protocols
 

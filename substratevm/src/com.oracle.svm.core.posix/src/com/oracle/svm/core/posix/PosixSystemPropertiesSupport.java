@@ -26,14 +26,18 @@ package com.oracle.svm.core.posix;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Unistd;
-import org.graalvm.word.impl.Word;
 
 public abstract class PosixSystemPropertiesSupport extends SystemPropertiesSupport {
+
+    public PosixSystemPropertiesSupport(boolean compatibilityMode) {
+        super(compatibilityMode);
+    }
 
     @Override
     protected String jvmLibName() {

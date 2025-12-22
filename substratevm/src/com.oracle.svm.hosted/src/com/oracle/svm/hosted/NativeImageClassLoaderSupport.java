@@ -458,6 +458,11 @@ public final class NativeImageClassLoaderSupport {
         HostedImageLayerBuildingSupport.processLayerOptions(hostedValues, this);
         PreserveOptionsSupport.parsePreserveOption(hostedValues, this);
         DynamicAccessDetectionFeature.parseDynamicAccessOptions(hostedValues, this);
+        boolean compatibilityMode = NativeImageOptions.CompatibilityMode.getValue(new OptionValues(hostedValues));
+        if (compatibilityMode && !NativeImageOptions.CompatibilityMode.getLastOrigin().commandLineLike()) {
+            String optionArgument = SubstrateOptionsParser.commandArgument(NativeImageOptions.CompatibilityMode, "+", true, false);
+            throw UserError.abort("Using %s is only allowed on command line. The option was used from %s", optionArgument, NativeImageOptions.CompatibilityMode.getLastOrigin());
+        }
         parsedHostedOptions = new OptionValues(hostedValues);
 
         if (HostedImageLayerBuildingSupport.isLayerCreateOptionEnabled(parsedHostedOptions)) {
