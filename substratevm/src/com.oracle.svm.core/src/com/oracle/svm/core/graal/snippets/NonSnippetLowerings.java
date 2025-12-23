@@ -457,8 +457,9 @@ public abstract class NonSnippetLowerings {
                              * required.
                              */
                             assert !SubstrateUtil.HOSTED && SubstrateOptions.useRistretto();
-                            long untrackedMethodAdr = rawAdrConstant.rawValue();
-                            ValueNode base = graph.addWithoutUnique(new FloatingWordCastNode(tool.getStampProvider().createMethodStamp(), ConstantNode.forLong(untrackedMethodAdr, graph)));
+                            final long untrackedMethodAdr = rawAdrConstant.rawValue();
+                            GraalError.guarantee(untrackedMethodAdr != 0L, "runtime-loaded method has no valid entry point: %s", targetMethod);
+                            final ValueNode base = graph.addWithoutUnique(new FloatingWordCastNode(tool.getStampProvider().createMethodStamp(), ConstantNode.forLong(untrackedMethodAdr, graph)));
                             loweredCallTarget = graph.add(new SubstrateIndirectCallTargetNode(
                                             base, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature,
                                             targetMethod, callType, invokeKind));
