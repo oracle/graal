@@ -1025,6 +1025,7 @@ public class ValidationSuite extends WasmFileSuite {
     }
 
     protected void addContextOptions(Context.Builder contextBuilder) {
+        contextBuilder.option("wasm.MultiMemory", "false");
         contextBuilder.option("wasm.MultiValue", "false");
         contextBuilder.option("wasm.BulkMemoryAndRefTypes", "false");
         contextBuilder.option("wasm.Memory64", "false");
