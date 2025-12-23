@@ -67,9 +67,11 @@ import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.QuickeningKind;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -357,7 +359,19 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         buildVerifyFrameDescriptor(b, true);
 
         b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
+
+        if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
+            b.startIf();
+            b.startCall("frame", "getTag").string("frameIndex").end();
+            b.string(" == ");
+            b.staticReference(parent.frameTagsElement.getIllegal());
+            b.end().startBlock();
+            BytecodeNodeElement.emitThrowIllegalLocalException(parent.model, b, null, CodeTreeBuilder.singleString("this"), CodeTreeBuilder.singleString("localIndex"), true);
+            b.end();
+        }
+
         b.startReturn().string("frame.getObject(frameIndex)").end();
+
         return ex;
     }
 
@@ -1035,7 +1049,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
     }
 
     private static boolean isSameOrGenericQuickening(InstructionModel instr, InstructionModel expected) {
-        return instr == expected || instr.getQuickeningRoot() == expected && instr.specializedType == null;
+        return instr == expected || instr.getQuickeningRoot() == expected && instr.quickeningKind == QuickeningKind.GENERIC;
     }
 
     // calls dump, but catches any exceptions and falls back on an error string
@@ -1269,7 +1283,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
     record InstrumentationGroup(int instructionLength, boolean instrumentation, boolean tagInstrumentation, InstructionImmediate tagNodeImmediate)
                     implements
-                    Comparable<AbstractBytecodeNodeElement.InstrumentationGroup> {
+                        Comparable<AbstractBytecodeNodeElement.InstrumentationGroup> {
         InstrumentationGroup(InstructionModel instr) {
             this(instr.getInstructionLength(), instr.isInstrumentation(), instr.isTagInstrumentation(),
                             instr.isTagInstrumentation() ? instr.getImmediate(ImmediateKind.TAG_NODE) : null);

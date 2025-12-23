@@ -53,6 +53,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument.Encoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 
 /**
@@ -233,7 +234,7 @@ public class BytecodeDSLBuiltins {
                         String.format("""
                                         LoadLocal reads {@code local} from the current frame.
                                         If a value has not been written to the local, LoadLocal %s.
-                                        """, loadLocalUndefinedBehaviour(m))) //
+                                        """, loadIllegalLocalBehaviour(m))) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to load")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_LOCAL, "load.local", m.signature(Object.class)) //
                                         .addImmediate(ImmediateKind.FRAME_INDEX, "frame_index"));
@@ -432,7 +433,7 @@ public class BytecodeDSLBuiltins {
         OperationModel clearLocalOperation = m.operation(OperationKind.CLEAR_LOCAL, "ClearLocal", String.format("""
                         ClearLocal clears {@code local} in the current frame.
                         Until a value is written to the local, a subsequent LoadLocal %s.
-                        """, loadLocalUndefinedBehaviour(m)), "ClearLocal", true);
+                        """, loadIllegalLocalBehaviour(m)), "ClearLocal", true);
         if (clearLocalOperation != null) {
             clearLocalOperation.setVoid(true)//
                             .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to clear"))//
@@ -469,12 +470,12 @@ public class BytecodeDSLBuiltins {
                         rootClass, rootClass, innerRootBehaviour);
     }
 
-    private static String loadLocalUndefinedBehaviour(BytecodeDSLModel m) {
-        if (m.hasDefaultLocalValue()) {
-            return String.format("produces the default local value (%s)", m.defaultLocalValue);
-        } else {
-            return "throws a {@link com.oracle.truffle.api.frame.FrameSlotTypeException}";
-        }
+    private static String loadIllegalLocalBehaviour(BytecodeDSLModel m) {
+        return switch (m.loadIllegalLocalStrategy) {
+            case FRAME_SLOT_TYPE_EXCEPTION -> "throws a {@link com.oracle.truffle.api.frame.FrameSlotTypeException}";
+            case DEFAULT_VALUE -> String.format("produces the default local value (%s)", m.defaultLocalValue);
+            case CUSTOM_EXCEPTION -> String.format("throws a {@code %s}", ElementUtils.getSimpleName(m.illegalLocalException));
+        };
     }
 
     private static DynamicOperandModel child(String name) {

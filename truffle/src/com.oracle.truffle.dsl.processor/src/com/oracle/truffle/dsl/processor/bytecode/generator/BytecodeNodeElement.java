@@ -77,9 +77,12 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.QuickeningKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -356,7 +359,7 @@ final class BytecodeNodeElement extends AbstractElement {
             b.startCase().staticReference(parent.frameTagsElement.getIllegal()).end();
             b.startCaseBlock();
             b.startReturn();
-            if (parent.model.defaultLocalValueExpression != null) {
+            if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
                 b.string("DEFAULT_LOCAL_VALUE");
             } else {
                 b.string("null");
@@ -595,9 +598,19 @@ final class BytecodeNodeElement extends AbstractElement {
 
         AbstractBytecodeNodeElement.buildVerifyFrameDescriptor(b, true);
 
+        b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
+        if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
+            b.startIf();
+            b.startCall("frame", "getTag").string("frameIndex").end();
+            b.string(" == ");
+            b.staticReference(parent.frameTagsElement.getIllegal());
+            b.end().startBlock();
+            emitThrowIllegalLocalException(parent.model, b, null, CodeTreeBuilder.singleString("this"), CodeTreeBuilder.singleString("localIndex"), true);
+            b.end();
+        }
+
         if (tier.isCached()) {
             if (generic) {
-                b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
                 b.startTryBlock();
                 b.startDeclaration(type(byte.class), "tag").startCall("getCachedLocalTag");
                 b.string("localIndex");
@@ -623,7 +636,7 @@ final class BytecodeNodeElement extends AbstractElement {
 
                 b.startCase().staticReference(parent.frameTagsElement.getIllegal()).end();
                 b.startCaseBlock();
-                if (parent.model.defaultLocalValueExpression != null) {
+                if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
                     b.startReturn();
                     b.string("DEFAULT_LOCAL_VALUE");
                     b.end();
@@ -643,14 +656,14 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.end(); // catch
             } else {
                 b.startReturn();
-                BytecodeRootNodeElement.startExpectFrame(b, "frame", specializedType, false).string("USER_LOCALS_START_INDEX + localOffset").end();
+                BytecodeRootNodeElement.startExpectFrame(b, "frame", specializedType, false).string("frameIndex").end();
                 b.end();
             }
         } else {
             if (generic) {
-                b.startReturn().string("frame.getObject(USER_LOCALS_START_INDEX + localOffset)").end();
+                b.startReturn().string("frame.getObject(frameIndex)").end();
             } else {
-                b.declaration(type(Object.class), "value", "frame.getObject(USER_LOCALS_START_INDEX + localOffset)");
+                b.declaration(type(Object.class), "value", "frame.getObject(frameIndex)");
                 b.startIf().string("value instanceof ").type(ElementUtils.boxType(specializedType)).string(" castValue").end().startBlock();
                 b.startReturn().string("castValue").end();
                 b.end();
@@ -797,14 +810,14 @@ final class BytecodeNodeElement extends AbstractElement {
                  */
                 b.declaration(types.Frame, "frame", getFrame);
 
-                if (parent.model.defaultLocalValueExpression == null) {
-                    b.startIf().string("frame.isObject(" + BytecodeRootNodeElement.COROUTINE_FRAME_INDEX + ")").end().end().startBlock();
-                    b.startAssign("frame").cast(types.Frame).string("frame.getObject(" + BytecodeRootNodeElement.COROUTINE_FRAME_INDEX + ")").end();
-                    b.end();
-                } else {
+                if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
                     b.declaration(type(Object.class), "coroutineFrame", "frame.getObject(" + BytecodeRootNodeElement.COROUTINE_FRAME_INDEX + ")");
                     b.startIf().string("coroutineFrame != DEFAULT_LOCAL_VALUE").end().end().startBlock();
                     b.startAssign("frame").cast(types.Frame).string("coroutineFrame").end();
+                    b.end();
+                } else {
+                    b.startIf().string("frame.isObject(" + BytecodeRootNodeElement.COROUTINE_FRAME_INDEX + ")").end().end().startBlock();
+                    b.startAssign("frame").cast(types.Frame).string("frame.getObject(" + BytecodeRootNodeElement.COROUTINE_FRAME_INDEX + ")").end();
                     b.end();
                 }
 
@@ -1855,7 +1868,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 break;
             case CLEAR_LOCAL:
                 String index = BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX)).toString();
-                if (parent.model.defaultLocalValueExpression != null) {
+                if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
                     b.statement(BytecodeRootNodeElement.setFrameObject("frame", index, "DEFAULT_LOCAL_VALUE"));
                 } else {
                     b.statement(BytecodeRootNodeElement.clearFrame("frame", index));
@@ -2689,7 +2702,7 @@ final class BytecodeNodeElement extends AbstractElement {
 
             b.declaration(type(short.class), "operand", BytecodeRootNodeElement.readInstruction("bc", "operandIndex"));
             b.declaration(type(short.class), "otherOperand", BytecodeRootNodeElement.readInstruction("bc", "otherOperandIndex"));
-            InstructionModel genericInstruction = instr.findGenericInstruction();
+            InstructionModel genericInstruction = instr.findQuickening(QuickeningKind.GENERIC, null, false);
 
             boolean elseIf = false;
             for (TypeMirror boxingType : parent.model.boxingEliminatedTypes) {
@@ -2699,8 +2712,8 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.string("(newOperand = ").startCall(BytecodeRootNodeElement.createApplyQuickeningName(boxingType)).string("operand").end().string(") != -1)");
                 b.end().startBlock();
 
-                InstructionModel boxedInstruction = instr.findSpecializedInstruction(boxingType);
-                InstructionModel unboxedInstruction = boxedInstruction.quickenedInstructions.get(0);
+                InstructionModel boxedInstruction = instr.findQuickening(QuickeningKind.SPECIALIZED, boxingType, false);
+                InstructionModel unboxedInstruction = boxedInstruction.findQuickening(QuickeningKind.SPECIALIZED_UNBOXED, boxingType, false);
                 b.startSwitch().tree(BytecodeRootNodeElement.readInstruction("bc", "bci")).end().startBlock();
                 b.startCase().tree(parent.createInstructionConstant(boxedInstruction.getQuickeningRoot())).end();
                 b.startCase().tree(parent.createInstructionConstant(boxedInstruction)).end();
@@ -2751,18 +2764,13 @@ final class BytecodeNodeElement extends AbstractElement {
     }
 
     private void emitStoreLocalHandler(InstructionModel instr, CodeTreeBuilder b) throws AssertionError {
-        String localsFrame = parent.localFrame();
         boolean materialized = instr.kind.isLocalVariableMaterializedAccess();
-        if (instr.isQuickening() || tier.isUncached() || !parent.model.usesBoxingElimination()) {
+        boolean isFastPath = instr.isQuickening() || tier.isUncached() || !parent.model.usesBoxingElimination();
+        final TypeMirror inputType = instr.signature.getDynamicOperandType(0);
+        final TypeMirror slotType = instr.specializedType != null ? instr.specializedType : type(Object.class);
+        final boolean generic = ElementUtils.typeEquals(type(Object.class), inputType) && ElementUtils.typeEquals(inputType, slotType);
 
-            final TypeMirror inputType = instr.signature.getDynamicOperandType(0);
-            final TypeMirror slotType = instr.specializedType != null ? instr.specializedType : type(Object.class);
-
-            boolean needsLocalTags = localAccessNeedsLocalTags(instr);
-            if (needsLocalTags) {
-                b.declaration(type(byte[].class), "localTags", readLocalTagsFastPath());
-            }
-
+        if (isFastPath) {
             if (tier.isCached() && parent.model.usesBoxingElimination()) {
                 b.declaration(inputType, "local");
                 b.startTryBlock();
@@ -2781,45 +2789,93 @@ final class BytecodeNodeElement extends AbstractElement {
                 BytecodeRootNodeElement.startRequireFrame(b, inputType).string("frame").string("sp - 1").end();
                 b.end();
             }
+        } else {
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            b.startDeclaration(type(Object.class), "local");
+            BytecodeRootNodeElement.startGetFrameUnsafe(b, "frame", null).string("sp - 1").end();
+            b.end();
+        }
 
-            if (materialized) {
-                localsFrame = "materializedFrame";
-                b.startDeclaration(types.FrameWithoutBoxing, "materializedFrame");
-                b.cast(types.FrameWithoutBoxing).string(BytecodeRootNodeElement.uncheckedGetFrameObject("sp - 2"));
-                b.end();
+        final String localsFrame;
+        if (materialized) {
+            b.startDeclaration(types.FrameWithoutBoxing, "materializedFrame");
+            b.cast(types.FrameWithoutBoxing).string(BytecodeRootNodeElement.uncheckedGetFrameObject("sp - 2"));
+            b.end();
+            localsFrame = "materializedFrame";
+        } else {
+            localsFrame = parent.localFrame();
+        }
+
+        final CodeTree slot;
+        if (!generic || materialized || !isFastPath) {
+            b.declaration(type(int.class), "slot", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX)));
+            slot = CodeTreeBuilder.singleString("slot");
+        } else {
+            slot = BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX));
+        }
+
+        if (materialized) {
+            b.declaration(type(int.class), "localRootIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_ROOT)));
+        }
+
+        final CodeTree localIndex;
+        if (parent.model.localAccessesNeedLocalIndex()) {
+            if (!generic || materialized || !isFastPath) {
+                b.declaration(type(int.class), "localIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_INDEX)));
+                localIndex = CodeTreeBuilder.singleString("localIndex");
+            } else {
+                localIndex = BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_INDEX));
             }
+        } else {
+            localIndex = CodeTreeBuilder.createBuilder().tree(slot).string(" - ").string(BytecodeRootNodeElement.USER_LOCALS_START_INDEX).build();
+        }
 
-            boolean generic = ElementUtils.typeEquals(type(Object.class), inputType);
+        if (!isFastPath) {
+            b.declaration(type(int.class), "operandIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
+        }
 
-            CodeTree readSlot = BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX));
-            if (generic && !ElementUtils.needsCastTo(inputType, slotType)) {
+        final CodeTree bytecodeNode;
+        if (materialized) {
+            b.startDeclaration(parent.asType(), "localRoot");
+            b.startCall("this.getRoot().getBytecodeRootNodeImpl").string("localRootIndex").end();
+            b.end();
+            CodeTree localRoot = CodeTreeBuilder.singleString("localRoot");
+
+            b.startDeclaration(parent.abstractBytecodeNode.asType(), "bytecodeNode");
+            b.startCall(localRoot, "getBytecodeNodeImpl").end();
+            b.end();
+            bytecodeNode = CodeTreeBuilder.singleString("bytecodeNode");
+
+            emitValidateMaterializedAccess(b, localsFrame, localRoot, bytecodeNode, localIndex);
+        } else {
+            bytecodeNode = CodeTreeBuilder.singleString("this");
+        }
+
+        if (localAccessNeedsLocalTags(instr) && (!generic || !isFastPath)) {
+            b.declaration(type(byte[].class), "localTags", readLocalTagsFastPath());
+        }
+
+        if (isFastPath) {
+            // Fast path: execute store local.
+            if (generic) {
                 if (materialized) {
-                    b.declaration(type(int.class), "slot", readSlot);
-                    readSlot = CodeTreeBuilder.singleString("slot");
-                    b.declaration(type(int.class), "localRootIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_ROOT)));
-                    if (instr.hasImmediate(ImmediateKind.LOCAL_INDEX)) {
-                        b.declaration(type(int.class), "localIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_INDEX)));
-                    }
-
                     if (parent.model.usesBoxingElimination()) {
-                        b.declaration(type(int.class), "localOffset", "slot - " + BytecodeRootNodeElement.USER_LOCALS_START_INDEX);
-                        emitValidateMaterializedAccess(b, localsFrame, "localRootIndex", "localRoot", "bytecodeNode", "localIndex");
+                        CodeTree localOffset = CodeTreeBuilder.singleString("slot - " + BytecodeRootNodeElement.USER_LOCALS_START_INDEX);
                         // We need to update the tags. Call the setter method on the
                         // bytecodeNode.
-                        b.startStatement().startCall("bytecodeNode.setLocalValueInternal");
+                        b.startStatement().startCall(bytecodeNode, "setLocalValueInternal");
                         b.string(localsFrame);
-                        b.string("localOffset");
-                        if (instr.hasImmediate(ImmediateKind.LOCAL_INDEX)) {
-                            b.string("localIndex");
+                        b.tree(localOffset);
+                        if (parent.model.localAccessesNeedLocalIndex()) {
+                            b.tree(localIndex);
                         } else {
-                            b.string("localOffset");
+                            b.tree(localOffset);
                         }
                         b.string("local");
                         b.end(2);
                     } else {
-                        emitValidateMaterializedAccess(b, localsFrame, "localRootIndex", "localRoot", null, "localIndex");
                         b.startStatement();
-                        BytecodeRootNodeElement.startSetFrame(b, slotType).string(localsFrame).tree(readSlot);
+                        BytecodeRootNodeElement.startSetFrame(b, slotType).string(localsFrame).tree(slot);
                         b.string("local");
                         b.end();
                         b.end();
@@ -2830,7 +2886,7 @@ final class BytecodeNodeElement extends AbstractElement {
 
                 } else {
                     b.startStatement();
-                    BytecodeRootNodeElement.startSetFrame(b, slotType).string(localsFrame).tree(readSlot);
+                    BytecodeRootNodeElement.startSetFrame(b, slotType).string(localsFrame).tree(slot);
                     b.string("local");
                     b.end();
                     b.end();
@@ -2843,25 +2899,6 @@ final class BytecodeNodeElement extends AbstractElement {
                 }
 
                 boolean needsCast = ElementUtils.needsCastTo(inputType, slotType);
-                b.declaration(type(int.class), "slot", readSlot);
-                if (materialized) {
-                    b.declaration(type(int.class), "localRootIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_ROOT)));
-                }
-                String localIndex;
-                if (parent.model.enableBlockScoping) {
-                    b.declaration(type(int.class), "localIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_INDEX)));
-                    localIndex = "localIndex";
-                } else {
-                    localIndex = "slot - " + BytecodeRootNodeElement.USER_LOCALS_START_INDEX;
-                }
-
-                String bytecodeNode;
-                if (materialized) {
-                    emitValidateMaterializedAccess(b, localsFrame, "localRootIndex", "localRoot", "bytecodeNode", "localIndex");
-                    bytecodeNode = "bytecodeNode";
-                } else {
-                    bytecodeNode = "this";
-                }
 
                 b.startDeclaration(type(byte.class), "tag");
                 b.startCall(bytecodeNode, "getCachedLocalTagInternal");
@@ -2870,7 +2907,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 } else {
                     b.string("localTags");
                 }
-                b.string(localIndex);
+                b.tree(localIndex);
                 b.end(); // call
                 b.end(); // declaration
 
@@ -2900,8 +2937,6 @@ final class BytecodeNodeElement extends AbstractElement {
 
                 if (needsCast) {
                     b.end().startCatchBlock(types.UnexpectedResultException, "ex");
-                    b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                    b.statement("local = ex.getResult()");
                     b.lineComment("fall through to slow-path");
                     b.end();  // catch block
                 }
@@ -2914,48 +2949,7 @@ final class BytecodeNodeElement extends AbstractElement {
 
             }
         } else {
-
-            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            b.startDeclaration(type(Object.class), "local");
-            BytecodeRootNodeElement.startGetFrameUnsafe(b, "frame", null).string("sp - 1").end();
-            b.end();
-
-            if (materialized) {
-                localsFrame = "materializedFrame";
-                b.startDeclaration(types.FrameWithoutBoxing, "materializedFrame");
-                b.cast(types.FrameWithoutBoxing).string(BytecodeRootNodeElement.uncheckedGetFrameObject("sp - 2"));
-                b.end();
-            }
-
-            boolean needsLocalTags = localAccessNeedsLocalTags(instr);
-            if (needsLocalTags) {
-                b.declaration(type(byte[].class), "localTags", readLocalTagsFastPath());
-            }
-
-            b.declaration(type(short.class), "newInstruction");
-            b.declaration(type(int.class), "slot", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX)));
-            if (materialized) {
-                b.declaration(type(int.class), "localRootIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_ROOT)));
-            }
-
-            String localIndex;
-            if (parent.model.enableBlockScoping) {
-                b.declaration(type(int.class), "localIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_INDEX)));
-                localIndex = "localIndex";
-            } else {
-                localIndex = "slot - " + BytecodeRootNodeElement.USER_LOCALS_START_INDEX;
-            }
-            b.declaration(type(int.class), "operandIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
-
-            String bytecodeNode;
-            if (materialized) {
-                emitValidateMaterializedAccess(b, localsFrame, "localRootIndex", "localRoot", "bytecodeNode", "localIndex");
-                bytecodeNode = "bytecodeNode";
-            } else {
-                bytecodeNode = "this";
-            }
-
-            b.declaration(type(short.class), "newOperand");
+            // Slow path: quicken.
             b.declaration(type(short.class), "operand", BytecodeRootNodeElement.readInstruction("bc", "operandIndex"));
 
             b.startDeclaration(type(byte.class), "oldTag");
@@ -2965,12 +2959,15 @@ final class BytecodeNodeElement extends AbstractElement {
             } else {
                 b.string("localTags");
             }
-            b.string(localIndex);
+            b.tree(localIndex);
             b.end(); // call
             b.end(); // declaration
+
+            b.declaration(type(short.class), "newInstruction");
+            b.declaration(type(short.class), "newOperand");
             b.declaration(type(byte.class), "newTag");
 
-            InstructionModel genericInstruction = instr.findGenericInstruction();
+            InstructionModel genericInstruction = instr.findQuickening(QuickeningKind.GENERIC, null, false);
 
             boolean elseIf = false;
             for (TypeMirror boxingType : parent.model.boxingEliminatedTypes) {
@@ -2978,9 +2975,9 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.string("local").instanceOf(ElementUtils.boxType(boxingType)).end().startBlock();
 
                 // instruction for unsuccessful operand quickening
-                InstructionModel boxedInstruction = instr.findSpecializedInstruction(boxingType);
+                InstructionModel boxedInstruction = instr.findQuickening(QuickeningKind.SPECIALIZED, boxingType, false);
                 // instruction for successful operand quickening
-                InstructionModel unboxedInstruction = boxedInstruction.quickenedInstructions.get(0);
+                InstructionModel unboxedInstruction = boxedInstruction.findQuickening(QuickeningKind.SPECIALIZED_UNBOXED, boxingType, false);
 
                 b.startSwitch().string("oldTag").end().startBlock();
 
@@ -3047,11 +3044,7 @@ final class BytecodeNodeElement extends AbstractElement {
             } else {
                 b.string("localTags");
             }
-            if (parent.model.enableBlockScoping) {
-                b.string("localIndex");
-            } else {
-                b.string("slot - " + BytecodeRootNodeElement.USER_LOCALS_START_INDEX);
-            }
+            b.tree(localIndex);
             b.string("newTag");
             b.end(2);
             b.end(); // if newTag != oldTag
@@ -3070,35 +3063,97 @@ final class BytecodeNodeElement extends AbstractElement {
 
     private void emitLoadLocalHandler(InstructionModel instr, CodeTreeBuilder b) {
         boolean materialized = instr.kind.isLocalVariableMaterializedAccess();
-        String localsFrame = parent.localFrame();
-        if (instr.isQuickening() || tier.isUncached() || !parent.model.usesBoxingElimination()) {
-            if (materialized) {
-                localsFrame = "materializedFrame";
-                b.startDeclaration(types.FrameWithoutBoxing, "materializedFrame");
-                b.cast(types.FrameWithoutBoxing).string(BytecodeRootNodeElement.uncheckedGetFrameObject("sp - 1"));
+        // Local loads are quickened for BE and to optimize away clear checks.
+        boolean loadLocalQuickenable = parent.model.usesBoxingElimination() || (parent.model.enableQuickening && parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.CUSTOM_EXCEPTION);
+        boolean isFastPath = instr.isQuickening() || tier.isUncached() || !loadLocalQuickenable;
+        if (!isFastPath) {
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+        }
+
+        final QuickeningKind quickeningKind;
+        final boolean checked;
+        if (instr.isQuickening()) {
+            quickeningKind = instr.quickeningKind;
+            checked = instr.checked;
+        } else {
+            // If this is not a quickening, implement the generic semantics.
+            quickeningKind = QuickeningKind.GENERIC;
+            checked = parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.CUSTOM_EXCEPTION;
+        }
+
+        final String localsFrame;
+        if (materialized) {
+            b.startDeclaration(types.FrameWithoutBoxing, "materializedFrame");
+            b.cast(types.FrameWithoutBoxing).string(BytecodeRootNodeElement.uncheckedGetFrameObject("sp - 1"));
+            b.end();
+            localsFrame = "materializedFrame";
+        } else {
+            localsFrame = parent.localFrame();
+        }
+
+        final CodeTree slot;
+        if (materialized || checked || !isFastPath) {
+            b.declaration(type(int.class), "slot", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX)));
+            slot = CodeTreeBuilder.singleString("slot");
+        } else {
+            slot = BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX));
+        }
+
+        if (materialized) {
+            b.declaration(type(int.class), "localRootIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_ROOT)));
+        }
+
+        final CodeTree localIndex;
+        if (parent.model.localAccessesNeedLocalIndex()) {
+            if (materialized || checked || !isFastPath) {
+                b.declaration(type(int.class), "localIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_INDEX)));
+                localIndex = CodeTreeBuilder.singleString("localIndex");
+            } else {
+                localIndex = BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_INDEX));
+            }
+        } else {
+            localIndex = CodeTreeBuilder.createBuilder().tree(slot).string(" - ").string(BytecodeRootNodeElement.USER_LOCALS_START_INDEX).build();
+        }
+
+        final CodeTree bytecodeNode;
+        if (materialized) {
+            b.startDeclaration(parent.asType(), "localRoot");
+            b.startCall("this.getRoot().getBytecodeRootNodeImpl").string("localRootIndex").end();
+            b.end();
+            CodeTree localRoot = CodeTreeBuilder.singleString("localRoot");
+
+            if (isFastPath) {
+                bytecodeNode = CodeTreeBuilder.createBuilder().startCall(localRoot, "getBytecodeNodeImpl").end().build();
+            } else {
+                b.startDeclaration(parent.abstractBytecodeNode.asType(), "bytecodeNode");
+                b.startCall(localRoot, "getBytecodeNodeImpl").end();
                 b.end();
+                bytecodeNode = CodeTreeBuilder.singleString("bytecodeNode");
+            }
+
+            emitValidateMaterializedAccess(b, localsFrame, localRoot, bytecodeNode, localIndex);
+        } else {
+            bytecodeNode = CodeTreeBuilder.singleString("this");
+        }
+
+        if (isFastPath) {
+            // Fast path: execute load local.
+            if (checked) {
+                b.startIf();
+                b.startCall(localsFrame, "getTag").tree(slot).end();
+                b.string(" == ");
+                b.staticReference(parent.frameTagsElement.getIllegal());
+                b.end().startBlock();
+                emitThrowIllegalLocalException(parent.model, b, CodeTreeBuilder.singleString("bci"), bytecodeNode, localIndex, true);
+                b.end();
+            }
+            boolean needsTryCatch = quickeningKind == QuickeningKind.SPECIALIZED || quickeningKind == QuickeningKind.SPECIALIZED_UNBOXED;
+            if (needsTryCatch) {
+                b.startTryBlock();
             }
 
             final TypeMirror inputType = instr.signature.returnType;
             final TypeMirror slotType = instr.specializedType != null ? instr.specializedType : type(Object.class);
-
-            CodeTree readSlot = BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX));
-            if (materialized) {
-                b.declaration(type(int.class), "slot", readSlot);
-                b.declaration(type(int.class), "localRootIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_ROOT)));
-                if (instr.hasImmediate(ImmediateKind.LOCAL_INDEX)) {
-                    b.declaration(type(int.class), "localIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_INDEX)));
-                }
-                emitValidateMaterializedAccess(b, localsFrame, "localRootIndex", "localRoot", null, "localIndex");
-                readSlot = CodeTreeBuilder.singleString("slot");
-            }
-
-            boolean generic = ElementUtils.typeEquals(type(Object.class), slotType);
-
-            if (!generic) {
-                b.startTryBlock();
-            }
-
             b.startStatement();
             BytecodeRootNodeElement.startSetFrame(b, inputType).string("frame");
             if (materialized) {
@@ -3106,131 +3161,214 @@ final class BytecodeNodeElement extends AbstractElement {
             } else {
                 b.string("sp");
             }
-            if (generic) {
-                BytecodeRootNodeElement.startRequireFrame(b, slotType).string(localsFrame).tree(readSlot).end();
+
+            if (instr.specializedType != null) {
+                BytecodeRootNodeElement.startExpectFrameUnsafe(b, localsFrame, slotType).tree(slot).end();
             } else {
-                BytecodeRootNodeElement.startExpectFrameUnsafe(b, localsFrame, slotType).tree(readSlot).end();
+                BytecodeRootNodeElement.startRequireFrame(b, slotType).string(localsFrame).tree(slot).end();
             }
+
             b.end();
             b.end(); // statement
 
-            if (!generic) {
-                b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+            if (needsTryCatch) {
+                List<TypeMirror> caught = new ArrayList<>();
+                if (instr.specializedType != null) {
+                    caught.add(types.UnexpectedResultException);
+                }
+                if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
+                    caught.add(types.FrameSlotTypeException);
+                }
+                b.end().startCatchBlock(caught.toArray(TypeMirror[]::new), "ex");
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                 b.startReturn();
                 emitCallInstructionHandler(b, instr.getQuickeningRoot());
                 b.end();
                 b.end();
             }
-
         } else {
-            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            // Slow path: quicken.
+            if (parent.model.usesBoxingElimination()) {
+                // Use cached local tag to determine a quickening.
+                if (localAccessNeedsLocalTags(instr)) {
+                    b.declaration(type(byte[].class), "localTags", readLocalTagsFastPath());
+                }
 
-            if (materialized) {
-                localsFrame = "materializedFrame";
-                b.startDeclaration(types.FrameWithoutBoxing, "materializedFrame");
-                b.cast(types.FrameWithoutBoxing).string(BytecodeRootNodeElement.uncheckedGetFrameObject("sp - 1"));
-                b.end();
-            }
+                b.startDeclaration(type(byte.class), "tag");
+                b.startCall(bytecodeNode, "getCachedLocalTagInternal");
+                if (materialized) {
+                    b.startCall(bytecodeNode, "getLocalTags").end();
+                } else {
+                    b.string("localTags");
+                }
+                b.tree(localIndex);
+                b.end(); // call
+                b.end(); // declaration
 
-            boolean needsLocalTags = localAccessNeedsLocalTags(instr);
-            if (needsLocalTags) {
-                b.declaration(type(byte[].class), "localTags", readLocalTagsFastPath());
-            }
+                if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
+                    b.startIf();
+                    b.startCall(localsFrame, "getTag").string("slot").end();
+                    b.string(" == ");
+                    b.staticReference(parent.frameTagsElement.getIllegal());
+                    b.end().startBlock();
+                    // If tag illegal, quicken to checked. Update the cached tags if necessary.
+                    b.startIf().string("tag != ").staticReference(parent.frameTagsElement.getObject()).end().startBlock();
+                    b.startStatement().startCall(bytecodeNode, "setCachedLocalTagInternal");
+                    if (materialized) {
+                        b.startCall(bytecodeNode, "getLocalTags").end();
+                    } else {
+                        b.string("localTags");
+                    }
+                    b.tree(localIndex);
+                    b.staticReference(parent.frameTagsElement.getObject());
+                    b.end(2);
+                    b.end(); // if cached tag != Object
+                    parent.emitQuickening(b, "this", "bc", "bci", null, parent.createInstructionConstant(instr.findQuickening(QuickeningKind.GENERIC, null, true)));
+                    emitThrowIllegalLocalException(parent.model, b, CodeTreeBuilder.singleString("bci"), bytecodeNode, localIndex, false);
+                    b.end(); // if
+                }
 
-            b.declaration(type(int.class), "slot", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX)));
-            if (materialized) {
-                b.declaration(type(int.class), "localRootIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_ROOT)));
-            }
-            String localIndex;
-            if (parent.model.enableBlockScoping) {
-                b.declaration(type(int.class), "localIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_INDEX)));
-                localIndex = "localIndex";
-            } else {
-                localIndex = "slot - " + BytecodeRootNodeElement.USER_LOCALS_START_INDEX;
-            }
+                b.declaration(type(Object.class), "value");
+                b.declaration(type(short.class), "newInstruction");
+                InstructionModel genericTypeInstruction;
+                if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
+                    genericTypeInstruction = instr.findQuickening(QuickeningKind.SPECIALIZED, null, false);
+                } else {
+                    genericTypeInstruction = instr.findQuickening(QuickeningKind.GENERIC, null, false);
+                }
 
-            String bytecodeNode;
-            if (materialized) {
-                emitValidateMaterializedAccess(b, localsFrame, "localRootIndex", "localRoot", "bytecodeNode", "localIndex");
-                bytecodeNode = "bytecodeNode";
-            } else {
-                bytecodeNode = "this";
-            }
+                b.startTryBlock();
 
-            b.startDeclaration(type(byte.class), "tag");
-            b.startCall(bytecodeNode, "getCachedLocalTagInternal");
-            if (materialized) {
-                b.startCall(bytecodeNode, "getLocalTags").end();
-            } else {
-                b.string("localTags");
-            }
-            b.string(localIndex);
-            b.end(); // call
-            b.end(); // declaration
+                b.startSwitch().string("tag").end().startBlock();
+                for (TypeMirror boxingType : parent.model.boxingEliminatedTypes) {
+                    InstructionModel boxedInstruction = instr.findQuickening(QuickeningKind.SPECIALIZED, boxingType, false);
 
-            b.declaration(type(Object.class), "value");
-            b.declaration(type(short.class), "newInstruction");
-            InstructionModel genericInstruction = instr.findGenericInstruction();
-            b.startTryBlock();
+                    b.startCase().staticReference(parent.frameTagsElement.get(boxingType)).end();
+                    b.startCaseBlock();
+                    b.startStatement().string("newInstruction = ").tree(parent.createInstructionConstant(boxedInstruction)).end();
+                    parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "LoadLocal$" + boxedInstruction.getQuickeningName());
+                    b.startStatement();
+                    b.string("value = ");
+                    BytecodeRootNodeElement.startExpectFrameUnsafe(b, localsFrame, boxingType).string("slot").end();
+                    b.end();
+                    b.statement("break");
+                    b.end();
+                }
 
-            b.startSwitch().string("tag").end().startBlock();
-            for (TypeMirror boxingType : parent.model.boxingEliminatedTypes) {
-                InstructionModel boxedInstruction = instr.findSpecializedInstruction(boxingType);
-
-                b.startCase().staticReference(parent.frameTagsElement.get(boxingType)).end();
+                b.startCase().staticReference(parent.frameTagsElement.getObject()).end();
+                if (parent.model.loadIllegalLocalStrategy != LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
+                    /*
+                     * On illegal cached tag, quicken to the generic instruction. Illegal local
+                     * loads will throw FrameSlotTypeException/produce the default value as
+                     * specified.
+                     */
+                    b.startCase().staticReference(parent.frameTagsElement.getIllegal()).end();
+                }
                 b.startCaseBlock();
-                b.startStatement().string("newInstruction = ").tree(parent.createInstructionConstant(boxedInstruction)).end();
-                parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "LoadLocal$" + boxedInstruction.getQuickeningName());
+                b.startStatement().string("newInstruction = ").tree(parent.createInstructionConstant(genericTypeInstruction)).end();
+                parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "LoadLocal$" + genericTypeInstruction.getQuickeningName());
                 b.startStatement();
                 b.string("value = ");
-                BytecodeRootNodeElement.startExpectFrameUnsafe(b, localsFrame, boxingType).string("slot").end();
+                BytecodeRootNodeElement.startExpectFrameUnsafe(b, localsFrame, type(Object.class)).string("slot").end();
                 b.end();
                 b.statement("break");
                 b.end();
-            }
 
-            b.startCase().staticReference(parent.frameTagsElement.getObject()).end();
-            b.startCase().staticReference(parent.frameTagsElement.getIllegal()).end();
-            b.startCaseBlock();
-            b.startStatement().string("newInstruction = ").tree(parent.createInstructionConstant(genericInstruction)).end();
-            parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "LoadLocal$" + genericInstruction.getQuickeningName());
-            b.startStatement();
-            b.string("value = ");
-            BytecodeRootNodeElement.startExpectFrameUnsafe(b, localsFrame, type(Object.class)).string("slot").end();
-            b.end();
-            b.statement("break");
-            b.end();
+                b.caseDefault().startCaseBlock();
+                b.tree(GeneratorUtils.createShouldNotReachHere("Unexpected frame tag."));
+                b.end();
 
-            b.caseDefault().startCaseBlock();
-            b.tree(GeneratorUtils.createShouldNotReachHere("Unexpected frame tag."));
-            b.end();
+                b.end(); // switch
 
-            b.end(); // switch
+                b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
 
-            b.end().startCatchBlock(types.UnexpectedResultException, "ex");
-            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                // If an UnexpectedResultException occurs, specialize to the generic version.
+                b.startStatement().string("newInstruction = ").tree(parent.createInstructionConstant(genericTypeInstruction)).end();
+                parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "LoadLocal$" + genericTypeInstruction.getQuickeningName());
+                b.startStatement();
+                b.string("value = ex.getResult()");
+                b.end();
+                b.end(); // catch
 
-            // If a FrameSlotException occurs, specialize to the generic version.
-            b.startStatement().string("newInstruction = ").tree(parent.createInstructionConstant(genericInstruction)).end();
-            parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "LoadLocal$" + genericInstruction.getQuickeningName());
-            b.startStatement();
-            b.string("value = ex.getResult()");
-            b.end();
-
-            b.end(); // catch
-
-            parent.emitQuickening(b, "this", "bc", "bci", null, "newInstruction");
-            b.startStatement();
-            BytecodeRootNodeElement.startSetFrame(b, type(Object.class)).string("frame");
-            if (materialized) {
-                b.string("sp - 1"); // overwrite the materialized frame
+                parent.emitQuickening(b, "this", "bc", "bci", null, "newInstruction");
+                b.startStatement();
+                BytecodeRootNodeElement.startSetFrame(b, type(Object.class)).string("frame");
+                if (materialized) {
+                    b.string("sp - 1"); // overwrite the materialized frame
+                } else {
+                    b.string("sp");
+                }
+                b.string("value").end();
+                b.end();
             } else {
-                b.string("sp");
+                // Use frame tag to determine a quickening.
+                if (parent.model.loadIllegalLocalStrategy != LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
+                    throw new AssertionError("Unexpected load local quickening. The only supported quickening for local loads outside of BE is for illegalLocalExceptions.");
+                }
+
+                b.startIf();
+                b.startCall(localsFrame, "getTag").string("slot").end();
+                b.string(" == ");
+                b.staticReference(parent.frameTagsElement.getIllegal());
+                b.end().startBlock();
+                // If tag illegal, quicken to checked.
+                parent.emitQuickening(b, "this", "bc", "bci", null, parent.createInstructionConstant(instr.findQuickening(QuickeningKind.GENERIC, null, true)));
+                emitThrowIllegalLocalException(parent.model, b, CodeTreeBuilder.singleString("bci"), bytecodeNode, localIndex, false);
+                b.end(); // if
+
+                // If tag not illegal, quicken to unchecked.
+                parent.emitQuickening(b, "this", "bc", "bci", null, parent.createInstructionConstant(instr.findQuickening(QuickeningKind.SPECIALIZED, null, false)));
+                b.startStatement();
+                BytecodeRootNodeElement.startSetFrame(b, type(Object.class)).string("frame");
+                if (materialized) {
+                    b.string("sp - 1"); // overwrite the materialized frame
+                } else {
+                    b.string("sp");
+                }
+                BytecodeRootNodeElement.startRequireFrame(b, type(Object.class)).string(localsFrame).string("slot").end();
+                b.end(2);
             }
-            b.string("value").end();
-            b.end();
         }
+    }
+
+    protected static void emitThrowIllegalLocalException(BytecodeDSLModel model, CodeTreeBuilder b, CodeTree bci, CodeTree localBytecodeNode, CodeTree localIndex, boolean fastPath) {
+        if (model.loadIllegalLocalStrategy != LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
+            throw new AssertionError();
+        }
+
+        if (fastPath && !ElementUtils.isAssignable(model.illegalLocalException, model.getContext().getTypes().AbstractTruffleException)) {
+            // If it's not a Truffle exception, always deopt.
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+        }
+
+        var factoryMethod = model.illegalLocalExceptionFactory;
+        b.startThrow();
+        b.startStaticCall(factoryMethod.method());
+        for (var param : factoryMethod.parameters()) {
+            switch (param) {
+                case NODE, BYTECODE_NODE -> {
+                    b.string("this");
+                }
+                case BYTECODE_LOCATION -> {
+                    if (bci == null) {
+                        throw new AssertionError();
+                    }
+                    b.startCall("findLocation").tree(bci).end();
+                }
+                case LOCAL_VARIABLE -> {
+                    b.startNew("LocalVariableImpl");
+                    b.tree(localBytecodeNode);
+                    b.startGroup();
+                    b.startParantheses().tree(localIndex).end();
+                    b.string(" * LOCALS_LENGTH");
+                    b.end();
+                    b.end();
+                }
+                default -> throw new AssertionError();
+            }
+        }
+        b.end(2);
     }
 
     private void emitPopHandler(InstructionModel instr, CodeTreeBuilder b) {
@@ -3254,13 +3392,17 @@ final class BytecodeNodeElement extends AbstractElement {
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
 
             Map<TypeMirror, InstructionModel> typeToSpecialization = new LinkedHashMap<>();
-            List<InstructionModel> specializations = instr.quickenedInstructions;
             InstructionModel genericInstruction = null;
-            for (InstructionModel specialization : specializations) {
-                if (parent.model.isBoxingEliminated(specialization.specializedType)) {
-                    typeToSpecialization.put(specialization.specializedType, specialization);
-                } else if (specialization.specializedType == null) {
-                    genericInstruction = specialization;
+            for (InstructionModel quickening : instr.quickenedInstructions) {
+                switch (quickening.quickeningKind) {
+                    case SPECIALIZED -> {
+                        if (!parent.model.isBoxingEliminated(quickening.specializedType)) {
+                            throw new AssertionError();
+                        }
+                        typeToSpecialization.put(quickening.specializedType, quickening);
+                    }
+                    case GENERIC -> genericInstruction = quickening;
+                    default -> throw new AssertionError("Unexpected pop quickening kind " + quickening.quickeningKind);
                 }
             }
 
@@ -3365,13 +3507,17 @@ final class BytecodeNodeElement extends AbstractElement {
 
     private void emitTagLeaveAndSpecializeHandler(InstructionModel instr, CodeTreeBuilder b) {
         Map<TypeMirror, InstructionModel> typeToSpecialization = new LinkedHashMap<>();
-        List<InstructionModel> specializations = instr.quickenedInstructions;
         InstructionModel genericInstruction = null;
-        for (InstructionModel specialization : specializations) {
-            if (parent.model.isBoxingEliminated(specialization.specializedType)) {
-                typeToSpecialization.put(specialization.specializedType, specialization);
-            } else if (specialization.specializedType == null) {
-                genericInstruction = specialization;
+        for (InstructionModel quickening : instr.quickenedInstructions) {
+            switch (quickening.quickeningKind) {
+                case SPECIALIZED -> {
+                    if (!parent.model.isBoxingEliminated(quickening.specializedType)) {
+                        throw new AssertionError();
+                    }
+                    typeToSpecialization.put(quickening.specializedType, quickening);
+                }
+                case GENERIC -> genericInstruction = quickening;
+                default -> throw new AssertionError("Unexpected tag.leave quickening kind " + quickening.quickeningKind);
             }
         }
 
@@ -3521,15 +3667,8 @@ final class BytecodeNodeElement extends AbstractElement {
                     throw new AssertionError("Unexpected quickening count");
                 }
 
-                InstructionModel boxedInstruction = null;
-                InstructionModel unboxedInstruction = null;
-                for (InstructionModel quickening : instr.getFlattenedQuickenedInstructions()) {
-                    if (ElementUtils.isObject(quickening.signature.getDynamicOperandType(0))) {
-                        boxedInstruction = quickening;
-                    } else {
-                        unboxedInstruction = quickening;
-                    }
-                }
+                InstructionModel boxedInstruction = instr.findQuickening(QuickeningKind.GENERIC, null, false);
+                InstructionModel unboxedInstruction = instr.findQuickening(QuickeningKind.SPECIALIZED, type(boolean.class), false);
 
                 if (boxedInstruction == null || unboxedInstruction == null) {
                     throw new AssertionError("Unexpected quickenings");
@@ -3963,49 +4102,23 @@ final class BytecodeNodeElement extends AbstractElement {
 
     /**
      * Helper that emits common validation code for materialized local reads/writes.
-     * <p>
-     * If {@code localRootVariable} or {@code bytecodeNodeVariable} are provided, declares and
-     * initializes locals with those names.
      */
-    private void emitValidateMaterializedAccess(CodeTreeBuilder b, String frame, String localRootIndex, String localRootVariable, String bytecodeNodeVariable, String localIndex) {
-        CodeTree getRoot = CodeTreeBuilder.createBuilder() //
-                        .startCall("this.getRoot().getBytecodeRootNodeImpl") //
-                        .string(localRootIndex) //
-                        .end() //
-                        .build();
-        if (localRootVariable != null) {
-            b.declaration(parent.asType(), localRootVariable, getRoot);
-            getRoot = CodeTreeBuilder.singleString(localRootVariable);
-        }
-
-        b.startIf().tree(getRoot).string(".getFrameDescriptor() != ", frame, ".getFrameDescriptor()");
+    private void emitValidateMaterializedAccess(CodeTreeBuilder b, String frame, CodeTree localRoot, CodeTree bytecodeNode, CodeTree localIndex) {
+        b.startIf().tree(localRoot).string(".getFrameDescriptor() != ", frame, ".getFrameDescriptor()");
         b.end().startBlock();
         BytecodeRootNodeElement.emitThrowIllegalArgumentException(b, "Materialized frame belongs to the wrong root node.");
         b.end();
 
-        CodeTree getBytecode = CodeTreeBuilder.createBuilder() //
-                        .tree(getRoot) //
-                        .string(".getBytecodeNodeImpl()") //
-                        .end() //
-                        .build();
-        if (bytecodeNodeVariable != null) {
-            b.declaration(parent.abstractBytecodeNode.asType(), bytecodeNodeVariable, getBytecode);
-            getBytecode = CodeTreeBuilder.singleString(bytecodeNodeVariable);
-        }
-        /**
-         * Check that the local is live at the current bci. We can only perform this check when the
-         * bci is stored in the frame.
-         */
-        if (parent.model.enableBlockScoping && parent.model.storeBciInFrame && localIndex != null) {
-            b.startAssert().startCall(getBytecode, "validateLocalLivenessInternal");
+        // Check that the local is live at the current bci.
+        if (parent.model.canValidateMaterializedLocalLiveness()) {
+            b.startAssert().startCall(bytecodeNode, "validateLocalLivenessInternal");
             b.string(frame);
             b.string("slot");
-            b.string(localIndex);
+            b.tree(localIndex);
             b.string("frame");
             b.string("bci");
             b.end(2);
         }
-
     }
 
     /**
@@ -4232,7 +4345,7 @@ final class BytecodeNodeElement extends AbstractElement {
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
 
             if (isBoxingOverloadReturnTypeQuickening(instr)) {
-                InstructionModel generic = instr.quickeningBase.findGenericInstruction();
+                InstructionModel generic = instr.quickeningBase.findQuickening(QuickeningKind.GENERIC, null, false);
                 if (generic == instr) {
                     throw new AssertionError("Unexpected generic instruction.");
                 }

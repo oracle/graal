@@ -66,6 +66,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.QuickeningKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.generator.BitSet;
@@ -133,8 +134,42 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean enableBlockScoping;
     public boolean enableThreadedSwitch;
     public boolean enableStackPointerBoxing = false;
+
+    public enum LoadIllegalLocalStrategy {
+        FRAME_SLOT_TYPE_EXCEPTION,
+        DEFAULT_VALUE,
+        CUSTOM_EXCEPTION
+    }
+
+    public LoadIllegalLocalStrategy loadIllegalLocalStrategy;
     public String defaultLocalValue;
     public DSLExpression defaultLocalValueExpression;
+    public DeclaredType illegalLocalException;
+    public String illegalLocalExceptionFactoryName;
+
+    /**
+     * Models a resolved illegal local exception factory method with parsed parameters.
+     */
+    public record IllegalLocalExceptionFactory(ExecutableElement method, List<ParameterKind> parameters) {
+        public enum ParameterKind {
+            NODE,
+            BYTECODE_NODE,
+            BYTECODE_LOCATION,
+            LOCAL_VARIABLE
+        }
+
+        public boolean binds(ParameterKind parameter) {
+            for (ParameterKind p : parameters) {
+                if (p == parameter) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    public IllegalLocalExceptionFactory illegalLocalExceptionFactory;
+
     public String variadicStackLimit;
     public DSLExpression variadicStackLimitExpression;
 
@@ -289,10 +324,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return enableYield || !customYieldOperations.isEmpty();
     }
 
-    public boolean hasDefaultLocalValue() {
-        return !(defaultLocalValue == null || defaultLocalValue.isEmpty());
-    }
-
     public InstructionModel getInvalidateInstruction(int length) {
         if (invalidateInstructions == null) {
             return null;
@@ -432,8 +463,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return instruction(new InstructionModel(kind, name, signature));
     }
 
-    public InstructionModel quickenInstruction(InstructionModel base, Signature signature, String specializationName) {
-        return instruction(new InstructionModel(base, specializationName, signature));
+    public InstructionModel quickenInstruction(InstructionModel base, Signature signature, String quickeningName, QuickeningKind quickeningKind, TypeMirror specializedType, boolean checked) {
+        return instruction(new InstructionModel(base, quickeningName, signature, quickeningKind, specializedType, checked));
     }
 
     public InstructionModel shortCircuitInstruction(String name, ShortCircuitInstructionModel shortCircuitModel) {
@@ -548,9 +579,11 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         // load.null, pop -> _
         rules.add(deletionRule(p(loadNullInstruction), p(popInstruction)));
 
-        // TODO GR-71765 this rule can't be used if illegal local exceptions
-        // load.local x, pop -> _
-        rules.add(deletionRule(p(loadLocalOperation.instruction), p(popInstruction)));
+        // Throwing an exception on illegal load makes load.local side-effecting.
+        if (loadIllegalLocalStrategy != LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
+            // load.local x, pop -> _
+            rules.add(deletionRule(p(loadLocalOperation.instruction), p(popInstruction)));
+        }
 
         return rules.toArray(InstructionRewriteRuleModel[]::new);
     }

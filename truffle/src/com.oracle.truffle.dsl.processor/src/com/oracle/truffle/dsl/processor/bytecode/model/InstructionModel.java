@@ -292,24 +292,44 @@ public final class InstructionModel implements PrettyPrintable {
 
     public List<SpecializationData> filteredSpecializations;
 
-    public InstructionModel quickeningBase;
-    // operation this instruction stems from. null if none
-    public OperationModel operation;
+    public final InstructionModel quickeningBase;
+
+    public enum QuickeningKind {
+        /**
+         * Implements a specialized version of the base instruction. Typically this is a type
+         * specialization but it need not be.
+         */
+        SPECIALIZED,
+        /**
+         * Like {@link #SPECIALIZED}, but produces an unboxed result (for {@code StoreLocal},
+         * consumes an unboxed operand).
+         */
+        SPECIALIZED_UNBOXED,
+        /**
+         * Implements a generic version of the base instruction. This instruction acts as a sink to
+         * prevent the base instruction from re-quickening to a specialized case.
+         */
+        GENERIC,
+    }
+
+    public final QuickeningKind quickeningKind;
 
     /*
-     * Used for return type boxing elimination quickenings.
+     * Whether the instruction checks for invalid operands. Currently only used by local load
+     * instructions.
      */
-    public boolean returnTypeQuickening;
-
-    public boolean generic;
-
-    public boolean nonNull;
+    public final boolean checked;
 
     /*
      * Alternative argument specialization type for builtin quickenings. E.g. for loadLocal
      * parameter types.
      */
-    public TypeMirror specializedType;
+    public final TypeMirror specializedType;
+
+    // operation this instruction stems from. null if none
+    public OperationModel operation;
+
+    public boolean nonNull;
 
     public ShortCircuitInstructionModel shortCircuitModel;
 
@@ -326,20 +346,27 @@ public final class InstructionModel implements PrettyPrintable {
         this.name = name;
         this.signature = signature;
         this.quickeningName = null;
+        this.quickeningBase = null;
+        this.quickeningKind = null;
+        this.specializedType = null;
+        this.checked = false;
     }
 
     /*
      * Quickening constructor.
      */
-    public InstructionModel(InstructionModel base, String quickeningName, Signature signature) {
+    public InstructionModel(InstructionModel base, String quickeningName, Signature signature, QuickeningKind quickeningKind, TypeMirror specializedType, boolean checked) {
         this.kind = base.kind;
         this.name = base.name + "$" + quickeningName;
         this.signature = signature;
         this.quickeningName = quickeningName;
+        this.quickeningBase = base;
+        this.quickeningKind = quickeningKind;
+        this.specializedType = specializedType;
+        this.checked = checked;
         this.filteredSpecializations = base.filteredSpecializations;
         this.nodeData = base.nodeData;
         this.nodeType = base.nodeType;
-        this.quickeningBase = base;
         this.operation = base.operation;
         this.shortCircuitModel = base.shortCircuitModel;
         for (InstructionImmediate imm : base.immediates) {
@@ -417,13 +444,9 @@ public final class InstructionModel implements PrettyPrintable {
         return !quickenedInstructions.isEmpty();
     }
 
-    public boolean isSpecializedQuickening() {
-        return quickeningBase != null && !returnTypeQuickening && !generic;
-    }
-
     public boolean hasSpecializedQuickenings() {
         for (InstructionModel instr : quickenedInstructions) {
-            if (instr.isSpecializedQuickening()) {
+            if (instr.quickeningKind == QuickeningKind.SPECIALIZED) {
                 return true;
             }
         }
@@ -435,7 +458,7 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public boolean isReturnTypeQuickening() {
-        return returnTypeQuickening;
+        return quickeningKind == QuickeningKind.SPECIALIZED_UNBOXED && kind != InstructionKind.STORE_LOCAL && kind != InstructionKind.STORE_LOCAL_MATERIALIZED;
     }
 
     @Override
@@ -456,15 +479,11 @@ public final class InstructionModel implements PrettyPrintable {
             if (quickeningBase == null) {
                 quickenKind = "base";
             } else {
-                if (isReturnTypeQuickening()) {
-                    quickenKind = "return-type";
-                } else {
-                    if (generic) {
-                        quickenKind = "generic";
-                    } else {
-                        quickenKind = "specialized";
-                    }
-                }
+                quickenKind = switch (quickeningKind) {
+                    case GENERIC -> "generic";
+                    case SPECIALIZED -> "specialized";
+                    case SPECIALIZED_UNBOXED -> "return-type";
+                };
             }
             printer.field("quicken-kind", quickenKind);
         }
@@ -728,22 +747,19 @@ public final class InstructionModel implements PrettyPrintable {
         return false;
     }
 
-    public InstructionModel findSpecializedInstruction(TypeMirror type) {
-        for (InstructionModel specialization : quickenedInstructions) {
-            if (!specialization.generic && ElementUtils.typeEquals(type, specialization.specializedType)) {
-                return specialization;
+    @SuppressWarnings("hiding")
+    public InstructionModel findQuickening(QuickeningKind quickeningKind, TypeMirror specializedType, boolean checked) {
+        InstructionModel result = null;
+        for (InstructionModel quickening : quickenedInstructions) {
+            if (quickening.quickeningKind == quickeningKind && ElementUtils.typeEquals(quickening.specializedType, specializedType) && quickening.checked == checked) {
+                if (result != null) {
+                    String specializedTypeString = (specializedType == null) ? null : ElementUtils.getSimpleName(specializedType);
+                    throw new AssertionError("Multiple quickenings found with kind %s and specialized type %s: %s, %s".formatted(quickeningKind, specializedTypeString, result, quickening));
+                }
+                result = quickening;
             }
         }
-        return null;
-    }
-
-    public InstructionModel findGenericInstruction() {
-        for (InstructionModel specialization : quickenedInstructions) {
-            if (specialization.generic) {
-                return specialization;
-            }
-        }
-        return null;
+        return result;
     }
 
     public void validateAlignment() {
