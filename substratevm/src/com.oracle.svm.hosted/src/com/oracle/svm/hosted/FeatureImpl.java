@@ -89,6 +89,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
@@ -440,6 +441,30 @@ public class FeatureImpl {
          */
         public void registerClassReachabilityListener(BiConsumer<DuringAnalysisAccess, Class<?>> listener) {
             getHostVM().registerClassReachabilityListener(listener);
+        }
+
+        /**
+         * Registers a method that is allowed to be executed at build time if called as the
+         * bootstrap method for an invokedynamic, in which case each call site outputted will be
+         * constant-folded. Other bootstrap methods will be executed at run time by default,
+         * creating the call site at run time.
+         *
+         * @since 25.1
+         */
+        public void registerBuildTimeIndyIncludeList(Executable method) {
+            BootstrapMethodConfiguration.singleton().addBuildTimeIndy(getUniverse().getOriginalMetaAccess().lookupJavaMethod(method));
+        }
+
+        /**
+         * Registers a method that is allowed to be executed at build time if called as the
+         * bootstrap method for a constantdynamic, in which case each call site outputted will be
+         * constant-folded. Other bootstrap methods will be executed at run time by default,
+         * creating the call site at run time.
+         *
+         * @since 25.1
+         */
+        public void registerBuildTimeCondyIncludeList(Executable method) {
+            BootstrapMethodConfiguration.singleton().addBuildTimeCondy(getUniverse().getOriginalMetaAccess().lookupJavaMethod(method));
         }
 
         public SVMHost getHostVM() {
