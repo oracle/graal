@@ -456,6 +456,7 @@ public abstract class NonSnippetLowerings {
                              * Directly lower to a call based on the raw address, no offset address
                              * required.
                              */
+                            assert !SubstrateUtil.HOSTED && SubstrateOptions.useRistretto();
                             long untrackedMethodAdr = rawAdrConstant.rawValue();
                             ValueNode base = graph.addWithoutUnique(new FloatingWordCastNode(tool.getStampProvider().createMethodStamp(), ConstantNode.forLong(untrackedMethodAdr, graph)));
                             loweredCallTarget = graph.add(new SubstrateIndirectCallTargetNode(
@@ -474,7 +475,6 @@ public abstract class NonSnippetLowerings {
                      * a subsequent dead code elimination pass.
                      */
                     loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
-
                 } else {
                     StampProvider stampProvider = runtimeConfig.getProviders().getStampProvider();
                     LoadHubNode hub = graph.unique(new LoadHubNode(stampProvider, graph.addOrUnique(PiNode.create(receiver, nullCheck))));
