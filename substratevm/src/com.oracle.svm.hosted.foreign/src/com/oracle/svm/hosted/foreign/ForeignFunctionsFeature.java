@@ -583,8 +583,6 @@ public class ForeignFunctionsFeature implements InternalFeature {
         var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
         sealed = true;
 
-        AbiUtils.singleton().checkLibrarySupport();
-
         for (String simpleName : VAR_HANDLE_SEGMENT_ACCESSORS) {
             Class<?> varHandleSegmentAsXClass = ReflectionUtil.lookupClass(JLI_PACKAGE + '.' + simpleName);
             access.registerSubtypeReachabilityHandler(ForeignFunctionsFeature::registerVarHandleMethodsForReflection, varHandleSegmentAsXClass);
@@ -608,8 +606,10 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         RuntimeClassInitialization.initializeAtRunTime(RuntimeSystemLookup.class);
 
-        access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false,
-                        "Runtime support, registered in " + ForeignFunctionsFeature.class);
+        if (ForeignFunctionsRuntime.isLibcSupported()) {
+            access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false,
+                            "Runtime support, registered in " + ForeignFunctionsFeature.class);
+        }
 
         if (ForeignFunctionsRuntime.areFunctionCallsSupported()) {
             createDowncallStubs(access);

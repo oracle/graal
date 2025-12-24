@@ -39,7 +39,7 @@ import jdk.internal.foreign.abi.VMStorage;
  * information.
  */
 @SuppressWarnings("javadoc")
-@TargetClass(className = "jdk.internal.foreign.abi.NativeEntryPoint", onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
+@TargetClass(className = "jdk.internal.foreign.abi.NativeEntryPoint", onlyWith = ForeignAPIPredicates.Enabled.class)
 @Substitute
 public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
 
@@ -61,6 +61,10 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
                     int capturedStateMask,
                     boolean needsTransition,
                     @SuppressWarnings("unused") boolean usingAddressPairs) {
+        if (capturedStateMask != 0) {
+            AbiUtils.singleton().checkLibrarySupport();
+        }
+
         /*
          * A VMStorage may be null only when the Linker.Option.critical(allowHeapAccess=true) option
          * is passed. (see
