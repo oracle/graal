@@ -43,7 +43,7 @@ package org.graalvm.wasm;
 import java.util.BitSet;
 import java.util.Objects;
 
-import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.vector.Vector128;
 import org.graalvm.wasm.globals.WasmGlobal;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;

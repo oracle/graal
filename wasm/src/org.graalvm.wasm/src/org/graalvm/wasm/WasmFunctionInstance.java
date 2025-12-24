@@ -58,7 +58,7 @@ import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 
 @ExportLibrary(InteropLibrary.class)
-public final class WasmFunctionInstance extends EmbedderDataHolder implements TruffleObject {
+public final class WasmFunctionInstance extends WasmTypedHeapObject implements TruffleObject, EmbedderDataHolder {
 
     private final WasmContext context;
     private final WasmInstance moduleInstance;
@@ -70,6 +70,8 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
      */
     private Object importedFunction;
 
+    private Object embedderData = WasmConstant.VOID;
+
     /**
      * Represents a call target that is a WebAssembly function or an imported function.
      */
@@ -78,6 +80,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
     }
 
     public WasmFunctionInstance(WasmContext context, WasmInstance moduleInstance, WasmFunction function, CallTarget target) {
+        super(function.type());
         this.context = Objects.requireNonNull(context, "context must be non-null");
         this.moduleInstance = Objects.requireNonNull(moduleInstance, "module instance must be non-null");
         this.function = Objects.requireNonNull(function, "function must be non-null");
@@ -178,5 +181,15 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
             }
             return callAdapter;
         }
+    }
+
+    @Override
+    public Object getEmbedderData() {
+        return embedderData;
+    }
+
+    @Override
+    public void setEmbedderData(Object embedderData) {
+        this.embedderData = embedderData;
     }
 }

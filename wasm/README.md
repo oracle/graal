@@ -77,14 +77,17 @@ The `floyd` function is defined as separate and can be later exported.
     ```java
     try (Context context = Context.newBuilder("wasm").option("wasm.Builtins", "wasi_snapshot_preview1").build()) {
         // Evaluate the WebAssembly module
-        Source source = Source.newBuilder("wasm", new File("path/to/floyd.wasm")).name("example").build();
-        context.eval(source);
+        Source source = Source.newBuilder("wasm", new File("path/to/floyd.wasm")).build();
+        Value exampleModule = context.eval(source);
 
-        // Initialize the module and execute the floyd function
-        Value exampleModule = context.getBindings("wasm").getMember("example");
-        exampleModule.getMember("_initialize").executeVoid();
-        Value floydFunction = exampleModule.getMember("floyd");
-        floydFunction.execute();
+        // Initialize the module
+        Value exampleInstance = exampleModule.newInstance();
+        Value exampleExports = exampleInstance.getMember("exports");
+        exampleExports.getMember("_initialize").executeVoid();
+
+        // Execute the floyd function
+        Value floyd = exampleExports.getMember("floyd");
+        floyd.execute();
     }
     ```
 

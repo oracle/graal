@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.api;
+package org.graalvm.wasm.vector;
 
 public interface Vector128Ops<V128> {
 

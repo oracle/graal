@@ -54,7 +54,10 @@ public final class Instructions {
     public static final int IF = 0x04;
     public static final int ELSE = 0x05;
 
+    public static final int TRY = 0x06; // legacy exception handling
+    public static final int CATCH = 0x07; // legacy exception handling
     public static final int THROW = 0x08;
+    public static final int RETHROW = 0x09; // legacy exception handling
     public static final int THROW_REF = 0x0A;
 
     public static final int END = 0x0B;
@@ -66,6 +69,10 @@ public final class Instructions {
     public static final int RETURN = 0x0F;
     public static final int CALL = 0x10;
     public static final int CALL_INDIRECT = 0x11;
+    public static final int CALL_REF = 0x14;
+
+    public static final int DELEGATE = 0x18; // legacy exception handling
+    public static final int CATCH_ALL = 0x19; // legacy exception handling
 
     public static final int DROP = 0x1A;
     public static final int SELECT = 0x1B;
@@ -245,6 +252,54 @@ public final class Instructions {
     public static final int F32_REINTERPRET_I32 = 0xBE;
     public static final int F64_REINTERPRET_I64 = 0xBF;
 
+    public static final int I32_EXTEND8_S = 0xC0;
+    public static final int I32_EXTEND16_S = 0xC1;
+    public static final int I64_EXTEND8_S = 0xC2;
+    public static final int I64_EXTEND16_S = 0xC3;
+    public static final int I64_EXTEND32_S = 0xC4;
+
+    public static final int REF_NULL = 0xD0;
+    public static final int REF_IS_NULL = 0xD1;
+    public static final int REF_FUNC = 0xD2;
+    public static final int REF_EQ = 0xD3;
+    public static final int REF_AS_NON_NULL = 0xD4;
+    public static final int BR_ON_NULL = 0xD5;
+    public static final int BR_ON_NON_NULL = 0xD6;
+
+    public static final int AGGREGATE = 0xFB;
+
+    public static final int STRUCT_NEW = 0x00;
+    public static final int STRUCT_NEW_DEFAULT = 0x01;
+    public static final int STRUCT_GET = 0x02;
+    public static final int STRUCT_GET_S = 0x03;
+    public static final int STRUCT_GET_U = 0x04;
+    public static final int STRUCT_SET = 0x05;
+    public static final int ARRAY_NEW = 0x06;
+    public static final int ARRAY_NEW_DEFAULT = 0x07;
+    public static final int ARRAY_NEW_FIXED = 0x08;
+    public static final int ARRAY_NEW_DATA = 0x09;
+    public static final int ARRAY_NEW_ELEM = 0x0A;
+    public static final int ARRAY_GET = 0x0B;
+    public static final int ARRAY_GET_S = 0x0C;
+    public static final int ARRAY_GET_U = 0x0D;
+    public static final int ARRAY_SET = 0x0E;
+    public static final int ARRAY_LEN = 0x0F;
+    public static final int ARRAY_FILL = 0x10;
+    public static final int ARRAY_COPY = 0x11;
+    public static final int ARRAY_INIT_DATA = 0x12;
+    public static final int ARRAY_INIT_ELEM = 0x13;
+    public static final int REF_TEST_NON_NULL = 0x14;
+    public static final int REF_TEST_NULL = 0x15;
+    public static final int REF_CAST_NON_NULL = 0x16;
+    public static final int REF_CAST_NULL = 0x17;
+    public static final int BR_ON_CAST = 0x18;
+    public static final int BR_ON_CAST_FAIL = 0x19;
+    public static final int ANY_CONVERT_EXTERN = 0x1A;
+    public static final int EXTERN_CONVERT_ANY = 0x1B;
+    public static final int REF_I31 = 0x1C;
+    public static final int I31_GET_S = 0x1D;
+    public static final int I31_GET_U = 0x1E;
+
     public static final int MISC = 0xFC;
 
     public static final int I32_TRUNC_SAT_F32_S = 0x00;
@@ -256,16 +311,6 @@ public final class Instructions {
     public static final int I64_TRUNC_SAT_F64_S = 0x06;
     public static final int I64_TRUNC_SAT_F64_U = 0x07;
 
-    public static final int I32_EXTEND8_S = 0xC0;
-    public static final int I32_EXTEND16_S = 0xC1;
-    public static final int I64_EXTEND8_S = 0xC2;
-    public static final int I64_EXTEND16_S = 0xC3;
-    public static final int I64_EXTEND32_S = 0xC4;
-
-    public static final int REF_NULL = 0xD0;
-    public static final int REF_IS_NULL = 0xD1;
-    public static final int REF_FUNC = 0xD2;
-
     public static final int MEMORY_INIT = 0x08;
     public static final int DATA_DROP = 0x09;
     public static final int MEMORY_COPY = 0x0A;
@@ -276,11 +321,6 @@ public final class Instructions {
     public static final int TABLE_GROW = 0x0F;
     public static final int TABLE_SIZE = 0x10;
     public static final int TABLE_FILL = 0x11;
-
-    public static final int CALL_REF = 0x14;
-    public static final int REF_AS_NON_NULL = 0xD4;
-    public static final int BR_ON_NULL = 0xD5;
-    public static final int BR_ON_NON_NULL = 0xD6;
 
     public static final int ATOMIC = 0xFE;
 

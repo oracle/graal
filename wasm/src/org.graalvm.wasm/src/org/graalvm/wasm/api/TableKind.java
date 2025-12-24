@@ -41,6 +41,7 @@
 package org.graalvm.wasm.api;
 
 import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.exception.WasmJsApiException;
 
 public enum TableKind {
     externref(WasmType.EXTERNREF_TYPE),
@@ -60,7 +61,7 @@ public enum TableKind {
         return switch (value) {
             case WasmType.EXTERNREF_TYPE -> "externref";
             case WasmType.FUNCREF_TYPE -> "anyfunc";
-            default -> "";
+            default -> throw WasmJsApiException.invalidValueType(value);
         };
     }
 }

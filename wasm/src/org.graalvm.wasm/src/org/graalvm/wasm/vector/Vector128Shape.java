@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.api;
+package org.graalvm.wasm.vector;
 
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.Instructions;

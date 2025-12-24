@@ -50,7 +50,7 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.constants.Mutability;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 public class SpectestModule extends BuiltinModule {
@@ -65,10 +65,10 @@ public class SpectestModule extends BuiltinModule {
         defineFunction(context, module, "print_f64", types(F64_TYPE), types(), new PrintNode(language, module));
         defineFunction(context, module, "print_i32_f32", types(I32_TYPE, F32_TYPE), types(), new PrintNode(language, module));
         defineFunction(context, module, "print_f64_f64", types(F64_TYPE, F64_TYPE), types(), new PrintNode(language, module));
-        defineGlobal(module, "global_i32", I32_TYPE, GlobalModifier.CONSTANT, 666);
-        defineGlobal(module, "global_i64", I64_TYPE, GlobalModifier.CONSTANT, 666L);
-        defineGlobal(module, "global_f32", F32_TYPE, GlobalModifier.CONSTANT, 666.6f);
-        defineGlobal(module, "global_f64", F64_TYPE, GlobalModifier.CONSTANT, 666.6);
+        defineGlobal(module, "global_i32", I32_TYPE, Mutability.CONSTANT, 666);
+        defineGlobal(module, "global_i64", I64_TYPE, Mutability.CONSTANT, 666L);
+        defineGlobal(module, "global_f32", F32_TYPE, Mutability.CONSTANT, 666.6f);
+        defineGlobal(module, "global_f64", F64_TYPE, Mutability.CONSTANT, 666.6);
         defineTable(context, module, "table", 10, 20, WasmType.FUNCREF_TYPE);
         defineMemory(context, module, "memory", 1, 2, false, false);
         if (context.getContextOptions().supportThreads() && context.getContextOptions().useUnsafeMemory()) {

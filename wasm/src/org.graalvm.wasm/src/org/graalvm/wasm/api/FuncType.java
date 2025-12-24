@@ -41,10 +41,13 @@
 
 package org.graalvm.wasm.api;
 
-import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.exception.WasmJsApiException;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.types.DefinedType;
+import org.graalvm.wasm.types.FunctionType;
+import org.graalvm.wasm.types.RecursiveTypes;
+import org.graalvm.wasm.types.SubType;
 
 /**
  * Represents the type of functions and exceptions in the JS API.
@@ -84,9 +87,12 @@ public final class FuncType {
         }
     }
 
-    public static FuncType fromClosedFunctionType(SymbolTable.ClosedFunctionType functionType) {
-        final SymbolTable.ClosedValueType[] paramTypes = functionType.paramTypes();
-        final SymbolTable.ClosedValueType[] resultTypes = functionType.resultTypes();
+    public static FuncType fromDefinedType(DefinedType definedType) {
+        assert definedType.isFunctionType();
+
+        final FunctionType functionType = definedType.asFunctionType();
+        final org.graalvm.wasm.types.ValueType[] paramTypes = functionType.paramTypes();
+        final org.graalvm.wasm.types.ValueType[] resultTypes = functionType.resultTypes();
 
         final ValueType[] params = new ValueType[paramTypes.length];
         final ValueType[] results = new ValueType[resultTypes.length];
@@ -116,9 +122,9 @@ public final class FuncType {
         return results.length;
     }
 
-    public SymbolTable.ClosedFunctionType toClosedFunctionType() {
-        var paramTypes = new SymbolTable.ClosedValueType[params.length];
-        var resultTypes = new SymbolTable.ClosedValueType[results.length];
+    public DefinedType toDefinedType() {
+        var paramTypes = new org.graalvm.wasm.types.ValueType[params.length];
+        var resultTypes = new org.graalvm.wasm.types.ValueType[results.length];
 
         for (int i = 0; i < paramTypes.length; i++) {
             paramTypes[i] = params[i].asClosedValueType();
@@ -126,7 +132,13 @@ public final class FuncType {
         for (int i = 0; i < resultTypes.length; i++) {
             resultTypes[i] = results[i].asClosedValueType();
         }
-        return new SymbolTable.ClosedFunctionType(paramTypes, resultTypes);
+
+        FunctionType functionType = new FunctionType(paramTypes, resultTypes);
+        SubType subType = new SubType(true, null, functionType);
+        RecursiveTypes recursiveTypeGroup = new RecursiveTypes(new SubType[]{subType});
+        // This DefinedType will not have a typeEquivalence class. It will not need one, as it will
+        // never participate in runtime type checking.
+        return DefinedType.makeTopLevelType(recursiveTypeGroup, 0);
     }
 
     public String toString(StringBuilder b) {

@@ -52,6 +52,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 import org.graalvm.wasm.EmbedderDataHolder;
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Sizes;
@@ -77,7 +78,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class WasmMemory extends EmbedderDataHolder implements TruffleObject {
+public abstract class WasmMemory implements TruffleObject, EmbedderDataHolder {
 
     /**
      * @see #declaredMinSize()
@@ -114,6 +115,8 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * @see #isShared()
      */
     protected final boolean shared;
+
+    private Object embedderData = WasmConstant.VOID;
 
     @TruffleBoundary
     protected WasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
@@ -659,5 +662,15 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
             throw CompilerDirectives.shouldNotReachHere("Memory size must not be less than initial size");
         }
         return this;
+    }
+
+    @Override
+    public Object getEmbedderData() {
+        return embedderData;
+    }
+
+    @Override
+    public void setEmbedderData(Object embedderData) {
+        this.embedderData = embedderData;
     }
 }
