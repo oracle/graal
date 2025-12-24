@@ -107,6 +107,8 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     protected static final int OUT_OF_ADDRESS_SPACE = 1;
     protected static final int COMMIT_FAILED = 2;
 
+    protected static final String UNCOMMIT_FAILED_ERROR_MSG = "Failed while uncommitting memory. " +
+                    "This error may occur if the operating system's memory mapping limit is too low (see vm.max_map_count on Linux). Please increase this limit and try again.";
     private static final OutOfMemoryError NODE_ALLOCATION_FAILED = new OutOfMemoryError("Could not allocate node for free list, OS may be out of memory.");
     private static final OutOfMemoryError ALIGNED_OUT_OF_ADDRESS_SPACE = new OutOfMemoryError("Could not allocate an aligned heap chunk because the heap address space is exhausted. " +
                     "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize).");
@@ -686,7 +688,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
 
     private static RuntimeException reportUncommitFailedInterruptibly(Pointer mapBegin, UnsignedWord mappingSize) {
         Log.log().string("Uncommitting ").unsigned(mappingSize).string(" bytes of unused memory at ").hex(mapBegin).string(" failed.").newline();
-        throw VMError.shouldNotReachHere("Uncommitting memory failed.");
+        throw VMError.shouldNotReachHere(UNCOMMIT_FAILED_ERROR_MSG);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
