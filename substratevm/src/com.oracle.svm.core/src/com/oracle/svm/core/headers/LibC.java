@@ -24,7 +24,10 @@
  */
 package com.oracle.svm.core.headers;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.PointerBase;
@@ -32,6 +35,9 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.memory.NativeMemory;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -82,6 +88,17 @@ public class LibC {
          * we just exit with an otherwise unused exit code.
          */
         exit(EXIT_CODE_ABORT);
+    }
+
+    /**
+     * May only be used to free memory that was allocated by the libc or other native code. Do
+     * <b>NOT</b> use this method when freeing memory that was allocated via internal APIs such as
+     * {@link NativeMemory}, {@link NullableNativeMemory}, {@link UntrackedNullableNativeMemory}, or
+     * {@link UnmanagedMemory}.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void free(PointerBase ptr) {
+        libc().free(ptr);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

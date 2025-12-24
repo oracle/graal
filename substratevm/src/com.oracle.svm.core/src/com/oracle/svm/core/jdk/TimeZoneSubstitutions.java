@@ -31,7 +31,6 @@ import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.TimeZone;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
@@ -48,12 +47,13 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
-import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.word.Word;
 
 /**
  * The following classes aim to provide full support for time zones for native-image. This
@@ -101,7 +101,7 @@ final class Target_java_util_TimeZone {
             CCharPointer tzId = LibCHelper.SVM_FindJavaTZmd(tzMappingsPtr, contentLen);
             String result = CTypeConversion.toJavaString(tzId);
             // SVM_FindJavaTZmd returns a newly allocated string
-            UntrackedNullableNativeMemory.free(tzId);
+            LibC.free(tzId);
             return result;
         } finally {
             if (refContent != null) {
