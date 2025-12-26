@@ -43,6 +43,7 @@ import mx
 import mx_compiler
 import mx_gate
 import mx_unittest
+import mx_sdk
 import mx_sdk_vm
 import mx_sdk_vm_impl
 import mx_javamodules
@@ -505,13 +506,6 @@ def svm_gate_body(args, tasks):
 
     with Task('Validate JSON build info', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
-            import json
-            try:
-                from jsonschema import validate as json_validate
-                from jsonschema.exceptions import ValidationError, SchemaError
-            except ImportError:
-                mx.abort('Unable to import jsonschema')
-
             json_and_schema_file_pairs = [
                 ('build-artifacts.json', 'build-artifacts-schema-v0.9.0.json'),
                 ('build-output.json', 'build-output-schema-v0.9.4.json'),
@@ -520,19 +514,8 @@ def svm_gate_body(args, tasks):
             build_output_file = join(svmbuild_dir(), 'build-output.json')
             helloworld(['--output-path', svmbuild_dir()] + svm_experimental_options([f'-H:BuildOutputJSONFile={build_output_file}', '-H:+GenerateBuildArtifactsFile']))
 
-            try:
-                for json_file, schema_file in json_and_schema_file_pairs:
-                    with open(join(svmbuild_dir(), json_file)) as f:
-                        json_contents = json.load(f)
-                    with open(join(suite.dir, '..', 'docs', 'reference-manual', 'native-image', 'assets', schema_file)) as f:
-                        schema_contents = json.load(f)
-                    json_validate(json_contents, schema_contents)
-            except IOError as e:
-                mx.abort(f'Unable to load JSON build info: {e}')
-            except ValidationError as e:
-                mx.abort(f'Unable to validate JSON build info against the schema: {e}')
-            except SchemaError as e:
-                mx.abort(f'JSON schema not valid: {e}')
+            schemas_dir = os.path.join(suite.dir, '..', 'docs', 'reference-manual', 'native-image', 'assets')
+            mx_sdk.validate_dir_files_with_file_schema_pairs(schemas_dir, svmbuild_dir(), json_and_schema_file_pairs)
 
     with Task('java agent tests', tasks, tags=[GraalTags.java_agent]) as t:
         if t:
