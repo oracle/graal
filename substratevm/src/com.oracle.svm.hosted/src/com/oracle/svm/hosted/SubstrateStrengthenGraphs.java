@@ -42,6 +42,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.analysis.tesa.TesaEngine;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -68,12 +69,14 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
     private final Boolean trackDynamicAccess;
     private final Boolean trackJavaHomeAccess;
     private final Boolean trackJavaHomeAccessDetailed;
+    private final TesaEngine tesaEngine;
 
     public SubstrateStrengthenGraphs(Inflation bb, Universe converter) {
         super(bb, converter);
         trackDynamicAccess = TrackDynamicAccessEnabled.isTrackDynamicAccessEnabled();
         trackJavaHomeAccess = SubstrateOptions.TrackJavaHomeAccess.getValue();
         trackJavaHomeAccessDetailed = SubstrateOptions.TrackJavaHomeAccessDetailed.getValue();
+        tesaEngine = TesaEngine.enabled() ? TesaEngine.get() : null;
     }
 
     @Override
@@ -87,6 +90,10 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
     protected void postStrengthenGraphs(StructuredGraph graph, AnalysisMethod method) {
         if (trackJavaHomeAccess) {
             new AnalyzeJavaHomeAccessPhase(trackJavaHomeAccessDetailed, bb.getMetaAccess()).apply(graph, bb.getProviders(method));
+        }
+        if (tesaEngine != null) {
+            /* Use graphs already improved by the analysis. */
+            tesaEngine.initializeStateForMethod(method, graph);
         }
     }
 
