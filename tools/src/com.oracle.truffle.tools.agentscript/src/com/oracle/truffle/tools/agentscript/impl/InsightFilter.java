@@ -49,6 +49,8 @@ final class InsightFilter {
     private static final String CONFIG_EXPRESSIONS = "expressions";
     private static final String CONFIG_STATEMENTS = "statements";
     private static final String CONFIG_ROOTS = "roots";
+    private static final String CONFIG_READ_VARIABLES = "reads";
+    private static final String CONFIG_WRITE_VARIABLES = "writes";
     private static final String CONFIG_ROOT_FILTER = "rootNameFilter";
     private static final String CONFIG_SOURCE_FILTER = "sourceFilter";
     private static final String CONFIG_AT = "at";
@@ -189,6 +191,12 @@ final class InsightFilter {
             if (configReader.is(CONFIG_ROOTS)) {
                 allTags.add(StandardTags.RootBodyTag.class);
             }
+            if (configReader.is(CONFIG_READ_VARIABLES)) {
+                allTags.add(StandardTags.ReadVariableTag.class);
+            }
+            if (configReader.is(CONFIG_WRITE_VARIABLES)) {
+                allTags.add(StandardTags.WriteVariableTag.class);
+            }
             Object rootNameFilter = configReader.get(CONFIG_ROOT_FILTER);
             if (rootNameFilter != null) {
                 if (IOP.isString(rootNameFilter)) {
@@ -245,7 +253,7 @@ final class InsightFilter {
             }
         }
         if (allTags.isEmpty()) {
-            throw new IllegalArgumentException("No elements specified to listen to for execution listener. Need to specify at least one element kind: expressions, statements or roots.");
+            throw new IllegalArgumentException("No elements specified to listen to for execution listener. Need to specify at least one element kind: expressions, statements, roots, reads, writes.");
         }
 
         InsightFilter filter = new InsightFilter(allTags, rootNameRegExp, sourceURI, sourcePathRegExp, lineIs, columnIs, rootNameFn, sourceFilterFn);

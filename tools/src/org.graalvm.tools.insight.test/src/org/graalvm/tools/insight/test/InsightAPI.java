@@ -25,6 +25,7 @@
 package org.graalvm.tools.insight.test;
 
 // @formatter:off // @replace regex='.*' replacement=''
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -250,6 +251,20 @@ public interface InsightAPI {
              * @since 1.0
              */
             <T> T iterateFrames(FramesIterator<T> it);
+
+            /** Returns additional attributes associated with this context.
+             * The actual arguments are <em>language and location</em> specific.
+             * Examples:
+             * <ul>
+             *   <li>In case of {@code reads: true} event, the attribute
+             * {@link StandardTags.ReadVariableTag#NAME} is available.</li>
+             *   <li>In case of {@code writes: true} event, the attribute
+             * {@link StandardTags.WriteVariableTag#NAME} is available</li>
+             * </ul>
+             *
+             * @return map of attributes or {@code null}
+             */
+            Map<String, Object> attrs();
         }
         void event(Context ctx, Map<String, Object> frame);
     }
@@ -274,6 +289,8 @@ public interface InsightAPI {
         public boolean expressions;
         public boolean statements;
         public boolean roots;
+        public boolean writes;
+        public boolean reads;
 
         /** String with a regular expression to match name of functions.
          * Prior to version 0.6 this had to be a
