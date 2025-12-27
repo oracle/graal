@@ -35,7 +35,7 @@ abstract class AbstractContextObject implements TruffleObject {
     static final ArrayObject MEMBERS = ArrayObject.array(
                     "name", "source", "characters",
                     "line", "startLine", "endLine",
-                    "column", "startColumn", "endColumn", "charIndex", "charLength", "charEndIndex");
+                    "column", "startColumn", "endColumn", "charIndex", "charLength", "charEndIndex", "attrs");
 
     @CompilerDirectives.CompilationFinal private String name;
     @CompilerDirectives.CompilationFinal(dimensions = 1) private int[] values;

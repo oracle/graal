@@ -25,6 +25,7 @@
 package org.graalvm.tools.insight.test;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
@@ -577,6 +578,57 @@ public class InsightObjectTest {
 
             List<String> maxStack = Arrays.asList(max[0]);
             assertEquals("Three functions & main program", Arrays.asList("mar", "bar", "foo", ""), maxStack);
+        }
+    }
+
+    @Test
+    public void readWriteVariables() throws Exception {
+        try (Context c = InsightObjectFactory.newContext()) {
+            Value agent = InsightObjectFactory.readInsight(c, null);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(do_mul,\n" +
+                "    ARGUMENT(a),\n" +
+                "    ARGUMENT(b),\n" +
+                "    EXPRESSION\n" +
+                "  ),\n" +
+                "  DEFINE(mul,\n" +
+                "    ARGUMENT(a),\n" +
+                "    ARGUMENT(b),\n" +
+                "    CALL_WITH(do_mul, 1, READ_VAR(a), READ_VAR(b))\n" +
+                "  ),\n" +
+                "  CALL(mul, CONSTANT(6), CONSTANT(7))\n" +
+                ")",
+                "readWriteVars.px"
+            ).build();
+            // @formatter:on
+
+            Set<String> actions = new TreeSet<>();
+            final InsightAPI.OnEventHandler captureNames = (ctx, frame) -> {
+                final Map<String, Object> attrs = ctx.attrs();
+                if (attrs != null) {
+                    var readName = attrs.get(StandardTags.ReadVariableTag.NAME);
+                    if (readName != null) {
+                        actions.add("read:" + readName);
+                    }
+                    var writeName = attrs.get(StandardTags.WriteVariableTag.NAME);
+                    if (writeName != null) {
+                        actions.add("write:" + writeName);
+                    }
+                }
+            };
+            final InsightAPI.OnConfig cfg = createConfig(false, false, false, "mul.*", null);
+            cfg.reads = true;
+            cfg.writes = true;
+            agentAPI.on("enter", captureNames, cfg);
+            c.eval(sampleScript);
+            agentAPI.off("enter", captureNames);
+
+            Assert.assertArrayEquals("Reads and writes recorded", new Object[]{"read:a", "read:b", "write:a", "write:b"}, actions.toArray());
         }
     }
 

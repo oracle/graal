@@ -101,6 +101,9 @@ final class EventContextObject extends AbstractContextObject {
         if ("iterateFrames".equals(member)) {
             return iterateFrames(args, obj);
         }
+        if ("attrs".equals(member)) {
+            return obj.context.getNodeObject();
+        }
         throw UnknownIdentifierException.create(member);
     }
 
