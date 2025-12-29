@@ -310,8 +310,8 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
                 return index;
             } else {
                 Object value = getRawValue(index);
-                if (value instanceof CollisionLink) {
-                    entryValue = (CollisionLink) getRawValue(index);
+                if (value instanceof CollisionLink thisCollisionLink) {
+                    entryValue = thisCollisionLink;
                 } else {
                     return -1;
                 }
@@ -390,8 +390,8 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
                 return index;
             } else {
                 Object value = getRawValue(index);
-                if (value instanceof CollisionLink) {
-                    entryValue = (CollisionLink) getRawValue(index);
+                if (value instanceof CollisionLink thisCollisionLink) {
+                    entryValue = thisCollisionLink;
                     lastIndex = index;
                 } else {
                     return -1;
