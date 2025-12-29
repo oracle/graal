@@ -108,7 +108,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     private static final int LARGE_HASH_THRESHOLD = ((1 << Byte.SIZE) << 1);
 
     /**
-     * Number of entries above which more than 2 bytes are are necessary for the hash index.
+     * Number of entries above which more than 2 bytes are necessary for the hash index.
      */
     private static final int VERY_LARGE_HASH_THRESHOLD = (LARGE_HASH_THRESHOLD << Byte.SIZE);
 
@@ -221,20 +221,10 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     /**
      * Links the collisions. Needs to be immutable class for allowing efficient shallow copy from
      * other map on construction.
+     *
+     * @param next Index plus one of the next entry in the collision link chain.
      */
-    private static final class CollisionLink {
-
-        CollisionLink(Object value, int next) {
-            this.value = value;
-            this.next = next;
-        }
-
-        final Object value;
-
-        /**
-         * Index plus one of the next entry in the collision link chain.
-         */
-        final int next;
+    private record CollisionLink(Object value, int next) {
     }
 
     @SuppressWarnings("unchecked")
@@ -289,8 +279,8 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
                 return index;
             } else {
                 Object entryValue = getRawValue(index);
-                if (entryValue instanceof CollisionLink) {
-                    return findWithCollision(key, (CollisionLink) entryValue);
+                if (entryValue instanceof CollisionLink collisionLink) {
+                    return findWithCollision(key, collisionLink);
                 }
             }
         }
@@ -310,8 +300,8 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
                 return index;
             } else {
                 Object value = getRawValue(index);
-                if (value instanceof CollisionLink) {
-                    entryValue = (CollisionLink) getRawValue(index);
+                if (value instanceof CollisionLink thisCollisionLink) {
+                    entryValue = thisCollisionLink;
                 } else {
                     return -1;
                 }
@@ -362,8 +352,8 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
                 return index;
             } else {
                 Object entryValue = getRawValue(index);
-                if (entryValue instanceof CollisionLink) {
-                    return findAndRemoveWithCollision(key, (CollisionLink) entryValue, index);
+                if (entryValue instanceof CollisionLink collisionLink) {
+                    return findAndRemoveWithCollision(key, collisionLink, index);
                 }
             }
         }
@@ -390,8 +380,8 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
                 return index;
             } else {
                 Object value = getRawValue(index);
-                if (value instanceof CollisionLink) {
-                    entryValue = (CollisionLink) getRawValue(index);
+                if (value instanceof CollisionLink thisCollisionLink) {
+                    entryValue = thisCollisionLink;
                     lastIndex = index;
                 } else {
                     return -1;
@@ -702,30 +692,25 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     public Iterable<V> getValues() {
-        return new Iterable<>() {
+        return () -> new SparseMapIterator<>() {
+            @SuppressWarnings("unchecked")
             @Override
-            public Iterator<V> iterator() {
-                return new SparseMapIterator<>() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public V next() {
-                        Object result;
-                        while (true) {
-                            if (current >= totalEntries) {
-                                throw new NoSuchElementException();
-                            }
-                            result = getValue(current);
-                            if (result == null && getKey(current) == null) {
-                                // values can be null, double-check if key is also null
-                                current++;
-                            } else {
-                                current++;
-                                break;
-                            }
-                        }
-                        return (V) result;
+            public V next() {
+                Object result;
+                while (true) {
+                    if (current >= totalEntries) {
+                        throw new NoSuchElementException();
                     }
-                };
+                    result = getValue(current);
+                    if (result == null && getKey(current) == null) {
+                        // values can be null, double-check if key is also null
+                        current++;
+                    } else {
+                        current++;
+                        break;
+                    }
+                }
+                return (V) result;
             }
         };
     }
@@ -828,8 +813,8 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
     private Object getValue(int index) {
         Object object = getRawValue(index);
-        if (object instanceof CollisionLink) {
-            return ((CollisionLink) object).value;
+        if (object instanceof CollisionLink collisionLink) {
+            return collisionLink.value;
         }
         return object;
     }
