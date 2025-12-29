@@ -221,20 +221,10 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     /**
      * Links the collisions. Needs to be immutable class for allowing efficient shallow copy from
      * other map on construction.
+     *
+     * @param next Index plus one of the next entry in the collision link chain.
      */
-    private static final class CollisionLink {
-
-        CollisionLink(Object value, int next) {
-            this.value = value;
-            this.next = next;
-        }
-
-        final Object value;
-
-        /**
-         * Index plus one of the next entry in the collision link chain.
-         */
-        final int next;
+    private record CollisionLink(Object value, int next) {
     }
 
     @SuppressWarnings("unchecked")
