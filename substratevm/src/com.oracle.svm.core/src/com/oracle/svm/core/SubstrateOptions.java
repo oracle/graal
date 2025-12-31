@@ -725,6 +725,9 @@ public class SubstrateOptions {
                     "docs/reference-manual/native-image/assets/build-artifacts-schema-v0.9.0.json", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> GenerateBuildArtifactsFile = new HostedOptionKey<>(false);
 
+    @Option(help = "Enable JNI Validation.")
+    public static final HostedOptionKey<Boolean> JNIValidation = new HostedOptionKey<>(true);
+
     /*
      * Build output options.
      */

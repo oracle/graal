@@ -41,11 +41,14 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.jni.functions.JNIFunctions;
-import com.oracle.svm.core.jni.functions.JNIFunctions.UnimplementedWithJNIEnvArgument;
-import com.oracle.svm.core.jni.functions.JNIFunctions.UnimplementedWithJavaVMArgument;
+import com.oracle.svm.core.jni.functions.ValidatedJNIFunctions;
+//import com.oracle.svm.core.jni.functions.JNIFunctions.UnimplementedWithJNIEnvArgument;
+//import com.oracle.svm.core.jni.functions.JNIFunctions.UnimplementedWithJavaVMArgument;
 import com.oracle.svm.core.jni.functions.JNIInvocationInterface;
 import com.oracle.svm.core.jni.headers.JNIInvokeInterface;
 import com.oracle.svm.core.jni.headers.JNINativeInterface;
+import com.oracle.svm.hosted.jni.JNICallTrampolineMethod;
+import com.oracle.svm.hosted.jni.JNIAccessFeature;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
@@ -77,7 +80,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class JNIFunctionTablesFeature implements Feature {
 
     private final EnumSet<JavaKind> jniKinds = EnumSet.of(JavaKind.Object, JavaKind.Boolean, JavaKind.Byte, JavaKind.Char,
-                    JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Void);
+            JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Void);
 
     /**
      * Metadata about the table pointed to by the {@code JNIEnv*} C pointer.
@@ -107,6 +110,18 @@ public class JNIFunctionTablesFeature implements Feature {
         return Arrays.asList(JNIAccessFeature.class);
     }
 
+    private Class<?> unimplementedJNIEnv() {
+        return SubstrateOptions.JNIValidation.getValue()
+                ? ValidatedJNIFunctions.UnimplementedWithJNIEnvArgument.class
+                : JNIFunctions.UnimplementedWithJNIEnvArgument.class;
+    }
+
+    private Class<?> unimplementedJavaVM() {
+        return SubstrateOptions.JNIValidation.getValue()
+                ? ValidatedJNIFunctions.UnimplementedWithJavaVMArgument.class
+                : JNIFunctions.UnimplementedWithJavaVMArgument.class;
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
@@ -123,10 +138,16 @@ public class JNIFunctionTablesFeature implements Feature {
         // Manually add functions as entry points so this is only done when JNI features are enabled
         AnalysisType invokes = metaAccess.lookupJavaType(JNIInvocationInterface.class);
         AnalysisType exports = metaAccess.lookupJavaType(JNIInvocationInterface.Exports.class);
-        AnalysisType functions = metaAccess.lookupJavaType(JNIFunctions.class);
+        Class<?> functionsClass =
+                SubstrateOptions.JNIValidation.getValue()
+                        ? ValidatedJNIFunctions.class
+                        : JNIFunctions.class;
+
+        AnalysisType functions = metaAccess.lookupJavaType(functionsClass);
+
         Stream<AnalysisMethod> analysisMethods = Stream.of(invokes, functions, exports).flatMap(type -> Stream.of(type.getDeclaredMethods(false)));
-        Stream<AnalysisMethod> unimplementedMethods = Stream.of((AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJNIEnvArgument.class),
-                        (AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJavaVMArgument.class));
+        Stream<AnalysisMethod> unimplementedMethods = Stream.of((AnalysisMethod) getSingleMethod(metaAccess, unimplementedJNIEnv()),
+                (AnalysisMethod) getSingleMethod(metaAccess, unimplementedJavaVM()));
         Stream.concat(analysisMethods, unimplementedMethods).forEach(method -> {
             CEntryPoint annotation = AnnotationUtil.getAnnotation(method, CEntryPoint.class);
             assert annotation != null : "only entry points allowed in class";
@@ -168,7 +189,7 @@ public class JNIFunctionTablesFeature implements Feature {
     }
 
     private void fillJNIInvocationInterfaceTable(CompilationAccessImpl access) {
-        CFunctionPointer unimplementedWithJavaVMArgument = getStubFunctionPointer(access, (HostedMethod) getSingleMethod(access.getMetaAccess(), UnimplementedWithJavaVMArgument.class));
+        CFunctionPointer unimplementedWithJavaVMArgument = getStubFunctionPointer(access, (HostedMethod) getSingleMethod(access.getMetaAccess(), unimplementedJavaVM()));
         JNIFunctionTables.singleton().initInvokeInterfaceTable(unimplementedWithJavaVMArgument, access);
 
         HostedType invokes = access.getMetaAccess().lookupJavaType(JNIInvocationInterface.class);
@@ -181,10 +202,13 @@ public class JNIFunctionTablesFeature implements Feature {
 
     private void fillJNIFunctionsTable(CompilationAccessImpl access) {
         JNIFunctionTables tables = JNIFunctionTables.singleton();
-        CFunctionPointer unimplementedWithJNIEnvArgument = getStubFunctionPointer(access, (HostedMethod) getSingleMethod(access.getMetaAccess(), UnimplementedWithJNIEnvArgument.class));
+        CFunctionPointer unimplementedWithJNIEnvArgument = getStubFunctionPointer(access, (HostedMethod) getSingleMethod(access.getMetaAccess(), unimplementedJNIEnv()));
         tables.initFunctionTable(unimplementedWithJNIEnvArgument, access);
-
-        HostedType functions = access.getMetaAccess().lookupJavaType(JNIFunctions.class);
+        Class<?> functionsClass =
+                SubstrateOptions.JNIValidation.getValue()
+                        ? ValidatedJNIFunctions.class
+                        : JNIFunctions.class;
+        HostedType functions = access.getMetaAccess().lookupJavaType(functionsClass);
         for (HostedMethod method : functions.getDeclaredMethods(false)) {
             StructFieldInfo field = findFieldFor(functionTableMetadata, method.getName());
             int offset = field.getOffsetInfo().getProperty();
