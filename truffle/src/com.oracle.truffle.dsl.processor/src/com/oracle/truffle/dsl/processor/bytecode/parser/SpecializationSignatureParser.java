@@ -59,6 +59,7 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.SuppressFBWarnings;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.bytecode.model.CombinedSignature;
 import com.oracle.truffle.dsl.processor.bytecode.model.ConstantOperandModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.ConstantOperandsModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
@@ -67,14 +68,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeM
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 
 public class SpecializationSignatureParser {
-
-    /**
-     * Represents a signature parsed from a given specialization of a custom operation. In addition
-     * to the regular signature information, this record includes the operand names declared by the
-     * specialization.
-     */
-    public record SpecializationSignature(Signature signature, List<String> operandNames) {
-    }
 
     final ProcessorContext context;
     final TruffleTypes types;
@@ -85,7 +78,7 @@ public class SpecializationSignatureParser {
     }
 
     @SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED", justification = "Calls to params poll() as expected. FindBugs false positive.")
-    public SpecializationSignature parse(ExecutableElement specialization, MessageContainer errorTarget, ConstantOperandsModel constantOperands) {
+    public CombinedSignature parse(ExecutableElement specialization, MessageContainer errorTarget, ConstantOperandsModel constantOperands) {
         boolean isValid = true;
         boolean isFallback = ElementUtils.findAnnotationMirror(specialization, types.Fallback) != null;
 
@@ -196,8 +189,7 @@ public class SpecializationSignatureParser {
             returnType = context.getDeclaredType(Object.class);
         }
         Signature signature = new Signature(returnType, operandTypes, hasVariadic, variadicOffset, constantOperands.before().size(), constantOperands.after().size());
-
-        return new SpecializationSignature(signature, operandNames);
+        return new CombinedSignature(signature, operandNames, constantOperands);
     }
 
     private boolean isVariadic(VariableElement param) {
@@ -249,7 +241,7 @@ public class SpecializationSignatureParser {
      * Also accumulates individual signatures into the {@code signatures} parameter, so they can be
      * inspected individually.
      */
-    public static Signature createPolymorphicSignature(List<SpecializationSignature> signatures, List<ExecutableElement> specializations, MessageContainer customOperation) {
+    public static Signature createPolymorphicSignature(List<CombinedSignature> signatures, List<ExecutableElement> specializations, MessageContainer customOperation) {
         if (signatures.isEmpty()) {
             throw new IllegalArgumentException("Cannot create a polymorphic signature for an empty list of signatures.");
         } else if (signatures.size() != specializations.size()) {

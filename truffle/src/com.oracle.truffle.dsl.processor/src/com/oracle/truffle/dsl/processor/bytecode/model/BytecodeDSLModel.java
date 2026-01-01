@@ -581,6 +581,9 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
 
         this.instructions = newInstructions;
+        for (InstructionModel instr : getInstructions()) {
+            instr.finalizeModel();
+        }
         if (enableInstructionRewriting) {
             this.instructionRewriterModel = createRewriterModel();
         }

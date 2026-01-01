@@ -78,6 +78,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.IllegalL
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.IllegalLocalExceptionFactory.ParameterKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModels;
+import com.oracle.truffle.dsl.processor.bytecode.model.CombinedSignature;
 import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
@@ -89,7 +90,6 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsMode
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.ResolvedQuickenDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel.Operator;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
-import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpressionResolver;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -947,7 +947,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 }
 
                 List<ExecutableElement> includedSpecializationElements = includedSpecializations.stream().map(s -> s.getMethod()).toList();
-                List<SpecializationSignature> includedSpecializationSignatures = CustomOperationParser.parseSignatures(
+                List<CombinedSignature> includedSpecializationSignatures = CustomOperationParser.parseSignatures(
                                 includedSpecializationElements, node,
                                 quickening.operation().constantOperands);
 
@@ -983,7 +983,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 }
 
                 InstructionModel quickenedInstruction = model.quickenInstruction(baseInstruction, signature, ElementUtils.firstLetterUpperCase(name), QuickeningKind.SPECIALIZED, null, false);
-                quickenedInstruction.filteredSpecializations = includedSpecializations;
+                quickenedInstruction.setFilteredSpecializations(includedSpecializations);
                 validateQuickening(model, quickenedInstruction);
             }
         }

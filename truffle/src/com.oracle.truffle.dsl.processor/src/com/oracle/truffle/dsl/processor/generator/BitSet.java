@@ -100,6 +100,10 @@ public final class BitSet {
         return false;
     }
 
+    public boolean isLoaded(FrameState state) {
+        return state.get(getName()) != null;
+    }
+
     private CodeTree createLocalReference(FrameState frameState) {
         LocalVariable var = frameState != null ? frameState.get(getName()) : null;
         if (var != null) {

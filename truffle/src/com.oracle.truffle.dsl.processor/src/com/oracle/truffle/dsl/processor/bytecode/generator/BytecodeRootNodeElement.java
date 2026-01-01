@@ -64,6 +64,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -102,6 +103,8 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.SourceSectionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.generator.DSLExpressionGenerator;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
@@ -121,7 +124,11 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeParameterElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
+import com.oracle.truffle.dsl.processor.model.AssumptionExpression;
+import com.oracle.truffle.dsl.processor.model.CacheExpression;
+import com.oracle.truffle.dsl.processor.model.GuardExpression;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
+import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
 /**
  * Central code generation class for Bytecode DSL root nodes.
@@ -640,16 +647,29 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         String className = cachedDataClassName(instr);
         CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, className);
         el.setSuperClass(types.Node);
-        factory.create(el);
+        factory.create(el, false);
 
-        List<ExecutableElement> cachedExecuteMethods = new ArrayList<>();
-        cachedExecuteMethods.add(createCachedExecute(plugs, factory, el, instr));
+        /*
+         * We filter methods named executeObject we do not use the default execute method we
+         * generate all of them explicitly. but we still want to generate one execute method to
+         * generate all necessary methods for other execute methods.
+         *
+         * Arguably that is a bit of a hack, but it makes the node generator simpler.
+         */
+        el.getEnclosedElements().removeAll(ElementFilter.methodsIn(el.getEnclosedElements()).stream().//
+                        filter((m) -> m.getSimpleName().toString().equals("executeObject")).toList());
+
+        emitExecute(plugs, factory, el, instr, InterpreterTier.CACHED);
         for (InstructionModel quickening : instr.getFlattenedQuickenedInstructions()) {
-            cachedExecuteMethods.add(createCachedExecute(plugs, factory, el, quickening));
+            if (!needsExecute(quickening)) {
+                // no return type quickenings needed
+                continue;
+            }
+            emitExecute(plugs, factory, el, quickening, InterpreterTier.CACHED);
         }
-        processCachedNode(el);
-        el.getEnclosedElements().addAll(0, cachedExecuteMethods);
-
+        if (model.enableUncachedInterpreter) {
+            emitExecute(plugs, factory, el, instr, InterpreterTier.UNCACHED);
+        }
         CodeExecutableElement quicken = plugs.getQuickenMethod();
         if (quicken != null) {
             el.getEnclosedElements().add(quicken);
@@ -678,6 +698,17 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         }
 
         return el;
+    }
+
+    /**
+     * Returns <code>true</code> if we need a dedicated execute method for this instruction, else
+     * <code>false</code>.
+     */
+    private static boolean needsExecute(InstructionModel quickening) {
+        if (quickening.isReturnTypeQuickening()) {
+            return quickening.hasBoxingOverloadForType(quickening.signature.returnType);
+        }
+        return true;
     }
 
     /**
@@ -1829,15 +1860,61 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         return continuationRootNodeImpl;
     }
 
-    private ExecutableElement createCachedExecute(BytecodeDSLNodeGeneratorPlugs plugs, FlatNodeGenFactory factory, CodeTypeElement el, InstructionModel instruction) {
+    private static Collection<DSLExpression> collectExpressions(SpecializationData specialization) {
+        Set<DSLExpression> boundVariables = new LinkedHashSet<>();
+        for (CacheExpression cache : specialization.getCaches()) {
+            if (cache.getDefaultExpression() != null) {
+                boundVariables.add(cache.getDefaultExpression());
+            }
+        }
+
+        for (GuardExpression guard : specialization.getGuards()) {
+            boundVariables.add(guard.getExpression());
+        }
+
+        for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
+            boundVariables.add(assumption.getExpression());
+        }
+
+        boundVariables.add(specialization.getLimitExpression());
+
+        return boundVariables;
+    }
+
+    private ExecutableElement emitExecute(BytecodeDSLNodeGeneratorPlugs plugs, FlatNodeGenFactory factory, CodeTypeElement el, InstructionModel instruction, InterpreterTier tier) {
         plugs.setInstruction(instruction);
+
+        List<SpecializationData> specializations;
+        boolean skipStateChecks;
+        if (instruction.getFilteredSpecializations() == null) {
+            specializations = instruction.nodeData.getReachableSpecializations();
+            skipStateChecks = false;
+        } else {
+            specializations = instruction.getFilteredSpecializations();
+            /*
+             * If specializations are filtered we know we know all of them are active at the same
+             * time, so we can skip state checks.
+             */
+            skipStateChecks = specializations.size() == 1;
+        }
+
+        boolean needsFrame = needsFrame(instruction, tier);
         TypeMirror returnType = instruction.signature.returnType;
         CodeExecutableElement executable = new CodeExecutableElement(Set.of(PRIVATE),
-                        returnType, executeMethodName(instruction),
-                        new CodeVariableElement(types.VirtualFrame, "frameValue"));
+                        returnType, executeMethodName(instruction, tier));
+
+        if (needsFrame) {
+            executable.addParameter(new CodeVariableElement(types.VirtualFrame, "frameValue"));
+        }
 
         if (instruction.isEpilogExceptional()) {
             executable.addParameter(new CodeVariableElement(types.AbstractTruffleException, "ex"));
+        } else {
+            int index = 0;
+            for (TypeMirror type : instruction.signature.operandTypes) {
+                executable.addParameter(new CodeVariableElement(type, "arg" + index));
+                index++;
+            }
         }
 
         if (hasUnexpectedExecuteValue(instruction)) {
@@ -1845,22 +1922,53 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             lookupExpectMethod(instruction.getQuickeningRoot().signature.returnType, returnType);
         }
 
-        List<SpecializationData> specializations;
-        boolean skipStateChecks;
-        if (instruction.filteredSpecializations == null) {
-            specializations = instruction.nodeData.getReachableSpecializations();
-            skipStateChecks = false;
+        CodeExecutableElement element;
+        if (tier == InterpreterTier.UNCACHED) {
+            executable.getModifiers().add(Modifier.STATIC);
+            element = factory.createUncachedExecute(executable);
+            el.add(element);
         } else {
-            specializations = instruction.filteredSpecializations;
-            /*
-             * If specializations are filtered we know we know all of them are active at the same
-             * time, so we can skip state checks.
-             */
-            skipStateChecks = specializations.size() == 1;
+            element = factory.emitExecuteMethod(el, executable, specializations, skipStateChecks && instruction.isQuickening());
         }
-        CodeExecutableElement element = factory.createExecuteMethod(el, executable, specializations, skipStateChecks && instruction.isQuickening());
-        element.findParameter("frameValue").setType(types.FrameWithoutBoxing);
+
+        if (needsFrame) {
+            element.findParameter("frameValue").setType(types.FrameWithoutBoxing);
+        }
+
         return element;
+    }
+
+    boolean needsFrame(InstructionModel instruction, InterpreterTier tier) {
+        List<SpecializationData> specializations = instruction.nodeData.getReachableSpecializations();
+        if (instruction.isYield()) {
+            return true;
+        }
+
+        for (SpecializationData specialization : specializations) {
+            if (specialization.getFrame() != null) {
+                return true;
+            }
+            if (isStoreBciBeforeSpecialization(model, tier, instruction, specialization)) {
+                return true;
+            }
+
+            Set<Variable> boundVariables = collectExpressions(specialization).stream() //
+                            .map(DSLExpression::findBoundVariables)        // Set<Variable>
+                            .flatMap(Set::stream) //
+                            .collect(Collectors.toCollection(LinkedHashSet::new));
+
+            for (Variable v : boundVariables) {
+                if (v.getReceiver() != null) {
+                    // not a bound variable
+                    continue;
+                }
+                switch (v.getName()) {
+                    case NodeParser.SYMBOL_FRAME:
+                        return true;
+                }
+            }
+        }
+        return false;
     }
 
     CodeExecutableElement lookupExpectMethod(TypeMirror currentType, TypeMirror targetType) {
@@ -1877,8 +1985,12 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         return expectMethod;
     }
 
-    static String executeMethodName(InstructionModel instruction) {
-        return "execute" + instruction.getQualifiedQuickeningName();
+    static String executeMethodName(InstructionModel instruction, InterpreterTier tier) {
+        if (!needsExecute(instruction)) {
+            // we share execute methods with return type quickenings.
+            return executeMethodName(instruction.quickeningBase, tier);
+        }
+        return "execute" + instruction.getQualifiedQuickeningName() + (tier.isUncached() ? "$uncached" : "");
     }
 
     /**
@@ -2079,52 +2191,6 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
     public static <T, K> Collector<T, ?, Map<K, List<T>>> deterministicGroupingBy(Function<? super T, ? extends K> classifier) {
         return Collectors.groupingBy(classifier, LinkedHashMap::new, Collectors.toList());
-    }
-
-    /**
-     * Custom instructions are generated from Operations and OperationProxies. During parsing we
-     * convert these definitions into Nodes for which {@link FlatNodeGenFactory} understands how to
-     * generate specialization code. We clean up the result (removing unnecessary fields/methods,
-     * fixing up types, etc.) here.
-     */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private void processCachedNode(CodeTypeElement el) {
-        // The parser injects @NodeChildren of dummy type "C". We do not directly execute the
-        // children (the plugs rewire child executions to stack loads), so we can remove them.
-        for (VariableElement fld : ElementFilter.fieldsIn(el.getEnclosedElements())) {
-            if (ElementUtils.getQualifiedName(fld.asType()).equals("C")) {
-                el.getEnclosedElements().remove(fld);
-            }
-        }
-
-        for (ExecutableElement ctor : ElementFilter.constructorsIn(el.getEnclosedElements())) {
-            el.getEnclosedElements().remove(ctor);
-        }
-
-        for (ExecutableElement method : ElementFilter.methodsIn(el.getEnclosedElements())) {
-            String name = method.getSimpleName().toString();
-            if (name.equals("executeAndSpecialize")) {
-                continue;
-            }
-            if (name.startsWith("execute")) {
-                el.getEnclosedElements().remove(method);
-            }
-        }
-
-        if (model.enableUncachedInterpreter) {
-            // We do not need any other execute methods on the Uncached class.
-            for (CodeTypeElement type : (List<CodeTypeElement>) (List<?>) ElementFilter.typesIn(el.getEnclosedElements())) {
-                if (type.getSimpleName().toString().equals("Uncached")) {
-                    type.setSuperClass(types.Node);
-                    for (ExecutableElement ctor : ElementFilter.methodsIn(type.getEnclosedElements())) {
-                        String name = ctor.getSimpleName().toString();
-                        if (name.startsWith("execute") && !name.equals("executeUncached")) {
-                            type.getEnclosedElements().remove(ctor);
-                        }
-                    }
-                }
-            }
-        }
     }
 
     void emitFence(CodeTreeBuilder b) {

@@ -50,7 +50,6 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
-import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
@@ -290,7 +289,7 @@ public final class InstructionModel implements PrettyPrintable {
     public List<InstructionModel> subInstructions;
     public final List<InstructionModel> quickenedInstructions = new ArrayList<>();
 
-    public List<SpecializationData> filteredSpecializations;
+    private List<SpecializationData> filteredSpecializations;
 
     public final InstructionModel quickeningBase;
 
@@ -338,6 +337,10 @@ public final class InstructionModel implements PrettyPrintable {
      */
     public final List<InstructionModel> shortCircuitInstructions = new ArrayList<>();
 
+    private CombinedSignature customSpecializationSignature;
+    private CombinedSignature customSignature;
+    private boolean finalized;
+
     /*
      * Main constructor for instructions.
      */
@@ -375,6 +378,37 @@ public final class InstructionModel implements PrettyPrintable {
         base.quickenedInstructions.add(this);
     }
 
+    public void finalizeModel() {
+        if (nodeData != null) {
+            this.customSpecializationSignature = operation.getSpecializationSignature(getSpecializations());
+            this.customSignature = new CombinedSignature(signature, customSpecializationSignature.operandNames(), operation.constantOperands);
+        }
+        this.finalized = true;
+    }
+
+    public void setFilteredSpecializations(List<SpecializationData> specializations) {
+        if (finalized) {
+            throw new IllegalStateException("Specializations cannot be set after parsing.");
+        }
+        this.filteredSpecializations = specializations;
+    }
+
+    public List<SpecializationData> getFilteredSpecializations() {
+        return filteredSpecializations;
+    }
+
+    public boolean isYield() {
+        if (operation == null) {
+            return false;
+        }
+        switch (operation.kind) {
+            case YIELD:
+            case CUSTOM_YIELD:
+                return true;
+        }
+        return false;
+    }
+
     public boolean isShortCircuitConverter() {
         return !shortCircuitInstructions.isEmpty();
     }
@@ -390,8 +424,33 @@ public final class InstructionModel implements PrettyPrintable {
         return epilogReturn.operation.instruction == this;
     }
 
-    public SpecializationSignature getSpecializationSignature() {
-        return operation.getSpecializationSignature(filteredSpecializations);
+    public boolean hasBoxingOverloadForType(TypeMirror type) {
+        for (SpecializationData s : getSpecializations()) {
+            for (SpecializationData overload : s.getBoxingOverloads()) {
+                if (ElementUtils.typeEquals(overload.getReturnType().getType(), type)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public List<SpecializationData> getSpecializations() {
+        return getFilteredSpecializations() == null ? nodeData.getReachableSpecializations() : getFilteredSpecializations();
+    }
+
+    public CombinedSignature getCustomSpecializationSignature() {
+        if (!kind.isCustom()) {
+            throw new UnsupportedOperationException("Specialization signature only exists for custom operations atm.");
+        }
+        return customSpecializationSignature;
+    }
+
+    public CombinedSignature getCustomSignature() {
+        if (!kind.isCustom()) {
+            throw new UnsupportedOperationException("Combined signature only exists for custom operations atm.");
+        }
+        return customSignature;
     }
 
     public boolean isEpilogExceptional() {
@@ -659,8 +718,8 @@ public final class InstructionModel implements PrettyPrintable {
 
     public SpecializationData resolveSingleSpecialization() {
         List<SpecializationData> specializations = null;
-        if (this.filteredSpecializations != null) {
-            specializations = this.filteredSpecializations;
+        if (this.getFilteredSpecializations() != null) {
+            specializations = this.getFilteredSpecializations();
         } else if (this.nodeData != null) {
             specializations = this.nodeData.getReachableSpecializations();
         }

@@ -48,7 +48,6 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.bytecode.parser.CustomOperationParser;
-import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
@@ -220,13 +219,13 @@ public class OperationModel implements PrettyPrintable {
         this.instrumentationIndex = instrumentationIndex;
     }
 
-    public SpecializationSignature getSpecializationSignature(SpecializationData specialization) {
+    public CombinedSignature getSpecializationSignature(SpecializationData specialization) {
         return getSpecializationSignature(List.of(specialization));
     }
 
-    public SpecializationSignature getSpecializationSignature(List<SpecializationData> specializations) {
+    public CombinedSignature getSpecializationSignature(List<SpecializationData> specializations) {
         List<ExecutableElement> methods = specializations.stream().map(s -> s.getMethod()).toList();
-        SpecializationSignature includedSpecializationSignatures = CustomOperationParser.parseSignatures(methods,
+        CombinedSignature includedSpecializationSignatures = CustomOperationParser.parseSignatures(methods,
                         specializations.get(0).getNode(),
                         constantOperands).get(0);
         return includedSpecializationSignatures;

@@ -176,7 +176,7 @@ public class TypeSystemData extends Template {
         return ElementUtils.uniqueTypes(sourceTypes);
     }
 
-    public Collection<TypeMirror> lookupSourceTypes(TypeMirror targetType) {
+    public List<TypeMirror> lookupSourceTypes(TypeMirror targetType) {
         List<TypeMirror> sourceTypes = new ArrayList<>();
         sourceTypes.add(targetType);
         for (ImplicitCastData cast : getImplicitCasts()) {
