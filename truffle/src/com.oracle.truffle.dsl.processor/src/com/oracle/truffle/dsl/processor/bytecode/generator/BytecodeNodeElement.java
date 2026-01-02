@@ -1373,7 +1373,7 @@ final class BytecodeNodeElement extends AbstractElement {
             b.startIf().string("uncachedExecuteCount_ <= 1").end().startBlock();
             b.startIf().string("uncachedExecuteCount_ != " + FORCE_UNCACHED_THRESHOLD).end().startBlock();
             b.startStatement().startCall("$root", "transitionToCached");
-            b.string("frame");
+            b.string(parent.localFrame());
             b.string(BytecodeRootNodeElement.decodeBci("startState"));
             b.end().end();
 
@@ -1470,7 +1470,10 @@ final class BytecodeNodeElement extends AbstractElement {
                 buildInstructionCases(b, forceCachedInstruction);
             }
             b.startBlock();
-            b.statement("$root.transitionToCached(frame, bci)");
+            b.startStatement().startCall("$root", "transitionToCached");
+            b.string(parent.localFrame());
+            b.string("bci");
+            b.end().end();
             b.statement("return ", parent.encodeState("bci", "sp"));
             b.end();
         }
@@ -2335,7 +2338,10 @@ final class BytecodeNodeElement extends AbstractElement {
              */
             b.startIf().string("uncachedExecuteCount_ != ", FORCE_UNCACHED_THRESHOLD).end().startBlock();
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            b.statement("$root.transitionToCached(frame, bci)");
+            b.startStatement().startCall("$root", "transitionToCached");
+            b.string(parent.localFrame());
+            b.string("bci");
+            b.end().end();
             b.statement("return ", parent.encodeState("bci", "sp"));
             b.end(2);
             b.startElseBlock();

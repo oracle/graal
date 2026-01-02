@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.junit.Test;
 
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
@@ -61,9 +62,13 @@ import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
-public class UncachedCoroutineTest {
+/**
+ * Regression tests to validate that cached tags are correctly updated when a continuation
+ * transitions from uncached to cached.
+ */
+public class UncachedYieldTest {
     @Test
-    public void testUncachedCoroutineWithLocalAccessor() {
+    public void testUncachedYieldTransitionOnEntry() {
         BytecodeRootNodes<UncachedYieldTestRootNode> nodes = UncachedYieldTestRootNodeGen.create(null, BytecodeConfig.DEFAULT, b -> {
             // @formatter:off
             b.beginRoot();
@@ -86,9 +91,43 @@ public class UncachedCoroutineTest {
         ContinuationResult result = (ContinuationResult) root.getCallTarget().call(argument);
         assertEquals(argument, result.getResult());
         for (int i = 0; i < 16; i++) {
+            // trigger transition on continuation entry
             result = (ContinuationResult) result.continueWith(null);
             assertEquals(argument, result.getResult());
         }
+    }
+
+    @Test
+    public void testUncachedYieldTransitionOnBackedge() {
+        BytecodeRootNodes<UncachedYieldTestRootNode> nodes = UncachedYieldTestRootNodeGen.create(null, BytecodeConfig.DEFAULT, b -> {
+            // @formatter:off
+            b.beginRoot();
+
+            b.beginYield();
+            b.emitLoadNull();
+            b.endYield();
+
+            BytecodeLocal counter = b.createLocal();
+            b.beginStoreLocal(counter);
+            b.emitLoadConstant(16);
+            b.endStoreLocal();
+
+            // trigger transition inside resumed loop
+            b.beginWhile();
+            b.emitCounterDecrement(counter);
+            b.emitLoadNull();
+            b.endWhile();
+
+            b.beginReturn();
+            b.emitMyLoadLocal(counter);
+            b.endReturn();
+            b.endRoot();
+            // @formatter:on
+        });
+        UncachedYieldTestRootNode root = nodes.getNode(0);
+        ContinuationResult cont = (ContinuationResult) root.getCallTarget().call();
+        Object result = cont.continueWith(null);
+        assertEquals(0, result);
     }
 
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true, defaultUncachedThreshold = "4", boxingEliminationTypes = {int.class})
@@ -111,6 +150,22 @@ public class UncachedCoroutineTest {
             public static Object doObject(VirtualFrame frame, LocalAccessor accessor,
                             @Bind BytecodeNode bytecodeNode) {
                 return accessor.getObject(bytecodeNode, frame);
+            }
+        }
+
+        @Operation
+        @ConstantOperand(type = LocalAccessor.class)
+        public static final class CounterDecrement {
+            @Specialization
+            public static boolean perform(VirtualFrame frame, LocalAccessor accessor,
+                            @Bind BytecodeNode bytecodeNode) {
+                try {
+                    int next = accessor.getInt(bytecodeNode, frame) - 1;
+                    accessor.setInt(bytecodeNode, frame, next);
+                    return next != 0;
+                } catch (UnexpectedResultException ex) {
+                    throw CompilerDirectives.shouldNotReachHere("counter should be an int");
+                }
             }
         }
     }
