@@ -1372,7 +1372,11 @@ final class BytecodeNodeElement extends AbstractElement {
 
             b.startIf().string("uncachedExecuteCount_ <= 1").end().startBlock();
             b.startIf().string("uncachedExecuteCount_ != " + FORCE_UNCACHED_THRESHOLD).end().startBlock();
-            b.statement("$root.transitionToCached(frame, 0)");
+            b.startStatement().startCall("$root", "transitionToCached");
+            b.string("frame");
+            b.string(BytecodeRootNodeElement.decodeBci("startState"));
+            b.end().end();
+
             b.startReturn().string("startState").end();
             b.end(2);
             b.startElseBlock();
