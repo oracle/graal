@@ -191,7 +191,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
      * @since 19.0
      */
     static <K, V> EconomicMap<K, V> create(Equivalence strategy) {
-        return EconomicMapImpl.create(strategy, false);
+        return EconomicMapImpl.create(strategy);
     }
 
     /**
@@ -212,7 +212,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
      * @since 19.0
      */
     static <K, V> EconomicMap<K, V> create(Equivalence strategy, UnmodifiableEconomicMap<K, V> m) {
-        return EconomicMapImpl.create(strategy, m, false);
+        return EconomicMapImpl.create(strategy, m);
     }
 
     /**
@@ -222,7 +222,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
      * @since 19.0
      */
     static <K, V> EconomicMap<K, V> create(Equivalence strategy, int initialCapacity) {
-        return EconomicMapImpl.create(strategy, initialCapacity, false);
+        return EconomicMapImpl.create(strategy, initialCapacity);
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -170,7 +170,7 @@ public class EconomicMapTest {
         EconomicMap<Integer, Integer> map = EconomicMap.create();
         map.put(0, 0);
         map.put(1, 1);
-        Assert.assertEquals(map.toString(), "map(size=2, {(0,0),(1,1)})");
+        Assert.assertEquals(map.toString(), "(size=2, {(0,0),(1,1)})");
     }
 
     @Test
@@ -179,7 +179,7 @@ public class EconomicMapTest {
         Assert.assertNull(map.putIfAbsent(1, 2));
         Assert.assertEquals(Integer.valueOf(2), map.get(1));
         Assert.assertEquals(Integer.valueOf(2), map.putIfAbsent(1, 4));
-        Assert.assertEquals(map.toString(), "map(size=1, {(1,2)})");
+        Assert.assertEquals(map.toString(), "(size=1, {(1,2)})");
         map.removeKey(1);
         Assert.assertNull(map.putIfAbsent(1, 5));
         Assert.assertEquals(Integer.valueOf(5), map.get(1));

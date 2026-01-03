@@ -172,6 +172,6 @@ public class EconomicMapWrap<K, V> implements EconomicMap<K, V> {
     /** @since 23.1 */
     @Override
     public String toString() {
-        return EconomicMapImpl.toString(false, size(), getEntries());
+        return EconomicMapImpl.toString(size(), getEntries());
     }
 }

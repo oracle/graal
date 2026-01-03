@@ -113,6 +113,11 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     private static final int VERY_LARGE_HASH_THRESHOLD = (LARGE_HASH_THRESHOLD << Byte.SIZE);
 
     /**
+     * Dummy value to associate with an object when used as set.
+     */
+    private static final Object SET_PRESENT = new Object();
+
+    /**
      * Total number of entries (actual entries plus deleted entries).
      */
     private int totalEntries;
@@ -146,46 +151,45 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         return map;
     }
 
-    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, boolean isSet) {
-        return intercept(new EconomicMapImpl<>(strategy, isSet));
+    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy) {
+        return intercept(new EconomicMapImpl<>(strategy));
     }
 
-    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, int initialCapacity, boolean isSet) {
-        return intercept(new EconomicMapImpl<>(strategy, initialCapacity, isSet));
+    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, int initialCapacity) {
+        return intercept(new EconomicMapImpl<>(strategy, initialCapacity));
     }
 
-    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicMap<K, V> other, boolean isSet) {
-        return intercept(new EconomicMapImpl<>(strategy, other, isSet));
+    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicMap<K, V> other) {
+        return intercept(new EconomicMapImpl<>(strategy, other));
     }
 
-    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicSet<K> other, boolean isSet) {
-        return intercept(new EconomicMapImpl<>(strategy, other, isSet));
+    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicSet<K> other) {
+        return intercept(new EconomicMapImpl<>(strategy, other));
     }
 
-    private EconomicMapImpl(Equivalence strategy, boolean isSet) {
+    private EconomicMapImpl(Equivalence strategy) {
         if (strategy == Equivalence.IDENTITY) {
             this.strategy = null;
         } else {
             this.strategy = strategy;
         }
-        this.isSet = isSet;
     }
 
-    private EconomicMapImpl(Equivalence strategy, int initialCapacity, boolean isSet) {
-        this(strategy, isSet);
+    private EconomicMapImpl(Equivalence strategy, int initialCapacity) {
+        this(strategy);
         init(initialCapacity);
     }
 
-    private EconomicMapImpl(Equivalence strategy, UnmodifiableEconomicMap<K, V> other, boolean isSet) {
-        this(strategy, isSet);
+    private EconomicMapImpl(Equivalence strategy, UnmodifiableEconomicMap<K, V> other) {
+        this(strategy);
         if (!initFrom(other)) {
             init(other.size());
             putAll(other);
         }
     }
 
-    private EconomicMapImpl(Equivalence strategy, UnmodifiableEconomicSet<K> other, boolean isSet) {
-        this(strategy, isSet);
+    private EconomicMapImpl(Equivalence strategy, UnmodifiableEconomicSet<K> other) {
+        this(strategy);
         if (!initFrom(other)) {
             init(other.size());
             addAll(other);
@@ -249,7 +253,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
     private int findLinear(K key) {
         for (int i = 0; i < totalEntries; i++) {
-            Object entryKey = entries[i << 1];
+            Object entryKey = getKey(i);
             if (entryKey != null && compareKeys(key, entryKey)) {
                 return i;
             }
@@ -819,20 +823,22 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         return object;
     }
 
-    private final boolean isSet;
-
     @Override
     public String toString() {
-        return toString(isSet, size(), getEntries());
+        return toString(size(), getEntries());
     }
 
-    static <K, V> String toString(boolean isSet, int size, MapCursor<K, V> cursor) {
+    static <K, V> String toString(int size, MapCursor<K, V> cursor) {
         StringBuilder builder = new StringBuilder();
-        builder.append(isSet ? "set(size=" : "map(size=").append(size).append(", {");
+        builder.append("(size=").append(size).append(", {");
         String sep = "";
+        int isSet = -1;
         while (cursor.advance()) {
             builder.append(sep);
-            if (isSet) {
+            if (isSet == -1) {
+                isSet = cursor.getValue() == SET_PRESENT ? 1 : 0;
+            }
+            if (isSet == 1) {
                 builder.append(cursor.getKey());
             } else {
                 builder.append("(").append(cursor.getKey()).append(",").append(cursor.getValue()).append(")");
@@ -870,7 +876,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     @SuppressWarnings("unchecked")
     @Override
     public boolean add(K element) {
-        return put(element, (V) element) == null;
+        return put(element, (V) SET_PRESENT) == null;
     }
 
     @Override
