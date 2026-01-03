@@ -346,16 +346,15 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         int index = getHashArray(hashIndex) - 1;
         if (index != -1) {
             Object entryKey = getKey(index);
+            Object entryValue = getRawValue(index);
             if (compareKeys(key, entryKey)) {
-                Object value = getRawValue(index);
                 int nextIndex = -1;
-                if (value instanceof CollisionLink collisionLink) {
+                if (entryValue instanceof CollisionLink collisionLink) {
                     nextIndex = collisionLink.next;
                 }
                 setHashArray(hashIndex, nextIndex + 1);
                 return index;
             } else {
-                Object entryValue = getRawValue(index);
                 if (entryValue instanceof CollisionLink collisionLink) {
                     return findAndRemoveWithCollision(key, collisionLink, index);
                 }
@@ -374,8 +373,8 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
             CollisionLink collisionLink = entryValue;
             index = collisionLink.next;
             entryKey = getKey(index);
+            Object value = getRawValue(index);
             if (compareKeys(key, entryKey)) {
-                Object value = getRawValue(index);
                 if (value instanceof CollisionLink thisCollisionLink) {
                     setRawValue(lastIndex, new CollisionLink(collisionLink.value, thisCollisionLink.next));
                 } else {
@@ -383,7 +382,6 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
                 }
                 return index;
             } else {
-                Object value = getRawValue(index);
                 if (value instanceof CollisionLink thisCollisionLink) {
                     entryValue = thisCollisionLink;
                     lastIndex = index;
@@ -579,7 +577,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
             if (value instanceof CollisionLink collisionLink) {
                 setRawValue(entryIndex, new CollisionLink(collisionLink.value, oldIndex));
             } else {
-                setRawValue(entryIndex, new CollisionLink(getRawValue(entryIndex), oldIndex));
+                setRawValue(entryIndex, new CollisionLink(value, oldIndex));
             }
         } else {
             if (value instanceof CollisionLink collisionLink) {
