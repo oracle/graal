@@ -152,7 +152,7 @@ public class EconomicMapTest {
         newMap.put(1, 1);
         newMap.put(2, 4);
         map.putAll(newMap);
-        Assert.assertEquals(map.size(), 2);
+        Assert.assertEquals(2, map.size());
 
         UnmodifiableEconomicMap<Integer, Integer> unmodifiableEconomicMap = EconomicMap.create(newMap);
 
@@ -161,7 +161,7 @@ public class EconomicMapTest {
         map.put(3, 9);
 
         map.putAll(unmodifiableEconomicMap);
-        Assert.assertEquals(map.size(), 3);
+        Assert.assertEquals(3, map.size());
         Assert.assertEquals(map.get(2), Integer.valueOf(4));
     }
 
@@ -170,7 +170,7 @@ public class EconomicMapTest {
         EconomicMap<Integer, Integer> map = EconomicMap.create();
         map.put(0, 0);
         map.put(1, 1);
-        Assert.assertEquals(map.toString(), "(size=2, {(0,0),(1,1)})");
+        Assert.assertEquals("(size=2, {(0,0),(1,1)})", map.toString());
     }
 
     @Test
@@ -179,7 +179,7 @@ public class EconomicMapTest {
         Assert.assertNull(map.putIfAbsent(1, 2));
         Assert.assertEquals(Integer.valueOf(2), map.get(1));
         Assert.assertEquals(Integer.valueOf(2), map.putIfAbsent(1, 4));
-        Assert.assertEquals(map.toString(), "(size=1, {(1,2)})");
+        Assert.assertEquals("(size=1, {(1,2)})", map.toString());
         map.removeKey(1);
         Assert.assertNull(map.putIfAbsent(1, 5));
         Assert.assertEquals(Integer.valueOf(5), map.get(1));
