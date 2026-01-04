@@ -480,20 +480,20 @@ Apply the following Insight script `vars.js` to track which variable depends on
 which in the `main`:
 
 ```js
-insight.on('enter', function(ctx, frame) {
-    print(`writeVariableNameEnter ${ctx.attributes().writeVariableName}`);
+insight.on('enter', (ctx, frame) => {
+    print(`writeVariableNameEnter ${ctx.attributes.writeVariableName}`);
 }, {
     writes: true,
     rootNameFilter: 'main'
 });
-insight.on('return', function(ctx, frame) {
-    print(`writeVariableNameReturn ${ctx.attributes().writeVariableName} = ${ctx.returnValue(frame)}`);
+insight.on('return', (ctx, frame) => {
+    print(`writeVariableNameReturn ${ctx.attributes.writeVariableName} = ${ctx.returnValue(frame)}`);
 }, {
     writes: true,
     rootNameFilter: 'main'
 });
-insight.on('return', function(ctx, frame) {
-    print(`  readVariableName ${ctx.attributes().readVariableName} = ${ctx.returnValue(frame)}`);
+insight.on('return', (ctx, frame) => {
+    print(`  readVariableName ${ctx.attributes.readVariableName} = ${ctx.returnValue(frame)}`);
 }, {
     reads: true,
     rootNameFilter: 'main'
