@@ -609,7 +609,7 @@ public class InsightObjectTest {
 
             Set<String> actions = new TreeSet<>();
             final InsightAPI.OnEventHandler captureNames = (ctx, frame) -> {
-                final Map<String, Object> attrs = ctx.attrs();
+                final Map<String, Object> attrs = ctx.attributes();
                 if (attrs != null) {
                     var readName = attrs.get(StandardTags.ReadVariableTag.NAME);
                     if (readName != null) {

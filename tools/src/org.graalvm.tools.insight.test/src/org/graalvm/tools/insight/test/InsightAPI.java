@@ -264,7 +264,7 @@ public interface InsightAPI {
              *
              * @return map of attributes or {@code null}
              */
-            Map<String, Object> attrs();
+            Map<String, Object> attributes();
         }
         void event(Context ctx, Map<String, Object> frame);
     }
