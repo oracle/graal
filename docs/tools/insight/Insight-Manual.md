@@ -518,6 +518,11 @@ writeVariableNameReturn r = 8
 8
 ```
 
+The output reveals that in order to compute variable `r` one needs to access
+variables `a` and `b` and both these variables depend on variable `n`. Such
+a tracing can be used to track flow of tainted values in functions with unknown
+bodies.
+
 ## Modifying Local Variables
 
 Not only that GraalVM Insight can access local variables, but it can also modify them.
