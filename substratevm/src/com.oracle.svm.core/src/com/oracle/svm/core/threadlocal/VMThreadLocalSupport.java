@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.threadlocal;
 
-import java.util.EnumSet;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -41,12 +39,15 @@ import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
-public class VMThreadLocalSupport implements InitialLayerOnlyImageSingleton {
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
+public class VMThreadLocalSupport {
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) public int vmThreadSize = -1;
     @UnknownObjectField(availability = ReadyForCompilation.class) public byte[] vmThreadReferenceMapEncoding;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) public long vmThreadReferenceMapIndex = -1;
@@ -79,10 +80,5 @@ public class VMThreadLocalSupport implements InitialLayerOnlyImageSingleton {
         NonmovableArray<Byte> threadRefMapEncoding = NonmovableArrays.fromImageHeap(vmThreadReferenceMapEncoding);
         InstanceReferenceMap referenceMap = InstanceReferenceMapDecoder.getReferenceMap(threadRefMapEncoding, vmThreadReferenceMapIndex);
         InstanceReferenceMapDecoder.walkReferences((Pointer) isolateThread, referenceMap, referenceVisitor, null);
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
 }

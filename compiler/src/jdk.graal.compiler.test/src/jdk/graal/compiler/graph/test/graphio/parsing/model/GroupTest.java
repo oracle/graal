@@ -29,13 +29,13 @@ import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNA
 import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
-import java.util.HashSet;
 
 import org.junit.Test;
 
 import jdk.graal.compiler.graphio.parsing.model.Group;
 import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import jdk.graal.compiler.util.EconomicHashSet;
 
 public class GroupTest {
     @Test
@@ -49,7 +49,7 @@ public class GroupTest {
         graph2.addNode(new InputNode(3));
         g.addElement(graph1);
         g.addElement(graph2);
-        assertEquals(g.getChildNodeIds(), new HashSet<>(Arrays.asList(1, 2, 3)));
+        assertEquals(g.getChildNodeIds(), new EconomicHashSet<>(Arrays.asList(1, 2, 3)));
     }
 
     @Test

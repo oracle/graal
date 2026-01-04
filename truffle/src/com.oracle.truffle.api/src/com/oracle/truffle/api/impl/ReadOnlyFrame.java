@@ -47,7 +47,7 @@ import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
-class ReadOnlyFrame implements Frame {
+final class ReadOnlyFrame implements Frame {
     private final Frame delegate;
 
     public Object expectObject(int slot) throws UnexpectedResultException {

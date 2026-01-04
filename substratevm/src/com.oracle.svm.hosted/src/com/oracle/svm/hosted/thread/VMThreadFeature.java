@@ -40,7 +40,6 @@ import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
@@ -48,6 +47,10 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.nodes.ReadReservedRegister;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
@@ -67,7 +70,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
-public class VMThreadFeature implements InternalFeature, VMThreadLocalOffsetProvider, FeatureSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public class VMThreadFeature implements InternalFeature, VMThreadLocalOffsetProvider {
 
     private VMThreadLocalCollector threadLocalCollector;
 
@@ -103,7 +107,7 @@ public class VMThreadFeature implements InternalFeature, VMThreadLocalOffsetProv
      * <p>
      * When the {@link IsolateThread} is not passed in as a parameter, we use the
      * {@link LoadVMThreadLocalNode current thread}. We do not need read/write barriers since we
-     * access memory that we manage ourselfs.
+     * access memory that we manage ourselves.
      */
     @Override
     public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {

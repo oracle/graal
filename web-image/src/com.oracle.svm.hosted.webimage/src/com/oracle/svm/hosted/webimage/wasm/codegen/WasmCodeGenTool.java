@@ -37,13 +37,13 @@ import com.oracle.svm.hosted.webimage.wasm.ast.Instructions;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.KnownIds;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmIdFactory;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
+import com.oracle.svm.webimage.hightiercodegen.IEmitter;
+import com.oracle.svm.webimage.hightiercodegen.Keyword;
+import com.oracle.svm.webimage.hightiercodegen.variables.VariableAllocation;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
-import jdk.graal.compiler.hightiercodegen.IEmitter;
-import jdk.graal.compiler.hightiercodegen.Keyword;
-import jdk.graal.compiler.hightiercodegen.variables.VariableAllocation;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;

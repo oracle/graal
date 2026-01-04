@@ -36,6 +36,10 @@ import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -47,6 +51,7 @@ import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.Indent;
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class NativeImageDebugInfoStripFeature implements InternalFeature {
 
     private Boolean hasStrippedSuccessfully = null;
@@ -56,11 +61,10 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
         return SubstrateOptions.StripDebugInfo.getValue();
     }
 
-    @SuppressWarnings("try")
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
         AfterImageWriteAccessImpl accessImpl = (AfterImageWriteAccessImpl) access;
-        try (Indent indent = accessImpl.getDebugContext().logAndIndent("Stripping debuginfo")) {
+        try (Indent _ = accessImpl.getDebugContext().logAndIndent("Stripping debuginfo")) {
             switch (ObjectFile.getNativeFormat()) {
                 case ELF:
                     hasStrippedSuccessfully = stripLinux(accessImpl);

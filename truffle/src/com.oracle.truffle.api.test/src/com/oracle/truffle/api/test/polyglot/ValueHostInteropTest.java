@@ -358,6 +358,14 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         assertEquals("One field x", "x", propertyNames[0]);
         assertEquals("One method to access x", "readX", propertyNames[1]);
 
+        Value staticPojo = pojo.getMetaObject().getStaticScope();
+        assertTrue(staticPojo.hasMembers());
+        propertyNames = staticPojo.getMemberKeys().toArray();
+        assertEquals("One static field, one method and class", 3, propertyNames.length);
+        assertEquals("One field y", "y", propertyNames[0]);
+        assertEquals("One method to access y", "readY", propertyNames[1]);
+        assertEquals("The class", "class", propertyNames[2]);
+
         Value readX = pojo.getMember("readX");
         assertTrue(readX.canExecute());
 

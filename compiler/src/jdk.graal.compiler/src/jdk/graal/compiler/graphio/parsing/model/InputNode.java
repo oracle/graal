@@ -29,7 +29,7 @@ import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNA
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -43,7 +43,7 @@ public class InputNode extends Properties.Entity {
      */
     private final Object keep;
     private final Builder.NodeClass nodeClass;
-    private final Map<Builder.Port, List<Integer>> portIdsMap = new HashMap<>();
+    private final Map<Builder.Port, List<Integer>> portIdsMap = new LinkedHashMap<>();
     private List<InputGraph> subgraphs;
 
     public static final Comparator<InputNode> COMPARATOR = Comparator.comparingInt(InputNode::getId);

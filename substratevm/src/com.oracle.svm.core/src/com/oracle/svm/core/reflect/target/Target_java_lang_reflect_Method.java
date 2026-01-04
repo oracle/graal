@@ -32,9 +32,12 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
+import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.svm.configure.config.ConfigurationMemberInfo;
+import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
@@ -43,11 +46,12 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.ConstantPoolProvider;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 
 import jdk.internal.reflect.ConstantPool;
@@ -72,6 +76,10 @@ public final class Target_java_lang_reflect_Method {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AnnotationDefaultComputer.class)//
     byte[] annotationDefault;
 
+    /**
+     * Value of the accessor when `this` is in the image heap. `null` for run-time constructed
+     * methods.
+     */
     @Alias //
     @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableAccessorComputer.class) //
     public Target_jdk_internal_reflect_MethodAccessor methodAccessor;
@@ -94,8 +102,8 @@ public final class Target_java_lang_reflect_Method {
     @Alias //
     private Class<?>[] exceptionTypes;
 
-    @Alias //
-    private int modifiers;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) //
+    public int modifiers;
 
     @Alias //
     private transient String signature;
@@ -109,7 +117,7 @@ public final class Target_java_lang_reflect_Method {
      */
     @Inject //
     @RecomputeFieldValue(kind = Kind.Reset) //
-    Target_jdk_internal_reflect_MethodAccessor methodAccessorFromMetadata;
+    public Target_jdk_internal_reflect_MethodAccessor methodAccessorFromMetadata;
 
     @Inject //
     @RecomputeFieldValue(kind = Kind.Custom, declClass = LayerIdComputer.class) //
@@ -133,9 +141,13 @@ public final class Target_java_lang_reflect_Method {
      */
     @Substitute
     public Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
-        RuntimeConditionSet conditions = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).conditions;
-        if (methodAccessorFromMetadata == null || !conditions.satisfied()) {
-            throw MissingReflectionRegistrationUtils.errorForQueriedOnlyExecutable(SubstrateUtil.cast(this, Executable.class));
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata;
+        if (MetadataTracer.enabled()) {
+            MethodUtil.traceMethodAccess(SubstrateUtil.cast(this, Executable.class));
+        }
+        assert methodAccessor == null : "acquireMethodAccessor() method must not be called if `this` is in image heap.";
+        if (methodAccessorFromMetadata == null || !dynamicAccessMetadata.satisfied()) {
+            throw MissingReflectionRegistrationUtils.reportInvokedExecutable(SubstrateUtil.cast(this, Executable.class));
         }
         return methodAccessorFromMetadata;
     }
@@ -181,6 +193,11 @@ public final class Target_java_lang_reflect_Method {
         return res;
     }
 
+    @Substitute
+    public int getModifiers() {
+        return RuntimeMetadataDecoderImpl.clearInternalModifiers(modifiers);
+    }
+
     static class AnnotationsComputer extends ReflectionMetadataComputer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
@@ -210,5 +227,12 @@ public final class Target_java_lang_reflect_Method {
             }
             return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
         }
+    }
+}
+
+class MethodUtil {
+    static void traceMethodAccess(Executable meth) {
+        MetadataTracer.singleton().traceMethodAccess(meth.getDeclaringClass(), meth.getName(), SignatureUtil.toInternalSignature(meth.getParameterTypes()),
+                        ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
     }
 }

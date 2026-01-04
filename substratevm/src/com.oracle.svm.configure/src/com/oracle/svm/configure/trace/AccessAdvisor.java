@@ -31,6 +31,7 @@ import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.svm.configure.JsonFileWriter;
 import com.oracle.svm.configure.filters.ConfigurationFilter;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
 
@@ -112,6 +113,8 @@ public final class AccessAdvisor {
         // BytecodeDescriptor calls Class.forName
         internalCallerFilter.addOrGetChildren("sun.invoke.util.BytecodeDescriptor", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("sun.launcher.**", ConfigurationFilter.Inclusion.Exclude);
+        // LoggingMXBeanAccess calls Class.forName
+        internalCallerFilter.addOrGetChildren("sun.management.ManagementFactoryHelper$LoggingMXBeanAccess", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.misc.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.net.**", ConfigurationFilter.Inclusion.Exclude);
         // Uses constructor reflection on exceptions
@@ -124,6 +127,8 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("sun.util.**", ConfigurationFilter.Inclusion.Exclude);
         // Bundles calls Bundles.of
         internalCallerFilter.addOrGetChildren("sun.util.resources.Bundles", ConfigurationFilter.Inclusion.Include);
+        // Class.forName calls in CalendarSystem.forName
+        internalCallerFilter.addOrGetChildren("sun.util.calendar.CalendarSystem", ConfigurationFilter.Inclusion.Include);
 
         excludeInaccessiblePackages(internalCallerFilter);
 
@@ -145,7 +150,7 @@ public final class AccessAdvisor {
     /*
      * Exclude selection of packages distributed with GraalVM which are not unconditionally exported
      * by their module and should not be accessible from application code. Generate all with:
-     * native-image-configure generate-filters --exclude-unexported-packages-from-modules [--reduce]
+     * native-image-utils generate-filters --exclude-unexported-packages-from-modules [--reduce]
      */
     private static void excludeInaccessiblePackages(HierarchyFilterNode rootNode) {
         rootNode.addOrGetChildren("com.oracle.graal.**", ConfigurationFilter.Inclusion.Exclude);
@@ -302,7 +307,8 @@ public final class AccessAdvisor {
 
     public boolean shouldIgnoreResourceLookup(LazyValue<String> resource, EconomicMap<String, Object> entry) {
         boolean result = Set.of("META-INF/services/jdk.vm.ci.services.JVMCIServiceLocator", "META-INF/services/java.lang.System$LoggerFinder",
-                        "META-INF/services/jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory").contains(resource.get());
+                        "META-INF/services/jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory", "META-INF/services/jdk.graal.compiler.options.OptionDescriptors",
+                        "META-INF/services/com.oracle.graal.phases.preciseinline.priorityinline.PolicyFactory").contains(resource.get());
         if (result) {
             logIgnoredEntry("blocklisted resource", entry);
         }

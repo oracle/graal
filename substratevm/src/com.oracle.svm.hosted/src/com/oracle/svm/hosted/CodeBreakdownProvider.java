@@ -24,40 +24,28 @@
  */
 package com.oracle.svm.hosted;
 
-import java.security.CodeSource;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
-import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 class CodeBreakdownProvider {
-    private Map<String, Long> codeBreakdown;
+    private Map<HostedType, Long> codeBreakdown;
 
     CodeBreakdownProvider(Collection<CompileTask> compilationTasks) {
-        Map<String, Long> nameToSizeMap = new HashMap<>();
-        for (CompileTask task : compilationTasks) {
-            String key = null;
-            Class<?> javaClass = task.method.getDeclaringClass().getJavaClass();
-            Module module = javaClass.getModule();
-            if (module.isNamed()) {
-                key = module.getName();
-                if ("org.graalvm.nativeimage.builder".equals(key)) {
-                    key = "svm.jar (Native Image)";
-                }
-            } else {
-                key = findJARFile(javaClass);
-                if (key == null) {
-                    key = findPackageOrClassName(task.method);
-                }
-            }
-            nameToSizeMap.merge(key, (long) task.result.getTargetCodeSize(), Long::sum);
-        }
-        codeBreakdown = Collections.unmodifiableMap(nameToSizeMap);
+        codeBreakdown = Map.copyOf(compilationTasks.stream().collect(
+                        Collectors.groupingBy(
+                                        compileTask -> compileTask.method.getDeclaringClass(),
+                                        Collectors.summingLong(compileTask -> compileTask.result.getTargetCodeSize()))));
     }
 
     /**
@@ -66,31 +54,10 @@ class CodeBreakdownProvider {
      *
      * @return the code breakdown
      */
-    public static Map<String, Long> getAndClear() {
+    public static Map<HostedType, Long> getAndClear() {
         CodeBreakdownProvider singleton = ImageSingletons.lookup(CodeBreakdownProvider.class);
-        Map<String, Long> map = singleton.codeBreakdown;
+        var map = singleton.codeBreakdown;
         singleton.codeBreakdown = null;
         return map;
-    }
-
-    private static String findJARFile(Class<?> javaClass) {
-        CodeSource codeSource = javaClass.getProtectionDomain().getCodeSource();
-        if (codeSource != null && codeSource.getLocation() != null) {
-            String path = codeSource.getLocation().getPath();
-            if (path.endsWith(".jar")) {
-                // Use String API to determine basename of path to handle both / and \.
-                return path.substring(Math.max(path.lastIndexOf('/') + 1, path.lastIndexOf('\\') + 1));
-            }
-        }
-        return null;
-    }
-
-    private static String findPackageOrClassName(HostedMethod method) {
-        String qualifier = method.format("%H");
-        int lastDotIndex = qualifier.lastIndexOf('.');
-        if (lastDotIndex > 0) {
-            qualifier = qualifier.substring(0, lastDotIndex);
-        }
-        return qualifier;
     }
 }

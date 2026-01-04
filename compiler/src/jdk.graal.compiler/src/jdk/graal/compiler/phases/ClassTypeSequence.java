@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,13 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * A printable representation of the name of class that can serialized as a fully qualified type for
- * dumping. This is to support deobfuscation of dump output. The {@link #toString()} is the
+ * A printable representation of the name of class that can be serialized as a fully qualified type
+ * for dumping. This is to support deobfuscation of dump output. The {@link #toString()} is the
  * unqualified name of the Class.
  */
 public final class ClassTypeSequence implements JavaType, CharSequence {
     private final Class<?> clazz;
+    private String simpleName;
 
     public ClassTypeSequence(Class<?> clazz) {
         this.clazz = clazz;
@@ -56,8 +57,14 @@ public final class ClassTypeSequence implements JavaType, CharSequence {
         if (qualified) {
             return clazz.getName();
         } else {
+            String name = this.simpleName;
+            if (name != null) {
+                return name;
+            }
             int lastDot = clazz.getName().lastIndexOf('.');
-            return clazz.getName().substring(lastDot + 1);
+            name = clazz.getName().substring(lastDot + 1);
+            this.simpleName = name;
+            return name;
         }
     }
 

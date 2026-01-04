@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,6 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         testConditionalElimination(snippet, referenceSnippet, false, false);
     }
 
-    @SuppressWarnings("try")
     protected void testConditionalElimination(String snippet, String referenceSnippet, boolean applyConditionalEliminationOnReference, boolean applyLowering) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         DebugContext debug = graph.getDebug();
@@ -69,7 +68,7 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         CoreProviders context = getProviders();
         CanonicalizerPhase canonicalizer1 = createCanonicalizerPhase();
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
-        try (DebugContext.Scope scope = debug.scope("ConditionalEliminationTest", graph)) {
+        try (DebugContext.Scope _ = debug.scope("ConditionalEliminationTest", graph)) {
             prepareGraph(graph, canonicalizer1, context, applyLowering);
             new IterativeConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
             canonicalizer.apply(graph, context);
@@ -78,7 +77,7 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
             debug.handle(t);
         }
         StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.YES);
-        try (DebugContext.Scope scope = debug.scope("ConditionalEliminationTest.ReferenceGraph", referenceGraph)) {
+        try (DebugContext.Scope _ = debug.scope("ConditionalEliminationTest.ReferenceGraph", referenceGraph)) {
             prepareGraph(referenceGraph, canonicalizer, context, applyLowering);
             if (applyConditionalEliminationOnReference) {
                 new ConditionalEliminationPhase(canonicalizer, true).apply(referenceGraph, context);

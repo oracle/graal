@@ -27,6 +27,7 @@ package com.oracle.svm.interpreter.metadata;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateMetadata;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 
 import jdk.vm.ci.meta.JavaType;
@@ -38,7 +39,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * Unresolved signature that doesn't contain any resolved type references, except for primitive
  * types. Primitive types are always and can only be resolved types.
  */
-public final class InterpreterUnresolvedSignature implements Signature {
+public final class InterpreterUnresolvedSignature implements Signature, SubstrateMetadata {
 
     private final JavaType returnType;
     private final JavaType[] parameterTypes;

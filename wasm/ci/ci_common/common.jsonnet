@@ -9,8 +9,23 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   devkits:: common.devkits,
 
-  gate:: {
-    targets+: ['gate'],
+  tier1:: {
+    targets+: ['tier1'],
+  },
+  tier2:: {
+    targets+: ['tier2'],
+  },
+  tier3:: {
+    targets+: ['tier3'],
+  },
+  tier4:: {
+    targets+: ['tier4'],
+    notify_groups:: ['wasm'],
+  },
+
+  postmerge:: {
+    targets+: ['post-merge'],
+    notify_groups:: ['wasm'],
   },
 
   daily:: {
@@ -23,12 +38,27 @@ local graal_suite_root = root_ci.graal_suite_root;
     notify_groups:: ['wasm'],
   },
 
+  monthly:: {
+    targets+: ['monthly'],
+    notify_groups:: ['wasm'],
+  },
+
+  ondemand:: {
+    targets+: ['ondemand'],
+  },
+
+  deploy:: {
+    targets+: ['deploy'],
+  },
+
   bench:: {
     targets+: ['bench'],
   },
 
   bench_daily:: self.bench + self.daily,
   bench_weekly:: self.bench + self.weekly,
+  bench_monthly:: self.bench + self.monthly,
+  bench_ondemand:: self.bench + self.ondemand,
 
   linux_common:: {
     packages+: {
@@ -37,25 +67,16 @@ local graal_suite_root = root_ci.graal_suite_root;
   },
 
   linux_amd64:: common.linux_amd64 + self.linux_common,
+  linux_amd64_ol8:: common.linux_amd64_ol8 + self.linux_common,
   linux_aarch64:: common.linux_aarch64 + self.linux_common,
 
   darwin_aarch64:: common.darwin_aarch64,
-  darwin_amd64:: common.darwin_amd64,
 
   windows_common:: {
     packages+: $.devkits["windows-" + self.jdk_name].packages,
   },
 
   windows_amd64:: common.windows_amd64 + self.windows_common,
-
-  emsdk:: {
-    downloads+: {
-      EMSDK_DIR: {name: 'emsdk', version: '1.39.13', platformspecific: true},
-    },
-    environment+: {
-      EMCC_DIR: '$EMSDK_DIR/emscripten/master/'
-    }
-  },
 
   ocaml_dune:: {
     downloads+: {
@@ -163,7 +184,7 @@ local graal_suite_root = root_ci.graal_suite_root;
   },
 
   eclipse_jdt              :: common.deps.pylint + common.deps.eclipse + common.deps.jdt,
-  wabt_emsdk               :: common.deps.wasm + self.emsdk,
-  wabt_emsdk_ocamlbuild    :: common.deps.wasm + self.emsdk + self.ocaml_dune,
+  wabt_emsdk               :: common.deps.wasm_ol8 + common.deps.emsdk_ol8,
+  wabt_emsdk_ocamlbuild    :: common.deps.wasm_ol8 + common.deps.emsdk_ol8 + self.ocaml_dune,
 
 }

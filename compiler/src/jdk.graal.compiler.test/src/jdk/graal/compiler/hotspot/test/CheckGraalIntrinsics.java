@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,10 +48,12 @@ import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.meta.UnimplementedGraalIntrinsics;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.ConditionalInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.test.GraalTest;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -144,8 +146,17 @@ public class CheckGraalIntrinsics extends GraalTest {
     public final GraalHotSpotVMConfig config = rt.getVMConfig();
     public final UnimplementedGraalIntrinsics unimplementedGraalIntrinsics = new UnimplementedGraalIntrinsics(rt.getTarget().arch);
 
+    private static boolean isApplicable(InvocationPlugin plugin, Architecture arch) {
+        if (plugin == null) {
+            return false;
+        }
+        if (plugin instanceof ConditionalInvocationPlugin conditionalInvocationPlugin) {
+            return conditionalInvocationPlugin.isApplicable(arch);
+        }
+        return true;
+    }
+
     @Test
-    @SuppressWarnings("try")
     public void test() throws ClassNotFoundException, NoSuchFieldException {
         HotSpotProviders providers = rt.getHostBackend().getProviders();
         Plugins graphBuilderPlugins = providers.getGraphBuilderPlugins();
@@ -171,12 +182,10 @@ public class CheckGraalIntrinsics extends GraalTest {
 
             InvocationPlugin plugin = invocationPlugins.lookupInvocation(method, Graal.getRequiredCapability(OptionValues.class));
             String m = String.format("%s.%s%s", intrinsic.declaringClass, intrinsic.name, intrinsic.descriptor);
-            if (plugin == null) {
-                if (method != null) {
-                    IntrinsicMethod intrinsicMethod = providers.getConstantReflection().getMethodHandleAccess().lookupMethodHandleIntrinsic(method);
-                    if (intrinsicMethod != null) {
-                        continue;
-                    }
+            if (!isApplicable(plugin, providers.getLowerer().getTarget().arch)) {
+                IntrinsicMethod intrinsicMethod = providers.getConstantReflection().getMethodHandleAccess().lookupMethodHandleIntrinsic(method);
+                if (intrinsicMethod != null) {
+                    continue;
                 }
                 if (!unimplementedGraalIntrinsics.isDocumented(m) && isIntrinsicAvailable(intrinsic) && isIntrinsicSupportedByC2(intrinsic)) {
                     missing.add(m);

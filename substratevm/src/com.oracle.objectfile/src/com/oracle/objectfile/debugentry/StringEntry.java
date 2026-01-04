@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -33,7 +33,6 @@ package com.oracle.objectfile.debugentry;
 public class StringEntry {
     private final String string;
     private int offset;
-    private boolean addToStrSection;
 
     StringEntry(String string) {
         this.string = string;
@@ -55,20 +54,11 @@ public class StringEntry {
         this.offset = offset;
     }
 
-    public boolean isAddToStrSection() {
-        return addToStrSection;
-    }
-
-    public void setAddToStrSection() {
-        this.addToStrSection = true;
-    }
-
     @Override
     public boolean equals(Object object) {
-        if (object == null || !(object instanceof StringEntry)) {
+        if (!(object instanceof StringEntry other)) {
             return false;
         } else {
-            StringEntry other = (StringEntry) object;
             return this == other || string.equals(other.string);
         }
     }
@@ -80,10 +70,10 @@ public class StringEntry {
 
     @Override
     public String toString() {
-        return string;
+        return "'" + string + "'@" + Integer.toHexString(offset);
     }
 
     public boolean isEmpty() {
-        return string.length() == 0;
+        return string.isEmpty();
     }
 }

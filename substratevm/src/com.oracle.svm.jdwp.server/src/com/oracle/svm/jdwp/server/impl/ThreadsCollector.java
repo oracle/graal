@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.jdwp.server.impl;
 
+import org.graalvm.collections.EconomicSet;
+
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -200,7 +200,7 @@ public final class ThreadsCollector {
         // Distinguish which threads were suspended in the resident and which threads are parked.
         // The suspended threads are resumed first, the parked ones afterwards.
         long[] resumeThreadIDs = new long[8]; // Threads that will be resumed
-        Set<ThreadRef> parkedThreads = null;
+        EconomicSet<ThreadRef> parkedThreads = null;
         int lastIndex = 0;
         Lock lock = rwLock.writeLock();
         lock.lock();
@@ -223,7 +223,7 @@ public final class ThreadsCollector {
                     } else {
                         // Parked thread
                         if (parkedThreads == null) {
-                            parkedThreads = new HashSet<>();
+                            parkedThreads = EconomicSet.create();
                         }
                         parkedThreads.add(thread);
                     }

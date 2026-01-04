@@ -44,7 +44,11 @@ public final class IntList {
      * @param initialCapacity
      */
     public IntList(int initialCapacity) {
-        array = new int[initialCapacity];
+        if (initialCapacity == 0) {
+            array = EMPTY_INT_ARRAY;
+        } else {
+            array = new int[initialCapacity];
+        }
     }
 
     /**

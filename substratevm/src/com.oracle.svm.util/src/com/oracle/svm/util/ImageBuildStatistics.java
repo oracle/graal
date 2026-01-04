@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,12 +31,16 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
-import org.graalvm.nativeimage.ImageSingletons;
 
+/**
+ * This class collects detailed counters that are then saved into the image build statistics file.
+ */
 public class ImageBuildStatistics {
 
     public static class Options {
@@ -44,6 +48,9 @@ public class ImageBuildStatistics {
         public static final OptionKey<Boolean> CollectImageBuildStatistics = new OptionKey<>(false);
     }
 
+    /**
+     * Phases in the compilation pipeline where the counters may be collected.
+     */
     public enum CheckCountLocation {
         BEFORE_STRENGTHEN_GRAPHS,
         AFTER_STRENGTHEN_GRAPHS,
@@ -54,13 +61,25 @@ public class ImageBuildStatistics {
 
     final TreeMap<String, AtomicLong> counters;
 
-    public AtomicLong insert(String key) {
+    /**
+     * Create a new counter based on the given unique {@code key}. Each counter is represented as an
+     * {@link AtomicLong} so that it can be updated from multiple compilations happening in
+     * parallel.
+     */
+    public AtomicLong createCounter(String key) {
         AtomicLong result = new AtomicLong();
         var existing = counters.put(key, result);
         if (existing != null) {
             throw GraalError.shouldNotReachHere("Key already used: " + key);
         }
         return result;
+    }
+
+    /**
+     * @see #createCounter(String)
+     */
+    public AtomicLong createCounter(String key, CheckCountLocation location) {
+        return createCounter(getName(key, location));
     }
 
     public void incDevirtualizedInvokeCounter() {

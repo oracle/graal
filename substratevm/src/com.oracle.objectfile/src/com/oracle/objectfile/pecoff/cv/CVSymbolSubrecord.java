@@ -26,10 +26,12 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.debugentry.ClassEntry;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import com.oracle.objectfile.debugentry.ClassEntry;
+
+import jdk.graal.compiler.serviceprovider.GraalServices;
 
 /*
  * A CVSymbolSubrecord is a record in a DEBUG_S_SYMBOL record within a .debug$S section within a PECOFF file.
@@ -90,7 +92,7 @@ abstract class CVSymbolSubrecord {
             String fn = null;
             for (ClassEntry classEntry : cvDebugInfo.getInstanceClasses()) {
                 if (classEntry.getFileName() != null) {
-                    fn = classEntry.getFileEntry().getFileName();
+                    fn = classEntry.getFileEntry().fileName();
                     if (fn.endsWith(".java")) {
                         fn = fn.substring(0, fn.lastIndexOf(".java")) + ".obj";
                     }
@@ -198,7 +200,7 @@ abstract class CVSymbolSubrecord {
             super(cvDebugInfo, CVDebugConstants.S_ENVBLOCK);
 
             /* Current directory. */
-            map.put("cwd", System.getProperty("user.dir"));
+            map.put("cwd", GraalServices.getSystemProperties("user.dir is not available via GraalServices.getSavedProperties()").getProperty("user.dir"));
 
             /*
              * Define the primary source file - ideally, the source file containing main(). (Note
@@ -216,7 +218,7 @@ abstract class CVSymbolSubrecord {
             String fn = null;
             for (ClassEntry classEntry : cvDebugInfo.getInstanceClasses()) {
                 if (classEntry.getFileName() != null) {
-                    fn = classEntry.getFileEntry().getFileName();
+                    fn = classEntry.getFileEntry().fileName();
                     break;
                 }
             }

@@ -37,6 +37,7 @@ import com.oracle.svm.hosted.webimage.wasm.nodes.WebImageWasmVMThreadLocalSTHold
 import com.oracle.svm.hosted.webimage.wasm.stack.StackClearer;
 import com.oracle.svm.hosted.webimage.wasm.stack.StackFrameSizeConstant;
 import com.oracle.svm.hosted.webimage.wasm.stack.VirtualStackSlotConstant;
+import com.oracle.svm.webimage.hightiercodegen.variables.VariableAllocation;
 import com.oracle.svm.webimage.wasm.stack.WebImageWasmFrameMap;
 import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
 
@@ -44,7 +45,6 @@ import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.iterators.NodePredicates;
-import jdk.graal.compiler.hightiercodegen.variables.VariableAllocation;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.lir.framemap.FrameMapBuilderTool;
 import jdk.graal.compiler.lir.framemap.SimpleVirtualStackSlot;

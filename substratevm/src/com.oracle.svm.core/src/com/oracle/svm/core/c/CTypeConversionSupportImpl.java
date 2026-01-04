@@ -28,7 +28,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.EnumSet;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -45,13 +44,16 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
-import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton(CTypeConversionSupport.class)
-class CTypeConversionSupportImpl implements CTypeConversionSupport, InitialLayerOnlyImageSingleton {
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
+class CTypeConversionSupportImpl implements CTypeConversionSupport {
 
     static final CCharPointerHolder NULL_HOLDER = new CCharPointerHolder() {
         @Override
@@ -192,16 +194,6 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport, InitialLayer
     public ByteBuffer asByteBuffer(PointerBase address, int size) {
         ByteBuffer byteBuffer = DirectByteBufferUtil.allocate(address.rawValue(), size);
         return byteBuffer.order(ConfigurationValues.getTarget().arch.getByteOrder());
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
-    }
-
-    @Override
-    public boolean accessibleInFutureLayers() {
-        return true;
     }
 }
 

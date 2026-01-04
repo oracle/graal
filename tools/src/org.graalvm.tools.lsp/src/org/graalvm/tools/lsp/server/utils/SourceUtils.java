@@ -120,9 +120,10 @@ public final class SourceUtils {
 
     public static SourceSection findSourceLocation(TruffleInstrument.Env env, Object object, LanguageInfo defaultLanguageInfo) {
         LanguageInfo languageInfo;
-        if (INTEROP.hasLanguage(object)) {
+        if (INTEROP.hasLanguageId(object)) {
             try {
-                languageInfo = env.getLanguageInfo(INTEROP.getLanguage(object));
+                String languageId = INTEROP.getLanguageId(object);
+                languageInfo = "host".equals(languageId) ? env.getHostLanguage() : env.getLanguages().get(languageId);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);

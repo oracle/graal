@@ -25,9 +25,7 @@
 package com.oracle.svm.core.option;
 
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
@@ -40,11 +38,12 @@ import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.layeredimagesingleton.DuplicableImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.properties.RuntimeSystemPropertyParser;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ImageHeapMap;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -59,7 +58,8 @@ import jdk.graal.compiler.options.OptionValues;
  * There is no requirement to use this class, you can also implement your own option parsing and
  * then set the values of options manually.
  */
-public final class RuntimeOptionParser implements DuplicableImageSingleton {
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
+public final class RuntimeOptionParser {
 
     /**
      * The suggested prefix for all VM options available in an application based on Substrate VM.
@@ -75,11 +75,6 @@ public final class RuntimeOptionParser implements DuplicableImageSingleton {
      * The legacy prefix for Graal style options available in an application based on Substrate VM.
      */
     private static final String LEGACY_GRAAL_OPTION_PREFIX = "-Dgraal.";
-
-    /**
-     * Guard for issuing warning about deprecated Graal option prefix at most once.
-     */
-    private static final AtomicBoolean LEGACY_OPTION_DEPRECATION_WARNED = new AtomicBoolean();
 
     /**
      * The prefix for XOptions available in an application based on Substrate VM.
@@ -110,7 +105,7 @@ public final class RuntimeOptionParser implements DuplicableImageSingleton {
     }
 
     /** All reachable options. */
-    public EconomicMap<String, OptionDescriptor> options = ImageHeapMap.create("options");
+    private final EconomicMap<String, OptionDescriptor> options = ImageHeapMap.createNonLayeredMap();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addDescriptor(OptionDescriptor optionDescriptor) {
@@ -152,15 +147,6 @@ public final class RuntimeOptionParser implements DuplicableImageSingleton {
             } else if (graalOptionPrefix != null && arg.startsWith(graalOptionPrefix)) {
                 parseOptionAtRuntime(arg, graalOptionPrefix, BooleanOptionFormat.NAME_VALUE, values, ignoreUnrecognized);
             } else if (legacyGraalOptionPrefix != null && arg.startsWith(legacyGraalOptionPrefix)) {
-                String baseName = arg.substring(legacyGraalOptionPrefix.length());
-                if (LEGACY_OPTION_DEPRECATION_WARNED.compareAndExchange(false, true)) {
-                    Log log = Log.log();
-                    // Checkstyle: Allow raw info or warning printing - begin
-                    log.string("WARNING: The 'graal.' property prefix for the Graal option ").string(baseName).newline();
-                    log.string("WARNING: (and all other Graal options) is deprecated and will be ignored").newline();
-                    log.string("WARNING: in a future release. Please use 'jdk.graal.").string(baseName).string("' instead.").newline();
-                    // Checkstyle: Allow raw info or warning printing - end
-                }
                 parseOptionAtRuntime(arg, legacyGraalOptionPrefix, BooleanOptionFormat.NAME_VALUE, values, ignoreUnrecognized);
             } else if (xOptionPrefix != null && arg.startsWith(xOptionPrefix) && XOptions.parse(arg.substring(xOptionPrefix.length()), values)) {
                 // option value was already parsed and added to the map
@@ -191,7 +177,7 @@ public final class RuntimeOptionParser implements DuplicableImageSingleton {
      *             {@link Throwable#getMessage()}.
      */
     public void parseOptionAtRuntime(String arg, String optionPrefix, BooleanOptionFormat booleanOptionFormat, EconomicMap<OptionKey<?>, Object> values, boolean ignoreUnrecognized) {
-        Predicate<OptionKey<?>> isHosted = optionKey -> false;
+        Predicate<OptionKey<?>> isHosted = _ -> false;
         OptionParseResult parseResult = SubstrateOptionsParser.parseOption(options, isHosted, arg.substring(optionPrefix.length()), values, optionPrefix, booleanOptionFormat);
         if (parseResult.printFlags() || parseResult.printFlagsWithExtraHelp()) {
             SubstrateOptionsParser.printFlags(d -> parseResult.matchesFlags(d, d.getOptionKey() instanceof RuntimeOptionKey),
@@ -223,15 +209,5 @@ public final class RuntimeOptionParser implements DuplicableImageSingleton {
 
     public Iterable<OptionDescriptor> getDescriptors() {
         return options.getValues();
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
-    }
-
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        return PersistFlags.NOTHING;
     }
 }

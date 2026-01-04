@@ -35,7 +35,7 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
@@ -44,18 +44,17 @@ import jdk.graal.compiler.nodes.calc.BinaryNode;
 import jdk.graal.compiler.nodes.calc.FloatDivNode;
 import jdk.graal.compiler.nodes.calc.MulNode;
 import jdk.graal.compiler.nodes.calc.SqrtNode;
-import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(nameTemplate = "MathIntrinsic#{p#operation/s}", cycles = CYCLES_1024, cyclesRationale = "stub based math intrinsics all have roughly the same high cycle count", size = SIZE_1)
-public final class BinaryMathIntrinsicNode extends BinaryNode implements ArithmeticLIRLowerable, Lowerable {
+public final class BinaryMathIntrinsicNode extends BinaryNode implements LIRLowerable {
 
     public static final NodeClass<BinaryMathIntrinsicNode> TYPE = NodeClass.create(BinaryMathIntrinsicNode.class);
-    protected final BinaryOperation operation;
+    private final BinaryOperation operation;
 
     public enum BinaryOperation {
         POW(new ForeignCallSignature("arithmeticPow", double.class, double.class, double.class));
@@ -79,7 +78,7 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements Arithme
         return new BinaryMathIntrinsicNode(forX, forY, op);
     }
 
-    protected static ValueNode tryConstantFold(ValueNode forX, ValueNode forY, BinaryOperation op) {
+    private static ValueNode tryConstantFold(ValueNode forX, ValueNode forY, BinaryOperation op) {
         if (forX.isConstant() && forY.isConstant()) {
             double ret = doCompute(forX.asJavaConstant().asDouble(), forY.asJavaConstant().asDouble(), op);
             return ConstantNode.forDouble(ret);
@@ -93,7 +92,11 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements Arithme
     }
 
     protected BinaryMathIntrinsicNode(ValueNode forX, ValueNode forY, BinaryOperation op) {
-        super(TYPE, StampFactory.forKind(JavaKind.Double), forX, forY);
+        this(TYPE, forX, forY, op);
+    }
+
+    protected BinaryMathIntrinsicNode(NodeClass<? extends BinaryMathIntrinsicNode> type, ValueNode forX, ValueNode forY, BinaryOperation op) {
+        super(type, StampFactory.forKind(JavaKind.Double), forX, forY);
         assert forX.stamp(NodeView.DEFAULT) instanceof FloatStamp : Assertions.errorMessageContext("forX", forX);
         assert PrimitiveStamp.getBits(forX.stamp(NodeView.DEFAULT)) == 64 : Assertions.errorMessageContext("forX", forX);
         assert forY.stamp(NodeView.DEFAULT) instanceof FloatStamp : Assertions.errorMessageContext("forY", forY);
@@ -102,19 +105,19 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements Arithme
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
-        // We can only reach here in the math stubs
-        Value xValue = nodeValueMap.operand(getX());
-        Value yValue = nodeValueMap.operand(getY());
+    public void generate(NodeLIRBuilderTool gen) {
+        LIRGeneratorTool lirTool = gen.getLIRGeneratorTool();
+        Value xValue = gen.operand(getX());
+        Value yValue = gen.operand(getY());
         Value result;
         switch (getOperation()) {
             case POW:
-                result = gen.emitMathPow(xValue, yValue);
+                result = lirTool.emitForeignCall(lirTool.getForeignCalls().lookupForeignCall(operation.foreignCallSignature), null, xValue, yValue);
                 break;
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(getOperation()); // ExcludeFromJacocoGeneratedReport
         }
-        nodeValueMap.setResult(this, result);
+        gen.setResult(this, result);
     }
 
     @Override

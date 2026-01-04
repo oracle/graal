@@ -39,7 +39,7 @@ import jdk.graal.compiler.processor.AbstractProcessor;
 // Checkstyle: allow Class.getSimpleName
 
 /**
- * Annotation processor for the @AutomaticallyRegistredFeature annotation. We need to generate some
+ * Annotation processor for the @AutomaticallyRegisteredFeature annotation. We need to generate some
  * textual listing of all annotated feature classes that can be easily loaded in the image builder.
  * Standard Java ServiceLoader descriptors are the easiest, because mx already has the support to
  * aggregate service descriptors for multiple projects that end up in the same module.
@@ -57,7 +57,7 @@ public class AutomaticallyRegisteredFeatureProcessor extends AbstractProcessor {
     static final String FEATURE_INTERFACE_CLASS_NAME = "com.oracle.svm.core.feature.InternalFeature";
     static final String SERVICE_REGISTRATION_INTERFACE_NAME = "com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistration";
 
-    private final Set<Element> processed = new HashSet<>();
+    private final Set<Element> processed = new HashSet<>(); // noEconomicSet(dependencies)
 
     private void processElement(TypeElement annotatedType) {
         if (!processingEnv.getTypeUtils().isSubtype(annotatedType.asType(), getType(FEATURE_INTERFACE_CLASS_NAME))) {

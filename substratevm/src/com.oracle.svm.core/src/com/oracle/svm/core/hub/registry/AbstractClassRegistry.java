@@ -88,7 +88,7 @@ public abstract class AbstractClassRegistry {
     @Platforms(Platform.HOSTED_ONLY.class)
     public final void addAOTType(Class<?> cls) {
         assert !cls.isArray() && !cls.isPrimitive();
-        TypeSymbols types = ClassRegistries.singleton().getTypes();
+        TypeSymbols types = SymbolsSupport.getTypes();
         ByteSequence typeBytes = ByteSequence.createTypeFromName(cls.getName());
         Symbol<Type> key = types.getOrCreateValidType(typeBytes, true);
         assert key != null : typeBytes;

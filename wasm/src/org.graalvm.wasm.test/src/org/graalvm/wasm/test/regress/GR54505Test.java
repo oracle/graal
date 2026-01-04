@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,9 +70,9 @@ public class GR54505Test {
                         """));
 
         final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "main").build();
-        try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
-            Value mainModule = context.eval(sourceMain); // main
-            final Value main = mainModule.getMember("_main");
+        try (Context context = Context.create(WasmLanguage.ID)) {
+            Value mainExports = context.eval(sourceMain).newInstance().getMember("exports"); // main
+            final Value main = mainExports.getMember("_main");
             // Too few arguments
             try {
                 main.execute();
@@ -109,12 +109,12 @@ public class GR54505Test {
                         """));
 
         final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "main").build();
-        try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
-            Value mainModule = context.eval(sourceMain); // main
-            final Value main = mainModule.getMember("_main");
+        try (Context context = Context.create(WasmLanguage.ID)) {
+            Value mainExports = context.eval(sourceMain).newInstance().getMember("exports"); // main
+            final Value main = mainExports.getMember("_main");
 
             // Expected argument types
-            assertEquals(42, main.execute(0.0, 0, 0).asInt());
+            assertEquals(42, mainExports.execute(0.0, 0, 0).asInt());
 
             // Invalid argument type(s)
             try {

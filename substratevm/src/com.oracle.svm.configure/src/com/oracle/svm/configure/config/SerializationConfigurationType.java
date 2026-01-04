@@ -30,16 +30,16 @@ import static com.oracle.svm.configure.ConfigurationParser.TYPE_KEY;
 import java.io.IOException;
 import java.util.Objects;
 
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public class SerializationConfigurationType implements JsonPrintable, Comparable<SerializationConfigurationType> {
-    private final UnresolvedConfigurationCondition condition;
+    private final UnresolvedAccessCondition condition;
     private final String qualifiedJavaName;
 
-    public SerializationConfigurationType(UnresolvedConfigurationCondition condition, String qualifiedJavaName) {
+    public SerializationConfigurationType(UnresolvedAccessCondition condition, String qualifiedJavaName) {
         assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not the internal representation";
         assert !qualifiedJavaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
         Objects.requireNonNull(condition);
@@ -52,7 +52,7 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
         return qualifiedJavaName;
     }
 
-    public UnresolvedConfigurationCondition getCondition() {
+    public UnresolvedAccessCondition getCondition() {
         return condition;
     }
 
@@ -67,7 +67,7 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
 
     private void printJson(JsonWriter writer, boolean combinedFile) throws IOException {
         writer.appendObjectStart();
-        ConfigurationConditionPrintable.printConditionAttribute(condition, writer, combinedFile);
+        AccessConditionPrintable.printConditionAttribute(condition, writer, combinedFile);
         writer.quote(combinedFile ? TYPE_KEY : NAME_KEY).appendFieldSeparator().quote(qualifiedJavaName);
         writer.appendObjectEnd();
     }

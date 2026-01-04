@@ -25,6 +25,8 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.IOException;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker.Option;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.VarHandle;
 import java.nio.channels.FileChannel;
@@ -80,6 +82,12 @@ final class Target_jdk_internal_foreign_abi_AbstractLinker {
     @SuppressWarnings({"unused", "static-method"})
     Target_java_lang_foreign_MemorySegment upcallStub(MethodHandle target, Target_java_lang_foreign_FunctionDescriptor function,
                     Target_java_lang_foreign_Arena arena, Target_java_lang_foreign_Linker_Option... options) {
+        throw ForeignDisabledSubstitutions.fail();
+    }
+
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private MethodHandle downcallHandle0(FunctionDescriptor function, Option... options) {
         throw ForeignDisabledSubstitutions.fail();
     }
 }

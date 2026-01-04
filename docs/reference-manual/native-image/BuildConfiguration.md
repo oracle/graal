@@ -69,7 +69,7 @@ Executing [
 ]
 ```
 
-Typical examples of configurations that use a configuration from _META-INF/native-image_ can be found in [Native Image configuration examples](https://github.com/graalvm/graalvm-demos/tree/master/native-image-configure-examples).
+Typical examples of configurations that use a configuration from _META-INF/native-image_ can be found in [Native Image configuration examples](https://github.com/graalvm/graalvm-demos/blob/master/README.md#configure).
 
 ## Configuration File Format
 

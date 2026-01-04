@@ -55,7 +55,7 @@ public class TestVirtualThreadsChunkRotation extends JfrRecordingTest {
     private static final int THREADS = 3;
     private static final int EXPECTED_EVENTS = THREADS;
     private final AtomicInteger emittedEventsPerType = new AtomicInteger(0);
-    private final Set<Long> expectedThreads = Collections.synchronizedSet(new HashSet<>());
+    private final Set<Long> expectedThreads = Collections.synchronizedSet(new HashSet<>()); // noEconomicSet(synchronization)
     private final MonitorWaitHelper helper = new MonitorWaitHelper();
 
     private volatile boolean proceed;

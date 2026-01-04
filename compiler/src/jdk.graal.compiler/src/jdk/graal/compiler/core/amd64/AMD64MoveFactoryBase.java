@@ -28,6 +28,7 @@ package jdk.graal.compiler.core.amd64;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
 import jdk.graal.compiler.lir.gen.MoveFactory;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 
@@ -41,11 +42,25 @@ public abstract class AMD64MoveFactoryBase extends MoveFactory {
 
     @Override
     public final AMD64LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input) {
-        RegisterBackupPair backup = backupSlotProvider.getScratchRegister(input.getPlatformKind());
+        AMD64Kind backupKind = (AMD64Kind) input.getPlatformKind();
+        if (backupKind.isXMM() && backupKind.getSizeInBytes() <= Long.BYTES) {
+            // backup using a gp register
+            backupKind = AMD64Kind.QWORD;
+        }
+
+        RegisterBackupPair backup = backupSlotProvider.getScratchRegister(backupKind, backupKind.isInteger() ? getPreferredGeneralPurposeScratchRegister() : null);
         Register scratchRegister = backup.register;
         VirtualStackSlot backupSlot = backup.backupSlot;
         return createStackMove(result, input, scratchRegister, backupSlot);
     }
 
     public abstract AMD64LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input, Register scratchRegister, AllocatableValue backupSlot);
+
+    /**
+     * @return a concrete register as the preferred scratch register for integer AMD64Kind; or null
+     *         if there is no preference
+     */
+    public Register getPreferredGeneralPurposeScratchRegister() {
+        return null;
+    }
 }

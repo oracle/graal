@@ -666,7 +666,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             long size = type.instanceSize();
 
             OptionValues localOptions = graph.getOptions();
-            Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(allocateInstance, graph, tool.getLoweringStage());
             args.add("hub", hub);
             // instanceSize returns a negative number for types which should be slow path allocated
             args.add("size", NumUtil.safeAbs(size));
@@ -689,7 +689,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             long size = type.instanceSize();
 
             OptionValues localOptions = graph.getOptions();
-            Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(allocateInstance, graph, tool.getLoweringStage());
             args.add("hub", hub);
             // instanceSize returns a negative number for types which should be slow path allocated
             args.add("size", NumUtil.safeAbs(size));
@@ -717,7 +717,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             int log2ElementSize = CodeUtil.log2(tool.getMetaAccess().getArrayIndexScale(elementKind));
 
             OptionValues localOptions = graph.getOptions();
-            Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(allocateArray, graph, tool.getLoweringStage());
             args.add("hub", hub);
             ValueNode length = node.length();
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
@@ -747,7 +747,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             int log2ElementSize = CodeUtil.log2(tool.getMetaAccess().getArrayIndexScale(elementKind));
 
             OptionValues localOptions = graph.getOptions();
-            Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(allocateArray, graph, tool.getLoweringStage());
             args.add("hub", hub);
             ValueNode length = node.length();
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
@@ -777,7 +777,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) node.type();
             ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), tool.getMetaAccess(), graph);
 
-            Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(newmultiarray, graph, tool.getLoweringStage());
             args.add("hub", hub);
             args.add("rank", rank);
             args.add("withException", false);
@@ -796,7 +796,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) node.type();
             ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), tool.getMetaAccess(), graph);
 
-            Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(newmultiarray, graph, tool.getLoweringStage());
             args.add("hub", hub);
             args.add("rank", rank);
             args.add("withException", true);
@@ -808,7 +808,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         public void lower(DynamicNewInstanceNode node, LoweringTool tool) {
             OptionValues localOptions = node.graph().getOptions();
 
-            Arguments args = new Arguments(allocateInstanceDynamic, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(allocateInstanceDynamic, node.graph(), tool.getLoweringStage());
             args.add("type", node.getInstanceType());
             args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
             args.add("emitMemoryBarrier", node.emitMemoryBarrier());
@@ -821,7 +821,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         public void lower(DynamicNewInstanceWithExceptionNode node, LoweringTool tool) {
             OptionValues localOptions = node.graph().getOptions();
 
-            Arguments args = new Arguments(allocateInstanceDynamic, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(allocateInstanceDynamic, node.graph(), tool.getLoweringStage());
             args.add("type", node.getInstanceType());
             args.add("fillContents", FillContent.fromBoolean(true));
             args.add("emitMemoryBarrier", true/* barriers */);
@@ -834,7 +834,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         public void lower(ValidateNewInstanceClassNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
 
-            Arguments args = new Arguments(validateNewInstanceClass, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(validateNewInstanceClass, graph, tool.getLoweringStage());
             args.add("type", node.getInstanceType());
             args.add("classClass", node.getClassClass());
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
@@ -847,7 +847,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             ValueNode voidClass = node.getVoidClass();
             assert voidClass != null;
 
-            Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(allocateArrayDynamic, graph, tool.getLoweringStage());
             args.add("elementType", node.getElementType());
             args.add("voidClass", voidClass);
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
@@ -878,7 +878,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             ValueNode voidClass = node.getVoidClass();
             assert voidClass != null;
 
-            Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(allocateArrayDynamic, graph, tool.getLoweringStage());
             args.add("elementType", node.getElementType());
             args.add("voidClass", voidClass);
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
@@ -901,7 +901,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
         public void lower(VerifyHeapNode node, LoweringTool tool) {
             if (config.cAssertions) {
-                Arguments args = new Arguments(verifyHeap, node.graph().getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(verifyHeap, node.graph(), tool.getLoweringStage());
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
             } else {
@@ -910,14 +910,14 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         }
 
         public void lower(KlassBeingInitializedCheckNode node, LoweringTool tool) {
-            Arguments args = new Arguments(threadBeingInitializedCheck, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(threadBeingInitializedCheck, node.graph(), tool.getLoweringStage());
             args.add("klass", node.getKlass());
 
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
 
         public void lower(KlassFullyInitializedCheckNode node, LoweringTool tool) {
-            Arguments args = new Arguments(klassFullyInitializedCheck, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(klassFullyInitializedCheck, node.graph(), tool.getLoweringStage());
             args.add("klass", node.getKlass());
 
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);

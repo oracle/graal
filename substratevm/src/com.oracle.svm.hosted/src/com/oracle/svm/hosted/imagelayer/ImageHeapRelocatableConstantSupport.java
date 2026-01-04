@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import jdk.graal.compiler.nodes.spi.LoweringTool;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * {@link ImageHeapRelocatableConstant}s registered via this support are allowed to be directly
@@ -44,5 +44,5 @@ public abstract class ImageHeapRelocatableConstantSupport {
 
     abstract void registerLoadableConstant(ImageHeapRelocatableConstant constant);
 
-    abstract FloatingNode emitLoadConstant(StructuredGraph graph, MetaAccessProvider metaAccess, ImageHeapRelocatableConstant constant);
+    abstract FloatingNode emitLoadConstant(StructuredGraph graph, LoweringTool tool, ImageHeapRelocatableConstant constant);
 }

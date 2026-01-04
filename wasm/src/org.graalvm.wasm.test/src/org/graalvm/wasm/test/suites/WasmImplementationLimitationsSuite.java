@@ -41,6 +41,12 @@
 
 package org.graalvm.wasm.test.suites;
 
+import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
+
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -52,12 +58,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-
-import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 @RunWith(Parameterized.class)
 public class WasmImplementationLimitationsSuite {
@@ -85,7 +85,7 @@ public class WasmImplementationLimitationsSuite {
         final Context context = Context.newBuilder(WasmLanguage.ID).build();
         final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(bytecode), "dummy_main").build();
         try {
-            context.eval(source).getMember("_main").execute();
+            context.eval(source).newInstance().getMember("exports").getMember("_main").execute();
         } catch (final PolyglotException e) {
             final Value actualFailureObject = e.getGuestObject();
 

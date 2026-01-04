@@ -25,28 +25,30 @@
 package jdk.graal.compiler.graph.test.graphio;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
+import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+
+import org.junit.Test;
+
 import jdk.graal.compiler.graphio.GraphOutput;
 import jdk.graal.compiler.graphio.GraphStructure;
 import jdk.graal.compiler.graphio.GraphTypes;
-import static org.junit.Assert.assertSame;
-import org.junit.Test;
-import java.lang.reflect.Field;
-import static org.junit.Assert.assertEquals;
-import java.nio.charset.Charset;
-import java.util.HashMap;
+import jdk.graal.compiler.util.EconomicHashMap;
 
 public final class GraphOutputTest {
 
@@ -260,7 +262,7 @@ public final class GraphOutputTest {
     }
 
     private static Map<Object, Object> makeIntProperties() {
-        Map<Object, Object> map = new HashMap<>();
+        Map<Object, Object> map = new EconomicHashMap<>();
         for (int i = 0; i < Character.MAX_VALUE; ++i) {
             map.put(i, i);
         }

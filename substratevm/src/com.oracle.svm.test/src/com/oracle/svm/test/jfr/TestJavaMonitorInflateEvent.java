@@ -73,7 +73,7 @@ public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
     }
 
     private void test(Object obj, String className) throws Throwable {
-        Runnable first = () -> {
+        firstThread = new Thread(() -> {
             try {
                 synchronized (obj) {
                     secondThread.start();
@@ -85,25 +85,25 @@ public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
-        };
+        });
 
-        Runnable second = () -> {
+        secondThread = new Thread(() -> {
             passedCheckpoint = true;
             synchronized (obj) {
                 GraalDirectives.blackhole(obj);
             }
-        };
+        });
 
         expectedClassName = className;
-        passedCheckpoint = false;
-        firstThread = new Thread(first);
-        secondThread = new Thread(second);
 
         /* Now that the data is prepared, start the JFR recording. */
         String[] events = new String[]{JfrEvent.JavaMonitorInflate.getName()};
         Recording recording = startRecording(events);
 
-        /* Generate event with "Monitor Enter" cause. */
+        /*
+         * Generate event with "Monitor Enter" cause. Start the first thread so that it can then
+         * start the second thread.
+         */
         firstThread.start();
 
         firstThread.join();

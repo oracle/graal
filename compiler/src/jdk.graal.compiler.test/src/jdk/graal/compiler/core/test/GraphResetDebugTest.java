@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,9 @@
 package jdk.graal.compiler.core.test;
 
 import org.graalvm.collections.EconomicMap;
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Scope;
 import jdk.graal.compiler.debug.DebugOptions;
@@ -32,15 +35,12 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class GraphResetDebugTest extends GraalCompilerTest {
 
     public static void testSnippet() {
     }
 
-    @SuppressWarnings("try")
     @Test
     public void test1() {
         assumeManagementLibraryIsLoadable();
@@ -50,7 +50,7 @@ public class GraphResetDebugTest extends GraalCompilerTest {
         DebugContext debug = getDebugContext(new OptionValues(map));
         StructuredGraph graph = parseEager("testSnippet", AllowAssumptions.YES, debug);
         boolean resetSucceeded = false;
-        try (Scope scope = debug.scope("some scope")) {
+        try (Scope _ = debug.scope("some scope")) {
             graph.resetDebug(DebugContext.disabled(getInitialOptions()));
             resetSucceeded = true;
         } catch (AssertionError expected) {

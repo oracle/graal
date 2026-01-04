@@ -31,6 +31,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.libs.Lib;
 import com.oracle.truffle.espresso.libs.Libs;
@@ -39,13 +40,25 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
  * Uses Espresso's implementation of standard JDK libraries, falling back to a delegate if the
- * implementation is missing.
- * <p>
- * This can be used in conjunction with option {@code 'java.GuestNativeAccess=no-native'} or
- * {@code env.isNativeAccessAllowed() == false} to prevent guest code from accessing the native
- * world, but still allowing the java standard library to work.
+ * implementation is missing. Espresso Libs is automatically enabled if native access is disabled
+ * (e.g., {@code java.GuestNativeAccess=no-native} or {@code env.isNativeAccessAllowed() == false}).
+ *
+ * Key implementation details:
+ * <ul>
+ * <li>Startup libraries (libnespresso, libjvm, libjimage) are substituted to prevent initialization
+ * of native environments such as {@link com.oracle.truffle.espresso.jni.JniEnv} .</li>
+ * <li>A custom guest FileSystem is backed by Truffle's VFS (see
+ * sun.nio.fs.TruffleFileSystemProvider). The semantics of the FileSystem is implemented in
+ * {@link com.oracle.truffle.espresso.io.TruffleIO} on the host side.</li>
+ * <li>Network functionality is implemented using host sockets, relying on
+ * {@code env.isSocketIOAllowed()
+ * == true}.</li>
+ * <li>Guest memory will be virtualized with (GR-70643).</li>
+ * </ul>
  *
  * @see com.oracle.truffle.espresso.libs.Libs
+ * @see com.oracle.truffle.espresso.io.TruffleIO
+ * @see com.oracle.truffle.espresso.libs.LibsState
  */
 public class EspressoLibsNativeAccess extends ContextAccessImpl implements NativeAccess {
 
@@ -61,13 +74,13 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
     public EspressoLibsNativeAccess(EspressoContext ctx, NativeAccess delegate) {
         super(ctx);
         this.delegate = delegate;
-        this.libs = new Libs();
+        this.libs = new Libs(ctx.getLanguage());
     }
 
     @Override
     public @Pointer TruffleObject loadLibrary(Path libraryPath) {
         Path libname = libraryPath.getFileName();
-        if (libs.isKnown(libraryPath.toString())) {
+        if (libname != null && libs.isKnown(libraryPath.toString())) {
             getLogger().fine(() -> "Loading espresso lib: " + libname);
             return libs.loadLibrary(getContext(), libname.toString());
 
@@ -114,8 +127,11 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
             getLogger().fine(() -> "Failed to locate symbol '" + symbolName + "' in espresso lib " + lib.name());
         } else {
             // Delegate library
-            getLogger().fine(() -> "Espresso libs delegating for: " + symbolName);
-            return delegate.lookupSymbol(library, symbolName);
+            TruffleObject ret = delegate.lookupSymbol(library, symbolName);
+            if (ret != null) {
+                getLogger().fine(() -> "Found: " + symbolName + " through delegate library");
+            }
+            return ret;
         }
         return null;
     }
@@ -140,6 +156,9 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
 
     @Override
     public boolean isFallbackSymbol(TruffleObject symbol) {
+        if (symbol instanceof SubstitutionFactoryWrapper) {
+            return false;
+        }
         return delegate.isFallbackSymbol(symbol);
     }
 
@@ -159,21 +178,6 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
     }
 
     @Override
-    public @Buffer TruffleObject allocateMemory(long size) {
-        return delegate.allocateMemory(size);
-    }
-
-    @Override
-    public @Buffer TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize) {
-        return delegate.reallocateMemory(buffer, newSize);
-    }
-
-    @Override
-    public void freeMemory(@Pointer TruffleObject buffer) {
-        delegate.freeMemory(buffer);
-    }
-
-    @Override
     public @Pointer TruffleObject createNativeClosure(TruffleObject executable, NativeSignature nativeSignature) {
         return delegate.createNativeClosure(executable, nativeSignature);
     }
@@ -181,6 +185,11 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
     @Override
     public void prepareThread() {
         delegate.prepareThread();
+    }
+
+    @Override
+    public NativeMemory nativeMemory() {
+        return delegate.nativeMemory();
     }
 
     @TruffleBoundary

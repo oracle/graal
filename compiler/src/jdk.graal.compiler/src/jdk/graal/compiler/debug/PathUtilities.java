@@ -34,8 +34,12 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.text.DateFormatSymbols;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.ServiceLoader;
+import java.util.TimeZone;
 
 /**
  * Miscellaneous methods for modifying and generating file system paths.
@@ -83,6 +87,34 @@ public class PathUtilities {
      */
     public static String getPath(String first, String... more) {
         return PROVIDER.getPath(first, more);
+    }
+
+    /**
+     * This circumvents instantiating {@link SimpleDateFormat} at libgraal runtime. This is needed
+     * to avoid String-based class-lookup (to find resource bundle
+     * {@code sun.text.resources.cldr.FormatData} as part of {@link SimpleDateFormat} construction)
+     * and allows us to avoid class-lookup support in the image.
+     */
+    private static final SimpleDateFormat SIMPLE_DATE_FORMAT = getSimpleDateFormat();
+
+    private static SimpleDateFormat getSimpleDateFormat() {
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss.SSS");
+        simpleDateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return simpleDateFormat;
+    }
+
+    public static DateFormatSymbols getSharedDateFormatSymbols() {
+        // SimpleDateFormat is not thread-safe
+        synchronized (SIMPLE_DATE_FORMAT) {
+            return SIMPLE_DATE_FORMAT.getDateFormatSymbols();
+        }
+    }
+
+    public static String getDateString(Date date) {
+        // SimpleDateFormat is not thread-safe
+        synchronized (SIMPLE_DATE_FORMAT) {
+            return SIMPLE_DATE_FORMAT.format(date);
+        }
     }
 
     /**

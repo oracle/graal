@@ -42,12 +42,10 @@ import com.oracle.truffle.api.source.SourceSection;
 @ExportLibrary(NodeLibrary.class)
 public final class EspressoStatementNode extends EspressoInstrumentableNode implements BciProvider {
 
-    private final int startBci;
     @Child private volatile ProbeNode eagerProbe;
     private final SourceSection sourceSection;
 
-    EspressoStatementNode(int startBci, SourceSection section) {
-        this.startBci = startBci;
+    EspressoStatementNode(SourceSection section) {
         this.sourceSection = section;
     }
 
@@ -57,8 +55,8 @@ public final class EspressoStatementNode extends EspressoInstrumentableNode impl
     }
 
     @Override
-    public int getBci(@SuppressWarnings("unused") Frame frame) {
-        return startBci;
+    public int getBci(Frame frame) {
+        return EspressoFrame.getBCI(frame);
     }
 
     @Override

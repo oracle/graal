@@ -25,7 +25,6 @@
 package jdk.graal.compiler.hotspot;
 
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.SortedSet;
@@ -37,7 +36,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -59,7 +58,7 @@ class CompilationCounters {
         this.options = options;
     }
 
-    private final Map<MethodKey, Integer> counters = new HashMap<>();
+    private final Map<MethodKey, Integer> counters = new EconomicHashMap<>();
 
     /**
      * Counts the number of compilations for the {@link ResolvedJavaMethod} of the

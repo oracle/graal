@@ -52,6 +52,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -114,6 +115,10 @@ public class ReadNode extends FloatableAccessNode
     protected ReadNode(NodeClass<? extends ReadNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, MemoryOrderMode memoryOrder,
                     boolean usedAsNullCheck, FrameState stateBefore) {
         this(c, address, location, stamp, MemoryExtendKind.DEFAULT, guard, barrierType, memoryOrder, usedAsNullCheck, stateBefore, null, null, false);
+    }
+
+    public ReadNode(AddressNode address, LocationIdentity location, MemoryKill lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+        this(TYPE, address, location, stamp, MemoryExtendKind.DEFAULT, guard, barrierType, MemoryOrderMode.PLAIN, false, null, lastLocationAccess, null, false);
     }
 
     private static Stamp generateStamp(Stamp stamp, MemoryExtendKind extendKind) {
@@ -219,7 +224,8 @@ public class ReadNode extends FloatableAccessNode
             throw GraalError.shouldNotReachHere("Illegal attempt to convert read to floating node."); // ExcludeFromJacocoGeneratedReport
         }
         try (DebugCloseable position = withNodeSourcePosition()) {
-            return graph().unique(new FloatingReadNode(getAddress(), getLocationIdentity(), lastLocationAccess, stamp(NodeView.DEFAULT), getGuard(), getBarrierType(), field, trustInjected));
+            GraalError.guarantee(graph().getGraphState().isDuringStage(GraphState.StageFlag.FLOATING_READS), "Only during FloatingReadPhase");
+            return graph().addOrUniqueWithInputs(new FloatingReadNode(getAddress(), getLocationIdentity(), lastLocationAccess, stamp, guard, barrierType, field, trustInjected, false));
         }
     }
 

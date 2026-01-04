@@ -24,23 +24,27 @@
  */
 package com.oracle.svm.hosted.lambda;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
 import jdk.graal.compiler.java.LambdaUtils;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * @see LambdaProxyRenamingSubstitutionProcessor
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 public final class StableLambdaProxyNameFeature implements InternalFeature {
 
@@ -72,7 +76,7 @@ public final class StableLambdaProxyNameFeature implements InternalFeature {
         }
 
         /* Lambda names should be unique. */
-        Set<String> lambdaNames = new HashSet<>();
+        EconomicSet<String> lambdaNames = EconomicSet.create();
         types.stream()
                         .map(AnalysisType::getName)
                         .filter(LambdaUtils::isLambdaClassName)

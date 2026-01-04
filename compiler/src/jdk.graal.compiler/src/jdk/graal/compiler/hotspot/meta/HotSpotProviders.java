@@ -28,9 +28,9 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
@@ -52,6 +52,11 @@ public class HotSpotProviders extends Providers {
     private final HotSpotRegistersProvider registers;
     private final GraalHotSpotVMConfig config;
 
+    /**
+     * The interface for recording and replaying compilations or {@code null} if disabled.
+     */
+    private final ReplayCompilationSupport replayCompilationSupport;
+
     public HotSpotProviders(MetaAccessProvider metaAccess,
                     HotSpotCodeCacheProvider codeCache,
                     ConstantReflectionProvider constantReflection,
@@ -68,12 +73,13 @@ public class HotSpotProviders extends Providers {
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
                     LoopsDataProvider loopsDataProvider,
                     GraalHotSpotVMConfig config,
-                    IdentityHashCodeProvider identityHashCodeProvider) {
+                    ReplayCompilationSupport replayCompilationSupport) {
         super(metaAccess, codeCache, constantReflection, constantField, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider,
-                        snippetReflection, wordTypes, loopsDataProvider, identityHashCodeProvider);
+                        snippetReflection, wordTypes, loopsDataProvider);
         this.suites = suites;
         this.registers = registers;
         this.config = config;
+        this.replayCompilationSupport = replayCompilationSupport;
     }
 
     @Override
@@ -117,7 +123,7 @@ public class HotSpotProviders extends Providers {
         return new HotSpotProviders(getMetaAccess(), getCodeCache(), substitution, getConstantFieldProvider(), getForeignCalls(), getLowerer(), getReplacements(), getSuites(),
                         getRegisters(), getSnippetReflection(), getWordTypes(), getStampProvider(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(),
                         getLoopsDataProvider(),
-                        config, getIdentityHashCodeProvider());
+                        config, getReplayCompilationSupport());
     }
 
     @Override
@@ -126,7 +132,7 @@ public class HotSpotProviders extends Providers {
                         getSuites(),
                         getRegisters(), getSnippetReflection(), getWordTypes(), getStampProvider(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(),
                         getLoopsDataProvider(),
-                        config, getIdentityHashCodeProvider());
+                        config, getReplayCompilationSupport());
     }
 
     @Override
@@ -134,17 +140,24 @@ public class HotSpotProviders extends Providers {
         return new HotSpotProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), getLowerer(), substitution,
                         getSuites(), getRegisters(), getSnippetReflection(), getWordTypes(), getStampProvider(), getPlatformConfigurationProvider(),
                         getMetaAccessExtensionProvider(),
-                        getLoopsDataProvider(), config, getIdentityHashCodeProvider());
+                        getLoopsDataProvider(), config, getReplayCompilationSupport());
     }
 
     public HotSpotProviders copyWith() {
         return new HotSpotProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), getLowerer(), getReplacements(),
                         getSuites(), getRegisters(), getSnippetReflection(), getWordTypes(), getStampProvider(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(),
                         getLoopsDataProvider(),
-                        config, getIdentityHashCodeProvider());
+                        config, getReplayCompilationSupport());
     }
 
     public void setSuites(HotSpotSuitesProvider suites) {
         this.suites = suites;
+    }
+
+    /**
+     * Returns the interface for recording and replaying compilations or {@code null} if disabled.
+     */
+    public ReplayCompilationSupport getReplayCompilationSupport() {
+        return replayCompilationSupport;
     }
 }

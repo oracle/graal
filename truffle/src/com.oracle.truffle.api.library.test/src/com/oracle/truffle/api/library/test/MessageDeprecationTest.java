@@ -401,12 +401,28 @@ public class MessageDeprecationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testMessageResolution() {
-        assertEquals(A.class, Message.resolve(MoreGenericType2.class, "m0").getParameterTypes().get(1));
-        assertEquals(Object.class, Message.resolve(MoreGenericType3.class, "m0").getParameterTypes().get(1));
+        assertEquals(A.class, Message.resolveExact(MoreGenericType2.class, "m0", Object.class, A.class).getParameterTypes().get(1));
+        assertEquals(A.class, Message.resolveExact(MoreGenericType3.class, "m0", Object.class, A.class).getParameterTypes().get(1));
+        assertEquals(String.class, Message.resolveExact(AllDeprecated.class, "m0", Object.class, String.class).getParameterTypes().get(1));
+        assertTrue(Message.resolveExact(AllDeprecated.class, "m0", Object.class, Object.class).isDeprecated());
+        assertTrue(Message.resolveExact(AllDeprecated.class, "m0", Object.class, String.class).isDeprecated());
+        assertEquals(1, Message.resolveExact(FewerParameters2.class, "m0", Object.class).getParameterTypes().size());
+        assertEquals(2, Message.resolveExact(FewerParameters2.class, "m0", Object.class, String.class).getParameterTypes().size());
+        assertEquals(1, Message.resolveExact(FewerParameters3.class, "m0", Object.class).getParameterTypes().size());
+        assertEquals(2, Message.resolveExact(FewerParameters3.class, "m0", Object.class, String.class).getParameterTypes().size());
+        assertEquals(3, Message.resolveExact(FewerParameters3.class, "m0", Object.class, String.class, String.class).getParameterTypes().size());
+        assertTrue(Message.resolveExact(SimpleDeprecated.class, "m0", Object.class).isDeprecated());
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void testLegacyMessageResolution() {
+        assertEquals(B_extends_A.class, Message.resolve(MoreGenericType2.class, "m0").getParameterTypes().get(1));
+        assertEquals(A.class, Message.resolve(MoreGenericType3.class, "m0").getParameterTypes().get(1));
         assertEquals(Object.class, Message.resolve(AllDeprecated.class, "m0").getParameterTypes().get(1));
         assertTrue(Message.resolve(AllDeprecated.class, "m0").isDeprecated());
-        assertEquals(1, Message.resolve(FewerParameters2.class, "m0").getParameterTypes().size());
-        assertEquals(1, Message.resolve(FewerParameters3.class, "m0").getParameterTypes().size());
+        assertEquals(2, Message.resolve(FewerParameters2.class, "m0").getParameterTypes().size());
+        assertEquals(2, Message.resolve(FewerParameters3.class, "m0").getParameterTypes().size());
         assertTrue(Message.resolve(SimpleDeprecated.class, "m0").isDeprecated());
     }
 

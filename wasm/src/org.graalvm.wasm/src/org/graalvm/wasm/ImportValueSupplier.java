@@ -54,4 +54,26 @@ public interface ImportValueSupplier {
      * @param intoInstance importing module instance of the import to be resolved.
      */
     Object get(ImportDescriptor importDesc, WasmInstance intoInstance);
+
+    /**
+     * Creates a union of this and another supplier.
+     */
+    default ImportValueSupplier andThen(ImportValueSupplier next) {
+        if (this == none()) {
+            return next;
+        } else if (next == none()) {
+            return this;
+        }
+        return (importDesc, intoInstance) -> {
+            Object found = this.get(importDesc, intoInstance);
+            if (found != null) {
+                return found;
+            }
+            return next.get(importDesc, intoInstance);
+        };
+    }
+
+    static ImportValueSupplier none() {
+        return (importDesc, intoInstance) -> null;
+    }
 }

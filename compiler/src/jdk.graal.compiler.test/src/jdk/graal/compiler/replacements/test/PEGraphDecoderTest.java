@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,9 @@ import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
+
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -60,7 +63,8 @@ import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.replacements.CachingPEGraphDecoder;
+import jdk.graal.compiler.truffle.CachingPEGraphDecoder;
+import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -178,7 +182,6 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void test() {
         test("doTest", EconomicMap.create(), getInitialOptions());
     }
@@ -223,18 +226,18 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
         }
     }
 
-    @SuppressWarnings("try")
     private StructuredGraph test(String methodName, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, OptionValues optionValues) {
         ResolvedJavaMethod testMethod = getResolvedJavaMethod(methodName);
         StructuredGraph targetGraph = null;
         DebugContext debug = getDebugContext(optionValues, null, null);
-        try (DebugContext.Scope scope = debug.scope("GraphPETest", testMethod)) {
+        try (DebugContext.Scope _ = debug.scope("GraphPETest", testMethod)) {
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withEagerResolving(true).withUnresolvedIsError(true);
             graphBuilderConfig = editGraphBuilderConfiguration(graphBuilderConfig);
             registerPlugins(graphBuilderConfig.getPlugins().getInvocationPlugins());
             targetGraph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.YES).method(testMethod).build();
             GraphBuilderPhase.Instance instance = new TestGraphBuilderPhase.Instance(getProviders(), graphBuilderConfig, OptimisticOptimizations.NONE, null);
-            CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(getTarget().arch, targetGraph, getProviders(), graphBuilderConfig,
+            KnownTruffleTypes types = new KnownTruffleTypes((TruffleCompilerRuntime) Truffle.getRuntime(), getMetaAccess(), getConstantReflection());
+            CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(getTarget().arch, targetGraph, getProviders(), getProviders(), types, graphBuilderConfig,
                             null, null, new InlineInvokePlugin[]{new InlineAll()}, null, null, null, null, null, graphCache, () -> null, instance, false, false, true);
 
             decoder.decode(testMethod);

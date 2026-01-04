@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,7 +59,16 @@ public class BasicImageReader implements AutoCloseable, ResourceDecompressor.Str
 
         channel = FileChannel.open(imagePath, StandardOpenOption.READ);
 
-        ByteBuffer map = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
+        ByteBuffer map;
+        try {
+            map = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
+        } catch (UnsupportedOperationException e) {
+            long lastRead;
+            map = ByteBuffer.allocateDirect(Math.toIntExact(channel.size()));
+            do {
+                lastRead = channel.read(map);
+            } while (lastRead >= 0 && map.hasRemaining());
+        }
 
         int headerSize = ImageHeader.getHeaderSize();
         if (map.capacity() < headerSize) {

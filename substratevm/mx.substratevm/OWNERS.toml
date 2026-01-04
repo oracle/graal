@@ -1,0 +1,7 @@
+[[rule]]
+files = ["mx_substratevm_benchmark.py"]
+any = [
+    "andrija.kolic@oracle.com",
+    "francois.farquet@oracle.com",
+    "patrick.ziegler@oracle.com",
+]

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,22 +46,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.IntPredicate;
 
-import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.ClassSetContentsAccumulator;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
+import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
-import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.util.JavaStringUtil;
 import com.oracle.truffle.regex.util.TBitSet;
 
@@ -101,6 +100,11 @@ public abstract class RegexLexer {
     public CompilationBuffer getCompilationBuffer() {
         return compilationBuffer;
     }
+
+    /**
+     * Get the {@link UnicodeProperties} version to be used for parsing Unicode property escapes.
+     */
+    protected abstract UnicodeProperties getUnicodeProperties();
 
     /**
      * Returns {@code true} if ignore-case mode is currently enabled.
@@ -1408,7 +1412,7 @@ public abstract class RegexLexer {
         try {
             String propertyName = pattern.substring(namePos, position - 1);
             if (featureEnabledClassSetExpressions()) {
-                ClassSetContents property = ECMAScriptFlavor.UNICODE.getPropertyOfStrings(propertyName);
+                ClassSetContents property = getUnicodeProperties().getPropertyOfStrings(propertyName);
                 if (invert) {
                     if (property.mayContainStrings()) {
                         throw handleComplementOfStringSet();
@@ -1420,7 +1424,7 @@ public abstract class RegexLexer {
                     return caseFoldClassSetAtom(property);
                 }
             } else {
-                CodePointSet propertySet = ECMAScriptFlavor.UNICODE.getProperty(propertyName);
+                CodePointSet propertySet = getUnicodeProperties().getProperty(propertyName);
                 return ClassSetContents.createCharacterClass(invert ? propertySet.createInverse(encoding) : propertySet);
             }
         } catch (IllegalArgumentException e) {
@@ -1462,7 +1466,7 @@ public abstract class RegexLexer {
     }
 
     private int toCodePoint(char c) {
-        if (encoding != Encodings.UTF_16_RAW && Character.isHighSurrogate(c)) {
+        if (encoding != Encoding.UTF_16_RAW && Character.isHighSurrogate(c)) {
             return finishSurrogatePair(c);
         }
         return c;

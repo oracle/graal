@@ -27,7 +27,7 @@ package jdk.graal.compiler.graphio.parsing.model;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -55,7 +55,7 @@ public class GraphDocument extends Properties.Entity implements ChangedEventProv
      * collected eventually, so their changed Properties would be lost. This field preserves the
      * changed values,
      */
-    private final Map<Object, Properties> mutableProperties = new HashMap<>();
+    private final Map<Object, Properties> mutableProperties = new LinkedHashMap<>();
 
     @SuppressWarnings("this-escape")
     public GraphDocument() {

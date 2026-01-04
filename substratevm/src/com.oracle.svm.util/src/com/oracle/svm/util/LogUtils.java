@@ -30,6 +30,12 @@ import org.graalvm.nativeimage.Platforms;
 // Checkstyle: Allow raw info or warning printing - begin
 public class LogUtils {
     /**
+     * Number of warnings seen during image build. Note this is limited to the current process, i.e.
+     * there is a split between Driver and Builder.
+     */
+    private static int warningsCount = 0;
+
+    /**
      * Print an info message.
      */
     public static void info(String message) {
@@ -66,6 +72,7 @@ public class LogUtils {
      */
     public static void warning(String message) {
         System.out.println("Warning: " + message);
+        warningsCount++;
     }
 
     /**
@@ -86,5 +93,9 @@ public class LogUtils {
      */
     public static void warningDeprecatedEnvironmentVariable(String environmentVariableName) {
         warning("The " + environmentVariableName + " environment variable is deprecated and might be removed in a future release. Please refer to the GraalVM release notes.");
+    }
+
+    public static int getWarningsCount() {
+        return warningsCount;
     }
 }

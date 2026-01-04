@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,11 +39,11 @@ import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.LoopBeginNode;
+import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
 import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.util.GraphUtil;
@@ -72,9 +72,8 @@ public class LoopSafepointStateVerificationTest extends GraalCompilerTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void test01() {
-        try (AutoCloseable c = new TTY.Filter()) {
+        try (AutoCloseable _ = new TTY.Filter()) {
             // Do not capture graphs for expected compilation failures.
             OptionValues opt = new OptionValues(testOptions(), GraalOptions.FullUnroll, false, DebugOptions.DumpOnError, false);
             test(opt, "snippet01");
@@ -197,7 +196,6 @@ public class LoopSafepointStateVerificationTest extends GraalCompilerTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testLoopDataStructure() {
         StructuredGraph g = parseEager(getResolvedJavaMethod("snippet02"), AllowAssumptions.NO);
         assert g.verify();

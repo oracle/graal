@@ -97,4 +97,14 @@ public @interface LayerVerifiedOption {
      * specify it somewhere in its sequence of options.
      */
     boolean positional() default true;
+
+    /**
+     * If the {@code HostedOption} field (this annotation is used with) also has {@link APIOption}
+     * annotations, this annotation element can be used to bind this annotation to a specific
+     * {@link APIOption} annotation instead of being valid for all kinds of {@code HostedOption}
+     * use. Note that one can also have additional {@code @LayerVerifiedOption} annotations that do
+     * not make use of {@code apiOption} on the same {@code HostedOption} field to specify
+     * compatibility checking that should apply for raw (non-API) use of the option.
+     */
+    String apiOption() default "";
 }

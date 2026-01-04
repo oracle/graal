@@ -42,17 +42,17 @@ public abstract class AbstractArgumentsCalculator implements ArgumentsCalculator
 
     protected static boolean isInt(Klass type) {
         return switch (type.getJavaKind()) {
-            case Boolean, Byte, Char, Short, Int, Long -> true;
+            case Boolean, Byte, Char, Short, Int, Long, Object -> true;
             case Float, Double -> false;
-            case Void, Illegal, Object, ReturnAddress -> throw EspressoError.shouldNotReachHere(type.getJavaKind().toString());
+            case Void, Illegal, ReturnAddress -> throw EspressoError.shouldNotReachHere(type.getJavaKind().toString());
         };
     }
 
     protected static boolean isFloat(Klass type) {
         return switch (type.getJavaKind()) {
-            case Boolean, Byte, Char, Short, Int, Long -> false;
+            case Boolean, Byte, Char, Short, Int, Long, Object -> false;
             case Float, Double -> true;
-            case Void, Illegal, Object, ReturnAddress -> throw EspressoError.shouldNotReachHere(type.getJavaKind().toString());
+            case Void, Illegal, ReturnAddress -> throw EspressoError.shouldNotReachHere(type.getJavaKind().toString());
         };
     }
 }

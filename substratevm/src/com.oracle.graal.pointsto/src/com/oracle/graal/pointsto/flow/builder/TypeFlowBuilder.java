@@ -24,10 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow.builder;
 
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Supplier;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -39,6 +36,7 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 
 import jdk.graal.compiler.phases.common.LazyValue;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * The type flow builder is a node in the type flow builder graph. The {@link #useDependencies} and
@@ -90,9 +88,9 @@ public final class TypeFlowBuilder<T extends TypeFlow<?>> {
     private final Class<T> flowClass;
     private final LazyValue<T> lazyTypeFlowCreator;
     /** Input dependency, i.e., builders that have this builder as an use. */
-    private final Set<TypeFlowBuilder<?>> useDependencies;
+    private final EconomicSet<TypeFlowBuilder<?>> useDependencies;
     /** Input dependency, i.e., builders that have this builder as an observer. */
-    private final Set<TypeFlowBuilder<?>> observerDependencies;
+    private final EconomicSet<TypeFlowBuilder<?>> observerDependencies;
     private boolean buildingAnActualParameter;
     private boolean isMaterialized;
 
@@ -107,8 +105,8 @@ public final class TypeFlowBuilder<T extends TypeFlow<?>> {
         this.flowClass = flowClass;
         this.source = source;
         this.lazyTypeFlowCreator = creator;
-        this.useDependencies = new HashSet<>();
-        this.observerDependencies = new HashSet<>();
+        this.useDependencies = EconomicSet.create();
+        this.observerDependencies = EconomicSet.create();
         this.buildingAnActualParameter = false;
         this.isMaterialized = false;
         this.predicate = predicate;
@@ -138,7 +136,7 @@ public final class TypeFlowBuilder<T extends TypeFlow<?>> {
         this.useDependencies.add(dependency);
     }
 
-    Collection<TypeFlowBuilder<?>> getUseDependencies() {
+    Iterable<TypeFlowBuilder<?>> getUseDependencies() {
         return useDependencies;
     }
 
@@ -146,7 +144,7 @@ public final class TypeFlowBuilder<T extends TypeFlow<?>> {
         this.observerDependencies.add(dependency);
     }
 
-    Collection<TypeFlowBuilder<?>> getObserverDependencies() {
+    Iterable<TypeFlowBuilder<?>> getObserverDependencies() {
         return observerDependencies;
     }
 

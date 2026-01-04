@@ -31,9 +31,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Comparator;
+import java.util.Formatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -49,10 +53,8 @@ import com.oracle.truffle.espresso.libjavavm.jniapi.JNIJavaVMOption;
 
 public final class Arguments {
     private static final PrintStream STDERR = System.err;
-    private static final PrintStream STDOUT = System.out;
 
-    public static final String JAVA_PROPS = "java.Properties.";
-
+    private static final String JAVA_PROPS = "java.Properties.";
     private static final String AGENT_LIB = "java.AgentLib.";
     private static final String AGENT_PATH = "java.AgentPath.";
     public static final String JAVA_AGENT = "java.JavaAgent";
@@ -73,7 +75,7 @@ public final class Arguments {
 
     private static final Set<String> IGNORED_XX_OPTIONS = Set.of(
                     "ReservedCodeCacheSize",
-                    // `TieredStopAtLevel=0` is handled separately, other values are ignored
+                    // `TieredStopAtLevel=0|1` is handled separately, other values are ignored
                     "TieredStopAtLevel",
                     "MaxMetaspaceSize",
                     "HeapDumpOnOutOfMemoryError",
@@ -95,6 +97,7 @@ public final class Arguments {
 
         boolean ignoreUnrecognized = args.getIgnoreUnrecognized();
         boolean printFlagsFinal = false;
+        String argumentError = null;
         List<String> xOptions = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
@@ -209,6 +212,16 @@ public final class Arguments {
                         printFlagsFinal = true;
                     } else if ("-XX:-PrintFlagsFinal".equals(optionString)) {
                         printFlagsFinal = false;
+                    } else if ("-XX:+DisplayVMOutput".equals(optionString)) {
+                        handler.setDisplayVMOutput(true);
+                    } else if ("-XX:-DisplayVMOutput".equals(optionString)) {
+                        handler.setDisplayVMOutput(false);
+                    } else if ("-XX:+LogVMOutput".equals(optionString)) {
+                        handler.setLogVMOutput(true);
+                    } else if ("-XX:-LogVMOutput".equals(optionString)) {
+                        handler.setLogVMOutput(false);
+                    } else if (optionString.startsWith("-XX:LogFile=")) {
+                        handler.setLogFile(optionString.substring("-XX:LogFile=".length()));
                     } else if (optionString.startsWith("--vm.")) {
                         handler.handleVMOption(optionString);
                     } else if (optionString.startsWith("-Xcomp")) {
@@ -218,8 +231,14 @@ public final class Arguments {
                         builder.option("engine.CompileImmediately", "true");
                     } else if (optionString.startsWith("-Xint") || "-XX:TieredStopAtLevel=0".equals(optionString)) {
                         builder.option("engine.Compilation", "false");
-                    } else if ("-Xshare:auto".equals(optionString) || "-Xshare:off".equals(optionString)) {
-                        // ignore
+                    } else if ("-XX:TieredStopAtLevel=1".equals(optionString)) {
+                        builder.option("engine.Mode", "latency");
+                    } else if (optionString.startsWith("-Xshare:")) {
+                        String value = optionString.substring("-Xshare:".length());
+                        builder.option("java.CDS", value);
+                    } else if (optionString.startsWith("--sun-misc-unsafe-memory-access=")) {
+                        String value = optionString.substring("--sun-misc-unsafe-memory-access=".length());
+                        builder.option("java.SunMiscUnsafeMemoryAccess", value);
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);
                     } else if (optionString.startsWith("--help:")) {
@@ -237,25 +256,20 @@ public final class Arguments {
                     }
                 }
             } catch (ArgumentException e) {
-                if (!ignoreUnrecognized) {
-                    // Failed to parse
-                    warn(e.getMessage());
-                    return JNI_ERR();
+                // Failed to parse
+                if (argumentError == null) {
+                    argumentError = e.getMessage();
                 }
             }
         }
 
-        for (String xOption : xOptions) {
-            RuntimeOptions.set(xOption.substring(2 /* drop the -X */), null);
+        if (argumentError != null && !ignoreUnrecognized) {
+            warn(argumentError);
+            return JNI_ERR();
         }
 
-        if (printFlagsFinal) {
-            STDOUT.println("[Global flags]");
-            List<RuntimeOptions.Descriptor> descriptors = RuntimeOptions.listDescriptors();
-            descriptors.sort(Comparator.comparing((RuntimeOptions.Descriptor d) -> d.name()));
-            for (RuntimeOptions.Descriptor descriptor : descriptors) {
-                printOption(descriptor);
-            }
+        for (String xOption : xOptions) {
+            RuntimeOptions.set(xOption.substring(2 /* drop the -X */), null);
         }
 
         if (bootClasspathPrepend != null) {
@@ -274,10 +288,24 @@ public final class Arguments {
         }
 
         handler.argumentProcessingDone();
+
+        if (printFlagsFinal) {
+            // this must be called after argumentProcessingDone
+            Handler logHandler = handler.getLogHandler();
+            StringBuilder sb = new StringBuilder("[Global flags]");
+            sb.append(System.lineSeparator());
+            List<RuntimeOptions.Descriptor> descriptors = RuntimeOptions.listDescriptors();
+            descriptors.sort(Comparator.comparing(RuntimeOptions.Descriptor::name));
+            for (RuntimeOptions.Descriptor descriptor : descriptors) {
+                printOption(descriptor, sb);
+            }
+            logHandler.publish(new LogRecord(Level.INFO, sb.toString()));
+        }
+
         return JNIErrors.JNI_OK();
     }
 
-    private static void printOption(RuntimeOptions.Descriptor descriptor) {
+    private static void printOption(RuntimeOptions.Descriptor descriptor, StringBuilder sb) {
         // see JVMFlag::print_on
         Class<?> valueType = descriptor.valueType();
         String typeName;
@@ -294,7 +322,7 @@ public final class Arguments {
         } else {
             typeName = valueType.getSimpleName();
         }
-        STDOUT.printf("%21s %-39s = %s%n", typeName, descriptor.name(), RuntimeOptions.get(descriptor.name()));
+        new Formatter(sb).format("%21s %-39s = %s%n", typeName, descriptor.name(), RuntimeOptions.get(descriptor.name()));
     }
 
     private static void buildJvmArg(List<String> jvmArgs, String optionString) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,7 +58,6 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         return testGraph(snippet, name, false);
     }
 
-    @SuppressWarnings("try")
     protected StructuredGraph testGraph(final String snippet, String name, boolean assertInvoke) {
         return testGraph(getResolvedJavaMethod(snippet), name, assertInvoke);
     }
@@ -73,10 +72,9 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
      * {@code assertInvoke == false}) contain an {@link Invoke} node</li>
      * </ul>
      */
-    @SuppressWarnings("try")
     protected StructuredGraph testGraph(final ResolvedJavaMethod method, String name, boolean assertInvoke) {
         DebugContext debug = getDebugContext();
-        try (DebugContext.Scope s = debug.scope("MethodSubstitutionTest", method)) {
+        try (DebugContext.Scope _ = debug.scope("MethodSubstitutionTest", method)) {
             StructuredGraph graph = parseEager(method, AllowAssumptions.YES, debug);
             HighTierContext context = getDefaultHighTierContext();
             debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");

@@ -32,6 +32,8 @@ public interface ReflectionConfigurationParserDelegate<C, T> {
 
     TypeResult<T> resolveType(C condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean jniAccessible);
 
+    TypeResult<List<T>> resolveTypes(C condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean jniAccessible);
+
     void registerType(C condition, T type);
 
     void registerPublicClasses(C condition, T type);

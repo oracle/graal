@@ -12,8 +12,6 @@ It provides access to a Linux shell with a preauthenticated OCI Command Line Int
 
 Oracle GraalVM for JDK 17 is preinstalled in Cloud Shell, so you do not have to install and configure a development machine.
 
-> Note: Oracle GraalVM license and support are included in the Oracle Cloud Infrastructure subscription at no additional cost.
-
 ## Steps to Use Oracle GraalVM in Cloud Shell
 
 Cloud Shell has several preinstalled JDKs, including Oracle GraalVM JDK.
@@ -112,7 +110,5 @@ Thus, you can use Oracle GraalVM in OCI Cloud Shell to build and test simple Jav
 
 ### Related Documentation
 
-- [Java Hello World with Oracle GraalVM in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/java-hello-world-maven/README-Cloud-Shell.md)
-- [Micronaut Hello World REST App with Oracle GraalVM in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/micronaut-hello-rest-maven/README-Cloud-Shell.md)
-- [Spring Boot Microservice with Oracle GraalVM in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/spring-native-image/README-Cloud-Shell.md)
+- [Java Hello World with Oracle GraalVM in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/native-image/clouds/native-oci-cloud-shell/README-Cloud-Shell.md)
 - [Oracle GraalVM in OCI Code Editor](code-editor.md)

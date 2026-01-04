@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,25 +24,49 @@
  */
 package jdk.graal.compiler.libgraal;
 
+import static jdk.graal.compiler.serviceprovider.GraalServices.getCurrentThreadAllocatedBytes;
+import static jdk.graal.compiler.serviceprovider.GraalServices.isThreadAllocatedMemorySupported;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.jniutils.JNI;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNICalls;
+import org.graalvm.jniutils.JNIExceptionWrapper;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.PointerBase;
+
 import jdk.graal.compiler.debug.GlobalMetrics;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.hotspot.CompilationContext;
 import jdk.graal.compiler.hotspot.CompilationTask;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.graal.compiler.hotspot.ProfileReplaySupport;
+import jdk.graal.compiler.hotspot.replaycomp.HardwarePerformanceCounters;
+import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationRunner;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.util.OptionsEncoder;
 import jdk.graal.compiler.word.Word;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -53,21 +77,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.runtime.JVMCIBackend;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNIExceptionWrapper;
-import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.PointerBase;
-
-import jdk.internal.misc.Unsafe;
-
-import static jdk.graal.compiler.serviceprovider.GraalServices.getCurrentThreadAllocatedBytes;
-import static jdk.graal.compiler.serviceprovider.GraalServices.isThreadAllocatedMemorySupported;
 
 /**
  * Encapsulates {@link CEntryPoint} implementations.
@@ -185,7 +194,10 @@ final class LibGraalEntryPoints {
                     String profileLoadPath = CTypeConversion.toJavaString(Word.pointer(profilePathBufferAddress));
                     options = new OptionValues(options, ProfileReplaySupport.Options.LoadProfiles, profileLoadPath);
                 }
-                task.runCompilation(options);
+                HotSpotCompilationRequestResult compilationRequestResult = task.runCompilation(options);
+                if (compilationRequestResult.getFailure() != null) {
+                    throw new GraalError(compilationRequestResult.getFailureMessage());
+                }
                 if (timeAndMemBufferAddress != 0) {
                     long allocatedBytesAfter = allocatedBytesBefore == -1 ? -1 : getCurrentThreadAllocatedBytes();
                     long bytesAllocated = allocatedBytesAfter - allocatedBytesBefore;
@@ -281,6 +293,141 @@ final class LibGraalEntryPoints {
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(jniEnv, t);
             return 0;
+        }
+    }
+
+    /**
+     * Runs the replay compilation launcher in libgraal with the provided command-line arguments.
+     *
+     * @param argBuffer a native buffer containing a zero-terminated UTF-8 string of
+     *            {@code '\n'}-separated arguments for the replay compilation launcher
+     * @return the exit status of the replay compilation launcher
+     */
+    @SuppressWarnings({"unused", "try"})
+    @CEntryPoint(name = "Java_jdk_graal_compiler_hotspot_replaycomp_test_ReplayCompilationLauncher_runInLibgraal", include = LibGraalFeature.IsEnabled.class)
+    private static int replayCompilation(JNIEnv jniEnv,
+                    PointerBase jclass,
+                    @IsolateThreadContext long isolateThread,
+                    long argBuffer) {
+        try (JNIMethodScope scope = new JNIMethodScope("replayCompilation", jniEnv)) {
+            String argString = CTypeConversion.utf8ToJavaString(Word.pointer(argBuffer));
+            String[] args;
+            if (argString.isEmpty()) {
+                args = new String[0];
+            } else {
+                args = argString.split("\n");
+            }
+            return ReplayCompilationRunner.run(args, TTY.out().out(), new LibgraalPAPIBridge(jniEnv)).getStatus();
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(jniEnv, t);
+            return ReplayCompilationRunner.ExitStatus.Failure.getStatus();
+        } finally {
+            LibGraalSupportImpl.doReferenceHandling();
+        }
+    }
+
+    /**
+     * The implementation that allows libgraal to interact with the PAPI bridge library,
+     * piggybacking HotSpot's {@link System#load} implementation.
+     * <p>
+     * The methods can be called from attached threads which provide their {@link JNIEnv} via
+     * {@link JNIMethodScope}.
+     *
+     * @see HardwarePerformanceCounters.PAPIBridge
+     */
+    @SuppressWarnings("try")
+    private static final class LibgraalPAPIBridge implements HardwarePerformanceCounters.PAPIBridge {
+        private final JNI.JClass hpcClass;
+
+        private final JNI.JClass stringClass;
+
+        private final JNICalls.JNIMethod linkAndInitializeOnceMethod;
+
+        private final JNICalls.JNIMethod createEventSetMethod;
+
+        private final JNICalls.JNIMethod getNullMethod;
+
+        private final JNICalls.JNIMethod cleanAndDestroyEventSetMethod;
+
+        private final JNICalls.JNIMethod startMethod;
+
+        private final JNICalls.JNIMethod stopMethod;
+
+        LibgraalPAPIBridge(JNIEnv env) {
+            this.hpcClass = JNIUtil.findClass(env, Word.nullPointer(), JNIUtil.getBinaryName(HardwarePerformanceCounters.class.getName()), true);
+            this.stringClass = JNIUtil.findClass(env, Word.nullPointer(), JNIUtil.getBinaryName(String.class.getName()), true);
+            this.linkAndInitializeOnceMethod = JNICalls.JNIMethod.findMethod(env, hpcClass, true, "linkAndInitializeOnce", "()Z");
+            this.createEventSetMethod = JNICalls.JNIMethod.findMethod(env, hpcClass, true, "createEventSet", "([Ljava/lang/String;)I");
+            this.getNullMethod = JNICalls.JNIMethod.findMethod(env, hpcClass, true, "getNull", "()I");
+            this.cleanAndDestroyEventSetMethod = JNICalls.JNIMethod.findMethod(env, hpcClass, true, "cleanAndDestroyEventSet", "(I)Z");
+            this.startMethod = JNICalls.JNIMethod.findMethod(env, hpcClass, true, "start", "(I)Z");
+            this.stopMethod = JNICalls.JNIMethod.findMethod(env, hpcClass, true, "stop", "(I)[J");
+        }
+
+        @Override
+        public boolean linkAndInitializeOnce() {
+            JNI.JNIEnv env = JNIMethodScope.env();
+            return JNICalls.getDefault().callStaticBoolean(env, hpcClass, linkAndInitializeOnceMethod, StackValue.get(0));
+        }
+
+        @Override
+        public int createEventSet(String[] eventNames) {
+            JNI.JNIEnv env = JNIMethodScope.env();
+            JNI.JObjectArray eventNamesArray = JNIUtil.NewObjectArray(env, eventNames.length, stringClass, Word.nullPointer());
+            try {
+                copyStringArray(env, eventNames, eventNamesArray);
+                JNI.JValue args = StackValue.get(1, JNI.JValue.class);
+                args.addressOf(0).setJObject(eventNamesArray);
+                return JNICalls.getDefault().callStaticInt(env, hpcClass, createEventSetMethod, args);
+            } finally {
+                JNIUtil.DeleteLocalRef(env, eventNamesArray);
+            }
+        }
+
+        private static void copyStringArray(JNIEnv env, String[] source, JNI.JObjectArray dest) {
+            for (int i = 0; i < source.length; i++) {
+                JNI.JString eventName = JNIUtil.createHSString(env, source[i]);
+                try {
+                    JNIUtil.SetObjectArrayElement(env, dest, i, eventName);
+                } finally {
+                    JNIUtil.DeleteLocalRef(env, eventName);
+                }
+            }
+        }
+
+        @Override
+        public int getNull() {
+            JNI.JNIEnv env = JNIMethodScope.env();
+            return JNICalls.getDefault().callStaticInt(env, hpcClass, getNullMethod, StackValue.get(0));
+        }
+
+        @Override
+        public boolean cleanAndDestroyEventSet(int eventset) {
+            JNI.JNIEnv env = JNIMethodScope.env();
+            JNI.JValue args = StackValue.get(1, JNI.JValue.class);
+            args.addressOf(0).setInt(eventset);
+            return JNICalls.getDefault().callStaticBoolean(env, hpcClass, cleanAndDestroyEventSetMethod, args);
+        }
+
+        @Override
+        public boolean start(int eventset) {
+            JNI.JNIEnv env = JNIMethodScope.env();
+            JNI.JValue args = StackValue.get(1, JNI.JValue.class);
+            args.addressOf(0).setInt(eventset);
+            return JNICalls.getDefault().callStaticBoolean(env, hpcClass, startMethod, args);
+        }
+
+        @Override
+        public long[] stop(int eventset) {
+            JNI.JNIEnv env = JNIMethodScope.env();
+            JNI.JValue args = StackValue.get(1, JNI.JValue.class);
+            args.addressOf(0).setInt(eventset);
+            JNI.JLongArray result = JNICalls.getDefault().callStaticJObject(env, hpcClass, stopMethod, args);
+            try {
+                return JNIUtil.createArray(env, result);
+            } finally {
+                JNIUtil.DeleteLocalRef(env, result);
+            }
         }
     }
 }

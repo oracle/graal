@@ -25,12 +25,11 @@
 package com.oracle.svm.core.foreign;
 
 import java.io.FileDescriptor;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.Reference;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.ArenaIntrinsics;
+import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -40,9 +39,11 @@ import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.internal.access.foreign.MappedMemoryUtilsProxy;
+import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.misc.ScopedMemoryAccess.ScopedAccessError;
+import jdk.internal.vm.vector.VectorSupport;
 
 /**
  * Support for shared arenas on SVM:
@@ -100,7 +101,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)
-    @SVMScoped
+    @ForeignSupport.Scoped
     @AlwaysInline("Safepoints must be visible in caller")
     public void loadInternal(MemorySessionImpl session, MappedMemoryUtilsProxy mappedUtils, long address, boolean isSync, long size) {
         SubstrateForeignUtil.checkIdentity(mappedUtils, Target_java_nio_MappedMemoryUtils.PROXY);
@@ -121,7 +122,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)
-    @SVMScoped
+    @ForeignSupport.Scoped
     @AlwaysInline("Safepoints must be visible in caller")
     public boolean isLoadedInternal(MemorySessionImpl session, MappedMemoryUtilsProxy mappedUtils, long address, boolean isSync, long size) {
         SubstrateForeignUtil.checkIdentity(mappedUtils, Target_java_nio_MappedMemoryUtils.PROXY);
@@ -143,7 +144,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)
-    @SVMScoped
+    @ForeignSupport.Scoped
     @AlwaysInline("Safepoints must be visible in caller")
     public void unloadInternal(MemorySessionImpl session, MappedMemoryUtilsProxy mappedUtils, long address, boolean isSync, long size) {
         SubstrateForeignUtil.checkIdentity(mappedUtils, Target_java_nio_MappedMemoryUtils.PROXY);
@@ -166,7 +167,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)
-    @SVMScoped
+    @ForeignSupport.Scoped
     @AlwaysInline("Safepoints must be visible in caller")
     public void forceInternal(MemorySessionImpl session, MappedMemoryUtilsProxy mappedUtils, FileDescriptor fd, long address, boolean isSync, long index, long length) {
         SubstrateForeignUtil.checkIdentity(mappedUtils, Target_java_nio_MappedMemoryUtils.PROXY);
@@ -183,6 +184,77 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
         } catch (ScopedAccessError e) {
             throw e;
         }
+    }
+
+    @SuppressWarnings("unused")
+    @Substitute
+    @TargetElement(onlyWith = SharedArenasEnabled.class)
+    @AlwaysInline("Safepoints must be visible in caller")
+    private static <V extends VectorSupport.Vector<E>, E, S extends VectorSupport.VectorSpecies<E>> V loadFromMemorySegmentScopedInternal(MemorySessionImpl session,
+                    Class<? extends V> vmClass, Class<E> e, int length,
+                    AbstractMemorySegmentImpl msp, long offset,
+                    S s,
+                    VectorSupport.LoadOperation<AbstractMemorySegmentImpl, V, S> defaultImpl) {
+        throw SharedArenasEnabled.vectorAPIUnsupported();
+    }
+
+    @SuppressWarnings("unused")
+    @Substitute
+    @TargetElement(onlyWith = SharedArenasEnabled.class)
+    @AlwaysInline("Safepoints must be visible in caller")
+    private static <V extends VectorSupport.Vector<E>, E, S extends VectorSupport.VectorSpecies<E>, M extends VectorSupport.VectorMask<E>> V loadFromMemorySegmentMaskedScopedInternal(
+                    MemorySessionImpl session, Class<? extends V> vmClass,
+                    Class<M> maskClass, Class<E> e, int length,
+                    AbstractMemorySegmentImpl msp, long offset, M m,
+                    S s, int offsetInRange,
+                    VectorSupport.LoadVectorMaskedOperation<AbstractMemorySegmentImpl, V, S, M> defaultImpl) {
+        throw SharedArenasEnabled.vectorAPIUnsupported();
+    }
+
+    @SuppressWarnings("unused")
+    @Substitute
+    @TargetElement(onlyWith = SharedArenasEnabled.class)
+    @AlwaysInline("Safepoints must be visible in caller")
+    public static <V extends VectorSupport.Vector<E>, E> void storeIntoMemorySegment(Class<? extends V> vmClass, Class<E> e, int length,
+                    V v,
+                    AbstractMemorySegmentImpl msp, long offset,
+                    VectorSupport.StoreVectorOperation<AbstractMemorySegmentImpl, V> defaultImpl) {
+        throw SharedArenasEnabled.vectorAPIUnsupported();
+    }
+
+    @SuppressWarnings("unused")
+    @Substitute
+    @TargetElement(onlyWith = SharedArenasEnabled.class)
+    @AlwaysInline("Safepoints must be visible in caller")
+    private static <V extends VectorSupport.Vector<E>, E> void storeIntoMemorySegmentScopedInternal(MemorySessionImpl session,
+                    Class<? extends V> vmClass, Class<E> e, int length,
+                    V v,
+                    AbstractMemorySegmentImpl msp, long offset,
+                    VectorSupport.StoreVectorOperation<AbstractMemorySegmentImpl, V> defaultImpl) {
+        throw SharedArenasEnabled.vectorAPIUnsupported();
+    }
+
+    @SuppressWarnings("unused")
+    @Substitute
+    @TargetElement(onlyWith = SharedArenasEnabled.class)
+    @AlwaysInline("Safepoints must be visible in caller")
+    public static <V extends VectorSupport.Vector<E>, E, M extends VectorSupport.VectorMask<E>> void storeIntoMemorySegmentMasked(Class<? extends V> vmClass, Class<M> maskClass, Class<E> e,
+                    int length, V v, M m,
+                    AbstractMemorySegmentImpl msp, long offset,
+                    VectorSupport.StoreVectorMaskedOperation<AbstractMemorySegmentImpl, V, M> defaultImpl) {
+        throw SharedArenasEnabled.vectorAPIUnsupported();
+    }
+
+    @SuppressWarnings("unused")
+    @Substitute
+    @TargetElement(onlyWith = SharedArenasEnabled.class)
+    @AlwaysInline("Safepoints must be visible in caller")
+    private static <V extends VectorSupport.Vector<E>, E, M extends VectorSupport.VectorMask<E>> void storeIntoMemorySegmentMaskedScopedInternal(MemorySessionImpl session,
+                    Class<? extends V> vmClass, Class<M> maskClass,
+                    Class<E> e, int length, V v, M m,
+                    AbstractMemorySegmentImpl msp, long offset,
+                    VectorSupport.StoreVectorMaskedOperation<AbstractMemorySegmentImpl, V, M> defaultImpl) {
+        throw SharedArenasEnabled.vectorAPIUnsupported();
     }
 
     /**
@@ -214,8 +286,4 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     void closeScope0Unsupported(Target_jdk_internal_foreign_MemorySessionImpl session, Target_jdk_internal_misc_ScopedMemoryAccess_ScopedAccessError error) {
         throw SharedArenasDisabled.fail();
     }
-}
-
-@Retention(RetentionPolicy.RUNTIME)
-@interface SVMScoped {
 }

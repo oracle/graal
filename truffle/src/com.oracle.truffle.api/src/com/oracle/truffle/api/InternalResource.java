@@ -223,8 +223,7 @@ public interface InternalResource {
             if (location.isAbsolute()) {
                 throw new IllegalArgumentException("Location must be a relative path, but the absolute path " + location + " was given.");
             }
-            String resourceName = getResourceName(location);
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(getResourceStream(resourceName), StandardCharsets.UTF_8))) {
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(getResourceStream(location), StandardCharsets.UTF_8))) {
                 List<String> content = new ArrayList<>();
                 for (String line = in.readLine(); line != null; line = in.readLine()) {
                     content.add(line);
@@ -305,8 +304,7 @@ public interface InternalResource {
 
         private Properties loadFileList(Path source) throws IOException {
             Properties props = new Properties();
-            String resourceName = getResourceName(source);
-            try (BufferedInputStream in = new BufferedInputStream(getResourceStream(resourceName))) {
+            try (BufferedInputStream in = new BufferedInputStream(getResourceStream(source))) {
                 props.load(in);
             }
             return props;
@@ -324,11 +322,8 @@ public interface InternalResource {
             return PosixFilePermissions.fromString(attrComponents[0].trim());
         }
 
-        private static String getResourceName(Path path) {
-            return path.toString().replace(File.separatorChar, '/');
-        }
-
-        private InputStream getResourceStream(String resourceName) throws IOException {
+        private InputStream getResourceStream(Path resourcePath) throws IOException {
+            String resourceName = resourcePath.toString().replace(File.separatorChar, '/');
             InputStream stream;
             if (owner.isNamed()) {
                 stream = owner.getResourceAsStream(resourceName);
@@ -397,13 +392,13 @@ public interface InternalResource {
         }
 
         private void copyResource(Path source, Path target, Set<PosixFilePermission> attrs) throws IOException {
-            String resourceName = getResourceName(source);
             Path parent = target.getParent();
             if (parent == null) {
-                throw CompilerDirectives.shouldNotReachHere("RelativeResourcePath must be non-empty.");
+                throw new AssertionError("RelativeResourcePath must be non-empty.");
             }
             Files.createDirectories(parent);
-            try (BufferedInputStream in = new BufferedInputStream(getResourceStream(resourceName))) {
+            try (BufferedInputStream in = new BufferedInputStream(getResourceStream(source))) {
+                // Parfait_ALLOW path-traversal (ClassLoader#getResources protects from root escape)
                 Files.copy(in, target);
             }
             if (getOS() != OS.WINDOWS) {
@@ -484,7 +479,43 @@ public interface InternalResource {
          *
          * @since 23.1
          */
-        WINDOWS("windows");
+        WINDOWS("windows"),
+
+        /**
+         * Represents an unsupported operating system.
+         * <p>
+         * To enable execution on unsupported platforms, the system property
+         * {@code -Dpolyglot.engine.allowUnsupportedPlatform=true} must be explicitly set. If this
+         * property is not set and the platform is unsupported, the {@link #getCurrent()} method
+         * will throw an {@link IllegalStateException}.
+         *
+         * @since 25.1
+         */
+        UNSUPPORTED("unsupported");
+
+        private static final String PROPERTY_ALLOW_UNSUPPORTED_PLATFORM = "polyglot.engine.allowUnsupportedPlatform";
+
+        private static volatile Boolean allowsUnsupportedPlatformValue;
+
+        private static boolean allowsUnsupportedPlatform() {
+            Boolean res = allowsUnsupportedPlatformValue;
+            if (res == null) {
+                synchronized (OS.class) {
+                    res = allowsUnsupportedPlatformValue;
+                    if (res == null) {
+                        res = Boolean.getBoolean(OS.PROPERTY_ALLOW_UNSUPPORTED_PLATFORM);
+                        if (!ImageInfo.inImageBuildtimeCode()) {
+                            /*
+                             * Avoid caching the property value during image build time, as it would
+                             * require resetting it in the image heap later.
+                             */
+                            allowsUnsupportedPlatformValue = res;
+                        }
+                    }
+                }
+            }
+            return res;
+        }
 
         private final String id;
 
@@ -510,15 +541,19 @@ public interface InternalResource {
         public static OS getCurrent() {
             String os = System.getProperty("os.name");
             if (os == null) {
-                throw CompilerDirectives.shouldNotReachHere("The 'os.name' system property is not set.");
+                throw new AssertionError("The 'os.name' system property is not set.");
             } else if (os.equalsIgnoreCase("linux")) {
                 return LINUX;
             } else if (os.equalsIgnoreCase("mac os x") || os.equalsIgnoreCase("darwin")) {
                 return DARWIN;
             } else if (os.toLowerCase().startsWith("windows")) {
                 return WINDOWS;
+            } else if (allowsUnsupportedPlatform()) {
+                return UNSUPPORTED;
             } else {
-                throw CompilerDirectives.shouldNotReachHere("Unsupported OS name " + os);
+                throw new IllegalStateException(String.format("Unsupported operating system: '%s'. " +
+                                "If you want to continue using this unsupported platform, set the system property '-D%s=true'. " +
+                                "Note that unsupported platforms require additional command line options to be functional.", os, PROPERTY_ALLOW_UNSUPPORTED_PLATFORM));
             }
         }
     }
@@ -542,7 +577,19 @@ public interface InternalResource {
          *
          * @since 23.1
          */
-        AMD64("amd64");
+        AMD64("amd64"),
+
+        /**
+         * Represents an unsupported architecture.
+         * <p>
+         * To enable execution on unsupported platforms, the system property
+         * {@code -Dpolyglot.engine.allowUnsupportedPlatform=true} must be explicitly set. If this
+         * property is not set and the platform is unsupported, the {@link #getCurrent()} method
+         * will throw an {@link IllegalStateException}.
+         *
+         * @since 25.1
+         */
+        UNSUPPORTED("unsupported");
 
         private final String id;
 
@@ -568,12 +615,20 @@ public interface InternalResource {
         public static CPUArchitecture getCurrent() {
             String arch = System.getProperty("os.arch");
             if (arch == null) {
-                throw CompilerDirectives.shouldNotReachHere("The 'os.arch' system property is not set.");
+                throw new AssertionError("The 'os.arch' system property is not set.");
             }
             return switch (arch) {
                 case "amd64", "x86_64" -> AMD64;
                 case "aarch64", "arm64" -> AARCH64;
-                default -> throw CompilerDirectives.shouldNotReachHere("Unsupported CPU architecture " + arch);
+                default -> {
+                    if (OS.allowsUnsupportedPlatform()) {
+                        yield UNSUPPORTED;
+                    } else {
+                        throw new IllegalStateException(String.format("Unsupported CPU architecture: '%s'. " +
+                                        "If you want to allow unsupported CPU architectures (which will cause the fallback Truffle runtime to be used and may disable some language features), " +
+                                        "set the system property '-D%s=true'.", arch, OS.PROPERTY_ALLOW_UNSUPPORTED_PLATFORM));
+                    }
+                }
             };
         }
     }

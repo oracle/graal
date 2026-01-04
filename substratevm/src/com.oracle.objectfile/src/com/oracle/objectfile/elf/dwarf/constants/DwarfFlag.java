@@ -30,7 +30,7 @@ package com.oracle.objectfile.elf.dwarf.constants;
  * DW_FORM_flag only has two possible attribute values.
  */
 public enum DwarfFlag {
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")//
     DW_FLAG_false((byte) 0),
     DW_FLAG_true((byte) 1);
 

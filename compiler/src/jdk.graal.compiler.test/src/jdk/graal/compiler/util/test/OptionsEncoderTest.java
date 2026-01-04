@@ -29,18 +29,19 @@ import static jdk.graal.compiler.util.OptionsEncoder.encode;
 import static org.junit.Assert.assertEquals;
 
 import java.lang.annotation.ElementType;
-import java.util.Collections;
 import java.util.Map;
 
-import jdk.graal.compiler.util.TypedDataOutputStream;
 import org.junit.Assert;
 import org.junit.Test;
+
+import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.graal.compiler.util.TypedDataOutputStream;
 
 public class OptionsEncoderTest {
 
     @Test
     public void testSmallString() {
-        Map<String, Object> options = Collections.singletonMap("key", "smallString");
+        Map<String, Object> options = CollectionsUtil.mapOf("key", "smallString");
         assertEquals(options, decode(encode(options)));
     }
 
@@ -55,14 +56,14 @@ public class OptionsEncoderTest {
         for (int i = 0; i <= Character.MAX_VALUE >>> 8; i++) {
             largeString.append(fill);
         }
-        Map<String, Object> options = Collections.singletonMap("key", largeString.toString());
+        Map<String, Object> options = CollectionsUtil.mapOf("key", largeString.toString());
         assertEquals(options, decode(encode(options)));
     }
 
     @Test
     public void testEnum() {
-        Map<String, Object> options = Collections.singletonMap("key", ElementType.TYPE);
-        assertEquals(Collections.singletonMap("key", ElementType.TYPE.name()), decode(encode(options)));
+        Map<String, Object> options = CollectionsUtil.mapOf("key", ElementType.TYPE);
+        assertEquals(CollectionsUtil.mapOf("key", ElementType.TYPE.name()), decode(encode(options)));
     }
 
     @Test
@@ -83,13 +84,13 @@ public class OptionsEncoderTest {
     }
 
     private static void testValueIntl(String name, Object value) {
-        Map<String, Object> options = Collections.singletonMap(name, value);
+        Map<String, Object> options = CollectionsUtil.mapOf(name, value);
         assertEquals(options, decode(encode(options)));
     }
 
     @Test
     public void testFailure() {
-        Map<String, Object> options = Collections.singletonMap("key", new Object());
+        Map<String, Object> options = CollectionsUtil.mapOf("key", new Object());
         try {
             encode(options);
             Assert.fail("Expected an exception");

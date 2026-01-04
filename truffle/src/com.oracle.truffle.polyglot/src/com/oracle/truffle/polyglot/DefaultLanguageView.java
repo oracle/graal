@@ -55,28 +55,26 @@ import com.oracle.truffle.api.library.ExportMessage;
 @SuppressWarnings("static-method")
 final class DefaultLanguageView<C> implements TruffleObject {
 
-    private final TruffleLanguage<C> language;
+    private final String languageId;
     protected final Object delegate;
 
-    DefaultLanguageView(TruffleLanguage<C> language, Object delegate) {
-        this.language = language;
+    DefaultLanguageView(String languageId, Object delegate) {
+        this.languageId = languageId;
         this.delegate = delegate;
     }
 
     @ExportMessage
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
+    }
+
+    @ExportMessage
+    String getLanguageId() {
+        return languageId;
     }
 
     @ExportMessage
     Object toDisplayString(boolean allowSideEffects, @CachedLibrary("this.delegate") InteropLibrary delegateLibrary) {
         return delegateLibrary.toDisplayString(delegate, allowSideEffects);
     }
-
-    @SuppressWarnings("unchecked")
-    @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return (Class<? extends TruffleLanguage<?>>) language.getClass();
-    }
-
 }

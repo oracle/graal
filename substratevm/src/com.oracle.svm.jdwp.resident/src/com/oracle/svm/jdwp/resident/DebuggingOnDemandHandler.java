@@ -178,7 +178,6 @@ public class DebuggingOnDemandHandler implements Signal.Handler {
         JNI.JObject invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodId);
     }
 
-    @SuppressWarnings("try")
     public static void spawnJDWPServer(Path libraryPath, long initialThreadId, Options jdwpOptions) {
         assert libraryPath != null;
         ResidentJDWP.LOGGER = new Logger(jdwpOptions.tracing(), "[ResidentJDWP]", System.err);
@@ -274,7 +273,7 @@ public class DebuggingOnDemandHandler implements Signal.Handler {
                     }
                     long threadId = JDWPBridgeImpl.getIds().toId(thread);
                     ResidentJDWP.LOGGER.log("[StartDeathSupport] threadStarted[" + threadId + "](" + thread.getName() + ")");
-                    try (JNIMethodScope ignored = new JNIMethodScope("JDWPServer::onThreadStart", currentThreadJniEnv())) {
+                    try (JNIMethodScope _ = new JNIMethodScope("JDWPServer::onThreadStart", currentThreadJniEnv())) {
                         jdwpEventHandler.onThreadStart(threadId);
                     }
                 }
@@ -294,7 +293,7 @@ public class DebuggingOnDemandHandler implements Signal.Handler {
                     }
                     long threadId = JDWPBridgeImpl.getIds().toId(thread);
                     ResidentJDWP.LOGGER.log("[StartDeathSupport] threadDied[" + threadId + "](" + thread.getName() + ")");
-                    try (JNIMethodScope ignored = new JNIMethodScope("JDWPServer::onThreadDeath", currentThreadJniEnv())) {
+                    try (JNIMethodScope _ = new JNIMethodScope("JDWPServer::onThreadDeath", currentThreadJniEnv())) {
                         jdwpEventHandler.onThreadDeath(threadId);
                     }
                 }
@@ -302,7 +301,7 @@ public class DebuggingOnDemandHandler implements Signal.Handler {
                 @Override
                 public void vmDied() {
                     ResidentJDWP.LOGGER.log("[StartDeathSupport] vmDied()");
-                    try (JNIMethodScope ignored = new JNIMethodScope("JDWPServer::onVMDeath", currentThreadJniEnv())) {
+                    try (JNIMethodScope _ = new JNIMethodScope("JDWPServer::onVMDeath", currentThreadJniEnv())) {
                         jdwpEventHandler.onVMDeath();
                     }
                 }
@@ -312,7 +311,7 @@ public class DebuggingOnDemandHandler implements Signal.Handler {
             assert DebuggerEvents.singleton().getEventHandler() != null;
             Path metadataPath = DebuggerSupport.getMetadataFilePath();
             String metadataHashString = DebuggerSupport.getMetadataHashString();
-            try (JNIMethodScope ignored = new JNIMethodScope("JDWPServer::spawnServer", currentThreadJniEnv())) {
+            try (JNIMethodScope _ = new JNIMethodScope("JDWPServer::spawnServer", currentThreadJniEnv())) {
                 long jdwpBridgeHandle = createJDWPBridgeHandle();
                 jdwpEventHandler.spawnServer(
                                 jdwpOptions.jdwpOptions(),

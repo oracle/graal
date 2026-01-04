@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,23 +26,21 @@
 
 package com.oracle.objectfile.debugentry.range;
 
+import java.util.Map;
+
 import com.oracle.objectfile.debugentry.MethodEntry;
 
-public class PrimaryRange extends Range {
-    /**
-     * The first subrange in the range covered by this primary or null if this primary as no
-     * subranges.
-     */
-    protected SubRange firstCallee;
-    /**
-     * The last subrange in the range covered by this primary.
-     */
-    protected SubRange lastCallee;
+public class PrimaryRange extends CallRange {
+    private final long codeOffset;
 
-    protected PrimaryRange(MethodEntry methodEntry, int lo, int hi, int line) {
-        super(methodEntry, lo, hi, line, -1);
-        this.firstCallee = null;
-        this.lastCallee = null;
+    protected PrimaryRange(MethodEntry methodEntry, int lo, int hi, int line, long codeOffset) {
+        super(null, methodEntry, Map.of(), lo, hi, line, null, -1);
+        this.codeOffset = codeOffset;
+    }
+
+    @Override
+    public long getCodeOffset() {
+        return codeOffset;
     }
 
     @Override
@@ -51,27 +49,7 @@ public class PrimaryRange extends Range {
     }
 
     @Override
-    protected void addCallee(SubRange callee) {
-        assert this.lo <= callee.lo;
-        assert this.hi >= callee.hi;
-        assert callee.caller == this;
-        assert callee.siblingCallee == null;
-        if (this.firstCallee == null) {
-            assert this.lastCallee == null;
-            this.firstCallee = this.lastCallee = callee;
-        } else {
-            this.lastCallee.siblingCallee = callee;
-            this.lastCallee = callee;
-        }
-    }
-
-    @Override
-    public SubRange getFirstCallee() {
-        return firstCallee;
-    }
-
-    @Override
-    public boolean isLeaf() {
-        return firstCallee == null;
+    public PrimaryRange getPrimary() {
+        return this;
     }
 }

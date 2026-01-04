@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.TargetDescription;
 
 /**
@@ -51,15 +52,7 @@ public abstract class LIRPhase<C> {
         // @formatter:on
     }
 
-    /**
-     * Records time spent within {@link #apply}.
-     */
-    private final TimerKey timer;
-
-    /**
-     * Records memory usage within {@link #apply}.
-     */
-    private final MemUseTrackerKey memUseTracker;
+    private final LIRPhaseStatistics statistics;
 
     public static final class LIRPhaseStatistics {
         /**
@@ -71,6 +64,13 @@ public abstract class LIRPhase<C> {
          * Records memory usage within {@link #apply}.
          */
         public final MemUseTrackerKey memUseTracker;
+
+        /**
+         * Cached phase name.
+         *
+         * @see LIRPhase#getName()
+         */
+        CharSequence phaseName;
 
         public LIRPhaseStatistics(Class<?> clazz) {
             timer = DebugContext.timer("LIRPhaseTime_%s", clazz);
@@ -100,9 +100,20 @@ public abstract class LIRPhase<C> {
     }
 
     public LIRPhase() {
-        LIRPhaseStatistics statistics = getLIRPhaseStatistics(getClass());
-        timer = statistics.timer;
-        memUseTracker = statistics.memUseTracker;
+        this.statistics = getLIRPhaseStatistics(getClass());
+    }
+
+    /**
+     * This can provide more detail about where GC time is spent but isn't necessary most of the
+     * time.
+     */
+    static final boolean LIR_PHASE_GC_STATISTICS = false;
+
+    private DebugCloseable gcStatistics(DebugContext debug) {
+        if (LIR_PHASE_GC_STATISTICS) {
+            return GraalServices.GCTimerScope.create(debug, "LIRPhaseTime_", getClass());
+        }
+        return null;
     }
 
     public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, C context) {
@@ -115,8 +126,9 @@ public abstract class LIRPhase<C> {
         CharSequence name = getName();
         try (DebugContext.Scope s = debug.scope(name, this)) {
             try (CompilerPhaseScope cps = debug.enterCompilerPhase(name, null);
-                            DebugCloseable a = timer.start(debug);
-                            DebugCloseable c = memUseTracker.start(debug)) {
+                            DebugCloseable a = statistics.timer.start(debug);
+                            DebugCloseable c = statistics.memUseTracker.start(debug);
+                            DebugCloseable d = gcStatistics(debug)) {
                 run(target, lirGenRes, context);
                 if (dumpLIR && debug.areScopesEnabled()) {
                     dumpAfter(lirGenRes);
@@ -158,8 +170,13 @@ public abstract class LIRPhase<C> {
     }
 
     public final CharSequence getName() {
-        CharSequence name = createName();
+        CharSequence name = statistics.phaseName;
+        if (name != null) {
+            return name;
+        }
+        name = createName();
         assert checkName(name);
+        statistics.phaseName = name;
         return name;
     }
 }

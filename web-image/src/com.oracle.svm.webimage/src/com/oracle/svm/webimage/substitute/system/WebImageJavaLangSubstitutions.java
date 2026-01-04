@@ -28,6 +28,7 @@ package com.oracle.svm.webimage.substitute.system;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.ByteArrayInputStream;
+import java.io.Console;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.AccessibleObject;
@@ -42,6 +43,7 @@ import java.util.logging.Logger;
 import java.util.zip.DataFormatException;
 
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.OS;
@@ -232,7 +234,11 @@ final class Target_java_lang_Thread_Web {
     }
 
     @Substitute
-    private static void sleep(long millis) throws InterruptedException {
+    private static void sleep(long millis) {
+    }
+
+    @Substitute
+    private static void sleepNanos0(long nanos) {
     }
 
     @Substitute
@@ -254,6 +260,16 @@ final class Target_java_lang_Thread_Web {
     public static Map<Thread, StackTraceElement[]> getAllStackTraces() {
         Thread onlyThread = Thread.currentThread();
         return java.util.Collections.singletonMap(onlyThread, onlyThread.getStackTrace());
+    }
+}
+
+@TargetClass(className = "java.lang.VirtualThread")
+@SuppressWarnings("unused")
+final class Target_java_lang_VirtualThread_Web {
+    @Substitute
+    @SuppressWarnings("static-method")
+    private void runContinuation() {
+        throw new UnsupportedOperationException("VirtualThread.runContinuation");
     }
 }
 
@@ -288,6 +304,11 @@ final class Target_java_lang_System_Web {
     @Substitute
     public static String mapLibraryName(String libname) {
         return libname;
+    }
+
+    @Substitute
+    public static Console console() {
+        return null;
     }
 }
 
@@ -629,7 +650,7 @@ final class Target_java_lang_Module_Web {
             resName = resName.substring(1);
         }
         ResourceStorageEntryBase res = Resources.getAtRuntime(SubstrateUtil.cast(this, Module.class), resName, true);
-        return res == null ? null : new ByteArrayInputStream(res.getData().get(0));
+        return res == null ? null : new ByteArrayInputStream(res.getData()[0]);
     }
 }
 
@@ -876,6 +897,39 @@ final class Target_java_util_logging_Logger_Web {
     @Substitute
     public static Logger getLogger(String name) {
         return Logger.getGlobal();
+    }
+}
+
+@TargetClass(className = "java.lang.ProcessHandleImpl")
+@SuppressWarnings("unused")
+final class Target_java_lang_ProcessHandleImpl_Web {
+
+    @Substitute
+    private static void initNative() {
+        // Do nothing. Native code only gathers some information about the underlying system.
+    }
+
+    @Substitute
+    private static long getCurrentPid0() {
+        return ProcessProperties.getProcessID();
+    }
+
+    @Substitute
+    private static long isAlive0(long pid) {
+        if (pid == ProcessProperties.getProcessID()) {
+            return 0L;
+        }
+        return -1L;
+    }
+}
+
+@TargetClass(className = "java.lang.ProcessBuilder")
+@SuppressWarnings({"static-method", "unused"})
+final class Target_java_lang_ProcessBuilder_Web {
+    @Substitute
+    public Process start() throws IOException {
+        // Throw IOException instead of UnsupportedOperationException to allow fallback code to run.
+        throw new IOException("Cannot run processes on Web Image yet");
     }
 }
 

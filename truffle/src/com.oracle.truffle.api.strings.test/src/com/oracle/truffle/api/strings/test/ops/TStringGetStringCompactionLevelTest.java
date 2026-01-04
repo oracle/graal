@@ -82,6 +82,10 @@ public class TStringGetStringCompactionLevelTest extends TStringTestBase {
                 if (stride == 1) {
                     Assert.assertTrue(a.getCodeRangeUncached(encoding).isSubsetOf(TruffleString.CodeRange.LATIN_1));
                 }
+            } else if (encoding == TruffleString.Encoding.UTF_32BE) {
+                Assert.assertEquals(4, stride);
+            } else if (encoding == TruffleString.Encoding.UTF_16BE) {
+                Assert.assertEquals(2, stride);
             } else {
                 Assert.assertEquals(1, stride);
             }

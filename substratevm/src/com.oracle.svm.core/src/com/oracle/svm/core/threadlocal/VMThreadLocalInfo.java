@@ -28,6 +28,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput
 
 import java.util.function.IntSupplier;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
@@ -35,6 +36,8 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
+import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -74,7 +77,18 @@ public class VMThreadLocalInfo {
     public final boolean allowFloatingReads;
     public final String name;
 
+    /**
+     * Offset of this thread local variable from its holder thread {@link IsolateThread} data
+     * structure. It is a compile time constant, determined by collecting and sorting all thread
+     * locals, and used during lowering of {@link FastThreadLocal} specific operations, e.g.,
+     * {@link LoadVMThreadLocalNode}, {@link StoreVMThreadLocalNode} and others.
+     */
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) public int offset;
+    /**
+     * How many bytes does this thread local need for storage. Just like the {@link #offset} this is
+     * a compile-time constant, determined by taking into account the {@link #storageKind} or via
+     * the {@link #sizeSupplier}, and it is used to lay out the thread locals in memory.
+     */
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) public int sizeInBytes;
 
     @Platforms(Platform.HOSTED_ONLY.class)

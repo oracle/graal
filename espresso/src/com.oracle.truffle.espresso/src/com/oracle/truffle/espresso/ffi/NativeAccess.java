@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 
@@ -211,33 +212,6 @@ public interface NativeAccess {
     }
 
     /**
-     * Similar to malloc. The result of allocating a 0-sized buffer is an implementation detail.
-     *
-     * <h3>Lifetime
-     *
-     * @return <code>null</code> if the memory cannot be allocated. Otherwise, a
-     *         {@link InteropLibrary#hasBufferElements(Object) buffer}.
-     * @throws IllegalArgumentException if the size is negative
-     */
-    @Buffer
-    TruffleObject allocateMemory(long size);
-
-    /**
-     * Similar to realloc. The result of allocating a 0-sized buffer is an implementation detail.
-     *
-     * @return <code>null</code> if the memory cannot be re-allocated. Otherwise, a
-     *         {@link InteropLibrary#hasBufferElements(Object) buffer}.
-     * @throws IllegalArgumentException if the size is negative
-     */
-    @Buffer
-    TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize);
-
-    /**
-     * Similar to free. Accessing the buffer after free may cause explosive undefined behavior.
-     */
-    void freeMemory(@Pointer TruffleObject buffer);
-
-    /**
      * Sinking, make a Java method accessible to the native world. Returns an
      * {@link InteropLibrary#isPointer(Object) pointer} {@link TruffleObject object}, callable from
      * native code.
@@ -292,4 +266,18 @@ public interface NativeAccess {
 
         NativeAccess create(TruffleLanguage.Env env);
     }
+
+    /**
+     * Retrieves the {@link NativeMemory} associated with NativeAccess.
+     * <p>
+     * <h2>Implementation notes</h2> One should be extremely careful when determining which
+     * NativeMemory implementation to use for a new NativeAccess implementation. Some NativeMemory
+     * implementations virtualize guest memory such that addresses returned by
+     * {@link NativeMemory#allocateMemory(long)} do not directly map to host addresses, which can be
+     * problematic if the accessed "native world" works directly with those addresses as if they
+     * were host addresses. Thus, there needs to be synergy between Java and Native reads and writes
+     * to native memory. If unsure, use
+     * {@link com.oracle.truffle.espresso.ffi.memory.UnsafeNativeMemory}.
+     */
+    NativeMemory nativeMemory();
 }

@@ -30,10 +30,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
+import com.oracle.svm.core.genscavenge.StackVerifier.VerifyFrameReferencesVisitor;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -44,6 +48,7 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -65,6 +70,7 @@ public class HeapVerifier {
     public boolean verify(Occasion occasion) {
         boolean success = true;
         success &= verifyImageHeap();
+        success &= verifyMetaspace();
         success &= verifyYoungGeneration(occasion);
         success &= verifyOldGeneration();
         success &= verifyRememberedSets();
@@ -78,6 +84,13 @@ public class HeapVerifier {
             success &= verifyUnalignedChunks(null, info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
         }
         return success;
+    }
+
+    private static boolean verifyMetaspace() {
+        if (!Metaspace.isSupported()) {
+            return true;
+        }
+        return MetaspaceImpl.singleton().verify();
     }
 
     private static boolean verifyYoungGeneration(Occasion occasion) {
@@ -134,18 +147,22 @@ public class HeapVerifier {
             success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
         }
 
+        if (Metaspace.isSupported()) {
+            success &= MetaspaceImpl.singleton().verifyRememberedSets();
+        }
+
         success &= HeapImpl.getHeapImpl().getOldGeneration().verifyRememberedSets();
         return success;
     }
 
-    static boolean verifyRememberedSet(Space space) {
+    public static boolean verifyRememberedSet(Space space) {
         boolean success = true;
         success &= RememberedSet.get().verify(space.getFirstAlignedHeapChunk());
         success &= RememberedSet.get().verify(space.getFirstUnalignedHeapChunk());
         return success;
     }
 
-    static boolean verifySpace(Space space) {
+    public static boolean verifySpace(Space space) {
         boolean success = true;
         success &= verifyChunkList(space, "aligned", space.getFirstAlignedHeapChunk(), space.getLastAlignedHeapChunk());
         success &= verifyChunkList(space, "unaligned", space.getFirstUnalignedHeapChunk(), space.getLastUnalignedHeapChunk());
@@ -303,9 +320,14 @@ public class HeapVerifier {
             // Not all objects in the image heap have the remembered set bit in the header, so
             // we can't verify that this bit is set.
 
-        } else if (space.isOldSpace()) {
+        } else if (space.isOldSpace() || space.isMetaspace()) {
             if (SerialGCOptions.useRememberedSet() && !RememberedSet.get().hasRememberedSet(header)) {
-                Log.log().string("Object ").zhex(ptr).string(" is in old generation chunk ").zhex(chunk).string(" but does not have a remembered set.").newline();
+                Log.log().string("Object ").zhex(ptr).string(" is in ").string(space.getName()).string(" chunk ").zhex(chunk).string(" but does not have a remembered set.").newline();
+                return false;
+            }
+        } else if (space.isYoungSpace()) {
+            if (SerialGCOptions.useRememberedSet() && RememberedSet.get().hasRememberedSet(header)) {
+                Log.log().string("Object ").zhex(ptr).string(" is in ").string(space.getName()).string(" chunk ").zhex(chunk).string(" but has a remembered set.").newline();
                 return false;
             }
         }
@@ -348,7 +370,7 @@ public class HeapVerifier {
             return true;
         }
 
-        if (SerialGCOptions.VerifyReferencesPointIntoValidChunk.getValue() && !HeapImpl.getHeapImpl().isInHeap(referencedObject)) {
+        if (SerialGCOptions.VerifyReferencesPointIntoValidChunk.getValue() && !HeapImpl.getHeapImpl().isInHeapSlow(referencedObject)) {
             Log.log().string("Object reference at ").zhex(reference).string(" points outside the Java heap: ").zhex(referencedObject).string(". ");
             printParent(parentObject);
             return false;
@@ -366,7 +388,7 @@ public class HeapVerifier {
         if (ObjectHeaderImpl.isAlignedHeader(header)) {
             AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(referencedObject);
             if (referencedObject.belowThan(AlignedHeapChunk.getObjectsStart(chunk)) || referencedObject.aboveOrEqual(HeapChunk.getTopPointer(chunk))) {
-                Log.log().string("Object reference ").zhex(reference).string(" points to ").zhex(referencedObject).string(", which is outside the usable part of the corresponding aligned chunk.");
+                Log.log().string("Object reference at ").zhex(reference).string(" points to ").zhex(referencedObject).string(", which is outside the usable part of the corresponding aligned chunk. ");
                 printParent(parentObject);
                 return false;
             }
@@ -374,7 +396,8 @@ public class HeapVerifier {
             assert ObjectHeaderImpl.isUnalignedHeader(header);
             UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunkFromObjectPointer(referencedObject);
             if (referencedObject != UnalignedHeapChunk.getObjectStart(chunk)) {
-                Log.log().string("Object reference ").zhex(reference).string(" points to ").zhex(referencedObject).string(", which is outside the usable part of the corresponding unaligned chunk.");
+                Log.log().string("Object reference at ").zhex(reference).string(" points to ").zhex(referencedObject)
+                                .string(", which is outside the usable part of the corresponding unaligned chunk. ");
                 printParent(parentObject);
                 return false;
             }
@@ -384,10 +407,17 @@ public class HeapVerifier {
     }
 
     private static void printParent(Object parentObject) {
-        if (parentObject != null) {
-            Log.log().string("The object that contains the invalid reference is of type ").string(parentObject.getClass().getName()).newline();
+        if (parentObject instanceof VerifyFrameReferencesVisitor visitor) {
+            Log.log().string("The invalid reference is on the stack:").indent(true);
+            Log.log().string("isolate thread: ").zhex(visitor.getIsolateThread()).newline();
+            Log.log().string("sp=").zhex(visitor.getSP()).newline();
+
+            Log.log().string("ip=").zhex(visitor.getIP()).string(" (");
+            SubstrateDiagnostics.printLocationInfo(Log.log(), (UnsignedWord) visitor.getIP(), true, false);
+            Log.log().string(")").indent(false);
         } else {
-            Log.log().string("The invalid reference is on the stack").newline();
+            assert parentObject != null;
+            Log.log().string("The object that contains the invalid reference is of type ").string(parentObject.getClass().getName()).newline();
         }
     }
 

@@ -27,16 +27,18 @@ package com.oracle.svm.truffle.isolated;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.graal.isolated.ClientHandle;
-import com.oracle.svm.graal.isolated.ClientIsolateThread;
-import com.oracle.svm.graal.isolated.CompilerHandle;
-import com.oracle.svm.graal.isolated.IsolatedCompileClient;
-import com.oracle.svm.graal.isolated.IsolatedCompileContext;
+import com.oracle.svm.core.graal.isolated.ClientHandle;
+import com.oracle.svm.core.graal.isolated.ClientIsolateThread;
+import com.oracle.svm.core.graal.isolated.CompilerHandle;
+import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
+import com.oracle.svm.core.graal.isolated.IsolatedCompileContext;
 import com.oracle.svm.graal.isolated.IsolatedObjectProxy;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
+import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
+import jdk.vm.ci.meta.JavaMethod;
 
 final class IsolatedTruffleCompilationIdentifier extends IsolatedObjectProxy<TruffleCompilationIdentifier> implements TruffleCompilationIdentifier {
 
@@ -94,5 +96,10 @@ final class IsolatedTruffleCompilationIdentifier extends IsolatedObjectProxy<Tru
     private static long getTruffleCompilationId0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationIdentifier> idHandle) {
         TruffleCompilationIdentifier id = IsolatedCompileClient.get().unhand(idHandle);
         return id.getTruffleCompilationId();
+    }
+
+    @Override
+    public JavaMethod asJavaMethod() {
+        return new TruffleDebugJavaMethod(getTask(), getCompilable());
     }
 }

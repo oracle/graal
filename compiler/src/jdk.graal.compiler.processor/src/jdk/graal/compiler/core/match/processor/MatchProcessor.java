@@ -30,8 +30,8 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -85,8 +85,8 @@ public class MatchProcessor extends AbstractProcessor {
     public MatchProcessor() {
     }
 
-    private final Set<Element> processedMatchRules = new HashSet<>();
-    private final Set<Element> processedMatchableNodes = new HashSet<>();
+    private final Set<Element> processedMatchRules = new LinkedHashSet<>();
+    private final Set<Element> processedMatchableNodes = new LinkedHashSet<>();
 
     private static class RuleParseError extends RuntimeException {
         private static final long serialVersionUID = 6456128283609257490L;
@@ -109,9 +109,9 @@ public class MatchProcessor extends AbstractProcessor {
 
         private MatchDescriptor matchDescriptor;
 
-        private final Set<Element> originatingElements = new HashSet<>();
+        private final Set<Element> originatingElements = new LinkedHashSet<>();
 
-        private Set<String> requiredPackages = new HashSet<>();
+        private Set<String> requiredPackages = new LinkedHashSet<>();
 
         RuleParser(String rule) {
             Matcher m = tokenizer.matcher(rule);
@@ -352,7 +352,7 @@ public class MatchProcessor extends AbstractProcessor {
          */
         final boolean ignoresSideEffects;
 
-        final Set<Element> originatingElements = new HashSet<>();
+        final Set<Element> originatingElements = new LinkedHashSet<>();
 
         TypeDescriptor(TypeMirror mirror, String shortName, String nodeClass, String nodePackage, List<String> inputs,
                         boolean commutative, boolean shareable, boolean consumable, boolean ignoresSideEffects) {
@@ -372,7 +372,7 @@ public class MatchProcessor extends AbstractProcessor {
     /**
      * The types which are know for purpose of parsing MatchRule expressions.
      */
-    Map<String, TypeDescriptor> knownTypes = new HashMap<>();
+    Map<String, TypeDescriptor> knownTypes = new LinkedHashMap<>();
 
     private TypeDescriptor valueType;
 
@@ -659,19 +659,19 @@ public class MatchProcessor extends AbstractProcessor {
 
         final TypeElement topDeclaringType;
         final List<MatchRuleItem> matchRules = new ArrayList<>();
-        private final Set<Element> originatingElements = new HashSet<>();
-        public Set<String> positionDeclarations = new HashSet<>();
+        private final Set<Element> originatingElements = new LinkedHashSet<>();
+        public Set<String> positionDeclarations = new LinkedHashSet<>();
 
         /**
          * The mapping between elements with MatchRules and the wrapper class used invoke the code
          * generation after the match.
          */
-        Map<String, MethodInvokerItem> invokers = new HashMap<>();
+        Map<String, MethodInvokerItem> invokers = new LinkedHashMap<>();
 
         /**
          * The set of packages which must be imported to refer the classes mentioned in matchRules.
          */
-        Set<String> requiredPackages = new HashSet<>();
+        Set<String> requiredPackages = new LinkedHashSet<>();
 
         MatchRuleDescriptor(TypeElement topDeclaringType) {
             this.topDeclaringType = topDeclaringType;
@@ -730,7 +730,7 @@ public class MatchProcessor extends AbstractProcessor {
             TypeMirror valueTypeMirror = getTypeElement(VALUE_NODE_CLASS_NAME).asType();
             valueType = new TypeDescriptor(valueTypeMirror, "Value", "ValueNode", "jdk.graal.compiler.nodes", Collections.emptyList(), false, false, false, false);
 
-            Map<TypeElement, MatchRuleDescriptor> map = new HashMap<>();
+            Map<TypeElement, MatchRuleDescriptor> map = new LinkedHashMap<>();
 
             for (Element element : roundEnv.getElementsAnnotatedWith(matchRuleTypeElement)) {
                 currentElement = element;

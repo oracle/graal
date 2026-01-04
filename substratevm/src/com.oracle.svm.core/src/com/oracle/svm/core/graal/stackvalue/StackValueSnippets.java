@@ -124,7 +124,7 @@ final class StackValueSnippets extends SubstrateTemplates implements Snippets {
         StructuredGraph graph = node.graph();
         boolean mustNotAllocate = ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(graph.method());
 
-        SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(stackValueSnippet, graph.getGuardsStage(), tool.getLoweringStage());
+        SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(stackValueSnippet, graph, tool.getLoweringStage());
         args.add("sizeInBytes", sizeInBytes);
         args.add("alignmentInBytes", alignmentInBytes);
         args.add("slotIdentifier", slotIdentity);

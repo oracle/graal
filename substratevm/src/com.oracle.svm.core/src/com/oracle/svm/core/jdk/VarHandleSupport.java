@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.function.Function;
-
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.BuildPhaseProvider;
@@ -37,7 +35,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
-import com.oracle.svm.core.fieldvaluetransformer.ObjectToConstantFieldValueTransformer;
 import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.util.VMError;
 
@@ -112,17 +109,18 @@ class VarHandleFieldOffsetAsLongComputer extends VarHandleFieldOffsetComputer {
     }
 }
 
-class VarHandleStaticBaseComputer implements ObjectToConstantFieldValueTransformer {
+class VarHandleStaticBaseComputer implements FieldValueTransformerWithAvailability {
+
     @Override
     public boolean isAvailable() {
         return BuildPhaseProvider.isHostedUniverseBuilt();
     }
 
     @Override
-    public JavaConstant transformToConstant(ResolvedJavaField field, Object receiver, Object originalValue, Function<Object, JavaConstant> toConstant) {
+    public Object transform(Object receiver, Object originalValue) {
         ResolvedJavaField varHandleField = VarHandleSupport.singleton().findVarHandleField(receiver, false);
         StaticFieldsSupport.StaticFieldValidator.checkFieldOffsetAllowed(varHandleField);
-        return StaticFieldsSupport.getStaticFieldsConstant(varHandleField, toConstant);
+        return StaticFieldsSupport.getStaticFieldBaseTransformation(varHandleField);
     }
 
     @Override

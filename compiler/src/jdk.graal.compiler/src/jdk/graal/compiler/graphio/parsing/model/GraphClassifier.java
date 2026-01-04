@@ -25,6 +25,9 @@
 
 package jdk.graal.compiler.graphio.parsing.model;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -64,7 +67,7 @@ public class GraphClassifier {
         return DEFAULT_TYPE;
     }
 
-    private static final Set<String> KNOWN_TYPES = Set.of(STRUCTURED_GRAPH, CALL_GRAPH, DEFAULT_TYPE);
+    private static final Set<String> KNOWN_TYPES = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(STRUCTURED_GRAPH, CALL_GRAPH, DEFAULT_TYPE)));
 
     /**
      * Returns a set of all the graph types that {@link #classifyGraphType} can return.

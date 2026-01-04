@@ -61,7 +61,12 @@ public final class StringCodepointIndexToByteIndexNode extends PureFunctionStubI
      */
     public enum InputEncoding {
         UTF_8,
-        UTF_16
+        UTF_16,
+        UTF_16_FOREIGN_ENDIAN;
+
+        public boolean isUTF16() {
+            return this == UTF_16 || this == UTF_16_FOREIGN_ENDIAN;
+        }
     }
 
     private final InputEncoding inputEncoding;
@@ -140,6 +145,7 @@ public final class StringCodepointIndexToByteIndexNode extends PureFunctionStubI
     @NodeIntrinsic
     @GenerateStub(name = "codePointIndexToByteIndexUTF8", parameters = "UTF_8", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     @GenerateStub(name = "codePointIndexToByteIndexUTF16", parameters = "UTF_16", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+    @GenerateStub(name = "codePointIndexToByteIndexUTF16FE", parameters = "UTF_16_FOREIGN_ENDIAN", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     public static native int codepointIndexToByteIndex(Object array, long offset, int length, int index,
                     @ConstantNodeParameter InputEncoding inputEncoding);
 

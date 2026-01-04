@@ -30,7 +30,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(value = NullPointerException.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_NullPointerException {
     @Substitution(hasReceiver = true)
     public static @JavaType(String.class) StaticObject getExtendedNPEMessage(@JavaType(Throwable.class) StaticObject self,

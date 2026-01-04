@@ -142,7 +142,7 @@ public class WasmSwitchPhase extends BasePhase<CoreProviders> {
             blockSuccessors[i] = switchNode.blockSuccessor(i);
         }
 
-        IntegerSwitchNode newSwitch = new IntegerSwitchNode(correctedValue, blockSuccessors, newKeys, switchNode.getKeySuccessors(), switchNode.getProfileData());
+        IntegerSwitchNode newSwitch = new IntegerSwitchNode(correctedValue, blockSuccessors, newKeys, switchNode.getKeySuccessors(), switchNode.getProfileData(), false);
 
         replaceSwitch(graph, switchNode, newSwitch);
         return true;

@@ -27,10 +27,7 @@ package com.oracle.svm.hosted.analysis;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -48,10 +45,8 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.CustomTypeFieldHandler;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.LogUtils;
 
@@ -61,7 +56,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.Signature;
 
 public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inflation {
@@ -90,7 +85,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
         dynamicHubInitializer = new DynamicHubInitializer(this);
-        customTypeFieldHandler = new PointsToCustomTypeFieldHandler(this, metaAccess);
+        customTypeFieldHandler = new CustomTypeFieldHandler(this, metaAccess);
         callChecker = new CallChecker();
     }
 
@@ -132,15 +127,10 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     }
 
     @Override
-    public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
-        customTypeFieldHandler.injectFieldTypes(aField, customTypes, canBeNull);
-    }
-
-    @Override
     public void onTypeReachable(AnalysisType type) {
-        postTask(d -> {
+        postTask(_ -> {
             type.getInitializeMetaDataTask().ensureDone();
-            if (type.isInBaseLayer()) {
+            if (type.isInSharedLayer()) {
                 /*
                  * Since the rescanning of the hub is skipped for constants from the base layer to
                  * avoid deadlocks, the hub needs to be rescanned manually after the metadata is
@@ -148,45 +138,39 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                  */
                 HostedImageLayerBuildingSupport.singleton().getLoader().rescanHub(type, ((SVMHost) hostVM).dynamicHub(type));
             }
-            if (type.isArray() && type.getComponentType().isInBaseLayer()) {
+            if (type.isArray() && type.getComponentType().isInSharedLayer()) {
                 /* Rescan the component hub. This will be simplified by GR-60254. */
                 HostedImageLayerBuildingSupport.singleton().getLoader().rescanHub(type.getComponentType(), ((SVMHost) hostVM).dynamicHub(type).getComponentHub());
             }
             if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                 /*
-                 * Using getInstanceFields and getStaticFields allows to include the fields from the
-                 * substitution class.
+                 * To prevent premature optimizations of fields accesses in open world analysis,
+                 * i.e., like constant-folding their values in the base image, register all fields
+                 * of reachable types as roots, except some fields that should always be folded.
                  */
-                Stream.concat(Arrays.stream(getOrDefault(type, t -> t.getInstanceFields(true), new AnalysisField[0])),
-                                Arrays.stream(getOrDefault(type, AnalysisType::getStaticFields, new AnalysisField[0])))
-                                .filter(field -> field != null && classInclusionPolicy.isFieldIncluded((AnalysisField) field))
-                                .forEach(field -> classInclusionPolicy.includeField((AnalysisField) field));
+                tryRegisterFieldsInBaseImage(type.getInstanceFields(true));
+                tryRegisterFieldsInBaseImage(type.getStaticFields());
 
                 /*
-                 * Only the class initializers that are executed at run time should be included in
-                 * the base layer.
+                 * Register run time executed class initializers as roots in the base layer.
                  */
                 AnalysisMethod classInitializer = type.getClassInitializer();
-                if (classInitializer != null && !ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(type) && classInitializer.getCode() != null) {
+                if (classInitializer != null && !hostVM.isInitialized(type) && classInitializer.getCode() != null) {
                     classInclusionPolicy.includeMethod(classInitializer);
                 }
             }
         });
     }
 
+    private void tryRegisterFieldsInBaseImage(ResolvedJavaField[] fields) {
+        for (ResolvedJavaField resolvedJavaField : fields) {
+            tryRegisterFieldForBaseImage((AnalysisField) resolvedJavaField);
+        }
+    }
+
     @Override
     public void initializeMetaData(AnalysisType type) {
         dynamicHubInitializer.initializeMetaData(universe.getHeapScanner(), type);
-    }
-
-    public static ResolvedJavaType toWrappedType(ResolvedJavaType type) {
-        if (type instanceof AnalysisType) {
-            return ((AnalysisType) type).getWrapped();
-        } else if (type instanceof HostedType) {
-            return ((HostedType) type).getWrapped().getWrapped();
-        } else {
-            return type;
-        }
     }
 
     @Override
@@ -231,7 +215,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
             }
 
             var uniqueFallbackMethod = fallbackMethods.computeIfAbsent(new FallbackDescriptor(resolvingType, method.getName(), method.getSignature()),
-                            (k) -> new IncompatibleClassChangeFallbackMethod(resolvingType.getWrapped(), method.getWrapped(), findResolutionError(resolvingType, method.getJavaMethod())));
+                            _ -> new IncompatibleClassChangeFallbackMethod(resolvingType.getWrapped(), method.getWrapped(), findResolutionError(resolvingType, method.getJavaMethod())));
             return getUniverse().lookup(uniqueFallbackMethod);
         }
         return super.fallbackResolveConcreteMethod(resolvingType, method);

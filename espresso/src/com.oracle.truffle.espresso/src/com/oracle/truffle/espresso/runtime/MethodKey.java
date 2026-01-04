@@ -35,6 +35,7 @@ public final class MethodKey {
     private final Symbol<Type> clazz;
     private final Symbol<Name> methodName;
     private final Symbol<Signature> signature;
+    private final boolean isStatic;
     private final int hash;
 
     public MethodKey(Method m) {
@@ -42,15 +43,16 @@ public final class MethodKey {
     }
 
     public MethodKey(Method m, Symbol<Signature> signature) {
-        this(m.getDeclaringKlass().getType(), m.getName(), signature);
+        this(m.getDeclaringKlass().getType(), m.getName(), signature, m.isStatic());
     }
 
-    public MethodKey(Symbol<Type> clazz, Symbol<Name> methodName, Symbol<Signature> signature) {
+    public MethodKey(Symbol<Type> clazz, Symbol<Name> methodName, Symbol<Signature> signature, boolean isStatic) {
         assert clazz != null && methodName != null && signature != null;
         this.clazz = clazz;
         this.methodName = methodName;
         this.signature = signature;
-        this.hash = Objects.hash(clazz, methodName, signature);
+        this.isStatic = isStatic;
+        this.hash = Objects.hash(clazz, methodName, signature, isStatic);
     }
 
     @Override
@@ -64,7 +66,8 @@ public final class MethodKey {
         MethodKey other = (MethodKey) obj;
         return clazz == other.clazz &&
                         methodName == other.methodName &&
-                        signature == other.signature;
+                        signature == other.signature &&
+                        isStatic == other.isStatic;
     }
 
     @Override
@@ -74,7 +77,7 @@ public final class MethodKey {
 
     @Override
     public String toString() {
-        return TypeSymbols.binaryName(clazz) + "#" + methodName + signature;
+        return (isStatic ? "static " : "") + TypeSymbols.binaryName(clazz) + "#" + methodName + signature;
     }
 
     public Symbol<Type> getHolderType() {
@@ -87,5 +90,9 @@ public final class MethodKey {
 
     public Symbol<Signature> getSignature() {
         return signature;
+    }
+
+    public boolean isStatic() {
+        return isStatic;
     }
 }

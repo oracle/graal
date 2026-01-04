@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import jdk.graal.compiler.code.CompilationResult;
-
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
+import com.oracle.svm.core.graal.isolated.ClientHandle;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.meta.SubstrateCodeCacheProvider;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 
+import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
@@ -48,9 +48,9 @@ public final class IsolateAwareCodeCacheProvider extends SubstrateCodeCacheProvi
     }
 
     @Override
-    public InstalledCode installCode(ResolvedJavaMethod method, CompiledCode compiledCode, InstalledCode predefinedInstalledCode, SpeculationLog log, boolean isDefault) {
+    public InstalledCode installCode(ResolvedJavaMethod method, CompiledCode compiledCode, InstalledCode predefinedInstalledCode, SpeculationLog log, boolean isDefault, boolean profileDeopt) {
         if (!SubstrateOptions.shouldCompileInIsolates()) {
-            return super.installCode(method, compiledCode, predefinedInstalledCode, log, isDefault);
+            return super.installCode(method, compiledCode, predefinedInstalledCode, log, isDefault, profileDeopt);
         }
 
         VMError.guarantee(!isDefault);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,7 +58,7 @@ public class BytecodeDisassemblerTest extends GraalCompilerTest {
         FileSystem fs = FileSystems.newFileSystem(URI.create("jrt:/"), Collections.emptyMap());
         Path top = fs.getPath("/modules/");
         Files.find(top, Integer.MAX_VALUE,
-                        (path, attrs) -> attrs.isRegularFile()).forEach(p -> {
+                        (_, attrs) -> attrs.isRegularFile()).forEach(p -> {
                             int nameCount = p.getNameCount();
                             if (nameCount > 2) {
                                 String base = p.getName(nameCount - 1).toString();

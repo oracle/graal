@@ -66,6 +66,7 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.nodes.BeginNode;
@@ -136,7 +137,7 @@ public abstract class NonSnippetLowerings {
                     Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         this.mustNotAllocatePredicate = mustNotAllocatePredicate;
 
-        if (hosted) {
+        if (hosted || SubstrateOptions.useRistretto()) {
             // These nodes create a FrameState which cannot be deoptimized from
             lowerings.put(BytecodeExceptionNode.class, new BytecodeExceptionLowering());
             lowerings.put(ThrowBytecodeExceptionNode.class, new ThrowBytecodeExceptionLowering());
@@ -242,7 +243,7 @@ public abstract class NonSnippetLowerings {
             }
             outArguments.addAll(exceptionArguments);
         }
-        VMError.guarantee(descriptor != null, "No ForeignCallDescriptor for ByteCodeExceptionKind %s", exceptionKind);
+        GraalError.guarantee(descriptor != null, "No ForeignCallDescriptor for ByteCodeExceptionKind %s", exceptionKind);
         assert descriptor.getArgumentTypes().length == outArguments.size();
         return descriptor;
     }
@@ -402,11 +403,17 @@ public abstract class NonSnippetLowerings {
                          * address offset of the text section start and then add in the offset for
                          * this specific method.
                          */
-                        var methodLocation = DynamicImageLayerInfo.singleton().getPriorLayerMethodLocation(targetMethod);
-                        AddressNode methodPointerAddress = graph.addOrUniqueWithInputs(
-                                        new OffsetAddressNode(new CGlobalDataLoadAddressNode(methodLocation.base()),
-                                                        ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), methodLocation.offset())));
-                        loweredCallTarget = createIndirectCall(graph, callTarget, parameters, method, signature, callType, invokeKind, methodPointerAddress);
+                        DynamicImageLayerInfo dynamicImageLayerInfo = DynamicImageLayerInfo.singleton();
+                        if (dynamicImageLayerInfo.isMethodCompilationDelayed(targetMethod)) {
+                            loweredCallTarget = createIndirectCall(graph, callTarget, parameters, method, signature, callType, invokeKind,
+                                            graph.addOrUniqueWithInputs(new CGlobalDataLoadAddressNode(dynamicImageLayerInfo.getSymbolForDelayedMethod(targetMethod))));
+                        } else {
+                            var methodLocation = dynamicImageLayerInfo.getPriorLayerMethodLocation(targetMethod);
+                            AddressNode methodPointerAddress = graph.addOrUniqueWithInputs(
+                                            new OffsetAddressNode(new CGlobalDataLoadAddressNode(methodLocation.base()),
+                                                            ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), methodLocation.offset())));
+                            loweredCallTarget = createIndirectCall(graph, callTarget, parameters, method, signature, callType, invokeKind, methodPointerAddress);
+                        }
                     } else if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
                         loweredCallTarget = createDirectCall(graph, callTarget, parameters, signature, callType, invokeKind, targetMethod, node);
                     } else if (!targetMethod.hasImageCodeOffset()) {
@@ -547,7 +554,7 @@ public abstract class NonSnippetLowerings {
         private void lowerLoadMethodByIndexNode(LoadMethodByIndexNode node, LoweringTool tool) {
             LoadOpenTypeWorldDispatchTableStartingOffset tableStartOffset = null;
             if (!haveClosedWorldHubLayout) {
-                tableStartOffset = node.graph().add(new LoadOpenTypeWorldDispatchTableStartingOffset(node.getHub(), node.getInterfaceTypeID()));
+                tableStartOffset = node.graph().add(new LoadOpenTypeWorldDispatchTableStartingOffset(node.getHub(), node.getInterfaceID()));
             }
             lowerLoadMethod(node, node.getHub(), tool, node.getVTableIndex(), tableStartOffset);
         }

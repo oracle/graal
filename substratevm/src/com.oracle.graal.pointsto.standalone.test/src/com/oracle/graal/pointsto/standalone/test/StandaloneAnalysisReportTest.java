@@ -26,13 +26,14 @@
 
 package com.oracle.graal.pointsto.standalone.test;
 
-import org.junit.Test;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 
-import static org.junit.Assert.assertTrue;
+import org.junit.Ignore;
+import org.junit.Test;
 
 public class StandaloneAnalysisReportTest {
     // Take an arbitrary case for this test
@@ -58,6 +59,8 @@ public class StandaloneAnalysisReportTest {
     }
 
     @Test
+    @Ignore // Since there is no class initialization, printing the object tree is not a meaningful
+            // operation at the moment.
     public void testPrintAnalysisObjectTree() throws IOException {
         PointstoAnalyzerTester tester = new PointstoAnalyzerTester(TEST_CLASS);
         Path testTmpDir = tester.createTestTmpDir();

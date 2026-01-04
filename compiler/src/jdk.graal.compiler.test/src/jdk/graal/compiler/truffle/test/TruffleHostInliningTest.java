@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,15 +27,16 @@ package jdk.graal.compiler.truffle.test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.Duration;
 import java.util.function.Consumer;
 
-import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 
 /**
  * Test to ensure that host inlining is enabled only if a Truffle runtime is enabled.
@@ -75,7 +76,8 @@ public class TruffleHostInliningTest {
             inProcess.run();
         } else {
             File logFile = File.createTempFile(getClass().getSimpleName(), "test");
-            SubprocessTestUtils.newBuilder(getClass(), inProcess).failOnNonZeroExit(true).//
+            SubprocessTestUtils.newBuilder(getClass(), inProcess).//
+                            failOnNonZeroExit(true).//
                             prefixVmOption("-Djdk.graal.Log=HostInliningPhase,~CanonicalizerPhase,~InlineGraph",
                                             "-Djdk.graal.MethodFilter=" + TruffleHostInliningTest.class.getSimpleName() + ".*",
                                             "-Djdk.graal.CompilationFailureAction=Print",
@@ -83,14 +85,17 @@ public class TruffleHostInliningTest {
                                             String.format("-XX:CompileCommand=compileonly,%s::*", TruffleHostInliningTest.class.getName()),
                                             "-Xbatch").// force synchronous compilation
                             postfixVmOption("-XX:+UseJVMCICompiler").// force Graal host compilation
-                            onExit((process) -> {
+                            // The default 2 minutes timeout is not enough on linux-aarch gates
+                            timeout(Duration.ofMinutes(5)).//
+                            onExit((_) -> {
                                 try {
                                     log.accept((Files.readString(logFile.toPath())));
                                 } catch (IOException e) {
                                     throw new AssertionError(e);
                                 }
                                 logFile.delete();
-                            }).run();
+                            }).//
+                            run();
         }
     }
 

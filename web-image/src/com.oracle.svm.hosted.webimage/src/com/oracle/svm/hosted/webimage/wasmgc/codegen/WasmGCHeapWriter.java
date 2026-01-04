@@ -39,17 +39,17 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import org.graalvm.word.WordBase;
-
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.Hybrid;
+import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayouterCallback;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
@@ -273,7 +273,7 @@ public class WasmGCHeapWriter {
 
     public WasmGCImageHeapLayoutInfo layout() {
         collectObjectData();
-        return (WasmGCImageHeapLayoutInfo) heap.getLayouter().layout(heap, WasmUtil.PAGE_SIZE);
+        return (WasmGCImageHeapLayoutInfo) heap.getLayouter().layout(heap, WasmUtil.PAGE_SIZE, ImageHeapLayouterCallback.NONE);
     }
 
     public void write(WasmGCImageHeapLayoutInfo layout, WasmModule module) {
@@ -410,7 +410,7 @@ public class WasmGCHeapWriter {
      * object table for all indices and will correctly get {@code null} for index {@code 0}.
      */
     private void initializeObjects() {
-        int nullIndex = objectElements.addElement(new Instruction.RefNull(providers.util().getJavaLangObjectType()).setComment("Null Object"));
+        int nullIndex = objectElements.addElement(new Instruction.RefNull(WasmRefType.NONE).setComment("Null Object"));
         assert nullIndex == 0 : nullIndex + " image heap objects were added to image heap table before the null pointer";
 
         for (ObjectData data : getObjects()) {
@@ -448,7 +448,7 @@ public class WasmGCHeapWriter {
 
         for (HostedField field : heap.hUniverse.getFields()) {
             if (shouldGenerateStaticField(field)) {
-                assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
+                assert field.isWritten() || !field.isValueAvailable(null) || MaterializedConstantFields.singleton().contains(field.wrapped);
 
                 WasmValType fieldType = providers.util().typeForJavaType(field.getType());
                 WasmId.Global staticFieldId = providers.idFactory().forStaticField(fieldType, field);
@@ -835,7 +835,7 @@ public class WasmGCHeapWriter {
     private Instruction createHubVtableArray(ImageHeapInstance instance) {
         WasmId.ArrayType vtableFieldType = providers.knownIds().vtableFieldType;
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
-        WordBase[] vtable = (WordBase[]) heap.readInlinedField(dynamicHubLayout.vTableField, instance);
+        MethodRef[] vtable = (MethodRef[]) heap.readInlinedField(dynamicHubLayout.vTableField, instance);
 
         int vtableLength = vtable.length;
 

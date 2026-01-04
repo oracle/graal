@@ -40,12 +40,13 @@
  */
 package com.oracle.truffle.regex.tregex;
 
-import com.oracle.truffle.regex.util.TBitSet;
+import java.util.Iterator;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Iterator;
+import com.oracle.truffle.regex.util.TBitSet;
 
 public class TBitSetTest {
 

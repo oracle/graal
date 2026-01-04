@@ -28,7 +28,7 @@ import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
-@EspressoSubstitutions(type = "Ljava/lang/StringUTF16;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_StringUTF16 {
     @Substitution
     public static boolean isBigEndian() {

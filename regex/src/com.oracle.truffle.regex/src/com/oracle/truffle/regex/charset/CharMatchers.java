@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,8 @@ package com.oracle.truffle.regex.charset;
 import static com.oracle.truffle.regex.util.BitSets.highByte;
 import static com.oracle.truffle.regex.util.BitSets.lowByte;
 
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.AnyMatcher;
@@ -58,7 +60,6 @@ import com.oracle.truffle.regex.tregex.matchers.SingleCharMatcher;
 import com.oracle.truffle.regex.tregex.matchers.SingleRangeMatcher;
 import com.oracle.truffle.regex.tregex.matchers.TwoCharMatcher;
 import com.oracle.truffle.regex.util.TBitSet;
-import org.graalvm.collections.EconomicMap;
 
 /**
  * Helper class for converting {@link CodePointSet}s to {@link CharMatcher}s.

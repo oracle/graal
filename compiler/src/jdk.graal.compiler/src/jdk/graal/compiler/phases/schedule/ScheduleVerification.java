@@ -71,16 +71,18 @@ public final class ScheduleVerification extends ReentrantBlockIterator.BlockIter
     private final BlockMap<List<Node>> blockToNodesMap;
     private final NodeMap<HIRBlock> nodeMap;
     private final StructuredGraph graph;
+    private final boolean verifyProxies;
 
-    public static boolean check(HIRBlock startBlock, BlockMap<List<Node>> blockToNodesMap, NodeMap<HIRBlock> nodeMap) {
-        ReentrantBlockIterator.apply(new ScheduleVerification(blockToNodesMap, nodeMap, startBlock.getBeginNode().graph()), startBlock);
+    public static boolean check(HIRBlock startBlock, BlockMap<List<Node>> blockToNodesMap, NodeMap<HIRBlock> nodeMap, boolean verifyProxies) {
+        ReentrantBlockIterator.apply(new ScheduleVerification(blockToNodesMap, nodeMap, startBlock.getBeginNode().graph(), verifyProxies), startBlock);
         return true;
     }
 
-    private ScheduleVerification(BlockMap<List<Node>> blockToNodesMap, NodeMap<HIRBlock> nodeMap, StructuredGraph graph) {
+    private ScheduleVerification(BlockMap<List<Node>> blockToNodesMap, NodeMap<HIRBlock> nodeMap, StructuredGraph graph, boolean verifyProxies) {
         this.blockToNodesMap = blockToNodesMap;
         this.nodeMap = nodeMap;
         this.graph = graph;
+        this.verifyProxies = verifyProxies;
     }
 
     @Override
@@ -137,7 +139,7 @@ public final class ScheduleVerification extends ReentrantBlockIterator.BlockIter
                 }
             }
             assert nodeMap.get(n) == block : Assertions.errorMessageContext("n", n, "block", block);
-            if (graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) && block.getLoop() != null && !(n instanceof VirtualState)) {
+            if (verifyProxies && graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) && block.getLoop() != null && !(n instanceof VirtualState)) {
                 for (Node usage : n.usages()) {
                     Node usageNode = usage;
 

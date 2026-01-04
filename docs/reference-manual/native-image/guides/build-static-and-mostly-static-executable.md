@@ -139,5 +139,5 @@ In both cases, choosing the base container image generally depends on your nativ
 
 ### Related Documentation
 
-* [Tiny Java Containers](https://github.com/graalvm/graalvm-demos/tree/master/tiny-java-containers) demo shows how a simple Java application and a simple web server can be compiled to produce very small Docker container images using various lightweight base images.
-* [GraalVM Native Image, Spring and Containerisation](https://luna.oracle.com/lab/fdfd090d-e52c-4481-a8de-dccecdca7d68) interactive lab to build a mostly static executable of a Spring Boot application.
+* [Tiny Java Containers](https://github.com/graalvm/graalvm-demos/tree/master/native-image/tiny-java-containers) demo shows how a simple Java application and a simple web server can be compiled to produce very small Docker container images using various lightweight base images.
+* [GraalVM Native Image, Spring and Containerization](https://luna.oracle.com/lab/fdfd090d-e52c-4481-a8de-dccecdca7d68) interactive lab to build a mostly static executable of a Spring Boot application.

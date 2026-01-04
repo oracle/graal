@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,28 +25,42 @@
 package jdk.graal.compiler.core.test;
 
 import static java.lang.String.format;
+import static java.lang.constant.ConstantDescs.CD_Boolean;
+import static java.lang.constant.ConstantDescs.CD_Byte;
+import static java.lang.constant.ConstantDescs.CD_Character;
+import static java.lang.constant.ConstantDescs.CD_Double;
+import static java.lang.constant.ConstantDescs.CD_Float;
+import static java.lang.constant.ConstantDescs.CD_Integer;
+import static java.lang.constant.ConstantDescs.CD_Long;
+import static java.lang.constant.ConstantDescs.CD_Short;
+import static java.lang.constant.ConstantDescs.CLASS_INIT_NAME;
 
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashSet;
+import java.lang.classfile.Attributes;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
+import java.lang.classfile.CodeElement;
+import java.lang.classfile.CodeModel;
+import java.lang.classfile.MethodModel;
+import java.lang.classfile.Opcode;
+import java.lang.classfile.constantpool.MemberRefEntry;
+import java.lang.classfile.instruction.FieldInstruction;
+import java.lang.classfile.instruction.InvokeInstruction;
+import java.lang.classfile.instruction.LineNumber;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.ConstantDescs;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+
+import org.junit.Test;
 
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import org.junit.Test;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
+import jdk.graal.compiler.util.EconomicHashSet;
 
 /**
  * Verifies a class declaring one or more {@linkplain OptionKey options} has a class initializer
@@ -55,12 +69,12 @@ import org.objectweb.asm.Type;
  */
 public class OptionsVerifierTest {
 
-    private static Set<String> ALLOWLIST = new TreeSet<>(Arrays.asList(//
+    private static final Set<String> ALLOWLIST = new TreeSet<>(List.of(//
                     "jdk.graal.compiler.truffle.TruffleCompilerOptions"));
 
     @Test
-    public void verifyOptions() throws IOException {
-        HashSet<Class<?>> checked = new HashSet<>();
+    public void verifyOptions() throws IOException, ReflectiveOperationException {
+        Set<Class<?>> checked = new EconomicHashSet<>();
         for (OptionDescriptors opts : OptionsParser.getOptionsLoader()) {
             for (OptionDescriptor desc : opts) {
                 Class<?> descDeclaringClass = desc.getDeclaringClass();
@@ -71,9 +85,9 @@ public class OptionsVerifierTest {
         }
     }
 
-    static final class OptionsVerifier extends ClassVisitor {
+    static final class OptionsVerifier {
 
-        public static void checkClass(Class<?> cls, OptionDescriptor option, Set<Class<?>> checked) throws IOException {
+        public static void checkClass(Class<?> cls, OptionDescriptor option, Set<Class<?>> checked) throws IOException, ReflectiveOperationException {
             if (!checked.contains(cls)) {
                 checked.add(cls);
                 Class<?> superclass = cls.getSuperclass();
@@ -81,11 +95,7 @@ public class OptionsVerifierTest {
                     checkClass(superclass, option, checked);
                 }
 
-                GraalServices.getClassfileAsStream(cls);
-                ClassReader cr = new ClassReader(GraalServices.getClassfileAsStream(cls));
-
-                ClassVisitor cv = new OptionsVerifier(cls, option);
-                cr.accept(cv, 0);
+                new OptionsVerifier(cls, option).apply();
             }
         }
 
@@ -93,6 +103,8 @@ public class OptionsVerifierTest {
          * The option field context of the verification.
          */
         private final OptionDescriptor option;
+
+        private final ClassDesc optionClassDesc;
 
         /**
          * The class in which {@link #option} is declared or a super-class of that class. This is
@@ -103,32 +115,17 @@ public class OptionsVerifierTest {
         /**
          * Source file context for error reporting.
          */
-        String sourceFile = null;
+        String sourceFile = "unknown";
 
         /**
          * Line number for error reporting.
          */
         int lineNo = -1;
 
-        final Class<?>[] boxingTypes = {Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Float.class, Long.class, Double.class};
-
-        private static Class<?> resolve(String name) {
-            try {
-                return Class.forName(name.replace('/', '.'));
-            } catch (ClassNotFoundException e) {
-                throw new InternalError(e);
-            }
-        }
-
         OptionsVerifier(Class<?> cls, OptionDescriptor desc) {
-            super(Opcodes.ASM7);
             this.cls = cls;
             this.option = desc;
-        }
-
-        @Override
-        public void visitSource(String source, String debug) {
-            this.sourceFile = source;
+            this.optionClassDesc = option.getDeclaringClass().describeConstable().orElseThrow();
         }
 
         void verify(boolean condition, String message) {
@@ -138,83 +135,68 @@ public class OptionsVerifierTest {
         }
 
         void error(String message) {
-            String errorMessage = format(
-                            "%s:%d: Illegal code in %s.<clinit> which may be executed when %s.%s is initialized:%n%n    %s%n%n" + "The recommended solution is to move " + option.getName() +
-                                            " into a separate class (e.g., %s.Options).%n",
-                            sourceFile, lineNo, cls.getSimpleName(), option.getDeclaringClass().getSimpleName(), option.getName(),
-                            message, option.getDeclaringClass().getSimpleName());
+            String errorMessage = format("""
+                            %s:%d: Illegal code in %s.<clinit> which may be executed when %s.%s is initialized:
+                                %s
+                            The recommended solution is to move %s into a separate class (e.g., %s.Options).
+                            """, sourceFile, lineNo, cls.getSimpleName(), option.getDeclaringClass().getSimpleName(), option.getName(),
+                            message, option.getName(), option.getDeclaringClass().getSimpleName());
             throw new InternalError(errorMessage);
-
         }
 
-        @Override
-        public MethodVisitor visitMethod(int access, String name, String d, String signature, String[] exceptions) {
-            if (name.equals("<clinit>")) {
-                return new MethodVisitor(Opcodes.ASM5) {
-
-                    @Override
-                    public void visitLineNumber(int line, Label start) {
-                        lineNo = line;
-                    }
-
-                    @Override
-                    public void visitFieldInsn(int opcode, String owner, String fieldName, String fieldDesc) {
-                        if (opcode == Opcodes.PUTFIELD || opcode == Opcodes.PUTSTATIC) {
-                            verify(resolve(owner).equals(option.getDeclaringClass()), format("store to field %s.%s", resolve(owner).getSimpleName(), fieldName));
-                            verify(opcode != Opcodes.PUTFIELD, format("store to non-static field %s.%s", resolve(owner).getSimpleName(), fieldName));
-                        }
-                    }
-
-                    private Executable resolveMethod(String owner, String methodName, String methodDesc) {
-                        Class<?> declaringClass = resolve(owner);
-                        if (methodName.equals("<init>")) {
-                            for (Constructor<?> c : declaringClass.getDeclaredConstructors()) {
-                                if (methodDesc.equals(Type.getConstructorDescriptor(c))) {
-                                    return c;
-                                }
-                            }
-                        } else {
-                            Type[] argumentTypes = Type.getArgumentTypes(methodDesc);
-                            for (Method m : declaringClass.getDeclaredMethods()) {
-                                if (m.getName().equals(methodName)) {
-                                    if (Arrays.equals(argumentTypes, Type.getArgumentTypes(m))) {
-                                        if (Type.getReturnType(methodDesc).equals(Type.getReturnType(m))) {
-                                            return m;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        throw new NoSuchMethodError(declaringClass + "." + methodName + methodDesc);
-                    }
-
-                    /**
-                     * Checks whether a given method is allowed to be called.
-                     */
-                    private boolean checkInvokeTarget(Executable method) {
-                        Class<?> holder = method.getDeclaringClass();
-                        if (method instanceof Constructor) {
-                            if (OptionKey.class.isAssignableFrom(holder)) {
-                                return true;
-                            }
-                        } else if (Arrays.asList(boxingTypes).contains(holder)) {
-                            return method.getName().equals("valueOf");
-                        } else if (method.getDeclaringClass().equals(Class.class)) {
-                            return method.getName().equals("desiredAssertionStatus");
-                        }
-                        return false;
-                    }
-
-                    @Override
-                    public void visitMethodInsn(int opcode, String owner, String methodName, String methodDesc, boolean itf) {
-                        Executable callee = resolveMethod(owner, methodName, methodDesc);
-                        verify(checkInvokeTarget(callee), "invocation of " + callee);
-                    }
-                };
-            } else {
-                return null;
+        private static Class<?> resolve(String name) {
+            try {
+                return Class.forName(name.replace('/', '.'));
+            } catch (ClassNotFoundException e) {
+                throw new InternalError(e);
             }
         }
-    }
 
+        private static final List<ClassDesc> boxingTypes = List.of(CD_Boolean, CD_Byte, CD_Short, CD_Character, CD_Integer, CD_Float, CD_Long, CD_Double);
+
+        /**
+         * Checks whether a given method is allowed to be called.
+         */
+        private static boolean checkInvokeTarget(MemberRefEntry method) {
+            ClassDesc owner = method.owner().asSymbol();
+            String methodName = method.name().stringValue();
+
+            if ("<init>".equals(methodName)) {
+                return OptionKey.class.isAssignableFrom(resolve(method.owner().asInternalName()));
+            } else if ("valueOf".equals(methodName)) {
+                return boxingTypes.contains(owner);
+            } else if ("desiredAssertionStatus".equals(methodName)) {
+                return ConstantDescs.CD_Class.equals(owner);
+            }
+            return false;
+        }
+
+        public void apply() throws IOException {
+            ClassModel cm = ClassFile.of().parse(GraalServices.getClassfileAsStream(cls).readAllBytes());
+            cm.findAttribute(Attributes.sourceFile()).ifPresent(attr -> sourceFile = attr.sourceFile().stringValue());
+
+            // @formatter:off
+            for (MethodModel methodModel : cm.methods()) {
+                if (CLASS_INIT_NAME.equals(methodModel.methodName().stringValue())) {
+                    CodeModel code = methodModel.code().orElseThrow();
+                    for (CodeElement instruction : code) {
+                        switch (instruction) {
+                            case LineNumber line -> lineNo = line.line();
+                            case FieldInstruction fi -> {
+                                if (fi.opcode() == Opcode.PUTFIELD) {
+                                    error(format("store to non-static field %s.%s", fi.owner().asInternalName(), fi.name().stringValue()));
+                                } else if (fi.opcode() == Opcode.PUTSTATIC) {
+                                    verify(fi.owner().asSymbol().equals(optionClassDesc), format("store to static field %s.%s", fi.owner().asInternalName(), fi.name().stringValue()));
+                                }
+                            }
+                            case InvokeInstruction invoke -> verify(checkInvokeTarget(invoke.method()), "invocation of " + invoke.method());
+                            default -> {
+                            }
+                        }
+                    }
+                }
+            }
+            // @formatter:on
+        }
+    }
 }

@@ -85,7 +85,7 @@ public final class MethodCallNode {
     }
 
     public Set<MethodCallNode> getNodesWithNonEmptyConfig(ConfigurationFile configFile) {
-        Set<MethodCallNode> nodesWithNonEmptyConfig = new HashSet<>();
+        Set<MethodCallNode> nodesWithNonEmptyConfig = new HashSet<>(); // noEconomicSet(null_key)
         /*
          * Recursively construct a set of nodes with non empty config. These nodes will eventually
          * be printed. A node should be printed if it or any of it's children have configuration.

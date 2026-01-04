@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,139 +26,58 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debugentry.range.PrimaryRange;
-import com.oracle.objectfile.debugentry.range.SubRange;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
-
-import java.util.ArrayDeque;
-import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Stream;
+
+import com.oracle.objectfile.debugentry.range.PrimaryRange;
+import com.oracle.objectfile.debugentry.range.Range;
 
 /**
  * Tracks debug info associated with a top level compiled method.
+ *
+ * @param primary The primary range detailed by this object.
+ * @param ownerType Details of the class owning this range.
+ * @param frameSizeInfos Details of compiled method frame size changes.
+ * @param frameSize Size of compiled method frame.
  */
-public class CompiledMethodEntry {
-    /**
-     * The primary range detailed by this object.
-     */
-    private final PrimaryRange primary;
-    /**
-     * Details of the class owning this range.
-     */
-    private final ClassEntry classEntry;
-    /**
-     * Details of of compiled method frame size changes.
-     */
-    private final List<DebugFrameSizeChange> frameSizeInfos;
-    /**
-     * Size of compiled method frame.
-     */
-    private final int frameSize;
-
-    public CompiledMethodEntry(PrimaryRange primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize, ClassEntry classEntry) {
-        this.primary = primary;
-        this.classEntry = classEntry;
-        this.frameSizeInfos = frameSizeInfos;
-        this.frameSize = frameSize;
-    }
-
-    public PrimaryRange getPrimary() {
-        return primary;
-    }
-
-    public ClassEntry getClassEntry() {
-        return classEntry;
-    }
+public record CompiledMethodEntry(PrimaryRange primary, List<FrameSizeChangeEntry> frameSizeInfos, int frameSize,
+                ClassEntry ownerType) {
 
     /**
-     * Returns an iterator that traverses all the callees of the method associated with this entry.
-     * The iterator performs a depth-first pre-order traversal of the call tree.
+     * Returns a stream that traverses all the callees of the method associated with this entry. The
+     * stream performs a depth-first pre-order traversal of the call tree.
      *
-     * @return the iterator
+     * @return the stream of all ranges
      */
-    public Iterator<SubRange> topDownRangeIterator() {
-        return new Iterator<>() {
-            final ArrayDeque<SubRange> workStack = new ArrayDeque<>();
-            SubRange current = primary.getFirstCallee();
-
-            @Override
-            public boolean hasNext() {
-                return current != null;
-            }
-
-            @Override
-            public SubRange next() {
-                assert hasNext();
-                SubRange result = current;
-                forward();
-                return result;
-            }
-
-            private void forward() {
-                SubRange sibling = current.getSiblingCallee();
-                assert sibling == null || (current.getHi() <= sibling.getLo()) : current.getHi() + " > " + sibling.getLo();
-                if (!current.isLeaf()) {
-                    /* save next sibling while we process the children */
-                    if (sibling != null) {
-                        workStack.push(sibling);
-                    }
-                    current = current.getFirstCallee();
-                } else if (sibling != null) {
-                    current = sibling;
-                } else {
-                    /*
-                     * Return back up to parents' siblings, use pollFirst instead of pop to return
-                     * null in case the work stack is empty
-                     */
-                    current = workStack.pollFirst();
-                }
-            }
-        };
+    public Stream<Range> topDownRangeStream(boolean includePrimary) {
+        // skip the root of the range stream which is the primary range
+        return primary.rangeStream().skip(includePrimary ? 0 : 1);
     }
 
     /**
-     * Returns an iterator that traverses the callees of the method associated with this entry and
-     * returns only the leafs. The iterator performs a depth-first pre-order traversal of the call
+     * Returns a stream that traverses the callees of the method associated with this entry and
+     * returns only the leafs. The stream performs a depth-first pre-order traversal of the call
      * tree returning only ranges with no callees.
      *
-     * @return the iterator
+     * @return the stream of leaf ranges
      */
-    public Iterator<SubRange> leafRangeIterator() {
-        final Iterator<SubRange> iter = topDownRangeIterator();
-        return new Iterator<>() {
-            SubRange current = forwardLeaf(iter);
-
-            @Override
-            public boolean hasNext() {
-                return current != null;
-            }
-
-            @Override
-            public SubRange next() {
-                assert hasNext();
-                SubRange result = current;
-                current = forwardLeaf(iter);
-                return result;
-            }
-
-            private SubRange forwardLeaf(Iterator<SubRange> t) {
-                if (t.hasNext()) {
-                    SubRange next = t.next();
-                    while (next != null && !next.isLeaf()) {
-                        next = t.next();
-                    }
-                    return next;
-                }
-                return null;
-            }
-        };
+    public Stream<Range> leafRangeStream() {
+        return topDownRangeStream(false).filter(Range::isLeaf);
     }
 
-    public List<DebugFrameSizeChange> getFrameSizeInfos() {
-        return frameSizeInfos;
+    /**
+     * Returns a stream that traverses the callees of the method associated with this entry and
+     * returns only the call ranges. The stream performs a depth-first pre-order traversal of the
+     * call tree returning only ranges with callees.
+     *
+     * @return the stream of call ranges
+     */
+    public Stream<Range> callRangeStream() {
+        return topDownRangeStream(false).filter(range -> !range.isLeaf());
     }
 
-    public int getFrameSize() {
-        return frameSize;
+    public void seal() {
+        // Seal the primary range. Also seals all subranges recursively.
+        primary.seal();
     }
 }

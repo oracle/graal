@@ -25,6 +25,7 @@
 package com.oracle.svm.core.heap;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.core.heap.InstanceReferenceMapEncoder.REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -36,6 +37,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneSnippets;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
@@ -81,6 +83,13 @@ public class InstanceReferenceMapDecoder {
         assert ReferenceMapIndex.denotesValidReferenceMap(referenceMapIndex);
         assert referenceMapEncoding.isNonNull();
         return (InstanceReferenceMap) NonmovableByteArrayReader.pointerTo(referenceMapEncoding, referenceMapIndex);
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static InstanceReferenceMap getReferenceMap(long referenceMapCompressedOffset) {
+        long uncompressedOffset = (referenceMapCompressedOffset << REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT);
+        return (InstanceReferenceMap) KnownIntrinsics.heapBase().add(Word.unsigned(uncompressedOffset));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

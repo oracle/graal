@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,8 +39,8 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 
 public class PropagateHotnessToLexicalSingleCallerTest extends TestWithSynchronousCompiling {
 
@@ -140,7 +140,7 @@ public class PropagateHotnessToLexicalSingleCallerTest extends TestWithSynchrono
     public void basicNoReorderTest() {
         final String callerName = "Caller";
         final String calleeName = "Callee";
-        CallerRootNode callerRootNode = new CallerRootNode(callerName, frameDescriptor -> new RootNodeWithLoop(calleeName, null), null);
+        CallerRootNode callerRootNode = new CallerRootNode(callerName, _ -> new RootNodeWithLoop(calleeName, null), null);
         OptimizedCallTarget callTarget = ((OptimizedCallTarget) callerRootNode.getCallTarget());
         compile(callTarget);
         Assert.assertTrue(callTarget.getCallAndLoopCount() < callerRootNode.target.getCallAndLoopCount());
@@ -152,7 +152,7 @@ public class PropagateHotnessToLexicalSingleCallerTest extends TestWithSynchrono
         final String intermediateName = "Intermediate";
         final String calleeName = "Callee";
         CallerRootNode callerRootNode = new CallerRootNode(callerName, frameDescriptor -> {
-            return new CallerRootNode(intermediateName, ignored -> {
+            return new CallerRootNode(intermediateName, _ -> {
                 return new RootNodeWithLoop(calleeName, frameDescriptor);
             }, null);
         }, null);
@@ -188,10 +188,10 @@ public class PropagateHotnessToLexicalSingleCallerTest extends TestWithSynchrono
     public void testDepth() {
         final String name = "Caller";
         CallerRootNode callerRootNode = new CallerRootNode(name + "0", frameDescriptor0 -> {
-            return new CallerRootNode(name + "1", frameDescriptor1 -> {
-                return new CallerRootNode(name + "2", frameDescriptor2 -> {
-                    return new CallerRootNode(name + "3", frameDescriptor3 -> {
-                        return new CallerRootNode(name + "4", frameDescriptor4 -> {
+            return new CallerRootNode(name + "1", _ -> {
+                return new CallerRootNode(name + "2", _ -> {
+                    return new CallerRootNode(name + "3", _ -> {
+                        return new CallerRootNode(name + "4", _ -> {
                             return new RootNodeWithLoop("loop", frameDescriptor0);
                         }, null);
                     }, null);

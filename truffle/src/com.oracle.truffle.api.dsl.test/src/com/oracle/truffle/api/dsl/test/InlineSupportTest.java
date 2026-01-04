@@ -387,45 +387,24 @@ public class InlineSupportTest {
         ParentUpdaterNode noSpecializationDataAsParent = noSpecializationDataBadNode.insert(new ParentUpdaterNode());
 
         stateField.validate(node); // fine
-        stateField.validate(specializationData); // also fine uses parent lookup
-        stateField.validate(noSpecializationDataBadNode);
 
         assertFails(() -> stateField.validate(noSpecializationDataAsParent), ClassCastException.class, (e) -> {
             assertEquals(e.getMessage(),
                             "Invalid inline context node passed to an inlined field. A receiver of type 'InlineSupportTest.TestNode' was expected but is 'InlineSupportTest.ParentUpdaterNode'. " +
                                             "Did you pass the wrong node to an execute method of an inlined cached node?");
         });
-    }
 
-    @Test
-    @SuppressWarnings("deprecation")
-    public void testParentUpdater() {
-        TestNode node = new TestNode();
-        ParentUpdaterNode updater = node.insert(new ParentUpdaterNode());
-        Node otherNode = new Node() {
-        };
+        assertFails(() -> stateField.validate(specializationData), ClassCastException.class, (e) -> {
+            assertEquals(e.getMessage(),
+                            "Invalid inline context node passed to an inlined field. A receiver of type 'InlineSupportTest.TestNode' was expected but is 'InlineSupportTest.ParentUpdaterNode'. " +
+                                            "Did you pass the wrong node to an execute method of an inlined cached node?");
+        });
 
-        StateField parentState = stateField.createParentAccessor(ParentUpdaterNode.class);
-        assertEquals(42, parentState.get(updater));
-        parentState.set(updater, 43);
-        assertEquals(43, parentState.get(updater));
-
-        parentState.set(node, 44);
-        assertEquals(44, parentState.get(node));
-
-        assertFails(() -> parentState.get(null), NullPointerException.class);
-        assertFails(() -> parentState.get(otherNode), ClassCastException.class);
-        assertFails(() -> parentState.set(null, 42), NullPointerException.class);
-        assertFails(() -> parentState.set(otherNode, 42), ClassCastException.class);
-        assertEquals(44, parentState.get(updater));
-
-        IntField parentInt = intField.createParentAccessor(ParentUpdaterNode.class);
-        // parent updater has no more effect.
-        assertSame(parentInt, intField);
-
-        ReferenceField<String> parentString = referenceStringField.createParentAccessor(ParentUpdaterNode.class);
-        assertSame(parentString, referenceStringField);
-
+        assertFails(() -> stateField.validate(noSpecializationDataBadNode), ClassCastException.class, (e) -> {
+            assertEquals(e.getMessage(),
+                            "Invalid inline context node passed to an inlined field. A receiver of type 'InlineSupportTest.TestNode' was expected but is 'InlineSupportTest.ParentUpdaterNoSpecializationDataNode'. " +
+                                            "Did you pass the wrong node to an execute method of an inlined cached node?");
+        });
     }
 
 }

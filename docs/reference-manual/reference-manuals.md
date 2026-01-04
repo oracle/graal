@@ -21,5 +21,3 @@ If you are mostly interested in a specific language runtime on GraalVM, see the 
 * [GraalJS](https://github.com/oracle/graaljs/blob/master/docs/user/README.md)
 * [GraalPy](https://www.graalvm.org/python/docs/)
 * [GraalWasm](https://www.graalvm.org/webassembly/docs/)
-* [LLVM Languages](llvm/README.md)
-* [TruffleRuby](https://github.com/oracle/truffleruby/blob/master/doc/user/README.md)

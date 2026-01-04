@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,11 +46,16 @@ import java.lang.invoke.MethodType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 @Platforms(Platform.HOSTED_ONLY.class)
+@SuppressWarnings("all")
 public final class RuntimeForeignAccess {
+
+    private static final APIDeprecationSupport deprecationFlag = ImageSingletons.lookup(APIDeprecationSupport.class);
 
     /**
      * Registers the provided function descriptor and options pair at image build time for downcalls
@@ -61,6 +66,8 @@ public final class RuntimeForeignAccess {
      * Even though this method is weakly typed for compatibility reasons, runtime checks will be
      * performed to ensure that the arguments have the expected type. It will be deprecated in favor
      * of strongly typed variant as soon as possible.
+     * <p>
+     * This API is deprecated; use the {@link ForeignAccess} instead.
      *
      * @param desc A {@link java.lang.foreign.FunctionDescriptor} to register for downcalls.
      * @param options An array of {@link java.lang.foreign.Linker.Option} used for the downcalls.
@@ -68,7 +75,8 @@ public final class RuntimeForeignAccess {
      * @since 23.1
      */
     public static void registerForDowncall(Object desc, Object... options) {
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDowncall(ConfigurationCondition.alwaysTrue(), desc, options);
+        deprecationFlag.printDeprecationWarning();
+        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDowncall(AccessCondition.unconditional(), desc, options);
     }
 
     /**
@@ -79,6 +87,8 @@ public final class RuntimeForeignAccess {
      * Even though this method is weakly typed for compatibility reasons, runtime checks will be
      * performed to ensure that the arguments have the expected type. It will be deprecated in favor
      * of strongly typed variant as soon as possible.
+     * <p>
+     * This API is deprecated; use the {@link ForeignAccess} instead.
      *
      * @param desc A {@link java.lang.foreign.FunctionDescriptor} to register for upcalls.
      * @param options An array of {@link java.lang.foreign.Linker.Option} used for the upcalls.
@@ -86,7 +96,8 @@ public final class RuntimeForeignAccess {
      * @since 24.1
      */
     public static void registerForUpcall(Object desc, Object... options) {
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForUpcall(ConfigurationCondition.alwaysTrue(), desc, options);
+        deprecationFlag.printDeprecationWarning();
+        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForUpcall(AccessCondition.unconditional(), desc, options);
     }
 
     /**
@@ -106,6 +117,8 @@ public final class RuntimeForeignAccess {
      * performed to ensure that the arguments have the expected type. It will be deprecated in favor
      * of strongly typed variant as soon as possible.
      * </p>
+     * <p>
+     * This API is deprecated; use the {@link ForeignAccess} instead.
      *
      * @param target A direct method handle denoting a static method.
      * @param desc A {@link java.lang.foreign.FunctionDescriptor} to register for upcalls.
@@ -114,7 +127,8 @@ public final class RuntimeForeignAccess {
      * @since 24.2
      */
     public static void registerForDirectUpcall(MethodHandle target, Object desc, Object... options) {
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDirectUpcall(ConfigurationCondition.alwaysTrue(), target, desc, options);
+        deprecationFlag.printDeprecationWarning();
+        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDirectUpcall(AccessCondition.unconditional(), target, desc, options);
     }
 
     private RuntimeForeignAccess() {

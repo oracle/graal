@@ -85,7 +85,7 @@ public class NativeImageResourceFileSystemProviderTest {
     public void createNewFileSystem() {
         URI resource = resourceNameToURI(RESOURCE_FILE_1, true);
 
-        Map<String, String> env = new HashMap<>();
+        Map<String, String> env = new HashMap<>(); // no EconomicSet: api
         env.put("create", "true");
 
         boolean exceptionThrown = false;
@@ -148,7 +148,7 @@ public class NativeImageResourceFileSystemProviderTest {
         // 2. Iterating through all resources in file system starting for the root.
         Path rootPath = fileSystem.getPath(ROOT_DIRECTORY);
         try (Stream<Path> files = Files.walk(rootPath)) {
-            files.forEach(path -> {
+            files.forEach(_ -> {
             });
         } catch (IOException e) {
             Assert.fail("IOException occurred during file system walk, starting from the root!");
@@ -163,7 +163,7 @@ public class NativeImageResourceFileSystemProviderTest {
     public void githubIssue5080() {
         Path path = fileSystem.getPath(RESOURCE_DIR + "/");
         try (Stream<Path> files = Files.walk(path)) {
-            files.forEach(p -> {
+            files.forEach(_ -> {
             });
         } catch (IOException e) {
             Assert.fail("IOException occurred during file system walk, starting from the path: " + path + "!");
@@ -339,7 +339,7 @@ public class NativeImageResourceFileSystemProviderTest {
 
         Set<StandardOpenOption> readPermissions = Collections.singleton(StandardOpenOption.READ);
         Set<StandardOpenOption> writePermissions = Collections.singleton(StandardOpenOption.WRITE);
-        Set<StandardOpenOption> readWritePermissions = new HashSet<>(Collections.emptySet());
+        Set<StandardOpenOption> readWritePermissions = new HashSet<>(Collections.emptySet()); // noEconomicSet(api)
         readWritePermissions.addAll(readPermissions);
         readWritePermissions.addAll(writePermissions);
 
@@ -482,7 +482,7 @@ public class NativeImageResourceFileSystemProviderTest {
 
         FileSystemProvider provider = fileSystem.provider();
 
-        Set<StandardOpenOption> permissions = new HashSet<>(Collections.emptySet());
+        Set<StandardOpenOption> permissions = new HashSet<>(Collections.emptySet()); // noEconomicSet(api)
         permissions.add(StandardOpenOption.READ);
         permissions.add(StandardOpenOption.WRITE);
         permissions.add(StandardOpenOption.CREATE);
@@ -507,7 +507,7 @@ public class NativeImageResourceFileSystemProviderTest {
         // 3. Writing in the copied file.
         FileSystemProvider provider = fileSystem.provider();
 
-        Set<StandardOpenOption> permissions = new HashSet<>(Collections.emptySet());
+        Set<StandardOpenOption> permissions = new HashSet<>(Collections.emptySet()); // noEconomicSet(api)
         permissions.add(StandardOpenOption.READ);
         permissions.add(StandardOpenOption.WRITE);
 

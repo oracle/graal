@@ -1173,12 +1173,9 @@ final class FileSystems {
         /**
          * The default file system provider used only to parse a {@link Path} from a {@link URI}.
          */
-        private final FileSystemProvider defaultFileSystemProvider;
+        private FileSystemProvider defaultFileSystemProvider;
 
         DeniedIOFileSystem() {
-            // The findDefaultFileSystem().provider() cannot be used because MLE forbids
-            // FileSystem#provider().
-            defaultFileSystemProvider = findDefaultFileSystemProvider();
         }
 
         @Override
@@ -1196,9 +1193,22 @@ final class FileSystems {
             return false;
         }
 
+        private FileSystemProvider getDefaultFileSystemProvider() {
+            FileSystemProvider provider = this.defaultFileSystemProvider;
+            // we lazy initialize the file system provider to avoid initialization
+            // for languages without file system access
+            if (provider == null) {
+                // The findDefaultFileSystem().provider() cannot be used because MLE forbids
+                // FileSystem#provider().
+                defaultFileSystemProvider = provider = findDefaultFileSystemProvider();
+            }
+            return provider;
+        }
+
         @Override
         public Path parsePath(final URI uri) {
-            if (!defaultFileSystemProvider.getScheme().equals(uri.getScheme())) {
+            FileSystemProvider provider = getDefaultFileSystemProvider();
+            if (!provider.getScheme().equals(uri.getScheme())) {
                 // Throw a UnsupportedOperationException with a better message than the default
                 // FileSystemProvider.getPath does.
                 throw new UnsupportedOperationException("Unsupported URI scheme " + uri.getScheme());
@@ -1207,7 +1217,7 @@ final class FileSystems {
                 // We need to use the default file system provider to parse a path from a URI. The
                 // Paths.get(URI) cannot be used as it looks up the file system provider
                 // by scheme and can use a non default file system provider.
-                return defaultFileSystemProvider.getPath(uri);
+                return provider.getPath(uri);
             } catch (FileSystemNotFoundException e) {
                 throw new UnsupportedOperationException(e);
             }

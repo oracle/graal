@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.tregex.automaton;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFABQTrackingTransitionOpsNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -56,14 +57,22 @@ public class TransitionBuilder<SI extends StateIndex<? super S>, S extends Abstr
 
     private final TransitionSet<SI, S, T> transitionSet;
     private CodePointSet cps;
+    private long[] constraints;
+    // This field is not final in order to be able to mutate it after preparing the operations for
+    // the DFA executor.
+    // This is only used so that it gets displayed correctly in the dfa visualizer.
+    private long[] operations;
+    private DFABQTrackingTransitionOpsNode bqTransition;
 
-    public TransitionBuilder(T[] transitions, StateSet<SI, S> targetStateSet, CodePointSet matcherBuilder) {
-        this(new TransitionSet<>(transitions, targetStateSet), matcherBuilder);
+    public TransitionBuilder(T[] transitions, StateSet<SI, S> targetStateSet, CodePointSet matcherBuilder, long[] constraints, long[] operations) {
+        this(new TransitionSet<>(transitions, targetStateSet), matcherBuilder, constraints, operations);
     }
 
-    public TransitionBuilder(TransitionSet<SI, S, T> transitionSet, CodePointSet matcherBuilder) {
+    public TransitionBuilder(TransitionSet<SI, S, T> transitionSet, CodePointSet matcherBuilder, long[] constraints, long[] operations) {
         this.transitionSet = transitionSet;
         this.cps = matcherBuilder;
+        this.constraints = constraints;
+        this.operations = operations;
     }
 
     public TransitionSet<SI, S, T> getTransitionSet() {
@@ -79,6 +88,47 @@ public class TransitionBuilder<SI extends StateIndex<? super S>, S extends Abstr
 
     public void setMatcherBuilder(CodePointSet cps) {
         this.cps = cps;
+    }
+
+    public long[] getConstraints() {
+        return constraints;
+    }
+
+    public void setConstraints(long[] constraints) {
+        this.constraints = constraints;
+    }
+
+    public boolean hasConstraints() {
+        return constraints.length > 0;
+    }
+
+    public boolean hasNoConstraints() {
+        return constraints.length == 0;
+    }
+
+    public long[] getOperations() {
+        return operations;
+    }
+
+    public void setOperations(long[] operations) {
+        this.operations = operations;
+    }
+
+    public boolean hasOperations() {
+        return operations.length > 0;
+    }
+
+    public boolean hasBqTransition() {
+        return bqTransition != null;
+    }
+
+    public DFABQTrackingTransitionOpsNode getBqTransition() {
+        return bqTransition;
+    }
+
+    public void setBqTransition(DFABQTrackingTransitionOpsNode bqTransition) {
+        assert this.bqTransition == null;
+        this.bqTransition = bqTransition;
     }
 
     @TruffleBoundary

@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.core.windows;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
+import static com.oracle.svm.core.windows.headers.WinBase.INVALID_HANDLE_VALUE;
 
 import java.io.FileDescriptor;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
@@ -46,11 +47,16 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
+import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
+import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
+
+import jdk.graal.compiler.word.Word;
 
 public class WindowsUtils {
 
@@ -78,8 +84,8 @@ public class WindowsUtils {
         long handle;
     }
 
-    static void setHandle(FileDescriptor descriptor, long handle) {
-        SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).handle = handle;
+    static void setHandle(FileDescriptor descriptor, HANDLE handle) {
+        SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).handle = handle.rawValue();
     }
 
     /** Return the error string for the last error, or a default message. */
@@ -92,18 +98,16 @@ public class WindowsUtils {
      * Low-level output of bytes already in native memory. This method is allocation free, so that
      * it can be used, e.g., in low-level logging routines.
      */
-    public static boolean writeBytes(int handle, CCharPointer bytes, UnsignedWord length) {
+    public static boolean write(HANDLE handle, CCharPointer bytes, UnsignedWord length) {
+        if (handle == INVALID_HANDLE_VALUE()) {
+            return false;
+        }
+
         CCharPointer curBuf = bytes;
         UnsignedWord curLen = length;
         while (curLen.notEqual(0)) {
-            if (handle == -1) {
-                return false;
-            }
-
             CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
-
             int ret = FileAPI.WriteFile(handle, curBuf, curLen, bytesWritten, Word.nullPointer());
-
             if (ret == 0) {
                 return false;
             }
@@ -119,12 +123,45 @@ public class WindowsUtils {
         return true;
     }
 
-    static boolean flush(int handle) {
-        if (handle == -1) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean writeUninterruptibly(HANDLE handle, CCharPointer bytes, UnsignedWord length) {
+        if (handle == INVALID_HANDLE_VALUE()) {
             return false;
         }
-        int result = FileAPI.FlushFileBuffers(handle);
-        return (result != 0);
+
+        CCharPointer curBuf = bytes;
+        UnsignedWord curLen = length;
+        while (curLen.notEqual(0)) {
+            CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
+            int ret = FileAPI.NoTransition.WriteFile(handle, curBuf, curLen, bytesWritten, Word.nullPointer());
+            if (ret == 0) {
+                return false;
+            }
+
+            int writtenCount = bytesWritten.read();
+            if (curLen.notEqual(writtenCount)) {
+                return false;
+            }
+
+            curBuf = curBuf.addressOf(writtenCount);
+            curLen = curLen.subtract(writtenCount);
+        }
+        return true;
+    }
+
+    static boolean flush(HANDLE handle) {
+        if (handle == INVALID_HANDLE_VALUE()) {
+            return false;
+        }
+        return FileAPI.FlushFileBuffers(handle) != 0;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static boolean flushUninterruptibly(HANDLE handle) {
+        if (handle == INVALID_HANDLE_VALUE()) {
+            return false;
+        }
+        return FileAPI.NoTransition.FlushFileBuffers(handle) != 0;
     }
 
     private static long performanceFrequency = 0L;
@@ -196,5 +233,44 @@ public class WindowsUtils {
             CEntryPointActions.failFatally(WinBase.GetLastError(), dllName);
         }
         return dllHandle;
+    }
+
+    /**
+     * Returns a holder that exposes a {@linkplain WCharPointer WCharPointer} to a null-terminated
+     * wide C string created from the given Java String.
+     */
+    public static WCharPointerHolder toWideCString(String javaString) {
+        assert javaString != null;
+        return new WCharPointerHolder(javaString);
+    }
+
+    /**
+     * Holder for a null-terminated wide C string. The exposed {@linkplain WCharPointer
+     * WCharPointer} remains valid only while this holder is open.
+     */
+    public static final class WCharPointerHolder implements AutoCloseable {
+        private final PrimitiveArrayView wideCString;
+
+        private WCharPointerHolder(String javaString) {
+            /*
+             * Windows wide C strings use UTF-16LE, matching Java char[]. So we add a trailing NUL
+             * and then reinterpret the Java char[] as a wchar_t[].
+             */
+            int length = javaString.length();
+            char[] chars = new char[length + 1]; // trailing NUL
+            javaString.getChars(0, length, chars, 0);
+            wideCString = PrimitiveArrayView.createForReading(chars);
+        }
+
+        /** Returns the pointer to the null-terminated wide C string. */
+        public WCharPointer get() {
+            return wideCString.addressOfArrayElement(0);
+        }
+
+        /** Invalidates the pointer. */
+        @Override
+        public void close() {
+            wideCString.close();
+        }
     }
 }

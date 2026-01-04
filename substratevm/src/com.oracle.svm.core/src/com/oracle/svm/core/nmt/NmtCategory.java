@@ -29,6 +29,8 @@ import com.oracle.svm.core.Uninterruptible;
 
 /** Categories for native memory tracking. */
 public enum NmtCategory {
+    /** Auxiliary images. */
+    AuxiliaryImage("Auxiliary Image"),
     /** JIT compiler. */
     Compiler("Compiler"),
     /** JIT compiled code. */
@@ -39,6 +41,8 @@ public enum NmtCategory {
     HeapDump("Heap Dump"),
     /** Image heap (may include GC-specific data). */
     ImageHeap("Image Heap"),
+    /** Interpreter. */
+    Interpreter("Interpreter"),
     /** Collected Java heap (may include GC-specific data). */
     JavaHeap("Java Heap"),
     /** Java Flight Recorder. */
@@ -49,6 +53,8 @@ public enum NmtCategory {
     JvmStat("jvmstat"),
     /** Java Virtual Machine Tool Interface. */
     JVMTI("JVMTI"),
+    /** Metaspace objects. */
+    Metaspace("Metaspace"),
     /** NMT itself. */
     NMT("Native Memory Tracking"),
     /** Profile-guided optimizations. */

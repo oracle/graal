@@ -30,12 +30,13 @@ import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 
-public final class ParserField {
+public final class ParserField implements AttributedElement {
     public static final ParserField[] EMPTY_ARRAY = new ParserField[0];
 
     /**
@@ -64,6 +65,7 @@ public final class ParserField {
         return type;
     }
 
+    @Override
     public Attribute[] getAttributes() {
         return attributes;
     }

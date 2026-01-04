@@ -24,10 +24,22 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * A substitution processor is a facility that allows modifying code elements coming from class
+ * files without modifying the class files. It is queried by the {@link AnalysisUniverse} when
+ * creating the analysis model of a hosted element (type, method, field) to check if a substitution
+ * is available. How a substitution processor is implemented, i.e., when a processor decides to
+ * replace an element and how that element is constructed, is not specified. The substitution
+ * processors form a chain, created via {@link #chainUpInOrder(SubstitutionProcessor...)} and
+ * {@link #extendsTheChain(SubstitutionProcessor, SubstitutionProcessor[])} utility methods, and are
+ * queried in the order in which they were installed.
+ */
 public abstract class SubstitutionProcessor {
 
     /**
@@ -40,10 +52,24 @@ public abstract class SubstitutionProcessor {
         return type;
     }
 
+    /**
+     * Get the substitution of an original field.
+     *
+     * @param field the original field
+     * @return the substitution field, or the original field if it isn't covered by this
+     *         substitution
+     */
     public ResolvedJavaField lookup(ResolvedJavaField field) {
         return field;
     }
 
+    /**
+     * Get the substitution of an original method.
+     *
+     * @param method the original method
+     * @return the substitution method, or the original method if it isn't covered by this
+     *         substitution
+     */
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         return method;
     }
@@ -80,7 +106,7 @@ public abstract class SubstitutionProcessor {
         return current;
     }
 
-    public static SubstitutionProcessor chain(SubstitutionProcessor first, SubstitutionProcessor second) {
+    private static SubstitutionProcessor chain(SubstitutionProcessor first, SubstitutionProcessor second) {
         if (first == IDENTITY) {
             return second;
         } else if (second == IDENTITY) {

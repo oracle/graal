@@ -718,7 +718,6 @@ public final class ProbeNode extends Node {
             } else if (node instanceof InstrumentableNode instrumentable) {
                 probe = instrumentable.findProbe();
                 if (probe != null && probe.eagerProbe && probe != this) {
-                    assert probe != this;
                     return probe;
                 }
             } else if (node instanceof RootNode) {

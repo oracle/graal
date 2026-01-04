@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,25 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import org.graalvm.polyglot.Context;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+
+import jdk.graal.compiler.core.common.GraalBailoutException;
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.debug.TTY;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
 import jdk.graal.compiler.truffle.test.nodes.AddTestNode;
 import jdk.graal.compiler.truffle.test.nodes.BlockTestNode;
@@ -53,24 +71,6 @@ import jdk.graal.compiler.truffle.test.nodes.explosion.LoopExplosionPhiNode;
 import jdk.graal.compiler.truffle.test.nodes.explosion.NestedExplodedLoopTestNode;
 import jdk.graal.compiler.truffle.test.nodes.explosion.TwoMergesExplodedLoopTestNode;
 import jdk.graal.compiler.truffle.test.nodes.explosion.UnrollingTestNode;
-import jdk.graal.compiler.core.common.GraalBailoutException;
-import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.core.common.PermanentBailoutException;
-import jdk.graal.compiler.debug.TTY;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.replacements.PEGraphDecoder;
-import org.graalvm.polyglot.Context;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.impl.FrameWithoutBoxing;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.runtime.OptimizedCallTarget;
-
 import jdk.vm.ci.code.BailoutException;
 
 public class SimplePartialEvaluationTest extends PartialEvaluationTest {
@@ -99,14 +99,13 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void neverPartOfCompilationTest() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode firstTree = new NeverPartOfCompilationTestNode(new ConstantTestNode(1), 2);
         assertPartialEvalEquals(SimplePartialEvaluationTest::constant42, new RootTestNode(fd, "neverPartOfCompilationTest", firstTree));
 
         AbstractTestNode secondTree = new NeverPartOfCompilationTestNode(new ConstantTestNode(1), 1);
-        try (PreventDumping noDump = new PreventDumping()) {
+        try (PreventDumping _ = new PreventDumping()) {
             assertPartialEvalEquals(SimplePartialEvaluationTest::constant42, new RootTestNode(fd, "neverPartOfCompilationTest", secondTree));
             Assert.fail("Expected verification error!");
         } catch (GraalBailoutException t) {
@@ -501,7 +500,6 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void complexUnrollFullExplodeUntilReturn() throws Exception {
         FrameDescriptor fd = new FrameDescriptor();
         final int loopIterations = 5;

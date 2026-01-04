@@ -10,22 +10,22 @@ redirect_from: /reference-manual/compiler/
 
 The Graal compiler is a dynamic compiler, written in Java, that transforms bytecode into machine code.
 The Graal just-in-time (JIT) compiler is integrated with the Java HotSpot Virtual Machine and GraalVM.
-See [Java Virtual Machine Guide](https://docs.oracle.com/en/java/javase/23/vm/java-virtual-machine-technology-overview.html){:target="_blank"} and the section [GraalVM as a Virtual Machine](README.md) for more information.
+See [Java Virtual Machine Guide](https://docs.oracle.com/en/java/javase/25/vm/java-virtual-machine-technology-overview.html){:target="_blank"} and the section [GraalVM as a Virtual Machine](README.md) for more information.
 (The open source code of the Graal JIT compiler is available on [GitHub](https://github.com/oracle/graal/tree/master/compiler){:target="_blank"}.)
 
 ## Compiler Advantages
 
 The Graal JIT compiler provides optimized performance for applications running on a Java Virtual Machine (JVM) through unique approaches to code analysis and optimization.
-It includes multiple optimization algorithms (called “Phases”), such as aggressive inlining, polymorphic inlining, and others. 
+It includes multiple optimization algorithms (called “Phases”), such as aggressive inlining, polymorphic inlining, and others.
 
 <a id="partial-escape-analysis"></a>
 The Graal compiler can bring performance advantages for highly-abstracted programs.
 For example, it includes a partial-escape-analysis optimization that can remove the costly allocations of certain objects.
 See the value [`PartialEscapeAnalysis`](https://github.com/oracle/graal/blob/master/compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/core/phases/CEOptimization.java#L176){:target="_blank"} in the `CEOptimization enum` in the GraalVM GitHub repository for more information.
-The optimization determines when a new object is accessible outside a compilation unit and only allocates it on paths that "escape" the compilation unit (for example, if the object is passed as a parameter, stored in a field, or returned from a method). 
-This approach can greatly improve the performance of an application by reducing the number of heap allocations. 
+The optimization determines when a new object is accessible outside a compilation unit and only allocates it on paths that "escape" the compilation unit (for example, if the object is passed as a parameter, stored in a field, or returned from a method).
+This approach can greatly improve the performance of an application by reducing the number of heap allocations.
 Code that uses more modern Java features such as Streams or Lambdas will see greater improvements in performance as this type of code involves a significant number of such non- or partially-escaping objects.
-Code bound by characteristics such as I/O or memory allocations that cannot be removed by the compiler will see less improvement. 
+Code bound by characteristics such as I/O or memory allocations that cannot be removed by the compiler will see less improvement.
 For more information on performance tuning, refer to [Graal JIT Compiler Configuration](Options.md).
 
 ## Graph Compilation

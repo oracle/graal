@@ -32,7 +32,8 @@ import java.lang.constant.MethodTypeDesc;
 
 import org.junit.Test;
 
-import jdk.graal.compiler.core.test.CustomizedBytecodePatternTest;
+import jdk.graal.compiler.core.test.CustomizedBytecodePattern;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -41,7 +42,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Java code, but the Kotlin compiler can produce such patterns when compiling coroutines. See
  * {@link #generateClass} for the Java source code from which the modified bytecode is derived.
  */
-public class SharedExceptionHandlerLoopTest extends CustomizedBytecodePatternTest {
+public class SharedExceptionHandlerLoopTest extends GraalCompilerTest implements CustomizedBytecodePattern {
 
     @Test
     public void test() throws ClassNotFoundException {
@@ -114,13 +115,13 @@ public class SharedExceptionHandlerLoopTest extends CustomizedBytecodePatternTes
      * </pre>
      */
     @Override
-    protected byte[] generateClass(String internalClassName) {
+    public byte[] generateClass(String internalClassName) {
         MethodTypeDesc getMethodTypeDesc = MethodTypeDesc.of(ConstantDescs.CD_Object, ConstantDescs.CD_Object, ConstantDescs.CD_Object);
 
         ClassDesc thisClass = ClassDesc.of(internalClassName.replace('/', '.'));
         return ClassFile.of().build(thisClass, classBuilder -> classBuilder
         // @formatter:off
-                        .withMethod("testMethod", getMethodTypeDesc, ACC_PUBLIC | ACC_STATIC, methodBuilder -> methodBuilder.withCode(codeBuilder -> {
+                        .withMethod("testMethod", getMethodTypeDesc, ACC_PUBLIC_STATIC, methodBuilder -> methodBuilder.withCode(codeBuilder -> {
                             Label start = codeBuilder.newLabel();
                             Label loopExcEnd = codeBuilder.newLabel();
                             Label loopNPEHandler = codeBuilder.newLabel();
@@ -159,9 +160,5 @@ public class SharedExceptionHandlerLoopTest extends CustomizedBytecodePatternTes
                                             .areturn();
                         })));
         // @formatter:on
-    }
-
-    public static ClassDesc cd(Class<?> klass) {
-        return klass.describeConstable().orElseThrow();
     }
 }

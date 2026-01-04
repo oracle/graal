@@ -27,6 +27,26 @@ package com.oracle.svm.core;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+
+/**
+ * {@code com.oracle.svm.hosted.VMFeature} registers an instance of this class in
+ * {@link org.graalvm.nativeimage.ImageSingletons} to allow images to use Strings provided by its
+ * fields at image run-time but also during image build-time. It allows us to persist the provided
+ * field values at image build-time to image run-time. A custom GraalVM distribution should provide
+ * different field values to differentiate itself from our builds by providing custom values for the
+ * org.graalvm.* system properties used below.
+ *
+ * {@link SystemPropertiesSupport} exposes these field values as system properties (to be available
+ * at image runtime) as:
+ * <ul>
+ * <li>{@link VM#info} as {@code java.vm.info}</li>
+ * <li>{@link VM#version} as {@code java.vm.version}</li>
+ * <li>{@link VM#vendor} as {@code java.vendor} and {@code java.vm.vendor}</li>
+ * <li>{@link VM#vendorUrl} as {@code java.vendor.url}</li>
+ * <li>{@link VM#vendorVersion} as {@code java.vendor.version}</li>
+ * </ul>
+ */
 public final class VM {
 
     public final String info;

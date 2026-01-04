@@ -24,12 +24,47 @@
  */
 package jdk.graal.compiler.util.json;
 
+import jdk.vm.ci.meta.TriState;
+
 /**
  * Thrown by {@link JsonParser} if an error is encountered during parsing.
  */
 @SuppressWarnings("serial")
 public final class JsonParserException extends RuntimeException {
+    /**
+     * Whether the parser was at the end of the input when the exception occurred. This may be
+     * {@link TriState#UNKNOWN} for exceptions that were not thrown by {@link JsonParser}.
+     */
+    private final TriState isAtEOF;
+
+    /**
+     * Constructs a new JSON parser exception with the specified detail message. The state of
+     * whether the parser was at the end of the input when the exception occurred is unknown.
+     *
+     * @param msg the detail message
+     */
     public JsonParserException(final String msg) {
         super(msg);
+        this.isAtEOF = TriState.UNKNOWN;
+    }
+
+    /**
+     * Constructs a new JSON parser exception with the specified detail message and information
+     * about whether the parser was at the end of the input when the exception occurred.
+     *
+     * @param msg the detail message
+     * @param isAtEOF whether the parser was at the end of the input when the exception occurred
+     */
+    public JsonParserException(String msg, boolean isAtEOF) {
+        super(msg);
+        this.isAtEOF = TriState.get(isAtEOF);
+    }
+
+    /**
+     * Returns whether the parser was at the end of the input when the exception occurred. This may
+     * be {@link TriState#UNKNOWN} for exceptions that were not thrown by {@link JsonParser}.
+     */
+    public TriState isAtEOF() {
+        return isAtEOF;
     }
 }

@@ -76,8 +76,8 @@ public final class JavaVersion implements Comparable<JavaVersion> {
 
     public static final JavaVersion HOST_VERSION = forVersion(Runtime.version());
 
-    public static final int LATEST_SUPPORTED = 25;
-    public static final int LATEST_SUPPORTED_CLASSFILE = ClassfileParser.JAVA_25_VERSION;
+    public static final int LATEST_SUPPORTED = 26;
+    public static final int LATEST_SUPPORTED_CLASSFILE = ClassfileParser.JAVA_26_VERSION;
 
     private final int version;
 
@@ -109,6 +109,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Unsupported java version: " + version + " (" + normalizedVersion + ")");
         }
+    }
+
+    public Runtime.Version toRunTimeVersion() {
+        return Runtime.Version.parse(toString());
     }
 
     private static JavaVersion forVersion(Runtime.Version version) {
@@ -183,6 +187,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         return version <= 20;
     }
 
+    public boolean java21Or25() {
+        return version == 21 || version == 25;
+    }
+
     public boolean java21OrLater() {
         return version >= 21;
     }
@@ -197,6 +205,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
 
     public boolean java23OrEarlier() {
         return version <= 23;
+    }
+
+    public boolean java23OrLater() {
+        return version >= 23;
     }
 
     public boolean java24OrEarlier() {
@@ -225,6 +237,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
 
     public int classFileVersion() {
         return version + 44;
+    }
+
+    public int featureVersion() {
+        return version;
     }
 
     @Override

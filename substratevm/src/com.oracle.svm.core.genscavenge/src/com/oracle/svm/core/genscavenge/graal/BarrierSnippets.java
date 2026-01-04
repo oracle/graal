@@ -102,7 +102,8 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     private final SnippetInfo postWriteBarrierSnippet;
     private final SnippetInfo arrayRangePostWriteBarrierSnippet;
 
-    BarrierSnippets(OptionValues options, Providers providers) {
+    @SuppressWarnings("this-escape")
+    public BarrierSnippets(OptionValues options, Providers providers) {
         super(options, providers);
 
         this.postWriteBarrierSnippet = snippet(providers, BarrierSnippets.class, "postWriteBarrierSnippet", CARD_REMEMBERED_SET_LOCATION);
@@ -243,7 +244,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
 
         @Override
         public void lower(SerialWriteBarrierNode barrier, LoweringTool tool) {
-            Arguments args = new Arguments(postWriteBarrierSnippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(postWriteBarrierSnippet, barrier.graph(), tool.getLoweringStage());
             OffsetAddressNode address = (OffsetAddressNode) barrier.getAddress();
 
             ResolvedJavaType baseType = StampTool.typeOrNull(address.getBase());
@@ -268,7 +269,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
 
         @Override
         public void lower(SerialArrayRangeWriteBarrierNode barrier, LoweringTool tool) {
-            Arguments args = new Arguments(arrayRangePostWriteBarrierSnippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(arrayRangePostWriteBarrierSnippet, barrier.graph(), tool.getLoweringStage());
             OffsetAddressNode address = (OffsetAddressNode) barrier.getAddress();
 
             ResolvedJavaType baseType = StampTool.typeOrNull(address.getBase());

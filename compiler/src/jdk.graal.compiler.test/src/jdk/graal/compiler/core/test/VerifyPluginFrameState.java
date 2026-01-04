@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.core.test;
 
-import java.util.HashSet;
 import java.util.Set;
 
 import jdk.graal.compiler.graph.Node;
@@ -39,9 +38,8 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.Proxy;
-import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.graal.compiler.replacements.InvocationPluginHelper;
-
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -105,7 +103,7 @@ public class VerifyPluginFrameState extends VerifyPhase<CoreProviders> {
 
             Invoke invoke = callTargetNode.invoke();
             // Examine all usages, including usages through proxies
-            for (Node usage : transitiveUsages(invoke.asNode(), new HashSet<>())) {
+            for (Node usage : transitiveUsages(invoke.asNode(), new EconomicHashSet<>())) {
                 if (usage == callTargetNode) {
                     continue;
                 }

@@ -24,9 +24,13 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 
 public final class ParserConstantPool extends ConstantPool {
@@ -67,4 +71,72 @@ public final class ParserConstantPool extends ConstantPool {
         return new ParserConstantPool(newTags, newEntries, newSymbols, majorVersion, minorVersion);
     }
 
+    /**
+     * Creates a precise dump of the symbolic CP information, unlike {@link #toRawBytes()}, which
+     * may not be precisely reversible. The {@link ParserConstantPool} can be de-serialized with
+     * {@link #fromBytesForSerialization(byte[], Symbolify)}.
+     */
+    public byte[] toBytesForSerialization() {
+        int byteSize = 0;
+        byteSize += Integer.BYTES; // majorVersion
+        byteSize += Integer.BYTES; // minorVersion
+        byteSize += Integer.BYTES; // length
+        assert tags.length == entries.length;
+        byteSize += tags.length; // tags
+        byteSize += entries.length * Integer.BYTES; // entries
+        byteSize += Integer.BYTES; // symbols.length
+        for (Symbol<?> symbol : symbols) {
+            byteSize += Integer.BYTES; // sym.length
+            byteSize += symbol.length(); // sym.bytes
+        }
+        byte[] bytes = new byte[byteSize];
+        ByteBuffer bb = ByteBuffer.wrap(bytes);
+        bb.putInt(majorVersion);
+        bb.putInt(minorVersion);
+        bb.putInt(tags.length);
+        bb.put(tags);
+        for (int entry : entries) {
+            bb.putInt(entry);
+        }
+        bb.putInt(symbols.length);
+        for (Symbol<?> symbol : symbols) {
+            bb.putInt(symbol.length());
+            symbol.writeTo(bb);
+        }
+        assert !bb.hasRemaining();
+        return bytes;
+    }
+
+    @FunctionalInterface
+    public interface Symbolify<T extends ModifiedUTF8> extends Function<ByteSequence, Symbol<T>> {
+        default Symbol<T> apply(String string) {
+            return apply(ByteSequence.create(string));
+        }
+    }
+
+    /**
+     * Recovers a symbolic CP information, from bytes produces by {@link #toRawBytes()}.
+     */
+    public static ParserConstantPool fromBytesForSerialization(byte[] bytes, Symbolify<? extends ModifiedUTF8> symbolify) {
+        ByteBuffer bb = ByteBuffer.wrap(bytes);
+        int majorVersion = bb.getInt();
+        int minorVersion = bb.getInt();
+        int length = bb.getInt();
+        byte[] tags = new byte[length];
+        bb.get(tags);
+        int[] entries = new int[length];
+        for (int i = 0; i < length; i++) {
+            entries[i] = bb.getInt();
+        }
+        int symbolsLength = bb.getInt();
+        Symbol<?>[] symbols = new Symbol<?>[symbolsLength];
+        for (int i = 0; i < symbolsLength; i++) {
+            int symbolLength = bb.getInt();
+            byte[] symbolBytes = new byte[symbolLength];
+            bb.get(symbolBytes);
+            symbols[i] = symbolify.apply(ByteSequence.wrap(symbolBytes));
+        }
+        assert !bb.hasRemaining();
+        return new ParserConstantPool(tags, entries, symbols, majorVersion, minorVersion);
+    }
 }

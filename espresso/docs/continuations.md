@@ -14,7 +14,7 @@ The heap objects can be serialized to resume execution in a different JVM runnin
 
 ## Usage
 
-Add `org.graalvm.espresso:continuations:24.2.0` to your classpath at compilation time (it will be automatically provided at runtime).
+Add `org.graalvm.espresso:continuations:25.0.0` to your classpath at compilation time (it will be automatically provided at runtime).
 The continuation feature is experimental and needs to be explicitly enabled by using these options: `--experimental-options --java.Continuum=true`.
 
 See an [example usage](serialization.md) of the Continuation API with serialization.
@@ -132,7 +132,7 @@ There are special situations in which a call to `suspend` may fail with `Illegal
 - If in between the call to `resume` and `suspend` any of the following holds:
     - A lock is held (this may be an object monitor through the `MONITORENTER` bytecode, or even
       a `java.util.concurrent.locks.ReentrantLock`).
-    - There is a non-java frame on the stack (this could be a `native` method, or even a VM instrinsic).
+    - There is a non-java frame on the stack (this could be a `native` method, or even a VM intrinsic).
 
 Furthermore, there is currently no support for continuation-in-continuation.
 

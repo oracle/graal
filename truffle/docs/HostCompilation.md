@@ -38,7 +38,7 @@ This allows bytecode interpreter switches to be composed of multiple methods if 
 Native image, during closed world analysis, computes all methods that are reachable for runtime compilation.
 Any potentially reachable method from `RootNode.execute(...)` is determined as runtime compilable.
 For native images, in addition to bytecode interpreter switches, all runtime compilable methods are optimized using Truffle host inlining.
-The maximum node cost of such an inlining pass can be configured with `-H:TruffleHostInliningBaseBudget=5000`. 
+The maximum node cost of such an inlining pass can be configured with `-H:TruffleHostInliningBaseBudget=5000`.
 On HotSpot the set of runtime compilable methods is unknown.
 Therefore, we can only rely on regular Java method inlining for methods not annotated as bytecode interpreter switch on HotSpot.
 
@@ -213,10 +213,10 @@ Additionally, to avoid the explosion of code size, host inlining has a built-in 
 For example, the tracing may print the following:
 
 ```
-CUTOFF com.oracle.truffle.espresso.nodes.BytecodeNode.putPoolConstant(VirtualFrame, int, char, int)   [inlined   -1, explored    0, monomorphic false, deopt false, inInterpreter false, propDeopt false, graphSize 1132, subTreeCost 5136, invokes    1, subTreeInvokes   12, forced false, incomplete false,  reason call has too many fast-path invokes - too complex, please optimize, see truffle/docs/HostOptimization.md
+CUTOFF com.oracle.truffle.espresso.nodes.BytecodeNode.putPoolConstant(VirtualFrame, int, char, int)   [inlined   -1, explored    0, monomorphic false, deopt false, inInterpreter false, propDeopt false, graphSize 1132, subTreeCost 5136, invokes    1, subTreeInvokes   12, forced false, incomplete false,  reason call has too many fast-path invokes - too complex, please optimize, see truffle/docs/HostCompilation.md
 ```
 
-This indicates that there are too many fast-path invokes (by default 10) in the subtree, it also stops exploring after that number.
+This indicates that there are too many fast-path invokes (see limit in [HostInliningPhase](../../compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/truffle/host/HostInliningPhase.java)) in the subtree, it also stops exploring after that number.
 The `-Djdk.graal.TruffleHostInliningPrintExplored=true` flag may be provided to see the entire subtree for the decision.
 The following calls are considered fast-path invokes:
 
@@ -262,8 +262,8 @@ abstract class AddNode extends Node {
 ```
 
 In this example, the specializations `doInt` and `doDouble` are very simple, but there is also the `doGeneric` specialization, which calls into a complex lookup chain.
-Assuming that the `LookupAndCallNode.execute` is a very complex method with more than ten fast-path subtree calls, we could not expect the execute method to get inlined.
-Host inlining currently does not support automatic component analysis; though it can be specified manually using the `@InliningCutoff` annotation:
+Assuming that the `LookupAndCallNode.execute` is a very complex method with many fast-path subtree calls (see limit in [HostInliningPhase](../../compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/truffle/host/HostInliningPhase.java)), we could not expect the execute method to get inlined.
+Host inlining currently does not support automatic component analysis; though a cutoff can be specified manually using the `@InliningCutoff` annotation:
 
 ```
 abstract class AddNode extends Node {

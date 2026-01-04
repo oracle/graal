@@ -30,9 +30,6 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
-import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIOperations;
-import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIUtils;
-
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
@@ -52,6 +49,8 @@ import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.nodes.simd.SimdMaskLogicNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIOperations;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIUtils;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -168,6 +167,9 @@ public class VectorAPITestNode extends VectorAPISinkNode implements Canonicaliza
 
     @Override
     public boolean canExpand(VectorArchitecture vectorArch, EconomicMap<ValueNode, Stamp> simdStamps) {
+        if (condition == null) {
+            return false;
+        }
         if (vectorArch.logicVectorsAreBitmasks()) {
             SimdStamp simdStamp = (SimdStamp) simdStamps.get(vectorX());
             Stamp logicElement = simdStamp.getComponent(0);
@@ -179,13 +181,13 @@ public class VectorAPITestNode extends VectorAPISinkNode implements Canonicaliza
     @Override
     public ValueNode expand(VectorArchitecture vectorArch, NodeMap<ValueNode> expanded) {
         ValueNode x = expanded.get(vectorX());
-        ValueNode originalY = vectorY();
         /*
          * We don't want to look at the second argument, it only encodes our operation. All the
          * relevant information about it should have been computed when this node was built or
-         * canonicalized (see the computeCondition() method).
+         * canonicalized (see the computeCondition() method). When this node was originally created,
+         * its input was a VectorAPIFromBitsCoercedNode, but we cannot guarantee that here because
+         * the graph may have changed in the meantime.
          */
-        GraalError.guarantee(originalY instanceof VectorAPIFromBitsCoercedNode, "second argument to test should be fromBitsCoerced: %s", originalY);
 
         ValueNode logicVector;
         if (vectorArch.logicVectorsAreBitmasks()) {

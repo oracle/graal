@@ -141,6 +141,7 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #isInstantiable(Object) instantiable}
  * <li>{@link #isPointer(Object) pointer}
  * <li>{@link #hasMembers(Object) members}
+ * <li>{@link #hasStaticScope(Object receiver) static scope}
  * <li>{@link #hasHashEntries(Object) hash entries}
  * <li>{@link #hasArrayElements(Object) array elements}
  * <li>{@link #hasBufferElements(Object) buffer elements}
@@ -960,6 +961,63 @@ public abstract class InteropLibrary extends Library {
      */
     public boolean hasMemberWriteSideEffects(Object receiver, String member) {
         return false;
+    }
+
+    /**
+     * Returns {@code true} if the given receiver is a {@linkplain #isMetaObject(Object) meta
+     * object} that provides a {@linkplain #getStaticScope(Object) static scope}. A static scope
+     * represents the static or class-level members associated with the receiver's type, such as
+     * static fields or methods.
+     * <p>
+     * Invoking this message must not cause any observable side effects.
+     * <p>
+     * Only {@link #isMetaObject(Object) meta objects} are permitted to expose a static scope, for
+     * all non-meta objects this method must return {@code false}.
+     * <p>
+     * By default, this method returns {@code false}.
+     *
+     * @see #getStaticScope(Object)
+     * @see #isMetaObject(Object)
+     * @since 25.1
+     */
+    @Abstract(ifExported = {"getStaticScope"})
+    public boolean hasStaticScope(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns the static scope associated with the given receiver. The receiver must be a
+     * {@linkplain #isMetaObject(Object) meta object}. A static scope is an object that exposes
+     * static members, members whose values or behaviors are independent of any particular instance
+     * of the receiver.
+     * <p>
+     * The static scope typically serves as an artificial or meta-level object that provides access
+     * to instance-independent members declared by the meta object. The returned object can be used
+     * as the receiver for interop messages such as {@link #readMember(Object, String) readMember},
+     * {@link #writeMember(Object, String, Object) writeMember}, and
+     * {@link #invokeMember(Object, String, Object...) invokeMember} when accessing static members.
+     * <p>
+     * The returned static scope is always expected to be a {@link #isScope(Object) scope} and
+     * provide {@link #hasMembers(Object) members}, representing the receiver's static context.
+     * <p>
+     * <b>Examples:</b>
+     * <ul>
+     * <li>In Java, the static scope exposes static fields and methods of a class.</li>
+     * <li>In Python, the static scope exposes class-level attributes and methods, effectively
+     * corresponding to the members provided by the Python metaobject.</li>
+     * </ul>
+     *
+     * @throws UnsupportedMessageException if and only if the receiver does not
+     *             {@linkplain #hasStaticScope(Object) have a static scope}
+     * @see #hasStaticScope(Object)
+     * @see #isMetaObject(Object)
+     * @see #isScope(Object)
+     * @see #hasMembers(Object)
+     * @since 25.1
+     */
+    @Abstract(ifExported = {"hasStaticScope"})
+    public Object getStaticScope(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
     // Hashes
@@ -2411,8 +2469,10 @@ public abstract class InteropLibrary extends Library {
      * @see #getLanguage(Object)
      * @see #toDisplayString(Object)
      * @since 20.1
+     * @deprecated Use {@link #hasLanguageId(Object)}.
      */
-    @Abstract(ifExported = {"getLanguage", "isScope"})
+    @Abstract(ifExported = {"getLanguage"})
+    @Deprecated(since = "25.1")
     public boolean hasLanguage(Object receiver) {
         return false;
     }
@@ -2428,11 +2488,92 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if {@link #hasLanguage(Object)} returns
      *             <code>false</code> for the same receiver.
      * @since 20.1
+     * @deprecated Use {@link #getLanguageId(Object)}.
      */
-    @SuppressWarnings("unchecked")
     @Abstract(ifExported = {"hasLanguage"})
+    @Deprecated(since = "25.1")
     public Class<? extends TruffleLanguage<?>> getLanguage(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns {@code true} if the receiver originates from a language, else {@code false}.
+     * Primitive values or other shared interop value representations that are not associated with a
+     * language may return {@code false}. Values that originate from a language should return {code
+     * true}. Returns {@code false} by default.
+     * <p>
+     * The associated language allows tools to identify the original language of a value. If an
+     * instrument requests a
+     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#getLanguageView(LanguageInfo, Object)
+     * language view} then values that are already associated with a language will just return the
+     * same value. Otherwise {@link TruffleLanguage#getLanguageView(Object, Object)} will be invoked
+     * on the language. The returned language id may be also exposed to embedders in polyglot stack
+     * frame.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #getLanguageId(Object)} and {@link #toDisplayString(Object, boolean)} must be
+     * implemented.
+     *
+     * @see #getLanguageId(Object)
+     * @see #toDisplayString(Object)
+     * @since 25.1
+     */
+    @Abstract(ifExported = {"getLanguageId"}, ifExportedAsWarning = {"hasLanguage"}, replacementOf = "hasLanguage(Object)", replacementMethod = "hasLanguageLegacy")
+    public boolean hasLanguageId(Object receiver) {
+        if (!hasLanguage(receiver)) {
+            return false;
+        }
+        Class<? extends TruffleLanguage<?>> language;
+        try {
+            language = getLanguage(receiver);
+        } catch (UnsupportedMessageException e) {
+            return false;
+        }
+        return InteropAccessor.ENGINE.getLanguageId(this, language) != null;
+    }
+
+    protected final boolean hasLanguageLegacy(Object receiver) {
+        if (!hasLanguageId(receiver)) {
+            return false;
+        }
+        String id;
+        try {
+            id = getLanguageId(receiver);
+        } catch (UnsupportedMessageException e) {
+            return false;
+        }
+        return InteropAccessor.ENGINE.getLanguageClass(this, id) != null;
+    }
+
+    /**
+     * Returns the language id of the receiver value. The returned language id must be non-null and
+     * represent a valid id of a {@link Registration registered} language. For more details see
+     * {@link #hasLanguageId(Object)}.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #hasLanguageId(Object)} must be implemented.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasLanguageId(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 25.1
+     */
+    @Abstract(ifExported = {"hasLanguageId"}, ifExportedAsWarning = {"getLanguage"}, replacementOf = "getLanguage(Object)", replacementMethod = "getLanguageLegacy")
+    public String getLanguageId(Object receiver) throws UnsupportedMessageException {
+        Class<? extends TruffleLanguage<?>> language = getLanguage(receiver);
+        String id = InteropAccessor.ENGINE.getLanguageId(this, language);
+        if (id == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return id;
+    }
+
+    protected final Class<? extends TruffleLanguage<?>> getLanguageLegacy(Object receiver) throws UnsupportedMessageException {
+        String id = getLanguageId(receiver);
+        Class<? extends TruffleLanguage<?>> clz = InteropAccessor.ENGINE.getLanguageClass(this, id);
+        if (clz == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return clz;
     }
 
     /**
@@ -2508,7 +2649,7 @@ public abstract class InteropLibrary extends Library {
      * @see TruffleLanguage#getLanguageView(Object, Object)
      * @since 20.1
      */
-    @Abstract(ifExported = {"hasLanguage", "getLanguage", "isScope"})
+    @Abstract(ifExported = {"hasLanguageId", "getLanguageId", "hasLanguage", "getLanguage"})
     @TruffleBoundary
     public Object toDisplayString(Object receiver, boolean allowSideEffects) {
         if (allowSideEffects) {
@@ -2547,7 +2688,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @since 20.1
      */
-    @Abstract(ifExported = {"getMetaQualifiedName", "getMetaSimpleName", "isMetaInstance"})
+    @Abstract(ifExported = {"getMetaQualifiedName", "getMetaSimpleName", "isMetaInstance", "hasStaticScope"})
     public boolean isMetaObject(Object receiver) {
         return false;
     }
@@ -2856,12 +2997,10 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns <code>true</code> if the value represents a scope object, else <code>false</code>.
-     * The scope object contains variables as {@link #getMembers(Object) members} and has a
-     * {@link InteropLibrary#toDisplayString(Object, boolean) scope display name}. It needs to be
-     * associated with a {@link #getLanguage(Object) language}. The scope may return a
-     * {@link InteropLibrary#getSourceLocation(Object) source location} that indicates the range of
-     * the scope in the source code. The scope may have {@link #hasScopeParent(Object) parent
-     * scopes}.
+     * The scope object contains variables as {@link #getMembers(Object) members}. The scope may
+     * return a {@link InteropLibrary#getSourceLocation(Object) source location} that indicates the
+     * range of the scope in the source code. The scope may have {@link #hasScopeParent(Object)
+     * parent scopes}.
      * <p>
      * The {@link #getMembers(Object) members} of a scope represent all visible flattened variables,
      * including all parent scopes, if any. The variables of the current scope must be listed first
@@ -2876,10 +3015,9 @@ public abstract class InteropLibrary extends Library {
      * member elements providing the same {@link #asString(Object) name}.
      * <p>
      * This method must not cause any observable side-effects. If this method is implemented then
-     * also {@link #hasMembers(Object)} and {@link #toDisplayString(Object, boolean)} must be
-     * implemented and {@link #hasSourceLocation(Object)} is recommended.
+     * also {@link #hasMembers(Object)} must be implemented and {@link #hasSourceLocation(Object)}
+     * is recommended.
      *
-     * @see #getLanguage(Object)
      * @see #getMembers(Object)
      * @see #hasScopeParent(Object)
      * @since 20.3
@@ -2922,6 +3060,39 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "hasScopeParent")
     public Object getScopeParent(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns {@code true} if the argument is wrapped Java host language object. This method must
+     * not cause any observable side-effects. If this method is implemented then also
+     * {@link #asHostObject(Object)} must be implemented.
+     *
+     * @see #asHostObject(Object)
+     * @since 25.1
+     */
+    @Abstract(ifExported = "asHostObject")
+    public boolean isHostObject(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns the Java host object representation of the given Truffle guest object.
+     * <p>
+     * Implementations of this method must not produce any observable side effects. If this method
+     * is implemented, {@link #isHostObject(Object)} must also be implemented and return
+     * {@code true} for the same receiver.
+     *
+     * @throws UnsupportedMessageException if {@link #isHostObject(Object)} returns {@code false}
+     *             for the given receiver.
+     * @throws HeapIsolationException if the guest object represents a host object located in a
+     *             foreign heap, for example in a polyglot isolate.
+     *
+     * @see #isHostObject(Object)
+     * @since 25.1
+     */
+    @Abstract(ifExported = "isHostObject")
+    public Object asHostObject(Object receiver) throws UnsupportedMessageException, HeapIsolationException {
         throw UnsupportedMessageException.create();
     }
 
@@ -3787,6 +3958,64 @@ public abstract class InteropLibrary extends Library {
             assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             assert validProtocolReturn(receiver, result);
             return result;
+        }
+
+        @Override
+        public boolean hasStaticScope(Object receiver) {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.hasStaticScope(receiver);
+            }
+            assert preCondition(receiver);
+            boolean result = delegate.hasStaticScope(receiver);
+            if (result) {
+                assert UNCACHED.isMetaObject(receiver) : violationPost(receiver, result);
+                assert assertHasStaticScope(receiver);
+            } else {
+                assert assertHasNoStaticScope(receiver);
+            }
+            assert validProtocolReturn(receiver, result);
+            return result;
+        }
+
+        private boolean assertHasStaticScope(Object receiver) {
+            try {
+                delegate.getStaticScope(receiver);
+            } catch (InteropException e) {
+                assert false : violationInvariant(receiver);
+            }
+            return true;
+        }
+
+        private boolean assertHasNoStaticScope(Object receiver) {
+            try {
+                delegate.getStaticScope(receiver);
+                assert false : violationInvariant(receiver);
+            } catch (UnsupportedMessageException e) {
+                // Falls to return true
+            }
+            return true;
+        }
+
+        @Override
+        public Object getStaticScope(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getStaticScope(receiver);
+            }
+            assert preCondition(receiver);
+            boolean hadStaticReceiver = delegate.hasStaticScope(receiver);
+            try {
+                Object result = delegate.getStaticScope(receiver);
+                assert hadStaticReceiver || isMultiThreaded(receiver) : violationInvariant(receiver);
+                assert validInteropReturn(receiver, result);
+                assert UNCACHED.isMetaObject(receiver) : violationPost(receiver, result);
+                assert UNCACHED.isScope(result) : violationPost(receiver, result);
+                assert UNCACHED.hasMembers(result) : violationPost(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert isMultiThreaded(receiver) || !hadStaticReceiver : violationInvariant(receiver);
+                throw e;
+            }
         }
 
         @Override
@@ -5010,6 +5239,7 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public boolean hasLanguage(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.hasLanguage(receiver);
@@ -5037,6 +5267,7 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public Class<? extends TruffleLanguage<?>> getLanguage(Object receiver) throws UnsupportedMessageException {
             if (CompilerDirectives.inCompiledCode()) {
                 return delegate.getLanguage(receiver);
@@ -5125,7 +5356,6 @@ public abstract class InteropLibrary extends Library {
                 assert assertMetaObject(receiver);
             } else {
                 assert assertNoMetaObject(receiver);
-                assert !result || notOtherType(receiver, Type.META_OBJECT);
             }
             assert validProtocolReturn(receiver, result);
             return result;
@@ -5353,7 +5583,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             boolean result = delegate.isScope(receiver);
             assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver);
-            assert !result || delegate.hasLanguage(receiver) : violationInvariant(receiver);
+            assert !result || delegate.hasLanguageId(receiver) : violationInvariant(receiver);
             assert validProtocolReturn(receiver, result);
             return result;
         }
@@ -5399,6 +5629,109 @@ public abstract class InteropLibrary extends Library {
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
                 assert !hadScopeParent : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean hasLanguageId(Object receiver) {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.hasLanguage(receiver);
+            }
+            assert preCondition(receiver);
+            boolean result = delegate.hasLanguageId(receiver);
+            if (result) {
+                try {
+                    assert delegate.getLanguageId(receiver) != null : violationPost(receiver, result);
+                } catch (InteropException e) {
+                    assert false : violationInvariant(receiver);
+                } catch (Exception e) {
+                }
+            } else {
+                assert assertHasNoLanguageId(receiver);
+            }
+            assert validProtocolReturn(receiver, result);
+            return result;
+        }
+
+        private boolean assertHasNoLanguageId(Object receiver) {
+            try {
+                delegate.getLanguageId(receiver);
+                assert false : violationInvariant(receiver);
+            } catch (UnsupportedMessageException e) {
+            }
+            return true;
+        }
+
+        @Override
+        public boolean isHostObject(Object receiver) {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.isHostObject(receiver);
+            }
+            assert preCondition(receiver);
+            boolean result = delegate.isHostObject(receiver);
+            if (result) {
+                assert assertHasHostObject(receiver);
+            } else {
+                assert assertHasNoHostObject(receiver);
+            }
+            assert validProtocolReturn(receiver, result);
+            return result;
+        }
+
+        private boolean assertHasHostObject(Object receiver) {
+            try {
+                delegate.asHostObject(receiver);
+            } catch (InteropException e) {
+                assert e instanceof HeapIsolationException : violationInvariant(receiver);
+            }
+            return true;
+        }
+
+        private boolean assertHasNoHostObject(Object receiver) {
+            try {
+                delegate.asHostObject(receiver);
+                assert false : violationInvariant(receiver);
+            } catch (UnsupportedMessageException | HeapIsolationException e) {
+            }
+            return true;
+        }
+
+        @Override
+        public String getLanguageId(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getLanguageId(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasHasLanguageId = delegate.hasLanguageId(receiver);
+            try {
+                String result = delegate.getLanguageId(receiver);
+                assert wasHasLanguageId : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasHasLanguageId : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object asHostObject(Object receiver) throws HeapIsolationException, UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.asHostObject(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasHasHostObject = delegate.isHostObject(receiver);
+            try {
+                Object result = delegate.asHostObject(receiver);
+                assert wasHasHostObject : violationInvariant(receiver);
+                return result;
+            } catch (UnsupportedMessageException e) {
+                assert !wasHasHostObject : violationInvariant(receiver);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof HeapIsolationException : violationInvariant(receiver);
                 throw e;
             }
         }

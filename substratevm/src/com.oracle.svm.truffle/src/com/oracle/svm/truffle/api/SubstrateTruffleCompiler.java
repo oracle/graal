@@ -41,6 +41,9 @@ public interface SubstrateTruffleCompiler extends TruffleCompiler {
 
     /**
      * Called on tear-down of the current isolate.
+     *
+     * @param shutdownCompilationsAndWaitAction action to perform before a compiler isolate would
+     *            shut down to cancel work that can delay the shutdown.
      */
-    void teardown();
+    void teardown(Runnable shutdownCompilationsAndWaitAction);
 }

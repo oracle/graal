@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -39,11 +39,11 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.33.0",
+  "mxversion": "7.65.0",
 
   "name" : "regex",
 
-  "version" : "25.0.0",
+  "version" : "25.1.0",
   "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
@@ -67,7 +67,7 @@ suite = {
       },
     ]
   },
-  "ignore_suite_commit_info": True,
+  "capture_suite_commit_info": False,
   "licenses" : {
     "upl" : {
       "name" : "Universal Permissive License, Version 1.0",
@@ -168,15 +168,14 @@ suite = {
       "moduleInfo" : {
         "name" : "com.oracle.truffle.regex.test.dummylang",
         "requires": [
+          "org.graalvm.polyglot",
           "org.graalvm.truffle",
         ],
       },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.regex.test.dummylang"],
       "distDependencies" : [
-        "regex:TREGEX"
-      ],
-      "exclude" : [
+        "regex:TREGEX",
       ],
       "description" : "Truffle regular expressions testing dummy language.",
       "allowsJavadocWarnings": True,

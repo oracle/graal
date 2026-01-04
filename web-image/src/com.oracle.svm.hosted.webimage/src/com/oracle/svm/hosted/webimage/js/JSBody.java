@@ -31,9 +31,9 @@ import org.graalvm.webimage.api.JS;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
 
 import jdk.graal.compiler.graph.NodeInputList;
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
 import jdk.graal.compiler.nodes.FixedNodeInterface;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.ValueNode;

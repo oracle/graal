@@ -56,16 +56,20 @@ import java.lang.management.LockInfo;
 import java.lang.management.MonitorInfo;
 import java.lang.management.ThreadInfo;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Formatter;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -74,6 +78,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -87,15 +92,19 @@ import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
 import com.sun.tools.attach.VirtualMachine;
 import com.sun.tools.attach.VirtualMachineDescriptor;
+import org.junit.experimental.theories.Theory;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 import org.junit.runner.Description;
+import org.junit.runners.Parameterized.Parameters;
 import org.junit.runners.model.Statement;
 
 /**
@@ -123,12 +132,19 @@ public final class SubprocessTestUtils {
     private static final boolean DEBUG_SUBPROCESSES = Boolean.getBoolean("SubprocessTestUtils.javaDebugger");
 
     /**
-     * Recommended value of the subprocess timeout. After exceeding it, the process is forcibly
+     * The default subprocess timeout. If the subprocess exceeds this duration, it is forcibly
      * terminated.
      *
      * @see Builder#timeout(Duration)
      */
-    public static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(5);
+    public static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(2);
+
+    /**
+     * Disables the subprocess timeout. When set, the subprocess is allowed to run indefinitely.
+     *
+     * @see Builder#timeout(Duration)
+     */
+    public static final Duration NO_TIMEOUT = Duration.ZERO;
 
     private static final String CONFIGURED_PROPERTY = SubprocessTestUtils.class.getSimpleName() + ".configured";
 
@@ -170,16 +186,23 @@ public final class SubprocessTestUtils {
     private static Method findTestMethod(Class<?> testClass) {
         StackTraceElement[] stack = Thread.currentThread().getStackTrace();
         if (stack != null) {
+            Map<String, Method> testMethodByName = new HashMap<>();
+            for (Method method : testClass.getDeclaredMethods()) {
+                if (method.getAnnotation(Test.class) != null || method.getAnnotation(Theory.class) != null) {
+                    Method prev = testMethodByName.put(method.getName(), method);
+                    if (prev != null) {
+                        throw new IllegalStateException(String.format("Multiple test methods with the same name '%s' found in class %s. Conflicting methods: %s and %s.",
+                                        method.getName(), testClass.getName(), prev, method));
+                    }
+                }
+            }
+
             for (int i = stack.length - 1; i >= 0; i--) {
                 StackTraceElement element = stack[i];
                 if (testClass.getName().equals(element.getClassName())) {
-                    try {
-                        Method method = testClass.getDeclaredMethod(element.getMethodName());
-                        if (method.getAnnotation(Test.class) != null) {
-                            return method;
-                        }
-                    } catch (NoSuchMethodException noSuchMethodException) {
-                        // skip methods with arguments.
+                    Method method = testMethodByName.get(element.getMethodName());
+                    if (method != null) {
+                        return method;
                     }
                 }
             }
@@ -187,12 +210,33 @@ public final class SubprocessTestUtils {
         throw new IllegalStateException("Failed to find current test method in class " + testClass);
     }
 
+    private static String findParametersFormat(Class<?> testClass) {
+        for (Method method : testClass.getDeclaredMethods()) {
+            if (!Modifier.isStatic(method.getModifiers())) {
+                continue;
+            }
+            Parameters parameters = method.getAnnotation(Parameters.class);
+            if (parameters != null) {
+                return parameters.name();
+            }
+        }
+        return null;
+    }
+
     private static Subprocess execute(Method testMethod, boolean failOnNonZeroExitCode, List<String> prefixVMOptions,
-                    List<String> postfixVmOptions, Duration timeout, Consumer<ProcessHandle> onStart) throws IOException, InterruptedException {
+                    List<String> postfixVmOptions, boolean removeOptimizedRuntimeOptions, Duration timeout, Consumer<ProcessHandle> onStart,
+                    List<Object> parameterizedBy) throws IOException, InterruptedException {
         String enclosingElement = testMethod.getDeclaringClass().getName();
         String testName = testMethod.getName();
+        if (parameterizedBy != null) {
+            String parametersFormat = findParametersFormat(testMethod.getDeclaringClass());
+            if (parametersFormat != null) {
+                String parametersName = MessageFormat.format(parametersFormat, parameterizedBy.toArray());
+                testName = String.format("%s[%s]", testName, parametersName);
+            }
+        }
         Subprocess subprocess = javaHelper(
-                        configure(getVmArgs(), prefixVMOptions, postfixVmOptions),
+                        configure(getVmArgs(), prefixVMOptions, postfixVmOptions, removeOptimizedRuntimeOptions),
                         null, null,
                         List.of("com.oracle.mxtool.junit.MxJUnitWrapper", String.format("%s#%s", enclosingElement, testName)),
                         timeout, onStart);
@@ -202,8 +246,9 @@ public final class SubprocessTestUtils {
         return subprocess;
     }
 
-    private static List<String> configure(List<String> vmArgs, List<String> prefixVMOptions, List<String> postfixVmOptions) {
+    private static List<String> configure(List<String> vmArgs, List<String> prefixVMOptions, List<String> postfixVmOptions, boolean removeOptimizedRuntimeOptions) {
         List<String> newVmArgs = new ArrayList<>();
+        Predicate<String> optimizedRuntimeFilter = removeOptimizedRuntimeOptions ? new OptimizedRuntimeOptionsFilter() : (s) -> true;
         newVmArgs.addAll(vmArgs.stream().filter(vmArg -> {
             for (String toRemove : getForbiddenVmOptions()) {
                 if (vmArg.startsWith(toRemove)) {
@@ -221,14 +266,14 @@ public final class SubprocessTestUtils {
                 }
             }
             return true;
-        }).collect(Collectors.toList()));
+        }).filter(optimizedRuntimeFilter).toList());
         for (String additionalVmOption : prefixVMOptions) {
-            if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX)) {
+            if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX) && optimizedRuntimeFilter.test(additionalVmOption)) {
                 newVmArgs.add(1, additionalVmOption);
             }
         }
         for (String additionalVmOption : postfixVmOptions) {
-            if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX)) {
+            if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX) && optimizedRuntimeFilter.test(additionalVmOption)) {
                 newVmArgs.add(additionalVmOption);
             }
         }
@@ -364,40 +409,52 @@ public final class SubprocessTestUtils {
         /**
          * Returns the process execution as a string with a header line followed by one or more body
          * lines followed by a trailer with a new line.
-         *
-         * The header is {@code "----------subprocess[<pid>]:(<lines>/<chars>)----------"} where
+         * <p>
+         * The header is
+         * {@code "----------subprocess[pid=<pid>]:(lines=<lines>, chars=<chars>)----------"} where
          * {@code pid} is the id of the process and {@code chars} and {@code lines} provide the
          * dimensions of the body.
-         *
-         * The sections in the body are the environment variables {@link Section#ENVIRONMENT}, the
-         * command line {@link Section#COMMAND}, the lines of output produced {@link Section#OUTPUT}
-         * and the exit code {@link Section#EXIT_CODE}.
-         *
-         * The trailer is {@code "==========subprocess[<pid>]=========="}
+         * <p>
+         * The sections in the body are the environment variables (key: "env"), the command line
+         * (key: "cmd"), the lines of output produced (key: "output") and the exit code (key:
+         * "exitCode").
+         * <p>
+         * The trailer is {@code "==========subprocess[pid=<pid>]=========="}
          *
          * @param sections selects which sections are in the body.
          */
         private String asString(Set<Section> sections) {
+            String subSectionSeparator = "--------------";
             Formatter msg = new Formatter();
             if (sections.contains(Section.ENVIRONMENT)) {
                 if (env != null && !env.isEmpty()) {
-                    msg.format("env");
+                    Formatter envBuf = new Formatter();
+                    envBuf.format("env");
                     for (Map.Entry<String, String> e : env.entrySet()) {
-                        msg.format(" %s=%s", e.getKey(), quoteShellArg(e.getValue()));
+                        envBuf.format(" %s=%s", e.getKey(), quoteShellArg(e.getValue()));
                     }
-                    msg.format("\\%n");
+                    String envSection = envBuf.toString();
+                    msg.format("%sEnvironment[length=%d]%s%n", subSectionSeparator, envSection.length(), subSectionSeparator);
+                    msg.format("%s%n", envSection);
                 }
             }
             if (sections.contains(Section.COMMAND)) {
-                msg.format("%s%n", command.stream().map((e) -> quoteShellArg(String.valueOf(e))).collect(Collectors.joining(" ")));
+                String cmdSection = command.stream().map((e) -> quoteShellArg(String.valueOf(e))).collect(Collectors.joining(" "));
+                msg.format("%sCommand[length=%d]%s%n", subSectionSeparator, cmdSection.length(), subSectionSeparator);
+                msg.format("%s%n", cmdSection);
             }
             if (sections.contains(Section.OUTPUT)) {
+                Formatter outputBuf = new Formatter();
                 for (String line : output) {
-                    msg.format("%s%n", line);
+                    outputBuf.format("%s%n", line);
                 }
+                String outputSection = outputBuf.toString();
+                msg.format("%sOutput[length=%d]%s%n", subSectionSeparator, outputSection.length(), subSectionSeparator);
+                msg.format("%s", outputSection);
             }
             if (sections.contains(Section.EXIT_CODE)) {
-                msg.format("exit code: %s%n", exitCode);
+                msg.format("%sExit code%s%n", subSectionSeparator, subSectionSeparator);
+                msg.format("%d%n", exitCode);
             }
             String body = msg.toString();
             if (!body.endsWith(System.lineSeparator())) {
@@ -405,8 +462,8 @@ public final class SubprocessTestUtils {
             }
             long lines = body.chars().filter(ch -> ch == '\n').count();
             int chars = body.length();
-            String head = String.format("----------subprocess[%d]:(%d/%d)----------", pid, lines, chars);
-            String tail = String.format("==========subprocess[%d]==========", pid);
+            String head = String.format("----------Subprocess[pid=%d]:(lines=%d, chars=%d)----------", pid, lines, chars);
+            String tail = String.format("==========Subprocess[pid=%d]==========", pid);
             return String.format("%s%n%s%s%n", head, body, tail);
         }
 
@@ -463,9 +520,11 @@ public final class SubprocessTestUtils {
         private final List<String> prefixVmArgs = new ArrayList<>();
         private final List<String> postfixVmArgs = new ArrayList<>();
         private boolean failOnNonZeroExit = true;
-        private Duration timeout;
+        private Duration timeout = DEFAULT_TIMEOUT;
         private Consumer<Subprocess> onExit;
         private Consumer<ProcessHandle> onStart;
+        private boolean removeOptimizedRuntimeOptions;
+        private List<Object> parameterizedBy = List.of();
 
         private Builder(Class<?> testClass, Runnable run) {
             this.testClass = testClass;
@@ -497,6 +556,17 @@ public final class SubprocessTestUtils {
         }
 
         /**
+         * Removes all {@code OptimizedRuntimeOptions} from the command line.
+         * <p>
+         * This method is useful in tests that require fallback to the default Truffle runtime,
+         * which does not support optimized runtime options.
+         */
+        public Builder removeOptimizedRuntimeOptions(boolean value) {
+            removeOptimizedRuntimeOptions = value;
+            return this;
+        }
+
+        /**
          * Disables assertions in {@code forClass}.
          */
         public Builder disableAssertions(Class<?> forClass) {
@@ -511,9 +581,11 @@ public final class SubprocessTestUtils {
 
         /**
          * Sets the subprocess timeout. After its expiration, the subprocess is forcibly terminated.
-         * By default, there is no timeout and the subprocess execution time is not limited.
+         * By default, the subprocess timeout is {@link #DEFAULT_TIMEOUT}. To set no subprocess
+         * timeout, use {@link #NO_TIMEOUT}.
          *
          * @see SubprocessTestUtils#DEFAULT_TIMEOUT
+         * @see SubprocessTestUtils#NO_TIMEOUT
          *
          */
         public Builder timeout(Duration duration) {
@@ -531,11 +603,27 @@ public final class SubprocessTestUtils {
             return this;
         }
 
+        /**
+         * Associates the JUnit parameterized test arguments with this subprocess invocation.
+         * <p>
+         * When running a {@code @RunWith(Parameterized.class)} test, each test instance is
+         * constructed with a specific set of parameter values. These values determine the test
+         * case's display name (as configured via {@code @Parameters(name = ...)}).
+         * <p>
+         * By calling {@link #parameterizedBy(Object...)}, you provide the same set of parameter
+         * values to the {@code SubprocessTestUtils} infrastructure so that the subprocess execution
+         * reflects the parameterization of the current test.
+         */
+        public Builder parameterizedBy(Object... parameters) {
+            this.parameterizedBy = List.of(parameters);
+            return this;
+        }
+
         public void run() throws IOException, InterruptedException {
             if (isSubprocess()) {
                 runnable.run();
             } else {
-                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, timeout, onStart);
+                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, removeOptimizedRuntimeOptions, timeout, onStart, parameterizedBy);
                 if (onExit != null) {
                     try {
                         onExit.accept(process);
@@ -759,7 +847,7 @@ public final class SubprocessTestUtils {
         }
         BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
         List<String> output = new ArrayList<>();
-        if (timeout == null) {
+        if (timeout == NO_TIMEOUT) {
             String line;
             while ((line = stdout.readLine()) != null) {
                 output.add(line);
@@ -781,6 +869,7 @@ public final class SubprocessTestUtils {
             outputReader.start();
             boolean finishedOnTime = process.waitFor(timeout.getSeconds(), TimeUnit.SECONDS);
             if (!finishedOnTime) {
+                printError("Subprocess %d did not finish within the specified timeout: %s.", process.pid(), timeout);
                 dumpThreads(process.toHandle());
                 process.destroyForcibly().waitFor();
             }
@@ -923,11 +1012,12 @@ public final class SubprocessTestUtils {
                         CompositeData[] result = (CompositeData[]) mbeanConnection.invoke(new ObjectName("java.lang:type=Threading"), "dumpAllThreads",
                                         new Object[]{true, true}, new String[]{boolean.class.getName(), boolean.class.getName()});
                         StringWriter messageBuilder = new StringWriter();
-                        PrintWriter out = new PrintWriter(new StringWriter());
-                        out.printf("%nDumping subprocess threads on timeout%n");
+                        PrintWriter out = new PrintWriter(messageBuilder);
+                        out.printf("Dumping subprocess threads on timeout%n");
                         for (CompositeData element : result) {
                             dumpThread(ThreadInfo.from(element), out);
                         }
+                        out.flush();
                         printError(messageBuilder.toString());
                     }
                 } finally {
@@ -1173,6 +1263,36 @@ public final class SubprocessTestUtils {
 
                 ch = in.read();
             }
+        }
+    }
+
+    private static final class OptimizedRuntimeOptionsFilter implements Predicate<String> {
+
+        private final Set<String> toRemove;
+
+        OptimizedRuntimeOptionsFilter() {
+            Set<String> optionNames;
+            try {
+                Class<?> options = Class.forName("com.oracle.truffle.runtime.OptimizedRuntimeOptions");
+                OptionDescriptors descriptors = (OptionDescriptors) ReflectionUtils.invokeStatic(options, "getDescriptors");
+                optionNames = new HashSet<>();
+                for (OptionDescriptor descriptor : descriptors) {
+                    optionNames.add(String.format("-Dpolyglot.%s", descriptor.getName()));
+                }
+            } catch (ClassNotFoundException e) {
+                optionNames = Set.of();
+            }
+            toRemove = optionNames;
+        }
+
+        @Override
+        public boolean test(String s) {
+            int index = s.lastIndexOf("=");
+            if (index > 0) {
+                String key = s.substring(0, index);
+                return !toRemove.contains(key);
+            }
+            return true;
         }
     }
 }

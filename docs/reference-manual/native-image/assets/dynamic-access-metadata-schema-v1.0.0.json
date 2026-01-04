@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/dynamic-access-metadata-v1.0.0.json",
+  "title": "JSON schema for library support metadata used by the Dynamic Access tab of the GraalVM Native Image Build Report",
+  "version": "1.0.0",
+  "type": "array",
+  "default": [],
+  "items": {
+    "type": "object",
+    "required": ["metadataProvider", "providesFor"],
+    "properties": {
+      "metadataProvider": {
+        "type": "string",
+        "title": "The classpath entry (JAR or directory) providing reachability metadata",
+        "pattern": "^/.+"
+      },
+      "providesFor": {
+        "type": "array",
+        "title": "List of classpath entries that this provider contributes metadata for",
+        "default": [],
+        "items": {
+          "type": "string",
+          "pattern": "^/.+"
+        }
+      }
+    },
+    "additionalProperties": false
+  },
+  "examples": [
+    [
+      {
+        "metadataProvider": "/home/user/.m2/repository/org/springframework/boot/spring-boot-starter-web/3.5.6/spring-boot-starter-web-3.5.6.jar",
+        "providesFor": [
+          "/home/user/.m2/repository/org/slf4j/slf4j-api/2.0.17/slf4j-api-2.0.17.jar",
+          "/home/user/.m2/repository/org/springframework/spring-context/6.2.11/spring-context-6.2.11.jar"
+        ]
+      },
+      {
+        "metadataProvider": "/home/user/.m2/repository/org/springframework/boot/spring-boot-starter-data-jpa/3.5.6/spring-boot-starter-data-jpa-3.5.6.jar",
+        "providesFor": [
+          "/home/user/.m2/repository/org/hibernate/orm/hibernate-core/6.6.29.Final/hibernate-core-6.6.29.Final.jar"
+        ]
+      }
+    ]
+  ]
+}

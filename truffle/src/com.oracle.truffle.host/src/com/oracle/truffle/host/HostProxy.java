@@ -50,10 +50,25 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 
+import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyDate;
+import org.graalvm.polyglot.proxy.ProxyDuration;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyHashMap;
+import org.graalvm.polyglot.proxy.ProxyInstant;
+import org.graalvm.polyglot.proxy.ProxyInstantiable;
+import org.graalvm.polyglot.proxy.ProxyIterable;
+import org.graalvm.polyglot.proxy.ProxyIterator;
+import org.graalvm.polyglot.proxy.ProxyNativeObject;
+import org.graalvm.polyglot.proxy.ProxyObject;
+import org.graalvm.polyglot.proxy.ProxyTime;
+import org.graalvm.polyglot.proxy.ProxyTimeZone;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -68,9 +83,12 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.host.HostContext.ToGuestValueNode;
 
-@SuppressWarnings("deprecation")
 @ExportLibrary(InteropLibrary.class)
 final class HostProxy implements TruffleObject {
 
@@ -107,109 +125,145 @@ final class HostProxy implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isInstantiable(@Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        return cache.api.isProxyInstantiable(proxy);
+    boolean isInstantiable(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType) {
+        Object p = proxyType.profile(node, this.proxy);
+        return p instanceof ProxyInstantiable;
     }
 
     @ExportMessage
-    @TruffleBoundary
     Object instantiate(Object[] arguments,
-                    @CachedLibrary("this") InteropLibrary library,
+                    @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached(inline = true) ToGuestValueNode toGuest,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyInstantiable(proxy)) {
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyInstantiable) {
             Object[] convertedArguments = cache.language.access.toValues(context.internalContext, arguments);
-            Object result = guestToHostCall(library, cache.instantiate, context, proxy, convertedArguments);
-            return context.toGuestValue(library, result);
+            Object result = guestToHostCall(node, cache.instantiate, p, convertedArguments);
+            return toGuest.execute(node, result);
         }
+        errorProfile.enter(node);
         throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
-    boolean isExecutable(@Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        return cache.api.isProxyExecutable(proxy);
+    boolean isExecutable(
+                    @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType) {
+        Object p = proxyType.profile(node, this.proxy);
+        return p instanceof ProxyExecutable;
     }
 
     @ExportMessage
-    @TruffleBoundary
     Object execute(Object[] arguments,
-                    @CachedLibrary("this") InteropLibrary library,
+                    @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached(inline = true) ToGuestValueNode toGuest,
+                    @Shared @Cached HostToValuesNode toGuestValues,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyExecutable(proxy)) {
-            Object[] convertedArguments = context.language.access.toValues(context.internalContext, arguments);
-            Object result = guestToHostCall(library, cache.execute, context, proxy, convertedArguments);
-            return context.toGuestValue(library, result);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyExecutable) {
+            Object[] convertedArguments = toGuestValues.execute(node, context, arguments);
+            Object result = guestToHostCall(node, cache.execute, p, convertedArguments);
+            return toGuest.execute(node, result);
         }
+        errorProfile.enter(node);
         throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
-    boolean isPointer(@Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        return cache.api.isProxyNativeObject(proxy);
+    boolean isPointer(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType) {
+        Object p = proxyType.profile(node, this.proxy);
+        return p instanceof ProxyNativeObject;
     }
 
     @ExportMessage
-    @TruffleBoundary
-    long asPointer(@CachedLibrary("this") InteropLibrary library,
+    long asPointer(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyNativeObject(proxy)) {
-            return (long) guestToHostCall(library, cache.asPointer, context, proxy);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyNativeObject pn) {
+            return (long) guestToHostCall(node, cache.asPointer, pn);
         }
+        errorProfile.enter(node);
         throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
-    boolean hasArrayElements(@Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        return cache.api.isProxyArray(proxy);
+    boolean hasArrayElements(
+                    @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType) {
+        return proxyType.profile(node, this.proxy) instanceof ProxyArray;
     }
 
     @ExportMessage
-    @TruffleBoundary
     Object readArrayElement(long index,
-                    @CachedLibrary("this") InteropLibrary library,
+                    @Bind Node node,
+                    @Shared @Cached(inline = true) ToGuestValueNode toGuest,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyArray(proxy)) {
-            Object result = guestToHostCall(library, cache.arrayGet, context, proxy, index);
-            return context.toGuestValue(library, result);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyArray pa) {
+            Object result = guestToHostCall(node, cache.arrayGet, pa, index);
+            return toGuest.execute(node, result);
         } else {
+            errorProfile.enter(node);
             throw UnsupportedMessageException.create();
         }
     }
 
     @ExportMessage
-    @TruffleBoundary
     void writeArrayElement(long index, Object value,
-                    @CachedLibrary("this") InteropLibrary library,
+                    @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached HostToValueNode toValueNode,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyArray(proxy)) {
-            Object castValue = context.asValue(library, value);
-            guestToHostCall(library, cache.arraySet, context, proxy, index, castValue);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyArray pa) {
+            Object castValue = toValueNode.execute(context, value);
+            guestToHostCall(node, cache.arraySet, pa, index, castValue);
         } else {
+            errorProfile.enter(node);
             throw UnsupportedMessageException.create();
         }
     }
 
     @ExportMessage
-    @TruffleBoundary
-    void removeArrayElement(long index, @CachedLibrary("this") InteropLibrary library,
+    void removeArrayElement(long index, @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache)
                     throws UnsupportedMessageException, InvalidArrayIndexException {
-        if (cache.api.isProxyArray(proxy)) {
-            boolean result = (boolean) guestToHostCall(library, cache.arrayRemove, context, proxy, index);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyArray pa) {
+            boolean result = (boolean) guestToHostCall(node, cache.arrayRemove, pa, index);
             if (!result) {
+                errorProfile.enter(node);
                 throw InvalidArrayIndexException.create(index);
             }
         } else {
+            errorProfile.enter(node);
             throw UnsupportedMessageException.create();
         }
     }
 
     @ExportMessage
-    @TruffleBoundary
-    long getArraySize(@CachedLibrary("this") InteropLibrary library,
+    long getArraySize(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyArray(proxy)) {
-            return (long) guestToHostCall(library, cache.arraySize, context, proxy);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyArray pa) {
+            return (long) guestToHostCall(node, cache.arraySize, pa);
         } else {
+            errorProfile.enter(node);
             throw UnsupportedMessageException.create();
         }
     }
@@ -217,11 +271,12 @@ final class HostProxy implements TruffleObject {
     @ExportMessage(name = "isArrayElementReadable")
     @ExportMessage(name = "isArrayElementModifiable")
     @ExportMessage(name = "isArrayElementRemovable")
-    @TruffleBoundary
-    boolean isArrayElementExisting(long index, @CachedLibrary("this") InteropLibrary library,
+    boolean isArrayElementExisting(long index, @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        if (cache.api.isProxyArray(proxy)) {
-            long size = (long) guestToHostCall(library, cache.arraySize, context, proxy);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyArray pa) {
+            long size = (long) guestToHostCall(node, cache.arraySize, pa);
             return index >= 0 && index < size;
         } else {
             return false;
@@ -229,11 +284,12 @@ final class HostProxy implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
-    boolean isArrayElementInsertable(long index, @CachedLibrary("this") InteropLibrary library,
+    boolean isArrayElementInsertable(long index, @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        if (cache.api.isProxyArray(proxy)) {
-            long size = (long) guestToHostCall(library, cache.arraySize, context, proxy);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyArray pa) {
+            long size = (long) guestToHostCall(node, cache.arraySize, pa);
             return index < 0 || index >= size;
         } else {
             return false;
@@ -241,39 +297,37 @@ final class HostProxy implements TruffleObject {
     }
 
     @ExportMessage
-    boolean hasMembers(@Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        return cache.api.isProxyObject(proxy);
+    boolean hasMembers(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType) {
+        Object p = proxyType.profile(node, this.proxy);
+        return p instanceof ProxyObject;
     }
 
     @ExportMessage
-    @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
-                    @CachedLibrary("this") InteropLibrary library,
+                    @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
+                    @Shared @Cached(inline = true) ToGuestValueNode toGuest,
+                    @Shared @CachedLibrary(limit = "3") InteropLibrary sharedInterop,
+                    @Exclusive @CachedLibrary(limit = "3") InteropLibrary sharedInterop2,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyObject(proxy)) {
-            Object result = guestToHostCall(library, cache.memberKeys, context, proxy);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyObject) {
+            Object result = guestToHostCall(node, cache.memberKeys, p);
             assert result != null;
-            Object guestValue = context.toGuestValue(library, result);
-            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
-            if (!interop.hasArrayElements(guestValue)) {
-                if (guestValue instanceof HostObject) {
-                    HostObject hostObject = (HostObject) guestValue;
-                    if (hostObject.obj.getClass().isArray() && !hostObject.getHostClassCache().isArrayAccess()) {
-                        throw illegalProxy(context, "getMemberKeys() returned a Java array %s, but allowArrayAccess in HostAccess is false.", context.asValue(library, guestValue).toString());
-                    } else if (hostObject.obj instanceof List && !hostObject.getHostClassCache().isListAccess()) {
-                        throw illegalProxy(context, "getMemberKeys() returned a Java List %s, but allowListAccess in HostAccess is false.", context.asValue(library, guestValue).toString());
-                    }
-                }
-                throw illegalProxy(context, "getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
-                                context.asValue(library, guestValue).toString());
+            Object guestValue = toGuest.execute(node, result);
+            if (!sharedInterop.hasArrayElements(guestValue)) {
+                errorProfile.enter(node);
+                throw failInvalidMembers(node, guestValue);
             }
-            // Todo: Use interop to determine an array element type when the GR-5737 is resolved.
-            for (int i = 0; i < interop.getArraySize(guestValue); i++) {
+            for (int i = 0; i < sharedInterop.getArraySize(guestValue); i++) {
                 try {
-                    Object element = interop.readArrayElement(guestValue, i);
-                    if (!interop.isString(element)) {
+                    Object element = sharedInterop.readArrayElement(guestValue, i);
+                    if (!sharedInterop2.isString(element)) {
+                        errorProfile.enter(node);
                         throw illegalProxy(context, "getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
-                                        context.asValue(library, guestValue).toString());
+                                        valueToString(node, element));
                     }
                 } catch (UnsupportedOperationException e) {
                     CompilerDirectives.shouldNotReachHere(e);
@@ -287,58 +341,79 @@ final class HostProxy implements TruffleObject {
         }
     }
 
+    private RuntimeException failInvalidMembers(Node node, Object guestValue) {
+        if (guestValue instanceof HostObject) {
+            HostObject hostObject = (HostObject) guestValue;
+            if (hostObject.obj.getClass().isArray() && !hostObject.getHostClassCache().isArrayAccess()) {
+                throw illegalProxy(context, "getMemberKeys() returned a Java array %s, but allowArrayAccess in HostAccess is false.", valueToString(node, guestValue));
+            } else if (hostObject.obj instanceof List && !hostObject.getHostClassCache().isListAccess()) {
+                throw illegalProxy(context, "getMemberKeys() returned a Java List %s, but allowListAccess in HostAccess is false.", valueToString(node, guestValue));
+            }
+        }
+        throw illegalProxy(context, "getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
+                        valueToString(node, guestValue));
+    }
+
     @TruffleBoundary
     static RuntimeException illegalProxy(HostContext context, String message, Object... parameters) {
         throw context.hostToGuestException(new IllegalStateException(String.format(message, parameters)));
     }
 
     @ExportMessage
-    @TruffleBoundary
     Object readMember(String member,
-                    @CachedLibrary("this") InteropLibrary library,
+                    @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached(inline = true) ToGuestValueNode toGuest,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache)
                     throws UnsupportedMessageException, UnknownIdentifierException {
-        if (cache.api.isProxyObject(proxy)) {
-            if (!isMemberExisting(member, library, cache)) {
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyObject) {
+            if (!isMemberExisting(member, node, proxyType, cache)) {
+                errorProfile.enter(node);
                 throw UnknownIdentifierException.create(member);
             }
-            Object result = guestToHostCall(library, cache.getMember, context, proxy, member);
-            return context.toGuestValue(library, result);
+            Object result = guestToHostCall(node, cache.getMember, p, member);
+            return toGuest.execute(node, result);
         } else {
             throw UnsupportedMessageException.create();
         }
     }
 
     @ExportMessage
-    @TruffleBoundary
     void writeMember(String member, Object value,
-                    @CachedLibrary("this") InteropLibrary library,
+                    @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached HostToValueNode toValueNode,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyObject(proxy)) {
-            Object castValue = context.asValue(library, value);
-            guestToHostCall(library, cache.putMember, context, proxy, member, castValue);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyObject) {
+            Object castValue = toValueNode.execute(context, value);
+            guestToHostCall(node, cache.putMember, p, member, castValue);
         } else {
             throw UnsupportedMessageException.create();
         }
     }
 
     @ExportMessage
-    @TruffleBoundary
-    Object invokeMember(String member, Object[] arguments, @CachedLibrary("this") InteropLibrary library,
+    Object invokeMember(String member, Object[] arguments, @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached(inline = true) ToGuestValueNode toGuest,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("executables") @CachedLibrary(limit = "LIMIT") InteropLibrary executables,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache)
                     throws UnsupportedMessageException, UnsupportedTypeException, ArityException, UnknownIdentifierException {
-        if (cache.api.isProxyObject(proxy)) {
-            if (!isMemberExisting(member, library, cache)) {
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyObject) {
+            if (!isMemberExisting(member, node, proxyType, cache)) {
                 throw UnknownIdentifierException.create(member);
             }
             Object memberObject;
             try {
-                memberObject = readMember(member, library, cache);
+                memberObject = readMember(member, node, proxyType, toGuest, errorProfile, cache);
             } catch (UnsupportedOperationException e) {
                 throw UnsupportedMessageException.create();
             }
-            memberObject = context.toGuestValue(library, memberObject);
             if (executables.isExecutable(memberObject)) {
                 return executables.execute(memberObject, arguments);
             } else {
@@ -350,14 +425,17 @@ final class HostProxy implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
-    boolean isMemberInvocable(String member, @CachedLibrary("this") InteropLibrary library,
+    boolean isMemberInvocable(String member, @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached(inline = true) ToGuestValueNode toGuest,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("executables") @CachedLibrary(limit = "LIMIT") InteropLibrary executables,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        if (cache.api.isProxyObject(proxy)) {
-            if (isMemberExisting(member, library, cache)) {
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyObject) {
+            if (isMemberExisting(member, node, proxyType, cache)) {
                 try {
-                    return executables.isExecutable(readMember(member, library, cache));
+                    return executables.isExecutable(readMember(member, node, proxyType, toGuest, errorProfile, cache));
                 } catch (UnsupportedMessageException | UnknownIdentifierException e) {
                     return false;
                 }
@@ -367,19 +445,24 @@ final class HostProxy implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
-    void removeMember(String member, @CachedLibrary("this") InteropLibrary library,
+    void removeMember(String member, @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache)
                     throws UnsupportedMessageException, UnknownIdentifierException {
-        if (cache.api.isProxyObject(proxy)) {
-            if (!isMemberExisting(member, library, cache)) {
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyObject) {
+            if (!isMemberExisting(member, node, proxyType, cache)) {
+                errorProfile.enter(node);
                 throw UnknownIdentifierException.create(member);
             }
-            boolean result = (boolean) guestToHostCall(library, cache.removeMember, context, proxy, member);
+            boolean result = (boolean) guestToHostCall(node, cache.removeMember, p, member);
             if (!result) {
+                errorProfile.enter(node);
                 throw UnknownIdentifierException.create(member);
             }
         } else {
+            errorProfile.enter(node);
             throw UnsupportedMessageException.create();
         }
     }
@@ -387,113 +470,142 @@ final class HostProxy implements TruffleObject {
     @ExportMessage(name = "isMemberReadable")
     @ExportMessage(name = "isMemberModifiable")
     @ExportMessage(name = "isMemberRemovable")
-    @TruffleBoundary
-    boolean isMemberExisting(String member, @CachedLibrary("this") InteropLibrary library,
+    boolean isMemberExisting(String member, @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        if (cache.api.isProxyObject(proxy)) {
-            return (boolean) guestToHostCall(library, cache.hasMember, context, proxy, member);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyObject) {
+            return (boolean) guestToHostCall(node, cache.hasMember, p, member);
         } else {
             return false;
         }
     }
 
     @ExportMessage
-    @TruffleBoundary
-    boolean isMemberInsertable(String member, @CachedLibrary("this") InteropLibrary library,
+    boolean isMemberInsertable(String member, @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        if (cache.api.isProxyObject(proxy)) {
-            return !isMemberExisting(member, library, cache);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyObject) {
+            return !isMemberExisting(member, node, proxyType, cache);
         } else {
             return false;
         }
     }
 
-    @TruffleBoundary
     @ExportMessage
-    boolean isDate(@Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        return cache.api.isProxyDate(proxy);
-    }
-
-    @TruffleBoundary
-    @ExportMessage
-    boolean isTime(@Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        return cache.api.isProxyTime(proxy);
-    }
-
-    @TruffleBoundary
-    @ExportMessage
-    boolean isTimeZone(@Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        return cache.api.isProxyTimeZone(proxy);
+    boolean isDate(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType) {
+        Object p = proxyType.profile(node, this.proxy);
+        return p instanceof ProxyDate;
     }
 
     @ExportMessage
-    @TruffleBoundary
-    ZoneId asTimeZone(@CachedLibrary("this") InteropLibrary library,
+    boolean isTime(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType) {
+        Object p = proxyType.profile(node, this.proxy);
+        return p instanceof ProxyTime;
+    }
+
+    @ExportMessage
+    boolean isTimeZone(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType) {
+        Object p = proxyType.profile(node, this.proxy);
+        return p instanceof ProxyTimeZone;
+    }
+
+    @ExportMessage
+    ZoneId asTimeZone(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyTimeZone(proxy)) {
-            return (ZoneId) guestToHostCall(library, cache.asTimezone, context, proxy);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyTimeZone) {
+            return (ZoneId) guestToHostCall(node, cache.asTimezone, p);
         }
+        errorProfile.enter(node);
         throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
-    @TruffleBoundary
-    LocalDate asDate(@CachedLibrary("this") InteropLibrary library,
+    LocalDate asDate(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyDate(proxy)) {
-            return (LocalDate) guestToHostCall(library, cache.asDate, context, proxy);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyDate) {
+            return (LocalDate) guestToHostCall(node, cache.asDate, p);
         }
+        errorProfile.enter(node);
         throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
-    @TruffleBoundary
-    LocalTime asTime(@CachedLibrary("this") InteropLibrary library,
+    LocalTime asTime(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyTime(proxy)) {
-            return (LocalTime) guestToHostCall(library, cache.asTime, context, proxy);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyTime) {
+            return (LocalTime) guestToHostCall(node, cache.asTime, p);
         }
+        errorProfile.enter(node);
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    Instant asInstant(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
+                    @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyInstant) {
+            return (Instant) guestToHostCall(node, cache.asInstant, p);
+        } else if (p instanceof ProxyDate && p instanceof ProxyTime && p instanceof ProxyTimeZone) {
+            LocalDate date = asDate(node, proxyType, errorProfile, cache);
+            LocalTime time = asTime(node, proxyType, errorProfile, cache);
+            ZoneId zone = asTimeZone(node, proxyType, errorProfile, cache);
+            return createInstant(date, time, zone);
+        }
+        errorProfile.enter(node);
         throw UnsupportedMessageException.create();
     }
 
     @TruffleBoundary
-    @ExportMessage
-    Instant asInstant(@CachedLibrary("this") InteropLibrary library,
-                    @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyInstant(proxy)) {
-            return (Instant) guestToHostCall(library, cache.asInstant, context, proxy);
-        } else if (isDate(cache) && isTime(cache) && isTimeZone(cache)) {
-            return ZonedDateTime.of(asDate(library, cache), asTime(library, cache), asTimeZone(library, cache)).toInstant();
-        }
-        throw UnsupportedMessageException.create();
-    }
-
-    @TruffleBoundary
-    @ExportMessage
-    boolean isDuration(@Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        return cache.api.isProxyDuration(proxy);
+    private static Instant createInstant(LocalDate date, LocalTime time, ZoneId zone) {
+        return ZonedDateTime.of(date, time, zone).toInstant();
     }
 
     @ExportMessage
-    @TruffleBoundary
-    Duration asDuration(@CachedLibrary("this") InteropLibrary library,
+    boolean isDuration(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType) {
+        Object p = proxyType.profile(node, this.proxy);
+        return p instanceof ProxyDuration;
+    }
+
+    @ExportMessage
+    Duration asDuration(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyDuration(proxy)) {
-            return (Duration) guestToHostCall(library, cache.asDuration, context, proxy);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyDuration) {
+            return (Duration) guestToHostCall(node, cache.asDuration, p);
         }
+        errorProfile.enter(node);
         throw UnsupportedMessageException.create();
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return HostLanguage.class;
+    String getLanguageId() {
+        return HostLanguage.ID;
     }
 
     @SuppressWarnings("static-method")
@@ -520,69 +632,94 @@ final class HostProxy implements TruffleObject {
     }
 
     @ExportMessage
-    boolean hasIterator(@Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        return cache.api.isProxyIterable(proxy);
+    boolean hasIterator(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType) {
+        Object p = proxyType.profile(node, this.proxy);
+        return p instanceof ProxyIterable;
     }
 
     @ExportMessage
-    @TruffleBoundary
-    Object getIterator(@CachedLibrary("this") InteropLibrary library,
+    Object getIterator(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
+                    @Shared @Cached(inline = true) ToGuestValueNode toGuest,
+                    @Shared @CachedLibrary(limit = "3") InteropLibrary sharedInterop,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyIterable(proxy)) {
-            Object result = guestToHostCall(library, cache.getIterator, context, proxy);
-            Object guestValue = context.toGuestValue(library, result);
-            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
-            if (!interop.isIterator(guestValue)) {
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyIterable) {
+            Object result = guestToHostCall(node, cache.getIterator, p);
+            Object guestValue = toGuest.execute(node, result);
+            if (!sharedInterop.isIterator(guestValue)) {
+                errorProfile.enter(node);
                 throw illegalProxy(context, "getIterator() returned an invalid value %s but must return an iterator.",
-                                context.asValue(library, guestValue).toString());
+                                valueToString(node, guestValue));
             }
             return guestValue;
         } else {
+            errorProfile.enter(node);
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @TruffleBoundary
+    private String valueToString(Node node, Object guestValue) {
+        return context.asValue(node, guestValue).toString();
+    }
+
+    @ExportMessage
+    boolean isIterator(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType) {
+        Object p = proxyType.profile(node, this.proxy);
+        return p instanceof ProxyIterator;
+    }
+
+    @ExportMessage
+    boolean hasIteratorNextElement(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
+                    @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyIterator) {
+            return (boolean) guestToHostCall(node, cache.hasIteratorNextElement, p);
+        } else {
+            errorProfile.enter(node);
             throw UnsupportedMessageException.create();
         }
     }
 
     @ExportMessage
-    boolean isIterator(@Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        return cache.api.isProxyIterator(proxy);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    boolean hasIteratorNextElement(@CachedLibrary("this") InteropLibrary library,
+    Object getIteratorNextElement(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached(inline = true) ToGuestValueNode toGuest,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyIterator(proxy)) {
-            return (boolean) guestToHostCall(library, cache.hasIteratorNextElement, context, proxy);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyIterator) {
+            Object result = guestToHostCall(node, cache.getIteratorNextElement, p);
+            return toGuest.execute(node, result);
         } else {
+            errorProfile.enter(node);
             throw UnsupportedMessageException.create();
         }
     }
 
     @ExportMessage
-    @TruffleBoundary
-    Object getIteratorNextElement(@CachedLibrary("this") InteropLibrary library,
-                    @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyIterator(proxy)) {
-            Object result = guestToHostCall(library, cache.getIteratorNextElement, context, proxy);
-            return context.toGuestValue(library, result);
-        } else {
-            throw UnsupportedMessageException.create();
-        }
+    boolean hasHashEntries(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType) {
+        Object p = proxyType.profile(node, this.proxy);
+        return p instanceof ProxyHashMap;
     }
 
     @ExportMessage
-    @TruffleBoundary
-    boolean hasHashEntries(@Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        return cache.api.isProxyHashMap(proxy);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    long getHashSize(@CachedLibrary("this") InteropLibrary library,
+    long getHashSize(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyHashMap(proxy)) {
-            return (long) guestToHostCall(library, cache.getHashSize, context, proxy);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyHashMap) {
+            return (long) guestToHostCall(node, cache.getHashSize, p);
         } else {
+            errorProfile.enter(node);
             throw UnsupportedMessageException.create();
         }
     }
@@ -590,91 +727,116 @@ final class HostProxy implements TruffleObject {
     @ExportMessage(name = "isHashEntryReadable")
     @ExportMessage(name = "isHashEntryModifiable")
     @ExportMessage(name = "isHashEntryRemovable")
-    @TruffleBoundary
     boolean isHashValueExisting(Object key,
-                    @CachedLibrary("this") InteropLibrary library,
+                    @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached HostToValueNode toValueNode,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        if (cache.api.isProxyHashMap(proxy)) {
-            Object keyValue = context.asValue(library, key);
-            return (boolean) guestToHostCall(library, cache.hasHashEntry, context, proxy, keyValue);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyHashMap) {
+            Object keyValue = toValueNode.execute(context, key);
+            return (boolean) guestToHostCall(node, cache.hasHashEntry, p, keyValue);
         } else {
             return false;
         }
     }
 
     @ExportMessage
-    @TruffleBoundary
     Object readHashValue(Object key,
-                    @CachedLibrary("this") InteropLibrary library,
+                    @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached HostToValueNode toValueNode,
+                    @Shared @Cached(inline = true) ToGuestValueNode toGuest,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException, UnknownKeyException {
-        if (cache.api.isProxyHashMap(proxy)) {
-            if (!isHashValueExisting(key, library, cache)) {
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyHashMap) {
+            if (!isHashValueExisting(key, node, proxyType, toValueNode, cache)) {
+                errorProfile.enter(node);
                 throw UnknownKeyException.create(key);
             }
-            Object keyValue = context.asValue(library, key);
-            Object result = guestToHostCall(library, cache.getHashValue, context, proxy, keyValue);
-            return context.toGuestValue(library, result);
+            Object keyValue = context.asValue(node, key);
+            Object result = guestToHostCall(node, cache.getHashValue, p, keyValue);
+            return toGuest.execute(node, result);
         } else {
+            errorProfile.enter(node);
             throw UnsupportedMessageException.create();
         }
     }
 
     @ExportMessage
-    @TruffleBoundary
     boolean isHashEntryInsertable(Object key,
-                    @CachedLibrary("this") InteropLibrary library,
+                    @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached HostToValueNode toValueNode,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
-        if (cache.api.isProxyHashMap(proxy)) {
-            return !isHashValueExisting(key, library, cache);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyHashMap) {
+            return !isHashValueExisting(key, node, proxyType, toValueNode, cache);
         } else {
             return false;
         }
     }
 
     @ExportMessage
-    @TruffleBoundary
     void writeHashEntry(Object key, Object value,
-                    @CachedLibrary("this") InteropLibrary library,
+                    @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached HostToValueNode toValueNode,
+                    @Exclusive @Cached HostToValueNode toValueNode2,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyHashMap(proxy)) {
-            Object keyValue = this.context.asValue(library, key);
-            Object valueValue = this.context.asValue(library, value);
-            guestToHostCall(library, cache.putHashEntry, this.context, proxy, keyValue, valueValue);
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyHashMap) {
+            Object keyValue = toValueNode.execute(context, key);
+            Object valueValue = toValueNode2.execute(context, value);
+            guestToHostCall(node, cache.putHashEntry, p, keyValue, valueValue);
         } else {
+            errorProfile.enter(node);
             throw UnsupportedMessageException.create();
         }
     }
 
     @ExportMessage
-    @TruffleBoundary
     void removeHashEntry(Object key,
-                    @CachedLibrary("this") InteropLibrary library,
+                    @Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @Cached HostToValueNode toValueNode,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException, UnknownKeyException {
-        if (cache.api.isProxyHashMap(proxy)) {
-            if (!isHashValueExisting(key, library, cache)) {
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyHashMap) {
+            if (!isHashValueExisting(key, node, proxyType, toValueNode, cache)) {
+                errorProfile.enter(node);
                 throw UnknownKeyException.create(key);
             }
-            Object keyValue = context.asValue(library, key);
-            guestToHostCall(library, cache.removeHashEntry, context, proxy, keyValue);
+            Object keyValue = toValueNode.execute(context, key);
+            guestToHostCall(node, cache.removeHashEntry, p, keyValue);
         } else {
+            errorProfile.enter(node);
             throw UnsupportedMessageException.create();
         }
     }
 
     @ExportMessage
-    @TruffleBoundary
-    Object getHashEntriesIterator(@CachedLibrary("this") InteropLibrary library,
+    Object getHashEntriesIterator(@Bind Node node,
+                    @Shared @Cached InlinedExactClassProfile proxyType,
+                    @Shared @CachedLibrary(limit = "3") InteropLibrary sharedInterop,
+                    @Shared @Cached(inline = true) ToGuestValueNode toGuest,
+                    @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
-        if (cache.api.isProxyHashMap(proxy)) {
-            Object result = guestToHostCall(library, cache.getHashEntriesIterator, context, proxy);
-            Object guestValue = context.toGuestValue(library, result);
-            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
-            if (!interop.isIterator(guestValue)) {
+        Object p = proxyType.profile(node, this.proxy);
+        if (p instanceof ProxyHashMap) {
+            Object result = guestToHostCall(node, cache.getHashEntriesIterator, p);
+            Object guestValue = toGuest.execute(node, result);
+            if (!sharedInterop.isIterator(guestValue)) {
+                errorProfile.enter(node);
                 throw illegalProxy(context, "getHashEntriesIterator() returned an invalid value %s but must return an iterator.",
-                                context.asValue(library, guestValue).toString());
+                                valueToString(node, guestValue));
             }
             return guestValue;
         } else {
+            errorProfile.enter(node);
             throw UnsupportedMessageException.create();
         }
     }
@@ -694,7 +856,6 @@ final class HostProxy implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
     static int identityHashCode(HostProxy receiver) {
         return System.identityHashCode(receiver.proxy);
     }

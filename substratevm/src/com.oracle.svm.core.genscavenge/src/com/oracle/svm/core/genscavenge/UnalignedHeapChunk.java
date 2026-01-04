@@ -177,6 +177,7 @@ public final class UnalignedHeapChunk {
         return RememberedSet.get().getOffsetForObjectInUnalignedChunk(objPtr);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void walkObjects(UnalignedHeader that, ObjectVisitor visitor) {
         HeapChunk.walkObjectsFrom(that, getObjectStart(that), visitor);
     }

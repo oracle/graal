@@ -84,9 +84,6 @@ public class Pthread {
     }
 
     @CConstant
-    public static native int PTHREAD_KEYS_MAX();
-
-    @CConstant
     public static native int PTHREAD_CREATE_JOINABLE();
 
     @CConstant
@@ -97,9 +94,6 @@ public class Pthread {
 
     @CFunction(value = "pthread_create", transition = Transition.NO_TRANSITION)
     public static native int pthread_create_no_transition(pthread_tPointer newthread, pthread_attr_t attr, WordBase start_routine, WordBase arg);
-
-    @CFunction
-    public static native int pthread_join(pthread_t th, WordPointer thread_return);
 
     @CFunction(value = "pthread_join", transition = Transition.NO_TRANSITION)
     public static native int pthread_join_no_transition(pthread_t th, WordPointer thread_return);
@@ -188,9 +182,6 @@ public class Pthread {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_condattr_destroy(pthread_condattr_t attr);
 
-    @CFunction
-    public static native int pthread_kill(pthread_t thread, Signal.SignalEnum sig);
-
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_key_create(pthread_key_tPointer key, PointerBase keyDestructor);
 
@@ -203,4 +194,8 @@ public class Pthread {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native VoidPointer pthread_getspecific(pthread_key_t key);
 
+    public static class NoTransition {
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int pthread_exit(VoidPointer retval);
+    }
 }

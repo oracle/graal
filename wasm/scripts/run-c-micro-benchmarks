@@ -16,6 +16,7 @@ do
     "--results-file=${RESULTS_FILE_PATH}" \
     wasm:WASM_BENCHMARKCASES -- \
     --jvm ${VM} --jvm-config ${VM_CONFIG} \
+    --add-modules=jdk.incubator.vector \
     -Dwasmbench.benchmarkName=$benchmark -- \
     CMicroBenchmarkSuite
 
@@ -26,6 +27,8 @@ done
 mx --dy /compiler --kill-with-sigquit benchmark \
   "--machine-name=${MACHINE_NAME}" \
   "--results-file=${RESULTS_FILE_PATH}" \
-  wasm-memory:* -- --jvm ${VM} --jvm-config ${VM_CONFIG}
+  wasm-memory:* -- \
+  --jvm ${VM} --jvm-config ${VM_CONFIG} \
+  --add-modules=jdk.incubator.vector
 
 ${UPLOAD_CMD} "${RESULTS_FILE_PATH}"

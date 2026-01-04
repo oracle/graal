@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.automaton;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
-
-import java.util.Arrays;
 
 /**
  * Abstract base class for states of an automaton.
@@ -54,14 +54,16 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
     protected static final short FLAG_UN_ANCHORED_INITIAL_STATE = 1 << 1;
     protected static final short FLAG_ANCHORED_FINAL_STATE = 1 << 2;
     protected static final short FLAG_UN_ANCHORED_FINAL_STATE = 1 << 3;
+    protected static final short FLAG_GUARDED_ANCHORED_FINAL_STATE = 1 << 4;
+    protected static final short FLAG_GUARDED_UN_ANCHORED_FINAL_STATE = 1 << 5;
     protected static final short FLAG_ANY_INITIAL_STATE = FLAG_ANCHORED_INITIAL_STATE | FLAG_UN_ANCHORED_INITIAL_STATE;
     protected static final short FLAG_ANY_FINAL_STATE = FLAG_ANCHORED_FINAL_STATE | FLAG_UN_ANCHORED_FINAL_STATE;
-    protected static final short FLAG_ANY_INITIAL_OR_FINAL_STATE = FLAG_ANY_INITIAL_STATE | FLAG_ANY_FINAL_STATE;
+    protected static final short FLAG_ANY_GUARDED_FINAL_STATE = FLAG_GUARDED_ANCHORED_FINAL_STATE | FLAG_GUARDED_UN_ANCHORED_FINAL_STATE;
     /**
      * Number of flag bits occupied by this class. Child classes may add their own flags with
      * {@code byte NEW_FLAG = 1 << N_FLAGS; byte NEW_FLAG2 = 1 << (N_FLAGS + 1)} etc.
      */
-    protected static final int N_FLAGS = 4;
+    protected static final int N_FLAGS = 6;
 
     private final int id;
     @CompilationFinal private short flags;
@@ -141,6 +143,10 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         return getFlag(FLAG_ANY_FINAL_STATE);
     }
 
+    public boolean isGuardedFinalState() {
+        return getFlag(FLAG_ANY_GUARDED_FINAL_STATE);
+    }
+
     /**
      * Anchored final states are implicitly guarded by a {@code $}-{@link PositionAssertion}.
      */
@@ -160,6 +166,22 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         setFlag(FLAG_UN_ANCHORED_FINAL_STATE);
     }
 
+    public boolean isGuardedUnAnchoredFinalState() {
+        return getFlag(FLAG_GUARDED_UN_ANCHORED_FINAL_STATE);
+    }
+
+    public void setGuardedUnAnchoredFinalState(boolean value) {
+        setFlag(FLAG_GUARDED_UN_ANCHORED_FINAL_STATE, value);
+    }
+
+    public boolean isGuardedAnchoredFinalState() {
+        return getFlag(FLAG_GUARDED_ANCHORED_FINAL_STATE);
+    }
+
+    public void setGuardedAnchoredFinalState(boolean value) {
+        setFlag(FLAG_GUARDED_ANCHORED_FINAL_STATE, value);
+    }
+
     public boolean isAnchoredInitialState(boolean forward) {
         return forward ? isAnchoredInitialState() : isAnchoredFinalState();
     }
@@ -176,6 +198,10 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         return forward ? isFinalState() : isInitialState();
     }
 
+    public boolean isGuardedFinalState(boolean forward) {
+        return forward ? isGuardedFinalState() : false;
+    }
+
     public boolean isAnchoredFinalState(boolean forward) {
         return forward ? isAnchoredFinalState() : isAnchoredInitialState();
     }
@@ -184,7 +210,7 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         return forward ? isUnAnchoredFinalState() : isUnAnchoredInitialState();
     }
 
-    protected abstract boolean hasTransitionToUnAnchoredFinalState(boolean forward);
+    protected abstract boolean hasUnGuardedTransitionToUnAnchoredFinalState(boolean forward);
 
     public T[] getSuccessors() {
         return successors;
@@ -242,6 +268,10 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
      */
     public void incPredecessors() {
         nPredecessors++;
+    }
+
+    public void decPredecessors() {
+        nPredecessors--;
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,9 +53,9 @@ import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.object.AllocationContextSensitiveObject;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.flow.context.object.ConstantContextSensitiveObject;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.MultiTypeState;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
@@ -255,7 +255,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
                 for (AnalysisObject originalObject : inputState.objects(type)) {
                     /* Link all the field flows of the original to the clone. */
                     for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
-                        AnalysisField field = (AnalysisField) javaField;
+                        var field = (PointsToAnalysisField) javaField;
                         FieldTypeFlow originalObjectFieldFlow = originalObject.getInstanceFieldFlow(bb, inputFlow, source, field, false);
 
                         for (AnalysisObject cloneObject : cloneState.objects(type)) {
@@ -269,7 +269,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public FieldTypeStore createFieldTypeStore(PointsToAnalysis bb, AnalysisObject object, AnalysisField field, AnalysisUniverse universe) {
+    public FieldTypeStore createFieldTypeStore(PointsToAnalysis bb, AnalysisObject object, PointsToAnalysisField field, AnalysisUniverse universe) {
         assert allocationSiteSensitiveHeap : "policy mismatch";
         if (object.isContextInsensitiveObject()) {
             /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,14 +63,13 @@ public class GraphNodeEventListenerTest extends GraphTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testAddRemove() {
         OptionValues options = getOptions();
         Graph graph = new Graph(options, getDebug(options));
 
         resetListenersCalled();
 
-        try (NodeEventScope nes0 = graph.trackNodeEvents(new Listener0())) {
+        try (NodeEventScope _ = graph.trackNodeEvents(new Listener0())) {
             graph.addWithoutUnique(ConstantNode.forInt(0));
         }
         assert listener0Called;
@@ -82,7 +81,6 @@ public class GraphNodeEventListenerTest extends GraphTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testAddRemoveUnstructured() {
         OptionValues options = getOptions();
         Graph graph = new Graph(options, getDebug(options));
@@ -90,7 +88,7 @@ public class GraphNodeEventListenerTest extends GraphTest {
         resetListenersCalled();
 
         NodeEventScope nes1 = null;
-        try (NodeEventScope nes0 = graph.trackNodeEvents(new Listener0())) {
+        try (NodeEventScope _ = graph.trackNodeEvents(new Listener0())) {
             nes1 = graph.trackNodeEvents(new Listener1());
             graph.addWithoutUnique(ConstantNode.forInt(0));
         }

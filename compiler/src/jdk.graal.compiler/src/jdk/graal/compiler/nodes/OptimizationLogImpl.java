@@ -434,7 +434,7 @@ public class OptimizationLogImpl implements OptimizationLog {
             String optimizationName = createOptimizationName(optimizationClass);
             NodeSourcePosition position = node.getNodeSourcePosition();
             DebugContext debug = optimizationLog.graph.getDebug();
-            if (debug.isCountEnabled() || debug.hasUnscopedCounters()) {
+            if (debug.areCountersEnabled()) {
                 DebugContext.counter("Optimization_" + optimizationName + "_" + eventName).increment(debug);
             }
             if (debug.isLogEnabled(logLevel)) {
@@ -697,7 +697,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         if (!printToStdout && !printToFile) {
             return;
         }
-        StableMethodNameFormatter methodNameFormatter = new StableMethodNameFormatter(true);
+        StableMethodNameFormatter methodNameFormatter = new StableMethodNameFormatter();
         String json = JsonFormatter.formatJson(asJSONMap(methodNameFormatter));
         if (printToStdout) {
             TTY.out().println(json);

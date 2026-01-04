@@ -28,9 +28,10 @@ package jdk.graal.compiler.hotspot.test;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
+import jdk.graal.compiler.util.EconomicHashMap;
 import org.graalvm.collections.Pair;
 import org.junit.Test;
 
@@ -56,8 +57,8 @@ public final class ArraySortIntrinsicficationTest extends HotSpotGraalCompilerTe
         Method method = getMethod(klass, "sort", int[].class, int.class, int.class, int.class);
         method.setAccessible(true);
 
-        HashMap<Pair<Integer, Integer>, int[]> goldensFullArray = new HashMap<>();
-        HashMap<Pair<Integer, Integer>, int[]> goldensHalfArray = new HashMap<>();
+        Map<Pair<Integer, Integer>, int[]> goldensFullArray = new EconomicHashMap<>();
+        Map<Pair<Integer, Integer>, int[]> goldensHalfArray = new EconomicHashMap<>();
 
         int[][] arrays = Arrays.stream(LONG_RUN_LENGTHS).mapToObj(len -> rng.ints(len).toArray()).toArray(int[][]::new);
 

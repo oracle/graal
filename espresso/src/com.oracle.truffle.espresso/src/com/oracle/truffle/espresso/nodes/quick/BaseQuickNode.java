@@ -48,6 +48,7 @@ public abstract class BaseQuickNode extends EspressoNode implements BciProvider,
 
     public abstract int execute(VirtualFrame frame, boolean isContinuationResume);
 
+    @Override
     public boolean isInstrumentable() {
         return true;
     }

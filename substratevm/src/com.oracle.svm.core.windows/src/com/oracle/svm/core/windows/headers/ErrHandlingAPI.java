@@ -51,6 +51,9 @@ public class ErrHandlingAPI {
     @CFunction(transition = NO_TRANSITION)
     public static native PointerBase AddVectoredContinueHandler(int first, CFunctionPointer handler);
 
+    @CFunction(transition = NO_TRANSITION)
+    public static native CFunctionPointer SetUnhandledExceptionFilter(CFunctionPointer handler);
+
     @CConstant
     public static native int EXCEPTION_CONTINUE_SEARCH();
 

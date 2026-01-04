@@ -29,7 +29,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
@@ -53,12 +52,11 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoObjectConstant
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedInstanceType_init.getCallTarget())") DirectCallNode objectTypeConstructor,
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedArrayType_init.getCallTarget())") DirectCallNode arrayTypeConstructor,
-                        @Cached("create(context.getMeta().jvmci.EspressoResolvedPrimitiveType_forBasicType.getCallTarget())") DirectCallNode forBasicType,
-                        @Cached InitCheck initCheck) {
+                        @Cached("create(context.getMeta().jvmci.EspressoResolvedPrimitiveType_forBasicType.getCallTarget())") DirectCallNode forBasicType) {
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
             StaticObject object = (StaticObject) meta.jvmci.HIDDEN_OBJECT_CONSTANT.getHiddenObject(self);
-            return toJVMCIObjectType(object.getKlass(), objectTypeConstructor, arrayTypeConstructor, forBasicType, initCheck, context, meta);
+            return toJVMCIObjectType(object.getKlass(), objectTypeConstructor, arrayTypeConstructor, forBasicType, context, meta);
         }
     }
 

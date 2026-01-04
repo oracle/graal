@@ -46,6 +46,8 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -56,7 +58,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -64,9 +65,13 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.EspressoOptions.XShareOption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.blocking.BlockingSupport;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
+import com.oracle.truffle.espresso.cds.ArchivedRegistryData;
+import com.oracle.truffle.espresso.cds.CDSSupport;
+import com.oracle.truffle.espresso.cds.IncompatibleCDSArchiveException;
 import com.oracle.truffle.espresso.classfile.ClasspathEntry;
 import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
@@ -84,9 +89,6 @@ import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.ffi.EspressoLibsNativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
-import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
-import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
-import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
@@ -97,6 +99,10 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
+import com.oracle.truffle.espresso.libs.InformationLeak;
+import com.oracle.truffle.espresso.libs.JNU;
+import com.oracle.truffle.espresso.libs.LibsMeta;
+import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
@@ -113,6 +119,7 @@ import com.oracle.truffle.espresso.runtime.panama.UpcallStubs;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.meta.ErrorType;
 import com.oracle.truffle.espresso.shared.meta.KnownTypes;
+import com.oracle.truffle.espresso.shared.meta.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.shared.meta.RuntimeAccess;
 import com.oracle.truffle.espresso.shared.meta.SymbolPool;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
@@ -123,10 +130,7 @@ import com.oracle.truffle.espresso.vm.VM;
 
 import sun.misc.SignalHandler;
 
-public final class EspressoContext
-                implements RuntimeAccess<Klass, Method, Field> {
-    // MaxJavaStackTraceDepth is 1024 by default
-    public static final int DEFAULT_STACK_SIZE = 32;
+public final class EspressoContext implements RuntimeAccess<Klass, Method, Field> {
 
     private static final DebugTimer SPAWN_VM = DebugTimer.create("spawnVM");
     private static final DebugTimer SYSTEM_INIT = DebugTimer.create("system init", SPAWN_VM);
@@ -147,7 +151,7 @@ public final class EspressoContext
     private final StringTable strings;
     @CompilationFinal private ClassRegistries registries;
     private final Substitutions substitutions;
-    private final MethodHandleIntrinsics methodHandleIntrinsics;
+    private final MethodHandleIntrinsics<Klass, Method, Field> methodHandleIntrinsics;
     // endregion Runtime
 
     // region Helpers
@@ -195,9 +199,14 @@ public final class EspressoContext
     @CompilationFinal private JavaAgents javaAgents;
     @CompilationFinal private NativeAccess nativeAccess;
     @CompilationFinal private JNIHandles handles;
+    @CompilationFinal private CDSSupport cdsSupport;
     // endregion VM
 
     @CompilationFinal private TruffleIO truffleIO = null;
+    @CompilationFinal private LibsState libsState = null;
+    @CompilationFinal private LibsMeta libsMeta = null;
+    @CompilationFinal private JNU jnu = null;
+    @CompilationFinal private InformationLeak informationLeak = null;
 
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
@@ -221,7 +230,7 @@ public final class EspressoContext
 
         this.strings = new StringTable(this);
         this.substitutions = new Substitutions(this);
-        this.methodHandleIntrinsics = new MethodHandleIntrinsics();
+        this.methodHandleIntrinsics = new MethodHandleIntrinsics<>();
 
         this.espressoEnv = new EspressoEnv(this, env);
         this.classLoadingEnv = new ClassLoadingEnv(getLanguage(), getLogger(), getTimers());
@@ -346,6 +355,14 @@ public final class EspressoContext
         if (espressoEnv.JDWPOptions != null) {
             espressoEnv.getJdwpContext().jdwpInit(getEnv(), getMainThread(), espressoEnv.getEventListener());
         }
+
+        if (EspressoOptions.CDS.getValue(getEnv().getOptions()) == XShareOption.dump) {
+            CDSSupport cds = getCDS();
+            if (cds != null && cds.isDumpingStaticArchive()) {
+                cds.dump(getMeta());
+            }
+            truffleExit(null, 0);
+        }
     }
 
     public void patchContext(TruffleLanguage.Env newEnv) {
@@ -387,6 +404,22 @@ public final class EspressoContext
         return truffleIO;
     }
 
+    public LibsState getLibsState() {
+        return libsState;
+    }
+
+    public LibsMeta getLibsMeta() {
+        return libsMeta;
+    }
+
+    public JNU getJNU() {
+        return jnu;
+    }
+
+    public InformationLeak getInformationLeak() {
+        return informationLeak;
+    }
+
     @SuppressWarnings("try")
     private void spawnVM() throws ContextPatchingException {
         try (DebugCloseable spawn = SPAWN_VM.scope(espressoEnv.getTimers())) {
@@ -420,8 +453,8 @@ public final class EspressoContext
                 getLanguage().tryInitializeJavaVersion(contextJavaVersion);
             }
 
-            if (!contextJavaVersion.java21OrLater() && getEspressoEnv().RegexSubstitutions) {
-                logger.warning("UseTRegex is not available for context running Java version < 21");
+            if (!getJavaVersion().java21Or25() && getLanguage().useEspressoLibs()) {
+                throw EspressoError.fatal("Unsupported Java version for EspressoLibs. Use Java 21 or 25");
             }
 
             // Spawn JNI first, then the VM.
@@ -430,22 +463,29 @@ public final class EspressoContext
                 this.jniEnv = JniEnv.create(this); // libnespresso
                 this.vm = VM.create(this.jniEnv); // libjvm
                 vm.attachThread(Thread.currentThread());
-                vm.loadJavaLibrary(vmProperties.bootLibraryPath()); // libjava
+                vm.loadJavaLibrary(vmProperties.bootLibraryPath()); // libjava, libverify
                 this.downcallStubs = new DowncallStubs(Platform.getHostPlatform());
-                this.upcallStubs = new UpcallStubs(Platform.getHostPlatform(), nativeAccess, language);
+                this.upcallStubs = new UpcallStubs(Platform.getHostPlatform(), nativeAccess, this, language);
 
                 vm.initializeJavaLibrary();
                 EspressoError.guarantee(getJavaVersion() != null, "Java version");
             }
 
+            initCDS();
+
             this.registries = new ClassRegistries(this);
 
             if (getJavaVersion().modulesEnabled()) {
                 registries.initJavaBaseModule();
-                registries.getBootClassRegistry().initUnnamedModule(null);
+                ArchivedRegistryData archivedRegistryData = null;
+                CDSSupport cds = getCDS();
+                if (cds != null && cds.isUsingArchive()) {
+                    archivedRegistryData = cds.getBootClassRegistryData();
+                }
+                registries.getBootClassRegistry().initUnnamedModule(null, archivedRegistryData);
             }
             javaAgentsOnLoad();
-            initializeAgents();
+            initializeNativeAgents();
 
             try (DebugCloseable metaInit = META_INIT.scope(espressoEnv.getTimers())) {
                 this.meta = new Meta(this);
@@ -459,8 +499,12 @@ public final class EspressoContext
             this.interpreterToVM = new InterpreterToVM(this);
             this.lazyCaches = new LazyContextCaches(this);
             if (language.useEspressoLibs()) {
+                this.libsMeta = new LibsMeta(this);
+                this.libsState = new LibsState(this, libsMeta);
                 this.truffleIO = new TruffleIO(this);
+                this.informationLeak = new InformationLeak(this);
             }
+            this.jnu = new JNU();
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
                 initializeKnownClass(Types.java_lang_Object);
@@ -480,6 +524,8 @@ public final class EspressoContext
             }
 
             // Create main thread as soon as Thread class is initialized.
+            // On return, the main thread is in the RUNNABLE state. Keep it that way until we are
+            // done with initializing the guest.
             espressoEnv.getThreadRegistry().createMainThread(meta);
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
@@ -550,6 +596,9 @@ public final class EspressoContext
             meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Names._init_, Signatures._void_String).invokeDirectSpecial(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
             meta.postSystemInit();
+            if (language.useEspressoLibs()) {
+                libsMeta.postSystemInit();
+            }
 
             // class redefinition will be enabled if debug mode or if any redefine or retransform
             // capable java agent is present
@@ -569,15 +618,66 @@ public final class EspressoContext
             bindingsLoader = createBindingsLoader(systemClassLoader);
             topBindings = new EspressoBindings(
                             getEnv().getOptions().get(EspressoOptions.ExposeNativeJavaVM),
-                            bindingsLoader != systemClassLoader);
+                            bindingsLoader != systemClassLoader,
+                            getLanguage().isExternalJVMCIEnabled());
 
             initDoneTimeNanos = System.nanoTime();
             long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
             getLogger().log(Level.FINE, "VM booted in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
+        } finally {
+            // Done with guest initialization, report main thread as out of espresso as we are
+            // yielding control.
+            espressoEnv.getThreadRegistry().reportMainAsInNative();
         }
     }
 
-    private JavaVersion javaVersionFromReleaseFile(Path javaHome) {
+    private void initCDS() {
+        assert getVmProperties() != null;
+        OptionValues values = getEnv().getOptions();
+        XShareOption shareOption = EspressoOptions.CDS.getValue(values);
+        Path archivePath = null;
+        if (shareOption == XShareOption.off) {
+            this.cdsSupport = null;
+            return;
+        }
+
+        // Find static archive from options or pick default.
+        if (EspressoOptions.SharedArchiveFile.hasBeenSet(values)) {
+            archivePath = EspressoOptions.SharedArchiveFile.getValue(values);
+            CDSSupport.getLogger().fine("Using --java.SharedArchiveFile CDS archive: " + archivePath);
+        } else {
+            Path javaHome = getVmProperties().javaHome();
+            // JAVA_HOME/lib/server/classes.ejsa (or JAVA_HOME\bin\server\classes.ejsa on
+            // Windows)
+            String libFolder = (OS.getCurrent() == OS.Windows) ? "bin" : "lib";
+            // Use .ejsa extension for Espresso to avoid conflicts with HotSpot CDS archives.
+            archivePath = javaHome.resolve(libFolder).resolve("truffle").resolve("classes.ejsa");
+            CDSSupport.getLogger().fine("Using default CDS archive: " + archivePath);
+        }
+
+        if (shareOption == XShareOption.on) {
+            // Common failure: archive doesn't exist.
+            EspressoError.guarantee(Files.isRegularFile(archivePath), "Static CDS archive not found: " + archivePath);
+        }
+
+        boolean isUsingArchive = (shareOption != XShareOption.dump && shareOption != XShareOption.off);
+        boolean isDumpingStaticArchive = shareOption == XShareOption.dump;
+        try {
+            this.cdsSupport = new CDSSupport(this, archivePath, isUsingArchive, isDumpingStaticArchive);
+        } catch (IncompatibleCDSArchiveException | IOException e) {
+            if (e instanceof IncompatibleCDSArchiveException) {
+                // Slightly more severe logging.
+                CDSSupport.getLogger().warning("Incompatible CDS static archive: " + e.getMessage() + " at " + archivePath);
+            } else {
+                CDSSupport.getLogger().fine("CDS static archive not found/accessible: " + archivePath);
+            }
+            if (shareOption == XShareOption.on) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+    }
+
+    public String readKeyFromReleaseFile(Path javaHome, String keyName) {
         Path releaseFilePath = javaHome.resolve("release");
         if (!Files.isRegularFile(releaseFilePath)) {
             Path maybeJre = javaHome.getFileName();
@@ -596,18 +696,31 @@ public final class EspressoContext
         }
         try {
             for (String line : Files.readAllLines(releaseFilePath)) {
-                if (line.startsWith("JAVA_VERSION=")) {
-                    String version = line.substring("JAVA_VERSION=".length()).trim();
-                    // JAVA_VERSION=<value> may be quoted or unquoted, both cases are supported.
-                    if (version.length() > 2 && version.startsWith("\"") && version.endsWith("\"")) {
-                        version = version.substring(1, version.length() - 1);
+                if (line.startsWith(keyName + "=")) {
+                    String value = line.substring(keyName.length() + 1 /* = */).trim();
+                    // KEY_NAME=<value> may be quoted or unquoted, both cases are supported.
+                    if (value.length() > 2 && value.startsWith("\"") && value.endsWith("\"")) {
+                        value = value.substring(1, value.length() - 1);
                     }
-                    return JavaVersion.forVersion(version);
+                    return value;
                 }
             }
-        } catch (IOException | NumberFormatException e) {
-            getLogger().log(Level.WARNING, "Error while trying to read Java version from release file", e);
+        } catch (IOException e) {
+            getLogger().log(Level.WARNING, "Error while trying to read " + keyName + " from release file", e);
             // cannot read file, skip
+        }
+        return null; // not found
+    }
+
+    private JavaVersion javaVersionFromReleaseFile(Path javaHome) {
+        String javaVersion = readKeyFromReleaseFile(javaHome, "JAVA_VERSION");
+        if (javaVersion != null) {
+            try {
+                return JavaVersion.forVersion(javaVersion);
+            } catch (NumberFormatException e) {
+                getLogger().log(Level.WARNING, "Error while trying to parse JAVA_VERSION from release file", e);
+                // cannot parse, skip
+            }
         }
         return null; // JAVA_VERSION not found
     }
@@ -684,23 +797,7 @@ public final class EspressoContext
     }
 
     private NativeAccess spawnNativeAccess() {
-        String nativeBackend;
-        if (getEnv().getOptions().hasBeenSet(EspressoOptions.NativeBackend)) {
-            nativeBackend = getEnv().getOptions().get(EspressoOptions.NativeBackend);
-        } else {
-            // Pick a sane "default" native backend depending on the platform.
-            boolean isInPreInit = (boolean) getEnv().getConfig().getOrDefault("preinit", false);
-            if (isInPreInit || !EspressoOptions.RUNNING_ON_SVM) {
-                if (OS.getCurrent() == OS.Linux) {
-                    nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
-                } else {
-                    nativeBackend = NFISulongNativeAccess.Provider.ID;
-                }
-            } else {
-                nativeBackend = NFINativeAccess.Provider.ID;
-            }
-        }
-
+        String nativeBackend = language.nativeBackendId();
         List<String> available = new ArrayList<>();
         for (NativeAccess.Provider provider : NativeAccessCollector.getInstances(NativeAccess.Provider.class)) {
             available.add(provider.id());
@@ -718,7 +815,7 @@ public final class EspressoContext
         }
     }
 
-    private void initializeAgents() {
+    private void initializeNativeAgents() {
         agents = new AgentLibraries(this);
         if (getEnv().getOptions().hasBeenSet(EspressoOptions.AgentLib)) {
             agents.registerAgents(getEnv().getOptions().get(EspressoOptions.AgentLib), false);
@@ -730,7 +827,7 @@ public final class EspressoContext
             agents.initialize();
         } else {
             if (!agents.isEmpty()) {
-                getLogger().warning("Agents support is currently disabled in Espresso. Ignoring passed agent options.");
+                agents.noSupportWarning(getLogger());
             }
         }
     }
@@ -768,6 +865,10 @@ public final class EspressoContext
         return vm;
     }
 
+    public CDSSupport getCDS() {
+        return cdsSupport;
+    }
+
     private JImageLibrary jimageLibrary() {
         if (jimageLibrary == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -803,7 +904,7 @@ public final class EspressoContext
     }
 
     public boolean advancedRedefinitionEnabled() {
-        return espressoEnv.JDWPOptions != null;
+        return espressoEnv.AdvancedRedefinition;
     }
 
     public TypeSymbols getTypes() {
@@ -867,7 +968,7 @@ public final class EspressoContext
         return getLanguage().getNames();
     }
 
-    public MethodHandleIntrinsics getMethodHandleIntrinsics() {
+    public MethodHandleIntrinsics<Klass, Method, Field> getMethodHandleIntrinsics() {
         return methodHandleIntrinsics;
     }
 
@@ -1005,8 +1106,9 @@ public final class EspressoContext
         return espressoEnv.getThreadRegistry().activeThreads();
     }
 
-    public void registerThread(Thread host, StaticObject self) {
-        espressoEnv.getThreadRegistry().registerThread(host, self);
+    public void registerJavaThread(Thread host, StaticObject self) {
+        StaticObject guest = espressoEnv.getThreadRegistry().registerThread(host, self);
+        assert self == guest;
         if (shouldReportVMEvents()) {
             espressoEnv.getEventListener().threadStarted(self);
         }
@@ -1160,24 +1262,24 @@ public final class EspressoContext
         espressoEnv.getEventListener().onContendedMonitorEntered(obj);
     }
 
-    public boolean reportOnMethodEntry(Method.MethodVersion methodVersion, Object scope) {
+    public boolean reportOnMethodEntry(Method.MethodVersion methodVersion, Node node, Object scope) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onMethodEntry(methodVersion.getMethod(), scope);
+        return espressoEnv.getEventListener().onMethodEntry(methodVersion.getMethod(), node, scope);
     }
 
-    public boolean reportOnMethodReturn(Method.MethodVersion methodVersion, Object returnValue) {
+    public boolean reportOnMethodReturn(Method.MethodVersion methodVersion, Node node, Object returnValue) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onMethodReturn(methodVersion.getMethod(), returnValue);
+        return espressoEnv.getEventListener().onMethodReturn(methodVersion.getMethod(), node, returnValue);
     }
 
-    public boolean reportOnFieldModification(Field field, StaticObject receiver, Object value) {
+    public boolean reportOnFieldModification(Field field, Node node, StaticObject receiver, Object value) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onFieldModification(field, receiver, value);
+        return espressoEnv.getEventListener().onFieldModification(field, node, receiver, value);
     }
 
-    public boolean reportOnFieldAccess(Field field, StaticObject receiver) {
+    public boolean reportOnFieldAccess(Field field, Node node, StaticObject receiver) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onFieldAccess(field, receiver);
+        return espressoEnv.getEventListener().onFieldAccess(field, node, receiver);
     }
     // endregion VM event reporting
 
@@ -1223,11 +1325,6 @@ public final class EspressoContext
 
     public boolean interfaceMappingsEnabled() {
         return getEspressoEnv().getPolyglotTypeMappings().hasInterfaceMappings();
-    }
-
-    @Idempotent
-    public boolean regexSubstitutionsEnabled() {
-        return getEspressoEnv().RegexSubstitutions && getJavaVersion().java21OrLater();
     }
 
     public PolyglotTypeMappings getPolyglotTypeMappings() {

@@ -96,7 +96,7 @@ public class TStringBuilderAppendSubStringTest extends TStringTestBase {
 
     @Test
     public void testNull() throws Exception {
-        expectNullPointerException(() -> node.execute(null, S_UTF8, 0, 1));
+        expectNullPointerException(() -> node.execute((TruffleStringBuilder) null, S_UTF8, 0, 1));
         expectNullPointerException(() -> node.execute(TruffleStringBuilder.create(TruffleString.Encoding.UTF_8), null, 0, 1));
     }
 

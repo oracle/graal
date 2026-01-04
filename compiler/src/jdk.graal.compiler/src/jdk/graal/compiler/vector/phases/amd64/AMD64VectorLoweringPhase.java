@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.vector.phases.amd64;
 
+import java.util.Arrays;
 import java.util.Optional;
 
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
@@ -51,6 +52,7 @@ import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.CompressBitsNode;
 import jdk.graal.compiler.nodes.calc.FloatConvertNode;
+import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import jdk.graal.compiler.nodes.calc.IntegerTestNode;
@@ -70,18 +72,21 @@ import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.graal.compiler.vector.architecture.amd64.VectorAMD64;
 import jdk.graal.compiler.vector.architecture.amd64.VectorAMD64.MaySimulateBT;
 import jdk.graal.compiler.vector.lir.amd64.AMD64AVX512ArithmeticLIRGenerator;
+import jdk.graal.compiler.vector.nodes.amd64.AMD64SimdSliceNode;
 import jdk.graal.compiler.vector.nodes.amd64.AVX512MaskedOpNode;
 import jdk.graal.compiler.vector.nodes.amd64.GeneralSimdPermuteNode;
 import jdk.graal.compiler.vector.nodes.amd64.IntegerToOpMaskNode;
 import jdk.graal.compiler.vector.nodes.amd64.LaneSymmetricSimdPermuteNode;
 import jdk.graal.compiler.vector.nodes.simd.LogicValueStamp;
 import jdk.graal.compiler.vector.nodes.simd.MaskedOpMetaData;
+import jdk.graal.compiler.vector.nodes.simd.SimdBlendWithConstantMaskNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdBlendWithLogicMaskNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdBroadcastNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
 import jdk.graal.compiler.vector.nodes.simd.SimdCutNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdInsertNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdMaskLogicNode;
+import jdk.graal.compiler.vector.nodes.simd.SimdNarrowingReinterpretNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdPermuteNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdPermuteWithVectorIndicesNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdPrimitiveCompareNode;
@@ -128,6 +133,8 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
                 lowerSimdPermute((SimdPermuteNode) node, context, vectorArch);
             } else if (node instanceof SimdMaskLogicNode) {
                 lowerSimdMaskLogic((SimdMaskLogicNode) node, vectorArch);
+            } else if (node instanceof SimdBlendWithConstantMaskNode blend) {
+                lowerSimdBlendWithConstantMask(blend);
             } else if (node instanceof SimdBlendWithLogicMaskNode blend) {
                 lowerSimdBlend(vectorArch, blend);
             } else if (node instanceof AndNode and && and.stamp(NodeView.DEFAULT) instanceof SimdStamp simdStamp && simdStamp.getComponent(0) instanceof LogicValueStamp) {
@@ -239,13 +246,39 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
         int elementBytes = vectorArch.getVectorStride(elementStamp);
         int vectorBytes = elementBytes * vectorStamp.getVectorLength();
 
-        if (elementBytes > 1 && isLaneSymmetric(context.getTarget().arch, vectorBytes, elementBytes, permute.getDestinationMapping())) {
+        int rotateLeftAmount = vectorRotateLeftAmount(permute);
+        if (rotateLeftAmount != -1) {
+            permute.replaceAtUsagesAndDelete(graph.addOrUnique(AMD64SimdSliceNode.create(permute.getValue(), permute.getValue(), rotateLeftAmount)));
+        } else if (elementBytes > 1 && isLaneSymmetric(context.getTarget().arch, vectorBytes, elementBytes, permute.getDestinationMapping())) {
             permute.replaceAtUsagesAndDelete(
                             graph.addOrUnique(new LaneSymmetricSimdPermuteNode(permute.stamp(NodeView.DEFAULT), permute.getValue(), permute.getDestinationMapping())));
         } else {
             ValueNode result = graph.unique(GeneralSimdPermuteNode.create(vectorArch, permute.getValue(), permute.getDestinationMapping()));
             permute.replaceAtUsagesAndDelete(result);
         }
+    }
+
+    /**
+     * If a permute is recognized to be a left rotation, we can replace an {@link SimdPermuteNode}
+     * with a more optimal {@link AMD64SimdSliceNode}.
+     */
+    private static int vectorRotateLeftAmount(SimdPermuteNode permute) {
+        int[] indices = permute.getDestinationMapping();
+        int origin = indices[0];
+        if (origin == -1) {
+            return -1;
+        }
+
+        GraalError.guarantee(origin >= 0 && origin < indices.length, "unexpected index %d", origin);
+        for (int i = 1; i < indices.length; i++) {
+            int expected = origin + i;
+            expected = expected >= indices.length ? expected - indices.length : expected;
+            if (indices[i] != expected) {
+                return -1;
+            }
+        }
+
+        return origin;
     }
 
     private static void lowerSimdCut(SimdCutNode cut, LowTierContext context, VectorAMD64 vectorArch) {
@@ -348,8 +381,12 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
         SimdStamp byteStamp = SimdStamp.broadcast(IntegerStamp.create(Byte.SIZE), inputStamp.getVectorLength() * 2);
         ValueNode input = graph.addOrUnique(ReinterpretNode.create(byteStamp, node.getValue(), NodeView.DEFAULT));
         SimdToBitMaskNode bitmask = graph.unique(new SimdToBitMaskNode(input));
-        ConstantNode compressMask = ConstantNode.forLong(0x5555555555555555L, graph);
-        ValueNode result = graph.unique(new CompressBitsNode(bitmask, compressMask));
+        /*
+         * Extract the higher bit out of each two-bit pair. The compress mask for this is
+         * 0b...10_10_10_10, i.e., 0x...AA.
+         */
+        ConstantNode compressMask = ConstantNode.forLong(0xAAAAAAAAAAAAAAAAL, graph);
+        ValueNode result = graph.addOrUniqueWithInputs(IntegerConvertNode.convert(new CompressBitsNode(bitmask, compressMask), node.stamp(NodeView.DEFAULT), NodeView.DEFAULT));
         node.replaceAtUsagesAndDelete(result);
     }
 
@@ -646,6 +683,87 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
                 default -> throw GraalError.shouldNotReachHereUnexpectedValue(f);
             };
         }
+    }
+
+    /**
+     * If a blend is recognized to do a slice operation (see {@link AMD64SimdSliceNode} and
+     * {@code jdk.incubator.vector.Vector::slice}), we can replace it with the more optimal
+     * {@link AMD64SimdSliceNode}.
+     */
+    private static void lowerSimdBlendWithConstantMask(SimdBlendWithConstantMaskNode blend) {
+        boolean[] mask = blend.getSelector();
+        boolean trueValueIsSrc1 = mask[0];
+
+        // Search for an index origin such that all values before origin are the same, and all
+        // values from origin are the same and different from the values before origin
+        int origin = 0;
+        for (int i = 1; i < mask.length; i++) {
+            if (mask[i] != trueValueIsSrc1) {
+                origin = i;
+                break;
+            }
+        }
+        for (int i = origin; i < mask.length; i++) {
+            if (mask[i] == trueValueIsSrc1) {
+                return;
+            }
+        }
+
+        // The actual origin of a slice is mask.length - origin
+        origin = mask.length - origin;
+        GraalError.guarantee(origin > 0 && origin < mask.length, "unexpected origin value for %s", Arrays.toString(mask));
+
+        StructuredGraph graph = blend.graph();
+        ValueNode src1;
+        if (blend.getFalseValues() instanceof AMD64SimdSliceNode slice &&
+                        slice.getSrc1() == slice.getSrc2() && slice.getOrigin() == origin) {
+            src1 = slice.getSrc1();
+        } else if (blend.getFalseValues() instanceof SimdNarrowingReinterpretNode in && in.getValue().isDefaultConstant()) {
+            src1 = in;
+        } else if (blend.getFalseValues().isConstant()) {
+            // We want to ensure we can actually create a slice node before rotating the constant
+            // below
+            if (blend.getTrueValues() instanceof AMD64SimdSliceNode slice &&
+                            slice.getSrc1() == slice.getSrc2() && slice.getOrigin() == origin) {
+                src1 = rotateRightConstantVector(graph, (SimdConstant) blend.getFalseValues().asConstant(), origin);
+            } else {
+                return;
+            }
+        } else {
+            return;
+        }
+
+        // At this point we know that blend.getFalseValues() is of a suitable form
+        ValueNode src2;
+        if (blend.getTrueValues() instanceof AMD64SimdSliceNode slice &&
+                        slice.getSrc1() == slice.getSrc2() && slice.getOrigin() == origin) {
+            src2 = slice.getSrc1();
+        } else if (blend.getTrueValues() instanceof SimdNarrowingReinterpretNode in && in.getValue().isDefaultConstant()) {
+            src2 = in;
+        } else if (blend.getTrueValues().isConstant()) {
+            src2 = rotateRightConstantVector(graph, (SimdConstant) blend.getTrueValues().asConstant(), origin);
+        } else {
+            return;
+        }
+
+        if (trueValueIsSrc1) {
+            ValueNode tmp = src1;
+            src1 = src2;
+            src2 = tmp;
+        }
+        blend.replaceAndDelete(graph.addOrUniqueWithInputs(AMD64SimdSliceNode.create(src1, src2, origin)));
+    }
+
+    private static ValueNode rotateRightConstantVector(StructuredGraph graph, SimdConstant vector, int origin) {
+        JavaConstant[] data = new JavaConstant[vector.getVectorLength()];
+        for (int i = 0; i < data.length; i++) {
+            int srcIdx = i - origin;
+            if (srcIdx < 0) {
+                srcIdx += data.length;
+            }
+            data[i] = (JavaConstant) vector.getValue(srcIdx);
+        }
+        return graph.addOrUnique(SimdConstant.constantNodeForConstants(data));
     }
 
     /**

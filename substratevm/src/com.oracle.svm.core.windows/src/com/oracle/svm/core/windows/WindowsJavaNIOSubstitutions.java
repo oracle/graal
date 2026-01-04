@@ -24,18 +24,13 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@Platforms(Platform.WINDOWS.class)
 public final class WindowsJavaNIOSubstitutions {
 
     @TargetClass(className = "sun.nio.fs.Cancellable")
-    @Platforms({Platform.WINDOWS.class})
     static final class Target_sun_nio_fs_Cancellable {
         @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Manual)//
         private long pollingAddress;

@@ -46,7 +46,9 @@ public final class SimulateClassInitializerClusterMember {
     final AnalysisType type;
 
     final EconomicSet<SimulateClassInitializerClusterMember> dependencies = EconomicSet.create();
+    /** Keeps track of why the type could not be simulated as initialized. */
     final List<Object> notInitializedReasons = new ArrayList<>();
+    /** The values resulting from a successful simulation. */
     final EconomicMap<AnalysisField, JavaConstant> staticFieldValues = EconomicMap.create();
 
     /** The mutable status field of the cluster member. */

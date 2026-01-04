@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.meta;
 
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.hotspot.replacements.ObjectCloneSnippets;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider.Extensions;
@@ -37,13 +37,13 @@ import jdk.graal.compiler.options.OptionValues;
  */
 public interface HotSpotLoweringProvider extends LoweringProvider {
 
-    void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config);
+    void initialize(OptionValues options, Iterable<DebugDumpHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config);
 
     ObjectCloneSnippets.Templates getObjectCloneSnippets();
 
     ForeignCallSnippets.Templates getForeignCallSnippets();
 
-    void initializeExtensions(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
+    void initializeExtensions(OptionValues options, Iterable<DebugDumpHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
                     Iterable<Extensions> iterableExtensions);
 
     GraalHotSpotVMConfig getVMConfig();

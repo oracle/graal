@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,6 +42,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.util.JavaConstantFormatter;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -124,7 +124,7 @@ interface GraphPrinter extends Closeable, JavaConstantFormatter {
                 } catch (Throwable ex) {
                 }
                 if (obj != null) {
-                    Set<Object> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+                    Set<Object> visited = Collections.newSetFromMap(EconomicHashMap.newIdentityMap());
                     return GraphPrinter.constantToString(obj, visited);
                 }
             }

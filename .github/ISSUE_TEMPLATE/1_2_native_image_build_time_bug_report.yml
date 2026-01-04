@@ -48,7 +48,7 @@ body:
     attributes:
       label: Build Command
       description: "Provide the exact build command you used."
-      placeholder: "e.g., `native-image --no-fallback ...`"
+      placeholder: "e.g., `native-image ...`"
     validations:
       required: true
 

@@ -24,15 +24,13 @@
  */
 package jdk.graal.compiler.replacements.test;
 
-import java.util.Collections;
+import org.junit.Test;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.hotspot.test.HotSpotGraalCompilerTest;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.test.AddExports;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AddExports("java.base/java.lang")
@@ -70,7 +68,7 @@ public class CountPositivesTest extends HotSpotGraalCompilerTest {
             for (int off : new int[]{0, 2, -2}) {
                 for (int len : new int[]{bytes.length, 2, 0, -2}) {
                     Result expect = executeExpected(method, null, bytes, off, len);
-                    Result actual = executeActualCheckDeopt(getInitialOptions(), method, Collections.emptySet(), null, bytes, off, len);
+                    Result actual = executeActual(method, null, bytes, off, len);
 
                     if (expect.returnValue == null) {
                         assertEquals(expect, actual);

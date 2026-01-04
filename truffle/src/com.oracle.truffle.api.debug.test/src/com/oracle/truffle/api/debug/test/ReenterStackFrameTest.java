@@ -42,6 +42,7 @@ package com.oracle.truffle.api.debug.test;
 
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import java.util.Iterator;
 import org.graalvm.polyglot.Source;
@@ -88,6 +89,8 @@ public class ReenterStackFrameTest extends AbstractDebugTest {
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame currentFrame = event.getTopStackFrame();
                 try {
+                    // Assert that we're before the CALL again after unwind
+                    Assert.assertEquals(SuspendAnchor.BEFORE, event.getSuspendAnchor());
                     Assert.assertEquals("CALL(a)", currentFrame.getSourceSection().getCharacters());
                     Iterator<DebugStackFrame> frames = event.getStackFrames().iterator();
                     Assert.assertEquals("", frames.next().getName());

@@ -25,18 +25,14 @@ package com.oracle.truffle.espresso.jvmci;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.io.Serializable;
-import java.util.EnumSet;
 
 import com.oracle.truffle.espresso.jvmci.meta.EspressoConstantReflectionProvider;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoMetaAccessProvider;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedJavaMethod;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.common.JVMCIError;
@@ -57,7 +53,7 @@ public final class EspressoJVMCIRuntime implements JVMCIRuntime {
 
     private EspressoJVMCIRuntime() {
         EspressoMetaAccessProvider metaAccess = new EspressoMetaAccessProvider();
-        CodeCacheProvider codeCache = new DummyCodeCacheProvider(getHostTarget());
+        CodeCacheProvider codeCache = new DummyCodeCacheProvider(DummyCodeCacheProvider.getHostTarget());
         ConstantReflectionProvider constantReflection = new EspressoConstantReflectionProvider(metaAccess);
         StackIntrospection stackIntrospection = new DummyStackIntrospection();
         hostBackend = new JVMCIBackend(metaAccess, codeCache, constantReflection, stackIntrospection);
@@ -66,26 +62,6 @@ public final class EspressoJVMCIRuntime implements JVMCIRuntime {
                         metaAccess.lookupJavaType(Cloneable.class),
                         metaAccess.lookupJavaType(Serializable.class)
         };
-    }
-
-    private static TargetDescription getHostTarget() {
-        String archString = System.getProperty("os.arch");
-        Architecture arch;
-        switch (archString) {
-            case "amd64":
-            case "x86_64":
-                EnumSet<AMD64.CPUFeature> x8664v2 = EnumSet.of(AMD64.CPUFeature.CMOV, AMD64.CPUFeature.CX8, AMD64.CPUFeature.FXSR, AMD64.CPUFeature.MMX, AMD64.CPUFeature.SSE, AMD64.CPUFeature.SSE2,
-                                AMD64.CPUFeature.POPCNT, AMD64.CPUFeature.SSE3, AMD64.CPUFeature.SSE4_1, AMD64.CPUFeature.SSE4_2, AMD64.CPUFeature.SSSE3);
-                arch = new AMD64(x8664v2);
-                break;
-            case "aarch64":
-            case "arm64":
-                arch = new AArch64(EnumSet.of(AArch64.CPUFeature.FP));
-                break;
-            default:
-                throw JVMCIError.unimplemented(archString);
-        }
-        return new TargetDescription(arch, true, 16, 4096, true);
     }
 
     private native JVMCICompiler createEspressoGraalJVMCICompiler();

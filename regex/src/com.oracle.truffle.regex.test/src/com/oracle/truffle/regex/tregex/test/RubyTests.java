@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,22 +40,27 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import java.util.Map;
+
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.regex.errors.RbErrorMessages;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.flavor.ruby.RbErrorMessages;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 public class RubyTests extends RegexTestBase {
 
+    private static final Map<String, String> ENGINE_OPTIONS = Map.of("regexDummyLang.Flavor", "Ruby");
+    private static final Map<String, String> OPT_IGNORE_ATOMIC_GROUPS = Map.of("regexDummyLang.IgnoreAtomicGroups", "true");
+
     @Override
-    String getEngineOptions() {
-        return "Flavor=Ruby";
+    Map<String, String> getEngineOptions() {
+        return ENGINE_OPTIONS;
     }
 
     @Override
-    Encodings.Encoding getTRegexEncoding() {
-        return Encodings.UTF_16;
+    Encoding getTRegexEncoding() {
+        return Encoding.UTF_16;
     }
 
     @Test
@@ -212,7 +217,7 @@ public class RubyTests extends RegexTestBase {
         test("f{2,2}", "i", "\ufb00", 0, false);
 
         // Test that we bail out on strings with complex unfoldings.
-        Assert.assertTrue(compileRegex(new String(new char[100]).replace('\0', 'f'), "i").isNull());
+        expectUnsupported(new String(new char[100]).replace('\0', 'f'), "i");
     }
 
     @Test
@@ -220,15 +225,15 @@ public class RubyTests extends RegexTestBase {
         // https://bugs.ruby-lang.org/issues/18009
         for (int i = 0; i < 26; i++) {
             String input = String.valueOf((char) ('a' + i));
-            test("\\W", "i", Encodings.UTF_8, input, 0, false);
-            test("[^\\w]", "i", Encodings.UTF_8, input, 0, false);
-            test("[[^\\w]]", "i", Encodings.UTF_8, input, 0, false);
-            test("[^[^\\w]]", "i", Encodings.UTF_8, input, 0, true, 0, 1);
+            test("\\W", "i", Encoding.UTF_8, input, 0, false);
+            test("[^\\w]", "i", Encoding.UTF_8, input, 0, false);
+            test("[[^\\w]]", "i", Encoding.UTF_8, input, 0, false);
+            test("[^[^\\w]]", "i", Encoding.UTF_8, input, 0, true, 0, 1);
         }
 
-        test("[\\w]", "i", Encodings.UTF_8, "\u212a", 0, false);
-        test("[kx]", "i", Encodings.UTF_8, "\u212a", 0, true, 0, 3);
-        test("[\\w&&kx]", "i", Encodings.UTF_8, "\u212a", 0, true, 0, 3);
+        test("[\\w]", "i", Encoding.UTF_8, "\u212a", 0, false);
+        test("[kx]", "i", Encoding.UTF_8, "\u212a", 0, true, 0, 3);
+        test("[\\w&&kx]", "i", Encoding.UTF_8, "\u212a", 0, true, 0, 3);
     }
 
     @Test
@@ -298,7 +303,7 @@ public class RubyTests extends RegexTestBase {
     @Test
     public void caseClosureDoesntEscapeEncodingRange() {
         // This shouldn't throw an AssertionError because of encountering the 'st' ligature.
-        test("test", "i", Encodings.LATIN_1, "test", 0, true, 0, 4);
+        test("test", "i", Encoding.LATIN_1, "test", 0, true, 0, 4);
     }
 
     @Test
@@ -325,9 +330,9 @@ public class RubyTests extends RegexTestBase {
     public void inverseOfUnicodeCharClassInSmallerEncoding() {
         // check(eval('/\A[[:^alpha:]0]\z/'), %w(0 1 .), "a") from test_posix_bracket in
         // test/mri/tests/ruby/test_regexp.rb
-        test("\\A[[:^alpha:]0]\\z", "", Encodings.LATIN_1, "0", 0, true, 0, 1);
-        test("\\A[[:^alpha:]0]\\z", "", Encodings.LATIN_1, "1", 0, true, 0, 1);
-        test("\\A[[:^alpha:]0]\\z", "", Encodings.LATIN_1, "a", 0, false);
+        test("\\A[[:^alpha:]0]\\z", "", Encoding.LATIN_1, "0", 0, true, 0, 1);
+        test("\\A[[:^alpha:]0]\\z", "", Encoding.LATIN_1, "1", 0, true, 0, 1);
+        test("\\A[[:^alpha:]0]\\z", "", Encoding.LATIN_1, "a", 0, false);
     }
 
     @Test
@@ -341,7 +346,7 @@ public class RubyTests extends RegexTestBase {
 
     @Test
     public void ignoreAtomicGroups() {
-        test("(?>foo)", "", "IgnoreAtomicGroups=true", "foo", 0, true, 0, 3);
+        test("(?>foo)", "", OPT_IGNORE_ATOMIC_GROUPS, "foo", 0, true, 0, 3);
     }
 
     @Test
@@ -417,9 +422,9 @@ public class RubyTests extends RegexTestBase {
 
     @Test
     public void recursiveSubexpressionCalls() {
-        expectUnsupported("(a\\g<1>?)(b\\g<2>?)", "");
-        expectUnsupported("(?<a>a\\g<b>?)(?<b>b\\g<a>?)", "");
-        expectUnsupported("a\\g<0>?", "");
+        expectUnsupported("(a\\g<1>?)(b\\g<2>?)");
+        expectUnsupported("(?<a>a\\g<b>?)(?<b>b\\g<a>?)");
+        expectUnsupported("a\\g<0>?");
     }
 
     @Test
@@ -535,7 +540,7 @@ public class RubyTests extends RegexTestBase {
 
     @Test
     public void gr41489() {
-        expectUnsupported("\\((?>[^)(]+|\\g<0>)*\\)", "");
+        expectUnsupported("\\((?>[^)(]+|\\g<0>)*\\)");
     }
 
     @Test
@@ -642,5 +647,25 @@ public class RubyTests extends RegexTestBase {
     @Test
     public void gr52472() {
         test("(|a+?){0,4}b", "", "aaab", 0, true, 0, 4, 1, 3);
+    }
+
+    @Test
+    public void testForceLinearExecution() {
+        test("(a*)b\\1", "", "_aabaaa_", 0, true, 1, 6, 1, 3);
+        expectUnsupported("(a*)b\\1", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*a{1,200000}.*", "", "_aabaaa_", 0, true, 0, 8);
+        expectUnsupported(".*a{1,200000}.*", "", OPT_FORCE_LINEAR_EXECUTION);
+        test(".*b(?!a_)", "", "_aabaaa_", 0, true, 0, 4);
+        expectUnsupported(".*b(?!a_)", "", OPT_FORCE_LINEAR_EXECUTION);
+    }
+
+    @Test
+    public void unicodePropertyNameMangling() {
+        test("\\p{private_use}", "", "\ue000", 0, true, 0, 1);
+        test("\\p{private-use}", "", "\ue000", 0, true, 0, 1);
+        test("\\p{PRIVATE use}", "", "\ue000", 0, true, 0, 1);
+        test("\\p{private use}", "", "\ue000", 0, true, 0, 1);
+        test("\\p{privateuse}", "", "\ue000", 0, true, 0, 1);
+        test("\\p{p R iV__-  --_aTe     Us   e___}", "", "\ue000", 0, true, 0, 1);
     }
 }

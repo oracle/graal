@@ -43,6 +43,7 @@ package com.oracle.truffle.api.test.wrapper;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.Reference;
+import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.Set;
@@ -52,6 +53,7 @@ import java.util.function.Predicate;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
@@ -78,8 +80,8 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions,
                     boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, Object ioAccess, Object logHandler,
-                    boolean allowCreateProcess, ProcessHandler processHandler, Object environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl,
-                    String currentWorkingDirectory, String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit, boolean registerInActiveContexts) {
+                    boolean allowCreateProcess, ProcessHandler processHandler, Consumer<PolyglotException> exceptionHandler, Object environmentAccess, Map<String, String> environment, ZoneId zone,
+                    Object limitsImpl, String currentWorkingDirectory, String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit, boolean registerInActiveContexts) {
         HostEngine engine = (HostEngine) receiver;
         Engine localEngine = (Engine) engine.localEngine;
         AbstractEngineDispatch dispatch = api.getEngineDispatch(localEngine);
@@ -88,7 +90,7 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
                         allowCreateThread,
                         allowHostClassLoading,
                         allowInnerContextOptions, allowExperimentalOptions, classFilter, options, arguments, onlyLanguages, ioAccess, logHandler, allowCreateProcess, processHandler,
-                        environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, tmpDir, hostClassLoader, true, useSystemExit, false);
+                        exceptionHandler, environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, tmpDir, hostClassLoader, true, useSystemExit, false);
         long guestContextId = hostToGuest.remoteCreateContext(engine.remoteEngine, sandboxPolicy, tmpDir);
         HostContext context = new HostContext(engine, guestContextId, localContext);
         hostToGuest.registerHostContext(guestContextId, context);
@@ -188,4 +190,10 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
         dispatch.onEngineCollected(engineReceiver);
         hostToGuest.shutdown(engine.remoteEngine);
     }
+
+    @Override
+    public boolean storeCache(Object engineReceiver, Path targetFile, long cancelledWord) {
+        throw new UnsupportedOperationException();
+    }
+
 }

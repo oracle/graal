@@ -139,7 +139,7 @@ public class AArch64AtomicMove {
             emitCompareAndSwap(masm, accessKind, address, result, expected, asRegister(newValue), memoryOrder, setConditionFlags);
         }
 
-        protected static void emitCompareAndSwap(AArch64MacroAssembler masm, AArch64Kind accessKind, Register address, Register result, Register expected, Register newValue,
+        public static void emitCompareAndSwap(AArch64MacroAssembler masm, AArch64Kind accessKind, Register address, Register result, Register expected, Register newValue,
                         MemoryOrderMode memoryOrder, boolean setConditionFlags) {
             assert accessKind.isInteger();
             final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;

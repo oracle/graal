@@ -78,18 +78,18 @@ _graalvm_hostvm_configs = [
     ('jvm-3-compiler-threads', [], ['--jvm', '--engine.CompilerThreads=3'], 50),
     ('native-3-compiler-threads', [], ['--native', '--engine.CompilerThreads=3'], 100)
 ]
-_base_jdk = None
+_base_jdk_stage1 = None
+_base_jdk_final = None
 
 
 class AbstractNativeImageConfig(object, metaclass=ABCMeta):
-    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None):  # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
         :type build_args: list[str]
         :param str | None use_modules: Run (with 'launcher') or run and build image with module support (with 'image').
         :type links: list[str] | None
-        :type is_polyglot: bool
         :param bool dir_jars: If true, all jars in the component directory are added to the classpath.
         :type home_finder: bool
         :type build_time: int
@@ -100,7 +100,6 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
         self.build_args = build_args
         self.use_modules = use_modules
         self.links = [mx_subst.path_substitutions.substitute(link) for link in links] if links else []
-        self.is_polyglot = is_polyglot
         self.dir_jars = dir_jars
         self.home_finder = home_finder
         self.build_time = build_time
@@ -184,7 +183,7 @@ class LanguageLauncherConfig(LauncherConfig):
         :param str language
         """
         super(LanguageLauncherConfig, self).__init__(destination, jar_distributions, main_class, build_args,
-                                                     is_sdk_launcher=is_sdk_launcher, is_polyglot=False, **kwargs)
+                                                     is_sdk_launcher=is_sdk_launcher, **kwargs)
         self.language = language
 
         # Ensure the language launcher can always find the language home
@@ -264,6 +263,7 @@ class GraalVmComponent(object):
                  has_relative_home=True,
                  jvm_configs=None,
                  extra_native_targets=None,
+                 stage1_only=False,
                  final_stage_only=False):
         """
         :param suite mx.Suite: the suite this component belongs to
@@ -282,6 +282,7 @@ class GraalVmComponent(object):
                 'priority': -1,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
             }
         :param extra_native_targets: list of str, enables extra targets in multi-target projects.
+        :param stage1_only: bool, this component should be only included in the stage1 GraalVM, not in final GraalVM
         :param final_stage_only: bool, this component should be only included in the final GraalVM, not in stage1
         :type license_files: list[str]
         :type third_party_license_files: list[str]
@@ -307,6 +308,7 @@ class GraalVmComponent(object):
         :type extra_installable_qualifiers: list[str] | None
         :type has_relative_home: bool
         :type jvm_configs: list[dict] or None
+        :type stage1_only: bool
         :type final_stage_only: bool
         """
         if dependencies is None:
@@ -320,10 +322,10 @@ class GraalVmComponent(object):
         self.third_party_license_files = third_party_license_files
         self.dependency_names = dependencies or []
         self.provided_executables = provided_executables or []
-        self.polyglot_lib_build_args = polyglot_lib_build_args or []
-        self.polyglot_lib_jar_dependencies = polyglot_lib_jar_dependencies or []
-        self.polyglot_lib_build_dependencies = polyglot_lib_build_dependencies or []
-        self.has_polyglot_lib_entrypoints = has_polyglot_lib_entrypoints
+        self.polyglot_lib_build_args = []
+        self.polyglot_lib_jar_dependencies = []
+        self.polyglot_lib_build_dependencies = []
+        self.has_polyglot_lib_entrypoints = False
         self.boot_jars = boot_jars or []
         self.jvmci_parent_jars = jvmci_parent_jars or []
         self.jar_distributions = jar_distributions or []
@@ -342,7 +344,11 @@ class GraalVmComponent(object):
         self.has_relative_home = has_relative_home
         self.jvm_configs = jvm_configs or []
         self.extra_native_targets = extra_native_targets
+        self.stage1_only = stage1_only
         self.final_stage_only = final_stage_only
+
+        if stage1_only and final_stage_only:
+            mx.abort("{}: Cannot set both `stage1_only` and `final_stage_only`".format(name))
 
         if supported is not None or early_adopter:
             if stability is not None:
@@ -372,15 +378,10 @@ class GraalVmComponent(object):
         assert isinstance(self.license_files, list)
         assert isinstance(self.third_party_license_files, list)
         assert isinstance(self.provided_executables, list)
-        assert isinstance(self.polyglot_lib_build_args, list)
-        assert isinstance(self.polyglot_lib_jar_dependencies, list)
-        assert isinstance(self.polyglot_lib_build_dependencies, list)
         assert isinstance(self.boot_jars, list)
         assert isinstance(self.jvmci_parent_jars, list)
         assert isinstance(self.launcher_configs, list)
         assert isinstance(self.library_configs, list)
-
-        assert not any(cp_arg in self.polyglot_lib_build_args for cp_arg in ('-cp', '-classpath')), "the '{}' component passes a classpath argument to libpolylgot: '{}'. Use `polyglot_lib_jar_dependencies` instead".format(self.name, ' '.join(self.polyglot_lib_build_args))
 
     def __str__(self):
         return "{} ({})".format(self.name, self.dir_name)
@@ -552,16 +553,42 @@ def register_vm_config(config_name, components, suite, dist_name=None, env_file=
 def get_graalvm_hostvm_configs():
     return _graalvm_hostvm_configs
 
+def base_jdk(stage1=True):
+    global _base_jdk_stage1, _base_jdk_final
 
-def base_jdk():
-    global _base_jdk
-    if _base_jdk is None:
-        _base_jdk = mx.get_jdk(tag='default')
-    return _base_jdk
+    if _base_jdk_stage1 is None:
+        _base_jdk_stage1 = mx.get_jdk(tag='default')
+
+    if stage1:
+        return _base_jdk_stage1
+
+    if _base_jdk_final is None:
+        final_stage_java_home = mx.get_env('FINAL_STAGE_JAVA_HOME')
+        if final_stage_java_home:
+            _base_jdk_final = mx.JDKConfig(final_stage_java_home)
+
+            assert _base_jdk_stage1.version == _base_jdk_final.version, f"version of JAVA_HOME ({_base_jdk_stage1.version}) and FINAL_STAGE_JAVA_HOME ({_base_jdk_final.version}) must match"
+            assert _base_jdk_stage1.release_dict['MODULES'] == _base_jdk_final.release_dict['MODULES'], "JAVA_HOME and FINAL_STAGE_JAVA_HOME do not include the same set of modules"
+
+            try:
+                # attempt to initialize JVMCI related attributes
+                jdk_enables_jvmci_by_default(_base_jdk_final)
+            except AssertionError as e:
+                assert "Could not execute" in e.args[0]
+
+                # ._probe_jvmci_info() and .get_modules() need a working java launcher, which might not be the case for FINAL_STAGE_JAVA_HOME.
+                # Copy infos from stage1 JAVA_HOME instead.
+                setattr(_base_jdk_final, '.enables_jvmci_by_default', jdk_enables_jvmci_by_default(_base_jdk_stage1))
+                setattr(_base_jdk_final, '.jvmciThreadsPerNativeLibraryRuntime', get_JVMCIThreadsPerNativeLibraryRuntime(_base_jdk_stage1))
+
+                setattr(_base_jdk_final, '.modules', _base_jdk_stage1.get_modules())
+        else:
+            _base_jdk_final = _base_jdk_stage1
+    return _base_jdk_final
 
 
-def base_jdk_version():
-    return base_jdk().javaCompliance.value
+def base_jdk_version(stage1=True):
+    return base_jdk(stage1=stage1).javaCompliance.value
 
 def get_jdk_version_for_profiles():
     jdk_version = mx.get_jdk().javaCompliance.value
@@ -571,22 +598,20 @@ def _probe_jvmci_info(jdk, attribute_name):
     if not hasattr(jdk, '.enables_jvmci_by_default'):
         out = mx.LinesOutputCapture()
         sink = lambda x: x
-        mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=sink)
+        rc = mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=sink, nonZeroIsFatal=False)
+        if rc != 0:
+            raise AssertionError(f"Could not execute {jdk.java}")
         enableJVMCI = False
-        enableJVMCIProduct = False
         jvmciThreadsPerNativeLibraryRuntime = None
         for line in out.lines:
             if 'EnableJVMCI' in line and 'true' in line:
                 enableJVMCI = True
-            if 'EnableJVMCIProduct' in line:
-                enableJVMCIProduct = True
             if 'JVMCIThreadsPerNativeLibraryRuntime' in line:
                 m = re.search(r'JVMCIThreadsPerNativeLibraryRuntime *= *(\d+)', line)
                 if not m:
                     mx.abort(f'Could not extract value of JVMCIThreadsPerNativeLibraryRuntime from "{line}"')
                 jvmciThreadsPerNativeLibraryRuntime = int(m.group(1))
         setattr(jdk, '.enables_jvmci_by_default', enableJVMCI)
-        setattr(jdk, '.supports_enablejvmciproduct', enableJVMCIProduct)
         setattr(jdk, '.jvmciThreadsPerNativeLibraryRuntime', jvmciThreadsPerNativeLibraryRuntime)
     return getattr(jdk, attribute_name)
 
@@ -596,13 +621,6 @@ def jdk_enables_jvmci_by_default(jdk):
     """
     return _probe_jvmci_info(jdk, '.enables_jvmci_by_default')
 
-def jdk_supports_enablejvmciproduct(jdk):
-    """
-    Determines if the jdk supports flag -XX:+EnableJVMCIProduct which isn't the case
-    for some OpenJDK 11u distros.
-    """
-    return _probe_jvmci_info(jdk, '.supports_enablejvmciproduct')
-
 def get_JVMCIThreadsPerNativeLibraryRuntime(jdk):
     """
     Gets the value of the flag -XX:JVMCIThreadsPerNativeLibraryRuntime.
@@ -611,57 +629,13 @@ def get_JVMCIThreadsPerNativeLibraryRuntime(jdk):
     """
     return _probe_jvmci_info(jdk, '.jvmciThreadsPerNativeLibraryRuntime')
 
-def _probe_jlink_info(jdk, attribute_name):
-    """
-    Determines if the jlink executable in `jdk` supports various options such
-    as those added by JDK-8232080 and JDK-8237467.
-    """
-    if not hasattr(jdk, '.supports_JDK_8232080'):
-        output = mx.OutputCapture()
-        jlink_exe = jdk.javac.replace('javac', 'jlink')
-        mx.run([jlink_exe, '--list-plugins'], out=output)
-        setattr(jdk, '.supports_JDK_8232080', '--add-options=' in output.data or '--add-options ' in output.data)
-        setattr(jdk, '.supports_save_jlink_argfiles', '--save-jlink-argfiles=' in output.data or '--save-jlink-argfiles ' in output.data)
-        setattr(jdk, '.supports_copy_files', '--copy-files=' in output.data or '--copy-files ' in output.data)
-    return getattr(jdk, attribute_name)
-
-def jlink_supports_8232080(jdk):
-    """
-    Determines if the jlink executable in `jdk` supports ``--add-options`` and
-    ``--vendor-[bug-url|vm-bug-url|version]`` added by JDK-8232080.
-    """
-    return _probe_jlink_info(jdk, '.supports_JDK_8232080')
-
-def jlink_has_save_jlink_argfiles(jdk):
-    """
-    Determines if the jlink executable in `jdk` supports ``--save-jlink-argfiles``.
-    """
-    return _probe_jlink_info(jdk, '.supports_save_jlink_argfiles')
-
-def _jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk): # pylint: disable=invalid-name
-    """
-    Determines if the `jdk` suppresses a warning about ThreadPriorityPolicy when it
-    is non-zero if the value is set from the jimage.
-    https://bugs.openjdk.java.net/browse/JDK-8235908.
-    """
-    if not hasattr(jdk, '.omits_ThreadPriorityPolicy_warning'):
-        out = mx.OutputCapture()
-        sink = lambda x: x
-        tmpdir = tempfile.mkdtemp(prefix='jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy')
-        jlink_exe = jdk.javac.replace('javac', 'jlink')
-        mx.run([jlink_exe, '--add-options=-XX:ThreadPriorityPolicy=1', '--output=' + join(tmpdir, 'jdk'), '--add-modules=java.base'])
-        mx.run([mx.exe_suffix(join(tmpdir, 'jdk', 'bin', 'java')), '-version'], out=sink, err=out)
-        shutil.rmtree(tmpdir)
-        setattr(jdk, '.omits_ThreadPriorityPolicy_warning', '-XX:ThreadPriorityPolicy=1 may require system level permission' not in out.data)
-    return getattr(jdk, '.omits_ThreadPriorityPolicy_warning')
-
 def _read_java_base_hashes(jdk):
     """
     Read the hashes stored in the ``java.base`` module of `jdk`.
     """
     hashes = {}
     out = mx.LinesOutputCapture()
-    mx.run([jdk.exe_path('jmod'), 'describe', join(jdk.home, 'jmods', 'java.base.jmod')], out=out)
+    mx.run([base_jdk(stage1=True).exe_path('jmod'), 'describe', join(jdk.home, 'jmods', 'java.base.jmod')], out=out)
     lines = out.lines
     for line in lines:
         if line.startswith('hashes'):
@@ -808,65 +782,56 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
     :return list: the list of VM options to cook into the image
     """
     vm_options = []
-    if jlink_supports_8232080(jdk):
-        if mx.get_env('CONTINUOUS_INTEGRATION', None) == 'true':
-            is_gate = mx.get_env('BUILD_TARGET', None) == 'gate'
-            is_bench = 'bench-' in mx.get_env('BUILD_NAME', '')
-            if is_gate or is_bench:
-                # For gate and benchmark jobs, we want to know about each compilation failure
-                # but only exit the VM on systemic compilation failure for gate jobs.
-                vm_options.append('-Djdk.graal.CompilationFailureAction=Diagnose')
-                mx.log('Adding -Djdk.graal.CompilationFailureAction=Diagnose VM option to image')
-                if is_gate:
-                    mx.log('Adding -Djdk.graal.SystemicCompilationFailureRate=-1 VM option to image')
-                    vm_options.append('-Djdk.graal.SystemicCompilationFailureRate=-1')
+    if mx.get_env('CONTINUOUS_INTEGRATION', None) == 'true':
+        is_gate = mx.get_env('BUILD_TARGET', None) == 'gate'
+        is_bench = 'bench-' in mx.get_env('BUILD_NAME', '')
+        if is_gate or is_bench:
+            # For gate and benchmark jobs, we want to know about each compilation failure
+            # but only exit the VM on systemic compilation failure for gate jobs.
+            vm_options.append('-Djdk.graal.CompilationFailureAction=Diagnose')
+            mx.log('Adding -Djdk.graal.CompilationFailureAction=Diagnose VM option to image')
+            if is_gate:
+                mx.log('Adding -Djdk.graal.SystemicCompilationFailureRate=-1 VM option to image')
+                vm_options.append('-Djdk.graal.SystemicCompilationFailureRate=-1')
 
-        if use_upgrade_module_path or _jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk):
-            vm_options.append('-XX:ThreadPriorityPolicy=1')
-        else:
-            mx.logv('[Creating JDK without -XX:ThreadPriorityPolicy=1]')
+    vm_options.append('-XX:ThreadPriorityPolicy=1')
 
-        if jdk_supports_enablejvmciproduct(jdk):
-            non_synthetic_modules = [m.name for m in modules if m not in synthetic_modules]
-            if default_to_jvmci or 'jdk.graal.compiler' in non_synthetic_modules:
-                threads = get_JVMCIThreadsPerNativeLibraryRuntime(jdk)
-                vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
-                # -XX:+EnableJVMCI must be explicitly specified to the java launcher to add
-                # jdk.internal.vm.ci to the root set (JDK-8345826)
-                vm_options.append('-XX:+EnableJVMCI')
-                if threads is not None and threads != 1:
-                    vm_options.append('-XX:JVMCIThreadsPerNativeLibraryRuntime=1')
-                if default_to_jvmci == 'lib':
-                    vm_options.append('-XX:+UseJVMCINativeLibrary')
-                vm_options.extend(['-XX:-UnlockExperimentalVMOptions'])
-                import mx_sdk_vm_impl
-                if 'jdk.graal.compiler' in non_synthetic_modules and mx_sdk_vm_impl._get_libgraal_component() is None:
-                    # If libgraal is absent, jargraal is used by default.
-                    # Use of jargraal requires exporting jdk.internal.misc to
-                    # Graal as it uses jdk.internal.misc.Unsafe. To avoid warnings
-                    # about unknown modules (e.g. in `-Xint` mode), the export target
-                    # modules must be explicitly added to the root set with `--add-modules`.
-                    if 'com.oracle.graal.graal_enterprise' in non_synthetic_modules:
-                        vm_options.extend([
-                            '--add-modules=jdk.graal.compiler,com.oracle.graal.graal_enterprise',
-                            '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler,com.oracle.graal.graal_enterprise'
-                        ])
-                    else:
-                        vm_options.extend([
-                            '--add-modules=jdk.graal.compiler',
-                            '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'
-                        ])
+    non_synthetic_modules = [m.name for m in modules if m not in synthetic_modules]
+    if default_to_jvmci or 'jdk.graal.compiler' in non_synthetic_modules:
+        threads = get_JVMCIThreadsPerNativeLibraryRuntime(jdk)
+        vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
+        # -XX:+EnableJVMCI must be explicitly specified to the java launcher to add
+        # jdk.internal.vm.ci to the root set (JDK-8345826)
+        vm_options.append('-XX:+EnableJVMCI')
+        if threads is not None and threads != 1:
+            vm_options.append('-XX:JVMCIThreadsPerNativeLibraryRuntime=1')
+        if default_to_jvmci == 'lib':
+            vm_options.append('-XX:+UseJVMCINativeLibrary')
+        vm_options.extend(['-XX:-UnlockExperimentalVMOptions'])
+        import mx_sdk_vm_impl
+        if 'jdk.graal.compiler' in non_synthetic_modules and mx_sdk_vm_impl._get_libgraal_component() is None:
+            # If libgraal is absent, jargraal is used by default.
+            # Use of jargraal requires exporting jdk.internal.misc to
+            # Graal as it uses jdk.internal.misc.Unsafe. To avoid warnings
+            # about unknown modules (e.g. in `-Xint` mode), the export target
+            # modules must be explicitly added to the root set with `--add-modules`.
+            if 'com.oracle.graal.graal_enterprise' in non_synthetic_modules:
+                vm_options.extend([
+                    '--add-modules=jdk.graal.compiler,com.oracle.graal.graal_enterprise',
+                    '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler,com.oracle.graal.graal_enterprise'
+                ])
             else:
-                # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
-                # This avoids unexpected issues with using the out-of-date Graal compiler in
-                # the JDK itself.
-                vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct', '-XX:-UseJVMCICompiler', '-XX:-UnlockExperimentalVMOptions'])
-        else:
-            mx.logv('[Creating JDK without -XX:+EnableJVMCIProduct]')
-        if modules and use_upgrade_module_path:
-            vm_options.append('--upgrade-module-path=' + os.pathsep.join((synthetic_modules.get(m, m.jarpath) for m in modules)))
-    elif use_upgrade_module_path:
-        mx.abort('Cannot create an image with an --upgrade-module-path setting since jlink does not support the --add-options flag')
+                vm_options.extend([
+                    '--add-modules=jdk.graal.compiler',
+                    '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'
+                ])
+    else:
+        # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
+        # This avoids unexpected issues with using the out-of-date Graal compiler in
+        # the JDK itself.
+        vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct', '-XX:-UseJVMCICompiler', '-XX:-UnlockExperimentalVMOptions'])
+    if modules and use_upgrade_module_path:
+        vm_options.append('--upgrade-module-path=' + os.pathsep.join((synthetic_modules.get(m, m.jarpath) for m in modules)))
     return vm_options
 
 def _copy_src_zip(from_jdk, to_jdk, extra_modules, extra_modules_predicate):
@@ -967,9 +932,8 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
     if not isdir(jmods_dir):
         mx.abort('Cannot derive a new JDK from ' + jdk.home + ' since ' + jmods_dir + ' is missing or is not a directory')
 
-    # Exclude jdk.aot due to GR-10545 and JDK-8255616
     # Exclude graal in case it is included in the base JDK
-    jdk_modules = {jmd.name: jmd for jmd in jdk.get_modules() if jmd.name != 'jdk.aot' and not jmd.name.startswith('jdk.graal.compiler')}
+    jdk_modules = {jmd.name: jmd for jmd in jdk.get_modules() if not jmd.name.startswith('jdk.graal.compiler')}
     modules = [as_java_module(dist, jdk) for dist in module_dists]
     module_names = frozenset((m.name for m in modules))
     all_module_names = frozenset(list(jdk_modules.keys())) | module_names
@@ -1020,7 +984,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
 
                     with open(module_info_java, 'w') as fp:
                         fp.write(module_info)
-                    mx.run([jdk.javac, '-d', module_build_dir,
+                    mx.run([base_jdk(stage1=True).javac, '-d', module_build_dir,
                             '--limit-modules=java.base,' + ','.join(jmd.requires.keys()),
                             '--module-path=' + os.pathsep.join((m.jarpath for m in modules)),
                             module_info_java])
@@ -1030,14 +994,14 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                     if exists(jmd.get_jmod_path()):
                         os.remove(jmd.get_jmod_path())
                     if not use_upgrade_module_path:
-                        mx.run([jdk.javac.replace('javac', 'jmod'), 'create', '--class-path=' + module_build_dir, jmd.get_jmod_path()])
+                        mx.run([base_jdk(stage1=True).exe_path('jmod'), 'create', '--class-path=' + module_build_dir, jmd.get_jmod_path()])
 
                 modules.extend(synthetic_modules.keys())
                 module_names = frozenset((m.name for m in modules))
                 all_module_names = frozenset(list(jdk_modules.keys())) | module_names
 
         # Now build the new JDK image with jlink
-        jlink = [jdk.javac.replace('javac', 'jlink')]
+        jlink = [base_jdk(stage1=True).exe_path('jlink')]
         jlink_persist = []
 
         if jdk_enables_jvmci_by_default(jdk):
@@ -1118,7 +1082,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                 jlink.append(f'--add-options={" ".join(vm_options)}')
                 jlink_persist.append(f'--add-options="{" ".join(vm_options)}"')
 
-            if jlink_supports_8232080(jdk) and vendor_info is not None:
+            if vendor_info is not None:
                 for name, value in vendor_info.items():
                     jlink.append(f'--{name}={value}')
                     jlink_persist.append(f'--{name}="{value}"')
@@ -1127,11 +1091,10 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
             if isfile(release_file):
                 jlink.append(f'--release-info={release_file}')
 
-            if jlink_has_save_jlink_argfiles(jdk):
-                jlink_persist_argfile = join(build_dir, 'jlink.persist.options')
-                with open(jlink_persist_argfile, 'w') as fp:
-                    fp.write('\n'.join(jlink_persist))
-                jlink.append(f'--save-jlink-argfiles={jlink_persist_argfile}')
+            jlink_persist_argfile = join(build_dir, 'jlink.persist.options')
+            with open(jlink_persist_argfile, 'w') as fp:
+                fp.write('\n'.join(jlink_persist))
+            jlink.append(f'--save-jlink-argfiles={jlink_persist_argfile}')
 
             if exists(dst_jdk_dir):
                 if use_upgrade_module_path and _vm_options_match(vm_options, vm_options_path):
@@ -1173,6 +1136,8 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
             if "Shared spaces are not supported in this VM" in out.data:
                 # GR-37047: CDS support in darwin-aarch64 jdk11 is missing.
                 assert mx.get_os() == 'darwin' and mx.get_arch() == 'aarch64' and jdk.javaCompliance == '11'
+            elif base_jdk(stage1=True) != jdk:
+                mx.log("Cross build, skip -Xshare.  FINAL_STAGE_JAVA_HOME might not run on the build host")
             else:
                 mx.log(out.data)
                 mx.abort('Error generating CDS shared archive')
@@ -1240,7 +1205,7 @@ def verify_graalvm_configs(suites=None, start_from=None, check_all=False):
     """
     import mx_sdk_vm_impl
     child_env = os.environ.copy()
-    for env_var in ['DYNAMIC_IMPORTS', 'DEFAULT_DYNAMIC_IMPORTS', 'COMPONENTS', 'EXCLUDE_COMPONENTS', 'SKIP_LIBRARIES', 'NATIVE_IMAGES', 'FORCE_BASH_LAUNCHERS', 'DISABLE_POLYGLOT', 'DISABLE_LIBPOLYGLOT']:
+    for env_var in ['DYNAMIC_IMPORTS', 'DEFAULT_DYNAMIC_IMPORTS', 'COMPONENTS', 'EXCLUDE_COMPONENTS', 'SKIP_LIBRARIES', 'NATIVE_IMAGES', 'FORCE_BASH_LAUNCHERS']:
         if env_var in child_env:
             del child_env[env_var]
     started = start_from is None
@@ -1255,7 +1220,7 @@ def verify_graalvm_configs(suites=None, start_from=None, check_all=False):
                 base_name=mx_sdk_vm_impl._graalvm_base_name,
                 delimiter='_' if dist_name else '',
                 dist_name=dist_name,
-                jdk_version=mx_sdk_vm_impl._src_jdk_version
+                jdk_version=base_jdk_version(stage1=False)
             ).upper().replace('-', '_')
             mx.log("{}Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format('' if started else '[SKIPPED] ', _env_file, suite.name, graalvm_dist_name))
 

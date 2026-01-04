@@ -41,6 +41,10 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.c.enums.CEnumRuntimeData;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.info.EnumInfo;
@@ -88,12 +92,13 @@ import jdk.vm.ci.meta.JavaKind;
  * annotated methods. So, for implicit conversion, only the type of the C enum is relevant and the
  * semantics are similar to reading/writing a C value.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class CInterfaceEnumTool {
     interface CallTargetFactory {
         MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, AnalysisMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci);
 
         static CallTargetFactory from(BytecodeParser p) {
-            return (invokeKind, targetMethod, args, returnStamp, bci) -> p.createMethodCallTarget(invokeKind, targetMethod, args, returnStamp, null);
+            return (invokeKind, targetMethod, args, returnStamp, _) -> p.createMethodCallTarget(invokeKind, targetMethod, args, returnStamp, null);
         }
 
         static CallTargetFactory from(HostedGraphKit kit) {
@@ -139,7 +144,7 @@ public class CInterfaceEnumTool {
         return kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci);
     }
 
-    public ValueNode startInvokeWithExceptionEnumToValue(HostedGraphKit kit, EnumInfo enumInfo, AnalysisType returnType, ValueNode arg) {
+    public InvokeWithExceptionNode startInvokeWithExceptionEnumToValue(HostedGraphKit kit, EnumInfo enumInfo, AnalysisType returnType, ValueNode arg) {
         int invokeBci = kit.bci();
         MethodCallTargetNode callTarget = createInvokeEnumToValue(kit, CallTargetFactory.from(kit), invokeBci, enumInfo, returnType, arg);
         return kit.startInvokeWithException(callTarget, kit.getFrameState(), invokeBci);
@@ -183,11 +188,14 @@ public class CInterfaceEnumTool {
         };
     }
 
-    public ValueNode createInvokeLookupEnum(HostedGraphKit kit, AnalysisType enumType, EnumInfo enumInfo, ValueNode arg) {
-        // Create the invocation of the actual target method: EnumRuntimeData.convertCToJava
+    public ValueNode createInvokeLookupEnum(HostedGraphKit kit, AnalysisType enumType, EnumInfo enumInfo, ValueNode arg, boolean allowInlining) {
+        // Invoke the conversion function (from long to enum)
         int invokeBci = kit.bci();
         MethodCallTargetNode callTarget = createInvokeLongToEnum(kit, CallTargetFactory.from(kit), invokeBci, enumInfo, arg);
         InvokeWithExceptionNode invoke = kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci);
+        if (!allowInlining) {
+            invoke.setUseForInlining(false);
+        }
 
         // Create the instanceof guard to narrow the return type for the analysis
         LogicNode instanceOfNode = kit.append(InstanceOfNode.createAllowNull(TypeReference.createExactTrusted(enumType), invoke, null, null));
@@ -234,6 +242,7 @@ public class CInterfaceEnumTool {
     }
 }
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 class CInterfaceEnumToolFeature implements InternalFeature {
     @Override

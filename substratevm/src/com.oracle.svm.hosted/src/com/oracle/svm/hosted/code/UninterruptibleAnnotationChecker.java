@@ -28,7 +28,6 @@ import java.util.Collection;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunction;
 
@@ -38,8 +37,13 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -54,6 +58,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /** Checks that {@linkplain Uninterruptible} has been used consistently. */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredImageSingleton
 public final class UninterruptibleAnnotationChecker {
 
@@ -115,7 +120,7 @@ public final class UninterruptibleAnnotationChecker {
         }
 
         if (annotation.reason().equals(Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE)) {
-            if (!annotation.mayBeInlined() && !AnnotationAccess.isAnnotationPresent(method, NeverInline.class)) {
+            if (!annotation.mayBeInlined() && !AnnotationUtil.isAnnotationPresent(method, NeverInline.class)) {
                 violations.add("Method " + method.format("%H.%n(%p)") +
                                 " uses an unspecific reason but prevents inlining into interruptible code. " +
                                 "If the method has an inherent reason for being uninterruptible, besides being called from uninterruptible code, then please improve the reason. " +
@@ -138,7 +143,7 @@ public final class UninterruptibleAnnotationChecker {
         }
 
         if (annotation.mayBeInlined()) {
-            if (AnnotationAccess.isAnnotationPresent(method, NeverInline.class)) {
+            if (AnnotationUtil.isAnnotationPresent(method, NeverInline.class)) {
                 violations.add("Method " + method.format("%H.%n(%p)") +
                                 " is annotated with conflicting annotations: @Uninterruptible('mayBeInlined = true') and @NeverInline");
             }
@@ -150,14 +155,14 @@ public final class UninterruptibleAnnotationChecker {
         }
 
         if (annotation.mayBeInlined() && annotation.calleeMustBe()) {
-            if (!annotation.reason().equals(Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE) && !AnnotationAccess.isAnnotationPresent(method, AlwaysInline.class)) {
+            if (!annotation.reason().equals(Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE) && !AnnotationUtil.isAnnotationPresent(method, AlwaysInline.class)) {
                 violations.add("Method " + method.format("%H.%n(%p)") + " is annotated with @Uninterruptible('mayBeInlined = true') which allows the method to be inlined into interruptible code. " +
                                 "If the method has an inherent reason for being uninterruptible, besides being called from uninterruptible code, then please remove 'mayBeInlined = true'. " +
                                 "Otherwise, use the following reason: '" + Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE + "'");
             }
         }
 
-        if (!annotation.mayBeInlined() && !annotation.callerMustBe() && AnnotationAccess.isAnnotationPresent(method, AlwaysInline.class)) {
+        if (!annotation.mayBeInlined() && !annotation.callerMustBe() && AnnotationUtil.isAnnotationPresent(method, AlwaysInline.class)) {
             violations.add("Method " + method.format("%H.%n(%p)") +
                             " is annotated with @Uninterruptible and @AlwaysInline. If the method may be inlined into interruptible code, please specify 'mayBeInlined = true'. Otherwise, specify 'callerMustBe = true'.");
         }
@@ -280,13 +285,13 @@ public final class UninterruptibleAnnotationChecker {
     }
 
     private static boolean isCallerMustBe(HostedMethod method) {
-        Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
-        return uninterruptibleAnnotation != null && uninterruptibleAnnotation.callerMustBe();
+        Uninterruptible annotation = Uninterruptible.Utils.getAnnotation(method);
+        return annotation != null && annotation.callerMustBe();
     }
 
     private static boolean isCalleeMustBe(HostedMethod method) {
-        Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
-        return uninterruptibleAnnotation != null && uninterruptibleAnnotation.calleeMustBe();
+        Uninterruptible annotation = Uninterruptible.Utils.getAnnotation(method);
+        return annotation != null && annotation.calleeMustBe();
     }
 
     private static void printDotGraphEdge(HostedMethod caller, HostedMethod callee) {

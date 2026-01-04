@@ -44,8 +44,6 @@ import com.oracle.truffle.compiler.TruffleCompilerRuntime.InlineKind;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime.LoopExplosionKind;
 
 /**
- * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
- * compiler implementation side.
  *
  * @param loopExplosion Queries how loops in {@code method} with constant number of invocations
  *            should be unrolled.
@@ -58,7 +56,9 @@ import com.oracle.truffle.compiler.TruffleCompilerRuntime.LoopExplosionKind;
  *            from Truffle).
  * @param isSpecializationMethod Determines if {@code method} is annotated by
  *            {@code Specialization}.
+ * @deprecated Unused since 25.1, retained only for compatibility with older versions.
  */
+@Deprecated(since = "25.1")
 public record PartialEvaluationMethodInfo(
                 LoopExplosionKind loopExplosion,
                 InlineKind inlineForPartialEvaluation,

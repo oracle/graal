@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto;
 
 import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -57,8 +56,6 @@ public interface ReachabilityAnalysis {
      * Marks given field as accessed.
      */
     AnalysisType addRootField(Class<?> clazz, String fieldName);
-
-    AnalysisType addRootField(Field field);
 
     AnalysisType addRootField(AnalysisField field);
 
@@ -92,9 +89,7 @@ public interface ReachabilityAnalysis {
     AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots);
 
     /**
-     * In addition to register the method as a root, saturate all the parameters. Meant to be used
-     * under the {@code UseBaseLayerInclusionPolicy} option to ensure the invocation is replaced by
-     * the context-insensitive invoke.
+     * In addition to registering the method as a root, saturate all the parameters.
      *
      * @see ReachabilityAnalysis#addRootMethod(AnalysisMethod, boolean, Object,
      *      MultiMethod.MultiMethodKey...)

@@ -89,17 +89,18 @@ public class AssumedValue<T> {
      *
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("hiding")
     public T get() {
-        if (CompilerDirectives.isPartialEvaluationConstant(assumption)) {
+        Assumption assumption = this.assumption;
+        if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(assumption)) {
             /*
              * Only check the assumption if we actually constant-fold the value. Otherwise, we might
              * deoptimize for no reason.
              *
-             * Note that it's important that the first if condition in this method does a volatile
-             * read on the assumption variable. That acts as a memory barrier, preventing the value
-             * read from floating above in the case where the value is not constant folded and in
-             * the interpreter code. That makes the value field effectively volatile, making this
-             * class thread-safe.
+             * Note that it's important that we always do a volatile read of the assumption
+             * variable. That acts as a memory barrier, preventing the value read from floating
+             * above in the case where the value is not constant folded and in the interpreter code.
+             * That makes the value field effectively volatile, making this class thread-safe.
              */
             CompilerAsserts.partialEvaluationConstant(value);
             if (!assumption.isValid()) {

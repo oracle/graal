@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import java.util.regex.Pattern;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.core.GraalCompilerOptions;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -46,6 +47,7 @@ import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.GraphFilter;
 import jdk.graal.compiler.debug.MemUseTrackerKey;
+import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.graph.Graph;
@@ -62,9 +64,11 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.common.ReportHotCodePhase;
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.phases.contract.PhaseSizeContract;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /**
@@ -203,35 +207,16 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         public static final OptionKey<Integer> MinimalGraphNodeSizeCheckSize = new OptionKey<>(1000);
         @Option(help = "Exclude certain phases from compilation based on the given phase filter(s)." + PhaseFilterKey.HELP, type = OptionType.Debug)
         public static final PhaseFilterKey CompilationExcludePhases = new PhaseFilterKey(null, null);
+        @Option(help = "Report hot metrics after each phase matching the given phase filter(s).", type = OptionType.Debug)
+        public static final OptionKey<String> ReportHotMetricsAfterPhases = new OptionKey<>(null);
+        @Option(help = "Report hot metrics before each phase matching the given phase filter(s).", type = OptionType.Debug)
+        public static final OptionKey<String> ReportHotMetricsBeforePhases =  new OptionKey<>("HighTierLoweringPhase");
+        @Option(help = "Report hot metrics extracted from compiler IR.", type = OptionType.Debug)
+        public static final OptionKey<String> ReportHotMetrics = new OptionKey<>(null);
         // @formatter:on
     }
 
-    /**
-     * Records time spent in {@link #apply(StructuredGraph, Object, boolean)}.
-     */
-    private final TimerKey timer;
-
-    /**
-     * Counts calls to {@link #apply(StructuredGraph, Object, boolean)}.
-     */
-    private final CounterKey executionCount;
-
-    /**
-     * Accumulates the {@linkplain Graph#getNodeCount() live node count} of all graphs sent to
-     * {@link #apply(StructuredGraph, Object, boolean)}.
-     */
-    private final CounterKey inputNodesCount;
-
-    /**
-     * Captures the change in {@linkplain Graph#getEdgeModificationCount() edges modified} of all
-     * graphs sent to {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
-     */
-    private final CounterKey edgeModificationCount;
-
-    /**
-     * Records memory usage within {@link #apply(StructuredGraph, Object, boolean)}.
-     */
-    private final MemUseTrackerKey memUseTracker;
+    private final BasePhaseStatistics statistics;
 
     public static class BasePhaseStatistics {
         /**
@@ -261,12 +246,57 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
          */
         private final MemUseTrackerKey memUseTracker;
 
+        /**
+         * Cached phase name.
+         *
+         * @see BasePhase#getName()
+         */
+        CharSequence phaseName;
+
         public BasePhaseStatistics(Class<?> clazz) {
             timer = DebugContext.timer("PhaseTime_%s", clazz).doc("Time spent in phase.");
             executionCount = DebugContext.counter("PhaseCount_%s", clazz).doc("Number of phase executions.");
             memUseTracker = DebugContext.memUseTracker("PhaseMemUse_%s", clazz).doc("Memory allocated in phase.");
             inputNodesCount = DebugContext.counter("PhaseNodes_%s", clazz).doc("Number of nodes input to phase.");
             edgeModificationCount = DebugContext.counter("PhaseEdgeModification_%s", clazz).doc("Graphs edges modified by a phase.");
+        }
+
+        /**
+         * This can provide more detail about where GC time is spent but isn't necessary most of the
+         * time.
+         */
+        static final boolean BASE_PHASE_GC_STATISTICS = false;
+
+        private static DebugCloseable gcStatistics(DebugContext debug, Class<?> phaseClass) {
+            if (BASE_PHASE_GC_STATISTICS) {
+                return GraalServices.GCTimerScope.create(debug, "PhaseTime_", phaseClass);
+            }
+            return null;
+        }
+
+        public DebugCloseable start(StructuredGraph graph, DebugContext debug, Class<?> phaseClass) {
+            if (debug.areTimersEnabled() || debug.areCountersEnabled() || debug.areMemUseTrackersEnabled()) {
+                return new DebugCloseable() {
+                    final int edgesBefore = graph.getEdgeModificationCount();
+                    final DebugCloseable t = timer.start(debug);
+                    final DebugCloseable m = memUseTracker.start(debug);
+                    final int nodeCount = graph.getNodeCount();
+                    final DebugCloseable gc = gcStatistics(debug, phaseClass);
+
+                    @Override
+                    public void close() {
+                        inputNodesCount.add(debug, nodeCount);
+                        executionCount.increment(debug);
+                        edgeModificationCount.add(debug, graph.getEdgeModificationCount() - edgesBefore);
+                        t.close();
+                        m.close();
+                        if (gc != null) {
+                            gc.close();
+                        }
+                    }
+                };
+            }
+            return null;
         }
     }
 
@@ -282,12 +312,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     }
 
     protected BasePhase() {
-        BasePhaseStatistics statistics = getBasePhaseStatistics(getClass());
-        timer = statistics.timer;
-        executionCount = statistics.executionCount;
-        memUseTracker = statistics.memUseTracker;
-        inputNodesCount = statistics.inputNodesCount;
-        edgeModificationCount = statistics.edgeModificationCount;
+        this.statistics = getBasePhaseStatistics(getClass());
     }
 
     /**
@@ -398,7 +423,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return null;
     }
 
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "unchecked", "rawtypes"})
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         DebugContext debug = graph.getDebug();
         OptionValues options = graph.getOptions();
@@ -442,8 +467,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         try (DebugContext.Scope s = debug.scope(getName(), this);
                         CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName(), graph) : null;
                         DebugCloseable l = graph.getOptimizationLog().enterPhase(getName());
-                        DebugCloseable a = timer.start(debug);
-                        DebugCloseable c = memUseTracker.start(debug)) {
+                        DebugCloseable a = statistics.start(graph, debug, getClass())) {
 
             int sizeBefore = 0;
             int edgesBefore = graph.getEdgeModificationCount();
@@ -458,7 +482,26 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             if (dumpGraph && debug.areScopesEnabled()) {
                 dumpedBefore = dumpBefore(graph, context, isTopLevel, true);
             }
-            inputNodesCount.add(debug, graph.getNodeCount());
+
+            String reportHotMetricsMethodFilter = PhaseOptions.ReportHotMetrics.getValue(options);
+            boolean logHotMetricsForGraph = false;
+            if (reportHotMetricsMethodFilter != null) {
+                MethodFilter hotMetricsMethodFilter = null;
+                hotMetricsMethodFilter = MethodFilter.parse(reportHotMetricsMethodFilter);
+                logHotMetricsForGraph = graph.method() != null && hotMetricsMethodFilter.matches(graph.method());
+                if (!logHotMetricsForGraph) {
+                    CompilationIdentifier id = graph.compilationId();
+                    JavaMethod idMethod = id.asJavaMethod();
+                    logHotMetricsForGraph = idMethod != null && hotMetricsMethodFilter.matches(idMethod);
+                }
+                if (logHotMetricsForGraph) {
+                    if (PhaseOptions.ReportHotMetricsBeforePhases.getValue(graph.getOptions()).equals(getClass().getSimpleName())) {
+                        String label = graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
+                        TTY.println("Reporting hot metrics before " + getName() + " during compilation of " + label);
+                        new ReportHotCodePhase().apply(graph, context);
+                    }
+                }
+            }
 
             // This is a manual version of a try/resource pattern since the close operation might
             // want to know whether the run call completed with an exception or not.
@@ -476,8 +519,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 }
             }
 
-            executionCount.increment(debug);
-            edgeModificationCount.add(debug, graph.getEdgeModificationCount() - edgesBefore);
             if (verifySizeContract) {
                 if (!before.isCurrent()) {
                     int sizeAfter = NodeCostUtil.computeGraphSize(graph);
@@ -487,9 +528,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
 
             if (dumpGraph && debug.areScopesEnabled()) {
                 dumpAfter(graph, isTopLevel, dumpedBefore);
-            }
-            if (debug.isVerifyEnabled()) {
-                debug.verify(graph, "%s", getName());
             }
 
             // Only verify inputs if the graph edges have changed
@@ -508,6 +546,15 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                     GraalServices.dumpHeap(path, false);
                 } catch (IOException | UnsupportedOperationException e) {
                     e.printStackTrace(System.out);
+                }
+            }
+
+            if (logHotMetricsForGraph) {
+                String reportAfterPhase = PhaseOptions.ReportHotMetricsAfterPhases.getValue(graph.getOptions());
+                if (reportAfterPhase != null && reportAfterPhase.equals(getClass().getSimpleName())) {
+                    String label = graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
+                    TTY.println("Reporting hot metrics after " + getName() + " during compilation of " + label);
+                    new ReportHotCodePhase().apply(graph, context);
                 }
             }
 
@@ -574,15 +621,25 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         @Override
         public void changed(NodeEvent e, Node node) {
             if (!graph.isNew(mark, node) && node.isAlive()) {
-                if (e == NodeEvent.INPUT_CHANGED || e == NodeEvent.ZERO_USAGES) {
+                if (e == NodeEvent.INPUT_CHANGED || e == NodeEvent.CONTROL_FLOW_CHANGED || e == NodeEvent.ZERO_USAGES) {
                     changed = true;
                 }
             }
         }
     }
 
-    public CharSequence getName() {
+    private CharSequence createName() {
         return new ClassTypeSequence(this.getClass());
+    }
+
+    public CharSequence getName() {
+        CharSequence name = statistics.phaseName;
+        if (name != null) {
+            return name;
+        }
+        name = createName();
+        statistics.phaseName = name;
+        return name;
     }
 
     protected abstract void run(StructuredGraph graph, C context);

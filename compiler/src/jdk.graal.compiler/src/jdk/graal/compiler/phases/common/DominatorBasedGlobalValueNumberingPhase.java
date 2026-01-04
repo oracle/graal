@@ -420,7 +420,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             loop.loopsData().getCFG().getNodeToBlock().set(n, loop.loopsData().getCFG().getNodeToBlock().get(loop.loopBegin().forwardEnd()));
             loop.loopBegin().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, loop.loopBegin().graph(), "After LICM of node %s for loop %s", n, loop);
             earlyGVNLICM.increment(loop.loopBegin().getDebug());
-            if (loop.loopBegin().getDebug().isCountEnabled()) {
+            if (loop.loopBegin().getDebug().areCountersEnabled()) {
                 DebugContext.counter(earlyGVNLICM.getName() + "_" + n.getClass().getSimpleName()).increment(n.graph().getDebug());
             }
             return true;
@@ -639,7 +639,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             n.safeDelete();
             graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After replacing %s with %s", n, edgeDataEqual);
             earlyGVN.increment(graph.getDebug());
-            if (graph.getDebug().isCountEnabled()) {
+            if (graph.getDebug().areCountersEnabled()) {
                 DebugContext.counter(earlyGVN.getName() + "_" + edgeDataEqual.getClass().getSimpleName()).increment(graph.getDebug());
             }
             return true;

@@ -50,6 +50,7 @@ import org.junit.Assert;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
@@ -257,6 +258,12 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
     private static final class RootFrameChecker implements ExecutionEventListener {
 
         @Override
+        public void onResume(EventContext context, VirtualFrame frame) {
+            // Overridden to prevent the default delegation to onEnter. For a coroutine resume, the
+            // frame doesn't have to be empty
+        }
+
+        @Override
         public void onEnter(EventContext context, VirtualFrame frame) {
             checkFrameIsEmpty(context, frame.materialize());
         }
@@ -271,7 +278,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
                     if (frame.isStatic(slot)) {
                         Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", defaultValue, frame.getObjectStatic(slot));
                         Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", 0L, frame.getLongStatic(slot));
-                    } else {
+                    } else if (frame.getTag(slot) != FrameSlotKind.Illegal.tag) {
                         Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", defaultValue, frame.getValue(slot));
                     }
                 }

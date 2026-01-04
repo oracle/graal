@@ -8,8 +8,6 @@ redirect_from: /docs/introduction/
 
 # Introduction to GraalVM
 
-GraalVM is an advanced JDK with ahead-of-time Native Image compilation.
-
 GraalVM accelerates application performance while consuming fewer resources&mdash;improving application efficiency and reducing IT costs.
 It achieves this by compiling your Java application ahead of time into a native binary.
 The binary is smaller, starts up to 100x faster, provides peak performance with no warmup, and uses less memory and CPU than an application running on a Java Virtual Machine (JVM).
@@ -31,9 +29,6 @@ GraalVM's key benefits are:
 
 Oracle GraalVM is licensed under [GraalVM Free Terms and Conditions (GFTC) including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graal-free-license.html).
 Subject to the conditions in the license, including the License for Early Adopter Versions, the GFTC is intended to permit use by any user including commercial and production use. Redistribution is permitted as long as it is not for a fee.
-Oracle GraalVM is also free to use on Oracle Cloud Infrastructure.
-For more information about Oracle GraalVM licensing, see the [Oracle Java SE Licensing FAQ](https://www.oracle.com/java/technologies/javase/jdk-faqs.html#GraalVM-licensing).
-
 GraalVM Community Edition is open-source project built from the sources available on [GitHub](https://github.com/oracle/graal) and distributed under [version 2 of the GNU General Public License with the “Classpath” Exception](https://github.com/oracle/graal/blob/master/LICENSE), which are the same terms as for Java.
 Check the [licenses](https://github.com/oracle/graal#license) of individual GraalVM components which are generally derivative of the license of a particular language and may differ.
 

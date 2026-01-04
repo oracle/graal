@@ -36,6 +36,7 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
+import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayouterCallback;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.NativeImageHeapWriter;
@@ -90,19 +91,19 @@ public class WebImageWasmLMCodeGen extends WebImageWasmCodeGen {
      */
     @Override
     protected void writeImageHeap() {
-        ImageHeapLayoutInfo layout = codeCache.nativeImageHeap.getLayouter().layout(codeCache.nativeImageHeap, WasmUtil.PAGE_SIZE);
+        ImageHeapLayoutInfo layout = codeCache.nativeImageHeap.getLayouter().layout(codeCache.nativeImageHeap, WasmUtil.PAGE_SIZE, ImageHeapLayouterCallback.NONE);
         setLayout(layout);
 
         afterHeapLayout();
 
         NativeImageHeapWriter writer = new NativeImageHeapWriter(codeCache.nativeImageHeap, layout);
 
-        RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(layout.getImageHeapSize(), WasmUtil.BYTE_ORDER);
+        RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(layout.getSize(), WasmUtil.BYTE_ORDER);
         codeCache.writeConstants(writer, heapSectionBuffer);
         writer.writeHeap(debug, heapSectionBuffer);
         long heapStart = MemoryLayout.HEAP_BASE.rawValue();
         assert heapStart % 8 == 0 : heapStart;
-        int imageHeapSize = (int) layout.getImageHeapSize();
+        int imageHeapSize = (int) layout.getSize();
 
         EconomicMap<CGlobalData<?>, UnsignedWord> globalData = EconomicMap.create();
         int memorySize = MemoryLayout.constructLayout(globalData, imageHeapSize, WebImageWasmOptions.StackSize.getValue());

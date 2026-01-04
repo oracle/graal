@@ -15,11 +15,11 @@ GraalVM provides the [Truffle framework](../truffle/README.md) for implementing 
 Truffle applies AST specialization during interpretation, which enables partial evaluation to create highly optimized native code without the need to write a compiler specifically for a language.
 The Java VM contributes high-performance garbage collection, threads, and parallelism support.
 
-Oracle Labs and external research groups have implemented a variety of programming languages on top of Truffle, including JavaScript, Python, Ruby, R, Smalltalk, and others. 
+Oracle Labs and external research groups have implemented a variety of programming languages on top of Truffle, including JavaScript, Python, Ruby, R, Smalltalk, and others.
 Several of them already exceed the best implementation of that language that existed before.
 
 We recommend watching a presentation on [Dynamic Metacompilation with Truffle](https://www.youtube.com/watch?v=pksRrON5XfU) by Christian Humer, and checking academic publications on Truffle, of your interest, listed on this page.
-You can also find the extensive [Truffle documentation on the website](https://www.graalvm.org/graalvm-as-a-platform/language-implementation-framework/). 
+You can also find the extensive [Truffle documentation on the website](https://www.graalvm.org/graalvm-as-a-platform/language-implementation-framework/).
 
 ## Graal Compiler
 
@@ -39,6 +39,22 @@ Find below also the academic publications on the compiler of your interest, or s
 ## Academic Publications
 
 ### 2025
+
+- Matteo Oldani, William Blair, Shweta Shinde, Matthias Neugschwandtner
+[**Monocle: Transient Execution Proof Memory Views for Runtime Compiled Code**](https://dl.acm.org/doi/full/10.1145/3708821.3733887)
+In _Proceedings of the 20th ACM Asia Conference on Computer and Communications Security_
+
+- Sebastian Kloibhofer, Lukas Makor, Peter Hofer, David Leopoldseder, Hanspeter Mössenböck
+[**Profile-Guided Field Externalization in an Ahead-of-Time Compiler**](https://labs.oracle.com/pls/apex/f?p=94065:10:12470684369614:11669)
+In _Proceedings of [ECOOP 2024](https://2025.ecoop.org)_
+
+- Andrej Pecimuth, David Leopoldseder, Petr Tuma
+[**Reusing Highly Optimized IR in Dynamic Compilation**](https://labs.oracle.com/pls/apex/f?p=94065:10:12470684369614:11670)
+In _Proceedings of [ECOOP 2025](https://2025.ecoop.org)_
+
+- Andrej Pecimuth, David Leopoldseder, Petr Tuma
+[**A Pragmatic Approach to Replay Compilation**](https://labs.oracle.com/pls/apex/f?p=94065:10:107778083711415:11629)
+In _Proceedings of MoreVMs workshop co-located with Programming 2025_
 
 - Lukas Makor, Sebastian Kloibhofer, Peter Hofer, David Leopoldseder, Hanspeter Mössenböck
 [**Automated Profile-Guided Replacement of Data Structures to Reduce Memory Allocation**](https://programming-journal.org/2025/10/3/)
@@ -90,7 +106,7 @@ In _Proceedings of [‹Programming› 2025](https://2025.programming-conference.
 [**Taking a Closer Look: An Outlier-Driven Approach to Compilation-Time Optimization**](https://2024.ecoop.org/details/ecoop-2024-papers/24/Taking-a-Closer-Look-An-Outlier-Driven-Approach-to-Compilation-Time-Optimization)
 In _Proceedings of the ECOOP 2024 Doctoral Symposium_
 
-- Christoph Blumschein, Fabio Niephaus, Codrut Stancu, Christian Wimmer, Jens Lincke, Robert Hirschfeld 
+- Christoph Blumschein, Fabio Niephaus, Codrut Stancu, Christian Wimmer, Jens Lincke, Robert Hirschfeld
 [**Finding Cuts in Static Analysis Graphs to Debloat Software**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:10909)
 In _Proceedings of the ACM SIGSOFT International Symposium on Software Testing and Analysis_
 
@@ -158,7 +174,7 @@ In _Proceedings of the 15th EUROPEAN WORKSHOP ON SYSTEMS SECURITY_
 [**Toward Just-in-time and Language-agnostic Mutation Testing**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:8730)
 In _Proceedings of the MoreVMs’22 workshop at ‹Programming› 2022_
 
-### 2021 
+### 2021
 
 - David Justo, Shaoqing Yi, Lukas Stadler, Nadia Polikarpova, Arun Kumar
 [**Towards a polyglot framework for factorized ML**](https://dl.acm.org/doi/abs/10.14778/3476311.3476372)
@@ -421,11 +437,11 @@ In _Proceedings of the MoreVMs’22 workshop at ‹Programming› 2022_
 
 ### 2021
 
-- Rodrigo Bruno, Vojin Jovanovic, Christian Wimmer, Gustavo Alonso 
+- Rodrigo Bruno, Vojin Jovanovic, Christian Wimmer, Gustavo Alonso
 [**Compiler-Assisted Object Inlining with Value Fields**](https://dl.acm.org/doi/10.1145/3453483.3454034)
 In _Proceedings of the 42nd ACM SIGPLAN International Conference on Programming Language Design and Implementation (PLDI 2021)_
 
-- Raphael Mosaner, David Leopoldseder, Lukas Stadler, Hanspeter Moessenboeck 
+- Raphael Mosaner, David Leopoldseder, Lukas Stadler, Hanspeter Moessenboeck
 [**Using Machine Learning to Predict the Code Size Impact of Duplication Heuristics in a Dynamic Compiler**](https://doi.org/10.1145/3475738.3480943)
 In _Proceedings of the 18th ACM SIGPLAN International Conference on Managed Programming Languages and Runtimes (MPLR 2021)_
 

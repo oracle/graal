@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +47,7 @@ import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
+import org.graalvm.collections.EconomicSet;
 
 public final class CallTreeInfo {
     private final Map<AnalysisMethod, RuntimeCompiledMethod> runtimeCompilations;
@@ -116,7 +116,7 @@ public final class CallTreeInfo {
                          * compiled method.
                          */
                         runtimeCandidateMap.computeIfAbsent(new RuntimeCompilationCandidate(callee, invokeTarget),
-                                        (candidate) -> {
+                                        _ -> {
                                             return new InvokeNode(callerMethodNode, invokeInfo.getPosition());
                                         });
                     }
@@ -229,7 +229,7 @@ public final class CallTreeInfo {
              * Otherwise we will walk an arbitrary caller until there is not a caller or we
              * encounter a cycle.
              */
-            Set<MethodNode> covered = new HashSet<>();
+            EconomicSet<MethodNode> covered = EconomicSet.create();
             MethodNode current = first;
             covered.add(current);
 

@@ -1942,12 +1942,12 @@ public class FileSystemsTest {
                 Assert.fail("Should not reach here.");
             } catch (Exception e) {
                 if (isInternal) {
-                    Assert.assertFalse(env.isHostException(e));
+                    Assert.assertFalse(interop.isHostObject(e) && interop.isException(e));
                     Assert.assertTrue(e instanceof RuntimeException);
                 } else {
-                    Assert.assertTrue(env.isHostException(e));
+                    Assert.assertTrue(interop.isHostObject(e) && interop.isException(e));
                     if (weakEncapsulation) {
-                        Assert.assertTrue(env.asHostException(e) instanceof NullPointerException);
+                        Assert.assertTrue(interop.asHostObject(e) instanceof NullPointerException);
                     }
                 }
             }

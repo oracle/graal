@@ -55,12 +55,12 @@ Then it is possible to add Truffle artifacts as dependencies to the Maven config
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>24.2.0</version> <!-- or whether version got installed by mx maven-install -->
+    <version>25.0.0</version> <!-- or whether version got installed by mx maven-install -->
 </dependency>
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>24.2.0</version>
+    <version>25.0.0</version>
     <scope>provided</scope>
 </dependency>
 ```

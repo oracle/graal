@@ -38,6 +38,7 @@ public class ParallelExecutionException extends RuntimeException {
     private final List<Throwable> exceptions;
 
     ParallelExecutionException(List<Throwable> exceptions) {
+        super(exceptions.getFirst().getMessage());
         this.exceptions = exceptions;
     }
 

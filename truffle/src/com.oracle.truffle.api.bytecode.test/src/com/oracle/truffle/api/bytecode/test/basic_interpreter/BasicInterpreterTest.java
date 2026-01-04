@@ -147,14 +147,19 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         return new ExpectedInstruction.Builder(name);
     }
 
-    private static void assertInstructionsEqual(List<Instruction> actualInstructions, ExpectedInstruction... expectedInstructions) {
+    private static void assertInstructionsEqual(List<Instruction> actualInstructionsOriginal, ExpectedInstruction... expectedInstructions) {
+        List<Instruction> actualInstructions = filterTrace(actualInstructionsOriginal);
         if (actualInstructions.size() != expectedInstructions.length) {
             fail(String.format("Expected %d instructions, but %d found.\nExpected: %s.\nActual: %s", expectedInstructions.length, actualInstructions.size(), expectedInstructions, actualInstructions));
         }
-        int bci = 0;
+        int bci = actualInstructions.get(0).getBytecodeIndex();
         for (int i = 0; i < expectedInstructions.length; i++) {
             assertInstructionEquals(actualInstructions.get(i), expectedInstructions[i].withBci(bci));
-            bci = actualInstructions.get(i).getNextBytecodeIndex();
+
+            if (i + 1 < actualInstructions.size()) {
+                bci = actualInstructions.get(i + 1).getBytecodeIndex();
+            }
+
         }
     }
 
@@ -174,6 +179,14 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                     fail(String.format("Argument %s missing from instruction %s", expectedArgument.name, actual.getName()));
                 }
                 assertEquals(expectedArgument.kind, actualArgument.getKind());
+
+                if (TruffleTestAssumptions.isOptimizingRuntime() && expectedArgument.kind == Kind.BRANCH_PROFILE) {
+                    // no validation of branch profile frequency for the optimizing runtime
+                    // it is generally race to assume they are stable with the optimizing runtime
+                    // we can only safely assume they are deterministic in the fallback runtime.
+                    continue;
+                }
+
                 switch (expectedArgument.kind) {
                     case CONSTANT -> assertEquals(expectedArgument.value, actualArgument.asConstant());
                     case INTEGER -> assertEquals(expectedArgument.value, actualArgument.asInteger());
@@ -1393,7 +1406,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assumeTrue(run.storesBciInFrame());
 
         // This test relies on an assertion. Explicitly open a context with compilation disabled.
-        try (Context c = createContextWithCompilationDisabled()) {
+        try (Context c = BytecodeDSLTestLanguage.createPolyglotContextWithCompilationDisabled()) {
             BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
                 b.beginRoot();
 
@@ -1465,16 +1478,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             }
         }
 
-    }
-
-    private static Context createContextWithCompilationDisabled() {
-        var builder = Context.newBuilder(BytecodeDSLTestLanguage.ID);
-        if (TruffleTestAssumptions.isOptimizingRuntime()) {
-            builder.option("engine.Compilation", "false");
-        }
-        Context result = builder.build();
-        result.enter();
-        return result;
     }
 
     /*
@@ -2329,13 +2332,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endBlock();
             b.endRoot();
         });
-
-        // TODO(GR-59372): Without default values, every local slot gets cleared on entry, which
-        // breaks compilation because the number of clears exceed PE's explode loop threshold. Using
-        // illegal default slots will solve this problem because the clears will be unnecessary.
-        if (run.getDefaultLocalValue() != null) {
-            assertEquals(42L, node.getCallTarget().call());
-        }
+        assertEquals(42L, node.getCallTarget().call());
     }
 
     @Test
@@ -2884,7 +2881,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         for (Instruction instruction : bytecode.getInstructions()) {
             int bci = instruction.getBytecodeIndex();
             if (startBci <= bci && bci < endBci) {
-                result.add(instruction.getName());
+                // filter trace instructions
+                if (!instruction.getName().equals("trace.instruction")) {
+                    result.add(instruction.getName());
+                }
             }
         }
         return result.toArray(new String[0]);
@@ -3149,19 +3149,22 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertEquals("1 + 2", s3.getSourceSection().getCharacters().toString());
         assertEquals("return 1 + 2", s4.getSourceSection().getCharacters().toString());
 
-        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        if (!run.testTracer()) {
+            List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
 
-        assertEquals(0, s1.getStartBytecodeIndex());
-        assertEquals(instructions.get(1).getBytecodeIndex(), s1.getEndBytecodeIndex());
+            assertEquals(0, s1.getStartBytecodeIndex());
+            assertEquals(instructions.get(1).getBytecodeIndex(), s1.getEndBytecodeIndex());
 
-        assertEquals(6, s2.getStartBytecodeIndex());
-        assertEquals(instructions.get(2).getBytecodeIndex(), s2.getEndBytecodeIndex());
+            assertEquals(6, s2.getStartBytecodeIndex());
+            assertEquals(instructions.get(2).getBytecodeIndex(), s2.getEndBytecodeIndex());
 
-        assertEquals(0, s3.getStartBytecodeIndex());
-        assertEquals(instructions.get(3).getBytecodeIndex(), s3.getEndBytecodeIndex());
+            assertEquals(0, s3.getStartBytecodeIndex());
+            assertEquals(instructions.get(3).getBytecodeIndex(), s3.getEndBytecodeIndex());
 
-        assertEquals(0, s4.getStartBytecodeIndex());
-        assertEquals(instructions.get(3).getNextBytecodeIndex(), s4.getEndBytecodeIndex());
+            assertEquals(0, s4.getStartBytecodeIndex());
+            assertEquals(instructions.get(3).getNextBytecodeIndex(), s4.getEndBytecodeIndex());
+        }
+
     }
 
     @Test

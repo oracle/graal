@@ -38,8 +38,10 @@ import com.oracle.truffle.espresso.blocking.GuestInterrupter;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.VM;
 
 /**
  * Provides bridges to guest world thread implementation.
@@ -108,23 +110,6 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
         return (Thread) meta.HIDDEN_HOST_THREAD.getHiddenObject(guest);
     }
 
-    // region thread state transition
-
-    /**
-     * Returns the {@code Thread#threadStatus} field of the given guest thread.
-     */
-    public int getState(StaticObject guest) {
-        if (meta.getJavaVersion().java17OrEarlier()) {
-            return meta.java_lang_Thread_threadStatus.getInt(guest);
-        } else {
-            StaticObject holder = meta.java_lang_Thread_holder.getObject(guest);
-            if (StaticObject.isNull(holder)) {
-                return State.NEW.value;
-            }
-            return meta.java_lang_Thread$FieldHolder_threadStatus.getInt(holder);
-        }
-    }
-
     void setPriority(StaticObject thread, int priority) {
         if (meta.getJavaVersion().java17OrEarlier()) {
             meta.java_lang_Thread_priority.setInt(thread, priority);
@@ -144,31 +129,6 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
 
     long getEETop(StaticObject thread) {
         return meta.java_lang_Thread_eetop.getLong(thread);
-    }
-
-    int fromRunnable(StaticObject self, State state) {
-        int old = getState(self);
-        assert (old & State.RUNNABLE.value) != 0 || old == State.NEW.value : old;
-        setState(self, state.value);
-        fullSafePoint(self);
-        return old;
-    }
-
-    void restoreState(StaticObject self, int toRestore) {
-        try {
-            fullSafePoint(self);
-        } finally {
-            setState(self, toRestore);
-        }
-    }
-
-    void setState(StaticObject self, int state) {
-        if (meta.getJavaVersion().java17OrEarlier()) {
-            meta.java_lang_Thread_threadStatus.setInt(self, state);
-        } else {
-            StaticObject holder = meta.java_lang_Thread_holder.getObject(self);
-            meta.java_lang_Thread$FieldHolder_threadStatus.setInt(holder, state);
-        }
     }
 
     int getPriority(StaticObject thread) {
@@ -201,7 +161,7 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
     public StaticObject getThreadGroup(StaticObject thread) {
         if (getJavaVersion().java19OrLater()) {
             int state = getState(thread);
-            if (state == State.TERMINATED.value) {
+            if (ThreadState.isTerminated(state)) {
                 return StaticObject.NULL;
             }
             if (isVirtualThread(thread)) {
@@ -228,12 +188,133 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
         return false;
     }
 
-    @SuppressWarnings("unused")
-    private int updateState(StaticObject self, State state) {
-        int old = getState(self);
-        int value = old | state.value;
-        setState(self, value);
-        return old;
+    // region thread state transition
+
+    /**
+     * @return The current guest thread if it is ready for applying state transitions, {@code null}
+     *         otherwise.
+     */
+    public StaticObject readyForTransitions() {
+        if (!getContext().isMainThreadCreated()) {
+            return null;
+        }
+        StaticObject current = getContext().getCurrentPlatformThread();
+        if (current == null) {
+            return null;
+        }
+        if (!isStateInitialized(current)) {
+            return null;
+        }
+        return current;
+    }
+
+    private boolean isStateInitialized(StaticObject current) {
+        return getState(current) != ThreadState.DefaultStates.STATE_NEW;
+    }
+
+    void initializeState(StaticObject self, int state) {
+        assert !isStateInitialized(self);
+        setState(self, state, true);
+    }
+
+    void setState(StaticObject self, int state) {
+        assert isStateInitialized(self);
+        setState(self, state, false);
+    }
+
+    void setState(StaticObject self, int state, boolean forInit) {
+        assert isStateInitialized(self) || forInit;
+        assert ThreadState.isValidStatus(state);
+        if (meta.getJavaVersion().java17OrEarlier()) {
+            meta.java_lang_Thread_threadStatus.setInt(self, state);
+        } else {
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(self);
+            assert StaticObject.notNull(holder);
+            meta.java_lang_Thread$FieldHolder_threadStatus.setInt(holder, state);
+        }
+    }
+
+    /**
+     * Returns the {@code Thread#threadStatus} field of the given guest thread.
+     */
+    public int getState(StaticObject guest) {
+        if (meta.getJavaVersion().java17OrEarlier()) {
+            return meta.java_lang_Thread_threadStatus.getInt(guest);
+        } else {
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(guest);
+            if (StaticObject.isNull(holder)) {
+                return ThreadState.DefaultStates.STATE_NEW;
+            }
+            return meta.java_lang_Thread$FieldHolder_threadStatus.getInt(holder);
+        }
+    }
+
+    public void blockNativeTransitions(StaticObject thread, boolean block) {
+        if (isStateInitialized(thread)) {
+            EspressoLock lock = getToNativeLock(thread);
+            if (block) {
+                lock.lock();
+            } else {
+                lock.unlock();
+            }
+        }
+    }
+
+    void transition(StaticObject self, int outer, int inner, Node location) {
+        assert outer == getState(self);
+        assert inner != outer;
+        doTransition(self, outer, inner, location, false);
+    }
+
+    void restoreState(StaticObject self, int outer, int inner, EspressoNode location) {
+        assert inner == getState(self);
+        assert inner != outer;
+        doTransition(self, inner, outer, location, true);
+    }
+
+    private void doTransition(StaticObject thread, int old, int to, Node location, boolean unconditional) {
+        EspressoLock lock = null;
+        try {
+            if (isFromNative(old, to)) {
+                /*-
+                 * For transitions from native, we must:
+                 * - Ensure that we poll before executing guest code.
+                 */
+                TruffleSafepoint.pollHere(location);
+            } else if (isToNative(old, to)) {
+                /*-
+                 * For transitions to native, we must:
+                 * - Synchronize on a lock to ensure we can still answer a concurrent thread's request
+                 * if he saw us as non-native.
+                 */
+                lock = getToNativeLock(thread);
+                lock.lock();
+            }
+            if (!unconditional) {
+                // Will not set state if the safepoint throws.
+                setState(thread, to);
+            }
+        } finally {
+            if (unconditional) {
+                // Make sure we restore the state even if safepoint throws.
+                setState(thread, to);
+            }
+            if (lock != null) {
+                lock.unlock();
+            }
+        }
+    }
+
+    private static boolean isToNative(int old, int to) {
+        return ThreadState.isResponsive(old) && !ThreadState.isResponsive(to);
+    }
+
+    private static boolean isFromNative(int old, int to) {
+        return !ThreadState.isResponsive(old) && ThreadState.isResponsive(to);
+    }
+
+    private EspressoLock getToNativeLock(StaticObject thread) {
+        return (EspressoLock) meta.HIDDEN_TO_NATIVE_LOCK.getHiddenObject(thread);
     }
 
     // endregion thread state transition
@@ -251,7 +332,7 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
      * expected to be called before and after known "blocking" executions. The compensation is that
      * we do not require a node.
      */
-    public void fullSafePoint(StaticObject thread) {
+    public void checkDeprecatedThreadStatus(StaticObject thread) {
         assert thread == getContext().getCurrentPlatformThread();
         handleStop(thread);
         handleSuspend(thread);
@@ -281,13 +362,11 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
             return false;
         }
         boolean isInterrupted = meta.HIDDEN_INTERRUPTED.getBoolean(guest, true);
-        if (clear) {
+        if (clear && isInterrupted) {
             Thread host = getHost(guest);
             EspressoError.guarantee(host == Thread.currentThread(), "Thread#isInterrupted(true) is only supported for the current thread.");
-            if (host != null && host.isInterrupted()) {
-                Thread.interrupted();
-            }
-            clearInterruptStatus(guest);
+            clearInterruptEvent(guest);
+            meta.HIDDEN_INTERRUPTED.setBoolean(guest, false, true);
         }
         return isInterrupted;
     }
@@ -310,25 +389,22 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
     }
 
     private void doInterrupt(StaticObject guest) {
-        if (getContext().getJavaVersion().java13OrEarlier() && isAlive(guest)) {
+        if (getJavaVersion().java13OrEarlier() && isAlive(guest)) {
             // In JDK 13+, the interrupted status is set in java code.
             meta.HIDDEN_INTERRUPTED.setBoolean(guest, true, true);
         }
+        VM vm = getVM();
+        if (vm.needsThreadInterruptedNotification() && isAlive(guest)) {
+            vm.notifyThreadInterrupted(guest, true);
+        }
     }
 
-    /**
-     * Implementation of {@code Thread.clearInterruptEvent} (JDK 13+).
-     */
-    public void clearInterruptEvent() {
-        assert !getContext().getJavaVersion().java13OrEarlier();
+    public void clearInterruptEvent(StaticObject guest) {
         Thread.interrupted();
-    }
-
-    /**
-     * Sets the interrupted field of the given thread to {@code false}.
-     */
-    public void clearInterruptStatus(StaticObject guest) {
-        meta.HIDDEN_INTERRUPTED.setBoolean(guest, false, true);
+        VM vm = getVM();
+        if (vm.needsThreadInterruptedNotification()) {
+            vm.notifyThreadInterrupted(guest, false);
+        }
     }
 
     /**
@@ -336,15 +412,28 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
      */
     public boolean isAlive(StaticObject guest) {
         int state = getState(guest);
-        return state != State.NEW.value && state != State.TERMINATED.value;
+        return ThreadState.isAlive(state);
     }
 
     /**
-     * Returns true if the given thread is in a non-blocking thread and executing java bytecodes.
+     * Whether the thread is in espresso's control.
      */
-    public boolean isExecutingGuestCode(StaticObject guest) {
+    public boolean isResponsive(StaticObject guest) {
         int state = getState(guest);
-        return state == State.RUNNABLE.value;
+        return ThreadState.isResponsive(state);
+    }
+
+    /**
+     * Whether the thread is executing native code.
+     * <p>
+     * This is not equivalent to {@code !isInEspresso(guest)}: native code may request a
+     * {@link com.oracle.truffle.espresso.jni.JniEnv#MonitorEnter(StaticObject, Meta) monitor enter}
+     * through JNI. If that monitor is contended, the requesting thread should still be considered
+     * {@code in native}, but its waiting is controlled by espresso, and is thus still responsive.
+     */
+    public boolean isInNative(StaticObject guest) {
+        int state = getState(guest);
+        return ThreadState.isInNative(state);
     }
 
     public boolean isManaged(StaticObject guest) {
@@ -356,19 +445,23 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
      */
     public Thread createJavaThread(StaticObject guest, DirectCallNode exit, DirectCallNode dispatch) {
         Thread host = getContext().getEnv().newTruffleThreadBuilder(new GuestRunnable(getContext(), guest, exit, dispatch)).build();
-        initializeHiddenFields(guest, host, true);
         // Prepare host thread
         host.setDaemon(isDaemon(guest));
         host.setPriority(getPriority(guest));
+        String guestName = getContext().getThreadAccess().getThreadName(guest);
+        host.setName(guestName);
         if (isInterrupted(guest, false)) {
             host.interrupt();
         }
-        String guestName = getContext().getThreadAccess().getThreadName(guest);
-        host.setName(guestName);
+        // Prepare guest thread
+        initializeHiddenFields(guest, host, true);
         getThreadAccess().setEETopAlive(guest);
-        // Make the thread known to the context
-        getContext().registerThread(host, guest);
-        setState(guest, State.RUNNABLE.value);
+        // Associate host and guest
+        getContext().registerJavaThread(host, guest);
+
+        // Thread must be runnable on returning from 'start', so we set it preemptively
+        // here.
+        getThreadAccess().initializeState(guest, ThreadState.DefaultStates.DEFAULT_RUNNABLE_STATE);
         return host;
     }
 
@@ -376,6 +469,10 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
         meta.HIDDEN_HOST_THREAD.setHiddenObject(guest, host);
         meta.HIDDEN_ESPRESSO_MANAGED.setBoolean(guest, isManaged);
         meta.HIDDEN_THREAD_PARK_LOCK.setHiddenObject(guest, EspressoLock.create(getContext().getBlockingSupport()));
+        meta.HIDDEN_TO_NATIVE_LOCK.setHiddenObject(guest, EspressoLock.create(getContext().getBlockingSupport()));
+        if (meta.HIDDEN_INTERRUPTED_EVENT != null) {
+            meta.HIDDEN_INTERRUPTED_EVENT.setHiddenObject(guest, getVM().createInterruptedEvent());
+        }
     }
 
     // endregion thread control
@@ -434,8 +531,8 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
      * <li>Prevent other threads from {@linkplain #stop(StaticObject, StaticObject)} stopping} the
      * given thread.</li>
      * <li>Invoke guest {@code Thread.exit()}.</li>
-     * <li>Sets the status of this thread to {@link State#TERMINATED} and notifies other threads
-     * waiting on this thread's monitor.</li>
+     * <li>Sets the status of this thread to {@link ThreadState.DefaultStates#TERMINATED} and
+     * notifies other threads waiting on this thread's monitor.</li>
      * <li>Unregisters the thread from the context.</li>
      * </ul>
      */
@@ -451,6 +548,7 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
         if (eetop != 0) {
             assert eetop == ALIVE_EETOP;
             if (!getContext().isTruffleClosed()) {
+                Transition transition = Transition.transition(ThreadState.IN_ESPRESSO, this);
                 try {
                     if (exit == null) {
                         meta.java_lang_Thread_exit.invokeDirectSpecial(thread);
@@ -459,11 +557,13 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
                     }
                 } catch (AbstractTruffleException e) {
                     // just drop it
+                } finally {
+                    transition.restore(this);
                 }
+                setTerminateStatusAndNotify(thread);
             }
-            setTerminateStatusAndNotify(thread);
         } else {
-            assert getState(thread) == State.TERMINATED.value;
+            assert ThreadState.isTerminated(getState(thread));
         }
     }
 
@@ -474,6 +574,11 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
      * If this method returns true, the thread will have been terminated.
      */
     public boolean terminateIfStillborn(StaticObject guest) {
+        if (getContext().isClosing() || getContext().isTruffleClosed()) {
+            setState(guest, ThreadState.DefaultStates.DEFAULT_RUNNABLE_STATE);
+            // Present the thread as started, but it will never be run.
+            return true;
+        }
         if (isStillborn(guest)) {
             setTerminateStatusAndNotify(guest);
             return true;
@@ -484,7 +589,7 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
     private void setTerminateStatusAndNotify(StaticObject guest) {
         guest.getLock(getContext()).lock();
         try {
-            setState(guest, State.TERMINATED.value);
+            setState(guest, ThreadState.DefaultStates.TERMINATED);
             setEETopDead(guest);
             // Notify waiting threads you are done working
             guest.getLock(getContext()).signalAll();
@@ -494,9 +599,6 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
     }
 
     private boolean isStillborn(StaticObject guest) {
-        if (getContext().isClosing() || getContext().isTruffleClosed()) {
-            return true;
-        }
         /*
          * A bit of a special case. We want to make sure we observe the stillborn status
          * synchronously.

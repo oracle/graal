@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,6 @@ import org.junit.AssumptionViolatedException;
 import org.junit.Before;
 import org.junit.Test;
 
-@SuppressWarnings("try")
 public class TimerKeyTest {
 
     @Before
@@ -84,20 +83,20 @@ public class TimerKeyTest {
     @Test
     public void test2() {
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
-        map.put(DebugOptions.Time, "");
+        map.put(DebugOptions.Timers, "");
         OptionValues options = new OptionValues(map);
         DebugContext debug = new Builder(options, NO_CONFIG_CUSTOMIZERS).build();
 
         TimerKey timerC = DebugContext.timer("TimerC");
-        try (DebugCloseable c1 = timerC.start(debug)) {
+        try (DebugCloseable _ = timerC.start(debug)) {
             spin(50);
-            try (DebugCloseable c2 = timerC.start(debug)) {
+            try (DebugCloseable _ = timerC.start(debug)) {
                 spin(50);
-                try (DebugCloseable c3 = timerC.start(debug)) {
+                try (DebugCloseable _ = timerC.start(debug)) {
                     spin(50);
-                    try (DebugCloseable c4 = timerC.start(debug)) {
+                    try (DebugCloseable _ = timerC.start(debug)) {
                         spin(50);
-                        try (DebugCloseable c5 = timerC.start(debug)) {
+                        try (DebugCloseable _ = timerC.start(debug)) {
                             spin(50);
                         }
                     }

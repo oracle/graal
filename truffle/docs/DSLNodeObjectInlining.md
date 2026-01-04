@@ -381,7 +381,7 @@ public abstract static class AddAbsNode extends Node {
 _Cached Nodes with Multiple Instances_
 
 For nodes with specializations that may have multiple instances a `@Bind("this") Node node` parameter must be used to access the inline target node.
-This is simliar to the `SumArrayNode` node in the advanced usage example.
+This is similar to the `SumArrayNode` node in the advanced usage example.
 
 ```java
 @ImportStatic(AbstractArray.class)
@@ -428,7 +428,7 @@ For example:
         /* ... */
 
         @ExportMessage
-        final long abs(@Bind("$node") Node node,
+        final long abs(@Bind Node node,
                        @Cached InlinedConditionProfile profile) {
             if (profile.profile(node, this.value >= 0)) {
                 return  this.value;

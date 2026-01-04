@@ -119,7 +119,7 @@ meth public void expectSuspended(com.oracle.truffle.api.debug.SuspendedCallback,
 meth public void startEval(org.graalvm.polyglot.Source)
 meth public void startExecute(java.util.function.Function<org.graalvm.polyglot.Context,org.graalvm.polyglot.Value>)
 supr java.lang.Object
-hfds TRACE,closed,engine,err,evalThread,executing,executingLoop,executingSource,handler,initialized,newEvent,out
+hfds TRACE,closed,engine,err,evalThread,executing,executingLoop,executingSource,handler,initialized,newEvent,optimizingRuntimeUsed,out
 hcls ExecutingLoop,ExecutingSource
 
 CLSS public abstract interface static com.oracle.truffle.tck.DebuggerTester$PositionPredicate
@@ -226,6 +226,11 @@ CLSS public abstract interface !annotation java.lang.annotation.Target
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.annotation.ElementType[] value()
+
+CLSS public abstract interface !annotation jdk.internal.vm.annotation.AOTSafeClassInitializer
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
 
 CLSS public abstract interface org.junit.rules.TestRule
 meth public abstract org.junit.runners.model.Statement apply(org.junit.runners.model.Statement,org.junit.runner.Description)

@@ -41,10 +41,12 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 public final class ReferenceHandlerThread implements Runnable {
     private final Thread thread;
     private volatile IsolateThread isolateThread;
+    private volatile boolean stopped;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     ReferenceHandlerThread() {
@@ -54,24 +56,48 @@ public final class ReferenceHandlerThread implements Runnable {
     }
 
     public static void start() {
-        if (isSupported()) {
-            singleton().thread.start();
+        if (!isSupported()) {
+            return;
         }
+
+        singleton().thread.start();
+        /* Wait until the isolateThread field is initialized. */
+        while (singleton().isolateThread.isNull()) {
+            Thread.yield();
+        }
+    }
+
+    public static void initiateShutdown() {
+        if (!isSupported()) {
+            return;
+        }
+
+        singleton().stopped = true;
+        Heap.getHeap().wakeUpReferencePendingListWaiters();
+    }
+
+    @Uninterruptible(reason = "Executed during teardown after VMThreads#threadExit")
+    public static void waitUntilDetached() {
+        if (!isSupported()) {
+            return;
+        }
+
+        VMThreads.waitInNativeUntilDetached(singleton().isolateThread);
+        singleton().isolateThread = Word.nullPointer();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isReferenceHandlerThread() {
-        if (isSupported()) {
-            return CurrentIsolate.getCurrentThread() == singleton().isolateThread;
-        }
-        return false;
+        return isReferenceHandlerThread(CurrentIsolate.getCurrentThread());
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isReferenceHandlerThread(IsolateThread other) {
+        return isSupported() && other == singleton().isolateThread;
     }
 
     public static boolean isReferenceHandlerThread(Thread other) {
-        if (isSupported()) {
-            return other == singleton().thread;
-        }
-        return false;
+        return isSupported() && other == singleton().thread;
     }
 
     @Override
@@ -80,19 +106,13 @@ public final class ReferenceHandlerThread implements Runnable {
 
         this.isolateThread = CurrentIsolate.getCurrentThread();
         try {
-            while (true) {
+            while (!stopped) {
                 ReferenceInternals.waitForPendingReferences();
                 ReferenceInternals.processPendingReferences();
                 ReferenceHandler.processCleaners();
             }
-        } catch (InterruptedException e) {
-            VMError.guarantee(VMThreads.isTearingDown(), "Reference Handler should only be interrupted during tear-down");
         } catch (Throwable t) {
-            if (t instanceof OutOfMemoryError && VMThreads.isTearingDown()) {
-                // Likely failed to allocate the InterruptedException, ignore either way.
-            } else {
-                throw VMError.shouldNotReachHere("Reference processing and cleaners must handle all potential exceptions", t);
-            }
+            throw VMError.shouldNotReachHere("Reference processing and cleaners must handle all potential exceptions", t);
         }
     }
 

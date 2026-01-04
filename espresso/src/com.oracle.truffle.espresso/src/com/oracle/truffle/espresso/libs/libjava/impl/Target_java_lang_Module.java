@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(value = Module.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_Module {
     @Substitution
     public static void addReads0(@JavaType(Module.class) StaticObject from, @JavaType(Module.class) StaticObject to, @Inject VM vm, @Inject SubstitutionProfiler profile) {

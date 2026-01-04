@@ -8,20 +8,25 @@ redirect_from: /reference-manual/native-image/inspect/
 
 # Native Image Inspect Tool
 
+> **The Native Image Inspect Tool is deprecated and will be removed in a future release**. To extract embedded SBOMs, use: 
+> ```bash
+> $JAVA_HOME/bin/native-image-utils extract-sbom --image-path=<path_to_binary>
+> ```
+
 The Native Image Inspect Tool extracts embedded Software Bill of Materials (SBOM) from native executables. The functionality for extracting class-level metadata is no longer supported.
 
-## Extracting Embedded SBOM
+## Extracting Embedded SBOM (Deprecated)
 
-Native Image can embed a SBOM at build time to detect any libraries that may be susceptible to known security vulnerabilities.
-Native Image provides the `--enable-sbom` option to embed an SBOM into a native executable (only available in Oracle GraalVM).
+Native Image embeds an SBOM at build time to detect any libraries that may be susceptible to known security vulnerabilities.
+(Not available in GraalVM Community Edition.)
 
 The Native Image Inspect Tool can extract the compressed SBOM using the `--sbom` parameter, as shown in the command:
 ```bash
 $JAVA_HOME/bin/native-image-inspect --sbom <path_to_binary>
 ```
 
-The Native Image Inspect Tool previously supported listing the classes, fields, and methods included in a native executable or a native shared library. 
-This functionality is no longer supported for security reasons. 
+The Native Image Inspect Tool previously supported listing the classes, fields, and methods included in a native executable or a native shared library.
+This functionality is no longer supported for security reasons.
 Migrate to using [class-level SBOMs](../../security/native-image.md#including-class-level-metadata-in-the-sbom) instead by passing `--enable-sbom=class-level,export` to the `native-image` builder, which generates an SBOM containing the same kind of class-level metadata information.
 
 ### Further Reading

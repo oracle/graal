@@ -51,21 +51,17 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
-import com.oracle.truffle.espresso.ffi.Buffer;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
-import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.SignatureCallNode;
-import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
+import com.oracle.truffle.espresso.ffi.memory.UnsafeNativeMemory;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Collect;
-import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
-
-import sun.misc.Unsafe;
 
 /**
  * Espresso native interface implementation based on TruffleNFI, this class is fully functional on
@@ -75,12 +71,13 @@ public class NFINativeAccess implements NativeAccess {
     protected static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, NFINativeAccess.class);
     protected static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getUncached();
     protected static final SignatureLibrary UNCACHED_SIGNATURE = SignatureLibrary.getUncached();
-    private static final Unsafe UNSAFE = UnsafeAccess.get();
     private static final boolean CACHE_SIGNATURES = "true".equals(System.getProperty("espresso.nfi.cache_signatures", "true"));
     private static final DebugCounter NFI_SIGNATURES_CREATED = DebugCounter.create("NFI signatures created");
 
     private final Map<Object, Object> signatureCache;
     protected final TruffleLanguage.Env env;
+
+    protected final NativeMemory nativeMemory;
 
     protected static String nfiType(NativeType nativeType) {
         // @formatter:off
@@ -147,7 +144,12 @@ public class NFINativeAccess implements NativeAccess {
     }
 
     NFINativeAccess(TruffleLanguage.Env env) {
+        this(env, new UnsafeNativeMemory());
+    }
+
+    NFINativeAccess(TruffleLanguage.Env env, NativeMemory nativeMemory) {
         this.env = env;
+        this.nativeMemory = nativeMemory;
         signatureCache = CACHE_SIGNATURES
                         ? new ConcurrentHashMap<>()
                         : null;
@@ -467,49 +469,6 @@ public class NFINativeAccess implements NativeAccess {
         // nop
     }
 
-    @Override
-    public @Buffer TruffleObject allocateMemory(long size) {
-        long address = 0L;
-        try {
-            address = UNSAFE.allocateMemory(size);
-        } catch (OutOfMemoryError e) {
-            return null;
-        }
-        return TruffleByteBuffer.wrap(RawPointer.create(address), Math.toIntExact(size));
-    }
-
-    @Override
-    public @Buffer TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize) {
-        assert InteropLibrary.getUncached().isPointer(buffer);
-        long oldAddress = 0L;
-        try {
-            oldAddress = InteropLibrary.getUncached().asPointer(buffer);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-        long newAddress = 0L;
-        try {
-            newAddress = UNSAFE.reallocateMemory(oldAddress, newSize);
-        } catch (OutOfMemoryError e) {
-            return null;
-        }
-        return TruffleByteBuffer.wrap(RawPointer.create(newAddress), Math.toIntExact(newSize));
-    }
-
-    @Override
-    public void freeMemory(@Pointer TruffleObject buffer) {
-        assert InteropLibrary.getUncached().isPointer(buffer);
-        long address = 0L;
-        try {
-            address = InteropLibrary.getUncached().asPointer(buffer);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-        UNSAFE.freeMemory(address);
-    }
-
     @Collect(NativeAccess.class)
     public static final class Provider implements NativeAccess.Provider {
 
@@ -526,4 +485,8 @@ public class NFINativeAccess implements NativeAccess {
         }
     }
 
+    @Override
+    public NativeMemory nativeMemory() {
+        return nativeMemory;
+    }
 }

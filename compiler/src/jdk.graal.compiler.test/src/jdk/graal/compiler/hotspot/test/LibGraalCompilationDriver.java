@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,9 @@ import static jdk.graal.compiler.debug.MemUseTrackerKey.getCurrentThreadAllocate
 import static jdk.internal.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
 
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -59,6 +59,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.OptionsEncoder;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -93,7 +94,7 @@ public class LibGraalCompilationDriver {
      * Per-isolate values used to control if metrics should be printed and reset as part of the next
      * compilation in the isolate.
      */
-    private final Map<Long, AtomicBoolean> printMetrics = new HashMap<>();
+    private final Map<Long, AtomicBoolean> printMetrics = new EconomicHashMap<>();
 
     /**
      * If true, will invalidate all generated code after compilation to prevent filling up the code
@@ -236,6 +237,29 @@ public class LibGraalCompilationDriver {
         }
 
         /**
+         * A buffer holding a zero-terminated UTF-8 string.
+         */
+        public static class UTF8CStringBuffer extends NativeBuffer {
+            private final byte[] encoded;
+
+            public UTF8CStringBuffer(String string) {
+                byte[] utf8Bytes = string.getBytes(StandardCharsets.UTF_8);
+                encoded = new byte[utf8Bytes.length + 1];
+                System.arraycopy(utf8Bytes, 0, encoded, 0, utf8Bytes.length);
+            }
+
+            @Override
+            public void initialize(long address) {
+                UNSAFE.copyMemory(encoded, ARRAY_BYTE_BASE_OFFSET, null, address, encoded.length);
+            }
+
+            @Override
+            public int length() {
+                return encoded.length;
+            }
+        }
+
+        /**
          * Native memory containing {@linkplain OptionsEncoder encoded} {@link OptionValues}.
          */
         public static class OptionsBuffer extends NativeBuffer {
@@ -243,7 +267,7 @@ public class LibGraalCompilationDriver {
             final int hash;
 
             OptionsBuffer(OptionValues options) {
-                Map<String, Object> map = new HashMap<>();
+                Map<String, Object> map = new EconomicHashMap<>();
                 UnmodifiableMapCursor<OptionKey<?>, Object> cursor = options.getMap().getEntries();
                 while (cursor.advance()) {
                     final OptionKey<?> key = cursor.getKey();
@@ -340,7 +364,7 @@ public class LibGraalCompilationDriver {
         public static class ProfilePathBuffer extends NativeBuffer {
             private final byte[] profilesPathBytes;
 
-            ProfilePathBuffer(String profilesPath) {
+            public ProfilePathBuffer(String profilesPath) {
                 /* Append the terminating 0. */
                 byte[] stringBytes = profilesPath.getBytes();
                 this.profilesPathBytes = Arrays.copyOf(stringBytes, stringBytes.length + 1);
@@ -655,7 +679,6 @@ public class LibGraalCompilationDriver {
     /**
      * Compiles all the given methods, using libgraal if available.
      */
-    @SuppressWarnings("try")
     public void compileAll(List<? extends Compilation> compilations, OptionValues options) {
         try (LibGraalParams libgraal = LibGraal.isAvailable() ? new LibGraalParams(options) : null) {
             compileAll(libgraal, compilations, options);
@@ -738,16 +761,15 @@ public class LibGraalCompilationDriver {
     /**
      * Compiles all methods in {@code compilations} sequentially on one thread.
      */
-    @SuppressWarnings("try")
     private Map<ResolvedJavaMethod, CompilationResult> compileAllSingleThreaded(
                     LibGraalParams libgraal, List<? extends Compilation> compilations, OptionValues options,
                     AtomicLong compileTime, AtomicLong memoryUsed, AtomicLong codeSize) {
-        Map<ResolvedJavaMethod, CompilationResult> results = new HashMap<>();
+        Map<ResolvedJavaMethod, CompilationResult> results = new EconomicHashMap<>();
 
         long intervalStart = System.currentTimeMillis();
         long lastCompletedTaskCount = 0;
         long completedTaskCount = 0;
-        try (LibGraalScope scope = libgraal == null ? null : new LibGraalScope()) {
+        try (LibGraalScope _ = libgraal == null ? null : new LibGraalScope()) {
             for (Compilation task : compilations) {
                 compileAndRecord(task, libgraal, options, compileTime, memoryUsed, codeSize, results);
                 completedTaskCount++;
@@ -775,11 +797,10 @@ public class LibGraalCompilationDriver {
             setDaemon(true);
         }
 
-        @SuppressWarnings("try")
         @Override
         public void run() {
             setContextClassLoader(getClass().getClassLoader());
-            try (LibGraalScope scope = libgraal == null ? null : new LibGraalScope()) {
+            try (LibGraalScope _ = libgraal == null ? null : new LibGraalScope()) {
                 super.run();
             }
         }
@@ -851,7 +872,7 @@ public class LibGraalCompilationDriver {
      */
     private boolean shouldPrintMetrics(LibGraalIsolate isolate) {
         synchronized (printMetrics) {
-            return printMetrics.computeIfAbsent(isolate.getId(), id -> new AtomicBoolean()).getAndSet(false);
+            return printMetrics.computeIfAbsent(isolate.getId(), _ -> new AtomicBoolean()).getAndSet(false);
         }
     }
 

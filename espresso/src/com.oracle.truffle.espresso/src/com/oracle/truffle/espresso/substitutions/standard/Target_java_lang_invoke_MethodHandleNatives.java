@@ -34,8 +34,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_newInvokeSpecial;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_putField;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_putStatic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.None;
+import static com.oracle.truffle.espresso.shared.meta.SignaturePolymorphicIntrinsic.InvokeGeneric;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.ALL_KINDS;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.CONSTANTS;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.CONSTANTS_BEFORE_16;
@@ -58,6 +57,7 @@ import org.graalvm.collections.Pair;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
@@ -75,9 +75,8 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoLinkResolver;
-import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
-import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.truffle.espresso.shared.resolver.CallSiteType;
 import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
@@ -438,7 +437,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
         // Check if we got a polymorphic signature method, in which case we may need to force
         // the creation of a new signature symbol.
-        PolySigIntrinsics mhMethodId = getPolysignatureIntrinsicID(flags, resolutionKlass, refKind, name);
+        SignaturePolymorphicIntrinsic mhMethodId = getPolysignatureIntrinsicID(flags, resolutionKlass, refKind, name);
 
         if (mhMethodId == InvokeGeneric) {
             // Can not resolve InvokeGeneric, as we would miss the invoker and appendix.
@@ -464,16 +463,16 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         }
     }
 
-    private static PolySigIntrinsics getPolysignatureIntrinsicID(int flags, Klass resolutionKlass, int refKind, Symbol<Name> name) {
-        PolySigIntrinsics mhMethodId = None;
+    private static SignaturePolymorphicIntrinsic getPolysignatureIntrinsicID(int flags, Klass resolutionKlass, int refKind, Symbol<Name> name) {
+        SignaturePolymorphicIntrinsic mhMethodId = null;
         if (Constants.flagHas(flags, MN_IS_METHOD) &&
-                        Meta.isSignaturePolymorphicHolderType(resolutionKlass.getType())) {
+                        ParserKlass.isSignaturePolymorphicHolderType(resolutionKlass.getType())) {
             if (refKind == REF_invokeVirtual ||
                             refKind == REF_invokeSpecial ||
                             refKind == REF_invokeStatic) {
-                PolySigIntrinsics iid = MethodHandleIntrinsics.getId(name, resolutionKlass);
-                if (iid != None &&
-                                ((refKind == REF_invokeStatic) == (iid.isStaticPolymorphicSignature()))) {
+                SignaturePolymorphicIntrinsic iid = SignaturePolymorphicIntrinsic.getId(name, resolutionKlass);
+                if (iid != null &&
+                                ((refKind == REF_invokeStatic) == (iid.isStaticSignaturePolymorphic()))) {
                     mhMethodId = iid;
                 }
             }
@@ -505,9 +504,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     @TruffleBoundary
-    private static Symbol<Signature> lookupSignature(Meta meta, ByteSequence desc, PolySigIntrinsics iid) {
+    private static Symbol<Signature> lookupSignature(Meta meta, ByteSequence desc, SignaturePolymorphicIntrinsic iid) {
         Symbol<Signature> signature;
-        if (iid != None) {
+        if (iid != null) {
             signature = meta.getSignatures().getOrCreateValidSignature(desc);
         } else {
             signature = meta.getSignatures().lookupValidSignature(desc);

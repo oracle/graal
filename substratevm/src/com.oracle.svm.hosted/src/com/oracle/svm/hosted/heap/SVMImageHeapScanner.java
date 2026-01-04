@@ -74,16 +74,10 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         economicMapImplHashArrayField = ReflectionUtil.lookupField(economicMapImpl, "hashArray");
         economicMapImplTotalEntriesField = ReflectionUtil.lookupField(economicMapImpl, "totalEntries");
         economicMapImplDeletedEntriesField = ReflectionUtil.lookupField(economicMapImpl, "deletedEntries");
-        ImageSingletons.add(ImageHeapScanner.class, this);
         reflectionSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
         fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
     }
 
-    public static ImageHeapScanner instance() {
-        return ImageSingletons.lookup(ImageHeapScanner.class);
-    }
-
-    @Override
     protected Class<?> getClass(String className) {
         return loader.findClassOrFail(className);
     }
@@ -94,8 +88,8 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     }
 
     @Override
-    public boolean isValueAvailable(AnalysisField field) {
-        return fieldValueInterceptionSupport.isValueAvailable(field);
+    public boolean isValueAvailable(AnalysisField field, JavaConstant receiver) {
+        return fieldValueInterceptionSupport.isValueAvailable(field, receiver);
     }
 
     /**
@@ -110,14 +104,14 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     }
 
     @Override
-    protected void rescanEconomicMap(EconomicMap<?, ?> map) {
-        super.rescanEconomicMap(map);
+    protected void rescanEconomicMap(EconomicMap<?, ?> map, ScanReason reason) {
+        super.rescanEconomicMap(map, reason);
         /* Make sure any EconomicMapImpl$CollisionLink objects are scanned. */
         if (map.getClass() == economicMapImpl) {
-            rescanField(map, economicMapImplEntriesField);
-            rescanField(map, economicMapImplHashArrayField);
-            rescanField(map, economicMapImplTotalEntriesField);
-            rescanField(map, economicMapImplDeletedEntriesField);
+            rescanField(map, economicMapImplEntriesField, reason);
+            rescanField(map, economicMapImplHashArrayField, reason);
+            rescanField(map, economicMapImplTotalEntriesField, reason);
+            rescanField(map, economicMapImplDeletedEntriesField, reason);
         }
 
     }

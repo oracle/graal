@@ -17,33 +17,34 @@ This document outlines the structure and semantics of the _iprof_ file format.
 
 ## Structure
 
-The full schema of the JSON format used for _iprof_ files can be found in the [iprof-v1.0.0.schema.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/iprof-v1.0.0.schema.json) document.
+The full schema of the JSON format used for _iprof_ files can be found in the [iprof-v1.1.0.schema.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/iprof-v1.1.0.schema.json) document.
 This JSON schema fully defines the _iprof_ file format and can be used to validate the structure of an arbitrary _iprof_ file.
 
 A minimal valid _iprof_ file consists of a JSON object containing 3 fields: `types`, `methods` and `version`.
-The following is a minimal valid _iprof_ file for the current version (`1.0.0`).
+The following is a minimal valid _iprof_ file for the current version (`1.1.0`).
 
 ```json
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "types": [],
   "methods": []
 }
 ```
 
 In addition to these fields, the _iprof_ file may optionally contain others that provide information on various run-time profiles.
-The following is an example of a fully populated _iprof_ file (version `1.0.0`) with the actual content of each of the fields replaced with `...`.
+The following is an example of a fully populated _iprof_ file (version `1.1.0`) with the actual content of each of the fields replaced with `...`.
 
 ```json
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "types": [...],
   "methods": [...],
   "monitorProfiles": [...],
   "virtualInvokeProfiles": [...],
   "callCountProfiles": [...],
   "conditionalProfiles": [...],
-  "samplingProfiles": [...]
+  "samplingProfiles": [...],
+  "instanceofProfiles": [...],
 }
 ```
 
@@ -115,11 +116,11 @@ The _iprof_ format uses a semantic versioning scheme (ie. `major.minor.patch`) t
 The major version is updated for breaking changes (for example, a new way of encoding the information),
 minor for non-breaking ones (for example, adding a new optional field in the top-level JSON object),
 and the patch version is updated for minor fixes that should not impact any client.
-The current version of the _iprof_ file format is `1.0.0`, which can be seen in the _iprof_ file from the example application.
+The current version of the _iprof_ file format is `1.1.0`, which can be seen in the _iprof_ file from the example application.
 
 ```json
 ...
-    "version": "1.0.0",
+    "version": "1.1.0",
 ...
 ```
 
@@ -712,6 +713,31 @@ In this case, it means that the context described in the previous paragraph was 
 
 The other object in the sampling profiles array contains a different context and this sample was seen only once.
 Understanding the nature of this sample is left as an exercise to the reader.
+
+## Instance-of Profiles
+
+> Note: Instance-of profiles were added in the _iprof_ file format version 1.1.0. They are not present in version 1.0.0.
+
+Instance-of profiles contain information on the run-time types of values that are checked at `instanceof` operators.
+Specifically, they record how many times a particular run-time type was encountered at a given `instanceof` operation.
+Thus, instance-of profiling information can be stored in the same format as [Virtual Invoke Profiles](#virtual-invoke-profiles).
+The only difference is that the resulting type histogram in the `records` part describes the types seen at `instanceof` checks, rather than the receiver types of virtual method calls.
+Consider the following Java code:
+
+```java
+    public class A {}
+    public class B extends A {}
+
+    public static void doForA(Object obj) {
+        if(obj instanceof A) {
+            doSomething(obj);
+        }
+    }
+```
+
+The `records` section of the profile will include all types (e.g., `A`, `B`, `Object`, `String`) encountered at run time for the `obj` variable, together with their occurrence counts.
+Thus, the length of the `records` array for instance-of profiles is always a multiple of 2,
+since the values represent a type ID and count pair.
 
 ## Related Documentation
 - [PGO](PGO.md)

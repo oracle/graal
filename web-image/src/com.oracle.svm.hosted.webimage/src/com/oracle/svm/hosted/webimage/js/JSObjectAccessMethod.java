@@ -81,14 +81,13 @@ public class JSObjectAccessMethod extends NonBytecodeMethod {
      */
     private JSBody.JSCode buildJSCode() {
         String fieldAccess = "object." + targetField.getName();
-        String body;
         if (isLoad) {
-            body = "return " + fieldAccess + ";";
+            String body = "return " + fieldAccess + ";";
+            return new JSBody.JSCode(new String[]{"object"}, body);
         } else {
-            body = fieldAccess + " = value;";
+            String body = fieldAccess + " = value;";
+            return new JSBody.JSCode(new String[]{"object", "value"}, body);
         }
-
-        return new JSBody.JSCode(new String[]{"object", "value"}, body);
     }
 
     public JSBody.JSCode getJSCode() {

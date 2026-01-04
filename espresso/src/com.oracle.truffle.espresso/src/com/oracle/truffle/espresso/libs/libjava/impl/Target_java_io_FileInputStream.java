@@ -30,9 +30,12 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.espresso.io.Checks;
 import com.oracle.truffle.espresso.io.FDAccess;
+import com.oracle.truffle.espresso.io.Throw;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
@@ -41,14 +44,8 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(value = FileInputStream.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_io_FileInputStream {
-    private static final FDAccess FD = new FDAccess() {
-        @Override
-        public @JavaType(FileInputStream.class) StaticObject get(@JavaType(Object.class) StaticObject objectWithFD, TruffleIO io) {
-            return io.java_io_FileInputStream_fd.getObject(objectWithFD);
-        }
-    };
 
     private static final EnumSet<StandardOpenOption> READ_ONLY_OPTION_SET = EnumSet.of(StandardOpenOption.READ);
 
@@ -61,16 +58,29 @@ public final class Target_java_io_FileInputStream {
     @Throws(FileNotFoundException.class)
     public static void open0(@JavaType(FileInputStream.class) StaticObject self,
                     @JavaType(String.class) StaticObject name,
-                    @Inject Meta meta, @Inject TruffleIO io) {
+                    @Inject Meta meta, @Inject TruffleIO io, @Inject EspressoContext context) {
         Checks.nullCheck(name, meta);
-        io.open(self, FD, meta.toHostString(name), READ_ONLY_OPTION_SET);
+        String hostName = meta.toHostString(name);
+        try {
+            io.open(self, FDAccess.forFileInputStream(), hostName, READ_ONLY_OPTION_SET);
+        } catch (EspressoException e) {
+            // Guest code only ever expects FileNotFoundException.
+            throw Throw.throwFileNotFoundException(hostName, context);
+        }
     }
 
     @Substitution(hasReceiver = true)
     @Throws(IOException.class)
     public static int read0(@JavaType(FileInputStream.class) StaticObject self,
                     @Inject TruffleIO io) {
-        return io.readSingle(self, FD);
+        int n = io.readSingle(self, FDAccess.forFileInputStream());
+        /*
+         * According to the documentation, we should only return the byte read or EOF and no other
+         * error code. Since the underlying channel is in blocking mode, we should never get the
+         * unavailable error code, which is the only possible alternative.
+         */
+        assert n >= 0 || n == io.ioStatusSync.EOF;
+        return n;
     }
 
     @Substitution(hasReceiver = true)
@@ -78,19 +88,19 @@ public final class Target_java_io_FileInputStream {
     public static int readBytes(@JavaType(FileInputStream.class) StaticObject self, @JavaType(byte[].class) StaticObject b, int off, int len,
                     @Inject TruffleIO io) {
         Checks.nullCheck(b, io);
-        return io.readBytes(self, FD, b.unwrap(io.getLanguage()), off, len);
+        return io.readBytes(self, FDAccess.forFileInputStream(), b.unwrap(io.getLanguage()), off, len);
     }
 
     @Substitution(hasReceiver = true)
     @Throws(IOException.class)
     public static long length0(@JavaType(FileInputStream.class) StaticObject self, @Inject TruffleIO io) {
-        return io.length(self, FD);
+        return io.length(self, FDAccess.forFileInputStream());
     }
 
     @Substitution(hasReceiver = true)
     @Throws(IOException.class)
     public static long position0(@JavaType(FileInputStream.class) StaticObject self, @Inject TruffleIO io) {
-        return io.position(self, FD);
+        return io.position(self, FDAccess.forFileInputStream());
     }
 
     @Substitution(hasReceiver = true)
@@ -102,8 +112,13 @@ public final class Target_java_io_FileInputStream {
 
     @Substitution(hasReceiver = true)
     @Throws(IOException.class)
-    @SuppressWarnings("unused")
-    public static int available0(@JavaType(FileInputStream.class) StaticObject self) {
-        throw JavaSubstitution.unimplemented();
+    public static int available0(@JavaType(FileInputStream.class) StaticObject self,
+                    @Inject TruffleIO io) {
+        long size = io.length(self, FDAccess.forFileInputStream());
+        long pos = io.position(self, FDAccess.forFileInputStream());
+        if (size <= pos) {
+            return 0;
+        }
+        return Math.toIntExact(size - pos);
     }
 }

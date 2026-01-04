@@ -34,6 +34,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.hosted.c.DirectivesExtension;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
@@ -53,14 +54,13 @@ import com.oracle.svm.hosted.c.info.StructInfo;
 import com.oracle.svm.hosted.c.query.QueryResultFormat;
 
 public class QueryCodeWriter extends InfoTreeVisitor {
-
+    private static final String C_SOURCE_FILE_EXTENSION = ".c";
     private static final String formatFloat = "%.15e";
     private static final String formatString = QueryResultFormat.STRING_MARKER + "%s" + QueryResultFormat.STRING_MARKER;
 
     private final CSourceCodeWriter writer;
 
     private final List<Object> elementForLineNumber;
-    private final boolean isWindows;
 
     private final String formatSInt64;
     private final String formatUInt64;
@@ -72,8 +72,8 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     public QueryCodeWriter(Path tempDirectory) {
         writer = new CSourceCodeWriter(tempDirectory);
         elementForLineNumber = new ArrayList<>();
-        isWindows = Platform.includedIn(Platform.WINDOWS.class);
 
+        boolean isWindows = Platform.includedIn(InternalPlatform.WINDOWS_BASE.class);
         String formatL64 = "%" + (isWindows ? "ll" : "l");
         formatSInt64 = formatL64 + "d";
         formatUInt64 = formatL64 + "u";
@@ -91,8 +91,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     public Path write(NativeCodeInfo nativeCodeInfo) {
         nativeCodeInfo.accept(this);
 
-        String srcFileExtension = CSourceCodeWriter.C_SOURCE_FILE_EXTENSION;
-        String sourceFileName = nativeCodeInfo.getName().replaceAll("\\W", "_") + srcFileExtension;
+        String sourceFileName = nativeCodeInfo.getName().replaceAll("\\W", "_") + C_SOURCE_FILE_EXTENSION;
         return writer.writeFile(sourceFileName);
     }
 

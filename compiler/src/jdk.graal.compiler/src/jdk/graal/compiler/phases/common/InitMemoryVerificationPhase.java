@@ -47,8 +47,8 @@ import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.RecursivePhase;
-import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.graal.compiler.phases.graph.ReentrantNodeIterator;
 import jdk.vm.ci.code.MemoryBarriers;
 
@@ -67,7 +67,7 @@ import jdk.vm.ci.code.MemoryBarriers;
  * <p>
  * See {@link PublishWritesNode} for a description of init memory semantics in the Graal IR.
  */
-public class InitMemoryVerificationPhase extends VerifyPhase<CoreProviders> implements RecursivePhase {
+public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> implements RecursivePhase {
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         /*
@@ -93,7 +93,7 @@ public class InitMemoryVerificationPhase extends VerifyPhase<CoreProviders> impl
                 if (memBar.getFenceKind().isInit()) {
                     liveKills = 0;
                 } else if (liveKills > 0) {
-                    throw new VerificationError("%s is a non-init barrier, but there are %d live init writes", memBar, liveKills);
+                    throw new AssertionError(String.format("%s is a non-init barrier, but there are %d live init writes", memBar, liveKills));
                 }
             } else if (MemoryKill.isMemoryKill(node) && ((MemoryKill) node).killsInit()) {
                 // memory anchors don't actually perform any writes
@@ -101,7 +101,7 @@ public class InitMemoryVerificationPhase extends VerifyPhase<CoreProviders> impl
                     liveKills++;
                 }
             } else if (node instanceof ReturnNode && liveKills > 0) {
-                throw new VerificationError("%d writes to init memory not guarded by an init barrier at node %s", liveKills, node);
+                throw new AssertionError(String.format("%d writes to init memory not guarded by an init barrier at node %s", liveKills, node));
             }
             return liveKills;
         }
@@ -157,7 +157,7 @@ public class InitMemoryVerificationPhase extends VerifyPhase<CoreProviders> impl
             } else if (node instanceof PublishWritesNode publish) {
                 markPublished(publish.allocation(), unpublished);
             } else if (node instanceof ReturnNode && !unpublished.isEmpty()) {
-                throw new VerificationError("unpublished allocations at node %s: %s", unpublished, node);
+                throw new AssertionError(String.format("unpublished allocations at node %s: %s", unpublished, node));
             }
             return unpublished;
         }
@@ -184,7 +184,7 @@ public class InitMemoryVerificationPhase extends VerifyPhase<CoreProviders> impl
     }
 
     @Override
-    protected void verify(StructuredGraph graph, CoreProviders context) {
+    protected final void run(StructuredGraph graph, CoreProviders context) {
         ReentrantNodeIterator.apply(new InitBarrierVerificationClosure(), graph.start(), 0);
         ReentrantNodeIterator.apply(new AllocPublishVerificationClosure(), graph.start(), EconomicSet.create());
     }

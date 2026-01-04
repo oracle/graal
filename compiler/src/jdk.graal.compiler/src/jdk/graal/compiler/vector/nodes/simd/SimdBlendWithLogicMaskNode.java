@@ -86,6 +86,10 @@ public class SimdBlendWithLogicMaskNode extends TernaryNode implements VectorLIR
 
     @Override
     public Node canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY, ValueNode forZ) {
+        if (forX == forY) {
+            return forX;
+        }
+
         ValueNode mask = forZ;
         Stamp toStamp = mask.stamp(NodeView.DEFAULT);
         while (mask instanceof ReinterpretNode simdMask && SimdStamp.isOpmask(simdMask.stamp(NodeView.DEFAULT))) {
@@ -123,6 +127,17 @@ public class SimdBlendWithLogicMaskNode extends TernaryNode implements VectorLIR
                 newSelector = SimdStamp.reinterpretMask((SimdStamp) toStamp, newSelector, NodeView.DEFAULT);
             }
             return SimdBlendWithLogicMaskNode.create(forY, forX, newSelector);
+        }
+        if (!SimdStamp.isOpmask(fromStamp)) {
+            SimdStamp falseValuesStamp = (SimdStamp) forX.stamp(NodeView.from(tool));
+            SimdStamp trueValuesStamp = (SimdStamp) forY.stamp(NodeView.from(tool));
+            if (falseValuesStamp.isAllZeros() && trueValuesStamp.isAllOnes()) {
+                /*
+                 * This is the vector equivalent of (condition ? true : false), we don't need to
+                 * blend. The input mask is all we need.
+                 */
+                return forZ;
+            }
         }
 
         return this;

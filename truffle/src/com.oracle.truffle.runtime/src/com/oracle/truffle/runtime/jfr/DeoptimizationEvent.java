@@ -41,4 +41,7 @@
 package com.oracle.truffle.runtime.jfr;
 
 public interface DeoptimizationEvent extends RootFunctionEvent {
+    void setInvalidated(boolean invalidated);
+
+    void setReason(String reason);
 }

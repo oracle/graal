@@ -1,12 +1,18 @@
+local ci = import '../../ci.jsonnet';
 local std_get = (import 'common-utils.libsonnet').std_get;
 
 {
+  local effective_targets(build) = std.map(function(target) if std.startsWith(target, "tier") then ci.tierConfig[target] else target, build.targets),
+  local periodic_targets = ["daily", "weekly", "monthly", "post-merge", "opt-post-merge"],
+  local has_periodic_target(build) = std.length(std.setInter(std.set(effective_targets(build)), std.set(periodic_targets))) != 0,
+
   # check that all non [gate, ondemand] entries have notify_emails or notify_groups defined
   local missing_notify(builds) = {
-    [x.name]: std_get(x, "defined_in") for x in builds if !std.objectHas(x, "notify_emails") && !std.objectHasAll(x, "notify_groups") && std.length(std.setInter(std.set(x.targets), std.set(["daily", "weekly", "monthly", "post-merge", "opt-post-merge"]))) != 0
+    [x.name]: {defined_in: std_get(x, "defined_in"), targets: std_get(x, "targets")}
+    for x in builds if !std.objectHas(x, "notify_emails") && !std.objectHasAll(x, "notify_groups") && has_periodic_target(x)
   },
 
-  # check that all non entries have defined_in set
+  # check that all entries have defined_in set
   local missing_defined_in(builds) = {
     [x.name]: std_get(x, "defined_in") for x in builds if !std.objectHas(x, "defined_in")
   },

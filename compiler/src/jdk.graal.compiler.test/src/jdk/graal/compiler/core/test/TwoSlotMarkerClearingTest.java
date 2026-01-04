@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,19 @@
 
 package jdk.graal.compiler.core.test;
 
+import static java.lang.constant.ConstantDescs.CD_int;
+import static java.lang.constant.ConstantDescs.CD_long;
+
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.Opcode;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
+
 import org.junit.Test;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Label;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class TwoSlotMarkerClearingTest extends CustomizedBytecodePatternTest {
+public class TwoSlotMarkerClearingTest extends GraalCompilerTest implements CustomizedBytecodePattern {
 
     @Test
     public void testTwoSlotMarkerClearing() throws ClassNotFoundException {
@@ -44,43 +49,23 @@ public class TwoSlotMarkerClearingTest extends CustomizedBytecodePatternTest {
     }
 
     @Override
-    protected byte[] generateClass(String className) {
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-        cw.visit(52, ACC_SUPER | ACC_PUBLIC, className, null, "java/lang/Object", null);
-
-        String getDescriptor = "(" + "JII" + ")" + "I";
-        MethodVisitor t1 = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "t1", getDescriptor, null, null);
-        t1.visitCode();
-        t1.visitVarInsn(ILOAD, 2);
-        t1.visitVarInsn(ISTORE, 0);
-        t1.visitVarInsn(ILOAD, 0);
-        Label label = new Label();
-        t1.visitJumpInsn(IFGE, label);
-        t1.visitVarInsn(ILOAD, 0);
-        t1.visitInsn(IRETURN);
-        t1.visitLabel(label);
-        t1.visitVarInsn(ILOAD, 3);
-        t1.visitInsn(IRETURN);
-        t1.visitMaxs(4, 1);
-        t1.visitEnd();
-
-        getDescriptor = "(" + "IJIJ" + ")" + "J";
-        MethodVisitor t2 = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "t2", getDescriptor, null, null);
-        t2.visitCode();
-        t2.visitVarInsn(LLOAD, 1);
-        t2.visitVarInsn(LSTORE, 0);
-        t2.visitVarInsn(ILOAD, 3);
-        Label label1 = new Label();
-        t2.visitJumpInsn(IFGE, label1);
-        t2.visitVarInsn(LLOAD, 0);
-        t2.visitInsn(LRETURN);
-        t2.visitLabel(label1);
-        t2.visitVarInsn(LLOAD, 4);
-        t2.visitInsn(LRETURN);
-        t2.visitMaxs(6, 2);
-        t2.visitEnd();
-
-        cw.visitEnd();
-        return cw.toByteArray();
+    public byte[] generateClass(String className) {
+        // @formatter:off
+        return ClassFile.of().build(ClassDesc.of(className), classBuilder -> classBuilder
+                        .withMethodBody("t1", MethodTypeDesc.of(CD_int, CD_long, CD_int, CD_int), ACC_PUBLIC_STATIC, b -> b
+                                        .iload(2)
+                                        .istore(0)
+                                        .iload(0)
+                                        .ifThenElse(Opcode.IFLT,
+                                                        thenBlock -> thenBlock.iload(0).ireturn(),
+                                                        elseBlock -> elseBlock.iload(3).ireturn()))
+                        .withMethodBody("t2", MethodTypeDesc.of(CD_long, CD_int, CD_long, CD_int, CD_long), ACC_PUBLIC_STATIC, b -> b
+                                        .lload(1)
+                                        .lstore(0)
+                                        .iload(3)
+                                        .ifThenElse(Opcode.IFLT,
+                                                        thenBlock -> thenBlock.lload(0).lreturn(),
+                                                        elseBlock -> elseBlock.lload(4).lreturn())));
+        // @formatter:on
     }
 }

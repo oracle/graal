@@ -100,7 +100,9 @@ public final class Label {
         // Note this check is slow and should remain as an assert
         assert !patchPositions.contains(branchLocation) : "same location added multiple times: " + branchLocation;
         patchPositions.add(branchLocation);
-
+        if (asm.isRecordingCodeSnippet()) {
+            asm.registerPatchInCodeSnippetRecord(branchLocation, this);
+        }
     }
 
     public void reset() {

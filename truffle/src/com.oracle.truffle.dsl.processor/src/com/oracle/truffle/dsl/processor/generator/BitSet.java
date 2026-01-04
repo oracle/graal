@@ -49,15 +49,19 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
-final class BitSet {
+public final class BitSet {
 
+    // factory may be null
+    private final FlatNodeGenFactory factory;
     private final BitStateList states;
     private final String name;
     private final long allMask;
     private final TypeMirror type;
 
-    BitSet(String name, BitStateList states) {
+    BitSet(FlatNodeGenFactory factory, String name, BitStateList states) {
+        this.factory = factory;
         this.name = name;
         this.states = states;
         int bitCount = states.getBitCount();
@@ -114,7 +118,7 @@ final class BitSet {
         if (ref == null) {
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
             builder.string(getName(), "_");
-            ref = FlatNodeGenFactory.createInlinedAccess(frameState, null, builder.build(), null);
+            ref = factory.createInlinedAccess(frameState, null, builder.build(), null);
         }
         return ref;
     }
@@ -136,25 +140,7 @@ final class BitSet {
             // already loaded
             return CodeTreeBuilder.singleString("");
         }
-
-        String fieldName = name + "_";
-        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        CodeTreeBuilder init = builder.create();
-        init.string("this.").tree(CodeTreeBuilder.singleString(fieldName));
-
-        CodeTree inlinedAccess = FlatNodeGenFactory.createInlinedAccess(frameState, null, init.build(), null);
-
-        if (var == null) {
-            var = new LocalVariable(type, name, null);
-            frameState.set(name, var);
-            builder.tree(var.createDeclaration(inlinedAccess));
-        } else {
-            builder.startStatement();
-            builder.string(name).string(" = ").tree(inlinedAccess);
-            builder.end();
-        }
-
-        return builder.build();
+        return factory.createStateLoad(frameState, this);
     }
 
     public void clearLoaded(FrameState frameState) {
@@ -325,34 +311,21 @@ final class BitSet {
 
     private CodeTree createPersist(FrameState frameState, boolean persist, CodeTree valueTree, boolean update) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        builder.startStatement();
         if (persist) {
-            builder.string("this.", name, "_");
-            if (frameState != null && frameState.isInlinedNode()) {
-                builder.startCall(".set");
-                builder.tree(frameState.getValue(0).createReference());
+            CodeTree updateReference;
+            if (update) {
+                updateReference = createLocalReference(frameState);
             } else {
-                builder.string(" = ");
+                updateReference = null;
             }
-
-            builder.startGroup();
-            // if there is a local variable we need to update it as well
-            CodeTree localReference = createLocalReference(frameState);
-            if (localReference != null && update) {
-                builder.tree(localReference).string(" = ");
-            }
+            builder.tree(factory.createStatePersist(frameState, this, updateReference, valueTree));
         } else {
-            builder.startGroup();
-            builder.tree(createReference(frameState)).string(" = ");
+            builder.startStatement();
+            builder.tree(createReference(frameState));
+            builder.string(" = ");
+            builder.tree(valueTree);
+            builder.end(); // statement
         }
-        builder.tree(valueTree);
-        builder.end();
-
-        if (persist && frameState != null && frameState.isInlinedNode()) {
-            builder.end();
-        }
-
-        builder.end(); // statement
         return builder.build();
     }
 
@@ -411,6 +384,10 @@ final class BitSet {
             this.length = length;
         }
 
+    }
+
+    public CodeVariableElement createField() {
+        return factory.createStateField(this);
     }
 
 }

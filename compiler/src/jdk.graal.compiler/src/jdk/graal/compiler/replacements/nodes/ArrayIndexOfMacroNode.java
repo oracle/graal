@@ -95,7 +95,7 @@ public final class ArrayIndexOfMacroNode extends MacroWithExceptionNode implemen
             // 6: fromIndex
             // 7-11: values
             ValueNode[] searchValues = getArguments().subList(7).toArray(ValueNode[]::new);
-            if (variant == LIRGeneratorTool.ArrayIndexOfVariant.Table) {
+            if (variant.isTable()) {
                 ValueNode array = searchValues[0];
                 ConstantNode offset = ConstantNode.forLong(tool.getMetaAccess().getArrayBaseOffset(JavaKind.Byte));
                 assert offset.getStackKind() == tool.getReplacements().getWordKind() : Assertions.errorMessageContext("offset", offset);
@@ -110,7 +110,7 @@ public final class ArrayIndexOfMacroNode extends MacroWithExceptionNode implemen
             ));
             killExceptionEdge();
             graph().replaceSplitWithFixed(this, replacement, next());
-            if (variant == LIRGeneratorTool.ArrayIndexOfVariant.Table) {
+            if (variant.isTable()) {
                 graph().addBeforeFixed(replacement, (ComputeObjectAddressNode) searchValues[0]);
             }
         } else {

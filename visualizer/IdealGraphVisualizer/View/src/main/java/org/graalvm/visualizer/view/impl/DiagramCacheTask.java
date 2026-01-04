@@ -314,7 +314,7 @@ public abstract class DiagramCacheTask implements Runnable {
                     figures.add(f);
                 }
             }
-            for (Connection c : outputDiagram.getConnections()) {
+            for (Connection c : outputDiagram.iterateConnections()) {
                 Figure f1 = c.getOutputSlot().getFigure();
                 Figure f2 = c.getInputSlot().getFigure();
                 if (f1.isVisible() && f2.isVisible()) {

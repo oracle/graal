@@ -29,12 +29,16 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.DoubleBinaryOperator;
 import java.util.function.DoubleUnaryOperator;
 import java.util.function.Function;
+
+import jdk.graal.compiler.util.EconomicHashSet;
+import org.junit.Assert;
+import org.junit.Test;
 
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.FloatStamp;
@@ -51,8 +55,6 @@ import jdk.graal.compiler.nodes.calc.CopySignNode;
 import jdk.graal.compiler.nodes.calc.RoundNode;
 import jdk.graal.compiler.nodes.calc.SignumNode;
 import jdk.vm.ci.meta.JavaKind;
-import org.junit.Assert;
-import org.junit.Test;
 
 /**
  * This class tests that float stamps are created correctly for constants.
@@ -301,8 +303,8 @@ public class FloatStampTest extends GraphTest {
         return stamps;
     }
 
-    private static HashSet<Double> sample(Random random, FloatStamp stamp) {
-        HashSet<Double> samples = HashSet.newHashSet(20);
+    private static Set<Double> sample(Random random, FloatStamp stamp) {
+        Set<Double> samples = new EconomicHashSet<>(20);
         if (stamp.isEmpty()) {
             return samples;
         }
@@ -362,7 +364,7 @@ public class FloatStampTest extends GraphTest {
     private static void verify(int bits, Random random, ArrayList<FloatStamp> stamps) {
         ArrayList<double[]> samples = new ArrayList<>(stamps.size());
         for (FloatStamp stamp : stamps) {
-            HashSet<Double> sampleSet = sample(random, stamp);
+            Set<Double> sampleSet = sample(random, stamp);
             double[] sampleArray = new double[sampleSet.size()];
             int i = 0;
             for (double d : sampleSet) {

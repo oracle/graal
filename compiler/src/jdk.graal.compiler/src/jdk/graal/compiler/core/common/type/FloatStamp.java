@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,13 @@ package jdk.graal.compiler.core.common.type;
 import static jdk.graal.compiler.core.common.calc.FloatConvert.D2F;
 import static jdk.graal.compiler.core.common.calc.FloatConvert.D2I;
 import static jdk.graal.compiler.core.common.calc.FloatConvert.D2L;
+import static jdk.graal.compiler.core.common.calc.FloatConvert.D2UI;
+import static jdk.graal.compiler.core.common.calc.FloatConvert.D2UL;
 import static jdk.graal.compiler.core.common.calc.FloatConvert.F2D;
 import static jdk.graal.compiler.core.common.calc.FloatConvert.F2I;
 import static jdk.graal.compiler.core.common.calc.FloatConvert.F2L;
+import static jdk.graal.compiler.core.common.calc.FloatConvert.F2UI;
+import static jdk.graal.compiler.core.common.calc.FloatConvert.F2UL;
 
 import java.nio.ByteBuffer;
 import java.util.function.DoubleBinaryOperator;
@@ -456,21 +460,27 @@ public final class FloatStamp extends PrimitiveStamp {
     }
 
     public static boolean floatingToIntegerCanOverflow(FloatStamp floatStamp, int integerBits) {
+        return floatingToIntegerCanOverflow(floatStamp, integerBits, false);
+    }
+
+    public static boolean floatingToIntegerCanOverflow(FloatStamp floatStamp, int integerBits, boolean unsigned) {
         final boolean canBeInfinity = Double.isInfinite(floatStamp.lowerBound()) || Double.isInfinite(floatStamp.upperBound());
         if (canBeInfinity) {
             return true;
         }
-        final boolean conversionCanOverflow = integralPartLargerMaxValue(floatStamp, integerBits) || integralPartSmallerMinValue(floatStamp, integerBits);
+        final boolean conversionCanOverflow = integralPartLargerMaxValue(floatStamp, integerBits, unsigned) || integralPartSmallerMinValue(floatStamp, integerBits, unsigned);
         return conversionCanOverflow;
     }
 
-    private static boolean integralPartLargerMaxValue(FloatStamp floatStamp, int integerBits) {
+    private static boolean integralPartLargerMaxValue(FloatStamp floatStamp, int integerBits, boolean unsigned) {
         double upperBound = floatStamp.upperBound();
         if (Double.isInfinite(upperBound) || Double.isNaN(upperBound)) {
             return true;
         }
         assert integerBits == 32 || integerBits == 64 : "Must be int or long " + Assertions.errorMessage(integerBits, upperBound);
-        long maxValue = NumUtil.maxValue(integerBits);
+        double maxValue = unsigned
+                        ? NumUtil.unsignedToDouble(NumUtil.maxValueUnsigned(integerBits))
+                        : NumUtil.maxValue(integerBits);
         /*
          * There could be conversion loss here when casting maxValue from long to double - given
          * that max can be Long.MAX_VALUE. In order to avoid checking if upperBound is larger than
@@ -482,17 +492,23 @@ public final class FloatStamp extends PrimitiveStamp {
          * Long.MAX_VALUE) == 9223372036854774784, which fits into long. So if upperBound >=
          * (double) maxValue does not hold, i.e., upperBound < (double) maxValue does hold, then
          * (long) upperBound will not overflow.
+         *
+         * Similarly, for the unsigned case, unsignedToDouble(-1L) is 18446744073709551616 (2**64),
+         * which is 1 more than the unsigned long max value, i.e. 18446744073709551615 (2**64 - 1).
+         * So toUnsignedLong(unsignedToDouble(-1L)) will already overflow. The next lower double
+         * value is Math.nextDown(0x1p64) == 18446744073709549568, which fits into unsigned long.
+         * The same overflow condition reasoning as for the signed long case applies.
          */
         return upperBound >= maxValue;
     }
 
-    private static boolean integralPartSmallerMinValue(FloatStamp floatStamp, int integerBits) {
+    private static boolean integralPartSmallerMinValue(FloatStamp floatStamp, int integerBits, boolean unsigned) {
         double lowerBound = floatStamp.lowerBound();
         if (Double.isInfinite(lowerBound) || Double.isNaN(lowerBound)) {
             return true;
         }
         assert integerBits == 32 || integerBits == 64 : "Must be int or long " + Assertions.errorMessage(integerBits, lowerBound);
-        long minValue = NumUtil.minValue(integerBits);
+        double minValue = unsigned ? 0 : NumUtil.minValue(integerBits);
         return lowerBound <= minValue;
     }
 
@@ -1676,6 +1692,114 @@ public final class FloatStamp extends PrimitiveStamp {
                             FloatStamp floatStamp = (FloatStamp) stamp;
                             assert floatStamp.getBits() == 64 : Assertions.errorMessage(floatStamp);
                             return StampFactory.forFloat(JavaKind.Float, (float) floatStamp.lowerBound(), (float) floatStamp.upperBound(), floatStamp.isNonNaN());
+                        }
+                    },
+
+                    new ArithmeticOpTable.FloatConvertOp(F2UI) {
+
+                        @Override
+                        public Constant foldConstant(Constant c) {
+                            PrimitiveConstant value = (PrimitiveConstant) c;
+                            return JavaConstant.forInt((int) NumUtil.minUnsigned(NumUtil.toUnsignedLong(value.asFloat()), 0xffff_ffffL));
+                        }
+
+                        @Override
+                        protected Stamp foldStampImpl(Stamp stamp) {
+                            if (stamp.isEmpty()) {
+                                return StampFactory.empty(JavaKind.Int);
+                            }
+                            FloatStamp floatStamp = (FloatStamp) stamp;
+                            assert floatStamp.getBits() == 32 : floatStamp;
+                            long lowerBound = floatStamp.canBeNaN() ? 0
+                                            : NumUtil.minUnsigned(NumUtil.toUnsignedLong(floatStamp.lowerBound()), 0xffff_ffffL);
+                            long upperBound = NumUtil.minUnsigned(NumUtil.toUnsignedLong(floatStamp.upperBound()), 0xffff_ffffL);
+                            return StampFactory.forUnsignedInteger(JavaKind.Int.getBitCount(), lowerBound, upperBound);
+                        }
+
+                        @Override
+                        public boolean canOverflowInteger(Stamp inputStamp) {
+                            return inputStamp instanceof FloatStamp floatStamp && floatingToIntegerCanOverflow(floatStamp, Integer.SIZE, true);
+                        }
+                    },
+
+                    new ArithmeticOpTable.FloatConvertOp(F2UL) {
+
+                        @Override
+                        public Constant foldConstant(Constant c) {
+                            PrimitiveConstant value = (PrimitiveConstant) c;
+                            return JavaConstant.forLong(NumUtil.toUnsignedLong(value.asFloat()));
+                        }
+
+                        @Override
+                        protected Stamp foldStampImpl(Stamp stamp) {
+                            if (stamp.isEmpty()) {
+                                return StampFactory.empty(JavaKind.Long);
+                            }
+                            FloatStamp floatStamp = (FloatStamp) stamp;
+                            assert floatStamp.getBits() == 32 : floatStamp;
+                            long lowerBound = floatStamp.canBeNaN() ? 0
+                                            : NumUtil.toUnsignedLong(floatStamp.lowerBound());
+                            long upperBound = NumUtil.toUnsignedLong(floatStamp.upperBound());
+                            return StampFactory.forUnsignedInteger(JavaKind.Long.getBitCount(), lowerBound, upperBound);
+                        }
+
+                        @Override
+                        public boolean canOverflowInteger(Stamp inputStamp) {
+                            return inputStamp instanceof FloatStamp floatStamp && floatingToIntegerCanOverflow(floatStamp, Long.SIZE, true);
+                        }
+                    },
+
+                    new ArithmeticOpTable.FloatConvertOp(D2UI) {
+
+                        @Override
+                        public Constant foldConstant(Constant c) {
+                            PrimitiveConstant value = (PrimitiveConstant) c;
+                            return JavaConstant.forInt((int) NumUtil.minUnsigned(NumUtil.toUnsignedLong(value.asDouble()), 0xffff_ffffL));
+                        }
+
+                        @Override
+                        protected Stamp foldStampImpl(Stamp stamp) {
+                            if (stamp.isEmpty()) {
+                                return StampFactory.empty(JavaKind.Int);
+                            }
+                            FloatStamp floatStamp = (FloatStamp) stamp;
+                            assert floatStamp.getBits() == 64 : floatStamp;
+                            long lowerBound = floatStamp.canBeNaN() ? 0
+                                            : NumUtil.minUnsigned(NumUtil.toUnsignedLong(floatStamp.lowerBound()), 0xffff_ffffL);
+                            long upperBound = NumUtil.minUnsigned(NumUtil.toUnsignedLong(floatStamp.upperBound()), 0xffff_ffffL);
+                            return StampFactory.forUnsignedInteger(JavaKind.Int.getBitCount(), lowerBound, upperBound);
+                        }
+
+                        @Override
+                        public boolean canOverflowInteger(Stamp inputStamp) {
+                            return inputStamp instanceof FloatStamp floatStamp && floatingToIntegerCanOverflow(floatStamp, Integer.SIZE, true);
+                        }
+                    },
+
+                    new ArithmeticOpTable.FloatConvertOp(D2UL) {
+
+                        @Override
+                        public Constant foldConstant(Constant c) {
+                            PrimitiveConstant value = (PrimitiveConstant) c;
+                            return JavaConstant.forLong(NumUtil.toUnsignedLong(value.asDouble()));
+                        }
+
+                        @Override
+                        protected Stamp foldStampImpl(Stamp stamp) {
+                            if (stamp.isEmpty()) {
+                                return StampFactory.empty(JavaKind.Long);
+                            }
+                            FloatStamp floatStamp = (FloatStamp) stamp;
+                            assert floatStamp.getBits() == 64 : floatStamp;
+                            long lowerBound = floatStamp.canBeNaN() ? 0
+                                            : NumUtil.toUnsignedLong(floatStamp.lowerBound());
+                            long upperBound = NumUtil.toUnsignedLong(floatStamp.upperBound());
+                            return StampFactory.forUnsignedInteger(JavaKind.Long.getBitCount(), lowerBound, upperBound);
+                        }
+
+                        @Override
+                        public boolean canOverflowInteger(Stamp inputStamp) {
+                            return inputStamp instanceof FloatStamp floatStamp && floatingToIntegerCanOverflow(floatStamp, Long.SIZE, true);
                         }
                     });
 

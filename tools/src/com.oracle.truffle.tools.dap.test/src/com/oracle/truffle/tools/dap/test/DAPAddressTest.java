@@ -54,15 +54,6 @@ public final class DAPAddressTest {
     }
 
     @Test
-    public void testHostPortDefault() {
-        try (Context context = Context.newBuilder().option("dap", "").out(output).build()) {
-            assert context != null;
-        }
-        String[] address = parseSocketAddress(output);
-        assertAddress("127.0.0.1", "4711", address);
-    }
-
-    @Test
     public void testHostPortEnabled() {
         try (Context context = Context.newBuilder().option("dap", "true").out(output).build()) {
             assert context != null;
@@ -78,25 +69,6 @@ public final class DAPAddressTest {
         }
         String out = output.toString();
         assertTrue(out, out.isEmpty());
-    }
-
-    @Test
-    public void testHost() {
-        Assume.assumeTrue(System.getProperty("os.name").contains("Linux")); // Extra IPs are used
-        try (Context context = Context.newBuilder().option("dap", "127.0.0.2").out(output).build()) {
-            assert context != null;
-        }
-        String[] address = parseSocketAddress(output);
-        assertAddress("127.0.0.2", "4711", address);
-    }
-
-    @Test
-    public void testPort() {
-        try (Context context = Context.newBuilder().option("dap", "7411").out(output).build()) {
-            assert context != null;
-        }
-        String[] address = parseSocketAddress(output);
-        assertAddress("127.0.0.1", "7411", address);
     }
 
     @Test
@@ -123,11 +95,11 @@ public final class DAPAddressTest {
     @Test
     public void testHostPort() {
         Assume.assumeTrue(System.getProperty("os.name").contains("Linux")); // Extra IPs are used
-        try (Context context = Context.newBuilder().option("dap", "127.0.0.2:7411").out(output).build()) {
+        try (Context context = Context.newBuilder().option("dap", "127.0.0.2:0").out(output).build()) {
             assert context != null;
         }
         String[] address = parseSocketAddress(output);
-        assertAddress("127.0.0.2", "7411", address);
+        assertAddress("127.0.0.2", "?", address);
     }
 
     @Test

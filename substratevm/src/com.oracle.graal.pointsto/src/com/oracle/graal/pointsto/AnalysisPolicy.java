@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,15 +40,16 @@ import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.MultiTypeState;
 import com.oracle.graal.pointsto.typestate.SingleTypeState;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.graal.compiler.options.OptionValues;
@@ -70,6 +71,10 @@ public abstract class AnalysisPolicy {
     protected final int maxObjectSetSize;
     protected final boolean hybridStaticContext;
     protected final boolean useConservativeUnsafeAccess;
+    private final int parsingContextMaxDepth;
+    private final boolean trackAccessChain;
+    protected final int multiTypeStateArrayBitSetThreshold;
+    protected final int multiTypeStateArrayBitSetIntersectionSpeculationThreshold;
 
     public AnalysisPolicy(OptionValues options) {
         this.options = options;
@@ -84,6 +89,13 @@ public abstract class AnalysisPolicy {
         maxObjectSetSize = PointstoOptions.MaxObjectSetSize.getValue(options);
         hybridStaticContext = PointstoOptions.HybridStaticContext.getValue(options);
         useConservativeUnsafeAccess = PointstoOptions.UseConservativeUnsafeAccess.getValue(options);
+        trackAccessChain = PointstoOptions.TrackAccessChain.getValue(options);
+        parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(options);
+        multiTypeStateArrayBitSetThreshold = PointstoOptions.MultiTypeStateArrayBitSetThreshold.getValue(options);
+        multiTypeStateArrayBitSetIntersectionSpeculationThreshold = PointstoOptions.MultiTypeStateArrayBitSetIntersectionSpeculationThreshold.getValue(options);
+        AnalysisError.guarantee(multiTypeStateArrayBitSetIntersectionSpeculationThreshold >= multiTypeStateArrayBitSetThreshold,
+                        "The MultiTypeStateArrayBitSetIntersectionSpeculationThreshold (%d) should always be larger than MultiTypeStateArrayBitSetThreshold (%d)",
+                        multiTypeStateArrayBitSetIntersectionSpeculationThreshold, multiTypeStateArrayBitSetThreshold);
     }
 
     public abstract boolean isContextSensitiveAnalysis();
@@ -122,6 +134,14 @@ public abstract class AnalysisPolicy {
 
     public boolean useConservativeUnsafeAccess() {
         return useConservativeUnsafeAccess;
+    }
+
+    public boolean trackAccessChain() {
+        return trackAccessChain;
+    }
+
+    public int parsingContextMaxDepth() {
+        return parsingContextMaxDepth;
     }
 
     public abstract MethodTypeFlow createMethodTypeFlow(PointsToAnalysisMethod method);
@@ -172,7 +192,7 @@ public abstract class AnalysisPolicy {
      */
     public abstract void linkClonedObjects(PointsToAnalysis bb, TypeFlow<?> inputFlow, CloneTypeFlow cloneFlow, BytecodePosition source);
 
-    public abstract FieldTypeStore createFieldTypeStore(PointsToAnalysis bb, AnalysisObject object, AnalysisField field, AnalysisUniverse universe);
+    public abstract FieldTypeStore createFieldTypeStore(PointsToAnalysis bb, AnalysisObject object, PointsToAnalysisField field, AnalysisUniverse universe);
 
     public abstract ArrayElementsTypeStore createArrayElementsTypeStore(AnalysisObject object, AnalysisUniverse universe);
 
@@ -293,5 +313,21 @@ public abstract class AnalysisPolicy {
      */
     protected static boolean areTypesCompatibleForSystemArraycopy(AnalysisType srcType, AnalysisType dstType) {
         return dstType.isAssignableFrom(srcType) || srcType.isAssignableFrom(dstType);
+    }
+
+    /**
+     * @return The maximum number of types represented in {@link MultiTypeState} as an array before
+     *         converting to bitset-based implementation.
+     */
+    public int multiTypeStateArrayBitSetThreshold() {
+        return multiTypeStateArrayBitSetThreshold;
+    }
+
+    /**
+     * @return The maximum number of types on which the analysis should speculate that the result
+     *         will be small enough to be array-based.
+     */
+    public int multiTypeStateArrayBitSetIntersectionSpeculationThreshold() {
+        return multiTypeStateArrayBitSetIntersectionSpeculationThreshold;
     }
 }

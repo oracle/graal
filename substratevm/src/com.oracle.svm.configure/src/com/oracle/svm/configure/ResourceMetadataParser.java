@@ -26,13 +26,14 @@ package com.oracle.svm.configure;
 
 import java.net.URI;
 import java.util.EnumSet;
+import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 
 final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
-    ResourceMetadataParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, EnumSet<ConfigurationParserOption> parserOptions) {
+    ResourceMetadataParser(AccessConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, EnumSet<ConfigurationParserOption> parserOptions) {
         super(conditionResolver, registry, parserOptions);
     }
 
@@ -40,7 +41,15 @@ final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
     public void parseAndRegister(Object json, URI origin) {
         Object resourcesJson = getFromGlobalFile(json, RESOURCES_KEY);
         if (resourcesJson != null) {
-            parseGlobsObject(resourcesJson, origin);
+            List<Object> globsAndBundles = asList(resourcesJson, "'resources' section must be a list of glob pattern or bundle descriptors");
+            for (Object object : globsAndBundles) {
+                EconomicMap<String, Object> globOrBundle = asMap(object, "Elements of 'resources' list must be glob pattern or bundle descriptor objects");
+                if (globOrBundle.containsKey(GLOB_KEY)) {
+                    parseGlobEntry(object, (condition, module, glob) -> registry.addGlob(condition, module, glob, origin));
+                } else if (globOrBundle.containsKey(BUNDLE_KEY)) {
+                    parseBundle(globOrBundle, true);
+                }
+            }
         }
         Object bundlesJson = getFromGlobalFile(json, BUNDLES_KEY);
         if (bundlesJson != null) {
@@ -49,7 +58,7 @@ final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
     }
 
     @Override
-    protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> condition) {
+    protected UnresolvedAccessCondition parseCondition(EconomicMap<String, Object> condition) {
         return parseCondition(condition, true);
     }
 }

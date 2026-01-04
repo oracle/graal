@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.locks;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -34,6 +33,8 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CIsolateDataFactory;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * A mutex that has minimal requirements on Java code. The implementation does not perform memory
@@ -56,6 +57,7 @@ public class VMMutex extends VMLockingPrimitive {
     private final String name;
     IsolateThread owner;
 
+    @Deprecated
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMMutex() {
         this.name = CIsolateDataFactory.getUnspecifiedSuffix();

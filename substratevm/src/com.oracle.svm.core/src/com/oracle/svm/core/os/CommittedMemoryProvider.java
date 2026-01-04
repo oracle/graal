@@ -74,8 +74,8 @@ public interface CommittedMemoryProvider {
 
     /**
      * Returns the size of the address space that is reserved for the collected Java heap (i.e.,
-     * this explicitly excludes all heap parts that are not collected, such as the image heap or the
-     * protected memory before the image heap).
+     * this explicitly excludes all other data, such as null regions, metaspace, image heap, or
+     * auxiliary images).
      */
     UnsignedWord getCollectedHeapAddressSpaceSize();
 

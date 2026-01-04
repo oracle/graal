@@ -25,8 +25,6 @@
 
 package com.oracle.svm.core.jdk.resources;
 
-import java.util.List;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -41,7 +39,7 @@ public class ResourceStorageEntryBase {
         throw VMError.shouldNotReachHere("This should only be called on entries with data.");
     }
 
-    public List<byte[]> getData() {
+    public byte[][] getData() {
         throw VMError.shouldNotReachHere("This should only be called on entries with data.");
     }
 

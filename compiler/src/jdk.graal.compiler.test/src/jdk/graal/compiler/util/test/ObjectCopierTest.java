@@ -30,7 +30,6 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -41,6 +40,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.core.test.SubprocessTest;
+import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.ObjectCopier;
 
 /**
@@ -131,7 +132,7 @@ public class ObjectCopierTest extends SubprocessTest {
         };
 
         private static Map<Field, Object> fieldValues(Object obj) {
-            Map<Field, Object> values = new HashMap<>();
+            Map<Field, Object> values = new EconomicHashMap<>();
             Class<?> c = obj.getClass();
             while (c != Object.class) {
                 for (Field f : c.getDeclaredFields()) {
@@ -167,14 +168,16 @@ public class ObjectCopierTest extends SubprocessTest {
 
         List<TimeUnit> timeUnits = List.of(TimeUnit.MICROSECONDS, TimeUnit.DAYS, TimeUnit.SECONDS);
         EconomicMap<Integer, Object> emap = EconomicMap.create();
-        emap.put(42, Map.of("1", 1, "2", 2));
+        emap.put(42, CollectionsUtil.mapOf("1", 1, "2", 2));
         emap.put(-12345, testObject);
         emap.put(-6789, fieldMap);
 
+        // STABLE ITERATION ORDER: single element
         Map<String, String> hmap = new HashMap<>(Map.of("1000", "one thousand"));
+        // STABLE ITERATION ORDER: single element
         Map<Object, String> idMap = new IdentityHashMap<>(Map.of(new Object(), "some obj"));
 
-        Map<String, Object> root = new LinkedHashMap<>();
+        Map<String, Object> root = new EconomicHashMap<>();
         root.put("one", "normal string");
         root.put("two", "string with\nembedded\rnewline characters\r\n");
         root.put("3", ObjectCopierTest.class);

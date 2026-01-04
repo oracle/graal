@@ -29,8 +29,6 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.function.Function;
 
-import org.graalvm.nativeimage.AnnotationAccess;
-
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -40,13 +38,14 @@ import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.js.JSBodyWithExceptionNode;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
 
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
 import jdk.graal.compiler.java.FrameStateBuilder;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -126,7 +125,7 @@ public class JSBodyStubMethod extends CustomSubstitutionMethod {
         state.clearStack();
 
         JSBody.JSCode jsCode;
-        JavaScriptBody javaScriptBody = AnnotationAccess.getAnnotation(method, JavaScriptBody.class);
+        JavaScriptBody javaScriptBody = AnnotationUtil.getAnnotation(method, JavaScriptBody.class);
         assert javaScriptBody != null;
         Function<CodeGenTool, String> codeSupplier;
         if (javaScriptBody.javacall()) {
@@ -147,7 +146,7 @@ public class JSBodyStubMethod extends CustomSubstitutionMethod {
 
     private static ValueNode createJSBody(AnalysisMethod method, HostedGraphKit kit, ValueNode[] argNodes, Stamp returnStamp,
                     JSBody.JSCode jsCode, Function<CodeGenTool, String> codeSupplier) {
-        boolean declaresResource = AnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), JavaScriptResource.class);
+        boolean declaresResource = AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), JavaScriptResource.class);
         return kit.appendWithUnwind(new JSBodyWithExceptionNode(jsCode, method, argNodes, returnStamp, null, declaresResource, codeSupplier));
     }
 

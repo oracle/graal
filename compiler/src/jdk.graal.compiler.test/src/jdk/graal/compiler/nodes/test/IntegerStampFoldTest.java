@@ -24,13 +24,14 @@
  */
 package jdk.graal.compiler.nodes.test;
 
-import java.util.HashSet;
+import java.util.Set;
+
+import org.junit.Test;
 
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.test.GraalTest;
-import org.junit.Test;
-
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
@@ -45,7 +46,7 @@ public class IntegerStampFoldTest extends GraalTest {
 
     @Test
     public void test() {
-        HashSet<IntegerStamp> unique = new HashSet<>();
+        Set<IntegerStamp> unique = new EconomicHashSet<>();
         for (long a = -VALUE_LIMIT; a <= VALUE_LIMIT; a++) {
             IntegerStamp constantA32 = IntegerStamp.create(32, a, a);
             IntegerStamp constantA64 = IntegerStamp.create(64, a, a);

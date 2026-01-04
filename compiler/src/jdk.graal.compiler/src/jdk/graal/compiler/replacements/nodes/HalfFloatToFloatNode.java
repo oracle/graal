@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,9 @@ import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
@@ -65,5 +68,14 @@ public final class HalfFloatToFloatNode extends UnaryNode implements LIRLowerabl
     public void generate(NodeLIRBuilderTool gen) {
         Value result = gen.getLIRGeneratorTool().getArithmetic().emitHalfFloatToFloat(gen.operand(getValue()));
         gen.setResult(this, result);
+    }
+
+    @SuppressWarnings("unlikely-arg-type")
+    public static boolean isSupported(Architecture arch) {
+        return switch (arch) {
+            case AMD64 amd64 -> amd64.getFeatures().contains(AMD64.CPUFeature.F16C);
+            case AArch64 aarch64 -> true;
+            default -> false;
+        };
     }
 }

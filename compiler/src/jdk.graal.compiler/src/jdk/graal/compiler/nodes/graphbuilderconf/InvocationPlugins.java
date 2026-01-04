@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,9 @@
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
 import static java.lang.String.format;
-import static jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.LateClassPlugins.CLOSED_LATE_CLASS_PLUGIN;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
+import static jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.LateClassPlugins.CLOSED_LATE_CLASS_PLUGIN;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -35,14 +35,12 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Predicate;
 
-import jdk.vm.ci.meta.JavaType;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
@@ -58,7 +56,7 @@ import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.ConditionalInvocationPlugin;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
@@ -66,6 +64,9 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
+import jdk.graal.compiler.util.EconomicHashSet;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -199,7 +200,6 @@ public class InvocationPlugins {
         private final InvocationPlugins plugins;
 
         private final Type declaringType;
-        private final Replacements replacements;
         private boolean allowOverwrite;
 
         /**
@@ -213,22 +213,6 @@ public class InvocationPlugins {
         public Registration(InvocationPlugins plugins, Type declaringType) {
             this.plugins = plugins;
             this.declaringType = declaringType;
-            this.replacements = null;
-        }
-
-        /**
-         * Creates an object for registering {@link InvocationPlugin}s for methods declared by a
-         * given class.
-         *
-         * @param plugins where to register the plugins
-         * @param declaringType the class declaring the methods for which plugins will be registered
-         *            via this object
-         * @param replacements the current Replacements provider
-         */
-        public Registration(InvocationPlugins plugins, Type declaringType, Replacements replacements) {
-            this.plugins = plugins;
-            this.declaringType = declaringType;
-            this.replacements = replacements;
         }
 
         /**
@@ -242,22 +226,6 @@ public class InvocationPlugins {
         public Registration(InvocationPlugins plugins, String declaringClassName) {
             this.plugins = plugins;
             this.declaringType = new OptionalLazySymbol(declaringClassName);
-            this.replacements = null;
-        }
-
-        /**
-         * Creates an object for registering {@link InvocationPlugin}s for methods declared by a
-         * given class.
-         *
-         * @param plugins where to register the plugins
-         * @param declaringClassName the name of the class class declaring the methods for which
-         *            plugins will be registered via this object
-         * @param replacements the current Replacements provider
-         */
-        public Registration(InvocationPlugins plugins, String declaringClassName, Replacements replacements) {
-            this.plugins = plugins;
-            this.declaringType = new OptionalLazySymbol(declaringClassName);
-            this.replacements = replacements;
         }
 
         /**
@@ -273,20 +241,6 @@ public class InvocationPlugins {
          */
         public void register(InvocationPlugin plugin) {
             plugins.register(declaringType, plugin, allowOverwrite);
-        }
-
-        /**
-         * Registers a plugin for a method that is conditionally enabled. {@link Replacements} keeps
-         * records of such plugins and avoids encoding method substitution graphs using these
-         * plugins.
-         *
-         * @param isEnabled controls whether the plugin is actually registered.
-         */
-        public void registerConditional(boolean isEnabled, InvocationPlugin plugin) {
-            replacements.registerConditionalPlugin(plugin);
-            if (isEnabled) {
-                plugins.register(declaringType, plugin, allowOverwrite);
-            }
         }
     }
 
@@ -811,6 +765,29 @@ public class InvocationPlugins {
         assert inRuntimeCode() || Checks.checkResolvable(declaringClass, plugin);
     }
 
+    public void collectRuntimeCheckedPlugins(InvocationPlugins plugins, Architecture arch) {
+        if (parent != null) {
+            parent.collectRuntimeCheckedPlugins(plugins, arch);
+        }
+
+        for (String className : registrations.getKeys()) {
+            ClassPlugins classPlugins = registrations.get(className);
+            ClassPlugins copyClassPlugins = null;
+
+            for (InvocationPlugin invocationPlugin : classPlugins.invocationPlugins.getValues()) {
+                if (invocationPlugin instanceof ConditionalInvocationPlugin conditionalInvocationPlugin) {
+                    if (conditionalInvocationPlugin.isRuntimeChecked(arch)) {
+                        if (copyClassPlugins == null) {
+                            copyClassPlugins = new ClassPlugins();
+                            plugins.registrations.put(className, copyClassPlugins);
+                        }
+                        copyClassPlugins.register(conditionalInvocationPlugin.clone(), false);
+                    }
+                }
+            }
+        }
+    }
+
     /**
      * Registers an invocation plugin for a given method. There must be no plugin currently
      * registered for {@code method}.
@@ -982,7 +959,7 @@ public class InvocationPlugins {
      * The intrinsic methods (in {@link Options#DisableIntrinsics} format) that have been printed by
      * {@link #maybePrintIntrinsics}.
      */
-    private static Set<String> PrintedIntrinsics = new HashSet<>();
+    private static Set<String> PrintedIntrinsics = new EconomicHashSet<>();
 
     /**
      * Determines if {@code plugin} is disabled by {@link Options#DisableIntrinsics}.
@@ -1019,7 +996,7 @@ public class InvocationPlugins {
             if (PRINTING_ISOLATE.get() == isolateID || PRINTING_ISOLATE.compareAndSet(0, isolateID)) {
                 synchronized (PRINTING_ISOLATE) {
                     if (inRuntimeCode() && PrintedIntrinsics == null) {
-                        PrintedIntrinsics = new HashSet<>();
+                        PrintedIntrinsics = new EconomicHashSet<>();
                     }
                     UnmodifiableMapCursor<String, List<InvocationPlugin>> entries = getInvocationPlugins(false, true).getEntries();
                     Set<String> unique = new TreeSet<>();

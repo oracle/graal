@@ -45,7 +45,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -239,16 +238,6 @@ public final class TestReceiverLanguage extends ProxyLanguage {
                 throw UnknownIdentifierException.create(member);
             }
             return membersMap.get(member);
-        }
-
-        @Override
-        protected boolean hasLanguage() {
-            return true;
-        }
-
-        @Override
-        protected Class<? extends TruffleLanguage<?>> getLanguage() {
-            return TestReceiverLanguage.class;
         }
 
         @Override

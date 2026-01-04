@@ -25,7 +25,7 @@
   # Adds a CI build predicate to `build` if it is a gate such that it is only
   # run if a top level CI file or a non-documentation file in any of `suites` has been updated
   add_gate_predicate(build, suites, extra_includes=[], extra_excludes=[])::
-    if std.member(build.targets, "gate") then
+    if std.member(build.targets, "gate") || std.member(build.targets, "tier1") || std.member(build.targets, "tier2") || std.member(build.targets, "tier3") then
     build + {
       guard+: {
         includes+: [ suite + "/**"      for suite in suites ] + extra_includes + $.top_level_ci,

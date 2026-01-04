@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,6 +69,21 @@ public class ByteArraySupportPartialEvaluationTest extends PartialEvaluationTest
         }
     }
 
+    static class GetShortUnalignedNonStableNode extends AbstractTestNode {
+        @CompilationFinal(dimensions = 0) byte[] bytes;
+        final int offset;
+
+        GetShortUnalignedNonStableNode(String hex, int offset) {
+            this.bytes = hexToBytes(hex);
+            this.offset = offset;
+        }
+
+        @Override
+        public int execute(VirtualFrame frame) {
+            return BYTES.getShortUnaligned(bytes, offset);
+        }
+    }
+
     static class GetIntNode extends AbstractTestNode {
         @CompilationFinal(dimensions = 1) byte[] bytes;
         final int offset;
@@ -99,6 +114,21 @@ public class ByteArraySupportPartialEvaluationTest extends PartialEvaluationTest
         }
     }
 
+    static class GetIntUnalignedNonStableNode extends AbstractTestNode {
+        @CompilationFinal(dimensions = 0) byte[] bytes;
+        final int offset;
+
+        GetIntUnalignedNonStableNode(String hex, int offset) {
+            this.bytes = hexToBytes(hex);
+            this.offset = offset;
+        }
+
+        @Override
+        public int execute(VirtualFrame frame) {
+            return BYTES.getIntUnaligned(bytes, offset);
+        }
+    }
+
     static class GetLongNode extends LongNode {
         @CompilationFinal(dimensions = 1) byte[] bytes;
         final int offset;
@@ -119,6 +149,21 @@ public class ByteArraySupportPartialEvaluationTest extends PartialEvaluationTest
         final int offset;
 
         GetLongUnalignedNode(String hex, int offset) {
+            this.bytes = hexToBytes(hex);
+            this.offset = offset;
+        }
+
+        @Override
+        public long execute(VirtualFrame frame) {
+            return BYTES.getLongUnaligned(bytes, offset);
+        }
+    }
+
+    static class GetLongUnalignedNonStableNode extends LongNode {
+        @CompilationFinal(dimensions = 0) byte[] bytes;
+        final int offset;
+
+        GetLongUnalignedNonStableNode(String hex, int offset) {
             this.bytes = hexToBytes(hex);
             this.offset = offset;
         }
@@ -221,5 +266,45 @@ public class ByteArraySupportPartialEvaluationTest extends PartialEvaluationTest
         assertPartialEvalEquals(constLongRootNode(0x1122334455667788L), new LongRootNode(new GetLongUnalignedNode("8877665544332211", 0)));
         assertPartialEvalEquals(constLongRootNode(0x1122334455667788L), new LongRootNode(new GetLongUnalignedNode("00000000000000008877665544332211", 8)));
         assertPartialEvalEquals(constLongRootNode(0x1122334455667788L), new LongRootNode(new GetLongUnalignedNode("008877665544332211", 1)));
+    }
+
+    @Test
+    public void testGetUnalignedFromNonStableArray() {
+        assertPartialEvalEquals(readShortRootNode(), new RootTestNode("getShortUnaligned", new GetShortUnalignedNonStableNode("0089abcdef", 1)));
+        assertPartialEvalEquals(readIntRootNode(), new RootTestNode("getIntUnaligned", new GetIntUnalignedNonStableNode("000089abcdef", 2)));
+        assertPartialEvalEquals(readLongRootNode(), new LongRootNode(new GetLongUnalignedNonStableNode("008877665544332211", 1)));
+    }
+
+    private static RootTestNode readShortRootNode() {
+        return new RootTestNode("readShort", new AbstractTestNode() {
+            private final byte[] bytes = new byte[8];
+
+            @Override
+            public int execute(VirtualFrame frame) {
+                return BYTES.getShort(bytes, 0);
+            }
+        });
+    }
+
+    private static RootTestNode readIntRootNode() {
+        return new RootTestNode("readInt", new AbstractTestNode() {
+            private final byte[] bytes = new byte[8];
+
+            @Override
+            public int execute(VirtualFrame frame) {
+                return BYTES.getInt(bytes, 0);
+            }
+        });
+    }
+
+    private static LongRootNode readLongRootNode() {
+        return new LongRootNode(new LongNode() {
+            private final byte[] bytes = new byte[8];
+
+            @Override
+            public long execute(VirtualFrame frame) {
+                return BYTES.getLong(bytes, 0);
+            }
+        });
     }
 }

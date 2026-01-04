@@ -22,25 +22,59 @@
  */
 package com.oracle.truffle.espresso.io;
 
-import static com.oracle.truffle.espresso.io.Checks.nullCheck;
-
 import java.io.FileDescriptor;
+import java.io.FileInputStream;
+import java.io.RandomAccessFile;
 
-import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
-import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
-import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 public abstract class FDAccess {
-    public static FDAccess GENERIC = new FDAccess() {
+
+    private static final FDAccess FILE_DESCRIPTOR = new FDAccess() {
         @Override
         public @JavaType(FileDescriptor.class) StaticObject get(@JavaType(Object.class) StaticObject objectWithFD, TruffleIO io) {
-            nullCheck(objectWithFD, io);
-            Field f = objectWithFD.getKlass().lookupField(Names.fd, Types.java_io_FileDescriptor);
-            return f.getObject(objectWithFD);
+            return objectWithFD;
+        }
+    };
+
+    private static final FDAccess FILE_INPUT_STREAM = new FDAccess() {
+        @Override
+        public @JavaType(FileInputStream.class) StaticObject get(@JavaType(Object.class) StaticObject objectWithFD, TruffleIO io) {
+            return io.java_io_FileInputStream_fd.getObject(objectWithFD);
+        }
+    };
+
+    private static final FDAccess FILE_OUTPUT_STREAM = new FDAccess() {
+        @Override
+        public @JavaType(FileDescriptor.class) StaticObject get(@JavaType(Object.class) StaticObject objectWithFD, TruffleIO io) {
+            return io.java_io_FileOutputStream_fd.getObject(objectWithFD);
+        }
+    };
+
+    private static final FDAccess RANDOM_ACCESS_FILE = new FDAccess() {
+        @Override
+        public @JavaType(FileDescriptor.class) StaticObject get(@JavaType(RandomAccessFile.class) StaticObject objectWithFD, TruffleIO io) {
+            Checks.nullCheck(objectWithFD, io);
+            return io.java_io_RandomAccessFile_fd.getObject(objectWithFD);
         }
     };
 
     public abstract @JavaType(FileDescriptor.class) StaticObject get(@JavaType(Object.class) StaticObject objectWithFD, TruffleIO io);
+
+    public static FDAccess forFileDescriptor() {
+        return FILE_DESCRIPTOR;
+    }
+
+    public static FDAccess forFileOutputStream() {
+        return FILE_OUTPUT_STREAM;
+    }
+
+    public static FDAccess forFileInputStream() {
+        return FILE_INPUT_STREAM;
+    }
+
+    public static FDAccess forRandomAccessFile() {
+        return RANDOM_ACCESS_FILE;
+    }
 }

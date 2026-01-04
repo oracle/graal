@@ -36,7 +36,19 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -77,6 +89,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Like {@link Hybrid} objects, DynamicHubs have an instance {@link HubType}, but a
  * {@link LayoutEncoding} like an array (see the javadoc for {@link Hybrid}).
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = DynamicHubLayout.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class DynamicHubLayout {
 
     private final ObjectLayout layout;
@@ -89,11 +102,17 @@ public class DynamicHubLayout {
     public final JavaKind vTableSlotStorageKind;
     private final Set<HostedField> ignoredFields;
 
-    /*
+    /**
      * This is calculated lazily, as it requires the dynamicHub's instance fields to be finalized
      * before being calculated.
      */
     private int vTableOffset;
+
+    /**
+     * The vTableOffset from the previous layer that is used to ensure that the vTableOffset is
+     * consistent across layers.
+     */
+    private int previousLayerVTableOffset;
 
     /**
      * See {@code HostedConfiguration#DynamicHubLayout} for the exact initialization values.
@@ -159,6 +178,9 @@ public class DynamicHubLayout {
     public int vTableOffset() {
         if (vTableOffset == 0) {
             vTableOffset = NumUtil.roundUp(dynamicHubType.getAfterFieldsOffset(), vTableSlotSize);
+            if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                VMError.guarantee(vTableOffset == previousLayerVTableOffset, "Previous layer vTableOffset was %d, but current is %d", previousLayerVTableOffset, vTableOffset);
+            }
         }
         return vTableOffset;
     }
@@ -169,5 +191,47 @@ public class DynamicHubLayout {
 
     public long getIdentityHashOffset(int vTableLength) {
         return layout.getArrayIdentityHashOffset(getVTableSlotOffset(vTableLength));
+    }
+
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+
+        public static final String CLOSED_TYPE_WORLD_TYPE_CHECK_SLOTS_OFFSET = "closedTypeWorldTypeCheckSlotsOffset";
+        public static final String CLOSED_TYPE_WORLD_TYPE_CHECK_SLOT_SIZE = "closedTypeWorldTypeCheckSlotSize";
+        public static final String V_TABLE_SLOT_SIZE = "vTableSlotSize";
+        public static final String V_TABLE_OFFSET = "vTableOffset";
+
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            var action = new SingletonLayeredCallbacks<DynamicHubLayout>() {
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, DynamicHubLayout singleton) {
+                    writer.writeInt(CLOSED_TYPE_WORLD_TYPE_CHECK_SLOTS_OFFSET, singleton.closedTypeWorldTypeCheckSlotsOffset);
+                    writer.writeInt(CLOSED_TYPE_WORLD_TYPE_CHECK_SLOT_SIZE, singleton.closedTypeWorldTypeCheckSlotSize);
+                    writer.writeInt(V_TABLE_SLOT_SIZE, singleton.vTableSlotSize);
+                    writer.writeInt(V_TABLE_OFFSET, singleton.vTableOffset);
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
+                }
+
+                @Override
+                public void onSingletonRegistration(ImageSingletonLoader loader, DynamicHubLayout singleton) {
+                    int previousLayerClosedTypeWorldTypeCheckSlotsOffset = loader.readInt(CLOSED_TYPE_WORLD_TYPE_CHECK_SLOTS_OFFSET);
+                    VMError.guarantee(singleton.closedTypeWorldTypeCheckSlotsOffset == previousLayerClosedTypeWorldTypeCheckSlotsOffset,
+                                    "Previous layer closedTypeWorldTypeCheckSlotsOffset was %d but current is %d", previousLayerClosedTypeWorldTypeCheckSlotsOffset,
+                                    singleton.closedTypeWorldTypeCheckSlotsOffset);
+
+                    int previousLayerClosedTypeWorldTypeCheckSlotSize = loader.readInt(CLOSED_TYPE_WORLD_TYPE_CHECK_SLOT_SIZE);
+                    VMError.guarantee(singleton.closedTypeWorldTypeCheckSlotSize == previousLayerClosedTypeWorldTypeCheckSlotSize,
+                                    "Previous layer closedTypeWorldTypeCheckSlotSize was %d but current is %d", previousLayerClosedTypeWorldTypeCheckSlotSize,
+                                    singleton.closedTypeWorldTypeCheckSlotSize);
+
+                    int previousLayerVTableSlotSize = loader.readInt(V_TABLE_SLOT_SIZE);
+                    VMError.guarantee(singleton.vTableSlotSize == previousLayerVTableSlotSize,
+                                    "Previous layer vTableSlotSize was %d but current is %d", previousLayerVTableSlotSize, singleton.vTableSlotSize);
+
+                    singleton.previousLayerVTableOffset = loader.readInt(V_TABLE_OFFSET);
+                }
+            };
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+        }
     }
 }

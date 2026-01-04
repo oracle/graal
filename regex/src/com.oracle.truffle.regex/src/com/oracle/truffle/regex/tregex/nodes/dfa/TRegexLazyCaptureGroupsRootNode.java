@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.regex.RegexBodyNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexProfile;
-import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
 
@@ -55,14 +54,14 @@ public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
 
     @Child private TRegexExecutorEntryNode entryNode;
     @Child private DirectCallNode findStartCallNode;
-    private final RegexProfile.TracksRegexProfile profiler;
+    private final RegexProfile profile;
     private final CallTarget findStartCallTarget;
 
-    public TRegexLazyCaptureGroupsRootNode(RegexLanguage language, RegexSource source, TRegexExecutorEntryNode captureGroupNode, RegexProfile.TracksRegexProfile profiler,
+    public TRegexLazyCaptureGroupsRootNode(RegexLanguage language, TRegexExecutorEntryNode captureGroupNode, RegexProfile profile,
                     CallTarget findStartCallTarget) {
-        super(language, source);
+        super(language);
         this.entryNode = insert(captureGroupNode);
-        this.profiler = profiler;
+        this.profile = profile;
         this.findStartCallTarget = findStartCallTarget;
         if (findStartCallTarget != null) {
             this.findStartCallNode = insert(DirectCallNode.create(findStartCallTarget));
@@ -82,7 +81,6 @@ public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
         }
         int[] result = (int[]) entryNode.execute(frame, receiver.getInput(), receiver.getFromIndex(), receiver.getEnd(), receiver.getRegionFrom(), receiver.getRegionTo(), start);
         if (CompilerDirectives.inInterpreter()) {
-            RegexProfile profile = profiler.getRegexProfile();
             profile.profileCaptureGroupAccess(result[1] - result[0], result[1] - (receiver.getFromIndex() + 1));
         }
         receiver.setResult(result);

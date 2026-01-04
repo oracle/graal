@@ -47,13 +47,13 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Information on a field that can be looked up and accessed via JNI.
  */
-public final class JNIAccessibleField extends JNIAccessibleMember {
+public final class JNIAccessibleField extends JNIAccessibleMember implements PreservableJNIElement {
     /* 10000000...0 */
     private static final UnsignedWord ID_STATIC_FLAG = Word.unsigned(-1L).unsignedShiftRight(1).add(1);
     /* 01000000...0 */
-    private static final UnsignedWord ID_OBJECT_FLAG = ID_STATIC_FLAG.unsignedShiftRight(1);
+    private static final UnsignedWord ID_PRESERVED_FLAG = ID_STATIC_FLAG.unsignedShiftRight(1);
     /* 00100000...0 */
-    private static final UnsignedWord ID_NEGATIVE_FLAG = ID_OBJECT_FLAG.unsignedShiftRight(1);
+    private static final UnsignedWord ID_NEGATIVE_FLAG = ID_PRESERVED_FLAG.unsignedShiftRight(1);
     /* 00010000...0 */
     private static final UnsignedWord ID_LAYER_NUMBER_MASK = ID_NEGATIVE_FLAG.unsignedShiftRight(1);
     private static final int ID_LAYER_NUMBER_SHIFT = 60;
@@ -61,7 +61,7 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
     private static final UnsignedWord ID_OFFSET_MASK = ID_LAYER_NUMBER_MASK.subtract(1);
 
     public static JNIAccessibleField negativeFieldQuery(JNIAccessibleClass jniClass) {
-        return new JNIAccessibleField(jniClass, null, 0);
+        return new JNIAccessibleField(jniClass, null, 0, false);
     }
 
     /**
@@ -99,7 +99,7 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
         }
     }
 
-    @Platforms(HOSTED_ONLY.class) private final UnsignedWord flags;
+    @Platforms(HOSTED_ONLY.class) private UnsignedWord flags;
 
     /**
      * Represents the {@link JNIFieldId} of the field.
@@ -107,23 +107,25 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
      * From left (MSB) to right (LSB):
      * <ul>
      * <li>1 bit for a flag indicating whether the field is static</li>
-     * <li>1 bit for a flag indicating whether the field is an object reference</li>
+     * <li>1 bit for a flag indicating whether the field is preserved</li>
      * <li>1 bit for a flag indicating whether the field is a negative query</li>
-     * <li>Remaining 61 bits for (unsigned) offset in the object</li>
+     * <li>1 bit for an unsigned integer indicating the layer number</li>
+     * <li>Remaining 60 bits for (unsigned) offset in the object</li>
      * </ul>
      */
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     private UnsignedWord id = Word.zero();
 
     @Platforms(HOSTED_ONLY.class)
-    public JNIAccessibleField(JNIAccessibleClass declaringClass, JavaKind kind, int modifiers) {
+    public JNIAccessibleField(JNIAccessibleClass declaringClass, JavaKind kind, int modifiers, boolean preserved) {
         super(declaringClass);
 
         UnsignedWord bits = Modifier.isStatic(modifiers) ? ID_STATIC_FLAG : Word.zero();
         if (kind == null) {
             bits = bits.or(ID_NEGATIVE_FLAG);
-        } else if (kind.isObject()) {
-            bits = bits.or(ID_OBJECT_FLAG);
+        }
+        if (preserved) {
+            bits = bits.or(ID_PRESERVED_FLAG);
         }
         this.flags = bits;
     }
@@ -160,5 +162,15 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
             assert layerNumber == MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
         }
         setHidingSubclasses(hidingSubclasses);
+    }
+
+    @Override
+    public boolean isPreserved() {
+        return id.and(ID_PRESERVED_FLAG).notEqual(0);
+    }
+
+    @Override
+    public void setNotPreserved() {
+        flags = flags.and(ID_PRESERVED_FLAG.not());
     }
 }

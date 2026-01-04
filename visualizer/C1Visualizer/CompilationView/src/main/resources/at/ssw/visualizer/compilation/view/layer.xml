@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.1//EN" "http://www.netbeans.org/dtds/filesystem-1_1.dtd">
+<filesystem>
+    <folder name="Actions">
+        <folder name="File">
+            <file name="OpenCompilation.instance">
+                <attr name="instanceClass" stringvalue="at.ssw.visualizer.compilation.view.action.OpenCompilationAction"/>
+            </file>
+            <file name="RemoveCompilation.instance">
+                <attr name="instanceClass" stringvalue="at.ssw.visualizer.compilation.view.action.RemoveCompilationAction"/>
+            </file>
+            <file name="RemoveAllCompilations.instance">
+                <attr name="instanceClass" stringvalue="at.ssw.visualizer.compilation.view.action.RemoveAllCompilationsAction"/>
+            </file>
+        </folder>
+        <folder name="Window">
+            <file name="ShowCompilationView.instance">
+                <attr name="instanceClass" stringvalue="at.ssw.visualizer.compilation.view.ShowCompilationViewAction"/>
+            </file>
+        </folder>
+    </folder>
+    
+    <folder name="Menu">
+        <folder name="File">
+            <file name="OpenCompilation.shadow">
+                <attr name="originalFile" stringvalue="Actions/File/OpenCompilation.instance"/>
+                <attr name="position" intvalue="1"/>
+            </file>
+            <file name="Separator-1.instance">
+                <attr name="instanceClass" stringvalue="javax.swing.JSeparator"/>
+                <attr name="position" intvalue="2"/>
+            </file>
+            <file name="RemoveCompilation.shadow">
+                <attr name="originalFile" stringvalue="Actions/File/RemoveCompilation.instance"/>
+                <attr name="position" intvalue="3"/>
+            </file>
+            <file name="RemoveAllCompilations.shadow">
+                <attr name="originalFile" stringvalue="Actions/File/RemoveAllCompilations.instance"/>
+                <attr name="position" intvalue="4"/>
+            </file>
+            <file name="Separator-2.instance">
+                <attr name="instanceClass" stringvalue="javax.swing.JSeparator"/>
+                <attr name="position" intvalue="5"/>
+            </file>
+        </folder>
+        <folder name="Window">            
+            <file name="CompilationAction.shadow">
+                <attr name="originalFile" stringvalue="Actions/Window/ShowCompilationView.instance"/>
+                <attr name="position" intvalue="100"/>
+            </file>
+        </folder>
+    </folder>
+    
+    <folder name="Shortcuts">
+        <file name="D-O.shadow">
+            <attr name="originalFile" stringvalue="Actions/File/OpenCompilation.instance"/>
+        </file>
+    </folder>
+    
+    <folder name="at-ssw-visualizer-actions-compilation">
+        <file name="RemoveCompilation.shadow">
+            <attr name="originalFile" stringvalue="Actions/File/RemoveCompilation.instance"/>
+            <attr name="position" intvalue="100"/>
+        </file>
+        <file name="RemoveAllCompilations.shadow">
+            <attr name="originalFile" stringvalue="Actions/File/RemoveAllCompilations.instance"/>
+            <attr name="position" intvalue="200"/>
+        </file>
+    </folder>
+    
+    <folder name="Windows2">
+        <folder name="Components">
+            <file name="CompilationViewTopComponent.settings" url="CompilationViewTopComponentSettings.xml"/>
+        </folder>
+        <folder name="Modes">
+            <folder name="left">
+                <file name="CompilationViewTopComponent.wstcref" url="CompilationViewTopComponentWstcref.xml"/>
+            </folder>
+        </folder>
+    </folder>
+</filesystem>

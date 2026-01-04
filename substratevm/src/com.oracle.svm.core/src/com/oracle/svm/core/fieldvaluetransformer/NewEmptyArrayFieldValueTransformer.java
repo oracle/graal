@@ -24,22 +24,30 @@
  */
 package com.oracle.svm.core.fieldvaluetransformer;
 
-import java.lang.reflect.Array;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Reset an array field to a new empty array of the same type and length.
  */
-public final class NewEmptyArrayFieldValueTransformer implements FieldValueTransformer {
-    public static final FieldValueTransformer INSTANCE = new NewEmptyArrayFieldValueTransformer();
+public final class NewEmptyArrayFieldValueTransformer implements JVMCIFieldValueTransformer {
+    public static final JVMCIFieldValueTransformer INSTANCE = new NewEmptyArrayFieldValueTransformer();
 
     @Override
-    public Object transform(Object receiver, Object originalValue) {
-        if (originalValue == null) {
-            return null;
+    public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
+        if (originalValue.isNull()) {
+            return JavaConstant.NULL_POINTER;
         }
-        int originalLength = Array.getLength(originalValue);
-        return Array.newInstance(originalValue.getClass().getComponentType(), originalLength);
+        Providers originalProviders = GraalAccess.getOriginalProviders();
+        MetaAccessProvider metaAccess = originalProviders.getMetaAccess();
+        Integer originalLength = originalProviders.getConstantReflection().readArrayLength(originalValue);
+        VMError.guarantee(originalLength != null, "Original value is not an array or the array length is not known");
+        return JVMCIReflectionUtil.newArrayInstance(metaAccess.lookupJavaType(originalValue).getComponentType(), originalLength);
     }
 }

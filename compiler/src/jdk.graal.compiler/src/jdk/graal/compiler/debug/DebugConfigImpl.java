@@ -31,12 +31,11 @@ import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
 import jdk.graal.compiler.options.OptionValues;
-
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.JavaMethod;
 
@@ -44,52 +43,33 @@ final class DebugConfigImpl implements DebugConfig {
 
     private final OptionValues options;
 
-    private final DebugFilter countFilter;
     private final DebugFilter logFilter;
-    private final DebugFilter trackMemUseFilter;
-    private final DebugFilter timerFilter;
     private final DebugFilter dumpFilter;
-    private final DebugFilter verifyFilter;
     private final MethodFilter methodFilter;
     private final List<DebugDumpHandler> dumpHandlers;
-    private final List<DebugVerifyHandler> verifyHandlers;
     private final PrintStream output;
 
     DebugConfigImpl(OptionValues options) {
-        this(options, TTY.out, Collections.emptyList(), Collections.emptyList());
+        this(options, TTY.out, Collections.emptyList());
     }
 
     DebugConfigImpl(OptionValues options, PrintStream output,
-                    List<DebugDumpHandler> dumpHandlers,
-                    List<DebugVerifyHandler> verifyHandlers) {
+                    List<DebugDumpHandler> dumpHandlers) {
         this(options, DebugOptions.Log.getValue(options),
-                        DebugOptions.Count.getValue(options),
-                        DebugOptions.TrackMemUse.getValue(options),
-                        DebugOptions.Time.getValue(options),
                         DebugOptions.Dump.getValue(options),
-                        getVerifyOptionValue(options),
                         DebugOptions.MethodFilter.getValue(options),
-                        output, dumpHandlers, verifyHandlers);
+                        output, dumpHandlers);
     }
 
     DebugConfigImpl(OptionValues options,
                     String logFilter,
-                    String countFilter,
-                    String trackMemUseFilter,
-                    String timerFilter,
                     String dumpFilter,
-                    String verifyFilter,
                     String methodFilter,
                     PrintStream output,
-                    List<DebugDumpHandler> dumpHandlers,
-                    List<DebugVerifyHandler> verifyHandlers) {
+                    List<DebugDumpHandler> dumpHandlers) {
         this.options = options;
         this.logFilter = DebugFilter.parse(logFilter);
-        this.countFilter = DebugFilter.parse(countFilter);
-        this.trackMemUseFilter = DebugFilter.parse(trackMemUseFilter);
-        this.timerFilter = DebugFilter.parse(timerFilter);
         this.dumpFilter = DebugFilter.parse(dumpFilter);
-        this.verifyFilter = DebugFilter.parse(verifyFilter);
         if (methodFilter == null || methodFilter.isEmpty()) {
             this.methodFilter = null;
         } else {
@@ -97,12 +77,7 @@ final class DebugConfigImpl implements DebugConfig {
         }
 
         this.dumpHandlers = Collections.unmodifiableList(dumpHandlers);
-        this.verifyHandlers = Collections.unmodifiableList(verifyHandlers);
         this.output = output;
-    }
-
-    private static String getVerifyOptionValue(OptionValues values) {
-        return !DebugOptions.Verify.hasBeenSet(values) && Assertions.assertionsEnabled() ? "" : DebugOptions.Verify.getValue(values);
     }
 
     @Override
@@ -121,16 +96,6 @@ final class DebugConfigImpl implements DebugConfig {
     }
 
     @Override
-    public boolean isCountEnabled(DebugContext.Scope scope) {
-        return isEnabled(scope, countFilter);
-    }
-
-    @Override
-    public boolean isMemUseTrackingEnabled(DebugContext.Scope scope) {
-        return isEnabled(scope, trackMemUseFilter);
-    }
-
-    @Override
     public int getDumpLevel(DebugContext.Scope scope) {
         return getLevel(scope, dumpFilter);
     }
@@ -138,16 +103,6 @@ final class DebugConfigImpl implements DebugConfig {
     @Override
     public boolean isDumpEnabledForMethod(DebugContext.Scope scope) {
         return isEnabledForMethod(scope, dumpFilter);
-    }
-
-    @Override
-    public boolean isVerifyEnabled(DebugContext.Scope scope) {
-        return isEnabled(scope, verifyFilter);
-    }
-
-    @Override
-    public boolean isTimeEnabled(DebugContext.Scope scope) {
-        return isEnabled(scope, timerFilter);
     }
 
     @Override
@@ -160,17 +115,12 @@ final class DebugConfigImpl implements DebugConfig {
         return output;
     }
 
-    private boolean isEnabled(DebugContext.Scope scope, DebugFilter filter) {
-        return getLevel(scope, filter) > 0;
-    }
-
     private int getLevel(DebugContext.Scope scope, DebugFilter filter) {
-        int level;
         if (filter == null) {
-            level = 0;
-        } else {
-            level = filter.matchLevel(scope);
+            // null means the value has not been set
+            return -1;
         }
+        int level = filter.matchLevel(scope);
         if (level >= 0 && !checkMethodFilter(scope)) {
             level = -1;
         }
@@ -218,8 +168,6 @@ final class DebugConfigImpl implements DebugConfig {
         StringBuilder sb = new StringBuilder();
         sb.append("Debug config:");
         add(sb, "Log", logFilter);
-        add(sb, "Count", countFilter);
-        add(sb, "Time", timerFilter);
         add(sb, "Dump", dumpFilter);
         add(sb, "MethodFilter", methodFilter);
         return sb.toString();
@@ -248,20 +196,16 @@ final class DebugConfigImpl implements DebugConfig {
         }
 
         OptionValues interceptOptions = new OptionValues(options,
-                        DebugOptions.Count, null,
-                        DebugOptions.Time, null,
-                        DebugOptions.TrackMemUse, null,
-                        DebugOptions.Verify, null,
                         DebugOptions.Dump, ":" + BASIC_LEVEL,
                         DebugOptions.Log, ":" + BASIC_LEVEL);
-        DebugConfigImpl config = new DebugConfigImpl(interceptOptions, output, dumpHandlers, verifyHandlers);
+        DebugConfigImpl config = new DebugConfigImpl(interceptOptions, output, dumpHandlers);
         ScopeImpl scope = debug.currentScope;
         scope.updateFlags(config);
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             e.printStackTrace(new PrintStream(baos));
             debug.log("Exception raised in scope %s: %s", debug.getCurrentScopeName(), baos);
-            Map<Object, Object> firstSeen = new IdentityHashMap<>();
+            Map<Object, Object> firstSeen = EconomicHashMap.newIdentityMap();
             for (Object o : debug.context()) {
                 // Only dump a context object once.
                 if (!firstSeen.containsKey(o)) {
@@ -281,10 +225,5 @@ final class DebugConfigImpl implements DebugConfig {
     @Override
     public Collection<DebugDumpHandler> dumpHandlers() {
         return dumpHandlers;
-    }
-
-    @Override
-    public Collection<DebugVerifyHandler> verifyHandlers() {
-        return verifyHandlers;
     }
 }

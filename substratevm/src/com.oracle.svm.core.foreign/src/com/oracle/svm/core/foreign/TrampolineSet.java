@@ -57,7 +57,7 @@ final class TrampolineSet {
     }
 
     private static UnsignedWord alignment() {
-        return Word.unsigned(SubstrateOptions.codeAlignment());
+        return Word.unsigned(SubstrateOptions.runtimeCodeAlignment());
     }
 
     private static int maxTrampolineCount() {
@@ -145,7 +145,7 @@ final class TrampolineSet {
     private Pointer prepareTrampolines(PinnedObject mhsArray, PinnedObject stubsArray, AbiUtils.TrampolineTemplate template) {
         UnsignedWord pageSize = allocationSize();
         /* We request a specific alignment to guarantee correctness of getAllocationBase */
-        Pointer page = CommittedMemoryProvider.get().allocateExecutableMemory(pageSize, Word.unsigned(SubstrateOptions.codeAlignment()));
+        Pointer page = CommittedMemoryProvider.get().allocateExecutableMemory(pageSize, Word.unsigned(SubstrateOptions.runtimeCodeAlignment()));
         if (page.isNull()) {
             throw new OutOfMemoryError("Could not allocate memory for trampolines.");
         }
@@ -159,7 +159,7 @@ final class TrampolineSet {
             VMError.guarantee(it.belowOrEqual(end), "Not enough memory was allocated to hold trampolines");
         }
 
-        VMError.guarantee(VirtualMemoryProvider.get().protect(page, pageSize, VirtualMemoryProvider.Access.EXECUTE) == 0,
+        VMError.guarantee(VirtualMemoryProvider.get().protect(page, pageSize, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.EXECUTE) == 0,
                         "Error when making the trampoline allocation executable");
 
         /*

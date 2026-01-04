@@ -51,13 +51,18 @@
 
 #if defined(__linux__)
 #include<dlfcn.h>
+#include<sys/stat.h>
+#include<unistd.h>
 #elif defined(__APPLE__)
 #include<dlfcn.h>
 #include<pthread.h>
+#include<sys/stat.h>
+#include<unistd.h>
 #include<Cocoa/Cocoa.h>
 #include<objc/objc-runtime.h>
 #include<objc/objc-auto.h>
 #elif defined(_WIN32)
+#include <io.h>
 #include<windows.h>
 #include<libloaderapi.h>
 #include<process.h>
@@ -105,6 +110,20 @@ static CreateJavaVM loadIsolateLibrary(const std::string library_path) {
         const char* err = dlerror();
         std::stringstream builder {};
         builder << "Failed to load isolate library " << library_path;
+        struct stat sb;
+        if (stat(library_path.c_str(), &sb) == -1) {
+            builder << " (file does not exist)";
+        } else {
+            if (!S_ISREG(sb.st_mode)) {
+                builder << " (not a regular file)";
+            } else {
+                bool readable = (access(library_path.c_str(), R_OK) == 0);
+                bool executable = (access(library_path.c_str(), X_OK) == 0);
+                builder << " (regular file, "
+                        << (readable ? "readable" : "not readable") << ", "
+                        << (executable ? "executable" : "not executable") << ")";
+            }
+        }
         if (err) {
             builder << " due to: " << err;
         }
@@ -115,8 +134,39 @@ static CreateJavaVM loadIsolateLibrary(const std::string library_path) {
     if (handle) {
         return reinterpret_cast<CreateJavaVM>(GetProcAddress(handle, "JNI_CreateJavaVM"));
     } else {
+        DWORD errorMessageID = GetLastError();
+        std::string err;
+        if (errorMessageID != 0) {
+            LPSTR messageBuffer = nullptr;
+            size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                         nullptr,
+                                         errorMessageID,
+                                         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                                         (LPSTR)&messageBuffer,
+                                         0,
+                                        nullptr);
+            err = std::string {messageBuffer, size};
+            LocalFree(messageBuffer);
+        };
         std::stringstream builder {};
         builder << "Failed to load isolate library " << library_path;
+        DWORD attrs = GetFileAttributesA(library_path.c_str());
+        if (attrs == INVALID_FILE_ATTRIBUTES) {
+            builder << " (file does not exist)";
+        } else {
+            if (attrs & FILE_ATTRIBUTE_DIRECTORY) {
+                builder << " (is a directory)";
+            } else {
+                bool readable = (_access(library_path.c_str(), 4) == 0);
+                bool executable = (_access(library_path.c_str(), 1) == 0);
+                builder << " (regular file, "
+                        << (readable ? "readable" : "not readable") << ", "
+                        << (executable ? "executable" : "not executable") << ")";
+            }
+        }
+        if (!err.empty()) {
+            builder << " due to: " << err;
+        }
         ABORT(builder.str().c_str())
     }
 #else

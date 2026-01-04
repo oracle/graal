@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,14 +26,16 @@
 
 package jdk.graal.compiler.nodes.test;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.core.test.TestPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.MinMaxNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.Suites;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class IfNodeCanonicalizationTest2 extends GraalCompilerTest {
     private StructuredGraph structuredGraph;
@@ -162,7 +164,7 @@ public class IfNodeCanonicalizationTest2 extends GraalCompilerTest {
 
     private void checkConditionalNode(String methodName, int expected) {
         compile(getResolvedJavaMethod(methodName), null);
-        int actual = structuredGraph.getNodes().filter(ConditionalNode.class).count();
+        int actual = structuredGraph.getNodes().filter(n -> n instanceof ConditionalNode || n instanceof MinMaxNode<?>).count();
         Assert.assertEquals(expected, actual);
     }
 }

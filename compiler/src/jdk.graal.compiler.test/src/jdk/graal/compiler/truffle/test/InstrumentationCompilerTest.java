@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -182,7 +182,7 @@ public class InstrumentationCompilerTest extends PartialEvaluationTest {
                 env.getInstrumenter().attachExecutionEventFactory(
                                 SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(),
                                 SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(),
-                                context -> new SavingNode());
+                                _ -> new SavingNode());
             }
         }
 

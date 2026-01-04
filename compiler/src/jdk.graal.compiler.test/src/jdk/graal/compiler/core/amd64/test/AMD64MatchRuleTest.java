@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,9 @@ package jdk.graal.compiler.core.amd64.test;
 
 import static org.junit.Assume.assumeTrue;
 
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.test.MatchRuleTest;
 import jdk.graal.compiler.lir.LIR;
@@ -37,9 +40,6 @@ import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.CmpBranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.CmpConstBranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.CmpDataBranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64Unary;
-import org.junit.Before;
-import org.junit.Test;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 
@@ -103,7 +103,7 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         boolean found = false;
         for (LIRInstruction ins : lir.getLIRforBlock(lir.getControlFlowGraph().getBlocks()[lir.codeEmittingOrder()[0]])) {
             if (ins instanceof AMD64Unary.MemoryOp) {
-                ins.visitEachOutput((value, mode, flags) -> assertTrue(value.getPlatformKind().toString(), value.getPlatformKind().equals(AMD64Kind.QWORD)));
+                ins.visitEachOutput((value, _, _) -> assertTrue(value.getPlatformKind().toString(), value.getPlatformKind().equals(AMD64Kind.QWORD)));
                 assertFalse("MemoryOp expected only once in first block", found);
                 found = true;
             }
@@ -209,7 +209,7 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         boolean found = false;
         for (LIRInstruction ins : lir.getLIRforBlock(lir.getControlFlowGraph().getBlocks()[lir.codeEmittingOrder()[0]])) {
             if (ins instanceof AMD64Unary.MemoryOp) {
-                ins.visitEachOutput((value, mode, flags) -> assertTrue(value.getPlatformKind().toString(), value.getPlatformKind().equals(AMD64Kind.QWORD)));
+                ins.visitEachOutput((value, _, _) -> assertTrue(value.getPlatformKind().toString(), value.getPlatformKind().equals(AMD64Kind.QWORD)));
                 assertFalse("MemoryOp expected only once in first block", found);
                 found = true;
             }

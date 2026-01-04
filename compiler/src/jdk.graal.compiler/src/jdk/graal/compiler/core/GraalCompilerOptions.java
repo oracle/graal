@@ -41,6 +41,10 @@ public class GraalCompilerOptions {
     @Option(help = "Print an informational line to the console for each completed compilation.", type = OptionType.Debug, stability = OptionStability.STABLE)
     public static final OptionKey<Boolean> PrintCompilation = new OptionKey<>(false);
     @Option(help = """
+                   Print statistics for each completed compilation to a CSV file specified by the given filename pattern.
+                   The isolate ID is appended to the filename and %p is replaced with the execution ID.""", type = OptionType.Debug)
+    public static final OptionKey<String> PrintCompilationCSV = new OptionKey<>(null);
+    @Option(help = """
                    Pattern for method(s) that will trigger an exception when compiled.
                    This option exists to test handling compilation crashes gracefully.
                    See the MethodFilter option for the pattern syntax. A ':Bailout'
@@ -78,7 +82,7 @@ public class GraalCompilerOptions {
                    "CompilationFailureAction before changing to a less verbose action. " +
                    "This does not apply to the ExitVM action..", type = OptionType.User)
     public static final OptionKey<Integer> MaxCompilationProblemsPerAction = new OptionKey<>(2);
-    @Option(help = "Specifies the compilation failure rate that indicates a systemic compilation problem (and a resulting warning). " +
+    @Option(help = "Specifies the compilation failure rate that indicates a systemic compilation problem. " +
                    "The value is made absolute and clamped to produce P, a value between 0 and 100. " +
                    "Systemic failure is detected if the percentage of failing compilations in a sliding time window >= P. " +
                    "A negative value will cause the VM to exit after issuing the warning. Set to 0 to disable systemic compilation problem detection.", type = OptionType.User)

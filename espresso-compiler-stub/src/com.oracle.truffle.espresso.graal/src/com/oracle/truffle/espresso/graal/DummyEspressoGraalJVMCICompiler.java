@@ -30,7 +30,6 @@ import jdk.vm.ci.code.CompilationRequestResult;
 import jdk.vm.ci.runtime.JVMCIRuntime;
 
 public final class DummyEspressoGraalJVMCICompiler implements GraalJVMCICompiler {
-
     private final EspressoGraalRuntime runtime;
 
     private DummyEspressoGraalJVMCICompiler(JVMCIRuntime jvmciRuntime) {

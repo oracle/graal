@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.nio.file.Path;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -155,12 +156,6 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        // Support for deprecated frame transfer: GR-38296
-        public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, long bytecodeTarget) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
         public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, long bytecodeTarget, Object targetMetadata) {
             throw new UnsupportedOperationException();
         }
@@ -217,7 +212,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public void flushCompileQueue(Object runtimeData) {
+        public void shutdownCompilationForEngine(Object runtimeData) {
             // default runtime has no compile queue.
         }
 
@@ -262,6 +257,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
+        public boolean onStoreCache(Object runtimeData, Path targetPath, long cancelledWord) {
+            throw new UnsupportedOperationException("Persisting an engine is not supported with the the Truffle fallback runtime. It is only supported on native-image hosts.");
+        }
+
+        @Override
         public boolean isOSRRootNode(RootNode rootNode) {
             return false;
         }
@@ -303,6 +303,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
             return ThreadLocal.withInitial(initialValue);
+        }
+
+        @Override
+        public void setInitializedTimestamp(CallTarget target, long timestamp) {
+
         }
     }
 

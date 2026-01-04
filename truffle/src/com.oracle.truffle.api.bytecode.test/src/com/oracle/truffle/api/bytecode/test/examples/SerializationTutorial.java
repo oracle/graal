@@ -381,7 +381,7 @@ public class SerializationTutorial {
      * <ol>
      * <li>A {@link TruffleLanguage} language used when creating each root node</li>
      * <li>A {@link BytecodeConfig} config that specifies which metadata to parse from the
-     * serialized byte (serialization encodes all metadata).</li>
+     * serialized bytes (serialization encodes all metadata).</li>
      * <li>A {@link Supplier<DataInput>} a callable that supplies a {@link DataInput} to read.
      * Deserialization can happen multiple times because of reparsing. The supplier is responsible
      * for producing a fresh {@link DataInput} each time it is called.</li>

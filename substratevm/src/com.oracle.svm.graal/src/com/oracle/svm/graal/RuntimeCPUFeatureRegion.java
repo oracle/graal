@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,7 +65,7 @@ class RuntimeCPUFeatureRegionFeature implements InternalFeature {
 
     @Override
     public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), RuntimeCPUFeatureRegion.class, providers.getReplacements());
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), RuntimeCPUFeatureRegion.class);
         r.register(new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("enter", Enum.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg0) {
@@ -233,17 +233,20 @@ public final class RuntimeCPUFeatureRegion {
      * <p>
      * All arguments must be compile-time constant.
      */
-    public static native RuntimeCPUFeatureRegion enter(@ConstantNodeParameter Enum<?> arg0);
-
-    public static native RuntimeCPUFeatureRegion enterSet(@ConstantNodeParameter EnumSet<?> arg0);
+    public static native RuntimeCPUFeatureRegion enterSet(@ConstantNodeParameter EnumSet<?> features);
 
     /**
-     * @see #enter(Enum)
+     * @see #enterSet(EnumSet)
+     */
+    public static native RuntimeCPUFeatureRegion enter(@ConstantNodeParameter Enum<?> arg0);
+
+    /**
+     * @see #enterSet(EnumSet)
      */
     public static native <T extends Enum<T>> RuntimeCPUFeatureRegion enter(@ConstantNodeParameter Enum<T> arg0, @ConstantNodeParameter Enum<T> arg1);
 
     /**
-     * @see #enter(Enum)
+     * @see #enterSet(EnumSet)
      */
     public static native <T extends Enum<T>> RuntimeCPUFeatureRegion enter(@ConstantNodeParameter Enum<T> arg0, @ConstantNodeParameter Enum<T> arg1, @ConstantNodeParameter Enum<T> arg2);
 

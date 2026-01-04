@@ -43,6 +43,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.svm.common.meta.MultiMethod;
 
+import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -123,6 +124,11 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
             return source != null ? source : "root method";
         }
         return reason;
+    }
+
+    @Override
+    public Iterable<EncodedGraph.EncodedNodeReference> getEncodedNodeReferences() {
+        return typeFlow.getMethodFlowsGraph().getNodeFlows().getKeys();
     }
 
     @Override

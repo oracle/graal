@@ -26,10 +26,8 @@ package com.oracle.svm.hosted.meta;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
-import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class HostedInstanceClass extends HostedClass {
 
@@ -140,17 +138,5 @@ public class HostedInstanceClass extends HostedClass {
         assert this.identityHashOffset == -1 : "setting identity hashcode field offset more than once";
         assert offset >= 0;
         this.identityHashOffset = offset;
-    }
-
-    @Override
-    public AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod m) {
-        if (m.canBeStaticallyBound() || universe.hostVM().isClosedTypeWorld()) {
-            return super.findUniqueConcreteMethod(m);
-        }
-        /*
-         * With an open type world analysis we cannot make assumptions for methods that cannot be
-         * trivially statically bound.
-         */
-        return null;
     }
 }

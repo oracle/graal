@@ -34,26 +34,26 @@ import java.util.Map;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.webimage.api.JSValue;
 
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
+import com.oracle.svm.hosted.webimage.LowerableFile;
 import com.oracle.svm.hosted.webimage.WebImageHostedConfiguration;
 import com.oracle.svm.hosted.webimage.js.JSBody;
+import com.oracle.svm.hosted.webimage.js.JSKeyword;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
-import com.oracle.svm.webimage.JSKeyword;
-import com.oracle.svm.webimage.LowerableFile;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.webimage.annotation.WebImage;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
+import com.oracle.svm.webimage.hightiercodegen.IEmitter;
+import com.oracle.svm.webimage.hightiercodegen.Keyword;
+import com.oracle.svm.webimage.hightiercodegen.variables.ResolvedVar;
+import com.oracle.svm.webimage.hightiercodegen.variables.VariableAllocation;
 
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
-import jdk.graal.compiler.hightiercodegen.Emitter;
-import jdk.graal.compiler.hightiercodegen.IEmitter;
-import jdk.graal.compiler.hightiercodegen.Keyword;
-import jdk.graal.compiler.hightiercodegen.variables.ResolvedVar;
-import jdk.graal.compiler.hightiercodegen.variables.VariableAllocation;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -169,7 +169,7 @@ public class JSCodeGenTool extends CodeGenTool {
         Signature s = m.getSignature();
 
         if (WebImageOptions.ClosureCompiler.getValue()) {
-            if (!AnnotationAccess.isAnnotationPresent(m, WebImage.OmitClosureReturnType.class)) {
+            if (!AnnotationUtil.isAnnotationPresent(m, WebImage.OmitClosureReturnType.class)) {
                 codeBuffer.emitNewLine();
                 codeBuffer.emitText("/** @return {" + getClosureCompilerAnnotation((ResolvedJavaType) s.getReturnType(null), true) + "} */");
                 if (graph.getNodes().filter(JSBody.class::isInstance).isNotEmpty()) {

@@ -33,25 +33,25 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinTask;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
@@ -85,18 +85,26 @@ import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.OpenTypeWorldFeature;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
@@ -107,6 +115,7 @@ import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredStaticFieldSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -122,7 +131,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class UniverseBuilder {
     @Platforms(Platform.HOSTED_ONLY.class) //
-    private static final WordBase[] EMPTY_VTABLE = new WordBase[0];
+    private static final MethodRef[] EMPTY_VTABLE = new MethodRef[0];
 
     private final AnalysisUniverse aUniverse;
     private final AnalysisMetaAccess aMetaAccess;
@@ -145,11 +154,11 @@ public class UniverseBuilder {
      * This step is single threaded, i.e., all the maps are modified only by a single thread, so no
      * synchronization is necessary. Accesses (the lookup methods) are multi-threaded.
      */
-    @SuppressWarnings("try")
     public void build(DebugContext debug) {
         aUniverse.seal();
+        DeadlockWatchdog.singleton().recordActivity();
 
-        try (Indent indent = debug.logAndIndent("build universe")) {
+        try (Indent _ = debug.logAndIndent("build universe")) {
             for (AnalysisType aType : aUniverse.getTypes()) {
                 makeType(aType);
             }
@@ -182,6 +191,17 @@ public class UniverseBuilder {
                 assert previous == null : "Overwriting analysis key";
             }
 
+            // see SharedMethod#getIndirectCallTarget for more information
+            if (!SubstrateOptions.useClosedTypeWorldHubLayout()) {
+                OpenTypeWorldFeature.singleton().computeIndirectCallTargets(hUniverse, hUniverse.methods);
+            } else {
+                hUniverse.methods.forEach((aMethod, hMethod) -> {
+                    assert aMethod.isOriginalMethod();
+                    hMethod.setIndirectCallTarget(hMethod);
+                });
+            }
+
+            DeadlockWatchdog.singleton().recordActivity();
             HostedConfiguration.initializeDynamicHubLayout(hMetaAccess);
 
             Collection<HostedType> allTypes = hUniverse.types.values();
@@ -364,8 +384,8 @@ public class UniverseBuilder {
             HostedDynamicLayerInfo.singleton().registerHostedMethod(hMethod);
         }
 
-        boolean isCFunction = aMethod.getAnnotation(CFunction.class) != null;
-        boolean hasCFunctionOptions = aMethod.getAnnotation(CFunctionOptions.class) != null;
+        boolean isCFunction = AnnotationUtil.getAnnotation(aMethod, CFunction.class) != null;
+        boolean hasCFunctionOptions = AnnotationUtil.getAnnotation(aMethod, CFunctionOptions.class) != null;
         if (hasCFunctionOptions && !isCFunction) {
             unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod,
                             "Method annotated with @" + CFunctionOptions.class.getSimpleName() + " must also be annotated with @" + CFunction.class);
@@ -423,9 +443,11 @@ public class UniverseBuilder {
 
     private void buildProfilingInformation() {
         /* Convert profiling information after all types and methods have been created. */
+        var watchdog = DeadlockWatchdog.singleton();
         hUniverse.methods.values().parallelStream()
                         .forEach(method -> {
                             assert method.isOriginalMethod();
+                            watchdog.recordActivity();
                             for (MultiMethod multiMethod : method.getAllMultiMethods()) {
                                 HostedMethod hMethod = (HostedMethod) multiMethod;
                                 strengthenGraphs.applyResults(hMethod.getWrapped());
@@ -441,7 +463,15 @@ public class UniverseBuilder {
      * partition of the image heap. Immutable types will not get a monitor field and will always use
      * the secondary storage for monitor slots.
      */
-    private static final Set<Class<?>> IMMUTABLE_TYPES = new HashSet<>(Arrays.asList(
+    private static final EconomicSet<Class<?>> IMMUTABLE_TYPES = EconomicSet.create(Arrays.asList(
+                    Boolean.class,
+                    Byte.class,
+                    Short.class,
+                    Character.class,
+                    Integer.class,
+                    Long.class,
+                    Float.class,
+                    Double.class,
                     String.class,
                     DynamicHub.class,
                     CEntryPointLiteral.class,
@@ -458,8 +488,8 @@ public class UniverseBuilder {
         HostedConfiguration.instance().collectMonitorFieldInfo(bb, hUniverse, getImmutableTypes());
     }
 
-    private Set<AnalysisType> getImmutableTypes() {
-        Set<AnalysisType> immutableTypes = new HashSet<>();
+    private EconomicSet<AnalysisType> getImmutableTypes() {
+        EconomicSet<AnalysisType> immutableTypes = EconomicSet.create(IMMUTABLE_TYPES.size());
         for (Class<?> immutableType : IMMUTABLE_TYPES) {
             Optional<AnalysisType> aType = aMetaAccess.optionalLookupJavaType(immutableType);
             aType.ifPresent(immutableTypes::add);
@@ -565,8 +595,8 @@ public class UniverseBuilder {
          * Sort so that in each group, Object fields are consecutive, and bigger types come first.
          */
         Object uncontendedSentinel = new Object();
-        Object unannotatedGroup = clazz.isAnnotationPresent(Contended.class) ? new Object() : uncontendedSentinel;
-        Function<HostedField, Object> getAnnotationGroup = field -> Optional.ofNullable(field.getAnnotation(Contended.class))
+        Object unannotatedGroup = AnnotationUtil.isAnnotationPresent(clazz, Contended.class) ? new Object() : uncontendedSentinel;
+        Function<HostedField, Object> getAnnotationGroup = field -> Optional.ofNullable(AnnotationUtil.getAnnotation(field, Contended.class))
                         .map(a -> "".equals(a.value()) ? new Object() : a.value())
                         .orElse(unannotatedGroup);
         Map<Object, ArrayList<HostedField>> contentionGroups = rawFields.stream()
@@ -597,8 +627,10 @@ public class UniverseBuilder {
 
         // Reserve "synthetic" fields in this class (but not subclasses) below.
 
-        // A reference to a {@link java.util.concurrent.locks.ReentrantLock for "synchronized" or
-        // Object.wait() and Object.notify() and friends.
+        /*
+         * A reference to a JavaMonitor instance for "synchronized" or Object.wait() and
+         * Object.notify() and friends.
+         */
         if (clazz.needMonitorField()) {
             int size = layout.getReferenceSize();
             int endOffset = usedBytes.length();
@@ -757,7 +789,7 @@ public class UniverseBuilder {
             return true;
         }
 
-        boolean available = field.isValueAvailable();
+        boolean available = field.isValueAvailable(null);
         if (!available) {
             /*
              * Since the value is not yet available we must register it as a
@@ -823,7 +855,7 @@ public class UniverseBuilder {
                         assert currentLayer < layerNum : Assertions.errorMessage(currentLayer, layerNum);
                         offsets = layeredStaticFieldSupport.getFutureLayerOffsets(field, layerNum);
                     }
-                    if (field.getStorageKind() == JavaKind.Object) {
+                    if (field.getStorageKind().isObject()) {
                         field.setLocation(NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, offsets.nextObjectField)), layerNum);
                         offsets.nextObjectField += 1;
                     } else {
@@ -858,8 +890,9 @@ public class UniverseBuilder {
         byte[] staticPrimitiveFields = new byte[currentLayerOffsets.nextPrimitiveField];
         StaticFieldsSupport.setData(staticObjectFields, staticPrimitiveFields);
         /* After initializing the static field arrays add them to the shadow heap. */
-        aUniverse.getHeapScanner().rescanObject(StaticFieldsSupport.getCurrentLayerStaticObjectFields());
-        aUniverse.getHeapScanner().rescanObject(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields());
+        ScanReason reason = new OtherReason("Manual rescan for static fields triggered from " + UniverseBuilder.class);
+        aUniverse.getHeapScanner().rescanObject(StaticFieldsSupport.getCurrentLayerStaticObjectFields(), reason);
+        aUniverse.getHeapScanner().rescanObject(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields(), reason);
     }
 
     @SuppressWarnings("unchecked")
@@ -908,10 +941,13 @@ public class UniverseBuilder {
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
+        boolean closedTypeWorldHubLayout = SubstrateOptions.useClosedTypeWorldHubLayout();
+        boolean useOffsets = SubstrateOptions.useRelativeCodePointers();
 
         for (HostedType type : hUniverse.getTypes()) {
             hUniverse.hostVM().recordActivity();
 
+            // See also similar logic in DynamicHub.allocate
             int layoutHelper;
             int monitorOffset = 0;
             int identityHashOffset = 0;
@@ -958,53 +994,50 @@ public class UniverseBuilder {
             DynamicHub hub = type.getHub();
             hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset, referenceMapIndex, type.isInstantiated());
 
-            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-                WordBase[] vtable = createVTable(type.closedTypeWorldVTable);
+            if (closedTypeWorldHubLayout) {
+                MethodRef[] vtable = createVTable(type.closedTypeWorldVTable, useOffsets);
                 hub.setClosedTypeWorldData(vtable, type.getTypeID(), type.getTypeCheckStart(), type.getTypeCheckRange(),
                                 type.getTypeCheckSlot(), type.getClosedTypeWorldTypeCheckSlots());
             } else {
-
-                /*
-                 * Within the open type world, interface type checks are two entries long and
-                 * contain information about both the implemented interface ids as well as their
-                 * itable starting offset within the dispatch table.
-                 */
-                int numClassTypes = type.getNumClassTypes();
-                int[] openTypeWorldTypeCheckSlots = new int[numClassTypes + (type.getNumInterfaceTypes() * 2)];
-                System.arraycopy(type.openTypeWorldTypeCheckSlots, 0, openTypeWorldTypeCheckSlots, 0, numClassTypes);
-                int typeSlotIdx = numClassTypes;
-                for (int interfaceIdx = 0; interfaceIdx < type.numInterfaceTypes; interfaceIdx++) {
-                    int typeID = type.getOpenTypeWorldTypeCheckSlots()[numClassTypes + interfaceIdx];
-                    int itableStartingOffset;
-                    if (type.itableStartingOffsets.length > 0) {
-                        itableStartingOffset = type.itableStartingOffsets[interfaceIdx];
-                    } else {
-                        itableStartingOffset = 0xBADD0D1D;
-                    }
-                    openTypeWorldTypeCheckSlots[typeSlotIdx] = typeID;
-                    /*
-                     * We directly encode the offset of the itable within the DynamicHub to limit
-                     * the amount of arithmetic needed to be performed at runtime.
-                     */
-                    int itableDynamicHubOffset = dynamicHubLayout.vTableOffset() + (itableStartingOffset * dynamicHubLayout.vTableSlotSize);
-                    openTypeWorldTypeCheckSlots[typeSlotIdx + 1] = itableDynamicHubOffset;
-                    typeSlotIdx += 2;
-                }
-
-                WordBase[] vtable = createVTable(type.openTypeWorldDispatchTables);
-                hub.setOpenTypeWorldData(vtable, type.getTypeID(), type.getTypeIDDepth(), type.getNumClassTypes(), type.getNumInterfaceTypes(), openTypeWorldTypeCheckSlots);
+                setOpenTypeWorldData(type, dynamicHubLayout, hub, useOffsets);
             }
         }
     }
 
-    private static WordBase[] createVTable(HostedMethod[] methods) {
+    /**
+     * See {@link DynamicHubUtils#computeOpenTypeWorldTypeCheckData} for details on the
+     * {@link DynamicHub} type check layout in the open type world.
+     */
+    private static void setOpenTypeWorldData(HostedType type, DynamicHubLayout dynamicHubLayout, DynamicHub hub, boolean useOffsets) {
+        boolean implementsMethods = type.itableStartingOffsets.length > 0;
+        int numClassTypes = type.numClassTypes;
+        int[] typeHierarchy = new int[numClassTypes];
+        System.arraycopy(type.openTypeWorldTypeCheckSlots, 0, typeHierarchy, 0, numClassTypes);
+
+        int[] interfaceIDs = new int[type.numInterfaceTypes];
+        System.arraycopy(type.openTypeWorldTypeCheckSlots, numClassTypes, interfaceIDs, 0, type.numInterfaceTypes);
+        int[] iTableOffsets = type.itableStartingOffsets;
+
+        long vTableOffset = dynamicHubLayout.vTableOffset();
+        long vTableSlotSize = dynamicHubLayout.vTableSlotSize;
+
+        DynamicHubUtils.TypeCheckData typeCheckData = DynamicHubUtils.computeOpenTypeWorldTypeCheckData(implementsMethods, typeHierarchy, interfaceIDs, iTableOffsets, vTableOffset,
+                        vTableSlotSize);
+
+        MethodRef[] vtable = createVTable(type.openTypeWorldDispatchTables, useOffsets);
+        hub.setOpenTypeWorldData(vtable, type.getTypeID(), type.getInterfaceID(), type.getTypeIDDepth(), type.getNumClassTypes(), typeCheckData.numIterableInterfaces(),
+                        typeCheckData.openTypeWorldTypeCheckSlots(),
+                        typeCheckData.openTypeWorldInterfaceHashTable(), typeCheckData.openTypeWorldInterfaceHashParam());
+    }
+
+    private static MethodRef[] createVTable(HostedMethod[] methods, boolean useOffsets) {
         if (methods.length == 0) {
             return EMPTY_VTABLE;
         }
-        WordBase[] vtable = new WordBase[methods.length];
+        MethodRef[] vtable = new MethodRef[methods.length];
         for (int i = 0; i < methods.length; i++) {
             HostedMethod method = methods[i];
-            if (SubstrateOptions.useRelativeCodePointers()) {
+            if (useOffsets) {
                 vtable[i] = new MethodOffset(method);
             } else {
                 /*
@@ -1039,7 +1072,7 @@ public class UniverseBuilder {
     }
 
     private static boolean excludeFromReferenceMap(HostedField field) {
-        ExcludeFromReferenceMap annotation = field.getAnnotation(ExcludeFromReferenceMap.class);
+        ExcludeFromReferenceMap annotation = AnnotationUtil.getAnnotation(field, ExcludeFromReferenceMap.class);
         if (annotation != null) {
             return ReflectionUtil.newInstance(annotation.onlyIf()).getAsBoolean();
         }
@@ -1048,13 +1081,17 @@ public class UniverseBuilder {
 }
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 final class InvalidVTableEntryFeature implements InternalFeature {
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.lastImageBuild();
+    }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        if (ImageLayerBuildingSupport.lastImageBuild()) {
-            access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true, "Registered in " + InvalidVTableEntryFeature.class);
-        }
+        access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true, "Registered in " + InvalidVTableEntryFeature.class);
     }
 }

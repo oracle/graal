@@ -67,6 +67,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -612,7 +613,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
 
     @Test
     public void testSpecializedLocalUndefined() {
-        // if (arg0) { x = 42 } else { x /* undefined */ }
+        // if (arg0) { x = 42 } else { consume(x) /* undefined */ }
         // return 123
         BoxingEliminationTestRootNode node = parse(b -> {
             b.beginRoot();
@@ -626,7 +627,9 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
             b.emitLoadConstant(42);
             b.endStoreLocal();
 
+            b.beginConsumer();
             b.emitLoadLocal(x);
+            b.endConsumer();
 
             b.endIfThenElse();
 
@@ -644,6 +647,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "store.local",
                         "branch",
                         "load.local",
+                        "c.Consumer",
                         "pop",
                         "load.constant",
                         "return");
@@ -657,6 +661,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "store.local$Int$Int",
                         "branch",
                         "load.local",
+                        "c.Consumer",
                         "pop",
                         "load.constant",
                         "return");
@@ -678,6 +683,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "store.local$Int$Int",
                         "branch",
                         "load.local",
+                        "c.Consumer",
                         "pop",
                         "load.constant",
                         "return");
@@ -2182,6 +2188,38 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         assertStable(quickenings, node, 1L);
     }
 
+    @Test
+    public void testNonBEableOperand() {
+        // return arg0 + arg1
+        BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginAddWithNonBEableOperands();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endAddWithNonBEableOperands();
+            b.endReturn();
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "load.argument",
+                        "load.argument",
+                        "c.AddWithNonBEableOperands",
+                        "return");
+
+        node.getCallTarget().call(42, 3.14f);
+
+        assertInstructions(node,
+                        "load.argument$Int",
+                        "load.argument",
+                        "c.AddWithNonBEableOperands$IntFloat",
+                        "return");
+
+        var quickenings = assertQuickenings(node, 3, 1);
+        assertStable(quickenings, node, 123, 4.56f);
+    }
+
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
@@ -2491,6 +2529,12 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                 return v;
             }
 
+            // dummy specialization so we can track quickening
+            @Fallback
+            static long doFallback(Object v) {
+                return (long) v;
+            }
+
         }
 
         @Operation
@@ -2644,6 +2688,23 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
             }
         }
 
+        @Operation
+        static final class AddWithNonBEableOperands {
+            /**
+             * Regression test: the code for boxing elimination would incorrectly try to boxing
+             * eliminate the float operand because another specialization had a BE-able operand at
+             * the same operand index.
+             */
+            @Specialization
+            public static Object doIntFloat(int x, float y) {
+                return x + y;
+            }
+
+            @Specialization
+            public static Object doFloatInt(float x, int y) {
+                return x + y;
+            }
+        }
     }
 
 }

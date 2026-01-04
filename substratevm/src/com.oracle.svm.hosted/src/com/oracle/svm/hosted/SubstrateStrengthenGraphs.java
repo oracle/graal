@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import com.oracle.graal.pointsto.infrastructure.Universe;
@@ -44,19 +45,20 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.meta.HostedType;
-
-import com.oracle.svm.hosted.phases.DynamicAccessDetectionPhase;
 import com.oracle.svm.hosted.phases.AnalyzeJavaHomeAccessPhase;
+import com.oracle.svm.hosted.phases.DynamicAccessDetectionPhase;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaMethodProfile;
@@ -149,13 +151,14 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
     @Override
     protected void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile) {
         if (needsProfiles(invoke.asNode().graph())) {
-            ((SubstrateMethodCallTargetNode) invoke.callTarget()).setProfiles(typeProfile, methodProfile);
+            ((SubstrateMethodCallTargetNode) invoke.callTarget()).setProfiles(typeProfile, typeProfile, methodProfile, methodProfile);
         }
     }
 
-    protected void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile, JavaTypeProfile staticTypeProfile) {
+    protected void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile, JavaTypeProfile staticTypeProfile, JavaMethodProfile staticMethodProfile) {
         if (needsProfiles(invoke.asNode().graph())) {
-            ((SubstrateMethodCallTargetNode) invoke.callTarget()).setProfiles(typeProfile, methodProfile, staticTypeProfile);
+            SubstrateMethodCallTargetNode substrateCallTarget = (SubstrateMethodCallTargetNode) invoke.callTarget();
+            substrateCallTarget.setProfiles(typeProfile, staticTypeProfile, methodProfile, staticMethodProfile);
         }
     }
 
@@ -170,13 +173,22 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
     }
 
     @Override
-    protected boolean simplifyDelegate(Node n, SimplifierTool tool) {
-        /*
-         * This node is only necessary for analysis and can be removed once StrengthenGraphs is
-         * reached.
-         */
-        if (n instanceof InlinedInvokeArgumentsNode nodeToRemove) {
-            nodeToRemove.graph().removeFixed(nodeToRemove);
+    protected boolean simplifyDelegate(Node n, SimplifierTool tool, Predicate<Node> isUnreachable) {
+        if (n instanceof InlinedInvokeArgumentsNode inlinedInvokeArgumentsNode) {
+            if (isUnreachable.test(inlinedInvokeArgumentsNode)) {
+                /* If node is unreachable, then the entire branch should be removed. */
+                StructuredGraph graph = (StructuredGraph) n.graph();
+                Supplier<String> message = () -> String.format("Method %s, Unreachable InlinedInvokeArgumentsNode: %s", StrengthenGraphs.getQualifiedName(graph), inlinedInvokeArgumentsNode);
+                FixedNode unreachableNode = createUnreachable(graph, tool, message);
+                ((FixedWithNextNode) inlinedInvokeArgumentsNode.predecessor()).setNext(unreachableNode);
+                GraphUtil.killCFG(inlinedInvokeArgumentsNode);
+            } else {
+                /*
+                 * Otherwise, InlinedInvokeArgumentsNode is only necessary for analysis and can be
+                 * removed once StrengthenGraphs is reached.
+                 */
+                inlinedInvokeArgumentsNode.graph().removeFixed(inlinedInvokeArgumentsNode);
+            }
             return true;
         }
         return false;

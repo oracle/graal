@@ -26,12 +26,12 @@ package com.oracle.svm.core.util;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.log.Log;
+
+import jdk.graal.compiler.word.Word;
 
 public class TimeUtils {
 
@@ -183,38 +183,6 @@ public class TimeUtils {
             }
         }
         return r;
-    }
-
-    /** Have I looped for too long? If so, complain, but reset the wait. */
-    public static long doNotLoopTooLong(long startNanos, long loopNanos, long warningNanos, String message) {
-        long result = loopNanos;
-        final long waitedNanos = TimeUtils.nanoSecondsSince(loopNanos);
-        if ((0 < warningNanos) && TimeUtils.nanoTimeLessThan(warningNanos, waitedNanos)) {
-            Log.log().string("[TimeUtils.doNotLoopTooLong:")
-                            .string("  startNanos: ").signed(startNanos)
-                            .string("  warningNanos: ").signed(warningNanos).string(" < ").string(" waitedNanos: ").signed(waitedNanos)
-                            .string("  reason: ").string(message)
-                            .string("]").newline();
-            result = System.nanoTime();
-        }
-        return result;
-    }
-
-    /** Have I taken too long? Returns true if I have, false otherwise. */
-    public static boolean maybeFatallyTooLong(long startNanos, long failureNanos, String reason) {
-        if (0 < failureNanos) {
-            /* If a promptness limit was set. */
-            final long nanosSinceStart = TimeUtils.nanoSecondsSince(startNanos);
-            if (TimeUtils.nanoTimeLessThan(failureNanos, nanosSinceStart)) {
-                /* If the promptness limit was exceeded. */
-                Log.log().string("[TimeUtils.maybeFatallyTooLong:")
-                                .string("  startNanos: ").signed(startNanos)
-                                .string("  failureNanos: ").signed(failureNanos).string(" < nanosSinceStart: ").signed(nanosSinceStart)
-                                .string("  reason: ").string(reason).string("]").newline();
-                return true;
-            }
-        }
-        return false;
     }
 
     /**

@@ -289,13 +289,13 @@ public final class TestLSPLibrary extends TruffleLSPTest {
             }
 
             @ExportMessage
-            boolean hasLanguage() {
+            boolean hasLanguageId() {
                 return true;
             }
 
             @ExportMessage
-            Class<? extends TruffleLanguage<?>> getLanguage() {
-                return TestLSPLanguage.class;
+            String getLanguageId() {
+                return TestLSPLanguage.ID;
             }
 
             @ExportMessage

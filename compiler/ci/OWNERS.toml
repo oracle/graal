@@ -1,0 +1,6 @@
+[[rule]]
+files = "benchmark-*.libsonnet benchmark-*.jsonnet"
+any = [
+    "francois.farquet@oracle.com",
+    "andrija.kolic@oracle.com",
+]

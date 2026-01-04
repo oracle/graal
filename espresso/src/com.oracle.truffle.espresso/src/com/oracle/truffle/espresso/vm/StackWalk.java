@@ -75,7 +75,7 @@ public final class StackWalk {
         return (mode & FILL_CLASS_REFS_ONLY) == 0;
     }
 
-    private static boolean synchronizedConstants(Meta meta) {
+    public static boolean synchronizedConstants(Meta meta) {
         Klass stackStreamFactory = meta.java_lang_StackStreamFactory;
         StaticObject statics = stackStreamFactory.tryInitializeAndGetStatics();
         assert DEFAULT_MODE == getConstantField(stackStreamFactory, statics, "DEFAULT_MODE", meta);

@@ -30,8 +30,9 @@ import jdk.graal.compiler.debug.GraalError;
 public final class StringCodepointIndexToByteIndexForeignCalls {
     private static final ForeignCallDescriptor STUB_UTF8 = foreignCallDescriptor("codePointIndexToByteIndexUTF8");
     private static final ForeignCallDescriptor STUB_UTF16 = foreignCallDescriptor("codePointIndexToByteIndexUTF16");
+    private static final ForeignCallDescriptor STUB_UTF16FE = foreignCallDescriptor("codePointIndexToByteIndexUTF16FE");
 
-    public static final ForeignCallDescriptor[] STUBS = {STUB_UTF8, STUB_UTF16};
+    public static final ForeignCallDescriptor[] STUBS = {STUB_UTF8, STUB_UTF16, STUB_UTF16FE};
 
     private static ForeignCallDescriptor foreignCallDescriptor(String name) {
         return ForeignCalls.pureFunctionForeignCallDescriptor(name, int.class, Object.class, long.class, int.class, int.class);
@@ -43,6 +44,8 @@ public final class StringCodepointIndexToByteIndexForeignCalls {
                 return STUB_UTF8;
             case UTF_16:
                 return STUB_UTF16;
+            case UTF_16_FOREIGN_ENDIAN:
+                return STUB_UTF16FE;
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(node.getOp()); // ExcludeFromJacocoGeneratedReport
         }

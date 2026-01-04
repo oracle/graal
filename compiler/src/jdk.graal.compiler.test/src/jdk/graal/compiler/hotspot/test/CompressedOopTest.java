@@ -29,14 +29,13 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -396,17 +395,6 @@ public class CompressedOopTest extends GraalCompilerTest {
         ArrayContainer() {
             for (int i = 0; i < 10; i++) {
                 a[i] = new Object();
-            }
-        }
-    }
-
-    static class HashMapContainer {
-
-        public HashMap<Object, Object> a = new HashMap<>();
-
-        HashMapContainer() {
-            for (int i = 0; i < 10; i++) {
-                a.put(new Object(), new Object());
             }
         }
     }

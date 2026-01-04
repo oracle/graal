@@ -78,25 +78,7 @@ public class PosixLibC {
     public static native int strcmp(PointerBase s1, PointerBase s2);
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native CCharPointer strcpy(CCharPointer dst, CCharPointer src);
-
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native CCharPointer strncpy(CCharPointer dst, CCharPointer src, UnsignedWord len);
-
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native UnsignedWord strlcpy(CCharPointer dst, CCharPointer src, UnsignedWord len);
-
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native CCharPointer strdup(CCharPointer src);
-
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native CCharPointer strtok_r(CCharPointer str, CCharPointer delim, CCharPointerPointer saveptr);
-
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native long strtol(CCharPointer nptr, CCharPointerPointer endptr, int base);
-
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native CCharPointer strstr(CCharPointer str, CCharPointer substr);
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native int isdigit(int c);

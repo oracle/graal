@@ -24,13 +24,6 @@
  */
 package com.oracle.svm.hosted.webimage.codegen;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.List;
-import java.util.Set;
-
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSObject;
@@ -46,11 +39,10 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.webimage.codegen.node.InterceptJSInvokeNode;
 import com.oracle.svm.hosted.webimage.codegen.oop.ClassWithMirrorLowerer;
+import com.oracle.svm.hosted.webimage.js.JSObjectAccessMethod;
 import com.oracle.svm.hosted.webimage.js.JSObjectAccessMethodSupport;
-import com.oracle.svm.hosted.webimage.util.ReflectUtil;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.webimage.api.Nothing;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
@@ -79,47 +71,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @AutomaticallyRegisteredFeature
 @Platforms(WebImageJSPlatform.class)
 public final class JSBodyFeature implements InternalFeature {
-    // The set of methods that are potentially overridden by a JS-annotated method.
-    private Set<Method> jsOverridden;
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        FeatureImpl.AfterRegistrationAccessImpl accessImpl = (FeatureImpl.AfterRegistrationAccessImpl) access;
-        ImageClassLoader imageClassLoader = accessImpl.getImageClassLoader();
-        List<Class<?>> allClasses = imageClassLoader.findSubclasses(Object.class, true);
-        jsOverridden = ReflectUtil.findBaseMethodsOfJSAnnotated(allClasses);
-    }
-
     @Override
     public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
         plugins.appendNodePlugin(new NodePlugin() {
             @Override
             public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-                if (AnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), JS.Import.class)) {
+                if (AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), JS.Import.class)) {
                     ((AnalysisType) method.getDeclaringClass()).registerAsInstantiated("JS.Import classes might be allocated in JavaScript. We need to tell the static analysis about that");
                 }
-                if (canBeJavaScriptCall((AnalysisMethod) method)) {
-                    InterceptJSInvokeNode intercept = b.append(new InterceptJSInvokeNode(method, b.bci()));
-                    for (final ValueNode arg : args) {
-                        intercept.arguments().add(arg);
-                    }
-                }
-                return false;
-            }
-
-            private boolean canBeJavaScriptCall(AnalysisMethod method) {
-                Executable executable;
-                try {
-                    executable = method.getJavaMethod();
-                } catch (Throwable e) {
-                    // Either a substituted method, or a method with a malformed bytecode signature.
-                    // This is most likely not a JS-annotated method.
-                    return false;
-                }
-                if (executable instanceof Method) {
-                    return jsOverridden.contains(executable);
-                }
-                // Not a normal method (constructor).
                 return false;
             }
 
@@ -143,8 +102,8 @@ public final class JSBodyFeature implements InternalFeature {
 
             /**
              * Replaces an access to {@link JSObject} fields with a call to an
-             * {@link com.oracle.svm.hosted.webimage.js.JSObjectAccessMethod accessor method} that
-             * performs the access on the underlying JavaScript object.
+             * {@link JSObjectAccessMethod accessor method} that performs the access on the
+             * underlying JavaScript object.
              *
              * @param valueForStore If {@code null} is this a load. Otherwise, the value to be
              *            written into the field.
@@ -214,37 +173,44 @@ public final class JSBodyFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        BigBang bigbang = accessImpl.getBigBang();
+        FeatureImpl.BeforeAnalysisAccessImpl a = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        BigBang bigbang = a.getBigBang();
+
+        AnalysisMetaAccess metaAccess = a.getMetaAccess();
+        AnalysisType jsValueType = metaAccess.lookupJavaType(JSValue.class);
+        AnalysisType jsObjectType = metaAccess.lookupJavaType(JSObject.class);
 
         /*
-         * If a @JS.Import class is reachable, register it as allocated.
-         *
-         * The Web Image runtime will create instances of a @JS.Import class in JavaScript/Java
-         * conversion.
+         * Any reachable JSObject subtypes can be allocated from internal JS code during coercion
+         * (e.g. JSValue.checkedCoerce or when returning from an @JS.Coerce method)
          */
-        accessImpl.registerSubtypeReachabilityHandler((acc, clazz) -> {
-            if (clazz.isAnnotationPresent(JS.Import.class)) {
-                String reason = "@JS.import class " + clazz + " reachable, registered from " + JSBodyFeature.class;
-                AnalysisType cls = accessImpl.getMetaAccess().lookupJavaType(clazz);
-                cls.registerAsInstantiated(reason);
+        a.registerSubtypeReachabilityHandler((acc, clazz) -> {
+            AnalysisType cls = metaAccess.lookupJavaType(clazz);
+            if (!cls.isAbstract()) {
+                String reason = "Reachable JSObject classes can be unsafe allocated during coercion, registered from " + JSBodyFeature.class;
+                cls.registerAsUnsafeAllocated(reason);
             }
         }, JSObject.class);
 
-        for (Class<? extends JSValue> subclass : accessImpl.findSubclasses(JSValue.class)) {
-            if (!Modifier.isAbstract(subclass.getModifiers())) {
+        for (var subtype : a.findSubtypes(jsValueType)) {
+            if (!subtype.isAbstract()) {
                 // Include classes that correspond to the primitive JS values, and only reference JS
                 // values that were exported. The rest of the JS values must be *used* from the Java
                 // program in order to be included in the image.
                 //
                 // JSObject must always be included because everything may be covertly converted to
                 // JSObject (in generated code).
-                if (JSObject.class == subclass || !JSObject.class.isAssignableFrom(subclass)) {
-                    accessImpl.registerAsInHeap(subclass);
+                if (jsObjectType.equals(subtype) || !jsObjectType.isAssignableFrom(subtype)) {
+                    a.registerAsInHeap(subtype, "registered from " + JSBodyFeature.class);
                 }
             }
-            if (subclass.isAnnotationPresent(JS.Export.class)) {
-                accessImpl.registerAsInHeap(subclass);
+            /*
+             * All @JS.Export classes are unconditionally registered as unsafe allocated (and
+             * reachable) because they may be instantiated in user JS code without the type ever
+             * appearing in the Java program.
+             */
+            if (AnnotationUtil.isAnnotationPresent(subtype, JS.Export.class)) {
+                subtype.registerAsUnsafeAllocated("@JS.Export classes are unconditionally reachable, registered from " + JSBodyFeature.class);
             }
         }
         // Add helper classes.
@@ -313,10 +279,5 @@ public final class JSBodyFeature implements InternalFeature {
         if (requireAnalysisIteration) {
             access.requireAnalysisIteration();
         }
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        jsOverridden = null;
     }
 }

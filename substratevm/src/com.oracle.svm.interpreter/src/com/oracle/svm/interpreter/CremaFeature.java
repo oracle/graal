@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 
@@ -35,18 +37,26 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.ClassForNameSupport;
-import com.oracle.svm.core.hub.CremaSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedInstanceClass;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
@@ -57,7 +67,7 @@ import com.oracle.svm.util.ReflectionUtil;
 @Platforms(Platform.HOSTED_ONLY.class)
 @AutomaticallyRegisteredFeature
 public class CremaFeature implements InternalFeature {
-    private Method enterVTableInterpreterStub;
+    private AnalysisMethod enterVTableInterpreterStub;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -85,9 +95,11 @@ public class CremaFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         try {
-            enterVTableInterpreterStub = InterpreterStubSection.class.getMethod("enterVTableInterpreterStub", int.class, Pointer.class);
+            AnalysisType declaringClass = accessImpl.getMetaAccess().lookupJavaType(InterpreterStubSection.class);
+            enterVTableInterpreterStub = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(accessImpl.getMetaAccess(), declaringClass,
+                            "enterVTableInterpreterStub", int.class, Pointer.class);
             accessImpl.registerAsRoot(enterVTableInterpreterStub, true, "stub for interpreter");
-        } catch (NoSuchMethodException e) {
+        } catch (NoSuchMethodError e) {
             throw VMError.shouldNotReachHere(e);
         }
     }
@@ -102,7 +114,7 @@ public class CremaFeature implements InternalFeature {
                 if (!analysisType.isReachable()) {
                     continue;
                 }
-                assert btiUniverse.getOrCreateType(analysisType) != null : "type is reachable but not part of interpreter universe: " + analysisType;
+                assert btiUniverse.getType(analysisType) != null : "type is reachable but not part of interpreter universe: " + analysisType;
             }
         }
     }
@@ -114,8 +126,55 @@ public class CremaFeature implements InternalFeature {
         BuildTimeInterpreterUniverse iUniverse = BuildTimeInterpreterUniverse.singleton();
         Field vtableHolderField = ReflectionUtil.lookupField(InterpreterResolvedObjectType.class, "vtableHolder");
 
+        for (HostedMethod method : hUniverse.getMethods()) {
+            if (method.hasVTableIndex()) {
+                InterpreterResolvedJavaMethod iMethod = iUniverse.getMethod(method);
+                if (iMethod != null) {
+                    iMethod.setVTableIndex(method.getVTableIndex());
+                }
+            }
+        }
+
+        ScanReason reason = new OtherReason("Manual rescan triggered before compilation from " + CremaFeature.class);
         for (HostedType hType : hUniverse.getTypes()) {
-            iUniverse.mirrorSVMVTable(hType, objectType -> accessImpl.getHeapScanner().rescanField(objectType, vtableHolderField));
+            iUniverse.mirrorSVMVTable(hType, objectType -> accessImpl.getHeapScanner().rescanField(objectType, vtableHolderField, reason));
+        }
+
+        InterpreterFeature.prepareSignatures();
+    }
+
+    @Override
+    public void afterCompilation(AfterCompilationAccess access) {
+        FeatureImpl.AfterCompilationAccessImpl accessImpl = (FeatureImpl.AfterCompilationAccessImpl) access;
+        BuildTimeInterpreterUniverse iUniverse = BuildTimeInterpreterUniverse.singleton();
+        for (HostedType type : accessImpl.getUniverse().getTypes()) {
+            if (type.isPrimitive() || type.isArray() || type.isInterface()) {
+                continue;
+            }
+            InterpreterResolvedJavaType iType = iUniverse.getType(type.getWrapped());
+            if (iType == null) {
+                assert !type.getWrapped().isReachable() : "No interpreter type for " + type;
+                continue;
+            }
+
+            // Setup fields info
+            InterpreterResolvedObjectType objectType = (InterpreterResolvedObjectType) iType;
+            HostedInstanceClass instanceClass = (HostedInstanceClass) type;
+            objectType.setAfterFieldsOffset(instanceClass.getAfterFieldsOffset());
+
+            initializeInterpreterFields(iUniverse, instanceClass.getInstanceFields(false));
+            initializeInterpreterFields(iUniverse, (HostedField[]) instanceClass.getStaticFields());
+        }
+    }
+
+    private static void initializeInterpreterFields(BuildTimeInterpreterUniverse iUniverse, HostedField[] fields) {
+        for (HostedField hostedField : fields) {
+            InterpreterResolvedJavaField iField = iUniverse.getField(hostedField.getWrapped());
+            if (iField == null) {
+                assert !hostedField.isAccessed() : "No interpreter field for " + hostedField;
+                continue;
+            }
+            iUniverse.initializeJavaFieldFromHosted(hostedField, iField);
         }
     }
 
@@ -131,6 +190,6 @@ public class CremaFeature implements InternalFeature {
     public void beforeImageWrite(BeforeImageWriteAccess access) {
         FeatureImpl.BeforeImageWriteAccessImpl accessImpl = (FeatureImpl.BeforeImageWriteAccessImpl) access;
         InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
-        stubSection.markEnterStubPatch(accessImpl.getHostedMetaAccess().lookupJavaMethod(enterVTableInterpreterStub));
+        stubSection.markEnterStubPatch(accessImpl.getHostedUniverse().lookup(enterVTableInterpreterStub));
     }
 }

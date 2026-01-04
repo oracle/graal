@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.image;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -39,12 +38,12 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.code.SharedCompilationResult;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.code.HostedDirectCallTrampolineSupport;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.HostedPatcher;
-import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.graal.compiler.code.CompilationResult;
@@ -60,7 +59,7 @@ import jdk.vm.ci.code.site.Reference;
 
 public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
-    private static final byte CODE_FILLER_BYTE = (byte) 0xCC;
+    public static final byte CODE_FILLER_BYTE = (byte) 0xCC;
 
     private final Map<HostedMethod, Map<HostedMethod, Integer>> trampolineMap;
     private final Map<HostedMethod, List<Pair<HostedMethod, Integer>>> orderedTrampolineMap;
@@ -96,9 +95,9 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         if (orderedTrampolineMap.containsKey(method)) {
             List<Pair<HostedMethod, Integer>> trampolineList = orderedTrampolineMap.get(method);
             int lastTrampolineStart = trampolineList.get(trampolineList.size() - 1).getRight();
-            methodEnd = computeNextMethodStart(lastTrampolineStart, HostedDirectCallTrampolineSupport.singleton().getTrampolineSize());
+            methodEnd = addOffset(lastTrampolineStart, HostedDirectCallTrampolineSupport.singleton().getTrampolineSize());
         } else {
-            methodEnd = computeNextMethodStart(methodStart, compilationResultFor(method).getTargetCodeSize());
+            methodEnd = addOffset(methodStart, compilationResultFor(method).getTargetCodeSize());
         }
 
         return methodEnd - methodStart;
@@ -112,22 +111,22 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             CompilationResult compilation = entry.getRight();
 
             int methodStart = method.getCodeAddressOffset();
+            currentPos = align(currentPos, SharedCompilationResult.getCodeAlignment(compilation));
             assert currentPos == methodStart;
 
-            currentPos += compilation.getTargetCodeSize();
+            currentPos = addOffset(currentPos, compilation.getTargetCodeSize());
 
             if (orderedTrampolineMap.containsKey(method)) {
                 for (var trampoline : orderedTrampolineMap.get(method)) {
                     int trampolineOffset = trampoline.getRight();
 
-                    currentPos = NumUtil.roundUp(currentPos, trampolineSupport.getTrampolineAlignment());
+                    currentPos = align(currentPos, trampolineSupport.getTrampolineAlignment());
                     assert trampolineOffset == currentPos;
 
                     currentPos += trampolineSupport.getTrampolineSize();
                 }
             }
 
-            currentPos = computeNextMethodStart(currentPos, 0);
             int size = currentPos - method.getCodeAddressOffset();
             assert codeSizeFor(method) == size;
         }
@@ -139,7 +138,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     @Override
     public void layoutMethods(DebugContext debug, BigBang bb) {
 
-        try (Indent indent = debug.logAndIndent("layout methods")) {
+        try (Indent _ = debug.logAndIndent("layout methods")) {
             // Assign initial location to all methods.
             HostedDirectCallTrampolineSupport trampolineSupport = HostedDirectCallTrampolineSupport.singleton();
             Map<HostedMethod, Integer> curOffsetMap = trampolineSupport.mayNeedTrampolines() ? new HashMap<>() : null;
@@ -148,13 +147,14 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             for (Pair<HostedMethod, CompilationResult> entry : getOrderedCompilations()) {
                 HostedMethod method = entry.getLeft();
                 CompilationResult compilation = entry.getRight();
+                curPos = align(curPos, SharedCompilationResult.getCodeAlignment(compilation));
 
                 if (!trampolineSupport.mayNeedTrampolines()) {
                     method.setCodeAddressOffset(curPos);
                 } else {
                     curOffsetMap.put(method, curPos);
                 }
-                curPos = computeNextMethodStart(curPos, compilation.getTargetCodeSize());
+                curPos = addOffset(curPos, compilation.getTargetCodeSize());
             }
 
             if (trampolineSupport.mayNeedTrampolines()) {
@@ -168,7 +168,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     int methodStartOffset = curOffsetMap.get(method);
                     method.setCodeAddressOffset(methodStartOffset);
                     Map<HostedMethod, Integer> trampolines = trampolineMap.get(method);
-                    if (trampolines.size() != 0) {
+                    if (!trampolines.isEmpty()) {
                         // assign an offset to each trampoline
                         List<Pair<HostedMethod, Integer>> sortedTrampolines = new ArrayList<>(trampolines.size());
                         int position = methodStartOffset + pair.getRight().getTargetCodeSize();
@@ -177,10 +177,10 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                          * positions.
                          */
                         for (HostedMethod callTarget : trampolines.keySet().toArray(HostedMethod.EMPTY_ARRAY)) {
-                            position = NumUtil.roundUp(position, trampolineSupport.getTrampolineAlignment());
+                            position = align(position, trampolineSupport.getTrampolineAlignment());
                             trampolines.put(callTarget, position);
                             sortedTrampolines.add(Pair.create(callTarget, position));
-                            position += trampolineSupport.getTrampolineSize();
+                            position = addOffset(position, trampolineSupport.getTrampolineSize());
                         }
                         orderedTrampolineMap.put(method, sortedTrampolines);
                     }
@@ -192,15 +192,16 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             Pair<HostedMethod, CompilationResult> lastCompilation = getLastCompilation();
             HostedMethod lastMethod = lastCompilation.getLeft();
 
-            // the total code size is the hypothetical start of the next method
+            // the total code size is aligned up to SubstrateOptions.buildTimeCodeAlignment()
             int totalSize;
             if (orderedTrampolineMap.containsKey(lastMethod)) {
                 var trampolines = orderedTrampolineMap.get(lastMethod);
                 int lastTrampolineStart = trampolines.get(trampolines.size() - 1).getRight();
-                totalSize = computeNextMethodStart(lastTrampolineStart, trampolineSupport.getTrampolineSize());
+                totalSize = addOffset(lastTrampolineStart, trampolineSupport.getTrampolineSize());
             } else {
-                totalSize = computeNextMethodStart(lastCompilation.getLeft().getCodeAddressOffset(), lastCompilation.getRight().getTargetCodeSize());
+                totalSize = addOffset(lastCompilation.getLeft().getCodeAddressOffset(), lastCompilation.getRight().getTargetCodeSize());
             }
+            totalSize = align(totalSize, SubstrateOptions.buildTimeCodeAlignment());
 
             setCodeAreaSize(totalSize);
 
@@ -209,14 +210,21 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         }
     }
 
-    private static int computeNextMethodStart(int current, int addend) {
-        int result;
-        try {
-            result = NumUtil.roundUp(Math.addExact(current, addend), SubstrateOptions.codeAlignment());
-        } catch (ArithmeticException e) {
+    protected static int align(int current, int alignment) {
+        VMError.guarantee(current >= 0 && alignment > 0 && NumUtil.isUnsignedPowerOf2(alignment), "invalid argument %d - %d", current, alignment);
+        int result = NumUtil.roundUp(current, alignment);
+        if (result < current) {
             throw VMError.shouldNotReachHere("Code size is larger than 2GB");
         }
+        return result;
+    }
 
+    protected static int addOffset(int current, int offset) {
+        VMError.guarantee(current >= 0 && offset >= 0, "invalid argument %d - %d", current, offset);
+        int result = current + offset;
+        if (result < 0) {
+            throw VMError.shouldNotReachHere("Code size is larger than 2GB");
+        }
         return result;
     }
 
@@ -236,21 +244,22 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             for (Pair<HostedMethod, CompilationResult> entry : getOrderedCompilations()) {
                 HostedMethod caller = entry.getLeft();
                 CompilationResult compilation = entry.getRight();
+                curPos = align(curPos, SharedCompilationResult.getCodeAlignment(compilation));
 
                 int originalStart = curOffsetMap.get(caller);
                 int newStart = curPos;
                 curOffsetMap.put(caller, newStart);
 
                 // move curPos to the end of the method code
-                curPos += compilation.getTargetCodeSize();
+                curPos = addOffset(curPos, compilation.getTargetCodeSize());
                 int newEnd = curPos;
 
-                Map<HostedMethod, Integer> trampolines = trampolineMap.computeIfAbsent(caller, k -> new HashMap<>());
+                Map<HostedMethod, Integer> trampolines = trampolineMap.computeIfAbsent(caller, _ -> new HashMap<>());
 
                 // update curPos to account for current trampolines
                 for (int j = 0; j < trampolines.size(); j++) {
-                    curPos = NumUtil.roundUp(curPos, trampolineSupport.getTrampolineAlignment());
-                    curPos += trampolineSupport.getTrampolineSize();
+                    curPos = align(curPos, trampolineSupport.getTrampolineAlignment());
+                    curPos = addOffset(curPos, trampolineSupport.getTrampolineSize());
                 }
                 for (Infopoint infopoint : compilation.getInfopoints()) {
                     if (infopoint instanceof Call && ((Call) infopoint).direct) {
@@ -289,13 +298,11 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                             // need to add another trampoline
                             changed = true;
                             trampolines.put(callee, 0);
-                            curPos = NumUtil.roundUp(curPos, trampolineSupport.getTrampolineAlignment());
-                            curPos += trampolineSupport.getTrampolineSize();
+                            curPos = align(curPos, trampolineSupport.getTrampolineAlignment());
+                            curPos = addOffset(curPos, trampolineSupport.getTrampolineSize());
                         }
                     }
                 }
-                // align curPos for start of next method
-                curPos = computeNextMethodStart(curPos, 0);
                 callerCompilationNum++;
             }
 
@@ -311,9 +318,11 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
      * @param relocs a relocation map
      */
     @Override
-    @SuppressWarnings("try")
     public void patchMethods(DebugContext debug, RelocatableBuffer relocs, ObjectFile objectFile) {
+        patchMethods(debug, relocs, getOrderedCompilations());
+    }
 
+    protected void patchMethods(DebugContext debug, RelocatableBuffer relocs, List<Pair<HostedMethod, CompilationResult>> compilations) {
         /*
          * Patch instructions which reference code or data by address.
          *
@@ -339,98 +348,107 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
          * case, the caller will pass a null rodataDisplacecmentFromText, and we behave accordingly
          * by generating extra relocation records.
          */
-
-        // in each compilation result...
-        for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
-
-            /* Ensure a full watchdog interval is available per method */
+        for (Pair<HostedMethod, CompilationResult> entry : compilations) {
             DeadlockWatchdog.singleton().recordActivity();
+            HostedMethod method = entry.getLeft();
+            CompilationResult compilation = entry.getRight();
+            Map<Integer, HostedPatcher> patches = mapPatchingLocations(compilation);
+            processImageHeapConstantsReferences(compilation, patches);
+            processDirectCallSites(method, compilation, patches);
+            processDataReferences(relocs, method, compilation, patches);
+            verifyAllPatchesApplied(debug, method, compilation, patches);
+        }
+    }
 
-            HostedMethod method = pair.getLeft();
-            CompilationResult compilation = pair.getRight();
-
-            // the codecache-relative offset of the compilation
-            int compStart = method.getCodeAddressOffset();
-
-            // Build an index of PatchingAnnotations
-            Map<Integer, HostedPatcher> patches = new HashMap<>();
-            ByteBuffer targetCode = null;
-            for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
-                if (codeAnnotation instanceof HostedPatcher) {
-                    HostedPatcher priorValue = patches.put(codeAnnotation.getPosition(), (HostedPatcher) codeAnnotation);
-                    VMError.guarantee(priorValue == null, "Registering two patchers for same position.");
-
-                } else if (codeAnnotation instanceof HostedImageHeapConstantPatch) {
-                    HostedImageHeapConstantPatch patch = (HostedImageHeapConstantPatch) codeAnnotation;
-
-                    ObjectInfo objectInfo = imageHeap.getConstantInfo(patch.constant);
-                    long objectAddress = objectInfo.getOffset();
-
-                    if (targetCode == null) {
-                        targetCode = ByteBuffer.wrap(compilation.getTargetCode()).order(target.arch.getByteOrder());
-                    }
-                    int originalValue = targetCode.getInt(patch.getPosition());
-                    long newValue = originalValue + objectAddress;
-                    VMError.guarantee(NumUtil.isInt(newValue), "Image heap size is limited to 2 GByte");
-                    targetCode.putInt(patch.getPosition(), (int) newValue);
-                }
+    /**
+     * Constructs an index of code location offsets that require patching, or relocations if
+     * patching is not possible.
+     */
+    private Map<Integer, HostedPatcher> mapPatchingLocations(CompilationResult compilation) {
+        Map<Integer, HostedPatcher> patches = new HashMap<>();
+        for (CodeAnnotation annotation : compilation.getCodeAnnotations()) {
+            if (annotation instanceof HostedImageHeapConstantPatch imageHeapConstantPatch) {
+                HostedPatcher patcher = imageHeapConstantPatch.createPatcher(imageHeap, target);
+                HostedPatcher priorValue = patches.put(annotation.getPosition(), patcher);
+                VMError.guarantee(priorValue == null, "Registering two patchers for the same position %d. Prior patcher: %s. New patcher: %s.", annotation.getPosition(), priorValue, patcher);
+            } else if (annotation instanceof HostedPatcher patcher) {
+                HostedPatcher priorValue = patches.put(annotation.getPosition(), patcher);
+                VMError.guarantee(priorValue == null, "Registering two patchers for the same position %d. Prior patcher: %s. New patcher: %s.", annotation.getPosition(), priorValue, patcher);
             }
+        }
+        return patches;
+    }
 
-            // ... patch direct call sites.
-            Map<HostedMethod, Integer> trampolineOffsetMap = trampolineMap.get(method);
-            int patchesHandled = 0;
-            HashSet<Integer> patchedOffsets = new HashSet<>();
-            for (Infopoint infopoint : compilation.getInfopoints()) {
-                if (infopoint instanceof Call && ((Call) infopoint).direct) {
-                    Call call = (Call) infopoint;
-
-                    // NOTE that for the moment, we don't make static calls to external
-                    // (e.g. native) functions. So every static call site has a target
-                    // which is also in the code cache (a.k.a. a section-local call).
-                    // This will change, and we will have to case-split here... but not yet.
-                    HostedMethod callTarget = (HostedMethod) call.target;
-                    VMError.guarantee(!callTarget.isCompiledInPriorLayer(), "Unexpected direct call to base layer method %s. These calls are currently lowered to indirect calls.", callTarget);
-                    int callTargetStart = callTarget.getCodeAddressOffset();
-                    if (trampolineOffsetMap != null && trampolineOffsetMap.containsKey(callTarget)) {
-                        callTargetStart = trampolineOffsetMap.get(callTarget);
-                    }
-
-                    // Patch a PC-relative call.
-                    // This code handles the case of section-local calls only.
-                    int pcDisplacement = callTargetStart - (compStart + call.pcOffset);
-                    patches.get(call.pcOffset).patch(compStart, pcDisplacement, compilation.getTargetCode());
-                    boolean noPriorMatch = patchedOffsets.add(call.pcOffset);
-                    VMError.guarantee(noPriorMatch, "Patching same offset twice.");
-                    patchesHandled++;
+    private void processDirectCallSites(HostedMethod method, CompilationResult compilation, Map<Integer, HostedPatcher> patches) {
+        Map<HostedMethod, Integer> trampolineOffsetMap = trampolineMap.get(method);
+        int compStart = method.getCodeAddressOffset();
+        for (Infopoint infopoint : compilation.getInfopoints()) {
+            if (infopoint instanceof Call call && ((Call) infopoint).direct) {
+                // NOTE that for the moment, we don't make static calls to external
+                // (e.g. native) functions. So every static call site has a target
+                // which is also in the code cache (a.k.a. a section-local call).
+                // This will change, and we will have to case-split here... but not yet.
+                HostedMethod callTarget = (HostedMethod) call.target;
+                VMError.guarantee(!callTarget.isCompiledInPriorLayer(), "Unexpected direct call to base layer method %s. These calls are currently lowered to indirect calls.", callTarget);
+                int callTargetStart = callTarget.getCodeAddressOffset();
+                if (trampolineOffsetMap != null && trampolineOffsetMap.containsKey(callTarget)) {
+                    callTargetStart = trampolineOffsetMap.get(callTarget);
                 }
-            }
 
-            for (DataPatch dataPatch : compilation.getDataPatches()) {
-                assert dataPatch.note == null : "Unexpected note: " + dataPatch.note;
-                Reference ref = dataPatch.reference;
-                var patcher = patches.get(dataPatch.pcOffset);
+                // Patch a PC-relative call.
+                // This code handles the case of section-local calls only.
+                int pcDisplacement = callTargetStart - (compStart + call.pcOffset);
+                HostedPatcher patcher = patches.remove(call.pcOffset);
+                patcher.patch(compStart, pcDisplacement, compilation.getTargetCode());
+            }
+        }
+    }
+
+    private static void processDataReferences(RelocatableBuffer relocs, HostedMethod method, CompilationResult compilation, Map<Integer, HostedPatcher> patches) {
+        int compStart = method.getCodeAddressOffset();
+        for (DataPatch dataPatch : compilation.getDataPatches()) {
+            assert dataPatch.note == null : "Unexpected note: " + dataPatch.note;
+            Reference ref = dataPatch.reference;
+            var patcher = patches.remove(dataPatch.pcOffset);
+            assert patcher != null : String.format("No patcher associated with the data patch reference: %s", dataPatch);
+            /*
+             * Constants are (1) allocated offsets in a separate space, which can be emitted as
+             * read-only (.rodata) section, or (2) method pointers that are computed relative to the
+             * PC.
+             */
+            patcher.relocate(ref, relocs, compStart);
+        }
+    }
+
+    private static void processImageHeapConstantsReferences(CompilationResult compilation, Map<Integer, HostedPatcher> patches) {
+        for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
+            if (codeAnnotation instanceof HostedImageHeapConstantPatch patch) {
+                HostedPatcher patcher = patches.remove(patch.getPosition());
                 /*
-                 * Constants are (1) allocated offsets in a separate space, which can be emitted as
-                 * read-only (.rodata) section, or (2) method pointers that are computed relative to
-                 * the PC.
+                 * We ignore compStart and pcRelative offsets when we patch image heap constant
+                 * access
                  */
-                patcher.relocate(ref, relocs, compStart);
+                patcher.patch(-1, -1, compilation.getTargetCode());
+            }
+        }
+    }
 
-                boolean noPriorMatch = patchedOffsets.add(dataPatch.pcOffset);
-                VMError.guarantee(noPriorMatch, "Patching same offset twice.");
-                patchesHandled++;
-            }
-            VMError.guarantee(patchesHandled == patches.size(), "Not all patches applied.");
-            try (DebugContext.Scope ds = debug.scope("After Patching", method.asJavaMethod())) {
-                debug.dump(DebugContext.BASIC_LEVEL, compilation, "After patching");
-            } catch (Throwable e) {
-                throw VMError.shouldNotReachHere(e);
-            }
+    @SuppressWarnings("try")
+    private static void verifyAllPatchesApplied(DebugContext debug, HostedMethod method, CompilationResult compilation, Map<Integer, HostedPatcher> patches) {
+        VMError.guarantee(patches.isEmpty(), "Not all patches applied.");
+        try (DebugContext.Scope _ = debug.scope("After Patching", method.asJavaMethod())) {
+            debug.dump(DebugContext.BASIC_LEVEL, compilation, "After patching");
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
     @Override
     public void writeCode(RelocatableBuffer buffer) {
+        writeCode(buffer, getOrderedCompilations());
+    }
+
+    protected void writeCode(RelocatableBuffer buffer, List<Pair<HostedMethod, CompilationResult>> compilations) {
         ByteBuffer bufferBytes = buffer.getByteBuffer();
         int startPos = bufferBytes.position();
         /*
@@ -438,7 +456,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
          * size is not fixed at the time they are computed). This is just startPos, i.e. we start
          * emitting the code wherever the buffer is positioned when we're called.
          */
-        for (Pair<HostedMethod, CompilationResult> compilationPair : getOrderedCompilations()) {
+        for (Pair<HostedMethod, CompilationResult> compilationPair : compilations) {
             HostedMethod method = compilationPair.getLeft();
             CompilationResult compilation = compilationPair.getRight();
 
@@ -467,7 +485,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 }
             }
 
-            for (int i = curPos; i < NumUtil.roundUp(curPos, SubstrateOptions.codeAlignment()); i++) {
+            for (int i = curPos; i < NumUtil.roundUp(curPos, SubstrateOptions.buildTimeCodeAlignment()); i++) {
                 bufferBytes.put(CODE_FILLER_BYTE);
             }
         }

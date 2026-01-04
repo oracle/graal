@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.webimage.test;
 
+import com.oracle.svm.hosted.webimage.test.spec.JS_JTT_Zip;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -45,6 +46,7 @@ import com.oracle.svm.hosted.webimage.test.util.JTTTestSuite;
                 JS_JTT_JavaScriptBody.class,
                 JS_JTT_JSAnnotation.class,
                 JS_JTT_XHR.class,
+                JS_JTT_Zip.class,
 })
 public class JS_JTT_Spec_Test extends JTTTestSuite {
 

@@ -53,15 +53,15 @@ public enum Vector128Shape {
     F32X4(WasmType.F32_TYPE, 4),
     F64X2(WasmType.F64_TYPE, 2);
 
-    private final byte unpackedType;
+    private final int unpackedType;
     private final int dimension;
 
-    Vector128Shape(byte unpackedType, int dimension) {
+    Vector128Shape(int unpackedType, int dimension) {
         this.unpackedType = unpackedType;
         this.dimension = dimension;
     }
 
-    public byte getUnpackedType() {
+    public int getUnpackedType() {
         return unpackedType;
     }
 

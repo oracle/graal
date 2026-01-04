@@ -119,6 +119,15 @@ public class TruffleTestAssumptions {
         return externalIsolate;
     }
 
+    public static boolean isLinux() {
+        return System.getProperty("os.name").toLowerCase().equals("linux");
+    }
+
+    public static boolean isAarch64() {
+        String osArch = System.getProperty("os.arch").toLowerCase();
+        return osArch.equals("aarch64") || osArch.equals("arm64"); // some JVMs use arm64
+    }
+
     public static void assumeAOT() {
         Assume.assumeTrue(aot);
     }

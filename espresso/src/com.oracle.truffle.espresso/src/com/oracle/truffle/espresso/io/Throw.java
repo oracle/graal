@@ -23,8 +23,18 @@
 package com.oracle.truffle.espresso.io;
 
 import java.io.IOException;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.nio.channels.AsynchronousCloseException;
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.ClosedChannelException;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.NotDirectoryException;
+import java.nio.file.NotLinkException;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -48,15 +58,103 @@ public final class Throw {
         throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_io_FileNotFoundException, message);
     }
 
+    public static EspressoException throwIllegalArgumentException(String message, EspressoContext context) {
+        throw context.getMeta().throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, message);
+    }
+
     public static EspressoException throwIOException(String message, EspressoContext context) {
         throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_io_IOException, message);
     }
 
+    public static EspressoException throwSocketException(String message, EspressoContext context) {
+        throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_net_SocketException, message);
+    }
+
+    public static EspressoException throwSocketException(SocketException e, EspressoContext context) {
+        throw throwSocketException(getMessageBoundary(e), context);
+    }
+
+    /**
+     * Exactly translates the host IOException and throws the corresponding guest exception.
+     * 
+     * @param e The host IOException to be translated and thrown.
+     * @return The corresponding guest exception.
+     */
     public static EspressoException throwIOException(IOException e, EspressoContext context) {
-        if (e.getClass() != IOException.class) {
-            context.getLogger().warning(() -> "Not exact translation of IOException: " + e.getClass());
+        Class<?> exceptionClass = e.getClass();
+        String message = getMessageBoundary(e);
+        if (exceptionClass == ClosedByInterruptException.class) {
+            throw throwClosedByInterruptException(context);
         }
-        throw throwIOException(getMessageBoundary(e), context);
+
+        if (exceptionClass == AsynchronousCloseException.class) {
+            throw throwAsynchronousCloseException(context);
+        }
+
+        if (exceptionClass == ClosedChannelException.class) {
+            throw throwClosedChannelException(context);
+        }
+
+        if (exceptionClass == FileAlreadyExistsException.class) {
+            throw throwFileAlreadyExistsException(message, context);
+        }
+
+        if (exceptionClass == NoSuchFileException.class) {
+            throw throwNoSuchFileException(message, context);
+        }
+
+        if (exceptionClass == DirectoryNotEmptyException.class) {
+            throw throwDirectoryNotEmptyException(message, context);
+        }
+
+        if (exceptionClass == AtomicMoveNotSupportedException.class) {
+            throw throwAtomicMoveNotSupportedException(message, context);
+        }
+
+        if (exceptionClass == NotLinkException.class) {
+            throw throwNotLinkException(message, context);
+        }
+
+        if (exceptionClass == AccessDeniedException.class) {
+            throw throwAccessDeniedException(message, context);
+        }
+
+        if (exceptionClass == NotDirectoryException.class) {
+            throw throwNotDirectoryException(message, context);
+        }
+
+        if (exceptionClass == UnknownHostException.class) {
+            throw throwUnknownHostException(message, context);
+        }
+
+        if (exceptionClass == SocketException.class) {
+            throw throwSocketException(message, context);
+        }
+
+        if (isConnectionResetException(e)) {
+            throw throwConnectionResetException(message, context);
+        }
+
+        if (exceptionClass != IOException.class) {
+            context.getLogger().warning(() -> "Not exact translation of IOException: " + exceptionClass);
+        }
+        throw throwIOException(message, context);
+    }
+
+    public static EspressoException throwClosedByInterruptException(EspressoContext context) {
+        throw context.getMeta().throwException(context.getTruffleIO().java_nio_channels_ClosedByInterruptException);
+    }
+
+    public static EspressoException throwAsynchronousCloseException(EspressoContext context) {
+        throw context.getMeta().throwException(context.getTruffleIO().java_nio_channels_AsynchronousCloseException);
+    }
+
+    public static EspressoException throwClosedChannelException(EspressoContext context) {
+        throw context.getMeta().throwException(context.getTruffleIO().java_nio_channels_ClosedChannelException);
+    }
+
+    private static boolean isConnectionResetException(IOException e) {
+        return e.getClass() == SocketException.class && (getMessageBoundary(e).equals("Connection reset"));
     }
 
     public static EspressoException throwNonReadable(EspressoContext context) {
@@ -85,43 +183,53 @@ public final class Throw {
         throw throwSecurityException(getMessageBoundary(e), context);
     }
 
-    public static EspressoException throwFileAlreadyExists(FileAlreadyExistsException e, EspressoContext context) {
+    public static EspressoException throwFileAlreadyExistsException(String message, EspressoContext context) {
         Meta meta = context.getMeta();
-        throw meta.throwExceptionWithMessage(meta.java_nio_file_FileAlreadyExistsException, getMessageBoundary(e));
+        throw meta.throwExceptionWithMessage(meta.java_nio_file_FileAlreadyExistsException, message);
     }
 
-    public static EspressoException throwDirectoryNotEmpty(DirectoryNotEmptyException e, EspressoContext context) {
+    public static EspressoException throwDirectoryNotEmptyException(String message, EspressoContext context) {
         Meta meta = context.getMeta();
-        throw meta.throwExceptionWithMessage(meta.java_nio_file_DirectoryNotEmptyException, getMessageBoundary(e));
+        throw meta.throwExceptionWithMessage(meta.java_nio_file_DirectoryNotEmptyException, message);
     }
 
-    public static EspressoException throwAtomicMoveNotSupported(EspressoContext context) {
+    public static EspressoException throwAtomicMoveNotSupportedException(String message, EspressoContext context) {
         Meta meta = context.getMeta();
-        throw meta.throwException(meta.java_nio_file_AtomicMoveNotSupportedException);
+        throw meta.throwExceptionWithMessage(meta.java_nio_file_AtomicMoveNotSupportedException, message);
     }
 
-    public static EspressoException throwAccessDenied(EspressoContext context) {
+    public static EspressoException throwAccessDeniedException(String message, EspressoContext context) {
         Meta meta = context.getMeta();
-        throw meta.throwException(meta.java_nio_file_AccessDeniedException);
+        throw meta.throwExceptionWithMessage(meta.java_nio_file_AccessDeniedException, message);
     }
 
-    public static EspressoException throwNoSuchFile(String filePath, EspressoContext context) {
+    public static EspressoException throwNoSuchFileException(String filePath, EspressoContext context) {
         Meta meta = context.getMeta();
         throw meta.throwExceptionWithMessage(meta.java_nio_file_NoSuchFileException, filePath);
     }
 
-    public static EspressoException throwNotDirectory(String message, EspressoContext context) {
+    public static EspressoException throwNotDirectoryException(String message, EspressoContext context) {
         Meta meta = context.getMeta();
         throw meta.throwExceptionWithMessage(meta.java_nio_file_NotDirectoryException, message);
     }
 
-    public static EspressoException throwIllegalState(String message, EspressoContext context) {
+    public static EspressoException throwIllegalStateException(String message, EspressoContext context) {
         Meta meta = context.getMeta();
         throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, message);
     }
 
-    public static EspressoException throwNotLink(String file, EspressoContext context) {
+    public static EspressoException throwNotLinkException(String message, EspressoContext context) {
         Meta meta = context.getMeta();
-        throw meta.throwExceptionWithMessage(meta.java_nio_file_NotLinkException, file);
+        throw meta.throwExceptionWithMessage(meta.java_nio_file_NotLinkException, message);
+    }
+
+    public static EspressoException throwConnectionResetException(String message, EspressoContext context) {
+        Meta meta = context.getMeta();
+        return meta.throwExceptionWithMessage(context.getTruffleIO().sun_net_ConnectionResetException, message);
+    }
+
+    public static EspressoException throwUnknownHostException(String message, EspressoContext context) {
+        Meta meta = context.getMeta();
+        return meta.throwExceptionWithMessage(context.getTruffleIO().java_net_UnknownHostException, message);
     }
 }

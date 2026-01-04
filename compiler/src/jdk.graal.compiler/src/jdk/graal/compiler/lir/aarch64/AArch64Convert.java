@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,9 +32,8 @@ import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
-
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 
@@ -93,11 +92,23 @@ public class AArch64Convert {
                 case D2L:
                     masm.fcvtzs(toSize, fromSize, result, input);
                     break;
+                case F2UI:
+                case D2UI:
+                case F2UL:
+                case D2UL:
+                    masm.fcvtzu(toSize, fromSize, result, input);
+                    break;
                 case I2F:
                 case I2D:
                 case L2F:
                 case L2D:
                     masm.scvtf(toSize, fromSize, result, input);
+                    break;
+                case UI2F:
+                case UI2D:
+                case UL2F:
+                case UL2D:
+                    masm.ucvtf(toSize, fromSize, result, input);
                     break;
                 case D2F:
                 case F2D:
@@ -229,18 +240,24 @@ public class AArch64Convert {
             switch (op) {
                 case F2I:
                 case I2F:
+                case F2UI:
+                case UI2F:
                     assert srcESize == ElementSize.Word && dstESize == ElementSize.Word : Assertions.errorMessage(srcESize, dstESize);
                     break;
                 case F2D:
                 case I2D:
+                case UI2D:
                     assert srcESize == ElementSize.Word && dstESize == ElementSize.DoubleWord : Assertions.errorMessage(srcESize, dstESize);
                     break;
                 case D2F:
                 case D2I:
+                case D2UI:
                     assert srcESize == ElementSize.DoubleWord && dstESize == ElementSize.Word : Assertions.errorMessage(srcESize, dstESize);
                     break;
                 case D2L:
                 case L2D:
+                case D2UL:
+                case UL2D:
                     assert srcESize == ElementSize.DoubleWord && dstESize == ElementSize.DoubleWord : Assertions.errorMessage(srcESize, dstESize);
                     break;
             }
@@ -258,16 +275,20 @@ public class AArch64Convert {
             Register input = asRegister(inputValue);
             switch (op) {
                 case F2I:
-                    masm.neon.fcvtzsVV(size, srcESize, result, input);
-                    break;
                 case D2L:
                     masm.neon.fcvtzsVV(size, srcESize, result, input);
                     break;
-                case I2F:
-                    masm.neon.scvtfVV(size, srcESize, result, input);
+                case F2UI:
+                case D2UL:
+                    masm.neon.fcvtzuVV(size, srcESize, result, input);
                     break;
+                case I2F:
                 case L2D:
                     masm.neon.scvtfVV(size, srcESize, result, input);
+                    break;
+                case UI2F:
+                case UL2D:
+                    masm.neon.ucvtfVV(size, srcESize, result, input);
                     break;
                 case D2F:
                     masm.neon.fcvtnVV(srcESize, result, input);
@@ -280,16 +301,28 @@ public class AArch64Convert {
                     masm.neon.sxtlVV(srcESize, result, input);
                     masm.neon.scvtfVV(size, ElementSize.fromKind(resultValue.getPlatformKind()), result, result);
                     break;
+                case UI2D:
+                    /* First unsigned extend int to long, then unsigned convert to double */
+                    masm.neon.uxtlVV(srcESize, result, input);
+                    masm.neon.ucvtfVV(size, ElementSize.fromKind(resultValue.getPlatformKind()), result, result);
+                    break;
                 case D2I:
-                    /* First convert double to long, then to int */
+                    /* First convert double to long, then saturating extract int */
                     masm.neon.fcvtzsVV(size, srcESize, result, input);
-                    masm.neon.xtnVV(dstESize, result, result);
+                    masm.neon.sqxtnVV(dstESize, result, result);
+                    break;
+                case D2UI:
+                    /* First convert double to unsigned long, then saturating extract uint */
+                    masm.neon.fcvtzuVV(size, srcESize, result, input);
+                    masm.neon.uqxtnVV(dstESize, result, result);
                     break;
                 /*
                  * It is not possible to handle these conversions correctly without losing fidelity.
                  */
                 case F2L:
                 case L2F:
+                case F2UL:
+                case UL2F:
                 default:
                     throw GraalError.shouldNotReachHere("Unsupported conversion requested."); // ExcludeFromJacocoGeneratedReport
             }

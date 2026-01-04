@@ -25,11 +25,10 @@
 
 package com.oracle.svm.hosted.webimage.wasm.phases;
 
-import org.graalvm.nativeimage.AnnotationAccess;
-
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.hosted.webimage.wasm.debug.NoStackVerification;
 import com.oracle.svm.hosted.webimage.wasm.debug.WasmDebug;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.nodes.ControlSinkNode;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -54,7 +53,7 @@ import jdk.graal.compiler.phases.BasePhase;
 public class StackPointerVerificationPhase extends BasePhase<CoreProviders> {
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        if (AnnotationAccess.isAnnotationPresent(graph.method(), NoStackVerification.class)) {
+        if (AnnotationUtil.isAnnotationPresent(graph.method(), NoStackVerification.class)) {
             return;
         }
 

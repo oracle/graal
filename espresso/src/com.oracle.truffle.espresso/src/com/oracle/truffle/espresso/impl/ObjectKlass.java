@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
-import static com.oracle.truffle.espresso.meta.Meta.isSignaturePolymorphicHolderType;
 
 import java.io.PrintStream;
 import java.lang.ref.WeakReference;
@@ -64,6 +63,7 @@ import com.oracle.truffle.espresso.classfile.ParserField;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.ParserMethod;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.NestHostAttribute;
@@ -82,7 +82,6 @@ import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
-import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -100,7 +99,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 /**
  * Resolved non-primitive, non-array types in Espresso.
  */
-public final class ObjectKlass extends Klass {
+public final class ObjectKlass extends Klass implements AttributedElement {
 
     public static final ObjectKlass[] EMPTY_ARRAY = new ObjectKlass[0];
     public static final KlassVersion[] EMPTY_KLASSVERSION_ARRAY = new KlassVersion[0];
@@ -133,7 +132,7 @@ public final class ObjectKlass extends Klass {
     private volatile int initState = LOADED;
 
     @CompilationFinal //
-    private EspressoException linkError;
+    private StaticObject initializationError;
 
     @CompilationFinal volatile KlassVersion klassVersion;
 
@@ -159,14 +158,13 @@ public final class ObjectKlass extends Klass {
     public static final int LOADED = 0;
     public static final int LINKING = 1;
     public static final int VERIFYING = 2;
-    public static final int FAILED_LINK = 3;
-    public static final int VERIFIED = 4;
-    public static final int PREPARED = 5;
-    public static final int LINKED = 6;
-    public static final int INITIALIZING = 7;
+    public static final int VERIFIED = 3;
+    public static final int PREPARED = 4;
+    public static final int LINKED = 5;
+    public static final int INITIALIZING = 6;
     // Can be erroneous only if initialization triggered !
-    public static final int ERRONEOUS = 8;
-    public static final int INITIALIZED = 9;
+    public static final int ERRONEOUS = 7;
+    public static final int INITIALIZED = 8;
 
     private final StaticObject definingClassLoader;
 
@@ -177,31 +175,33 @@ public final class ObjectKlass extends Klass {
     private final ClassHierarchyAssumption noConcreteSubclassesAssumption;
     // endregion
 
-    public Attribute getAttribute(Symbol<Name> attrName) {
-        return getLinkedKlass().getAttribute(attrName);
+    @Override
+    public Attribute[] getAttributes() {
+        return getKlassVersion().getAttributes();
     }
 
     @SuppressWarnings("this-escape")
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) {
         super(context, linkedKlass.getName(), linkedKlass.getType(), linkedKlass.getFlags(), linkedKlass.getParserKlass().getHiddenKlassId());
 
+        RuntimeConstantPool pool = new RuntimeConstantPool(linkedKlass.getConstantPool(), this);
+
         this.nest = info.dynamicNest;
         this.hostKlass = info.hostKlass;
-        RuntimeConstantPool pool = new RuntimeConstantPool(linkedKlass.getConstantPool(), this);
-        definingClassLoader = classLoader;
-        this.enclosingMethod = (EnclosingMethodAttribute) linkedKlass.getAttribute(EnclosingMethodAttribute.NAME);
+        this.definingClassLoader = classLoader;
         this.klassVersion = new KlassVersion(pool, linkedKlass, superKlass, superInterfaces);
+        this.enclosingMethod = getAttribute(EnclosingMethodAttribute.NAME, EnclosingMethodAttribute.class);
 
         Field[] skFieldTable = superKlass != null ? superKlass.getInitialFieldTable() : Field.EMPTY_ARRAY;
         LinkedField[] lkInstanceFields = linkedKlass.getInstanceFields();
         LinkedField[] lkStaticFields = linkedKlass.getStaticFields();
 
-        fieldTable = new Field[skFieldTable.length + lkInstanceFields.length];
-        staticFieldTable = new Field[lkStaticFields.length];
+        this.fieldTable = new Field[skFieldTable.length + lkInstanceFields.length];
+        this.staticFieldTable = new Field[lkStaticFields.length];
 
         assert fieldTable.length == linkedKlass.getFieldTableLength();
         System.arraycopy(skFieldTable, 0, fieldTable, 0, skFieldTable.length);
-        localFieldTableIndex = skFieldTable.length;
+        this.localFieldTableIndex = skFieldTable.length;
         for (int i = 0; i < lkInstanceFields.length; i++) {
             Field instanceField = new Field(klassVersion, lkInstanceFields[i], pool);
             fieldTable[localFieldTableIndex + i] = instanceField;
@@ -361,8 +361,10 @@ public final class ObjectKlass extends Klass {
         return initState >= INITIALIZED;
     }
 
-    private void setErroneousInitialization() {
+    private void setErroneousInitialization(StaticObject exception) {
+        assert exception != null;
         initState = ERRONEOUS;
+        initializationError = exception;
     }
 
     boolean isErroneous() {
@@ -377,8 +379,13 @@ public final class ObjectKlass extends Klass {
 
     @TruffleBoundary
     private EspressoException throwNoClassDefFoundError() {
+        assert isErroneous();
         Meta meta = getMeta();
-        throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
+        if (StaticObject.isNull(initializationError)) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, "Could not initialize class: " + getExternalName());
+        } else {
+            throw meta.throwException(meta.java_lang_NoClassDefFoundError, "Could not initialize class: " + getExternalName(), initializationError);
+        }
     }
 
     @TruffleBoundary
@@ -400,8 +407,6 @@ public final class ObjectKlass extends Klass {
                 }
             }
 
-            var tls = getContext().getLanguage().getThreadLocalState();
-            tls.blockContinuationSuspension();
             try {
                 if (!isInterface()) {
                     /*
@@ -425,21 +430,19 @@ public final class ObjectKlass extends Klass {
                 // Next, execute the class or interface initialization method of C.
                 Method clinit = getClassInitializer();
                 if (clinit != null) {
-                    clinit.getCallTarget().call();
+                    clinit.invokeDirectStatic();
                 }
             } catch (EspressoException e) {
-                setErroneousInitialization();
+                setErroneousInitialization(e.getGuestException());
                 throw initializationFailed(e);
             } catch (AbstractTruffleException e) {
-                setErroneousInitialization();
+                setErroneousInitialization(StaticObject.NULL);
                 throw e;
             } catch (Throwable e) {
                 getContext().getLogger().log(Level.WARNING, "Host exception during class initialization: {0}", this.getNameAsString());
                 e.printStackTrace();
-                setErroneousInitialization();
+                setErroneousInitialization(StaticObject.NULL);
                 throw e;
-            } finally {
-                tls.unblockContinuationSuspension();
             }
             checkErroneousInitialization();
             initState = INITIALIZED;
@@ -570,7 +573,6 @@ public final class ObjectKlass extends Klass {
     @Override
     public void ensureLinked() {
         if (!isLinked()) {
-            checkErroneousLink();
             if (CompilerDirectives.isCompilationConstant(this)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
@@ -583,6 +585,7 @@ public final class ObjectKlass extends Klass {
         getInitLock().lock();
         try {
             if (!isLinkingOrLinked()) {
+                int initialState = initState;
                 initState = LINKING;
                 try {
                     if (getSuperKlass() != null) {
@@ -591,23 +594,17 @@ public final class ObjectKlass extends Klass {
                     for (ObjectKlass interf : getSuperInterfaces()) {
                         interf.ensureLinked();
                     }
-                } catch (EspressoException e) {
-                    setErroneousLink(e);
-                    throw e;
-                }
-                verify();
-                try {
+                    verify();
                     prepare();
-                } catch (EspressoException e) {
-                    setErroneousLink(e);
-                    throw e;
+                    initState = LINKED;
+                } catch (Throwable t) {
+                    initState = initialState;
+                    throw t;
                 }
-                initState = LINKED;
             }
         } finally {
             getInitLock().unlock();
         }
-        checkErroneousLink();
     }
 
     void initializeImpl() {
@@ -619,7 +616,6 @@ public final class ObjectKlass extends Klass {
 
     @HostCompilerDirectives.InliningCutoff
     private void doInitialize() {
-        checkErroneousLink();
         checkErroneousInitialization();
         if (CompilerDirectives.isCompilationConstant(this)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -651,37 +647,25 @@ public final class ObjectKlass extends Klass {
         return initState >= VERIFIED;
     }
 
-    private void checkErroneousLink() {
-        if (initState == FAILED_LINK) {
-            throw linkError;
-        }
-    }
-
-    private void setErroneousLink(EspressoException e) {
-        initState = FAILED_LINK;
-        linkError = e;
-    }
-
     private void verify() {
         if (!isVerified()) {
-            checkErroneousLink();
             getInitLock().lock();
             try {
                 if (!isVerifyingOrVerified()) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
+                    int initialState = initState;
                     initState = VERIFYING;
                     try {
                         verifyImpl();
-                    } catch (EspressoException e) {
-                        setErroneousLink(e);
-                        throw e;
+                        initState = VERIFIED;
+                    } catch (Throwable t) {
+                        initState = initialState;
+                        throw t;
                     }
-                    initState = VERIFIED;
                 }
             } finally {
                 getInitLock().unlock();
             }
-            checkErroneousLink();
         }
     }
 
@@ -775,7 +759,7 @@ public final class ObjectKlass extends Klass {
         return constructors.toArray(Method.EMPTY_ARRAY);
     }
 
-    Method.MethodVersion[] getMirandaMethods() {
+    public Method.MethodVersion[] getMirandaMethods() {
         return getKlassVersion().mirandaMethods;
     }
 
@@ -875,7 +859,7 @@ public final class ObjectKlass extends Klass {
     public Klass nest() {
         if (nest == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            NestHostAttribute nestHost = (NestHostAttribute) getAttribute(NestHostAttribute.NAME);
+            NestHostAttribute nestHost = getAttribute(NestHostAttribute.NAME, NestHostAttribute.class);
             if (nestHost == null) {
                 nest = this;
             } else {
@@ -911,7 +895,7 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public boolean nestMembersCheck(Klass k) {
-        NestMembersAttribute nestMembers = (NestMembersAttribute) getAttribute(NestMembersAttribute.NAME);
+        NestMembersAttribute nestMembers = getAttribute(NestMembersAttribute.NAME, NestMembersAttribute.class);
         if (nestMembers == null) {
             return false;
         }
@@ -928,7 +912,7 @@ public final class ObjectKlass extends Klass {
     }
 
     public boolean isSealed() {
-        PermittedSubclassesAttribute permittedSubclasses = (PermittedSubclassesAttribute) getAttribute(PermittedSubclassesAttribute.NAME);
+        PermittedSubclassesAttribute permittedSubclasses = getAttribute(PermittedSubclassesAttribute.NAME, PermittedSubclassesAttribute.class);
         return permittedSubclasses != null && permittedSubclasses.getClasses().length > 0;
     }
 
@@ -937,7 +921,7 @@ public final class ObjectKlass extends Klass {
         if (!getContext().getJavaVersion().java17OrLater()) {
             return true;
         }
-        PermittedSubclassesAttribute permittedSubclasses = (PermittedSubclassesAttribute) getAttribute(PermittedSubclassesAttribute.NAME);
+        PermittedSubclassesAttribute permittedSubclasses = getAttribute(PermittedSubclassesAttribute.NAME, PermittedSubclassesAttribute.class);
         if (permittedSubclasses == null) {
             return true;
         }
@@ -963,7 +947,7 @@ public final class ObjectKlass extends Klass {
         if (this != nest()) {
             return nest().getNestMembers();
         }
-        NestMembersAttribute nestMembers = (NestMembersAttribute) getAttribute(NestMembersAttribute.NAME);
+        NestMembersAttribute nestMembers = getAttribute(NestMembersAttribute.NAME, NestMembersAttribute.class);
         if (nestMembers == null || nestMembers.getClasses().length == 0) {
             return new Klass[]{nest()};
         }
@@ -1111,100 +1095,6 @@ public final class ObjectKlass extends Klass {
         return -1;
     }
 
-    @TruffleBoundary
-    public Method resolveInterfaceMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
-        assert isInterface();
-        /*
-         * 2. Otherwise, if C declares a method with the name and descriptor specified by the
-         * interface method reference, method lookup succeeds.
-         */
-        for (Method m : getDeclaredMethods()) {
-            if (methodName == m.getName() && signature == m.getRawSignature()) {
-                return m;
-            }
-        }
-        /*
-         * 3. Otherwise, if the class Object declares a method with the name and descriptor
-         * specified by the interface method reference, which has its ACC_PUBLIC flag set and does
-         * not have its ACC_STATIC flag set, method lookup succeeds.
-         */
-        assert getSuperKlass().getType() == Types.java_lang_Object;
-        Method m = getSuperKlass().lookupDeclaredMethod(methodName, signature);
-        if (m != null && m.isPublic() && !m.isStatic()) {
-            return m;
-        }
-
-        Method resolved = null;
-        /*
-         * Interfaces are sorted, superinterfaces first; traverse in reverse order to get
-         * maximally-specific first.
-         */
-        for (int i = getiKlassTable().length - 1; i >= 0; i--) {
-            ObjectKlass superInterf = getiKlassTable()[i].getKlass();
-            for (Method.MethodVersion superMVersion : superInterf.getInterfaceMethodsTable()) {
-                Method superM = superMVersion.getMethod();
-                /*
-                 * Methods in superInterf.getInterfaceMethodsTable() are all non-static non-private
-                 * methods declared in superInterf.
-                 */
-                if (methodName == superM.getName() && signature == superM.getRawSignature()) {
-                    if (resolved == null) {
-                        resolved = superM;
-                    } else {
-                        /*
-                         * 4. Otherwise, if the maximally-specific superinterface methods
-                         * (&sect;5.4.3.3) of C for the name and descriptor specified by the method
-                         * reference include exactly one method that does not have its ACC_ABSTRACT
-                         * flag set, then this method is chosen and method lookup succeeds.
-                         *
-                         * 5. Otherwise, if any superinterface of C declares a method with the name
-                         * and descriptor specified by the method reference that has neither its
-                         * ACC_PRIVATE flag nor its ACC_STATIC flag set, one of these is arbitrarily
-                         * chosen and method lookup succeeds.
-                         */
-                        resolved = Method.resolveMaximallySpecific(resolved, superM).getMethod();
-                        if (resolved.getITableIndex() == -1) {
-                            /*
-                             * Multiple maximally specific: this method has a poison pill.
-                             *
-                             * NOTE: Since java 9, we can invokespecial interface methods (ie: a
-                             * call directly to the resolved method, rather than after an interface
-                             * lookup). We are looking up a method taken from the implemented
-                             * interface (and not from a currently non-existing itable of the
-                             * implementing interface). This difference, and the possibility of
-                             * invokespecial, means that we cannot return the looked up method
-                             * directly in case of multiple maximally specific method. thus, we
-                             * spawn a new proxy method, attached to no method table, just to fail
-                             * if invokespecial.
-                             */
-                            assert (resolved.identity() == superM.identity());
-                            resolved.setITableIndex(superM.getITableIndex());
-                        }
-                    }
-                }
-            }
-        }
-        return resolved;
-    }
-
-    @Override
-    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
-        KLASS_LOOKUP_METHOD_COUNT.inc();
-        Method method = lookupDeclaredMethod(methodName, signature, lookupMode);
-        if (method == null) {
-            // Implicit interface methods.
-            method = lookupMirandas(methodName, signature);
-        }
-        if (method == null && isSignaturePolymorphicHolderType(getType())) {
-            method = lookupPolysigMethod(methodName, signature, lookupMode);
-        }
-        if (method == null && getSuperKlass() != null) {
-            CompilerAsserts.partialEvaluationConstant(this);
-            method = getSuperKlass().lookupMethod(methodName, signature, lookupMode);
-        }
-        return method;
-    }
-
     public Field[] getFieldTable() {
         if (!getContext().advancedRedefinitionEnabled()) {
             return fieldTable;
@@ -1247,19 +1137,6 @@ public final class ObjectKlass extends Klass {
             // Note that caller is responsible for filtering out removed fields
             return staticFieldTable;
         }
-    }
-
-    private Method lookupMirandas(Symbol<Name> methodName, Symbol<Signature> signature) {
-        if (getMirandaMethods() == null) {
-            return null;
-        }
-        for (Method.MethodVersion miranda : getMirandaMethods()) {
-            Method method = miranda.getMethod();
-            if (method.getName() == methodName && method.getRawSignature() == signature) {
-                return method;
-            }
-        }
-        return null;
     }
 
     void print(PrintStream out) {
@@ -1355,13 +1232,13 @@ public final class ObjectKlass extends Klass {
     }
 
     public boolean isRecord() {
-        return isFinalFlagSet() && getSuperKlass() == getMeta().java_lang_Record && getAttribute(RecordAttribute.NAME) != null;
+        return isFinalFlagSet() && getSuperKlass() == getMeta().java_lang_Record && getAttribute(RecordAttribute.NAME, RecordAttribute.class) != null;
     }
 
     @Override
     public String getGenericTypeAsString() {
         if (genericSignature == null) {
-            SignatureAttribute attr = (SignatureAttribute) getLinkedKlass().getAttribute(SignatureAttribute.NAME);
+            SignatureAttribute attr = getAttribute(SignatureAttribute.NAME, SignatureAttribute.class);
             if (attr == null) {
                 genericSignature = ""; // if no generics, the generic signature is empty
             } else {
@@ -1383,7 +1260,7 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public String getSourceDebugExtension() {
-        SourceDebugExtensionAttribute attribute = (SourceDebugExtensionAttribute) getAttribute(SourceDebugExtensionAttribute.NAME);
+        SourceDebugExtensionAttribute attribute = getAttribute(SourceDebugExtensionAttribute.NAME, SourceDebugExtensionAttribute.class);
         return attribute != null ? attribute.getDebugExtension() : null;
     }
 
@@ -1489,6 +1366,12 @@ public final class ObjectKlass extends Klass {
         getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
 
         incrementKlassRedefinitionCount();
+        // Update the class modifiers in the guest for jdk 25+,
+        // but only call out to the guest if they have changed.
+        if (getContext().getJavaVersion().java25OrLater() && oldVersion.getClassModifiers() != klassVersion.getClassModifiers()) {
+            // update the guest value class modifiers
+            getMeta().java_lang_Class_modifiers.setChar(mirror(), (char) klassVersion.getClassModifiers());
+        }
         oldVersion.assumption.invalidate();
     }
 
@@ -1536,7 +1419,7 @@ public final class ObjectKlass extends Klass {
 
     // used by some plugins during klass redefinition
     public void reRunClinit() {
-        getClassInitializer().getCallTarget().call();
+        getClassInitializer().invokeDirectStatic();
     }
 
     private static void checkCopyMethods(KlassVersion klassVersion, Method method, Method.MethodVersion[][] table, Method.SharedRedefinitionContent content) {
@@ -1669,7 +1552,38 @@ public final class ObjectKlass extends Klass {
         return size;
     }
 
-    public final class KlassVersion {
+    @TruffleBoundary
+    public List<Klass> getDeclaredClasses() {
+        InnerClassesAttribute innerClasses = getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
+        if (innerClasses == null || innerClasses.entryCount() == 0) {
+            return List.of();
+        }
+
+        RuntimeConstantPool pool = getConstantPool();
+        List<Klass> innerKlasses = new ArrayList<>();
+
+        for (int i = 0; i < innerClasses.entryCount(); i++) {
+            InnerClassesAttribute.Entry entry = innerClasses.entryAt(i);
+            if (entry.innerClassIndex != 0 && entry.outerClassIndex != 0) {
+                // Check to see if the name matches the class we're looking for
+                // before attempting to find the class.
+                Symbol<Name> outerDescriptor = pool.className(entry.outerClassIndex);
+
+                // Check descriptors/names before resolving.
+                if (outerDescriptor == getName()) {
+                    Klass outerKlass = pool.resolvedKlassAt(this, entry.outerClassIndex);
+                    if (outerKlass == this) {
+                        Klass innerKlass = pool.resolvedKlassAt(this, entry.innerClassIndex);
+                        // TODO: Consider implementing extra checks as performed by HotSpot GR-72144
+                        innerKlasses.add(innerKlass);
+                    }
+                }
+            }
+        }
+        return innerKlasses;
+    }
+
+    public final class KlassVersion implements AttributedElement {
         final Assumption assumption;
         final RuntimeConstantPool pool;
         final LinkedKlass linkedKlass;
@@ -1698,7 +1612,7 @@ public final class ObjectKlass extends Klass {
             this.pool = pool;
             this.linkedKlass = linkedKlass;
             this.modifiers = linkedKlass.getFlags();
-            this.innerClasses = (InnerClassesAttribute) linkedKlass.getAttribute(InnerClassesAttribute.NAME);
+            this.innerClasses = getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
 
             ParserMethod[] parserMethods = linkedKlass.getParserKlass().getMethods();
 
@@ -1741,7 +1655,7 @@ public final class ObjectKlass extends Klass {
             this.pool = pool;
             this.linkedKlass = linkedKlass;
             this.modifiers = linkedKlass.getFlags();
-            this.innerClasses = (InnerClassesAttribute) linkedKlass.getAttribute(InnerClassesAttribute.NAME);
+            this.innerClasses = getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
 
             DetectedChange change = packet.detectedChange;
             this.superKlass = change.getSuperKlass();
@@ -1909,10 +1823,6 @@ public final class ObjectKlass extends Klass {
             return implementor;
         }
 
-        Object getAttribute(Symbol<Name> attrName) {
-            return linkedKlass.getAttribute(attrName);
-        }
-
         ConstantPool getConstantPool() {
             return pool;
         }
@@ -2010,7 +1920,7 @@ public final class ObjectKlass extends Klass {
         }
 
         public String getSourceFile() {
-            SourceFileAttribute sfa = (SourceFileAttribute) getAttribute(Names.SourceFile);
+            SourceFileAttribute sfa = getAttribute(SourceFileAttribute.NAME, SourceFileAttribute.class);
             if (sfa == null) {
                 return null;
             }
@@ -2022,6 +1932,11 @@ public final class ObjectKlass extends Klass {
                 source = getContext().findOrCreateSource(ObjectKlass.this);
             }
             return source;
+        }
+
+        @Override
+        public Attribute[] getAttributes() {
+            return linkedKlass.getParserKlass().getAttributes();
         }
 
         @Override

@@ -34,12 +34,12 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
 
-import jdk.graal.compiler.test.SubprocessUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.test.SubprocessUtil;
 
 public class HotSpotGraalOptionValuesTest extends HotSpotGraalCompilerTest {
 
@@ -60,7 +60,7 @@ public class HotSpotGraalOptionValuesTest extends HotSpotGraalCompilerTest {
             }
 
             String expect = "The 'jdk.graal.options.file' property is no longer supported";
-            if (!proc.output.stream().anyMatch(line -> line.contains(expect))) {
+            if (proc.output.stream().noneMatch(line -> line.contains(expect))) {
                 Assert.fail(String.format("Did not find '%s' in output of command:%n%s", expect, proc.preserveArgfile()));
             }
         } finally {
@@ -75,13 +75,17 @@ public class HotSpotGraalOptionValuesTest extends HotSpotGraalCompilerTest {
             try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
                 PrintStream out = new PrintStream(baos);
                 options.printHelp(OptionsParser.getOptionsLoader(), out, GRAAL_OPTION_PROPERTY_PREFIX, all);
-                Assert.assertNotEquals(baos.size(), 0);
+                Assert.assertNotEquals(0, baos.size());
             }
         }
     }
 
+    /**
+     * Ensures the legacy prefix for Graal options (i.e. {@code -Dgraal.}) is accepted without
+     * emitting a warning.
+     */
     @Test
-    public void testDeprecation() throws IOException, InterruptedException {
+    public void testLegacy() throws IOException, InterruptedException {
         List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
         vmArgs.removeIf(a -> a.startsWith("-Djdk.graal."));
         vmArgs.add("-Dgraal.ShowConfiguration=info");
@@ -90,11 +94,15 @@ public class HotSpotGraalOptionValuesTest extends HotSpotGraalCompilerTest {
         vmArgs.add("--version");
         SubprocessUtil.Subprocess proc = SubprocessUtil.java(vmArgs);
 
-        String expect = "WARNING: The 'graal.' property prefix for the Graal option";
-        long matches = proc.output.stream().filter(line -> line.contains(expect)).count();
-        if (matches != 1) {
-            Assert.fail(String.format("Did not find exactly 1 match for '%s' in output of command [matches: %d]:%n%s",
-                            expect, matches, proc.preserveArgfile()));
+        if (proc.exitCode != 0) {
+            Assert.fail(String.format("Expected non-0 exit code%n%s", proc.preserveArgfile()));
+        }
+
+        for (String line : proc.output) {
+            if (line.contains("WARNING:")) {
+                Assert.fail(String.format("Found match for 'WARNING:' in output of command:%n%s",
+                                proc.preserveArgfile()));
+            }
         }
     }
 }

@@ -713,6 +713,22 @@ public abstract class TruffleInstrument {
         }
 
         /**
+         * Retrieves the host language used in this environment. The returned language can be used
+         * to obtain the host language top scope object using {@link #getScope(LanguageInfo)}
+         * method.
+         *
+         * @since 25.1
+         */
+        @TruffleBoundary
+        public LanguageInfo getHostLanguage() {
+            try {
+                return InstrumentAccessor.engineAccess().getHostLanguage(polyglotInstrument);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
+        }
+
+        /**
          * Returns a map {@link InstrumentInfo#getId() instrument id} to {@link InstrumentInfo
          * instrument info} of all instruments that are installed in the environment.
          *
@@ -989,8 +1005,8 @@ public abstract class TruffleInstrument {
          * foreign values. A typical implementation of a given language for this method does the
          * following:
          * <ul>
-         * <li>Return the current language as their associated
-         * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}.
+         * <li>Return the current language id as their associated
+         * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguageId(Object) language}.
          * <li>Provide a language specific
          * {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object) display
          * string} for primitive and foreign values.

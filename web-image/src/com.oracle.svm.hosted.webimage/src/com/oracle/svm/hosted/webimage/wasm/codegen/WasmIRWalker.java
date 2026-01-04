@@ -38,13 +38,27 @@ import java.util.stream.Stream;
 import org.graalvm.collections.Pair;
 
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
+import com.oracle.svm.hosted.webimage.codegen.irwalk.StackifierIRWalker;
+import com.oracle.svm.hosted.webimage.codegen.lowerer.MoveResolver;
+import com.oracle.svm.hosted.webimage.codegen.lowerer.PhiResolveLowerer;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.ReconstructionData;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.CatchScopeContainer;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.IfScopeContainer;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.LabeledBlock;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.LabeledBlockGeneration;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.LoopScopeContainer;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.Scope;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.SwitchScopeContainer;
 import com.oracle.svm.hosted.webimage.logging.LoggerContext;
 import com.oracle.svm.hosted.webimage.metrickeys.MethodMetricKeys;
+import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instruction;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instruction.Binary;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.KnownIds;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
+import com.oracle.svm.hosted.webimage.wasm.ast.id.WebImageWasmIds;
 import com.oracle.svm.hosted.webimage.wasm.phases.WasmSwitchPhase;
+import com.oracle.svm.webimage.hightiercodegen.variables.ResolvedVar;
 import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.cfg.BlockMap;
@@ -52,18 +66,6 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
-import jdk.graal.compiler.hightiercodegen.irwalk.StackifierIRWalker;
-import jdk.graal.compiler.hightiercodegen.lowerer.MoveResolver;
-import jdk.graal.compiler.hightiercodegen.lowerer.PhiResolveLowerer;
-import jdk.graal.compiler.hightiercodegen.reconstruction.ReconstructionData;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlock;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.CatchScopeContainer;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.IfScopeContainer;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.LoopScopeContainer;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.Scope;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.SwitchScopeContainer;
-import jdk.graal.compiler.hightiercodegen.variables.ResolvedVar;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractEndNode;
@@ -184,13 +186,16 @@ public class WasmIRWalker extends StackifierIRWalker {
      *
      * @param currentBlock block from which to jump from
      * @param successor target of the jump
+     * @return Whether a jump was generated
      */
-    private void generateForwardJump(HIRBlock currentBlock, HIRBlock successor) {
+    private boolean generateForwardJump(HIRBlock currentBlock, HIRBlock successor) {
         WasmId.Label id = getForwardJumpTarget(currentBlock, successor);
 
         if (id != null) {
             masm.genInst(new Break(id), "forward jump");
+            return true;
         }
+        return false;
     }
 
     private WasmId.Label getForwardJumpTarget(HIRBlock currentBlock, HIRBlock successor) {
@@ -278,6 +283,86 @@ public class WasmIRWalker extends StackifierIRWalker {
     /**
      * Lower a WithExceptionNode.
      *
+     * @param currentBlock basic block that ends with {@link WithExceptionNode}
+     * @param lastNode the {@link WithExceptionNode}
+     * @see #lowerWithExceptionExnRef(HIRBlock, WithExceptionNode)
+     * @see #lowerWithExceptionLegacy(HIRBlock, WithExceptionNode)
+     */
+    @Override
+    protected void lowerWithException(HIRBlock currentBlock, WithExceptionNode lastNode) {
+        assert currentBlock.getEndNode() == lastNode : currentBlock.toString(Verbosity.Name);
+        if (WebImageWasmOptions.LegacyExceptions.getValue()) {
+            lowerWithExceptionLegacy(currentBlock, lastNode);
+        } else {
+            lowerWithExceptionExnRef(currentBlock, lastNode);
+        }
+    }
+
+    /**
+     * Lower a WithExceptionNode using the exnref exception handling proposal.
+     *
+     * <pre>
+     * {@code
+     * (block $exnBlock (result $throwable)
+     *     (try_table (catch $exc_tag $exnBlock)
+     *         WithExceptionNode();
+     *         br Successor
+     *     )
+     * )
+     * (local.set $exc_var)
+     * ExceptionEdge();
+     * }
+     * </pre>
+     *
+     * The {@link WithExceptionNode} is wrapped in a {@code try_table} block, which is surrounded by
+     * a block that's the target of the catch scope. After the block around the {@code try_table}
+     * instruction, the thrown value is already on the stack, we store it in a dedicated local
+     * variable ({@link WebImageWasmNodeLowerer#exceptionObjectVariable}) so that it can be read
+     * later by {@link ReadExceptionObjectNode}. The
+     * {@link com.oracle.svm.hosted.webimage.wasm.phases.WasmLabeledBlockGeneration} ensures that
+     * the regular successor always requires a forward jump.
+     *
+     * @see #lowerWithException(HIRBlock, WithExceptionNode)
+     */
+    protected void lowerWithExceptionExnRef(HIRBlock currentBlock, WithExceptionNode lastNode) {
+        WebImageWasmIds.InternalLabel exceptionHandlerLabel = masm.idFactory.newInternalLabel("exn" + currentBlock.getId());
+        Instruction.Block exceptionTargetBlock = new Instruction.Block(exceptionHandlerLabel, masm.getWasmProviders().util().getThrowableType());
+        masm.genInst(exceptionTargetBlock);
+
+        masm.childScope(exceptionTargetBlock.instructions, exceptionTargetBlock);
+        Instruction.TryTable tryBlock = new Instruction.TryTable(null);
+        tryBlock.addCatch(masm.getKnownIds().getJavaThrowableTag(), exceptionHandlerLabel);
+        masm.genInst(tryBlock, lastNode);
+
+        masm.childScope(tryBlock.instructions, tryBlock);
+        lowerNode(lastNode);
+        HIRBlock normSucc = cfg.blockFor(lastNode.next());
+        boolean didJump = generateForwardJump(currentBlock, normSucc);
+        GraalError.guarantee(didJump, "No jump was inserted after a WithExceptionNode");
+        masm.parentScope(tryBlock);
+        masm.genInst(new Unreachable(), "End of try_table block is unreachable");
+
+        masm.parentScope(exceptionTargetBlock);
+
+        masm.genInst(masm.nodeLowerer().exceptionObjectVariable.setter(new Instruction.Nop()), "Store exception object");
+        masm.lowerCatchPreamble();
+
+        CatchScopeContainer scopeEntry = (CatchScopeContainer) stackifierData.getScopeEntry(lastNode);
+        Scope catchScope = scopeEntry.getCatchScope();
+        if (catchScope != null) {
+            lowerBlocks(catchScope.getSortedBlocks(stackifierData));
+            // Just a sanity check
+            masm.genInst(new Unreachable(), "End of catch block is unreachable, it must break out");
+        } else {
+            HIRBlock excpSucc = cfg.blockFor(lastNode.exceptionEdge());
+            boolean didJumpAfterCatch = generateForwardJump(currentBlock, excpSucc);
+            GraalError.guarantee(didJumpAfterCatch, "No jump was inserted in catch block");
+        }
+    }
+
+    /**
+     * Lower a WithExceptionNode using the legacy exception handling proposal.
+     *
      * <pre>
      * {@code
      * (try
@@ -301,13 +386,9 @@ public class WasmIRWalker extends StackifierIRWalker {
      * ({@link WebImageWasmNodeLowerer#exceptionObjectVariable}) so that it can be read later by
      * {@link ReadExceptionObjectNode}.
      *
-     * @param currentBlock basic block that ends with {@link WithExceptionNode}
-     * @param lastNode the {@link WithExceptionNode}
+     * @see #lowerWithException(HIRBlock, WithExceptionNode)
      */
-    @Override
-    protected void lowerWithException(HIRBlock currentBlock, WithExceptionNode lastNode) {
-        assert currentBlock.getEndNode() == lastNode : currentBlock.toString(Verbosity.Name);
-
+    protected void lowerWithExceptionLegacy(HIRBlock currentBlock, WithExceptionNode lastNode) {
         Instruction.Try tryBlock = new Instruction.Try(null);
         masm.genInst(tryBlock, lastNode);
 

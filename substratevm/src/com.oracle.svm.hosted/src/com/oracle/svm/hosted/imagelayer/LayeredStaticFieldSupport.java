@@ -28,7 +28,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -41,22 +40,29 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -68,6 +74,7 @@ import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * This class keeps track of the location of static fields assigned in previous layers as well as
@@ -75,7 +82,8 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * layer.
  */
 @AutomaticallyRegisteredImageSingleton(value = LayeredClassInitialization.class, onlyWith = BuildingImageLayerPredicate.class)
-public class LayeredStaticFieldSupport extends LayeredClassInitialization implements LayeredImageSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredStaticFieldSupport.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public class LayeredStaticFieldSupport extends LayeredClassInitialization {
     /**
      * In the initial layer, this refers to fields which must wait until the app layer to be
      * installed.
@@ -99,6 +107,17 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
 
     private final boolean inAppLayer;
 
+    /**
+     * Keeps track of class filters (e.g.,
+     * {@link LayeredImageOptions#ApplicationLayerInitializedClasses}) processing. All
+     * {@link AnalysisType}s must be processed to ensure all needed app layer deferred fields are
+     * registered.
+     */
+    final Set<AnalysisType> processedAppLayerDeferredClassFilters;
+    AnalysisType byteArrayType;
+    AnalysisType objectArrayType;
+    Set<String> appLayerDeferredClassFilters;
+
     LayeredStaticFieldSupport() {
         this(ConcurrentHashMap.newKeySet(), new UniverseBuilder.StaticFieldOffsets());
     }
@@ -110,6 +129,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
         priorInstalledLayerMap = inAppLayer ? new ConcurrentHashMap<>() : null;
         priorInstalledLocationMap = inAppLayer ? new ConcurrentHashMap<>() : null;
         this.appLayerStaticFieldOffsets = appLayerStaticFieldOffsets;
+        processedAppLayerDeferredClassFilters = inAppLayer ? null : ConcurrentHashMap.newKeySet();
     }
 
     /**
@@ -117,9 +137,9 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
      */
     public enum LayerAssignmentStatus {
         /**
-         * This field has yet to be assigned a layer.
+         * This field has not been explicitly assigned to a layer. Proceed with normal behavior.
          */
-        UNDECIDED,
+        UNSPECIFIED,
         /**
          * Was installed in a prior layer.
          */
@@ -152,22 +172,29 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
 
     public void ensureInitializedFromFieldData(AnalysisField aField, SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisField.Reader fieldData) {
         Integer priorInstalledLayerNum = fieldData.getPriorInstalledLayerNum();
-        Object result = priorInstalledLayerMap.computeIfAbsent(aField, f -> priorInstalledLayerNum);
+        Object result = priorInstalledLayerMap.computeIfAbsent(aField, _ -> priorInstalledLayerNum);
         assert priorInstalledLayerNum.equals(result) : result;
         LayerAssignmentStatus assignmentStatus = LayerAssignmentStatus.values()[fieldData.getAssignmentStatus()];
-        result = assignmentStatusMap.computeIfAbsent(aField, f -> assignmentStatus);
+        result = assignmentStatusMap.computeIfAbsent(aField, _ -> assignmentStatus);
         assert assignmentStatus.equals(result);
         Integer priorInstalledLocation = fieldData.getLocation();
-        result = priorInstalledLocationMap.computeIfAbsent(aField, f -> priorInstalledLocation);
+        result = priorInstalledLocationMap.computeIfAbsent(aField, _ -> priorInstalledLocation);
         assert priorInstalledLocation.equals(result);
     }
 
     private void installFieldInAppLayer(Field field, MetaAccessProvider meta) {
+        AnalysisField aField = (AnalysisField) meta.lookupJavaField(field);
+        installFieldInAppLayer(aField);
+    }
+
+    void installFieldInAppLayer(AnalysisField aField) {
         assert !inAppLayer && !BuildPhaseProvider.isAnalysisFinished();
 
-        AnalysisField aField = (AnalysisField) meta.lookupJavaField(field);
         var added = appLayerFields.add(aField);
-        assert added;
+        if (!added) {
+            /* If this field has already been added, then nothing needs to be done. */
+            return;
+        }
 
         /*
          * Trigger build-time initialization of the class if it was not already initialized (and the
@@ -179,14 +206,14 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
         // register this field as requiring app layer
         var previous = assignmentStatusMap.put(aField, LayerAssignmentStatus.APP_LAYER_REQUESTED);
         if (previous != null) {
-            throw AnalysisError.userError(String.format("Field has a prior assignment. This is due to registering an app layer deferred field too late. Field: %s. Previous: %s", field, previous));
+            throw AnalysisError.userError(String.format("Field has a prior assignment. This is due to registering an app layer deferred field too late. Field: %s. Previous: %s", aField, previous));
         }
 
         // ensure the appropriate future layer constant exists
         var registry = CrossLayerConstantRegistry.singletonOrNull();
-        if (field.getType().isPrimitive()) {
+        if (aField.getStorageKind().isPrimitive()) {
             if (appLayerPrimitiveStaticFieldsBase == null) {
-                AnalysisType futureType = (AnalysisType) meta.lookupJavaType(byte[].class);
+                AnalysisType futureType = byteArrayType;
                 synchronized (this) {
                     if (appLayerPrimitiveStaticFieldsBase == null) {
                         appLayerPrimitiveStaticFieldsBase = (ImageHeapRelocatableConstant) registry.registerFutureHeapConstant(appLayerPrimitiveStaticFieldsBaseName, futureType);
@@ -195,7 +222,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
                 }
             }
         } else if (appLayerObjectStaticFieldsBase == null) {
-            AnalysisType futureType = (AnalysisType) meta.lookupJavaType(Object[].class);
+            AnalysisType futureType = objectArrayType;
             synchronized (this) {
                 if (appLayerObjectStaticFieldsBase == null) {
                     appLayerObjectStaticFieldsBase = (ImageHeapRelocatableConstant) registry.registerFutureHeapConstant(appLayerObjectStaticFieldsBaseName, futureType);
@@ -214,17 +241,40 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
         }
     }
 
-    public LayerAssignmentStatus getAssignmentStatus(AnalysisField analysisField) {
-        return assignmentStatusMap.computeIfAbsent(analysisField, (f) -> {
-            if (!(inAppLayer && analysisField.isInBaseLayer())) {
-                return LayerAssignmentStatus.UNDECIDED;
+    void processAppLayerDeferredClassFilters(AnalysisType aType) {
+        if (!processedAppLayerDeferredClassFilters.contains(aType)) {
+            if (appLayerDeferredClassFilters.contains(aType.toJavaName())) {
+                for (ResolvedJavaField aField : aType.getStaticFields()) {
+                    installFieldInAppLayer((AnalysisField) aField);
+                }
             }
-            throw VMError.shouldNotReachHere(String.format("Base analysis field assignment status queried before it is initialized: %s", analysisField));
+
+            /*
+             * Intentionally wait until the end to set the type as processed to ensure all fields
+             * are registered before a thread can return from this method.
+             */
+            processedAppLayerDeferredClassFilters.add(aType);
+        }
+    }
+
+    public LayerAssignmentStatus getAssignmentStatus(AnalysisField aField) {
+        if (!inAppLayer) {
+            LayerAssignmentStatus status = assignmentStatusMap.get(aField);
+            if (status != null) {
+                return status;
+            }
+            processAppLayerDeferredClassFilters(aField.getDeclaringClass());
+        }
+        return assignmentStatusMap.computeIfAbsent(aField, _ -> {
+            if (!(inAppLayer && aField.isInSharedLayer())) {
+                return LayerAssignmentStatus.UNSPECIFIED;
+            }
+            throw VMError.shouldNotReachHere(String.format("Base analysis field assignment status queried before it is initialized: %s", aField));
         });
     }
 
     public int getPriorInstalledLayerNum(AnalysisField analysisField) {
-        if (!(inAppLayer && analysisField.isInBaseLayer())) {
+        if (!(inAppLayer && analysisField.isInSharedLayer())) {
             return MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
         }
 
@@ -235,7 +285,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
     public boolean preventConstantFolding(AnalysisField aField) {
         var state = getAssignmentStatus(aField);
         return switch (state) {
-            case UNDECIDED, PRIOR_LAYER -> false;
+            case UNSPECIFIED, PRIOR_LAYER -> false;
             case APP_LAYER_REQUESTED, APP_LAYER_DEFERRED -> !inAppLayer;
         };
     }
@@ -243,12 +293,12 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
     public boolean installableInLayer(AnalysisField aField) {
         var state = getAssignmentStatus(aField);
         return switch (state) {
-            case UNDECIDED -> {
+            case UNSPECIFIED -> {
                 assert getPriorInstalledLayerNum(aField) == MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
                 yield true;
             }
             case PRIOR_LAYER -> {
-                assert aField.isInBaseLayer();
+                assert aField.isInSharedLayer();
                 yield false;
             }
             case APP_LAYER_REQUESTED, APP_LAYER_DEFERRED -> inAppLayer;
@@ -284,7 +334,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
         AnalysisField aField = field.getWrapped();
         LayerAssignmentStatus state = getAssignmentStatus(aField);
         return switch (state) {
-            case UNDECIDED -> traditionalSkipFieldLogic.apply(field);
+            case UNSPECIFIED -> traditionalSkipFieldLogic.apply(field);
             /* This field's location has already been decided. */
             case PRIOR_LAYER -> false;
             case APP_LAYER_REQUESTED -> {
@@ -340,7 +390,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
     public FloatingNode getAppLayerStaticFieldsBaseReplacement(boolean primitive, LoweringTool tool, StructuredGraph graph) {
         ImageHeapRelocatableConstant constant = primitive ? appLayerPrimitiveStaticFieldsBase : appLayerObjectStaticFieldsBase;
         assert constant != null;
-        return ImageHeapRelocatableConstantSupport.singleton().emitLoadConstant(graph, tool.getMetaAccess(), constant);
+        return ImageHeapRelocatableConstantSupport.singleton().emitLoadConstant(graph, tool, constant);
     }
 
     public JavaConstant getAppLayerStaticFieldBaseConstant(boolean primitive) {
@@ -353,45 +403,55 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
         appLayerFields.forEach(LayeredStaticFieldSupport::getAnalysisField);
     }
 
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
-    }
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
 
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        writer.writeInt("appLayerPrimitiveFieldStartingOffset", appLayerStaticFieldOffsets.nextPrimitiveField);
-        writer.writeInt("appLayerObjectFieldStartingOffset", appLayerStaticFieldOffsets.nextObjectField);
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredStaticFieldSupport>() {
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredStaticFieldSupport singleton) {
+                    writer.writeInt("appLayerPrimitiveFieldStartingOffset", singleton.appLayerStaticFieldOffsets.nextPrimitiveField);
+                    writer.writeInt("appLayerObjectFieldStartingOffset", singleton.appLayerStaticFieldOffsets.nextObjectField);
 
-        HostedUniverse hUniverse = ((SVMImageLayerWriter.ImageSingletonWriterImpl) writer).getHostedUniverse();
-        List<Integer> knownLocations = new ArrayList<>();
-        appLayerFields.forEach(obj -> {
-            AnalysisField aField = getAnalysisField(obj);
-            HostedField hField = hUniverse.lookup(aField);
-            if (hField.hasLocation()) {
-                assert getAssignmentStatus(aField) == LayerAssignmentStatus.APP_LAYER_DEFERRED;
-                knownLocations.add(aField.getId());
-            }
-        });
+                    HostedUniverse hUniverse = ((SVMImageLayerWriter.ImageSingletonWriterImpl) writer).getHostedUniverse();
+                    List<Integer> knownLocations = new ArrayList<>();
+                    singleton.appLayerFields.forEach(obj -> {
+                        AnalysisField aField = getAnalysisField(obj);
+                        HostedField hField = hUniverse.lookup(aField);
+                        if (hField.hasLocation()) {
+                            assert singleton.getAssignmentStatus(aField) == LayerAssignmentStatus.APP_LAYER_DEFERRED;
+                            knownLocations.add(aField.getId());
+                        }
+                    });
 
-        writer.writeIntList("appLayerFieldsWithKnownLocations", knownLocations);
+                    writer.writeIntList("appLayerFieldsWithKnownLocations", knownLocations);
 
-        return PersistFlags.CREATE;
-    }
+                    return LayeredPersistFlags.CREATE;
+                }
 
-    @SuppressWarnings("unused")
-    public static Object createFromLoader(ImageSingletonLoader loader) {
-
-        Set<Object> appLayerFieldsWithKnownLocations = new HashSet<>();
-        for (int id : loader.readIntList("appLayerFieldsWithKnownLocations")) {
-            Supplier<AnalysisField> aFieldSupplier = () -> HostedImageLayerBuildingSupport.singleton().getLoader().getAnalysisFieldForBaseLayerId(id);
-            appLayerFieldsWithKnownLocations.add(aFieldSupplier);
+                @Override
+                public Class<? extends SingletonLayeredCallbacks.LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
+                    return SingletonInstantiator.class;
+                }
+            });
         }
+    }
 
-        var appLayerStaticFieldsOffsets = new UniverseBuilder.StaticFieldOffsets();
-        appLayerStaticFieldsOffsets.nextPrimitiveField = loader.readInt("appLayerPrimitiveFieldStartingOffset");
-        appLayerStaticFieldsOffsets.nextObjectField = loader.readInt("appLayerObjectFieldStartingOffset");
-        return new LayeredStaticFieldSupport(Collections.unmodifiableSet(appLayerFieldsWithKnownLocations), appLayerStaticFieldsOffsets);
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredStaticFieldSupport> {
+
+        @Override
+        public LayeredStaticFieldSupport createFromLoader(ImageSingletonLoader loader) {
+            Set<Object> appLayerFieldsWithKnownLocations = new HashSet<>(); // noEconomicSet(concurrency)
+            for (int id : loader.readIntList("appLayerFieldsWithKnownLocations")) {
+                Supplier<AnalysisField> aFieldSupplier = () -> HostedImageLayerBuildingSupport.singleton().getLoader().getAnalysisFieldForBaseLayerId(id);
+                appLayerFieldsWithKnownLocations.add(aFieldSupplier);
+            }
+
+            var appLayerStaticFieldsOffsets = new UniverseBuilder.StaticFieldOffsets();
+            appLayerStaticFieldsOffsets.nextPrimitiveField = loader.readInt("appLayerPrimitiveFieldStartingOffset");
+            appLayerStaticFieldsOffsets.nextObjectField = loader.readInt("appLayerObjectFieldStartingOffset");
+            return new LayeredStaticFieldSupport(Collections.unmodifiableSet(appLayerFieldsWithKnownLocations), appLayerStaticFieldsOffsets);
+        }
     }
 }
 
@@ -402,16 +462,20 @@ class LayeredStaticFieldSupportBaseLayerFeature implements InternalFeature {
         return ImageLayerBuildingSupport.buildingInitialLayer();
     }
 
-    /**
-     * Register all application layered fields declared via the commandline.
-     */
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        var metaAccess = config.getMetaAccess();
-        for (String className : SubstrateOptions.ApplicationLayerInitializedClasses.getValue().values()) {
-            LayeredClassInitialization.singleton().initializeClassInAppLayer(config.getImageClassLoader().findClassOrFail(className), metaAccess);
-        }
+    public void duringSetup(DuringSetupAccess access) {
+        FeatureImpl.DuringSetupAccessImpl config = (FeatureImpl.DuringSetupAccessImpl) access;
+        AnalysisMetaAccess metaAccess = config.getMetaAccess();
+        LayeredStaticFieldSupport staticFieldSupport = LayeredStaticFieldSupport.singleton();
+
+        staticFieldSupport.objectArrayType = metaAccess.lookupJavaType(Object[].class);
+        staticFieldSupport.byteArrayType = metaAccess.lookupJavaType(byte[].class);
+        staticFieldSupport.appLayerDeferredClassFilters = LayeredImageOptions.ApplicationLayerInitializedClasses.getValue().valuesAsSet();
+
+        /*
+         * Register callback which will run for all created types.
+         */
+        config.registerOnTypeCreatedCallback(staticFieldSupport::processAppLayerDeferredClassFilters);
     }
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -144,11 +144,10 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
     private static final String UNKNOWN_REFERENCE_AT_SAFEPOINT_MSG = "should not reach here: unknown reference alive across safepoint";
 
     @Test
-    @SuppressWarnings("try")
     public void testFieldOffsetMergeNonLiveBasePointer() {
         GraalError error = Assert.assertThrows(GraalError.class, () -> {
             DebugContext debug = getDebugContext();
-            try (Scope s = debug.disable()) {
+            try (Scope _ = debug.disable()) {
                 // Run a couple times to encourage objects to move
                 for (int i = 0; i < 4; i++) {
                     Result r = new Result();
@@ -170,11 +169,10 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testFieldOffsetMergeLiveBasePointer() {
         GraalError error = Assert.assertThrows(GraalError.class, () -> {
             DebugContext debug = getDebugContext();
-            try (Scope s = debug.disable()) {
+            try (Scope _ = debug.disable()) {
                 // Run a couple times to encourage objects to move
                 for (int i = 0; i < 4; i++) {
                     Result r = new Result();

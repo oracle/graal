@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.core.gen;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -114,12 +115,12 @@ public class LIRCompilerBackend {
         try {
             return emitLIR0(backend, graph, stub, registerConfig, lirSuites, allocationRestrictedTo, entryPointDecorator);
         } catch (OutOfRegistersException e) {
-            if (allocationRestrictedTo != null) {
+            if (allocationRestrictedTo != null && !GraalOptions.BailoutOnRegisterPressureFailure.getValue(graph.getOptions())) {
                 allocationRestrictedTo = null;
                 return emitLIR0(backend, graph, stub, registerConfig, lirSuites, allocationRestrictedTo, entryPointDecorator);
             }
             /* If the re-execution fails we convert the exception into a "hard" failure */
-            throw new GraalError(e);
+            throw new GraalError(e, "out of registers%s", allocationRestrictedTo == null ? "" : ": " + Arrays.toString(allocationRestrictedTo));
         } finally {
             graph.checkCancellation();
         }
@@ -171,7 +172,7 @@ public class LIRCompilerBackend {
                  * LIRGeneration may have changed the CFG, so in case a schedule is needed afterward
                  * we make sure it will be recomputed.
                  */
-                graph.clearLastSchedule();
+                graph.clearLastCFG();
                 return result;
             } catch (Throwable e) {
                 throw debug.handle(e);
@@ -235,7 +236,7 @@ public class LIRCompilerBackend {
                 compilationResult.setSpeculationLog(speculationLog);
             }
             crb.finish();
-            if (debug.isCountEnabled()) {
+            if (debug.areCountersEnabled()) {
                 List<DataPatch> ldp = compilationResult.getDataPatches();
                 JavaKind[] kindValues = JavaKind.values();
                 CounterKey[] dms = new CounterKey[kindValues.length];

@@ -98,4 +98,7 @@ public final class CountLeadingZerosNode extends UnaryNode implements Arithmetic
     public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
         builder.setResult(this, gen.emitCountLeadingZeros(builder.operand(getValue())));
     }
+
+    @NodeIntrinsic
+    public static native int countIntLeadingZeros(int value);
 }

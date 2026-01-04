@@ -46,19 +46,20 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.allocationprofile.AllocationCounter;
 import com.oracle.svm.core.allocationprofile.AllocationSite;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
-import com.oracle.svm.core.graal.nodes.SubstrateNewDynamicHubNode;
+import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -66,6 +67,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
@@ -74,7 +76,6 @@ import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.api.replacements.Snippet.NonNullParameter;
 import jdk.graal.compiler.api.replacements.Snippet.VarargsParameter;
 import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -115,24 +116,31 @@ import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.graal.compiler.word.ObjectAccess;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateAllocationSnippets extends AllocationSnippets {
     public static final LocationIdentity TLAB_START_IDENTITY = NamedLocationIdentity.mutable("TLAB.start");
     public static final LocationIdentity TLAB_TOP_IDENTITY = NamedLocationIdentity.mutable("TLAB.top");
     public static final LocationIdentity TLAB_END_IDENTITY = NamedLocationIdentity.mutable("TLAB.end");
-    public static final Object[] ALLOCATION_LOCATIONS = new Object[]{TLAB_START_IDENTITY, TLAB_TOP_IDENTITY, TLAB_END_IDENTITY, IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION,
+    public static final Object[] ALLOCATION_LOCATIONS = {TLAB_START_IDENTITY, TLAB_TOP_IDENTITY, TLAB_END_IDENTITY, IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION,
                     AllocationCounter.COUNT_FIELD, AllocationCounter.SIZE_FIELD};
-    public static final LocationIdentity[] GC_LOCATIONS = new LocationIdentity[]{TLAB_START_IDENTITY, TLAB_TOP_IDENTITY, TLAB_END_IDENTITY, IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION};
+    public static final LocationIdentity[] GC_LOCATIONS = {TLAB_START_IDENTITY, TLAB_TOP_IDENTITY, TLAB_END_IDENTITY, IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION};
 
     private static final SubstrateForeignCallDescriptor NEW_MULTI_ARRAY = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "newMultiArrayStub", NO_SIDE_EFFECT);
+    private static final SubstrateForeignCallDescriptor TRACE_UNSAFE_ALLOCATION = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "traceUnsafeAllocation", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class,
                     "slowPathHubOrUnsafeInstantiationError", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor ARRAY_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "arrayHubErrorStub", NO_SIDE_EFFECT);
-    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{NEW_MULTI_ARRAY, SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR, ARRAY_HUB_ERROR};
+    private static final SubstrateForeignCallDescriptor[] UNCONDITIONAL_FOREIGN_CALLS = {NEW_MULTI_ARRAY, TRACE_UNSAFE_ALLOCATION, SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR, ARRAY_HUB_ERROR};
+
+    private static final SubstrateForeignCallDescriptor GET_OR_CREATE_ARRAY_HUB = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "getOrCreateArrayHub", NO_SIDE_EFFECT);
 
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(FOREIGN_CALLS);
+        foreignCalls.register(UNCONDITIONAL_FOREIGN_CALLS);
+        if (RuntimeClassLoading.isSupported()) {
+            foreignCalls.register(GET_OR_CREATE_ARRAY_HUB);
+        }
     }
 
     @Snippet
@@ -263,22 +271,6 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Snippet
-    public Object allocateDynamicHub(int vTableEntries,
-                    @ConstantParameter int vTableBaseOffset,
-                    @ConstantParameter int log2VTableEntrySize,
-                    @ConstantParameter AllocationProfilingData profilingData) {
-        profilingData.snippetCounters.stub.inc();
-
-        // always slow path, because DynamicHubs are allocated into dedicated chunks
-        Object result = callNewDynamicHub(gcAllocationSupport().getNewDynamicHub(), vTableEntries);
-
-        UnsignedWord allocationSize = arrayAllocationSize(vTableEntries, vTableBaseOffset, log2VTableEntrySize);
-        profileAllocation(profilingData, allocationSize);
-
-        return piArrayCastToSnippetReplaceeStamp(verifyOop(result), vTableEntries);
-    }
-
-    @Snippet
     public Object allocateInstanceDynamic(@NonNullParameter DynamicHub hub,
                     @ConstantParameter boolean forceSlowPath,
                     @ConstantParameter FillContent fillContents,
@@ -329,6 +321,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     public DynamicHub validateNewInstanceClass(DynamicHub hub) {
         if (probability(EXTREMELY_FAST_PATH_PROBABILITY, hub != null)) {
             DynamicHub nonNullHub = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
+            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, MetadataTracer.enabled())) {
+                traceUnsafeAllocationStub(TRACE_UNSAFE_ALLOCATION, DynamicHub.toClass(nonNullHub));
+            }
             if (probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullHub.canUnsafeInstantiateAsInstanceFastPath())) {
                 return nonNullHub;
             }
@@ -365,6 +360,15 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
+    private static native DynamicHub traceUnsafeAllocationStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> hub);
+
+    /** Foreign call: {@link #TRACE_UNSAFE_ALLOCATION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void traceUnsafeAllocation(DynamicHub hub) {
+        MetadataTracer.singleton().traceUnsafeAllocatedType(DynamicHub.toClass(hub));
+    }
+
+    @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
     private static native DynamicHub slowPathHubOrUnsafeInstantiationErrorStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> hub);
 
     /** Foreign call: {@link #SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR}. */
@@ -382,7 +386,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 return hub;
             } else {
                 if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                    MissingReflectionRegistrationUtils.forUnsafeAllocation(hub.getTypeName());
+                    MissingReflectionRegistrationUtils.reportUnsafeAllocation(DynamicHub.toClass(hub));
                 }
                 throw new IllegalArgumentException("Type " + DynamicHub.toClass(hub).getTypeName() + " is instantiated reflectively but was never registered." +
                                 " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");
@@ -399,6 +403,11 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 if (probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullArrayHub.isInstantiated())) {
                     return nonNullArrayHub;
                 }
+            } else if (RuntimeClassLoading.isSupported()) {
+                arrayHub = callCreateArrayHubStub(GET_OR_CREATE_ARRAY_HUB, DynamicHub.toClass(elementType));
+                if (probability(EXTREMELY_FAST_PATH_PROBABILITY, arrayHub != null)) {
+                    return (DynamicHub) PiNode.piCastNonNull(arrayHub, SnippetAnchorNode.anchor());
+                }
             }
         }
 
@@ -409,6 +418,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     @NodeIntrinsic(value = ForeignCallNode.class)
     private static native void callArrayHubErrorStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType);
 
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    private static native DynamicHub callCreateArrayHubStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType);
+
     /** Foreign call: {@link #ARRAY_HUB_ERROR}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void arrayHubErrorStub(DynamicHub elementType) {
@@ -417,10 +429,17 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         } else if (elementType == DynamicHub.fromClass(void.class)) {
             throw new IllegalArgumentException("Cannot allocate void array.");
         } else if (elementType.getArrayHub() == null || !elementType.getArrayHub().isInstantiated()) {
-            throw MissingReflectionRegistrationUtils.errorForArray(DynamicHub.toClass(elementType), 1);
+            throw MissingReflectionRegistrationUtils.reportArrayInstantiation(DynamicHub.toClass(elementType), 1);
         } else {
             VMError.shouldNotReachHereUnexpectedInput(elementType); // ExcludeFromJacocoGeneratedReport
         }
+    }
+
+    /** Foreign call: {@link #GET_OR_CREATE_ARRAY_HUB}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static DynamicHub getOrCreateArrayHub(DynamicHub componentType) {
+        assert RuntimeClassLoading.isSupported();
+        return componentType.getOrCreateArrayHub();
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
@@ -573,9 +592,6 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     private static native Object callSlowNewStoredContinuation(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int length);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native Object callNewDynamicHub(@ConstantNodeParameter ForeignCallDescriptor descriptor, int vTableEntries);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
     private static native Object callNewMultiArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int rank, Word dimensions);
 
     @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
@@ -647,7 +663,6 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
         private final SnippetInfo allocateStoredContinuation;
         private final SnippetInfo allocatePod;
-        private final SnippetInfo allocateDynamicHub;
 
         @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Providers providers, SubstrateAllocationSnippets receiver) {
@@ -685,12 +700,13 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                             null,
                             receiver,
                             ALLOCATION_LOCATIONS);
+
             allocateArrayDynamic = snippet(providers,
                             SubstrateAllocationSnippets.class,
                             "allocateArrayDynamic",
                             null,
                             receiver,
-                            ALLOCATION_LOCATIONS);
+                            getDynamicArrayAllocationLocations(providers));
             newmultiarray = snippet(providers,
                             SubstrateAllocationSnippets.class,
                             "newmultiarray",
@@ -728,17 +744,25 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                                 podLocations);
             }
             allocatePod = allocatePodSnippet;
+        }
 
-            SnippetInfo allocateDynamicHubSnippet = null;
-            if (RuntimeClassLoading.isSupported()) {
-                allocateDynamicHubSnippet = snippet(providers,
-                                SubstrateAllocationSnippets.class,
-                                "allocateDynamicHub",
-                                null,
-                                receiver,
-                                ALLOCATION_LOCATIONS);
+        private static Object[] getDynamicArrayAllocationLocations(Providers providers) {
+            if (!RuntimeClassLoading.isSupported()) {
+                return ALLOCATION_LOCATIONS;
             }
-            allocateDynamicHub = allocateDynamicHubSnippet;
+            /*
+             * Since crema can allocate array types at runtime, the DynamicHubCompanion.arrayHub
+             * location is not immutable. It instead needs to be considered "private" for this
+             * snippet. This is OK because any code that sees arrayHub being null will call
+             * createArrayHub and use its return value.
+             */
+            ResolvedJavaType dynamicHubCompanionType = providers.getMetaAccess().lookupJavaType(DynamicHubCompanion.class);
+            ResolvedJavaField arrayHubField = JVMCIReflectionUtil.getUniqueDeclaredField(dynamicHubCompanionType, "arrayHub");
+            LocationIdentity arrayHubIdentity = new SubstrateFieldLocationIdentity(arrayHubField, false);
+
+            Object[] dynamicArrayAllocationLocations = Arrays.copyOf(ALLOCATION_LOCATIONS, ALLOCATION_LOCATIONS.length + 1);
+            dynamicArrayAllocationLocations[ALLOCATION_LOCATIONS.length] = arrayHubIdentity;
+            return dynamicArrayAllocationLocations;
         }
 
         public void registerLowering(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
@@ -766,9 +790,6 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
             if (Pod.RuntimeSupport.isPresent()) {
                 lowerings.put(NewPodInstanceNode.class, new NewPodInstanceLowering());
-            }
-            if (RuntimeClassLoading.isSupported()) {
-                lowerings.put(SubstrateNewDynamicHubNode.class, new NewDynamicHubLowering());
             }
         }
 
@@ -840,11 +861,11 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 ValueNode objectHeaderConstant = snippetReflection.forTLABObjectHeader(hub, graph);
                 if (objectHeaderConstant != null) {
-                    args = new Arguments(allocateInstanceConstantHeader, graph.getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(allocateInstanceConstantHeader, graph, tool.getLoweringStage());
                     args.add("objectHeader", objectHeaderConstant);
                 } else {
                     ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
-                    args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(allocateInstance, graph, tool.getLoweringStage());
                     args.add("hub", hubConstant);
                 }
 
@@ -878,7 +899,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
 
-                Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(allocateArray, graph, tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
                 args.add("forceSlowPath", shouldForceSlowPath(graph));
@@ -913,7 +934,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
 
-                Arguments args = new Arguments(allocateStoredContinuation, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(allocateStoredContinuation, graph, tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
                 args.add("forceSlowPath", shouldForceSlowPath(graph));
@@ -964,11 +985,11 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 ValueNode objectHeaderConstant = snippetReflection.forTLABObjectHeader(hub, graph);
                 if (objectHeaderConstant != null) {
-                    args = new Arguments(allocateArrayConstantHeader, graph.getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(allocateArrayConstantHeader, graph, tool.getLoweringStage());
                     args.add("objectHeader", objectHeaderConstant);
                 } else {
                     ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
-                    args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(allocateArray, graph, tool.getLoweringStage());
                     args.add("hub", hubConstant);
                 }
 
@@ -1005,7 +1026,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 SharedType type = (SharedType) node.type();
                 ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(type.getHub()), tool.getMetaAccess(), graph);
 
-                Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(newmultiarray, graph, tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("rank", rank);
                 args.add("withException", false);
@@ -1032,7 +1053,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 SharedType type = (SharedType) node.type();
                 ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(type.getHub()), tool.getMetaAccess(), graph);
 
-                Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(newmultiarray, graph, tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("rank", rank);
                 args.add("withException", true);
@@ -1050,7 +1071,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     return;
                 }
 
-                Arguments args = new Arguments(allocateInstanceDynamic, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(allocateInstanceDynamic, graph, tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
                 args.add("forceSlowPath", shouldForceSlowPath(graph));
                 args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
@@ -1072,7 +1093,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     return;
                 }
 
-                Arguments args = new Arguments(allocateInstanceDynamic, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(allocateInstanceDynamic, graph, tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
                 args.add("forceSlowPath", shouldForceSlowPath(graph));
                 args.add("fillContents", FillContent.fromBoolean(true));
@@ -1094,7 +1115,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     return;
                 }
 
-                Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(allocateArrayDynamic, graph, tool.getLoweringStage());
                 args.add("elementType", node.getElementType());
                 args.add("length", node.length());
                 args.add("forceSlowPath", shouldForceSlowPath(graph));
@@ -1117,7 +1138,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     return;
                 }
 
-                Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(allocateArrayDynamic, graph, tool.getLoweringStage());
                 args.add("elementType", node.getElementType());
                 args.add("length", node.length());
                 args.add("forceSlowPath", shouldForceSlowPath(graph));
@@ -1137,7 +1158,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             public void lower(ValidateNewInstanceClassNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
 
-                Arguments args = new Arguments(validateNewInstanceClass, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(validateNewInstanceClass, graph, tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -1156,7 +1177,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                                 tool.getConstantReflection().asJavaType(node.getHub().asConstant()).equals(node.getKnownInstanceType()));
                 assert node.fillContents() : "fillContents must be true for hybrid allocations";
 
-                Arguments args = new Arguments(allocatePod, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(allocatePod, graph, tool.getLoweringStage());
                 args.add("hub", node.getHub());
                 args.add("arrayLength", node.getArrayLength());
                 args.add("forceSlowPath", shouldForceSlowPath(graph));
@@ -1166,39 +1187,6 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
                 args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.add("profilingData", getProfilingData(node, node.getKnownInstanceType()));
-
-                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
-            }
-        }
-
-        private final class NewDynamicHubLowering implements NodeLoweringProvider<SubstrateNewDynamicHubNode> {
-            @Override
-            public void lower(SubstrateNewDynamicHubNode node, LoweringTool tool) {
-                StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
-                    return;
-                }
-
-                assert node.getVTableEntries() != null;
-                assert node.fillContents() : "fillContents must be true for DynamicHub allocations";
-
-                ValueNode vTableEntries = node.getVTableEntries();
-                SharedType type = (SharedType) tool.getMetaAccess().lookupJavaType(Class.class);
-                DynamicHub hubOfDynamicHub = type.getHub();
-
-                int layoutEncoding = hubOfDynamicHub.getLayoutEncoding();
-
-                int vTableBaseOffset = getArrayBaseOffset(layoutEncoding);
-                assert vTableBaseOffset == KnownOffsets.singleton().getVTableBaseOffset();
-
-                int log2VTableEntrySize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
-                assert log2VTableEntrySize == NumUtil.unsignedLog2(KnownOffsets.singleton().getVTableEntrySize());
-
-                Arguments args = new Arguments(allocateDynamicHub, graph.getGuardsStage(), tool.getLoweringStage());
-                args.add("vTableEntries", vTableEntries);
-                args.add("vTableBaseOffset", vTableBaseOffset);
-                args.add("log2VTableEntrySize", log2VTableEntrySize);
-                args.add("profilingData", getProfilingData(node, type));
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }

@@ -587,6 +587,22 @@ public class CountedLoopTest extends GraalCompilerTest {
         testCounted("shiftLargeLongSnippet");
     }
 
+    public static Result disjointOrToAddSnippet(int limit) {
+        Result ret = new Result();
+        int i;
+        for (i = 0; GraalDirectives.injectIterationCount(11, (i | 4) < limit); i += 8) {
+            GraalDirectives.controlFlowAnchor();
+            ret.extremum = get(InductionVariable::extremumNode, InductionVariable::constantExtremum, InductionVariable::isConstantExtremum, i | 4);
+        }
+        ret.exitValue = get(InductionVariable::exitValueNode, i);
+        return ret;
+    }
+
+    @Test
+    public void disjointOrToAdd() {
+        testCounted("disjointOrToAddSnippet", 256);
+    }
+
     @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     private static class IVPropertyNode extends FloatingNode implements LIRLowerable {
         public static final NodeClass<IVPropertyNode> TYPE = NodeClass.create(IVPropertyNode.class);

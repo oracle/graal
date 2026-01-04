@@ -28,7 +28,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_TYPE;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.ParserField;
-import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -146,15 +145,6 @@ final class LinkedField extends StaticProperty {
         // no need to go through getParserField(), since kind
         // can't change on redefinition on a linked field
         return parserField.getKind();
-    }
-
-    public Attribute getAttribute(Symbol<Name> name) {
-        for (Attribute a : getParserField().getAttributes()) {
-            if (name.equals(a.getName())) {
-                return a;
-            }
-        }
-        return null;
     }
 
     public boolean isHidden() {

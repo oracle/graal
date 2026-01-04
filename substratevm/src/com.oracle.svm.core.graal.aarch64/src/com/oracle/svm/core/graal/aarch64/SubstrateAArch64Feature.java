@@ -41,6 +41,10 @@ import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 import com.oracle.svm.core.graal.code.SubstrateVectorArchitectureFactory;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -63,23 +67,13 @@ class SubstrateAArch64Feature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
 
-        ImageSingletons.add(SubstrateRegisterConfigFactory.class, new SubstrateRegisterConfigFactory() {
-            @Override
-            public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer) {
-                return new SubstrateAArch64RegisterConfig(config, metaAccess, target, preserveFramePointer);
-            }
-        });
+        ImageSingletons.add(SubstrateRegisterConfigFactory.class, new SubstrateAArch64RegisterConfigFactory());
 
         ImageSingletons.add(ReservedRegisters.class, new AArch64ReservedRegisters());
 
         if (!SubstrateOptions.useLLVMBackend()) {
 
-            ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
-                @Override
-                public SubstrateBackend newBackend(Providers newProviders) {
-                    return new SubstrateAArch64Backend(newProviders);
-                }
-            });
+            ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateAArch64BackendFactory());
 
             ImageSingletons.add(SubstrateLoweringProviderFactory.class, new SubstrateAArch64LoweringProviderFactory());
 
@@ -96,6 +90,23 @@ class SubstrateAArch64Feature implements InternalFeature {
     }
 }
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+class SubstrateAArch64RegisterConfigFactory implements SubstrateRegisterConfigFactory {
+    @Override
+    public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer) {
+        return new SubstrateAArch64RegisterConfig(config, metaAccess, target, preserveFramePointer);
+    }
+}
+
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+class SubstrateAArch64BackendFactory extends SubstrateBackendFactory {
+    @Override
+    public SubstrateBackend newBackend(Providers newProviders) {
+        return new SubstrateAArch64Backend(newProviders);
+    }
+}
+
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
 class SubstrateAArch64LoweringProviderFactory extends SubstrateVectorArchitectureFactory implements SubstrateLoweringProviderFactory {
 
     @Override

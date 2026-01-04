@@ -41,7 +41,7 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.word.Word;
@@ -112,7 +112,7 @@ public class WebImageJSHeap extends Heap {
     }
 
     @Override
-    protected List<Class<?>> getAllClasses() {
+    protected List<Class<?>> getClassesInImageHeap() {
         return null;
     }
 
@@ -139,8 +139,13 @@ public class WebImageJSHeap extends Heap {
     }
 
     @Override
-    public int getPreferredAddressSpaceAlignment() {
-        return 0;
+    public int getHeapBaseAlignment() {
+        return 1;
+    }
+
+    @Override
+    public int getImageHeapAlignment() {
+        return 1;
     }
 
     @Override
@@ -204,7 +209,7 @@ public class WebImageJSHeap extends Heap {
     }
 
     @Override
-    public void optionValueChanged(RuntimeOptionKey<?> key) {
+    public void optionValueChanged(NotifyGCRuntimeOptionKey<?> key) {
     }
 
     @Override
@@ -228,16 +233,6 @@ public class WebImageJSHeap extends Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getUsedMemoryAfterLastGC() {
         return Word.zero();
-    }
-
-    @Override
-    public UnsignedWord getImageHeapReservedBytes() {
-        throw VMError.unimplemented("Native Memory Tracking is not supported");
-    }
-
-    @Override
-    public UnsignedWord getImageHeapCommittedBytes() {
-        throw VMError.unimplemented("Native Memory Tracking is not supported");
     }
 
     @Override

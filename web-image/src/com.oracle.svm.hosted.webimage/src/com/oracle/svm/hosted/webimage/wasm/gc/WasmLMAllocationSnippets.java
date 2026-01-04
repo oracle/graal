@@ -111,7 +111,7 @@ public final class WasmLMAllocationSnippets implements Snippets {
                 if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
-                Arguments args = new Arguments(formatObject, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(formatObject, graph, tool.getLoweringStage());
                 args.add("memory", node.getMemory());
                 args.add("hub", node.getHub());
                 args.add("rememberedSet", node.getRememberedSet());
@@ -129,7 +129,7 @@ public final class WasmLMAllocationSnippets implements Snippets {
                 if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
-                Arguments args = new Arguments(formatArray, graph.getGuardsStage(), tool.getLoweringStage());
+                Arguments args = new Arguments(formatArray, graph, tool.getLoweringStage());
                 args.add("memory", node.getMemory());
                 args.add("hub", node.getHub());
                 args.add("length", node.getLength());

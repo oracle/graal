@@ -38,7 +38,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -65,7 +65,7 @@ abstract class AbstractMethodListParser extends ConfigurationParser {
         super(EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
         this.imageClassLoader = Objects.requireNonNull(imageClassLoader, "ImageClassLoader must be non null");
         this.bb = Objects.requireNonNull(bb, "BigBang must be non null");
-        this.collectedMethods = new HashSet<>();
+        this.collectedMethods = new HashSet<>(); // noEconomicSet(streaming)
     }
 
     static <T> T cast(Object obj, Class<T> type, String errorMessage) {

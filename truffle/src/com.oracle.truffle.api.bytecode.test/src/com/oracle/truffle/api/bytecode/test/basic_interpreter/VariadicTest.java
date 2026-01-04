@@ -327,6 +327,211 @@ public class VariadicTest extends AbstractBasicInterpreterTest {
         assertEquals("The operation DynamicVariadicNull must return a non-null value, but did return a null value.", e.getMessage());
     }
 
+    @Test
+    public void testDynamicVariadicOneScalarOneVariadic() {
+        var root = parseNode("testDynamicVariadicOneScalarOneVariadic", (b) -> {
+            b.beginRoot();
+            b.beginReturn();
+
+            b.beginVariadicAddInt();
+            b.emitLoadConstant(5L);
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+            b.endVariadicAddInt();
+
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(2L * 5L + 1L * 5L, root.getCallTarget().call());
+    }
+
+    @Test
+    public void testDynamicVariadicOneArrayOneVariadic() {
+        var root = parseNode("testDynamicVariadicOneArrayOneVariadic", (b) -> {
+            b.beginRoot();
+            b.beginReturn();
+
+            b.beginVariadicAddLArr();
+            b.emitLoadConstant(new long[]{1L, 2L, 3L});
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+            b.endVariadicAddLArr();
+
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(2L + 1L, root.getCallTarget().call());
+    }
+
+    @Test
+    public void testDynamicVariadicOneScalarOneArrayOneVariadic() {
+        var root = parseNode("testDynamicVariadicOneScalarOneArrayOneVariadic", (b) -> {
+            b.beginRoot();
+            b.beginReturn();
+
+            b.beginVariadicAddIntLArr();
+            b.emitLoadConstant(7L);
+            b.emitLoadConstant(new long[]{1L, 2L, 3L});
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+            b.endVariadicAddIntLArr();
+
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(2L * 7L + 1L * 7L, root.getCallTarget().call());
+    }
+
+    @Test
+    public void testDynamicVariadicOneScalarMultipleVariadic() {
+        /**
+         * Note regarding the test name: 'Multiple variadic' means one @Variadic argument, but
+         * multiple calls to operations returning @Variadic. 'Multiple scalar' or 'multiple array'
+         * really means that the operation has multiples of those arguments.
+         */
+        var root = parseNode("testDynamicVariadicOneScalarMultipleVariadic", (b) -> {
+            b.beginRoot();
+            b.beginReturn();
+
+            b.beginVariadicAddInt();
+            b.emitLoadConstant(5L);
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+            b.endVariadicAddInt();
+
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(2L * 5L + 1L * 5L + 2L * 5L + 1L * 5L + 2L * 5L + 1L * 5L, root.getCallTarget().call());
+    }
+
+    @Test
+    public void testDynamicVariadicOneArrayMultipleVariadic() {
+        var root = parseNode("testDynamicVariadicOneArrayMultipleVariadic", (b) -> {
+            b.beginRoot();
+            b.beginReturn();
+
+            b.beginVariadicAddLArr();
+            b.emitLoadConstant(new long[]{1L, 2L, 3L});
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+            b.endVariadicAddLArr();
+
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(2L + 1L + 2L + 1L + 2L + 1L, root.getCallTarget().call());
+    }
+
+    @Test
+    public void testDynamicVariadicOneScalarOneArrayMultipleVariadic() {
+        var root = parseNode("testDynamicVariadicOneScalarOneArrayMultipleVariadic", (b) -> {
+            b.beginRoot();
+            b.beginReturn();
+
+            b.beginVariadicAddIntLArr();
+            b.emitLoadConstant(7L);
+            b.emitLoadConstant(new long[]{1L, 2L, 3L});
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+            b.endVariadicAddIntLArr();
+
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(2L * 7L + 1L * 7L + 2L * 7L + 1L * 7L + 2L * 7L + 1L * 7L, root.getCallTarget().call());
+    }
+
+    @Test
+    public void testDynamicVariadicMultipleScalarMultipleArrayOneVariadic() {
+        var root = parseNode("testDynamicVariadicMultipleScalarMultipleArrayOneVariadic", (b) -> {
+            b.beginRoot();
+            b.beginReturn();
+
+            b.beginVariadicAddIntIntLArrLArr();
+            b.emitLoadConstant(7L);
+            b.emitLoadConstant(2L);
+            b.emitLoadConstant(new long[]{1L, 2L, 3L});
+            b.emitLoadConstant(new long[]{4L, 5L, 6L});
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+            b.endVariadicAddIntIntLArrLArr();
+
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(2L * 7L * 2L + 1L * 7L * 2L, root.getCallTarget().call());
+    }
+
+    @Test
+    public void testDynamicVariadicMultipleScalarMultipleArrayMultipleVariadic() {
+        var root = parseNode("testDynamicVariadicMultipleScalarMultipleArrayMultipleVariadic", (b) -> {
+            b.beginRoot();
+            b.beginReturn();
+
+            b.beginVariadicAddIntIntLArrLArr();
+            b.emitLoadConstant(7L);
+            b.emitLoadConstant(2L);
+            b.emitLoadConstant(new long[]{1L, 2L, 3L});
+            b.emitLoadConstant(new long[]{4L, 5L, 6L});
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+
+            b.beginDynamicVariadicNums();
+            b.emitLoadConstant(3L);
+            b.endDynamicVariadicNums();
+            b.endVariadicAddIntIntLArrLArr();
+
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(2L * 7L * 2L + 1L * 7L * 2L + 2L * 7L * 2L + 1L * 7L * 2L + 2L * 7L * 2L + 1L * 7L * 2L, root.getCallTarget().call());
+    }
+
     private static int countInstructions(BytecodeRootNode root, String name) throws AssertionError {
         int count = 0;
         for (Instruction instr : root.getBytecodeNode().getInstructions()) {

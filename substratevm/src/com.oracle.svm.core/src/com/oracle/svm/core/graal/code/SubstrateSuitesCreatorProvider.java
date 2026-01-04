@@ -25,17 +25,19 @@
  */
 package com.oracle.svm.core.graal.code;
 
+import com.oracle.svm.core.SubstrateOptions;
+
 import jdk.graal.compiler.core.phases.CommunityCompilerConfiguration;
 import jdk.graal.compiler.core.phases.EconomyCompilerConfiguration;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 import jdk.graal.compiler.phases.tiers.SuitesCreator;
 
-import com.oracle.svm.core.SubstrateOptions;
-
 public class SubstrateSuitesCreatorProvider {
     private final SuitesCreator suitesCreator;
 
     private final SuitesCreator firstTierSuitesCreator;
+
+    private final SuitesCreator fallbackSuitesCreator;
 
     protected static CompilerConfiguration getHostedCompilerConfiguration() {
         if (SubstrateOptions.useEconomyCompilerConfig()) {
@@ -45,13 +47,23 @@ public class SubstrateSuitesCreatorProvider {
         }
     }
 
-    protected SubstrateSuitesCreatorProvider(SuitesCreator suitesCreator, SuitesCreator firstTierSuitesCreator) {
+    protected static CompilerConfiguration getFallbackCompilerConfiguration() {
+        return new EconomyCompilerConfiguration();
+    }
+
+    protected SubstrateSuitesCreatorProvider(SuitesCreator suitesCreator, SuitesCreator firstTierSuitesCreator, SuitesCreator fallbackSuitesCreator) {
         this.suitesCreator = suitesCreator;
         this.firstTierSuitesCreator = firstTierSuitesCreator;
+        this.fallbackSuitesCreator = fallbackSuitesCreator;
+    }
+
+    protected SubstrateSuitesCreatorProvider(SuitesCreator suitesCreator, SuitesCreator firstTierSuitesCreator) {
+        this(suitesCreator, firstTierSuitesCreator, new SubstrateSuitesCreator(getFallbackCompilerConfiguration()));
     }
 
     public SubstrateSuitesCreatorProvider() {
-        this(new SubstrateSuitesCreator(getHostedCompilerConfiguration()), new SubstrateSuitesCreator(new EconomyCompilerConfiguration()));
+        this(new SubstrateSuitesCreator(getHostedCompilerConfiguration()), new SubstrateSuitesCreator(new EconomyCompilerConfiguration()),
+                        new SubstrateSuitesCreator(getFallbackCompilerConfiguration()));
     }
 
     public final SuitesCreator getSuitesCreator() {
@@ -60,5 +72,9 @@ public class SubstrateSuitesCreatorProvider {
 
     public final SuitesCreator getFirstTierSuitesCreator() {
         return firstTierSuitesCreator;
+    }
+
+    public final SuitesCreator getFallbackSuitesCreator() {
+        return fallbackSuitesCreator;
     }
 }

@@ -147,12 +147,13 @@ public interface KlassRef {
     int getModifiers();
 
     /**
-     * Returns the array klass for this klass with the given dimensions.
+     * Returns the array klass for this klass with the given dimensions iff the array type was
+     * loaded.
      *
      * @param dimensions array dimension
      * @return array klass
      */
-    KlassRef getArrayClass(int dimensions);
+    KlassRef getArrayClassNoCreate(int dimensions);
 
     /**
      * Returns the major version of the corresponding class file for this klass.

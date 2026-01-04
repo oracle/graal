@@ -25,13 +25,18 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
+import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
+
 import jdk.graal.compiler.core.phases.EconomyCompilerConfiguration;
 
-import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
-
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
 public class SubstrateAArch64SuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
     public SubstrateAArch64SuitesCreatorProvider() {
         super(new AArch64SubstrateSuitesCreator(getHostedCompilerConfiguration()),
-                        new AArch64SubstrateSuitesCreator(new EconomyCompilerConfiguration()));
+                        new AArch64SubstrateSuitesCreator(new EconomyCompilerConfiguration()), new AArch64SubstrateSuitesCreator(getFallbackCompilerConfiguration()));
     }
 }

@@ -32,12 +32,13 @@ import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.windows.headers.FileAPI;
+import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 
 public class WindowsLogHandler implements LogHandler {
 
     @Override
     public void log(CCharPointer bytes, UnsignedWord length) {
-        if (!WindowsUtils.writeBytes(getOutputFile(), bytes, length)) {
+        if (!WindowsUtils.write(getOutputFile(), bytes, length)) {
             /*
              * We are in a low-level log routine and output failed, so there is little we can do.
              */
@@ -60,7 +61,7 @@ public class WindowsLogHandler implements LogHandler {
         LibC.abort();
     }
 
-    private static int getOutputFile() {
+    private static HANDLE getOutputFile() {
         // [TODO] Change to use FileDescriptor.err once FileDescriptor class is functional
         return FileAPI.GetStdHandle(FileAPI.STD_ERROR_HANDLE());
     }

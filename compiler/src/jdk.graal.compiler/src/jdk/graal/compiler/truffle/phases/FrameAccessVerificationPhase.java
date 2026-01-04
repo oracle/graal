@@ -28,11 +28,10 @@ package jdk.graal.compiler.truffle.phases;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -67,6 +66,8 @@ import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameAccessFlags;
 import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameAccessType;
 import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameAccessVerificationNode;
 import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameSetNode;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
@@ -237,7 +238,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
 
     private static final class State implements Cloneable {
 
-        private final HashMap<NewFrameNode, byte[]> indexedStates = new HashMap<>();
+        private final Map<NewFrameNode, byte[]> indexedStates = new EconomicHashMap<>();
         private final ArrayList<Effect> effects;
 
         State(ArrayList<Effect> effects) {
@@ -251,7 +252,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
             return newState;
         }
 
-        private static void copy(HashMap<NewFrameNode, byte[]> from, HashMap<NewFrameNode, byte[]> to) {
+        private static void copy(Map<NewFrameNode, byte[]> from, Map<NewFrameNode, byte[]> to) {
             for (Map.Entry<NewFrameNode, byte[]> entry : from.entrySet()) {
                 to.put(entry.getKey(), entry.getValue().clone());
             }
@@ -322,7 +323,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
         private State merge(AbstractMergeNode merge, List<State> states, ArrayList<Effect> firstEndEffects) {
             State result = states.get(0).clone();
             // determine the set of frames that are alive after this merge
-            HashSet<NewFrameNode> frames = new HashSet<>(result.indexedStates.keySet());
+            Set<NewFrameNode> frames = new EconomicHashSet<>(result.indexedStates.keySet());
             for (int i = 1; i < states.size(); i++) {
                 frames.retainAll(states.get(i).indexedStates.keySet());
             }

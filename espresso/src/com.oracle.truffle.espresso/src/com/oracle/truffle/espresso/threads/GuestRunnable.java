@@ -61,9 +61,9 @@ final class GuestRunnable implements Runnable {
             context.getVM().attachThread(Thread.currentThread());
             try {
                 // Execute the payload
-                context.getThreadAccess().fullSafePoint(thread);
+                context.getThreadAccess().checkDeprecatedThreadStatus(thread);
                 context.getMeta().java_lang_Thread_run.invokeDirectVirtual(thread);
-                context.getThreadAccess().fullSafePoint(thread);
+                context.getThreadAccess().checkDeprecatedThreadStatus(thread);
             } catch (EspressoException uncaught) {
                 dispatchUncaught.call(thread, uncaught.getGuestException());
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,9 @@ import static jdk.graal.compiler.debug.DebugOptions.DumpOnError;
 
 import java.util.List;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -42,9 +45,6 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.OpaqueNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import org.junit.Assert;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -110,12 +110,11 @@ public class UnschedulableGraphTest extends GraalCompilerTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void test01() {
         ResolvedJavaMethod method = getResolvedJavaMethod("snippet01");
-        try (AutoCloseable c = new TTY.Filter();
+        try (AutoCloseable _ = new TTY.Filter();
                         DebugContext debug = getDebugContext(method);
-                        DebugCloseable s = debug.disableIntercept()) {
+                        DebugCloseable _ = debug.disableIntercept()) {
             test(debug.getOptions(), "snippet01", 0, 1, 2);
             Assert.fail("Compilation should not reach this point, must throw an exception before");
         } catch (Throwable t) {

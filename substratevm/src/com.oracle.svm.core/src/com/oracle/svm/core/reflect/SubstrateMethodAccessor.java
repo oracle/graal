@@ -34,6 +34,7 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.nodes.LoadMethodByIndexNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointerForCallerSensitiveAdapter;
 import com.oracle.svm.core.util.VMError;
@@ -41,12 +42,8 @@ import com.oracle.svm.core.util.VMError;
 import jdk.internal.reflect.MethodAccessor;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-interface MethodAccessorJDK19 {
-    Object invoke(Object obj, Object[] args, Class<?> caller);
-}
-
 @InternalVMMethod
-public final class SubstrateMethodAccessor extends SubstrateAccessor implements MethodAccessor, MethodAccessorJDK19 {
+public final class SubstrateMethodAccessor extends SubstrateAccessor implements MethodAccessor {
 
     public static final int VTABLE_INDEX_STATICALLY_BOUND = -1;
     public static final int VTABLE_INDEX_NOT_YET_COMPUTED = -2;
@@ -56,8 +53,8 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
     public static final int INTERFACE_TYPEID_UNNEEDED = -3;
 
     /**
-     * The expected receiver type, which is checked before invoking the {@link #expandSignature}
-     * method, or null for static methods.
+     * The expected receiver type, which is checked before invoking the address from
+     * {@link #getExpandSignature()}, or {@code null} for static methods.
      */
     private final Class<?> receiverType;
     /** The actual value is computed after static analysis using a field value transformer. */
@@ -66,7 +63,7 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
     private final boolean callerSensitiveAdapter;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateMethodAccessor(Executable member, Class<?> receiverType, CFunctionPointer expandSignature, CFunctionPointer directTarget, ResolvedJavaMethod targetMethod, int vtableIndex,
+    public SubstrateMethodAccessor(Executable member, Class<?> receiverType, MethodRef expandSignature, MethodRef directTarget, ResolvedJavaMethod targetMethod, int vtableIndex,
                     DynamicHub initializeBeforeInvoke, boolean callerSensitiveAdapter) {
         super(member, expandSignature, directTarget, targetMethod, initializeBeforeInvoke);
         this.receiverType = receiverType;
@@ -107,7 +104,7 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
          */
         VMError.guarantee(vtableIndex != VTABLE_INDEX_NOT_YET_COMPUTED && interfaceTypeID != INTERFACE_TYPEID_NOT_YET_COMPUTED, "Missed recomputation at image build time");
         if (vtableIndex == VTABLE_INDEX_STATICALLY_BOUND) {
-            return directTarget;
+            return getDirectTarget();
         } else {
             return (CFunctionPointer) LoadMethodByIndexNode.loadMethodByIndex(obj.getClass(), vtableIndex, interfaceTypeID);
         }
@@ -119,14 +116,14 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
             throw VMError.shouldNotReachHere("Cannot invoke method that has a @CallerSensitiveAdapter without an explicit caller");
         }
         preInvoke(obj);
-        return ((MethodInvokeFunctionPointer) expandSignature).invoke(obj, args, invokeTarget(obj));
+        return ((MethodInvokeFunctionPointer) getExpandSignature()).invoke(obj, args, invokeTarget(obj));
     }
 
     @Override
     public Object invoke(Object obj, Object[] args, Class<?> caller) {
         if (callerSensitiveAdapter) {
             preInvoke(obj);
-            return ((MethodInvokeFunctionPointerForCallerSensitiveAdapter) expandSignature).invoke(obj, args, invokeTarget(obj), caller);
+            return ((MethodInvokeFunctionPointerForCallerSensitiveAdapter) getExpandSignature()).invoke(obj, args, invokeTarget(obj), caller);
         } else {
             /* Not a @CallerSensitiveAdapter method, so we can ignore the caller argument. */
             return invoke(obj, args);

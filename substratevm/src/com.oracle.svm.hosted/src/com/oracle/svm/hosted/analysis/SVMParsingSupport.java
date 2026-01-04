@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.analysis;
 
-import java.util.function.Function;
+import java.util.function.Predicate;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -39,7 +39,6 @@ import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * {@link com.oracle.graal.pointsto.api.HostVM} methods which may be overwritten by substratevm
@@ -65,5 +64,5 @@ public interface SVMParsingSupport {
 
     InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey, InlineBeforeAnalysisPolicy defaultPolicy);
 
-    Function<AnalysisType, ResolvedJavaType> getStrengthenGraphsToTargetFunction(MultiMethod.MultiMethodKey key);
+    Predicate<AnalysisType> getStrengthenGraphsTypePredicate(MultiMethod.MultiMethodKey key);
 }

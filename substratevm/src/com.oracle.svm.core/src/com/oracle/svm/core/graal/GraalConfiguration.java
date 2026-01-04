@@ -124,12 +124,20 @@ public class GraalConfiguration {
         return ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getFirstTierSuitesCreator().createSuites(options, arch);
     }
 
+    public Suites createFallbackSuites(OptionValues options, @SuppressWarnings("unused") boolean hosted, Architecture arch) {
+        return ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getFallbackSuitesCreator().createSuites(options, arch);
+    }
+
     public LIRSuites createLIRSuites(OptionValues options) {
         return ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getSuitesCreator().createLIRSuites(options);
     }
 
     public LIRSuites createFirstTierLIRSuites(OptionValues options) {
         return ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getFirstTierSuitesCreator().createLIRSuites(options);
+    }
+
+    public LIRSuites createFallbackLIRSuites(OptionValues options) {
+        return ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getFallbackSuitesCreator().createLIRSuites(options);
     }
 
     public String getCompilerConfigurationName() {

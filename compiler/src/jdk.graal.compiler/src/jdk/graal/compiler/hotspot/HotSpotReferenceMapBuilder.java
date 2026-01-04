@@ -24,22 +24,21 @@
  */
 package jdk.graal.compiler.hotspot;
 
+import static jdk.graal.compiler.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.graal.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import java.util.ArrayList;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.framemap.ReferenceMapBuilder;
-import jdk.graal.compiler.debug.Assertions;
-
 import jdk.vm.ci.code.Location;
 import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.code.StackSlot;
@@ -115,6 +114,7 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
                 Location base = null;
                 if (kind.isDerivedReference()) {
                     Variable baseVariable = LIRValueUtil.asVariable(kind.getDerivedReferenceBase());
+                    GraalError.guarantee(state.getLiveBasePointers() != null, "no live base pointers for derived reference %s", baseVariable);
                     Value baseValue = state.getLiveBasePointers().get(baseVariable.index);
                     assert baseValue.getPlatformKind().getVectorLength() == 1 &&
                                     ((LIRKind) baseValue.getValueKind()).isReference(0) &&

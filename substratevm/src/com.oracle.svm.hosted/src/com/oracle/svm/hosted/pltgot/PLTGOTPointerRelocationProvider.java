@@ -27,8 +27,10 @@ package com.oracle.svm.hosted.pltgot;
 import java.util.function.Predicate;
 
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.MethodPointerRelocationProvider;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
@@ -56,5 +58,11 @@ public class PLTGOTPointerRelocationProvider extends MethodPointerRelocationProv
         } else {
             super.markMethodPointerRelocation(section, offset, relocationKind, target, addend, methodPointer, isInjectedNotCompiled);
         }
+    }
+
+    @Override
+    public void markMethodOffsetRelocation(ObjectFile.ProgbitsSectionImpl section, int offset, ObjectFile.RelocationKind relocationKind, HostedMethod target, long addend, MethodOffset methodOffset,
+                    boolean isInjectedNotCompiled) {
+        throw VMError.shouldNotReachHere("not implemented");
     }
 }

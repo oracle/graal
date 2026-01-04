@@ -33,14 +33,14 @@ import jdk.graal.compiler.debug.GraalError;
  * code.
  */
 public enum HotSpotMarkId implements CompilationResult.MarkId {
-    VERIFIED_ENTRY,
-    UNVERIFIED_ENTRY,
-    OSR_ENTRY,
-    EXCEPTION_HANDLER_ENTRY,
-    DEOPT_HANDLER_ENTRY,
-    DEOPT_MH_HANDLER_ENTRY,
-    FRAME_COMPLETE,
-    ENTRY_BARRIER_PATCH,
+    VERIFIED_ENTRY(true),
+    UNVERIFIED_ENTRY(true),
+    OSR_ENTRY(true),
+    EXCEPTION_HANDLER_ENTRY(true),
+    DEOPT_HANDLER_ENTRY(true),
+    DEOPT_MH_HANDLER_ENTRY(true),
+    FRAME_COMPLETE(true),
+    ENTRY_BARRIER_PATCH(true),
     INVOKEINTERFACE,
     INVOKEVIRTUAL,
     INVOKESTATIC,
@@ -73,14 +73,24 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
 
     private Integer value;
     private final String arch;
+    private final boolean isUnique;
 
     HotSpotMarkId() {
-        this(null);
+        this(null, false);
+    }
+
+    HotSpotMarkId(boolean isUnique) {
+        this(null, isUnique);
     }
 
     HotSpotMarkId(String arch) {
+        this(arch, false);
+    }
+
+    HotSpotMarkId(String arch, boolean isUnique) {
         this.value = null;
         this.arch = arch;
+        this.isUnique = isUnique;
     }
 
     void setValue(Integer value) {
@@ -108,6 +118,11 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
 
     public boolean isAvailable() {
         return value != null;
+    }
+
+    @Override
+    public boolean isUnique() {
+        return isUnique;
     }
 
     @Override

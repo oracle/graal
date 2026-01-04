@@ -288,7 +288,7 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
                 JavaType parameterType = signature.getParameterType(index, target.getDeclaringClass());
                 maybeCastArgument(adder, arguments, receiverSkip + index, parameterType);
             }
-            T invoke = createTargetInvokeNode(factory, assumptions, intrinsicMethod, realTarget, original, bci, returnStamp, arguments);
+            T invoke = createTargetInvokeNode(factory, assumptions, intrinsicMethod, realTarget, bci, returnStamp, arguments);
             assert invoke != null : "graph has been modified so this must result an invoke";
             return invoke;
         }
@@ -332,13 +332,12 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
     }
 
     /**
-     * Creates an {@link InvokeNode} for the given target method. The {@link CallTargetNode} passed
-     * to the InvokeNode is in fact a {@link ResolvedMethodHandleCallTargetNode}.
+     * Creates an {@link InvokeNode} for the given target method.
      *
      * @return invoke node for the member name target
      */
     private static <T extends Invoke> T createTargetInvokeNode(InvokeFactory<T> factory, Assumptions assumptions, IntrinsicMethod intrinsicMethod,
-                    ResolvedJavaMethod target, ResolvedJavaMethod original, int bci, StampPair returnStamp, ValueNode[] arguments) {
+                    ResolvedJavaMethod target, int bci, StampPair returnStamp, ValueNode[] arguments) {
         InvokeKind targetInvokeKind = target.isStatic() ? InvokeKind.Static : InvokeKind.Special;
         JavaType targetReturnType = target.getSignature().getReturnType(null);
 
@@ -360,7 +359,7 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
         }
         StampPair targetReturnStamp = StampFactory.forDeclaredType(assumptions, targetReturnType, false);
 
-        MethodCallTargetNode callTarget = ResolvedMethodHandleCallTargetNode.create(targetInvokeKind, target, targetArguments, targetReturnStamp, original, arguments, returnStamp);
+        MethodCallTargetNode callTarget = new MethodCallTargetNode(targetInvokeKind, target, targetArguments, targetReturnStamp, null);
 
         // The call target can have a different return type than the invoker,
         // e.g. the target returns an Object but the invoker void. In this case

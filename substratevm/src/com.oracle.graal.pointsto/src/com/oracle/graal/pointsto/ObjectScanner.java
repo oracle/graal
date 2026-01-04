@@ -172,7 +172,7 @@ public class ObjectScanner {
     protected void scanField(AnalysisField field, JavaConstant receiver, ScanReason prevReason) {
         ScanReason reason = new FieldScan(field, receiver, prevReason);
         try {
-            if (!bb.getUniverse().getHeapScanner().isValueAvailable(field)) {
+            if (!bb.getUniverse().getHeapScanner().isValueAvailable(field, receiver)) {
                 /* The value is not available yet. */
                 return;
             }
@@ -542,11 +542,7 @@ public class ObjectScanner {
     }
 
     public static class OtherReason extends ScanReason {
-        public static final ScanReason LATE_SCAN = new OtherReason("late scan, after sealing heap");
         public static final ScanReason UNKNOWN = new OtherReason("manually created constant");
-        public static final ScanReason RESCAN = new OtherReason("manually triggered rescan");
-        public static final ScanReason HUB = new OtherReason("scanning a class constant");
-        public static final ScanReason PERSISTED = new OtherReason("persisted");
 
         final String reason;
 
@@ -608,8 +604,7 @@ public class ObjectScanner {
 
         public String location() {
             Object readBy = field.getReadBy();
-            if (readBy instanceof BytecodePosition) {
-                BytecodePosition position = (BytecodePosition) readBy;
+            if (readBy instanceof BytecodePosition position) {
                 return position.getMethod().asStackTraceElement(position.getBCI()).toString();
             } else if (readBy instanceof AnalysisMethod) {
                 return ((AnalysisMethod) readBy).asStackTraceElement(0).toString();
@@ -747,7 +742,7 @@ public class ObjectScanner {
 
         @Override
         public String toString(BigBang bb) {
-            return "scanning root " + asString(bb, constant) + " embedded in" + System.lineSeparator() + INDENTATION_AFTER_NEWLINE + asStackTraceElement();
+            return "scanning root constant " + asString(bb, constant) + " embedded in" + System.lineSeparator() + INDENTATION_AFTER_NEWLINE + asStackTraceElement();
         }
 
         @Override

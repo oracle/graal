@@ -40,11 +40,13 @@ import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Central static analysis interface that groups together the functionality of reachability analysis
@@ -61,6 +63,8 @@ public interface BigBang extends ReachabilityAnalysis {
 
     UnsupportedFeatures getUnsupportedFeatures();
 
+    boolean isPointsToAnalysis();
+
     /**
      * Checks if all user defined limitations such as the number of types are satisfied.
      */
@@ -74,7 +78,7 @@ public interface BigBang extends ReachabilityAnalysis {
 
     HostedProviders getProviders(MultiMethod.MultiMethodKey key);
 
-    List<DebugHandlersFactory> getDebugHandlerFactories();
+    List<DebugDumpHandlersFactory> getDebugHandlerFactories();
 
     /**
      * Prints more detailed information about all analysis timers.
@@ -92,6 +96,10 @@ public interface BigBang extends ReachabilityAnalysis {
     void runAnalysis(DebugContext debug, Function<AnalysisUniverse, Boolean> duringAnalysisAction) throws InterruptedException;
 
     boolean trackPrimitiveValues();
+
+    default boolean isSupportedJavaKind(JavaKind javaKind) {
+        return javaKind == JavaKind.Object;
+    }
 
     /** You can blacklist certain callees here. */
     @SuppressWarnings("unused")
@@ -125,6 +133,10 @@ public interface BigBang extends ReachabilityAnalysis {
 
     void initializeMetaData(AnalysisType type);
 
+    void markInitializationFinished();
+
+    boolean isInitialized();
+
     /**
      * Callback executed after the analysis finished. The cleanupAfterAnalysis is executed after the
      * universe builder, which can be too late for some tasks.
@@ -139,12 +151,22 @@ public interface BigBang extends ReachabilityAnalysis {
     }
 
     @SuppressWarnings("unused")
-    default void registerTypeForBaseImage(Class<?> cls) {
+    default void tryRegisterTypeForBaseImage(ResolvedJavaType type) {
 
     }
 
     @SuppressWarnings("unused")
-    default void registerMethodForBaseImage(AnalysisMethod method) {
+    default void tryRegisterMethodForBaseImage(AnalysisMethod method) {
+
+    }
+
+    @SuppressWarnings("unused")
+    default void tryRegisterFieldForBaseImage(AnalysisField field) {
+
+    }
+
+    @SuppressWarnings("unused")
+    default void tryRegisterNativeMethodsForBaseImage(ResolvedJavaType analysisType) {
 
     }
 }

@@ -40,6 +40,10 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import sun.management.Util;
 
@@ -50,6 +54,7 @@ import sun.management.Util;
  * empty arrays (instead of throwing errors) only to improve compatibility with tools that interact
  * with JMX. These still need to be implemented (GR-44559).
  */
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
     private final AtomicLong totalStartedThreadCount = new AtomicLong(0);
     private final AtomicInteger peakThreadCount = new AtomicInteger(0);
@@ -60,7 +65,7 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
     private boolean cpuTimeEnabled;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    SubstrateThreadMXBean() {
+    public SubstrateThreadMXBean() {
         /*
          * We always track the amount of memory that is allocated by each thread, so this MX bean
          * feature can be on by default.

@@ -38,11 +38,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+
 suite = {
-  "mxversion": "7.33.0",
+  "mxversion": "7.65.0",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
-  "version" : "25.0.0",
+  "version" : "25.1.0",
   "release" : False,
   "versionConflictResolution" : "latest",
   "url" : "http://graalvm.org/webassembly",
@@ -67,6 +68,7 @@ suite = {
       },
     ],
   },
+  "capture_suite_commit_info": False,
   "libraries": {
     "JOL": {
       "digest" : "sha512:8adfb561c82f9b198d1d8b7bea605fc8f4418d3e199d0d6262014dc75cee5b1a2ff59ec838b6322f5ee981e7094dbc3c9fa61ee5e8bfe7793aa927e2a900c6ec",
@@ -93,6 +95,26 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "UPL",
+    },
+
+    "org.graalvm.wasm.jdk25" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.wasm",
+      ],
+      "requires": [
+        "jdk.incubator.vector", # Vector API
+      ],
+      "overlayTarget" : "org.graalvm.wasm",
+      "multiReleaseJarVersion" : "25",
+      "checkstyle" : "org.graalvm.wasm",
+      "javaCompliance" : "25+",
+      "forceJavac": True,
+      "workingSets" : "WebAssembly",
+      "license" : "UPL",
+      "javac.lint.overrides" : "-incubating",
+      "spotbugs" : "false",
     },
 
     "org.graalvm.wasm.launcher" : {
@@ -204,6 +226,13 @@ suite = {
       "testProject" : True,
     },
 
+    "org.graalvm.wasm.polybench": {
+      "subDir": "benchmarks",
+      "class": "GraalVmWatProject",
+      "defaultBuild": False,
+      "testProject": True,
+    },
+
     "org.graalvm.wasm.memory" : {
       "subDir": "src",
       "sourceDirs" : ["src"],
@@ -247,6 +276,7 @@ suite = {
         # Configure launcher
         "-Dorg.graalvm.launcher.class=org.graalvm.wasm.launcher.WasmLauncher",
       ],
+      "dynamicBuildArgs": "libwasmvm_build_args",
     },
   },
 
@@ -273,6 +303,7 @@ suite = {
         "name" : "org.graalvm.wasm",
         "requires": [
           "org.graalvm.collections",
+          "static jdk.incubator.vector", # Vector API
         ],
       },
       "subDir" : "src",
@@ -283,7 +314,7 @@ suite = {
         "truffle:TRUFFLE_API",
         "sdk:POLYGLOT",
       ],
-      "description" : "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This artifact includes the core language runtime. It is not recommended to depend on the artifact directly. Instead, use `org.graalvm.polyglot:wasm` or `org.graalvm.polyglot:wasm-community` to ensure all dependencies are pulled in correctly.", # pylint: disable=line-too-long
+      "description" : "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This artifact includes the core language runtime. It is not recommended to depend on the artifact directly. Instead, use `org.graalvm.polyglot:wasm` to ensure all dependencies are pulled in correctly.", # pylint: disable=line-too-long
       "allowsJavadocWarnings": True,
       "license" : "UPL",
       "maven" : {
@@ -291,19 +322,20 @@ suite = {
         "tag": ["default", "public"],
       },
       "noMavenJavadoc": True,
+      "useModulePath": True,
     },
 
-    "WASM_COMMUNITY": {
+    "WASM_POM": {
       "type": "pom",
       "runtimeDependencies": [
         "WASM",
         "truffle:TRUFFLE_RUNTIME",
       ],
       "maven": {
-        "artifactId": "wasm-community",
+        "artifactId": "wasm",
         "tag": ["default", "public"],
       },
-      "description": "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This POM dependency includes GraalWasm dependencies and Truffle Community Edition.",
+      "description": "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This POM dependency includes GraalWasm dependencies and Truffle.",
       "license": "UPL",
     },
 
@@ -324,18 +356,34 @@ suite = {
       "distDependencies" : [
         "sdk:LAUNCHER_COMMON",
       ],
-      "mainClass" : "org.graalvm.wasm.WasmLauncher",
+      "mainClass" : "org.graalvm.wasm.launcher.WasmLauncher",
       "license" : "UPL",
       "maven" : False,
+      "useModulePath": True,
     },
 
     "WASM_TESTS" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm.test",
+        "exports" : [
+          # Export everything to junit and dependent test distributions.
+          "org.graalvm.wasm.test*",
+          # Export utils to JMH benchmarks
+          "org.graalvm.wasm.utils*",
+        ],
+        "requires" : [
+          "org.graalvm.polyglot",
+          "org.graalvm.collections",
+          "org.graalvm.truffle",
+        ],
+      },
       "dependencies" : [
         "org.graalvm.wasm.test",
         "org.graalvm.wasm.utils",
       ],
       "exclude" : [
         "mx:JUNIT",
+        "mx:HAMCREST",
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
@@ -343,10 +391,22 @@ suite = {
         "WASM",
       ],
       "maven" : False,
+      "useModulePath": True,
       "unittestConfig": "wasm",
     },
 
     "WASM_TESTCASES" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm.testcases",
+        "exports" : [
+          # Export everything to junit
+          "org.graalvm.wasm.testcases* to junit",
+        ],
+        "opens" : [
+          "test.c",
+          "test.wat",
+        ],
+      },
       "description" : "Tests compiled from the source code.",
       "dependencies" : [
         "org.graalvm.wasm.testcases",
@@ -360,11 +420,19 @@ suite = {
       ],
       "defaultBuild" : False,
       "maven" : False,
+      "useModulePath" : True,
       "testDistribution" : True,
       "unittestConfig": "wasm",
     },
 
     "WASM_BENCHMARKS" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm.benchmark",
+        "requires" : [
+          "java.compiler",
+          "org.graalvm.polyglot",
+        ],
+      },
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.wasm.benchmark",
@@ -377,6 +445,7 @@ suite = {
         "WASM_TESTS",
       ],
       "maven" : False,
+      "useModulePath": True,
       "testDistribution" : True,
     },
 
@@ -400,6 +469,17 @@ suite = {
       "platformDependent" : True,
       "maven" : False,
       "testDistribution" : True,
+    },
+
+    "WASM_POLYBENCH_BENCHMARKS": {
+      "description": "Distribution for Wasm polybench benchmarks",
+      "layout": {
+        "./": [
+          "dependency:org.graalvm.wasm.polybench/*",
+        ],
+      },
+      "defaultBuild": False,
+      "testDistribution": True,
     },
 
     "WASM_GRAALVM_SUPPORT": {

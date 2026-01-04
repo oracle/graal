@@ -28,7 +28,7 @@ package com.oracle.svm.hosted.webimage.snippets;
 import java.text.MessageFormat;
 import java.util.List;
 
-import jdk.graal.compiler.hightiercodegen.Emitter;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
 
 /**
  * Collection of small handwritten JavaScript snippets that may contain some placeholder values.

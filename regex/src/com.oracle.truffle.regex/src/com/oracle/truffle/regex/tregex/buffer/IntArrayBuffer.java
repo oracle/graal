@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -121,8 +121,11 @@ public class IntArrayBuffer extends AbstractArrayBuffer implements Iterable<Inte
     }
 
     public void addAll(IntArrayBuffer o) {
-        ensureCapacity(length + o.length);
-        System.arraycopy(o.buf, 0, buf, length, o.length);
+        addAll(o.buf, o.length);
+    }
+
+    public void addAll(int[] o) {
+        addAll(o, o.length);
     }
 
     public int getLast() {
@@ -144,6 +147,16 @@ public class IntArrayBuffer extends AbstractArrayBuffer implements Iterable<Inte
     @Override
     public PrimitiveIterator.OfInt iterator() {
         return new IntArrayBufferIterator(buf, length);
+    }
+
+    public void addAll(int[] v, int vLength) {
+        ensureCapacity(length + vLength);
+        System.arraycopy(v, 0, buf, length, vLength);
+        length += vLength;
+    }
+
+    public int pop() {
+        return this.buf[--length];
     }
 
     private static final class IntArrayBufferIterator implements PrimitiveIterator.OfInt {

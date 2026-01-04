@@ -54,9 +54,10 @@ import com.oracle.truffle.nfi.NativeSource.ParsedLibrary;
 import com.oracle.truffle.nfi.NativeSource.ParsedSignature;
 import com.oracle.truffle.nfi.backend.spi.NFIState;
 
-@TruffleLanguage.Registration(id = "nfi", name = "TruffleNFI", version = "0.1", characterMimeTypes = NFILanguage.MIME_TYPE, internal = true, contextPolicy = ContextPolicy.SHARED)
+@TruffleLanguage.Registration(id = NFILanguage.ID, name = "TruffleNFI", version = "0.1", characterMimeTypes = NFILanguage.MIME_TYPE, internal = true, contextPolicy = ContextPolicy.SHARED)
 public class NFILanguage extends TruffleLanguage<NFIContext> {
 
+    static final String ID = "nfi";
     public static final String MIME_TYPE = "application/x-native";
 
     private final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("NFI single context");

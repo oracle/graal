@@ -25,15 +25,15 @@
 
 package jdk.graal.compiler.core.amd64;
 
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.graal.compiler.lir.LIRValueUtil.asConstant;
 import static jdk.graal.compiler.lir.LIRValueUtil.isConstantValue;
 import static jdk.graal.compiler.lir.LIRValueUtil.isStackSlotValue;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.DataPointerConstant;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
@@ -44,7 +44,6 @@ import jdk.graal.compiler.lir.amd64.AMD64Move.LeaOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move.MoveFromConstOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move.MoveFromRegOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move.MoveToRegOp;
-
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;

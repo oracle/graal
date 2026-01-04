@@ -59,6 +59,12 @@ public final class SubstitutionFlag {
      */
     public static final byte needsSignatureMangle = 0b00000100;
 
+    /**
+     * Whether to relax type checks in the substitution processor to allow for @Pointer
+     * TruffleObject. Used for substitutions in libnespresso.
+     */
+    public static final byte allowPointerType = 0b00001000;
+
     private SubstitutionFlag() {
     }
 }

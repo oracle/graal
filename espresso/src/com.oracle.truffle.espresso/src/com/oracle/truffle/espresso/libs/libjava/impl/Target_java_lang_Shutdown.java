@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(type = "Ljava/lang/Shutdown;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_Shutdown {
     @Substitution
     public static void beforeHalt(@Inject VM vm) {

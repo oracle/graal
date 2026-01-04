@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,5 +56,18 @@ public final class MathUtil {
             return x;
         }
         return x + 1;
+    }
+
+    public static int saturatingAdd(int x, int y) {
+        int sum = x + y;
+        return sum < 0 ? Integer.MAX_VALUE : sum;
+    }
+
+    public static int saturatingMul(int x, int y) {
+        long r = (long) x * (long) y;
+        if ((int) r != r) {
+            return Integer.MAX_VALUE;
+        }
+        return (int) r;
     }
 }

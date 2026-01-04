@@ -24,8 +24,10 @@
  */
 package jdk.graal.compiler.core.test;
 
-import java.util.HashMap;
 import java.util.Map;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
@@ -38,8 +40,7 @@ import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.java.MonitorExitNode;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import org.junit.Assert;
-import org.junit.Test;
+import jdk.graal.compiler.util.EconomicHashMap;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant
@@ -97,7 +98,7 @@ public class MonitorGraphTest extends GraalCompilerTest {
                 }
             }
         }
-        Map<Invoke, Double> hints = new HashMap<>();
+        Map<Invoke, Double> hints = new EconomicHashMap<>();
         for (Invoke invoke : graph.getInvokes()) {
             hints.put(invoke, 1000d);
         }

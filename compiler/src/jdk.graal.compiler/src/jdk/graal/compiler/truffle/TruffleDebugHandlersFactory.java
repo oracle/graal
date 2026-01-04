@@ -25,26 +25,25 @@
 package jdk.graal.compiler.truffle;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpHandler;
-import jdk.graal.compiler.debug.DebugHandler;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.DebugOptions.PrintGraphTarget;
+import jdk.graal.compiler.graphio.GraphOutput;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
-import jdk.graal.compiler.graphio.GraphOutput;
+import jdk.graal.compiler.util.EconomicHashMap;
 
-@ServiceProvider(DebugHandlersFactory.class)
-public class TruffleDebugHandlersFactory implements DebugHandlersFactory {
+@ServiceProvider(DebugDumpHandlersFactory.class)
+public class TruffleDebugHandlersFactory implements DebugDumpHandlersFactory {
 
     @Override
-    public List<DebugHandler> createHandlers(OptionValues options) {
-        return List.<DebugHandler> of(new TruffleASTDumpHandler());
+    public List<DebugDumpHandler> createHandlers(OptionValues options) {
+        return List.<DebugDumpHandler> of(new TruffleASTDumpHandler());
     }
 
     private final class TruffleASTDumpHandler implements DebugDumpHandler {
@@ -54,12 +53,12 @@ public class TruffleDebugHandlersFactory implements DebugHandlersFactory {
 
         @Override
         public void dump(Object object, DebugContext debug, boolean forced, String format, Object... arguments) {
-            if (object instanceof TruffleAST ast && DebugOptions.PrintGraph.getValue(debug.getOptions()) != PrintGraphTarget.Disable) {
+            if (object instanceof TruffleDebugAST ast && DebugOptions.PrintGraph.getValue(debug.getOptions()) != PrintGraphTarget.Disable) {
                 try {
-                    var output = debug.buildOutput(GraphOutput.newBuilder(TruffleAST.AST_DUMP_STRUCTURE).blocks(TruffleAST.AST_DUMP_STRUCTURE));
-                    Map<Object, Object> properties = new HashMap<>();
+                    var output = debug.buildOutput(GraphOutput.newBuilder(TruffleDebugAST.AST_DUMP_STRUCTURE).blocks(TruffleDebugAST.AST_DUMP_STRUCTURE));
+                    Map<Object, Object> properties = new EconomicHashMap<>();
                     output.beginGroup(ast, "AST", "AST", null, 0, null);
-                    output.print((TruffleAST) object, properties, 0, format, arguments);
+                    output.print((TruffleDebugAST) object, properties, 0, format, arguments);
                     output.endGroup();
                     output.close();
                 } catch (IOException e) {

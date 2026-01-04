@@ -40,15 +40,15 @@ import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.SerializationConfigurationParser;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.util.json.JsonPrinter;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class SerializationConfiguration extends ConfigurationBase<SerializationConfiguration, SerializationConfiguration.Predicate>
-                implements RuntimeSerializationSupport<UnresolvedConfigurationCondition> {
+                implements RuntimeSerializationSupport<UnresolvedAccessCondition> {
 
     private final Set<SerializationConfigurationType> serializations = ConcurrentHashMap.newKeySet();
     private final Set<SerializationConfigurationLambdaCapturingType> lambdaSerializationCapturingTypes = ConcurrentHashMap.newKeySet();
@@ -99,13 +99,13 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     }
 
     @Override
-    public void mergeConditional(UnresolvedConfigurationCondition condition, SerializationConfiguration other) {
+    public void mergeConditional(UnresolvedAccessCondition condition, SerializationConfiguration other) {
         for (SerializationConfigurationType type : other.serializations) {
             serializations.add(new SerializationConfigurationType(condition, type.getQualifiedJavaName()));
         }
     }
 
-    public boolean contains(UnresolvedConfigurationCondition condition, String serializationTargetClass) {
+    public boolean contains(UnresolvedAccessCondition condition, String serializationTargetClass) {
         return serializations.contains(createConfigurationType(condition, serializationTargetClass)) ||
                         lambdaSerializationCapturingTypes.contains(createLambdaCapturingClassConfigurationType(condition, serializationTargetClass));
     }
@@ -133,7 +133,7 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
 
     @Override
     public ConfigurationParser createParser(boolean combinedFileSchema, EnumSet<ConfigurationParserOption> parserOptions) {
-        return SerializationConfigurationParser.create(combinedFileSchema, ConfigurationConditionResolver.identityResolver(), this, parserOptions);
+        return SerializationConfigurationParser.create(combinedFileSchema, AccessConditionResolver.identityResolver(), this, parserOptions);
     }
 
     @Override
@@ -147,27 +147,27 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     }
 
     @Override
-    public void registerIncludingAssociatedClasses(UnresolvedConfigurationCondition condition, Class<?> clazz) {
-        register(condition, clazz);
+    public void registerIncludingAssociatedClasses(UnresolvedAccessCondition condition, Class<?> clazz) {
+        register(condition, false, clazz);
     }
 
     @Override
-    public void register(UnresolvedConfigurationCondition condition, Class<?> clazz) {
+    public void register(UnresolvedAccessCondition condition, boolean preserved, Class<?> clazz) {
         register(condition, clazz.getName());
     }
 
     @Override
-    public void register(UnresolvedConfigurationCondition condition, String className) {
+    public void register(UnresolvedAccessCondition condition, String className) {
         serializations.add(createConfigurationType(condition, className));
     }
 
     @Override
-    public void registerLambdaCapturingClass(UnresolvedConfigurationCondition condition, String lambdaCapturingClassName) {
+    public void registerLambdaCapturingClass(UnresolvedAccessCondition condition, String lambdaCapturingClassName) {
         lambdaSerializationCapturingTypes.add(createLambdaCapturingClassConfigurationType(condition, lambdaCapturingClassName.split(LambdaUtils.LAMBDA_SPLIT_PATTERN)[0]));
     }
 
     @Override
-    public void registerProxyClass(UnresolvedConfigurationCondition condition, List<String> implementedInterfaces) {
+    public void registerProxyClass(UnresolvedAccessCondition condition, List<String> implementedInterfaces) {
         interfaceListsSerializableProxies.add(new ConditionalElement<>(condition, implementedInterfaces));
     }
 
@@ -176,12 +176,12 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
         return serializations.isEmpty() && lambdaSerializationCapturingTypes.isEmpty() && interfaceListsSerializableProxies.isEmpty();
     }
 
-    private static SerializationConfigurationType createConfigurationType(UnresolvedConfigurationCondition condition, String className) {
+    private static SerializationConfigurationType createConfigurationType(UnresolvedAccessCondition condition, String className) {
         String convertedClassName = SignatureUtil.toInternalClassName(className);
         return new SerializationConfigurationType(condition, convertedClassName);
     }
 
-    private static SerializationConfigurationLambdaCapturingType createLambdaCapturingClassConfigurationType(UnresolvedConfigurationCondition condition, String className) {
+    private static SerializationConfigurationLambdaCapturingType createLambdaCapturingClassConfigurationType(UnresolvedAccessCondition condition, String className) {
         String convertedClassName = SignatureUtil.toInternalClassName(className);
         return new SerializationConfigurationLambdaCapturingType(condition, convertedClassName);
     }

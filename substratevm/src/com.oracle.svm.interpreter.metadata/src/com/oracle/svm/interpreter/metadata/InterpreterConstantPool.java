@@ -26,28 +26,63 @@ package com.oracle.svm.interpreter.metadata;
 
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEDYNAMIC;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Function;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.espresso.classfile.ConstantPool;
+import com.oracle.svm.espresso.classfile.ParserConstantPool;
+import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.svm.espresso.classfile.descriptors.Name;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 
-import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.UnresolvedJavaField;
+import jdk.vm.ci.meta.UnresolvedJavaMethod;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
-public final class InterpreterConstantPool implements ConstantPool {
+/**
+ * JVMCI's {@link jdk.vm.ci.meta.ConstantPool} is not designed to be used in a performance-sensitive
+ * bytecode interpreter, so a Espresso-like CP implementation is used instead for performance.
+ * <p>
+ * This class doesn't support runtime resolution on purpose, but supports pre-resolved entries
+ * instead for AOT types.
+ */
+public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.meta.ConstantPool {
 
-    private final InterpreterResolvedObjectType holder;
+    final InterpreterResolvedObjectType holder;
+    final ParserConstantPool parserConstantPool;
+
     // Assigned after analysis.
-    @UnknownObjectField(types = Object[].class) private Object[] entries;
+    @UnknownObjectField(availability = AfterAnalysis.class, types = Object[].class) protected Object[] cachedEntries;
 
-    Object at(int cpi) {
+    // TODO move to crema once GR-71517 is resolved
+    private volatile jdk.vm.ci.meta.ConstantPool ristrettoConstantPool;
+    private static final AtomicReferenceFieldUpdater<InterpreterConstantPool, jdk.vm.ci.meta.ConstantPool> RISTRETTO_CONSTANT_POOL_UPDATER = AtomicReferenceFieldUpdater
+                    .newUpdater(InterpreterConstantPool.class, jdk.vm.ci.meta.ConstantPool.class, "ristrettoConstantPool");
+
+    Object objAt(int cpi) {
         if (cpi == 0) {
             // 0 implies unknown (!= unresolved) e.g. unknown class, field, method ...
             // In this case it's not possible to even provide a name or symbolic representation for
@@ -56,32 +91,59 @@ public final class InterpreterConstantPool implements ConstantPool {
             // where an appropriate error should be thrown.
             throw VMError.shouldNotReachHere("Cannot resolve CP entry 0");
         }
-        return entries[cpi];
+        return cachedEntries[cpi];
     }
 
-    private InterpreterConstantPool(InterpreterResolvedObjectType holder, Object[] entries) {
+    protected InterpreterConstantPool(InterpreterResolvedObjectType holder, ParserConstantPool parserConstantPool, Object[] cachedEntries) {
+        super(parserConstantPool);
         this.holder = MetadataUtil.requireNonNull(holder);
-        this.entries = MetadataUtil.requireNonNull(entries);
+        this.parserConstantPool = parserConstantPool;
+        this.cachedEntries = MetadataUtil.requireNonNull(cachedEntries);
+    }
+
+    protected InterpreterConstantPool(InterpreterResolvedObjectType holder, ParserConstantPool parserConstantPool) {
+        this(holder, parserConstantPool, new Object[parserConstantPool.length()]);
     }
 
     @VisibleForSerialization
-    public static InterpreterConstantPool create(InterpreterResolvedObjectType holder, Object[] entries) {
-        return new InterpreterConstantPool(holder, entries);
+    public static InterpreterConstantPool create(InterpreterResolvedObjectType holder, ParserConstantPool parserConstantPool, Object[] cachedEntries) {
+        return new InterpreterConstantPool(holder, parserConstantPool, cachedEntries);
+    }
+
+    public jdk.vm.ci.meta.ConstantPool getRistrettoConstantPool(Function<InterpreterConstantPool, jdk.vm.ci.meta.ConstantPool> ristrettoConstantPoolSupplier) {
+        if (this.ristrettoConstantPool != null) {
+            return this.ristrettoConstantPool;
+        }
+        /*
+         * We allow concurrent allocation of a ristretto constant pool per interpreter constant
+         * pool. Eventually however we CAS on the pointer in the interpreter representation, if
+         * another thread was faster return its constant pool.
+         */
+        return getOrSetRistrettoConstantPool(ristrettoConstantPoolSupplier.apply(this));
+    }
+
+    private jdk.vm.ci.meta.ConstantPool getOrSetRistrettoConstantPool(jdk.vm.ci.meta.ConstantPool newRistrettoConstantPool) {
+        if (RISTRETTO_CONSTANT_POOL_UPDATER.compareAndSet(this, null, newRistrettoConstantPool)) {
+            return newRistrettoConstantPool;
+        }
+        var cp = this.ristrettoConstantPool;
+        assert cp != null : "If CAS for null fails must have written a constant pool already";
+        return cp;
     }
 
     @Override
     public int length() {
-        return entries.length;
+        return cachedEntries.length;
     }
 
     @Override
     public JavaField lookupField(int cpi, ResolvedJavaMethod method, int opcode) {
-        return (JavaField) at(cpi);
+        return (JavaField) objAt(cpi);
     }
 
     @Override
     public JavaMethod lookupMethod(int cpi, int opcode) {
-        return (JavaMethod) at(cpi);
+        return (JavaMethod) objAt(cpi);
     }
 
     @Override
@@ -90,13 +152,18 @@ public final class InterpreterConstantPool implements ConstantPool {
     }
 
     @Override
+    public List<BootstrapMethodInvocation> lookupBootstrapMethodInvocations(boolean invokeDynamic) {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
     public JavaType lookupType(int cpi, int opcode) {
-        return (JavaType) at(cpi);
+        return (JavaType) objAt(cpi);
     }
 
     @Override
     public Object lookupConstant(int cpi) {
-        Object entry = at(cpi);
+        Object entry = objAt(cpi);
         if (entry instanceof JavaConstant) {
             return entry;
         } else if (entry instanceof JavaType) {
@@ -113,17 +180,26 @@ public final class InterpreterConstantPool implements ConstantPool {
     @Override
     public JavaConstant lookupAppendix(int cpi, int opcode) {
         assert opcode == INVOKEDYNAMIC;
-        return (JavaConstant) at(cpi);
+        return (JavaConstant) objAt(cpi);
     }
 
     @VisibleForSerialization
     @Platforms(Platform.HOSTED_ONLY.class)
-    public Object[] getEntries() {
-        return entries;
+    public Object[] getCachedEntries() {
+        return cachedEntries;
+    }
+
+    public Object peekCachedEntry(int cpi) {
+        return cachedEntries[cpi];
     }
 
     public InterpreterResolvedObjectType getHolder() {
         return holder;
+    }
+
+    @Override
+    public RuntimeException classFormatError(String message) {
+        throw new ClassFormatError(message);
     }
 
     // region Unimplemented methods
@@ -149,4 +225,164 @@ public final class InterpreterConstantPool implements ConstantPool {
     }
 
     // endregion Unimplemented methods
+
+    @Override
+    public ParserConstantPool getParserConstantPool() {
+        return parserConstantPool;
+    }
+
+    protected Object resolve(int cpi, @SuppressWarnings("unused") InterpreterResolvedObjectType accessingClass) {
+        assert Thread.holdsLock(this);
+        assert cpi != 0; // guaranteed by the caller
+
+        @SuppressWarnings("unused")
+        Tag tag = tagAt(cpi); // CPI bounds check
+
+        Object entry = cachedEntries[cpi];
+        if (isUnresolved(entry)) {
+            /*
+             * Runtime resolution is deliberately unsupported for AOT types (using base
+             * InterpreterConstantPool). This can be relaxed in the future e.g. by attaching a
+             * RuntimeInterpreterConstantPool instead.
+             */
+            throw new UnsupportedResolutionException();
+        }
+
+        return entry;
+    }
+
+    public Object resolvedAt(int cpi, InterpreterResolvedObjectType accessingClass) {
+        Object entry = cachedEntries[cpi];
+        if (isUnresolved(entry)) {
+            // TODO(peterssen): GR-68611 Avoid deadlocks when hitting breakpoints (JDWP debugger)
+            // during class resolution.
+            /*
+             * Class resolution can run arbitrary code (not in the to-be resolved class <clinit>
+             * but) in the user class loaders where it can hit a breakpoint (JDWP debugger), causing
+             * a deadlock.
+             */
+            synchronized (this) {
+                entry = cachedEntries[cpi];
+                if (isUnresolved(entry)) {
+                    cachedEntries[cpi] = entry = resolve(cpi, accessingClass);
+                }
+            }
+        }
+
+        return entry;
+    }
+
+    private static boolean isUnresolved(Object entry) {
+        return entry == null || entry instanceof UnresolvedJavaType || entry instanceof UnresolvedJavaMethod || entry instanceof UnresolvedJavaField;
+    }
+
+    @SuppressWarnings("unchecked")
+    protected static <T extends Throwable> RuntimeException uncheckedThrow(Throwable t) throws T {
+        throw (T) t;
+    }
+
+    public InterpreterResolvedJavaField resolvedFieldAt(InterpreterResolvedObjectType accessingKlass, int cpi) {
+        Object resolvedEntry = resolvedAt(cpi, accessingKlass);
+        assert resolvedEntry != null;
+        return (InterpreterResolvedJavaField) resolvedEntry;
+    }
+
+    public InterpreterResolvedJavaMethod resolvedMethodAt(InterpreterResolvedObjectType accessingKlass, int cpi) {
+        Object resolvedEntry = resolvedAt(cpi, accessingKlass);
+        assert resolvedEntry != null;
+        return (InterpreterResolvedJavaMethod) resolvedEntry;
+    }
+
+    public InterpreterResolvedObjectType resolvedTypeAt(InterpreterResolvedObjectType accessingKlass, int cpi) {
+        Object resolvedEntry = resolvedAt(cpi, accessingKlass);
+        assert resolvedEntry != null;
+        return (InterpreterResolvedObjectType) resolvedEntry;
+    }
+
+    public String resolveStringAt(int cpi) {
+        Object resolvedEntry = resolvedAt(cpi, null);
+        if (resolvedEntry instanceof ReferenceConstant<?> referenceConstant) {
+            resolvedEntry = referenceConstant.getReferent();
+        }
+        assert resolvedEntry != null;
+        return (String) resolvedEntry;
+    }
+
+    public MethodHandle resolvedMethodHandleAt(int cpi, InterpreterResolvedObjectType accessingClass) {
+        Object resolvedEntry = resolvedAt(cpi, accessingClass);
+        assert resolvedEntry != null;
+        return (MethodHandle) resolvedEntry;
+    }
+
+    public MethodType resolvedMethodTypeAt(char cpi, InterpreterResolvedObjectType accessingClass) {
+        Object resolvedEntry = resolvedAt(cpi, accessingClass);
+        assert resolvedEntry != null;
+        return (MethodType) resolvedEntry;
+    }
+
+    @Override
+    public int intAt(int index) {
+        checkTag(index, CONSTANT_Integer);
+        Object entry = cachedEntries[index];
+        assert entry == null || entry instanceof PrimitiveConstant;
+        if (entry instanceof PrimitiveConstant primitiveConstant) {
+            assert primitiveConstant.getJavaKind() == JavaKind.Int;
+            return primitiveConstant.asInt();
+        }
+        return super.intAt(index);
+    }
+
+    @Override
+    public float floatAt(int index) {
+        checkTag(index, CONSTANT_Float);
+        Object entry = cachedEntries[index];
+        assert entry == null || entry instanceof PrimitiveConstant;
+        if (entry instanceof PrimitiveConstant primitiveConstant) {
+            assert primitiveConstant.getJavaKind() == JavaKind.Float;
+            return primitiveConstant.asFloat();
+        }
+        return super.floatAt(index);
+    }
+
+    @Override
+    public double doubleAt(int index) {
+        checkTag(index, CONSTANT_Double);
+        Object entry = cachedEntries[index];
+        assert entry == null || entry instanceof PrimitiveConstant;
+        if (entry instanceof PrimitiveConstant primitiveConstant) {
+            assert primitiveConstant.getJavaKind() == JavaKind.Double;
+            return primitiveConstant.asDouble();
+        }
+        return super.doubleAt(index);
+    }
+
+    @Override
+    public long longAt(int index) {
+        checkTag(index, CONSTANT_Long);
+        Object entry = cachedEntries[index];
+        assert entry == null || entry instanceof PrimitiveConstant;
+        if (entry instanceof PrimitiveConstant primitiveConstant) {
+            assert primitiveConstant.getJavaKind() == JavaKind.Long;
+            return primitiveConstant.asLong();
+        }
+        return super.longAt(index);
+    }
+
+    public JavaType findClassAt(int cpi) {
+        if (peekCachedEntry(cpi) instanceof InterpreterResolvedObjectType type) {
+            return type;
+        }
+        Symbol<Name> nameSymbol = className(cpi);
+        ByteSequence typeBytes = TypeSymbols.nameToType(nameSymbol);
+        Symbol<Type> typeSymbol = SymbolsSupport.getTypes().lookupValidType(typeBytes);
+        if (typeSymbol == null) {
+            return null;
+        }
+        Class<?> cls = CremaSupport.singleton().findLoadedClass(typeSymbol, getHolder());
+        if (cls == null) {
+            return UnresolvedJavaType.create(typeBytes.toString());
+        } else {
+            return DynamicHub.fromClass(cls).getInterpreterType();
+        }
+    }
 }

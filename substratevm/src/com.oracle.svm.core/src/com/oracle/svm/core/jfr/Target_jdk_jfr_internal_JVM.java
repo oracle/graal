@@ -296,6 +296,18 @@ public final class Target_jdk_jfr_internal_JVM {
         SubstrateJVM.get().setMethodSamplingInterval(type, intervalMillis);
     }
 
+    /** See {@code JVM#setCPURate}. */
+    @Substitute
+    public static void setCPURate(double rate) {
+        // JFR CPUTimeSample is not supported.
+    }
+
+    /** See {@code JVM#setCPUPeriod}. */
+    @Substitute
+    public static void setCPUPeriod(long periodNanos) {
+        // JFR CPUTimeSample is not supported.
+    }
+
     /** See {@link JVM#setOutput}. */
     @Substitute
     public static void setOutput(String file) {
@@ -651,6 +663,20 @@ public final class Target_jdk_jfr_internal_JVM {
          * implement it nevertheless and return true to disable non-product features.
          */
         return true;
+    }
+
+    /** See {@link JVM#setMethodTraceFilters}. */
+    @Substitute
+    public static long[] setMethodTraceFilters(String[] classes, String[] methods, String[] annotations, int[] modification) {
+        // JFR method tracing is not supported. No filters can be used so return null.
+        return null;
+    }
+
+    /** See {@link JVM#drainStaleMethodTracerIds}. */
+    @Substitute
+    public static long[] drainStaleMethodTracerIds() {
+        // JFR method tracing is not supported. Return no stale IDs.
+        return null;
     }
 }
 

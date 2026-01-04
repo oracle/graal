@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,9 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
+import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.LongArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -117,7 +119,7 @@ final class ASTSuccessor implements JsonConvertible {
 
     private void mergeLookArounds(ASTTransitionCanonicalizer canonicalizer, CompilationBuffer compilationBuffer) {
         assert mergedStates.isEmpty();
-        canonicalizer.addArgument(initialTransition, getInitialTransitionCharSet(compilationBuffer));
+        canonicalizer.addArgument(initialTransition, getInitialTransitionCharSet(compilationBuffer), initialTransition.getConstraints(), initialTransition.getOperations());
         for (ASTStep lookBehind : lookBehinds) {
             ASTSuccessor lb = lookBehind.getSuccessors().get(0);
             if (lookBehind.getSuccessors().size() > 1 || lb.hasLookArounds()) {
@@ -125,7 +127,7 @@ final class ASTSuccessor implements JsonConvertible {
             }
             CodePointSet intersection = getInitialTransitionCharSet(compilationBuffer).createIntersection(lb.getInitialTransitionCharSet(compilationBuffer), compilationBuffer);
             if (intersection.matchesSomething()) {
-                canonicalizer.addArgument(lb.getInitialTransition(), intersection);
+                canonicalizer.addArgument(lb.getInitialTransition(), intersection, lb.getInitialTransition().getConstraints(), lb.getInitialTransition().getOperations());
             }
         }
         TransitionBuilder<RegexAST, Term, ASTTransition>[] mergedLookBehinds = canonicalizer.run(compilationBuffer);
@@ -152,15 +154,31 @@ final class ASTSuccessor implements JsonConvertible {
                         mergedTransitions = new ObjectArrayBuffer<>();
                     }
                     mergedTransitions.clear();
+                    LongArrayBuffer mergedConstraints = new LongArrayBuffer();
+                    LongArrayBuffer mergedOperations = new LongArrayBuffer();
                     StateSet<RegexAST, Term> mergedStateSet = state.getTransitionSet().getTargetStateSet().copy();
                     mergedTransitions.addAll(state.getTransitionSet().getTransitions());
+                    mergedConstraints.addAll(state.getConstraints());
+                    mergedOperations.addAll(state.getOperations());
+
                     for (int i = 0; i < lookAroundState.getTransitionSet().size(); i++) {
                         ASTTransition t = lookAroundState.getTransitionSet().getTransition(i);
                         if (mergedStateSet.add(t.getTarget())) {
                             mergedTransitions.add(t);
+                            mergedConstraints.addAll(t.getConstraints());
+                            mergedOperations.addAll(t.getOperations());
                         }
                     }
-                    result.add(new TransitionBuilder<>(mergedTransitions.toArray(new ASTTransition[mergedTransitions.length()]), mergedStateSet, intersection));
+                    if (!mergedConstraints.isEmpty()) {
+                        int firstQid = TransitionConstraint.getQuantifierID(mergedConstraints.get(0));
+                        for (long constraint : mergedConstraints) {
+                            if (TransitionConstraint.getQuantifierID(constraint) != firstQid) {
+                                throw new UnsupportedRegexException("Regex with overlapping bounded quantifier (after look-ahead merging)");
+                            }
+                        }
+                    }
+                    result.add(new TransitionBuilder<>(mergedTransitions.toArray(new ASTTransition[mergedTransitions.length()]), mergedStateSet, intersection, mergedConstraints.toArray(),
+                                    mergedOperations.toArray()));
                 }
             }
         }

@@ -56,6 +56,7 @@ import org.graalvm.wasm.debugging.data.DebugFunction;
 import org.graalvm.wasm.debugging.representation.DebugScopeDisplayValue;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
+import org.graalvm.wasm.parser.ir.CodeEntry;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -84,15 +85,16 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     private final WasmModule module;
     private final WasmCodeEntry codeEntry;
 
-    @Child private WasmFunctionNode functionNode;
+    @Child private WasmFunctionNode<?> functionNode;
     @Child private WasmInstrumentationSupportNode instrumentation;
 
     @Child private WasmMemoryLibrary zeroMemoryLib;
 
-    public WasmInstrumentableFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, Node[] callNodes, WasmMemoryLibrary[] memoryLibs) {
+    public WasmInstrumentableFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, int exceptionTableOffset, Node[] callNodes,
+                    WasmMemoryLibrary[] memoryLibs) {
         this.module = module;
         this.codeEntry = codeEntry;
-        this.functionNode = new WasmFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, callNodes, memoryLibs);
+        this.functionNode = new WasmFunctionNode<>(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, exceptionTableOffset, callNodes, memoryLibs);
         this.functionSourceLocation = module.functionSourceCodeStartOffset(codeEntry.functionIndex());
         this.zeroMemoryLib = module.memoryCount() > 0 ? memoryLibs[0] : null;
     }
@@ -106,7 +108,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         this.zeroMemoryLib = node.zeroMemoryLib;
     }
 
-    private WasmInstrumentableFunctionNode(WasmInstrumentableFunctionNode node, WasmFunctionNode functionNode, WasmInstrumentationSupportNode instrumentation) {
+    private WasmInstrumentableFunctionNode(WasmInstrumentableFunctionNode node, WasmFunctionNode<?> functionNode, WasmInstrumentationSupportNode instrumentation) {
         this.module = node.module;
         this.codeEntry = node.codeEntry;
         this.functionNode = functionNode;
@@ -201,8 +203,11 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
                         final DebugLineSection debugLineSection = debugFunction.lineMap().getLineIndexMap(functionStartOffset, functionEndOffset);
                         final WasmInstrumentationSupportNode support = new WasmInstrumentationSupportNode(debugLineSection, sourceSection.getSource());
                         final BinaryParser binaryParser = new BinaryParser(module, context, module.codeSection());
-                        final byte[] bytecode = binaryParser.createFunctionDebugBytecode(functionIndex, debugLineSection.offsetToLineIndexMap());
-                        final WasmFunctionNode functionNodeDuplicate = new WasmFunctionNode(functionNode, bytecode, support::notifyLine);
+                        final var bytecodePair = binaryParser.createFunctionDebugBytecode(functionIndex, debugLineSection.offsetToLineIndexMap());
+                        final CodeEntry bcInfo = bytecodePair.getLeft();
+                        final byte[] bytecode = bytecodePair.getRight();
+                        final WasmFunctionNode<?> functionNodeDuplicate = new WasmFunctionNode<>(functionNode, bytecode,
+                                        bcInfo.bytecodeStartOffset(), bcInfo.bytecodeEndOffset(), bcInfo.exceptionTableOffset(), support);
                         return new WasmInstrumentableFunctionNode(this, functionNodeDuplicate, support);
                     }
                 } finally {
@@ -349,16 +354,16 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     @TruffleBoundary
     public int loadI32FromGlobals(MaterializedFrame frame, int index) {
         WasmInstance instance = instance(frame);
-        final int address = instance.globalAddress(index);
-        return instance.store().globals().loadAsInt(address);
+        final int address = module.globalAddress(index);
+        return instance.globals().loadAsInt(address);
     }
 
     @Override
     public void storeI32IntoGlobals(MaterializedFrame frame, int index, int value) {
         WasmInstance instance = instance(frame);
-        if (instance.module().isGlobalMutable(index)) {
-            final int address = instance.globalAddress(index);
-            instance.store().globals().storeInt(address, value);
+        if (module.isGlobalMutable(index)) {
+            final int address = module.globalAddress(index);
+            instance.globals().storeInt(address, value);
         }
     }
 
@@ -366,16 +371,16 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     @TruffleBoundary
     public long loadI64FromGlobals(MaterializedFrame frame, int index) {
         WasmInstance instance = instance(frame);
-        final int address = instance.globalAddress(index);
-        return instance.store().globals().loadAsLong(address);
+        final int address = module.globalAddress(index);
+        return instance.globals().loadAsLong(address);
     }
 
     @Override
     public void storeI64IntoGlobals(MaterializedFrame frame, int index, long value) {
         WasmInstance instance = instance(frame);
-        if (instance.module().isGlobalMutable(index)) {
-            final int address = instance.globalAddress(index);
-            instance.store().globals().storeLong(address, value);
+        if (module.isGlobalMutable(index)) {
+            final int address = module.globalAddress(index);
+            instance.globals().storeLong(address, value);
         }
     }
 

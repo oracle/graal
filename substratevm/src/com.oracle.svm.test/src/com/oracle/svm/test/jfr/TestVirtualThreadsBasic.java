@@ -55,7 +55,7 @@ public class TestVirtualThreadsBasic extends JfrRecordingTest {
     private static final int EXPECTED_EVENTS = THREADS;
     private final MonitorWaitHelper helper = new MonitorWaitHelper();
     private final AtomicInteger emittedEventsPerType = new AtomicInteger(0);
-    private final Set<Long> expectedThreads = Collections.synchronizedSet(new HashSet<>());
+    private final Set<Long> expectedThreads = Collections.synchronizedSet(new HashSet<>()); // noEconomicSet(synchronization)
 
     @Test
     public void test() throws Throwable {

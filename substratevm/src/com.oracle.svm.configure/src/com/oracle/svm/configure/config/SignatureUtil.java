@@ -80,6 +80,19 @@ public class SignatureUtil {
         return sb.append(')').toString();
     }
 
+    public static String toInternalSignature(Class<?>[] parameters) {
+        List<String> names;
+        if (parameters == null) {
+            names = List.of();
+        } else {
+            names = new ArrayList<>(parameters.length);
+            for (Class<?> parameter : parameters) {
+                names.add(parameter.getName());
+            }
+        }
+        return toInternalSignature(names);
+    }
+
     public static String toInternalClassName(String qualifiedForNameString) {
         assert qualifiedForNameString.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
         assert !qualifiedForNameString.endsWith("[]") : "Requires Class.forName syntax, for example '[Ljava.lang.String;'";

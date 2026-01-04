@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,21 +26,15 @@
 
 package com.oracle.objectfile.debugentry.range;
 
+import java.util.Map;
+
+import com.oracle.objectfile.debugentry.LocalEntry;
+import com.oracle.objectfile.debugentry.LocalValueEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 
-class LeafRange extends SubRange {
-    protected LeafRange(MethodEntry methodEntry, int lo, int hi, int line, PrimaryRange primary, Range caller) {
-        super(methodEntry, lo, hi, line, primary, caller);
-    }
-
-    @Override
-    protected void addCallee(SubRange callee) {
-        assert false : "should never be adding callees to a leaf range!";
-    }
-
-    @Override
-    public SubRange getFirstCallee() {
-        return null;
+public class LeafRange extends Range {
+    protected LeafRange(PrimaryRange primary, MethodEntry methodEntry, Map<LocalEntry, LocalValueEntry> localInfoList, int lo, int hi, int line, CallRange caller, int depth) {
+        super(primary, methodEntry, localInfoList, lo, hi, line, caller, depth);
     }
 
     @Override

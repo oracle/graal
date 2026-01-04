@@ -82,12 +82,4 @@ public record ShortCircuitInstructionModel(Operator operator,
         return !convertsOperands() || returnConvertedBoolean();
     }
 
-    /**
-     * If the operation doesn't produce a boolean, it must DUP the operand so it can pass it to the
-     * converter and also produce it as a result.
-     */
-    public boolean duplicatesOperandOnStack() {
-        return !producesBoolean();
-    }
-
 }

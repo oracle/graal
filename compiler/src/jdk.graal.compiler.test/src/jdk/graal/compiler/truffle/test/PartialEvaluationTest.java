@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,10 @@ package jdk.graal.compiler.truffle.test;
 import static jdk.graal.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 import static jdk.graal.compiler.debug.DebugOptions.DumpOnError;
 
+import java.lang.StackWalker.StackFrame;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.junit.Assert;
@@ -43,6 +46,7 @@ import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
@@ -62,6 +66,7 @@ import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
 import jdk.graal.compiler.truffle.TruffleTierContext;
 import jdk.graal.compiler.truffle.phases.TruffleTier;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -71,8 +76,8 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
 
-    private static final Set<String> WRAPPER_CLASSES = Set.of(Boolean.class.getName(), Byte.class.getName(), Character.class.getName(), Float.class.getName(), Integer.class.getName(),
-                    Long.class.getName(), Short.class.getName(), Double.class.getName());
+    private static final Set<String> WRAPPER_CLASSES = CollectionsUtil.setOf(Boolean.class.getName(), Byte.class.getName(), Character.class.getName(), Float.class.getName(),
+                    Integer.class.getName(), Long.class.getName(), Short.class.getName(), Double.class.getName());
 
     protected CompilationResult lastCompilationResult;
     DebugContext lastDebug;
@@ -233,6 +238,130 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         }
     }
 
+    private static RootNode createLambdaRootNode(Runnable f) {
+        StackFrame frame = WALKER.walk(stream -> stream.skip(2).findFirst().orElse(null));
+        return new TestRootNode("Lambda_", frame, (_) -> {
+            f.run();
+            return null;
+        });
+    }
+
+    private static RootNode createLambdaRootNode(Supplier<?> f) {
+        StackFrame frame = WALKER.walk(stream -> stream.skip(2).findFirst().orElse(null));
+        return new TestRootNode("Lambda_", frame, (_) -> {
+            f.get();
+            return null;
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static RootNode createLambdaRootNode(Consumer<?> f) {
+        StackFrame frame = WALKER.walk(stream -> stream.skip(2).findFirst().orElse(null));
+        return new TestRootNode("Lambda_", frame, (a) -> {
+            ((Consumer<Object>) f).accept(a);
+            return null;
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> RootNode createLambdaRootNode(Function<T, ?> f, @SuppressWarnings("unused") T object) {
+        StackFrame frame = WALKER.walk(stream -> stream.skip(2).findFirst().orElse(null));
+        return new TestRootNode("Lambda_", frame, (Function<Object, ?>) f);
+    }
+
+    protected void assertPartialEvalNoInvokes(Runnable expected) {
+        assertPartialEvalNoInvokes(createLambdaRootNode(expected), new Object[1]);
+    }
+
+    protected void assertPartialEvalNoInvokes(Supplier<?> expected) {
+        assertPartialEvalNoInvokes(createLambdaRootNode(expected), new Object[1]);
+    }
+
+    protected <T> void assertPartialEvalNoInvokes(Consumer<T> expected, T value) {
+        assertPartialEvalNoInvokes(createLambdaRootNode(expected), new Object[]{value});
+    }
+
+    protected <T, R> void assertPartialEvalNoInvokes(Function<T, R> expected, T value) {
+        assertPartialEvalNoInvokes(createLambdaRootNode(expected, value), new Object[]{value});
+    }
+
+    protected void assertCompileBailout(Runnable expected) {
+        assertCompileBailout(createLambdaRootNode(expected), new Object[1]);
+    }
+
+    protected void assertCompileBailout(Supplier<?> expected) {
+        assertCompileBailout(createLambdaRootNode(expected), new Object[1]);
+    }
+
+    protected <T> void assertCompileBailout(Consumer<T> expected, T value) {
+        assertCompileBailout(createLambdaRootNode(expected), new Object[]{value});
+    }
+
+    protected <T, R> void assertCompileBailout(Function<T, R> expected, T value) {
+        assertCompileBailout(createLambdaRootNode(expected, value), new Object[]{value});
+    }
+
+    private void assertCompileBailout(RootNode lambdaRootNode, Object[] objects) {
+        boolean prevProfileCalls = this.preventProfileCalls;
+        this.preventProfileCalls = true;
+        try {
+            try {
+                compile((OptimizedCallTarget) lambdaRootNode.getCallTarget(), partialEval(lambdaRootNode, objects));
+                fail("Bailout expected but succeeded for " + lambdaRootNode.getName());
+            } catch (BailoutException e) {
+                // expected
+            }
+        } finally {
+            this.preventProfileCalls = prevProfileCalls;
+        }
+    }
+
+    private static final StackWalker WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+
+    @SuppressWarnings("unchecked")
+    protected <T, R> void assertPartialEvalEquals(Function<T, R> expected, Function<T, R> actual, T argument) {
+        // capture stack frame for better root node names
+        StackFrame frame = WALKER.walk(stream -> stream.skip(1).findFirst().orElse(null));
+        assertPartialEvalEquals(new TestRootNode("Expected_", frame, (Function<Object, ?>) expected), new TestRootNode("Actual_", frame, (Function<Object, ?>) actual), argument);
+    }
+
+    @SuppressWarnings("unchecked")
+    protected <T> void assertPartialEvalEquals(Supplier<T> expected, Supplier<T> actual) {
+        // capture stack frame for better root node names
+        StackFrame frame = WALKER.walk(stream -> stream.skip(1).findFirst().orElse(null));
+        assertPartialEvalEquals(new TestRootNode("Expected_", frame, (_) -> expected.get()), new TestRootNode("Actual_", frame, (_) -> actual.get()), 42);
+    }
+
+    private static final class TestRootNode extends RootNode {
+
+        private final String namePrefix;
+        private final StackFrame caller;
+        private final Function<Object, ?> f;
+
+        TestRootNode(String namePrefix, StackFrame caller, Function<Object, ?> f) {
+            super(null);
+            this.namePrefix = namePrefix;
+            this.caller = caller;
+            this.f = f;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return f.apply(frame.getArguments()[0]);
+        }
+
+        @Override
+        public String getName() {
+            return namePrefix + caller.getClassName() + "_" + caller.getMethodName() + "_" + caller.getLineNumber();
+        }
+
+        @Override
+        public String toString() {
+            return getName();
+        }
+
+    }
+
     protected StructuredGraph partialEval(RootNode root, Object... arguments) {
         OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
         return partialEval(target, arguments);
@@ -287,7 +416,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         TruffleCompilationTask task = newTask();
         TruffleCompilerImpl compiler = getTruffleCompiler(compilable);
         try (TruffleCompilation compilation = compiler.openCompilation(task, compilable)) {
-            try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(task, compilable))) {
+            try (DebugContext.Scope _ = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(task, compilable))) {
                 SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
                 if (speculationLog != null) {
                     speculationLog.collectFailedSpeculations();
@@ -298,14 +427,15 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 TruffleTier truffleTier = compiler.getTruffleTier();
                 final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
                 try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(
-                                compiler.getConfig().runtime(), compiler.getOrCreateCompilerOptions(compilable))) {
+                                compiler.getConfig().runtime(), compiler.getOrCreateCompilerOptions(compilable));
+                                CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(debug.getOptions())) {
                     final TruffleTierContext context = TruffleTierContext.createInitialContext(partialEvaluator,
                                     compiler.getOrCreateCompilerOptions(compilable),
                                     debug, compilable,
                                     compilation.getCompilationId(), speculationLog,
                                     task,
                                     handler);
-                    try (Graph.NodeEventScope nes = nodeEventListener == null ? null : context.graph.trackNodeEvents(nodeEventListener)) {
+                    try (Graph.NodeEventScope _ = nodeEventListener == null ? null : context.graph.trackNodeEvents(nodeEventListener)) {
                         truffleTier.apply(context.graph, context);
                         lastCompiledGraph = context.graph;
                         return context.graph;

@@ -82,7 +82,35 @@ $ cd ../vm
 $ mx --dy /espresso,/sulong maven-deploy --tags=public --all-suites --all-distribution-types --version-suite=sdk --suppress-javadoc
 ```
 
-You can now depend on the jars using a version like `24.2.0-SNAPSHOT`.
+You can now depend on the jars using a version like `24.2.1-SNAPSHOT`.
+
+For embedding, there is a jar containing all the necessary JDK resources (classes, libraries, config files, etc.).
+This jar is made available to espresso through the truffle [resource API](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getInternalResource(java.lang.String)).
+It is the mx distribution called `ESPRESSO_RUNTIME_RESOURCES` and is published on maven as `org.graalvm.espresso:espresso-runtime-resources-$RuntimeResourceId` where `$RuntimeResourceId` identifies the type and version of the included JDK.
+For example `org.graalvm.espresso:espresso-runtime-resources-jdk21` contain Oracle JDK 21.
+`ESPRESSO_RUNTIME_RESOURCES` contains the JDK specified through `ESPRESSO_JAVA_HOME` as well as the optional llvm bits specified in `ESPRESSO_LLVM_JAVA_HOME`.
+
+Since we might want to distribute these resources for multiple JDK version, it is possible to produce additional runtime resource jars.
+This is done by setting `EXTRA_ESPRESSO_JAVA_HOMES` and optionally `EXTRA_ESPRESSO_LLVM_JAVA_HOMES`.
+Those are lists of java homes separated by a path separator.
+If `EXTRA_ESPRESSO_LLVM_JAVA_HOMES` is specified it should contain the same number of entries and in the same order as `EXTRA_ESPRESSO_JAVA_HOMES`.
+The JDKs set in `ESPRESSO_JAVA_HOME` and `EXTRA_ESPRESSO_JAVA_HOMES` should all have different versions.
+
+For example to produce jdk21 and jk25 resource in addition to the version of `ESPRESSO_JAVA_HOME`:
+```bash
+$ export ESPRESSO_JAVA_HOME=/path/to/jdk26
+$ export ESPRESSO_LLVM_JAVA_HOME=/path/to/jdk26-llvm
+$ export EXTRA_ESPRESSO_JAVA_HOMES=/path/to/jdk21:/path/to/jdk25
+$ export EXTRA_ESPRESSO_LLVM_JAVA_HOMES=/path/to/jdk21-llvm:/path/to/jdk25-llvm
+# subsequent build and maven-deploy operation will now publish
+# * org.graalvm.espresso:espresso-runtime-resources-jdk21
+# * org.graalvm.espresso:espresso-runtime-resources-jdk25
+# * org.graalvm.espresso:espresso-runtime-resources-jdk26
+```
+
+The `org.graalvm.espresso:java` maven dependency automatically depends on the "main" runtime resource (the one from `ESPRESSO_JAVA_HOME`).
+In order to use a different version in an embedding, an explicit dependency to `org.graalvm.espresso:espresso-runtime-resources-$RuntimeResourceId` should be added.
+The context should also be created with `java.RuntimeResourceId` set to the desired version (e.g., `"jdk21"`).
 
 ## `mx espresso-embedded ...`
 
@@ -111,13 +139,39 @@ $ mx espresso --java.JavaHome=/path/to/java/8/home -version
 $ mx espresso --java.JavaHome=/path/to/java/11/home -version
 ```
 
+## No-Native Espresso
+
+To run Espresso without native access, use the experimental option `java.NativeBackend=no-native` via the command line:
+```bash
+$ mx espresso --experimental-options --java.NativeBackend=no-native 
+```
+
+or on the context builder: 
+```java
+builder.allowExperimentalOptions(true).option("java.NativeBackend", "no-native") 
+```
+
+Disabling native access enhances security guarantees and sandboxing capabilities. In this mode, substitutions are used for Java's standard libraries, and virtualized memory will be provided (GR-70643). However, some functionality might be limited (e.g. you will have no access to LibAWT).
+
 ## Limitations
+
+### Linux
 
 Espresso relies on glibc's [dlmopen](https://man7.org/linux/man-pages/man3/dlopen.3.html) to run on HotSpot, but this approach has limitations that lead to crashes e.g. `libnio.so: undefined symbol: fstatat64` . Some of these limitations can be by avoided by defining `LD_DEBUG=unused` e.g.
 
 ```bash
 $ LD_DEBUG=unused mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
 ```
+
+### macOS
+
+Nothing like `dlmopen` is available on macOS. Instead we default to `nfi-staticlib` for the JVM mode, which statically links in (most) of the OpenJDK libraries into `libjvm.dylib`.
+A notable exception is `libawt.dylib` and its related libraries, which only work via dynamic loading.
+This means in practice only the host _or_ the guest can use AWT, but not both at the same time.
+
+
+Currently `nfi-staticlib` only works for one Espresso context. Using `nfi-staticlib` with more than one context will likely result in a SIGSEGV in `libtrufflenfi.dylib`.
+We are exploring how to implement support for multiple contexts (GR-71082).
 
 ## _Espressoⁿ_ Java-ception
 

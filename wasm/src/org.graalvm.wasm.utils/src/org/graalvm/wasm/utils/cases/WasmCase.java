@@ -151,7 +151,7 @@ public abstract class WasmCase {
         });
     }
 
-    public static Collection<WasmCase> collectFileCases(String type, String resource) throws IOException {
+    public static Collection<WasmCase> collectFileCases(Class<?> klass, String type, String resource) throws IOException {
         Collection<WasmCase> collectedCases = new ArrayList<>();
         if (resource == null) {
             return collectedCases;
@@ -160,7 +160,7 @@ public abstract class WasmCase {
         // Open the wasm_test_index file of the bundle. The wasm_test_index file contains the
         // available cases for that bundle.
         String indexResourcePath = String.format("/%s/%s/wasm_test_index", type, resource);
-        InputStream index = Objects.requireNonNull(WasmCase.class.getResourceAsStream(indexResourcePath), indexResourcePath);
+        InputStream index = Objects.requireNonNull(klass.getResourceAsStream(indexResourcePath), indexResourcePath);
         BufferedReader indexReader = new BufferedReader(new InputStreamReader(index));
 
         // Iterate through the available test of the bundle.
@@ -171,14 +171,14 @@ public abstract class WasmCase {
                 // Skip empty lines or lines starting with a hash (treat as a comment).
                 continue;
             } else {
-                collectedCases.add(collectFileCase(type, resource, caseSpec));
+                collectedCases.add(collectFileCase(klass, type, resource, caseSpec));
             }
         }
 
         return collectedCases;
     }
 
-    public static WasmCase collectFileCase(String type, String resource, String caseSpec) throws IOException {
+    public static WasmCase collectFileCase(Class<?> klass, String type, String resource, String caseSpec) throws IOException {
         Map<String, Object> mainContents = new LinkedHashMap<>();
         String caseName;
         if (caseSpec.contains("/")) {
@@ -187,15 +187,15 @@ public abstract class WasmCase {
             final String dir = dirFiles[0];
             final String[] moduleFiles = dirFiles[1].split(";");
             for (String file : moduleFiles) {
-                mainContents.put(file, WasmResource.getResourceAsTest(String.format("/%s/%s/%s/%s", type, resource, dir, file), true));
+                mainContents.put(file, WasmResource.getResourceAsTest(klass, String.format("/%s/%s/%s/%s", type, resource, dir, file), true));
             }
             caseName = dir;
         } else {
-            mainContents.put(caseSpec, WasmResource.getResourceAsTest(String.format("/%s/%s/%s", type, resource, caseSpec), true));
+            mainContents.put(caseSpec, WasmResource.getResourceAsTest(klass, String.format("/%s/%s/%s", type, resource, caseSpec), true));
             caseName = caseSpec;
         }
-        String resultContent = WasmResource.getResourceAsString(String.format("/%s/%s/%s.result", type, resource, caseName), true);
-        String optsContent = WasmResource.getResourceAsString(String.format("/%s/%s/%s.opts", type, resource, caseName), false);
+        String resultContent = WasmResource.getResourceAsString(klass, String.format("/%s/%s/%s.result", type, resource, caseName), true);
+        String optsContent = WasmResource.getResourceAsString(klass, String.format("/%s/%s/%s.opts", type, resource, caseName), false);
         Properties options = SystemProperties.createFromOptions(optsContent);
 
         String[] resultTypeValue = resultContent.split("\\s+", 2);
@@ -266,13 +266,13 @@ public abstract class WasmCase {
         return null;
     }
 
-    public static WasmCase loadBenchmarkCase(String resource) throws IOException {
+    public static WasmCase loadBenchmarkCase(Class<?> klass, String resource) throws IOException {
         final String name = SystemProperties.BENCHMARK_NAME;
 
         Assert.assertNotNull("Please select a benchmark by setting -D" + SystemProperties.BENCHMARK_NAME_PROPERTY_NAME, name);
         Assert.assertFalse("Benchmark name must not be empty", name.trim().isEmpty());
 
-        final WasmCase result = WasmCase.collectFileCase("bench", resource, name);
+        final WasmCase result = WasmCase.collectFileCase(klass, "bench", resource, name);
         Assert.assertNotNull(String.format("Benchmark %s.%s not found", name, name), result);
 
         return result;

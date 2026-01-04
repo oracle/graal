@@ -24,12 +24,8 @@
  */
 package jdk.graal.compiler.libgraal;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +53,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.libgraal.truffle.HSTruffleCompilerRuntime;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.Word;
+import jdk.vm.ci.hotspot.CompilerThreadCanCallJavaScope;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
@@ -229,7 +226,7 @@ public final class LibGraalSupportImpl implements LibGraalSupport {
     @Override
     @SuppressWarnings("try")
     public void shutdown(String callbackClassName, String callbackMethodName) {
-        try (CanCallJavaScope ignore = CanCallJavaScope.open()) {
+        try (CompilerThreadCanCallJavaScope ignore = new CompilerThreadCanCallJavaScope(true)) {
             if (callbackClassName != null) {
                 JNI.JNIEnv env = Word.unsigned(getJNIEnv());
                 JNI.JClass cbClass = JNIUtil.findClass(env, JNIUtil.getSystemClassLoader(env),
@@ -245,46 +242,6 @@ public final class LibGraalSupportImpl implements LibGraalSupport {
         }
         VMRuntime.shutdown();
 
-    }
-
-    private static final class CanCallJavaScope implements Closeable {
-
-        private static final MethodHandle CAN_CALL_JAVA_SCOPE = findCompilerThreadCanCallJavaScopeConstructor();
-
-        private static MethodHandle findCompilerThreadCanCallJavaScopeConstructor() {
-            try {
-                return MethodHandles.lookup().findConstructor(Class.forName("jdk.vm.ci.hotspot.CompilerThreadCanCallJavaScope"), MethodType.methodType(void.class, boolean.class));
-            } catch (ReflectiveOperationException e) {
-                throw new InternalError(e);
-            }
-        }
-
-        private final AutoCloseable impl;
-
-        private CanCallJavaScope() {
-            try {
-                impl = (AutoCloseable) CAN_CALL_JAVA_SCOPE.invoke(true);
-            } catch (Error | RuntimeException e) {
-                throw e;
-            } catch (Throwable throwable) {
-                throw new InternalError(throwable);
-            }
-        }
-
-        @Override
-        public void close() {
-            try {
-                impl.close();
-            } catch (RuntimeException e) {
-                throw e;
-            } catch (Exception e) {
-                throw new AssertionError(e);
-            }
-        }
-
-        static CanCallJavaScope open() {
-            return CAN_CALL_JAVA_SCOPE != null ? new CanCallJavaScope() : null;
-        }
     }
 
     @Override

@@ -146,6 +146,11 @@ public final class TruffleStackTraceElement {
      * Returns the read-only frame. Returns <code>null</code> if the initial {@link RootNode} that
      * filled in the stack trace did not request frames to be captured by overriding
      * {@link RootNode#isCaptureFramesForTrace(Node)}.
+     * <p>
+     * Bytecode DSL note: This method should <strong>not</strong> be used with Bytecode DSL
+     * interpreters. See
+     * {@link com.oracle.truffle.api.bytecode.GenerateBytecode#captureFramesForTrace} for more
+     * information.
      *
      * @since 0.31
      */

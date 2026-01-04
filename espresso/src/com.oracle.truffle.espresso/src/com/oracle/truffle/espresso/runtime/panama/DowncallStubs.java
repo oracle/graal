@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.runtime.panama;
 
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAllocationException;
+
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -245,7 +247,7 @@ public final class DowncallStubs {
 
     public static final class Shuffle {
         private static final int POINTER_ARG_FLAG = 1 << 31;
-        private static final int INDEX_ARG_MASK = 0x8FFF_FFFF;
+        private static final int INDEX_ARG_MASK = 0x7FFF_FFFF;
 
         private static int encode(int idx, NativeType type) {
             int res = idx;
@@ -312,9 +314,15 @@ public final class DowncallStubs {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw ctx.getMeta().throwExceptionWithMessage(ctx.getMeta().java_lang_InternalError, "Unsupported java heap access in downcall stub: " + obj.getKlass());
             }
-            RawBuffer buffer = RawBuffer.getNativeHeapPointer(obj, ctx);
-            buffers.add(buffer, obj);
-            return buffer.pointer();
+            try {
+                RawBuffer buffer = RawBuffer.getNativeHeapPointer(obj, ctx);
+                buffers.add(buffer, obj);
+                return buffer.pointer();
+            } catch (MemoryAllocationException e) {
+                Meta meta = ctx.getMeta();
+                CompilerDirectives.transferToInterpreter();
+                throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, e.getMessage(), ctx);
+            }
         }
 
         @TruffleBoundary

@@ -25,14 +25,18 @@
 package com.oracle.svm.hosted.lambda;
 
 import java.lang.reflect.Member;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
-import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.java.LambdaUtils;
@@ -54,11 +58,32 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class LambdaParser {
+    public static List<Class<?>> getLambdaClassesInClass(Class<?> declaringClass, List<Class<?>> implementedInterfaces) {
+        List<Class<?>> result = new ArrayList<>();
+        for (Method method : declaringClass.getDeclaredMethods()) {
+            result.addAll(getLambdaClassesInMethod(method, implementedInterfaces));
+        }
+        return result;
+    }
+
+    public static List<Class<?>> getLambdaClassesInMethod(Method capturingMethod, List<Class<?>> implementedInterfaces) {
+        ResolvedJavaMethod method = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaMethod(capturingMethod);
+        StructuredGraph graph = createMethodGraph(method, new OptionValues(OptionValues.newOptionMap()));
+        NodeIterable<ConstantNode> constantNodes = ConstantNode.getConstantNodes(graph);
+        List<Class<?>> lambdaClasses = new ArrayList<>();
+        for (ConstantNode cNode : constantNodes) {
+            Class<?> lambdaClass = getLambdaClassFromConstantNode(cNode);
+            if (lambdaClass != null && implementedInterfaces.stream().allMatch(i -> i.isAssignableFrom(lambdaClass))) {
+                lambdaClasses.add(lambdaClass);
+            }
+        }
+        return lambdaClasses;
+    }
+
     /**
      * Create a {@link StructuredGraph} using {@link LambdaGraphBuilderPhase.LambdaBytecodeParser},
      * a simple {@link BytecodeParser}.
      */
-    @SuppressWarnings("try")
     public static StructuredGraph createMethodGraph(ResolvedJavaMethod method, OptionValues options) {
         GraphBuilderPhase lambdaParserPhase = new LambdaParser.LambdaGraphBuilderPhase();
         DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getName());
@@ -69,7 +94,7 @@ public class LambdaParser {
                         .method(method)
                         .recordInlinedMethods(false)
                         .build();
-        try (DebugContext.Scope ignored = debug.scope("ParsingToMaterializeLambdas")) {
+        try (DebugContext.Scope _ = debug.scope("ParsingToMaterializeLambdas")) {
             lambdaParserPhase.apply(graph, context);
         } catch (Throwable e) {
             throw debug.handle(e);

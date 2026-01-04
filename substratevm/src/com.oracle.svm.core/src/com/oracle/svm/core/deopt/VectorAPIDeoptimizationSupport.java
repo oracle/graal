@@ -33,7 +33,6 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.hub.DynamicHub;
 
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaConstant;
@@ -45,41 +44,36 @@ import jdk.vm.ci.meta.JavaKind;
 public class VectorAPIDeoptimizationSupport {
 
     /**
-     * If the {@code hub} refers to a Vector API vector, materialize its payload array. That is,
-     * allocate a primitive array of the appropriate element type and length for the Vector API
-     * value. Read the vector's entries from the stack and store them in the array.
+     * Materialize the payload array of a Vector API class. That is, allocate a primitive array of
+     * the appropriate element type and length for the Vector API value. Read the vector's entries
+     * from the stack and store them in the array.
      *
      * @param deoptState state for accessing values on the stack
-     * @param hub the hub of the object to be materialized
+     * @param layout non-null payload layout from {@link #getLayout}
      * @param vectorEncoding describes the location of the vector on the stack
      * @param sourceFrame the source frame containing the vector
      * @return a materialized primitive array if the object to be materialized is a Vector API
      *         vector; {@code null} otherwise
      */
-    public Object materializePayload(DeoptState deoptState, DynamicHub hub, FrameInfoQueryResult.ValueInfo vectorEncoding, FrameInfoQueryResult sourceFrame) {
-        Class<?> vectorClass = DynamicHub.toClass(hub);
-        PayloadLayout layout = typeMap.get(vectorClass);
-        if (layout != null) {
-            /*
-             * Read values from the stack and write them to an array of the same element type. Note
-             * that vector masks in states are already represented as vectors of byte-sized 0 or 1
-             * values, this is ensured by the VectorAPIExpansionPhase. Therefore, this code does not
-             * need to worry about the target's representation of vector masks; an element type of
-             * boolean in the layout will allow us to handle masks correctly.
-             */
-            JavaKind elementKind = JavaKind.fromJavaClass(layout.elementType);
-            Object array = Array.newInstance(layout.elementType, layout.vectorLength);
-            ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
-            UnsignedWord curOffset = Word.unsigned(objectLayout.getArrayBaseOffset(elementKind));
-            for (int i = 0; i < layout.vectorLength; i++) {
-                FrameInfoQueryResult.ValueInfo elementEncoding = vectorEncoding.copyForElement(elementKind, i * elementKind.getByteCount());
-                JavaConstant con = readValue(deoptState, elementEncoding, sourceFrame);
-                writeValueInMaterializedObj(array, curOffset, con, sourceFrame);
-                curOffset = curOffset.add(objectLayout.sizeInBytes(elementKind));
-            }
-            return array;
+    public Object materializePayload(DeoptState deoptState, PayloadLayout layout, FrameInfoQueryResult.ValueInfo vectorEncoding, FrameInfoQueryResult sourceFrame) {
+        /*
+         * Read values from the stack and write them to an array of the same element type. Note that
+         * vector masks in states are already represented as vectors of byte-sized 0 or 1 values,
+         * this is ensured by the VectorAPIExpansionPhase. Therefore, this code does not need to
+         * worry about the target's representation of vector masks; an element type of boolean in
+         * the layout will allow us to handle masks correctly.
+         */
+        JavaKind elementKind = JavaKind.fromJavaClass(layout.elementType);
+        Object array = Array.newInstance(layout.elementType, layout.vectorLength);
+        ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
+        UnsignedWord curOffset = Word.unsigned(objectLayout.getArrayBaseOffset(elementKind));
+        for (int i = 0; i < layout.vectorLength; i++) {
+            FrameInfoQueryResult.ValueInfo elementEncoding = vectorEncoding.copyForElement(elementKind, i * elementKind.getByteCount());
+            JavaConstant con = readValue(deoptState, elementEncoding, sourceFrame);
+            writeValueInMaterializedObj(array, curOffset, con, sourceFrame);
+            curOffset = curOffset.add(objectLayout.sizeInBytes(elementKind));
         }
-        return null;
+        return array;
     }
 
     protected static JavaConstant readValue(DeoptState deoptState, FrameInfoQueryResult.ValueInfo valueInfo, FrameInfoQueryResult sourceFrame) {
@@ -107,5 +101,9 @@ public class VectorAPIDeoptimizationSupport {
 
     public void putLayout(Class<?> vectorClass, PayloadLayout layout) {
         typeMap.put(vectorClass, layout);
+    }
+
+    public PayloadLayout getLayout(Class<?> vectorClass) {
+        return typeMap.get(vectorClass);
     }
 }

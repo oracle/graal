@@ -41,6 +41,7 @@ import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
+import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -107,6 +108,14 @@ public class MonitorEnterNode extends AccessMonitorNode implements Virtualizable
             if (virtual.hasIdentity() && tool.canVirtualizeLock(virtual, getMonitorId())) {
                 tool.addLock(virtual, getMonitorId());
                 if (!tool.getPlatformConfigurationProvider().areLocksSideEffectFree()) {
+                    if (object() instanceof AllocatedObjectNode) {
+                        /*
+                         * Don't let the allocation sink past the state split proxy, otherwise we
+                         * end up with a virtual object in the state instead of the actual allocated
+                         * one.
+                         */
+                        tool.ensureMaterialized(virtual);
+                    }
                     // Ensure that the locks appear to have been acquired in the nearest FrameState.
                     tool.ensureAdded(new StateSplitProxyNode(stateAfter));
                 }

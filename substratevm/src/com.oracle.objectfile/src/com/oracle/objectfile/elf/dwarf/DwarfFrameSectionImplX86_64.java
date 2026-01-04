@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,9 +26,9 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-
 import java.util.List;
+
+import com.oracle.objectfile.debugentry.FrameSizeChangeEntry;
 
 /**
  * x86_64-specific section generator for debug_frame section that knows details of x86_64 registers
@@ -84,14 +84,14 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
     }
 
     @Override
-    protected int writeFDEs(int frameSize, List<DebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, byte[] buffer, int p) {
+    protected int writeFDEs(int frameSize, List<FrameSizeChangeEntry> frameSizeInfos, byte[] buffer, int p) {
         int pos = p;
         int currentOffset = 0;
-        for (DebugInfoProvider.DebugFrameSizeChange debugFrameSizeInfo : frameSizeInfos) {
-            int advance = debugFrameSizeInfo.getOffset() - currentOffset;
+        for (FrameSizeChangeEntry frameSizeInfo : frameSizeInfos) {
+            int advance = frameSizeInfo.offset() - currentOffset;
             currentOffset += advance;
             pos = writeAdvanceLoc(advance, buffer, pos);
-            if (debugFrameSizeInfo.getType() == DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND) {
+            if (frameSizeInfo.isExtend()) {
                 /*
                  * SP has been extended so rebase CFA using full frame.
                  *

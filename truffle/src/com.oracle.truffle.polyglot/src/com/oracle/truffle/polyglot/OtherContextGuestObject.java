@@ -66,6 +66,7 @@ final class OtherContextGuestObject implements TruffleObject {
 
     static final Object OTHER_VALUE = new Object();
     static final ReflectionLibrary OTHER_VALUE_UNCACHED = ReflectionLibrary.getFactory().getUncached(OTHER_VALUE);
+    private static final Message MESSAGE_AS_HOST_OBJECT = Message.resolveExact(InteropLibrary.class, "asHostObject", Object.class);
 
     final PolyglotContextImpl receiverContext;
     final Object delegate;
@@ -126,7 +127,7 @@ final class OtherContextGuestObject implements TruffleObject {
 
     }
 
-    private static final Message IDENTICAL = Message.resolve(InteropLibrary.class, "isIdentical");
+    private static final Message IDENTICAL = Message.resolveExact(InteropLibrary.class, "isIdentical", Object.class, Object.class, InteropLibrary.class);
 
     static Object sendImpl(Node node, PolyglotSharingLayer layer, Object receiver, Message message, Object[] args, PolyglotContextImpl receiverContext,
                     PolyglotContextImpl delegateContext,
@@ -159,7 +160,7 @@ final class OtherContextGuestObject implements TruffleObject {
                     if (message.getReturnType() == void.class) {
                         return null;
                     }
-                    return migrateReturn(returnValue, receiverContext, delegateContext);
+                    return migrateReturn(returnValue, message, receiverContext, delegateContext);
                 } catch (Throwable e) {
                     seenError.enter(node);
                     throw migrateException(receiverContext, e, delegateContext);
@@ -264,8 +265,10 @@ final class OtherContextGuestObject implements TruffleObject {
         return OTHER_VALUE_UNCACHED.send(OTHER_VALUE, message, args);
     }
 
-    private static Object migrateReturn(Object arg, PolyglotContextImpl receiverContext, PolyglotContextImpl delegateContext) {
-        if (arg instanceof TruffleObject) {
+    private static Object migrateReturn(Object arg, Message message, PolyglotContextImpl receiverContext, PolyglotContextImpl delegateContext) {
+        if (message == MESSAGE_AS_HOST_OBJECT) {
+            return arg;
+        } else if (arg instanceof TruffleObject) {
             return receiverContext.migrateValue(arg, delegateContext);
         } else {
             assert InteropLibrary.isValidProtocolValue(arg) : "unexpected interop primitive";

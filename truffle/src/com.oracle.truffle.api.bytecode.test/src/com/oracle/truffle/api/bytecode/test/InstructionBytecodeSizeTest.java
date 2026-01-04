@@ -44,10 +44,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.HashMap;
-import java.util.Map;
+import java.nio.charset.StandardCharsets;
 
 import org.junit.Test;
 
@@ -57,30 +59,30 @@ import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
+import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.Yield;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.impl.asm.ClassReader;
-import com.oracle.truffle.api.impl.asm.ClassVisitor;
-import com.oracle.truffle.api.impl.asm.MethodVisitor;
-import com.oracle.truffle.api.impl.asm.Opcodes;
-import com.oracle.truffle.api.impl.asm.commons.CodeSizeEvaluator;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class InstructionBytecodeSizeTest {
 
-    private static final int CACHED_INSTRUCTION_SIZE = 29;
-    private static final int UNCACHED_INSTRUCTION_SIZE = 29;
+    private static final int CACHED_INSTRUCTION_SIZE = 26;
+    private static final int UNCACHED_INSTRUCTION_SIZE = 26;
 
-    // !Important: Keep these in sync with BytecodeDSLNodeFactory!
-    // Estimated number of Java bytecodes per instruction. Should be max(cached, uncached).
-    public static final int ESTIMATED_INSTRUCTION_SIZE = 34;
+    // !Important: Keep these in sync with BytecodeRootNodeElement!
+    // Estimated number of Java bytecodes per instruction.
+    // Should be at least max(cached, uncached).
+    public static final int ESTIMATED_INSTRUCTION_SIZE = 26;
     // Estimated number of java bytecodes needed for a bytecode loop
-    public static final int ESTIMATED_BYTECODE_FOOTPRINT = 2000;
+    public static final int ESTIMATED_BYTECODE_FOOTPRINT = 1000;
 
     @Test
     public void testEstimations() throws Exception {
@@ -108,7 +110,7 @@ public class InstructionBytecodeSizeTest {
          * the bytecode instruction sizes in this test and consider updating the constants used for
          * the heuristic.
          */
-        ContinueAtSizes expectedSize = new ContinueAtSizes(CACHED_INSTRUCTION_SIZE, UNCACHED_INSTRUCTION_SIZE);
+        ContinueAtSizes expectedSize = new ContinueAtSizes(new NameAndSize(null, CACHED_INSTRUCTION_SIZE), new NameAndSize(null, UNCACHED_INSTRUCTION_SIZE));
         assertEquals(expectedSize, computeSingleInstructionSize(size1, size2, 2));
         assertEquals(expectedSize, computeSingleInstructionSize(size1, size20, 20));
 
@@ -117,14 +119,14 @@ public class InstructionBytecodeSizeTest {
         int estimatedSize20 = ESTIMATED_BYTECODE_FOOTPRINT + (ESTIMATED_INSTRUCTION_SIZE * countInstructions(node20));
 
         // test that we always overestimate
-        assertTrue("Expected " + size1.cached + " > " + estimatedSize1, estimatedSize1 > size1.cached);
-        assertTrue("Expected " + size1.uncached + " > " + estimatedSize1, estimatedSize1 > size1.uncached);
+        assertTrue("Expected " + size1.cached + " > " + estimatedSize1, estimatedSize1 > size1.cached.size);
+        assertTrue("Expected " + size1.uncached + " > " + estimatedSize1, estimatedSize1 > size1.uncached.size);
 
-        assertTrue("Expected " + size2.cached + " > " + estimatedSize2, estimatedSize2 > size2.cached);
-        assertTrue("Expected " + size2.uncached + " > " + estimatedSize2, estimatedSize2 > size2.uncached);
+        assertTrue("Expected " + size2.cached + " > " + estimatedSize2, estimatedSize2 > size2.cached.size);
+        assertTrue("Expected " + size2.uncached + " > " + estimatedSize2, estimatedSize2 > size2.uncached.size);
 
-        assertTrue("Expected " + size20.cached + " > " + estimatedSize20, estimatedSize20 > size20.cached);
-        assertTrue("Expected " + size20.uncached + " > " + estimatedSize20, estimatedSize20 > size20.uncached);
+        assertTrue("Expected " + size20.cached + " > " + estimatedSize20, estimatedSize20 > size20.cached.size);
+        assertTrue("Expected " + size20.uncached + " > " + estimatedSize20, estimatedSize20 > size20.uncached.size);
     }
 
     @Test
@@ -133,9 +135,9 @@ public class InstructionBytecodeSizeTest {
             b.beginRoot();
             b.endRoot();
         });
-        ContinueAtSizes size1 = calculateSizes(node);
-        assertTrue(String.valueOf(size1.cached()), size1.cached() < 8000);
-        assertTrue(String.valueOf(size1.uncached()), size1.uncached() < 8000);
+        ContinueAtSizes sizes = calculateSizes(node);
+        assertTrue(String.valueOf(sizes.cached()), sizes.cached().size < 8000);
+        assertTrue(String.valueOf(sizes.uncached()), sizes.uncached().size < 8000);
     }
 
     private static int countInstructions(BytecodeRootNode node) throws ClassNotFoundException {
@@ -153,32 +155,30 @@ public class InstructionBytecodeSizeTest {
     }
 
     private static ContinueAtSizes computeSingleInstructionSize(ContinueAtSizes size1, ContinueAtSizes sizeN, int n) {
-
-        int cachedDiff = sizeN.cached - size1.cached;
+        int cachedDiff = sizeN.cached.size - size1.cached.size;
         int cachedSingle = cachedDiff / (n - 1);
 
-        int uncachedDiff = sizeN.uncached - size1.uncached;
+        int uncachedDiff = sizeN.uncached.size - size1.uncached.size;
         int uncachedSingle = uncachedDiff / (n - 1);
-
-        return new ContinueAtSizes(cachedSingle, uncachedSingle);
+        return new ContinueAtSizes(new NameAndSize(null, cachedSingle), new NameAndSize(null, uncachedSingle));
     }
 
-    private static ContinueAtSizes calculateSizes(BytecodeRootNode node) throws IOException {
+    private static ContinueAtSizes calculateSizes(BytecodeRootNode node) {
         BytecodeNode bytecodeNode = node.getBytecodeNode();
         assertEquals(BytecodeTier.UNCACHED, bytecodeNode.getTier());
-        int uncachedSize = calculateContinueAtSize(bytecodeNode);
+        NameAndSize uncachedSize = calculateContinueAtSize(bytecodeNode);
 
         bytecodeNode.setUncachedThreshold(0);
         ((RootNode) node).getCallTarget().call();
 
         bytecodeNode = node.getBytecodeNode();
         assertEquals(BytecodeTier.CACHED, bytecodeNode.getTier());
-        int cachedSize = calculateContinueAtSize(node.getBytecodeNode());
+        NameAndSize cachedSize = calculateContinueAtSize(node.getBytecodeNode());
 
         return new ContinueAtSizes(cachedSize, uncachedSize);
     }
 
-    record ContinueAtSizes(int cached, int uncached) {
+    record ContinueAtSizes(NameAndSize cached, NameAndSize uncached) {
     }
 
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
@@ -420,7 +420,7 @@ public class InstructionBytecodeSizeTest {
         @Operation
         static final class Op1 {
             @Specialization
-            static double doDefault(double a0, double a1) {
+            static double doDefault(double a0, double a1, double a2) {
                 return 1.0d;
             }
         }
@@ -428,7 +428,7 @@ public class InstructionBytecodeSizeTest {
         @Operation
         static final class Op2 {
             @Specialization
-            static double doDefault(double a0, double a1) {
+            static double doDefault(double a0, double a1, double a3) {
                 return 1.0d;
             }
         }
@@ -454,6 +454,15 @@ public class InstructionBytecodeSizeTest {
             @Specialization
             static double doDefault(double a0, double a1) {
                 return 1.0d;
+            }
+        }
+
+        // Though it is a custom operation, the yield should not be outlined.
+        @Yield
+        static final class MyYield {
+            @Specialization
+            static Object doDefault(Object result, @Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
+                return result;
             }
         }
     }
@@ -508,47 +517,195 @@ public class InstructionBytecodeSizeTest {
         return nodes.getNode(nodes.count() - 1);
     }
 
-    private static int calculateContinueAtSize(BytecodeNode bytecodeNode) throws IOException {
-        byte[] classBytes = loadClassBytes(bytecodeNode.getClass());
-        int size = getMaxMethodBytecodeSize(classBytes, "continueAt");
-        return size;
-    }
-
-    private static byte[] loadClassBytes(Class<?> clazz) throws IOException {
-        String className = clazz.getName().replace('.', '/') + ".class";
-        try (java.io.InputStream is = clazz.getClassLoader().getResourceAsStream(className)) {
-            return is.readAllBytes();
-        }
-    }
-
-    private static int getMaxMethodBytecodeSize(byte[] classBytes, String pattern) {
-        ClassReader reader = new ClassReader(classBytes);
-        MethodSizeFinder finder = new MethodSizeFinder(Opcodes.ASM9, pattern);
-        reader.accept(finder, 0);
+    private static NameAndSize calculateContinueAtSize(BytecodeNode bytecodeNode) {
         int maxSize = 0;
-        for (var entry : finder.sizeVisitor.entrySet()) {
-            CodeSizeEvaluator evaluator = entry.getValue();
-            maxSize = Math.max(maxSize, evaluator.getMaxSize());
+        String methodName = null;
+        for (Method m : bytecodeNode.getClass().getDeclaredMethods()) {
+            if (m.getName().startsWith("continueAt")) {
+                int size = BytecodeSize.getMethodCodeSize(m);
+                if (size > maxSize) {
+                    maxSize = size;
+                    methodName = bytecodeNode.getClass().getName() + "." + m.getName() + "(...)";
+                }
+            }
         }
-        return maxSize;
+        return new NameAndSize(methodName, maxSize);
     }
 
-    static class MethodSizeFinder extends ClassVisitor {
-        private String pattern;
-        Map<String, CodeSizeEvaluator> sizeVisitor = new HashMap<>();
+    record NameAndSize(String name, int size) {
+    }
 
-        MethodSizeFinder(int api, String name) {
-            super(api);
-            this.pattern = name;
+    static final class BytecodeSize {
+
+        private BytecodeSize() {
         }
 
-        @Override
-        public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-            final MethodVisitor visitor = super.visitMethod(access, name, descriptor, signature, exceptions);
-            if (name.startsWith(pattern)) {
-                return sizeVisitor.computeIfAbsent(name, (key) -> new CodeSizeEvaluator(visitor));
+        public static int getMethodCodeSize(Method method) {
+            Class<?> owner = method.getDeclaringClass();
+            String name = method.getName();
+            String descriptor = com.oracle.truffle.api.impl.asm.Type.getMethodDescriptor(method);
+            return getMethodCodeSize(owner, name, descriptor);
+        }
+
+        public static int getMethodCodeSize(Class<?> clazz, String methodName, String methodDescriptor) {
+            String resourceName = clazz.getName().replace('.', '/') + ".class";
+
+            try (InputStream in = clazz.getClassLoader().getResourceAsStream(resourceName)) {
+                if (in == null) {
+                    throw new IllegalArgumentException("Class file not found for " + clazz.getName());
+                }
+                byte[] bytes = in.readAllBytes();
+                return getMethodCodeSize(bytes, methodName, methodDescriptor);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
             }
-            return visitor;
+        }
+
+        // --- low-level parser below ---
+
+        private static int getMethodCodeSize(byte[] classFile,
+                        String methodName,
+                        String methodDescriptor) {
+            int index = 0;
+
+            // magic
+            int magic = readInt(classFile, index);
+            index += 4;
+            if (magic != 0xCAFEBABE) {
+                throw new IllegalArgumentException("Not a class file");
+            }
+
+            // minor_version, major_version
+            index += 2; // minor
+            index += 2; // major
+
+            // constant_pool_count
+            int cpCount = readUnsignedShort(classFile, index);
+            index += 2;
+
+            Object[] cp = new Object[cpCount];
+
+            // constant_pool[cpCount-1]
+            for (int i = 1; i < cpCount;) {
+                int tag = classFile[index++] & 0xFF;
+                switch (tag) {
+                    case 1: { // CONSTANT_Utf8
+                        int len = readUnsignedShort(classFile, index);
+                        index += 2;
+                        String s = new String(classFile, index, len, StandardCharsets.UTF_8);
+                        cp[i] = s;
+                        index += len;
+                        break;
+                    }
+                    case 3:  // int
+                    case 4:  // float
+                    case 9:  // fieldref
+                    case 10: // methodref
+                    case 11: // interfaceMethodref
+                    case 12: // nameAndType
+                    case 18: // invokeDynamic
+                    case 17: // dynamic (if present)
+                        index += 4;
+                        break;
+                    case 5:  // long
+                    case 6:  // double
+                        index += 8;
+                        i++; // takes two entries
+                        break;
+                    case 7:  // Class
+                    case 8:  // String
+                    case 16: // MethodType
+                        index += 2;
+                        break;
+                    case 15: // MethodHandle
+                        index += 3;
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Unsupported constant pool tag: " + tag);
+                }
+                i++;
+            }
+
+            // access_flags, this_class, super_class
+            index += 2; // access_flags
+            index += 2; // this_class
+            index += 2; // super_class
+
+            // interfaces
+            int interfacesCount = readUnsignedShort(classFile, index);
+            index += 2 + (2 * interfacesCount);
+
+            // fields
+            int fieldsCount = readUnsignedShort(classFile, index);
+            index += 2;
+            for (int i = 0; i < fieldsCount; i++) {
+                index += 2; // access_flags
+                index += 2; // name_index
+                index += 2; // descriptor_index
+                int attributesCount = readUnsignedShort(classFile, index);
+                index += 2;
+                for (int j = 0; j < attributesCount; j++) {
+                    index += 2; // attribute_name_index
+                    int attrLength = readInt(classFile, index);
+                    index += 4 + attrLength;
+                }
+            }
+
+            // methods
+            int methodsCount = readUnsignedShort(classFile, index);
+            index += 2;
+
+            for (int i = 0; i < methodsCount; i++) {
+                index += 2; // access_flags
+                int nameIndex = readUnsignedShort(classFile, index);
+                index += 2;
+                int descIndex = readUnsignedShort(classFile, index);
+                index += 2;
+
+                String mName = (String) cp[nameIndex];
+                String mDesc = (String) cp[descIndex];
+
+                int attributesCount = readUnsignedShort(classFile, index);
+                index += 2;
+
+                boolean match = methodName.equals(mName) && methodDescriptor.equals(mDesc);
+
+                for (int j = 0; j < attributesCount; j++) {
+                    int attrNameIndex = readUnsignedShort(classFile, index);
+                    index += 2;
+                    int attrLength = readInt(classFile, index);
+                    index += 4;
+
+                    String attrName = (String) cp[attrNameIndex];
+
+                    if (match && "Code".equals(attrName)) {
+                        int codeIdx = index;
+
+                        // u2 max_stack; u2 max_locals; u4 code_length;
+                        /* int maxStack = */ readUnsignedShort(classFile, codeIdx);
+                        codeIdx += 2;
+                        /* int maxLocals = */ readUnsignedShort(classFile, codeIdx);
+                        codeIdx += 2;
+                        int codeLength = readInt(classFile, codeIdx);
+
+                        return codeLength;
+                    }
+
+                    // skip attribute_info
+                    index += attrLength;
+                }
+            }
+
+            throw new IllegalArgumentException(
+                            "Method " + methodName + methodDescriptor + " not found or has no Code attribute");
+        }
+
+        private static int readInt(byte[] b, int idx) {
+            return ((b[idx] & 0xFF) << 24) | ((b[idx + 1] & 0xFF) << 16) | ((b[idx + 2] & 0xFF) << 8) | (b[idx + 3] & 0xFF);
+        }
+
+        private static int readUnsignedShort(byte[] b, int idx) {
+            return ((b[idx] & 0xFF) << 8) | (b[idx + 1] & 0xFF);
         }
 
     }

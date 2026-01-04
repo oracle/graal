@@ -44,6 +44,9 @@ import java.net.URISyntaxException;
 import java.net.URLConnection;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -79,14 +82,15 @@ public class SyncPortProcessor extends AbstractProcessor {
     // END+HOTSPOT_PORT_SYNC_SEARCH_RANGE].
     static final String SYNC_SEARCH_RANGE_VAR = "HOTSPOT_PORT_SYNC_SEARCH_RANGE";
 
-    static final String JDK_LATEST = "https://raw.githubusercontent.com/openjdk/jdk/master/";
-    static final String JDK_LATEST_INFO = "https://api.github.com/repos/openjdk/jdk/git/matching-refs/heads/master";
+    static final String JDK_LATEST = "https://raw.githubusercontent.com/openjdk/%s/master/";
+    static final String JDK_LATEST_INFO = "https://api.github.com/repos/openjdk/%s/git/matching-refs/heads/master";
 
     static final String SYNC_PORT_CLASS_NAME = "jdk.graal.compiler.lir.SyncPort";
     static final String SYNC_PORTS_CLASS_NAME = "jdk.graal.compiler.lir.SyncPorts";
 
-    static final Pattern URL_PATTERN = Pattern.compile("^https://github.com/(?<user>[^/]+)/jdk/blob/(?<commit>[0-9a-fA-F]{40})/(?<path>[-_./A-Za-z0-9]+)#L(?<lineStart>[0-9]+)-L(?<lineEnd>[0-9]+)$");
-    static final Pattern URL_RAW_PATTERN = Pattern.compile("^https://raw.githubusercontent.com/(?<user>[^/]+)/jdk/(?<commit>[0-9a-fA-F]{40})/$");
+    static final Pattern URL_PATTERN = Pattern.compile(
+                    "^https://github.com/(?<user>[^/]+)/(?<repo>[^/]+)/blob/(?<commit>[0-9a-fA-F]{40})/(?<path>[-_./A-Za-z0-9]+)#L(?<lineStart>[0-9]+)-L(?<lineEnd>[0-9]+)$");
+    static final Pattern URL_RAW_PATTERN = Pattern.compile("^https://raw.githubusercontent.com/(?<user>[^/]+)/(?<repo>[^/]+)/(?<commit>[0-9a-fA-F]{40})/$");
 
     static final int DEFAULT_SEARCH_RANGE = 200;
 
@@ -113,7 +117,7 @@ public class SyncPortProcessor extends AbstractProcessor {
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(SYNC_PORT_CLASS_NAME, SYNC_PORTS_CLASS_NAME);
+        return Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(SYNC_PORT_CLASS_NAME, SYNC_PORTS_CLASS_NAME)));
     }
 
     private void compareDigest(MessageDigest md, AnnotationMirror annotationMirror, Element element, Proxy proxy) throws IOException, URISyntaxException {
@@ -129,6 +133,7 @@ public class SyncPortProcessor extends AbstractProcessor {
         }
 
         String user = matcher.group("user");
+        String repo = matcher.group("repo");
         String commit = matcher.group("commit");
         String path = matcher.group("path");
         int lineStart = Integer.parseInt(matcher.group("lineStart"));
@@ -143,7 +148,7 @@ public class SyncPortProcessor extends AbstractProcessor {
         try (dumpUpdateCommands) {
             boolean isURLOverwritten = overwriteURL != null && !"".equals(overwriteURL);
 
-            String urlPrefix = isURLOverwritten ? overwriteURL : JDK_LATEST;
+            String urlPrefix = isURLOverwritten ? overwriteURL : String.format(JDK_LATEST, repo);
             String url = urlPrefix + path;
             String sha1Latest = digest(proxy, md, url, lineStart - 1, lineEnd);
 
@@ -161,12 +166,12 @@ public class SyncPortProcessor extends AbstractProcessor {
                     latestCommit = "UNKNOWN";
                 }
             } else {
-                latestCommit = getLatestCommit(proxy);
+                latestCommit = getLatestCommit(proxy, repo);
             }
 
             String extraMessage = "";
 
-            String urlOld = String.format("https://raw.githubusercontent.com/%s/jdk/%s/%s", user, commit, path);
+            String urlOld = String.format("https://raw.githubusercontent.com/%s/%s/%s/%s", user, repo, commit, path);
             String sha1Old = digest(proxy, md, urlOld, lineStart - 1, lineEnd);
 
             if (sha1.equals(sha1Old)) {
@@ -177,8 +182,8 @@ public class SyncPortProcessor extends AbstractProcessor {
                     if ("UNKNOWN".equals(latestCommit)) {
                         extraMessage = " The original code snippet is shifted.";
                     } else {
-                        String urlFormat = "https://github.com/%s/jdk/blob/%s/%s#L%d-L%d";
-                        String newUrl = String.format(urlFormat, user, latestCommit, path, idxInclusive, idxInclusive + (lineEnd - lineStart));
+                        String urlFormat = "https://github.com/%s/%s/blob/%s/%s#L%d-L%d";
+                        String newUrl = String.format(urlFormat, user, repo, latestCommit, path, idxInclusive, idxInclusive + (lineEnd - lineStart));
                         extraMessage = String.format("""
                                          The original code snippet is shifted. Update with:
                                         @SyncPort(from = "%s",
@@ -187,47 +192,55 @@ public class SyncPortProcessor extends AbstractProcessor {
                                         newUrl,
                                         sha1);
                         if (dumpUpdateCommands != null) {
-                            String oldUrl = String.format(urlFormat, user, commit, path, lineStart, lineEnd);
+                            String oldUrl = String.format(urlFormat, user, repo, commit, path, lineStart, lineEnd);
                             assert !oldUrl.contains("+");
                             assert !newUrl.contains("+");
+                            // Parfait_ALLOW xss-injection
                             dumpUpdateCommands.printf("sed -i s+%s+%s+g $(git grep --files-with-matches %s)%n", oldUrl, newUrl, sha1);
                         }
                     }
                 } else {
                     extraMessage = String.format("""
                                      See also:
-                                    https://github.com/%s/jdk/compare/%s...%s
-                                    https://github.com/%s/jdk/commits/%s/%s
+                                    https://github.com/%s/%s/compare/%s...%s
+                                    https://github.com/%s/%s/commits/%s/%s
                                     """,
                                     user,
+                                    repo,
                                     commit,
                                     latestCommit,
                                     user,
+                                    repo,
                                     latestCommit,
                                     path);
                     if (shouldDump) {
-                        dump(proxy, urlOld, lineStart - 1, lineEnd, element + ".old");
-                        dump(proxy, url, lineStart - 1, lineEnd, element + ".new");
+                        dump(proxy, urlOld, lineStart - 1, lineEnd, "old", element.getSimpleName().toString());
+                        dump(proxy, url, lineStart - 1, lineEnd, "new", element.getSimpleName().toString());
                     }
                 }
             } else {
                 extraMessage = String.format("""
                                  New SyncPort? Then:
-                                @SyncPort(from = "https://github.com/%s/jdk/blob/%s/%s#L%d-L%d",
+                                @SyncPort(from = "https://github.com/%s/%s/blob/%s/%s#L%d-L%d",
                                           sha1 = "%s")
                                 """,
                                 user,
+                                repo,
                                 latestCommit,
                                 path,
                                 lineStart,
                                 lineEnd,
                                 sha1Latest);
+                if (dumpUpdateCommands != null) {
+                    dumpUpdateCommands.printf("sed -i s+%s+%s+g $(git grep --files-with-matches %s)%n", sha1, sha1Latest, sha1);
+                }
             }
             env().getMessager().printMessage(kind,
-                            String.format("Sha1 digest of %s (ported by %s) does not match https://github.com/%s/jdk/blob%s/%s#L%d-L%d : expected %s but was %s.%s",
+                            String.format("Sha1 digest of %s (ported by %s) does not match https://github.com/%s/%s/blob%s/%s#L%d-L%d : expected %s but was %s.%s",
                                             from,
                                             toString(element),
                                             user,
+                                            repo,
                                             isURLOverwritten ? "/" + latestCommit : "/master",
                                             path,
                                             lineStart,
@@ -265,6 +278,7 @@ public class SyncPortProcessor extends AbstractProcessor {
             // will be different from hashing the whole file.
             in.lines().skip(lineStartExclusive).limit(lineEnd - lineStartExclusive).map(String::getBytes).forEach(md::update);
         }
+        // Parfait_ALLOW missing-crypto-step
         return String.format("%040x", new BigInteger(1, md.digest()));
     }
 
@@ -286,11 +300,17 @@ public class SyncPortProcessor extends AbstractProcessor {
         return -1;
     }
 
-    private static void dump(Proxy proxy, String url, int lineStartExclusive, int lineEnd, String fileName) throws IOException, URISyntaxException {
+    private static void dump(Proxy proxy, String url, int lineStartExclusive, int lineEnd, String dirName, String fileName) throws IOException, URISyntaxException {
         URLConnection connection = new URI(url).toURL().openConnection(proxy);
         try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
             String content = in.lines().skip(lineStartExclusive).limit(lineEnd - lineStartExclusive).collect(Collectors.joining("\n"));
-            try (PrintWriter out = new PrintWriter(fileName + ".tmp")) {
+            File directory = new File(dirName);
+            if (!directory.exists()) {
+                directory.mkdir();
+            }
+
+            try (PrintWriter out = new PrintWriter(dirName + "/" + fileName + ".tmp")) {
+                // Parfait_ALLOW xss-injection
                 out.print(content);
                 out.print('\n');
             }
@@ -299,11 +319,11 @@ public class SyncPortProcessor extends AbstractProcessor {
 
     private String cachedLatestCommit = null;
 
-    private String getLatestCommit(Proxy proxy) throws IOException, URISyntaxException {
+    private String getLatestCommit(Proxy proxy, String repo) throws IOException, URISyntaxException {
         if (cachedLatestCommit == null) {
             String result = null;
 
-            URLConnection connection = new URI(JDK_LATEST_INFO).toURL().openConnection(proxy);
+            URLConnection connection = new URI(String.format(JDK_LATEST_INFO, repo)).toURL().openConnection(proxy);
             try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
                 String result1 = in.lines().collect(Collectors.joining());
                 int idx = result1.indexOf("commits/");
@@ -331,6 +351,7 @@ public class SyncPortProcessor extends AbstractProcessor {
                     // Set https.protocols explicitly to avoid handshake failure
                     System.setProperty("https.protocols", "TLSv1.2");
                     TypeElement tSyncPort = getTypeElement(SYNC_PORT_CLASS_NAME);
+                    // Parfait_ALLOW weak-hash
                     MessageDigest md = MessageDigest.getInstance("SHA-1");
 
                     Proxy proxy = Proxy.NO_PROXY;

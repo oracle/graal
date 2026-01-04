@@ -178,7 +178,7 @@ public final class OptimizedRuntimeOptions {
                     usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Integer> DynamicCompilationThresholdsMaxNormalLoad = new OptionKey<>(90);
 
-    @Option(help = "The desired minimum compilation queue load. When the load falls bellow this value, the compilation thresholds are decreased. The load is scaled by the number of compiler threads (default: 10).", //
+    @Option(help = "The desired minimum compilation queue load. When the load falls below this value, the compilation thresholds are decreased. The load is scaled by the number of compiler threads (default: 10).", //
                     usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Integer> DynamicCompilationThresholdsMinNormalLoad = new OptionKey<>(10);
 
@@ -341,6 +341,9 @@ public final class OptimizedRuntimeOptions {
 
     @Option(help = "Traversing queue uses rate as priority for both tier. (default: true)", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> TraversingQueueWeightingBothTiers = new OptionKey<>(true);
+
+    @Option(help = "Sets the time, in milliseconds, after which the impact of a compilation unit's observed execution rate is halved. (default: 300 ms)", usageSyntax = "[0, inf)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Long> TraversingQueueRateHalfLife = new OptionKey<>(300L);
 
     public static OptionDescriptors getDescriptors() {
         return new OptimizedRuntimeOptionsOptionDescriptors();

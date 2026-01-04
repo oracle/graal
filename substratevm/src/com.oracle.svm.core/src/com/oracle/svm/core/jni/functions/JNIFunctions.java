@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -110,6 +110,7 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
+import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -379,6 +380,7 @@ public final class JNIFunctions {
     static int RegisterNatives(JNIEnvironment env, JNIObjectHandle hclazz, JNINativeMethod methods, int nmethods) {
         Class<?> clazz = JNIObjectHandles.getObject(hclazz);
         Pointer p = (Pointer) methods;
+        String declaringClass = MetaUtil.toInternalName(clazz.getName());
         for (int i = 0; i < nmethods; i++) {
             JNINativeMethod entry = (JNINativeMethod) p;
             CharSequence name = Utf8.wrapUtf8CString(entry.name());
@@ -393,7 +395,6 @@ public final class JNIFunctions {
 
             CFunctionPointer fnPtr = entry.fnPtr();
 
-            String declaringClass = MetaUtil.toInternalName(clazz.getName());
             JNINativeLinkage linkage = JNIReflectionDictionary.getLinkage(declaringClass, name, signature);
             if (linkage != null) {
                 linkage.setEntryPoint(fnPtr);
@@ -1641,14 +1642,14 @@ public final class JNIFunctions {
      * JNI functions.
      */
     public static class Support {
-        static class JNIEnvEnterPrologue implements CEntryPointOptions.Prologue {
+        public static class JNIEnvEnterPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
             public static int enter(JNIEnvironment env) {
                 return CEntryPointActions.enter((IsolateThread) env);
             }
         }
 
-        static class ReturnNullHandle implements CEntryPointOptions.PrologueBailout {
+        public static class ReturnNullHandle implements CEntryPointOptions.PrologueBailout {
             @Uninterruptible(reason = "prologue")
             public static JNIObjectHandle bailout(int prologueResult) {
                 return JNIObjectHandles.nullHandle();
@@ -1840,7 +1841,11 @@ public final class JNIFunctions {
             return getMethodID(clazz, name, signature, isStatic);
         }
 
-        private static JNIMethodId getMethodID(Class<?> clazz, CharSequence name, CharSequence signature, boolean isStatic) {
+        private static JNIMethodId getMethodID(Class<?> origClazz, CharSequence name, CharSequence signature, boolean isStatic) {
+
+            // Workaround for GR-71358
+            Class<?> clazz = LibJVMMainMethodWrappers.patchMethodHolderClass(origClazz);
+
             JNIMethodId methodID = JNIReflectionDictionary.getMethodID(clazz, name, signature, isStatic);
             if (methodID.isNull()) {
                 String message = clazz.getName() + "." + name + signature;

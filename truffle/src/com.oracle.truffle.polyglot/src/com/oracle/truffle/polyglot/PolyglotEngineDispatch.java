@@ -43,6 +43,7 @@ package com.oracle.truffle.polyglot;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.Reference;
+import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -55,6 +56,7 @@ import java.util.function.Predicate;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
@@ -165,15 +167,15 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                     boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions,
                     boolean allowExperimentalOptions, Predicate<String> classFilter,
                     Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, Object ioAccess, Object logHandler, boolean allowCreateProcess,
-                    ProcessHandler processHandler, Object environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
-                    String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit, boolean registerInActiveContexts) {
+                    ProcessHandler processHandler, Consumer<PolyglotException> exceptionHandler, Object environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl,
+                    String currentWorkingDirectory, String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit, boolean registerInActiveContexts) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         return receiver.createContext(engineApi, sandboxPolicy, out, err, in, allowHostLookup, hostAccess, polyglotAccess,
                         allowNativeAccess, allowCreateThread, null, allowHostClassLoading,
                         allowInnerContextOptions,
                         allowExperimentalOptions,
                         classFilter, options, arguments, onlyLanguages, ioAccess, logHandler, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
-                        currentWorkingDirectory, tmpDir, hostClassLoader, allowValueSharing, useSystemExit, registerInActiveContexts);
+                        currentWorkingDirectory, tmpDir, hostClassLoader, allowValueSharing, useSystemExit, registerInActiveContexts, exceptionHandler);
     }
 
     @Override
@@ -327,4 +329,11 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     public void onEngineCollected(Object engineReceiver) {
         ((PolyglotEngineImpl) engineReceiver).onEngineCollected();
     }
+
+    @Override
+    public boolean storeCache(Object engineReceiver, Path targetFile, long cancelledWord) {
+        PolyglotEngineImpl engine = ((PolyglotEngineImpl) engineReceiver);
+        return engine.storeCache(targetFile, cancelledWord);
+    }
+
 }

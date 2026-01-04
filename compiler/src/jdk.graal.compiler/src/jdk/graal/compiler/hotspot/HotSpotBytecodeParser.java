@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot;
 
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
@@ -84,7 +85,7 @@ public class HotSpotBytecodeParser extends BytecodeParser {
         if (plugin instanceof GeneratedNodeIntrinsicInvocationPlugin nodeIntrinsicPlugin) {
             // Snippets are never parsed in libgraal, and they are the root of the compilation
             // in jargraal, so check the root method for the Snippet annotation.
-            if (LibGraalSupport.inLibGraalRuntime() || graph.method().getAnnotation(Snippet.class) == null) {
+            if (LibGraalSupport.inLibGraalRuntime() || AnnotationValueSupport.getAnnotationValue(graph.method(), Snippet.class) == null) {
                 throw new PermanentBailoutException(BAD_NODE_INTRINSIC_PLUGIN_CONTEXT + nodeIntrinsicPlugin.getSource().getSimpleName());
             }
         }
@@ -105,13 +106,12 @@ public class HotSpotBytecodeParser extends BytecodeParser {
     }
 
     /**
-     * {@code OnStackReplacementPhase.initLocal()} can only clear non-live oop locals if JVMCI can
-     * supply the oop map for a method at specific BCI. Without this, we need to fall back to
-     * compiler liveness analysis to do the clearing.
+     * {@code OnStackReplacementPhase.initLocal()} can clear non-live oop locals since JVMCI can
+     * supply the oop map for a method at a specific BCI.
      */
     @Override
     protected boolean mustClearNonLiveLocalsAtOSREntry() {
-        return !HotSpotGraalServices.hasGetOopMapAt();
+        return false;
     }
 
     @Override

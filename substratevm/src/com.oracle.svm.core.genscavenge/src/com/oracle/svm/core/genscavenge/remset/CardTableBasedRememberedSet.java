@@ -41,6 +41,7 @@ import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
+import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
 import com.oracle.svm.core.heap.Heap;
@@ -52,6 +53,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.VMError;
@@ -189,25 +191,10 @@ public class CardTableBasedRememberedSet implements RememberedSet {
         if (holderObject == null || object == null) {
             return;
         }
-        // We dirty the cards of ...
-        if (HeapParameters.getMaxSurvivorSpaces() != 0 && !GCImpl.getGCImpl().isCompleteCollection() && HeapImpl.getHeapImpl().getYoungGeneration().contains(object)) {
-            /*
-             * ...references from the old generation to the young generation, unless there cannot be
-             * any such references if we do not use survivor spaces, or if we do but are doing a
-             * complete collection: in both cases, all objects are promoted to the old generation.
-             * (We avoid an extra old generation check and might remark a few image heap cards, too)
-             */
-        } else if (HeapImpl.usesImageHeapCardMarking() && GCImpl.getGCImpl().isCompleteCollection() && HeapImpl.getHeapImpl().isInImageHeap(holderObject)) {
-            // ...references from the image heap to the runtime heap, but we clean and remark those
-            // only during complete collections.
-            assert !HeapImpl.getHeapImpl().isInImageHeap(object) : "should never be called for references to image heap objects";
-        } else {
-            return;
-        }
 
-        ObjectHeader oh = Heap.getHeap().getObjectHeader();
-        UnsignedWord objectHeader = oh.readHeaderFromObject(holderObject);
-        if (hasRememberedSet(objectHeader)) {
+        assert !HeapImpl.getHeapImpl().isInImageHeap(object) : "should never be called for references to image heap objects";
+
+        if (cardNeedsDirtying(holderObject, object)) {
             if (ObjectHeaderImpl.isAlignedObject(holderObject)) {
                 AlignedChunkRememberedSet.dirtyCardForObject(holderObject, false);
             } else {
@@ -215,6 +202,42 @@ public class CardTableBasedRememberedSet implements RememberedSet {
                 UnalignedChunkRememberedSet.dirtyCardForObject(holderObject, objRef, false);
             }
         }
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private boolean cardNeedsDirtying(Object holderObject, Object object) {
+        assert holderObject != null && object != null;
+
+        if (GCImpl.getGCImpl().isCompleteCollection()) {
+            /*
+             * After a full GC, the young generation is empty. So, there would be nothing to do.
+             * However, we want to keep track of all the references that the image heap or metaspace
+             * have to the runtime heap (regardless of the runtime heap generation). We clean and
+             * remark those only during complete collections.
+             */
+            return HeapImpl.usesImageHeapCardMarking() && HeapImpl.getHeapImpl().isInImageHeap(holderObject) ||
+                            SerialGCOptions.useRememberedSet() && Metaspace.singleton().isInAddressSpace(holderObject);
+        }
+
+        /*
+         * If we don't have any survivor spaces, then there is nothing to do because the young
+         * generation will be empty after a young GC.
+         */
+        if (HeapParameters.getMaxSurvivorSpaces() == 0) {
+            return false;
+        }
+
+        /*
+         * Dirty the card table for references from the image heap, metaspace, or old generation to
+         * the young generation.
+         */
+        if (HeapImpl.getHeapImpl().getYoungGeneration().contains(object)) {
+            ObjectHeader oh = Heap.getHeap().getObjectHeader();
+            UnsignedWord objectHeader = oh.readHeaderFromObject(holderObject);
+            return hasRememberedSet(objectHeader);
+        }
+        return false;
     }
 
     @Override

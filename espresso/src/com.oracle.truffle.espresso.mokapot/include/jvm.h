@@ -144,7 +144,7 @@ JNIEXPORT void JNICALL // Removed in 11
 JVM_Exit(jint code);
 
 JNIEXPORT void JNICALL
-JVM_BeforeHalt();
+JVM_BeforeHalt(void);
 
 JNIEXPORT void JNICALL
 JVM_Halt(jint code);
@@ -194,7 +194,7 @@ JNIEXPORT jboolean JNICALL
 JVM_IsContainerized(void);
 
 JNIEXPORT void * JNICALL
-JVM_LoadZipLibrary();
+JVM_LoadZipLibrary(void);
 
 JNIEXPORT void * JNICALL
 JVM_LoadLibrary(const char *name /*, jboolean throwException*/);
@@ -255,10 +255,10 @@ JNIEXPORT jboolean JNICALL // Removed in 25
 JVM_IsDumpingClassList(JNIEnv* env);
 
 JNIEXPORT jint JNICALL
-JVM_GetCDSConfigStatus();
+JVM_GetCDSConfigStatus(void);
 
 JNIEXPORT jlong JNICALL
-JVM_GetRandomSeedForDumping();
+JVM_GetRandomSeedForDumping(void);
 
 JNIEXPORT void JNICALL
 JVM_LogLambdaFormInvoker(JNIEnv* env, jstring line);
@@ -406,6 +406,9 @@ JVM_SetCurrentThread(JNIEnv *env, jobject thisThread, jobject theThread);
 JNIEXPORT jint JNICALL // Removed in 11
 JVM_CountStackFrames(JNIEnv *env, jobject thread);
 
+JNIEXPORT jobject JNICALL
+JVM_CreateThreadSnapshot(JNIEnv* env, jobject thread);
+
 JNIEXPORT void JNICALL
 JVM_Interrupt(JNIEnv *env, jobject thread);
 
@@ -493,6 +496,9 @@ JVM_HasReferencePendingList(JNIEnv *env);
 
 JNIEXPORT void JNICALL
 JVM_WaitForReferencePendingList(JNIEnv *env);
+
+JNIEXPORT jobject JNICALL
+JVM_ReferenceGet(JNIEnv *env, jobject ref);
 
 JNIEXPORT jboolean JNICALL
 JVM_ReferenceRefersTo(JNIEnv *env, jobject ref, jobject o);

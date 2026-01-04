@@ -35,7 +35,7 @@ import java.util.Set;
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.ComplexFilter;
 
@@ -199,7 +199,7 @@ public class ConditionalConfigurationComputer {
          * method that "caused" them. Register them as unconditional.
          */
         MethodCallNode rootCallNode = methodCallNodes.remove(null).getFirst();
-        addConfigurationWithCondition(configurationSet, rootCallNode.configuration, UnresolvedConfigurationCondition.alwaysTrue());
+        addConfigurationWithCondition(configurationSet, rootCallNode.configuration, UnresolvedAccessCondition.unconditional());
 
         /*
          * For other configuration entries, use the associated method's class as the "cause".
@@ -209,8 +209,8 @@ public class ConditionalConfigurationComputer {
             assert list.stream().allMatch(node -> node.configuration.equals(configurationToAdd)) : "The ";
             for (MethodCallNode node : list) {
                 String className = node.methodInfo.getJavaDeclaringClassName();
-                UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.create(NamedConfigurationTypeDescriptor.fromJSONName(className));
-                var resolvedCondition = ConfigurationConditionResolver.identityResolver().resolveCondition(condition);
+                UnresolvedAccessCondition condition = UnresolvedAccessCondition.create(NamedConfigurationTypeDescriptor.fromJSONName(className));
+                var resolvedCondition = AccessConditionResolver.identityResolver().resolveCondition(condition);
                 addConfigurationWithCondition(configurationSet, node.configuration, resolvedCondition.get());
             }
         }
@@ -219,14 +219,14 @@ public class ConditionalConfigurationComputer {
     }
 
     /* Force the compiler to believe us we're referring to the same type. */
-    private static <T extends ConfigurationBase<T, ?>> void mergeWithCondition(ConfigurationSet destConfigSet, ConfigurationSet srcConfigSet, UnresolvedConfigurationCondition condition,
+    private static <T extends ConfigurationBase<T, ?>> void mergeWithCondition(ConfigurationSet destConfigSet, ConfigurationSet srcConfigSet, UnresolvedAccessCondition condition,
                     ConfigurationFile configType) {
         T destConfig = destConfigSet.getConfiguration(configType);
         T srcConfig = srcConfigSet.getConfiguration(configType);
         destConfig.mergeConditional(condition, srcConfig);
     }
 
-    private static void addConfigurationWithCondition(ConfigurationSet destConfigSet, ConfigurationSet srcConfigSet, UnresolvedConfigurationCondition condition) {
+    private static void addConfigurationWithCondition(ConfigurationSet destConfigSet, ConfigurationSet srcConfigSet, UnresolvedAccessCondition condition) {
         for (ConfigurationFile configType : ConfigurationFile.agentGeneratedFiles()) {
             mergeWithCondition(destConfigSet, srcConfigSet, condition, configType);
         }

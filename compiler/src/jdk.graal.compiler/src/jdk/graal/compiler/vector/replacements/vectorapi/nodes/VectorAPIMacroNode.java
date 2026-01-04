@@ -47,9 +47,11 @@ import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.extended.GetClassNode;
@@ -68,6 +70,7 @@ import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIExpansionPhase;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIOperations;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIType;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIUtils;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -264,6 +267,16 @@ public abstract class VectorAPIMacroNode extends MacroWithExceptionNode implemen
         ValueNode vmClass = arguments[vmClassIndex];
         ValueNode eClass = arguments[elementClassIndex];
         ValueNode length = arguments[lengthIndex];
+        StructuredGraph graph = vmClass.graph();
+        if (graph == null || graph.isBeforeStage(GraphState.StageFlag.VECTOR_API_EXPANSION)) {
+            /*
+             * Don't compute SIMD stamps before we actually start a compilation. The reason we want
+             * to delay until actual compilation time is that the stamp may differ between native
+             * image build time and runtime compilation time since the native image target
+             * architecture may have different CPU features from the runtime target architecture.
+             */
+            return null;
+        }
         return VectorAPIUtils.stampForVectorClass(vmClass, eClass, length, providers);
     }
 
@@ -318,6 +331,20 @@ public abstract class VectorAPIMacroNode extends MacroWithExceptionNode implemen
         } else {
             return null;
         }
+    }
+
+    /**
+     * If {@code constantValue} is not {@code null} and contains {@link JavaConstant}s, returns a
+     * stamp derived from it; returns {@code vectorStamp} otherwise.
+     */
+    protected static SimdStamp maybeConstantVectorStamp(SimdStamp vectorStamp, SimdConstant constantValue) {
+        if (constantValue != null) {
+            JavaConstant[] constantEntries = constantValue.asJavaConstants();
+            if (constantEntries != null) {
+                return SimdStamp.forConstants(constantEntries);
+            }
+        }
+        return vectorStamp;
     }
 
     @Override

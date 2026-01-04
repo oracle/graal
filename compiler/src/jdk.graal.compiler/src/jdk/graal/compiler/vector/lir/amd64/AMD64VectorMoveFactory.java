@@ -103,8 +103,10 @@ public class AMD64VectorMoveFactory extends AMD64MoveFactoryBase {
     @Override
     public AMD64LIRInstruction createStackMove(AllocatableValue dst, AllocatableValue src, Register scratchRegister, AllocatableValue backupSlot) {
         assert dst.getPlatformKind().getSizeInBytes() <= src.getPlatformKind().getSizeInBytes() : "cannot move " + src + " into a larger Value " + dst;
-        if (((AMD64Kind) src.getPlatformKind()).isXMM()) {
-            return new AMD64VectorMove.StackMoveOp(dst, src, scratchRegister, backupSlot, encoding);
+        if (((AMD64Kind) backupSlot.getPlatformKind()).isXMM()) {
+            AMD64Kind srcKind = (AMD64Kind) src.getPlatformKind();
+            GraalError.guarantee(srcKind.isXMM(), "src kind %s is not XMM", srcKind);
+            return new AMD64VectorMove.AMD64VectorStackMove(dst, src, scratchRegister, backupSlot, encoding);
         } else {
             return baseMoveFactory.createStackMove(dst, src, scratchRegister, backupSlot);
         }

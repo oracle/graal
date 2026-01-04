@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
+
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -46,36 +50,25 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugContext.Scope;
 import jdk.graal.compiler.debug.DebugDumpHandler;
-import jdk.graal.compiler.debug.DebugHandler;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.debug.DebugOptions;
-import jdk.graal.compiler.debug.DebugVerifyHandler;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
 
-@SuppressWarnings("try")
 public class DebugContextTest {
 
     static class DebugContextSetup {
         final Formatter dumpOutput = new Formatter();
         final Formatter verifyOutput = new Formatter();
         final ByteArrayOutputStream logOutput = new ByteArrayOutputStream();
-        DebugHandlersFactory handlers = new DebugHandlersFactory() {
+        DebugDumpHandlersFactory handlers = new DebugDumpHandlersFactory() {
             @Override
-            public List<DebugHandler> createHandlers(OptionValues options) {
+            public List<DebugDumpHandler> createHandlers(OptionValues options) {
                 return Arrays.asList(new DebugDumpHandler() {
                     @Override
                     public void dump(Object object, DebugContext ignore, boolean forced, String format, Object... arguments) {
                         dumpOutput.format("Dumping %s with label \"%s\"%n", object, String.format(format, arguments));
-                    }
-                }, new DebugVerifyHandler() {
-                    @Override
-                    public void verify(DebugContext ignore, Object object, String format, Object... args) {
-                        verifyOutput.format("Verifying %s with label \"%s\"%n", object, String.format(format, args));
                     }
                 });
             }
@@ -92,10 +85,9 @@ public class DebugContextTest {
         OptionValues options = new OptionValues(EconomicMap.create());
         DebugContextSetup setup = new DebugContextSetup();
         try (DebugContext debug = setup.openDebugContext(options);
-                        DebugContext.Scope d = debug.scope("TestDisabledScoping")) {
+                        DebugContext.Scope _ = debug.scope("TestDisabledScoping")) {
             for (int level = DebugContext.BASIC_LEVEL; level <= DebugContext.VERY_DETAILED_LEVEL; level++) {
                 debug.dump(level, "an object", "at level %d", level);
-                debug.verify("an object", "at level %d", level);
                 debug.log(level, "log statement at level %d", level);
             }
         }
@@ -114,12 +106,12 @@ public class DebugContextTest {
             options = new OptionValues(options, DebugOptions.Dump, "Scope" + level + ":" + level);
             DebugContextSetup setup = new DebugContextSetup();
             try (DebugContext debug = setup.openDebugContext(options);
-                            DebugContext.Scope s0 = debug.scope("TestDumping")) {
-                try (DebugContext.Scope s1 = debug.scope("Scope1")) {
-                    try (DebugContext.Scope s2 = debug.scope("Scope2")) {
-                        try (DebugContext.Scope s3 = debug.scope("Scope3")) {
-                            try (DebugContext.Scope s4 = debug.scope("Scope4")) {
-                                try (DebugContext.Scope s5 = debug.scope("Scope5")) {
+                            DebugContext.Scope _ = debug.scope("TestDumping")) {
+                try (DebugContext.Scope _ = debug.scope("Scope1")) {
+                    try (DebugContext.Scope _ = debug.scope("Scope2")) {
+                        try (DebugContext.Scope _ = debug.scope("Scope3")) {
+                            try (DebugContext.Scope _ = debug.scope("Scope4")) {
+                                try (DebugContext.Scope _ = debug.scope("Scope5")) {
                                     debug.dump(level, "an object", "at level %d", level);
                                 }
                             }
@@ -142,17 +134,17 @@ public class DebugContextTest {
         DebugContextSetup setup = new DebugContextSetup();
         try (DebugContext debug = setup.openDebugContext(options)) {
             for (int level = DebugContext.BASIC_LEVEL; level <= DebugContext.VERY_DETAILED_LEVEL; level++) {
-                try (DebugContext.Scope s0 = debug.scope("TestLogging")) {
+                try (DebugContext.Scope _ = debug.scope("TestLogging")) {
                     debug.log(level, "log statement at level %d", level);
-                    try (DebugContext.Scope s1 = debug.scope("Level1")) {
+                    try (DebugContext.Scope _ = debug.scope("Level1")) {
                         debug.log(level, "log statement at level %d", level);
-                        try (DebugContext.Scope s2 = debug.scope("Level2")) {
+                        try (DebugContext.Scope _ = debug.scope("Level2")) {
                             debug.log(level, "log statement at level %d", level);
-                            try (DebugContext.Scope s3 = debug.scope("Level3")) {
+                            try (DebugContext.Scope _ = debug.scope("Level3")) {
                                 debug.log(level, "log statement at level %d", level);
-                                try (DebugContext.Scope s4 = debug.scope("Level4")) {
+                                try (DebugContext.Scope _ = debug.scope("Level4")) {
                                     debug.log(level, "log statement at level %d", level);
-                                    try (DebugContext.Scope s5 = debug.scope("Level5")) {
+                                    try (DebugContext.Scope _ = debug.scope("Level5")) {
                                         debug.log(level, "log statement at level %d", level);
                                     }
                                 }
@@ -177,15 +169,15 @@ public class DebugContextTest {
         options = new OptionValues(options, DebugOptions.Log, ":5");
         DebugContextSetup setup = new DebugContextSetup();
         try (DebugContext debug = setup.openDebugContext(options)) {
-            try (DebugContext.Scope s0 = debug.scope("TestLogging")) {
-                try (DebugContext.Scope s1 = debug.withContext("A")) {
+            try (DebugContext.Scope _ = debug.scope("TestLogging")) {
+                try (DebugContext.Scope _ = debug.withContext("A")) {
                     for (Object o : debug.context()) {
                         Assert.assertEquals(o, "A");
                     }
                 } catch (Throwable t) {
                     throw debug.handle(t);
                 }
-                try (DebugContext.Scope s1 = debug.withContext("B")) {
+                try (DebugContext.Scope _ = debug.withContext("B")) {
                     for (Object o : debug.context()) {
                         Assert.assertEquals(o, "B");
                     }
@@ -239,7 +231,7 @@ public class DebugContextTest {
         Exception e = new Exception("testDisabledSandbox");
         try {
             // Test a disabled sandbox scope
-            try (DebugContext.Scope d = debug.sandbox("TestExceptionHandling", null)) {
+            try (DebugContext.Scope _ = debug.sandbox("TestExceptionHandling", null)) {
                 throw e;
             } catch (Throwable t) {
                 assert e == t;
@@ -296,8 +288,8 @@ public class DebugContextTest {
         DebugContext debug = new Builder(options).globalMetrics(NO_GLOBAL_METRIC_VALUES).description(NO_DESCRIPTION).logStream(new PrintStream(baos)).build();
         Exception e = new Exception();
         try {
-            try (DebugCloseable disabled = debug.disableIntercept(); Scope s1 = debug.scope("ScopeWithDisabledIntercept")) {
-                try (Scope s2 = debug.scope("InnerScopeInheritsDisabledIntercept")) {
+            try (DebugCloseable _ = debug.disableIntercept(); Scope _ = debug.scope("ScopeWithDisabledIntercept")) {
+                try (Scope _ = debug.scope("InnerScopeInheritsDisabledIntercept")) {
                     throw e;
                 }
             } catch (Throwable t) {
@@ -337,4 +329,27 @@ public class DebugContextTest {
         Assert.assertTrue(options2.toString().contains("MethodFilter=test"));
         Assert.assertTrue(options2.toString().contains("DumpOnError=true"));
     }
+
+    @Test
+    public void testIsCountEnabled1() {
+        EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
+        map.put(DebugOptions.Counters, "");
+        OptionValues options = new OptionValues(map);
+        DebugContext debug = new Builder(options).build();
+        try (Scope _ = debug.scope("Scope")) {
+            Assert.assertTrue(debug.areCountersEnabled());
+        }
+    }
+
+    @Test
+    public void testIsCountEnabled2() {
+        EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
+        map.put(DebugOptions.Counters, "");
+        OptionValues options = new OptionValues(map);
+        DebugContext debug = new Builder(options).build();
+        try (Scope _ = debug.scope("Scope")) {
+            Assert.assertTrue(debug.areCountersEnabled());
+        }
+    }
+
 }

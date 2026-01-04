@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.reflect.target;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
@@ -32,6 +33,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 
+/**
+ * Should be migrated to JVMCI (GR-71897).
+ */
 public interface ReflectionSubstitutionSupport {
 
     static ReflectionSubstitutionSupport singleton() {
@@ -52,4 +56,6 @@ public interface ReflectionSubstitutionSupport {
      * deleted.
      */
     String getDeletionReason(Field field);
+
+    boolean isCustomSerializationConstructor(Constructor<?> reflectConstructor);
 }

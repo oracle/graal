@@ -43,12 +43,15 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 public final class WasmFunction {
     private final SymbolTable symbolTable;
     private final int index;
     private final ImportDescriptor importDescriptor;
     private final int typeIndex;
+    private final SymbolTable.ClosedFunctionType closedFunctionType;
     @CompilationFinal private int typeEquivalenceClass;
     @CompilationFinal private String debugName;
     @CompilationFinal private CallTarget callTarget;
@@ -63,7 +66,7 @@ public final class WasmFunction {
         this.index = index;
         this.importDescriptor = importDescriptor;
         this.typeIndex = typeIndex;
-        this.typeEquivalenceClass = -1;
+        this.closedFunctionType = symbolTable.closedFunctionTypeAt(typeIndex);
     }
 
     public String moduleName() {
@@ -74,20 +77,31 @@ public final class WasmFunction {
         return symbolTable.functionTypeParamCount(typeIndex);
     }
 
-    public byte paramTypeAt(int argumentIndex) {
+    public int paramTypeAt(int argumentIndex) {
         return symbolTable.functionTypeParamTypeAt(typeIndex, argumentIndex);
+    }
+
+    public int[] paramTypes() {
+        return symbolTable.functionTypeParamTypesAsArray(typeIndex);
     }
 
     public int resultCount() {
         return symbolTable.functionTypeResultCount(typeIndex);
     }
 
-    public byte resultTypeAt(int returnIndex) {
+    public int resultTypeAt(int returnIndex) {
         return symbolTable.functionTypeResultTypeAt(typeIndex, returnIndex);
     }
 
     void setTypeEquivalenceClass(int typeEquivalenceClass) {
+        if (this.typeEquivalenceClass != SymbolTable.NO_EQUIVALENCE_CLASS) {
+            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Function at index " + index + " already has an equivalence class.");
+        }
         this.typeEquivalenceClass = typeEquivalenceClass;
+    }
+
+    public int[] resultTypes() {
+        return symbolTable.functionTypeResultTypesAsArray(typeIndex);
     }
 
     @Override
@@ -142,8 +156,8 @@ public final class WasmFunction {
         return typeIndex;
     }
 
-    public SymbolTable.FunctionType type() {
-        return symbolTable.typeAt(typeIndex());
+    public SymbolTable.ClosedFunctionType closedType() {
+        return closedFunctionType;
     }
 
     public int typeEquivalenceClass() {
@@ -178,7 +192,7 @@ public final class WasmFunction {
         CallTarget callAdapter = this.interopCallAdapter;
         if (callAdapter == null) {
             // Benign initialization race: The call target will be the same each time.
-            callAdapter = language.interopCallAdapterFor(type());
+            callAdapter = language.interopCallAdapterFor(closedType());
             this.interopCallAdapter = callAdapter;
         }
         return callAdapter;

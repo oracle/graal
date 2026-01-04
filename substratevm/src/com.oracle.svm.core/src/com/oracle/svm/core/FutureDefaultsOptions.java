@@ -24,10 +24,14 @@
  */
 package com.oracle.svm.core;
 
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -36,35 +40,68 @@ import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
 
 /**
- * What makes it into the future-defaults must not be an experimental feature that can be rolled
- * back. The changes must be aligning native image with the Java spec and must be thoroughly
+ * Enables the --future-defaults=value flag that is used for evolution of Native Image semantics.
+ * Each enabled future default also sets a build-time, and run-time property named
+ * <code>'{@value #SYSTEM_PROPERTY_PREFIX}{@literal <property-name>}'</code> to <code>true</code>.
+ * That property can be used by the community to adjust their code to work both with the previous
+ * and with the new behavior of Native Image.
+ * </p>
+ * Note 1: What makes it into the future-defaults must not be an experimental feature that can be
+ * rolled back. The changes must be aligning native image with the Java spec and must be thoroughly
  * reviewed.
+ * </p>
+ * Note 2: future defaults can depend on each other. For example, if some functionality depends on
+ * <code>run-time-security-providers</code> it can enable it similarly to <code>all</code> that
+ * enables all future defaults.
+ * </p>
+ * Note 3: future defaults can not be simply removed as user code can depend on the system property
+ * values that are set by the option. When removing a future-default option, one has to leave the
+ * system property both a build time and at run time set to <code>true</code>.
  */
 public class FutureDefaultsOptions {
     private static final String OPTION_NAME = "future-defaults";
 
-    private static final String DEFAULT_NAME = "<default-value>";
     private static final String ALL_NAME = "all";
+    private static final String RUN_TIME_INITIALIZE_JDK = "run-time-initialize-jdk";
     private static final String NONE_NAME = "none";
-    private static final String RUN_TIME_INITIALIZE_JDK_NAME = "run-time-initialized-jdk";
-    private static final String TREAT_NAME_AS_TYPE_NAME = "treat-name-as-type";
+    /**
+     * Macro commands: They enable or disable other defaults, but they are not future defaults
+     * themselves.
+     */
+    private static final List<String> ALL_COMMANDS = List.of(ALL_NAME, NONE_NAME, RUN_TIME_INITIALIZE_JDK);
 
-    public static final String RUN_TIME_INITIALIZE_JDK_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_JDK_NAME + ")";
+    private static final String RUN_TIME_INITIALIZE_SECURITY_PROVIDERS = "run-time-initialize-security-providers";
+    private static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS = "run-time-initialize-file-system-providers";
+    private static final String RUN_TIME_INITIALIZE_RESOURCE_BUNDLES = "run-time-initialize-resource-bundles";
+    private static final List<String> ALL_FUTURE_DEFAULTS = List.of(RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES);
 
-    private static final Set<String> ALL_VALUES = Set.of(RUN_TIME_INITIALIZE_JDK_NAME, TREAT_NAME_AS_TYPE_NAME, ALL_NAME, NONE_NAME);
+    private static final String COMPLETE_REFLECTION_TYPES = "complete-reflection-types";
+    private static final List<String> RETIRED_FUTURE_DEFAULTS = List.of(COMPLETE_REFLECTION_TYPES);
+
+    public static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS +
+                    ")";
+    public static final String RUN_TIME_INITIALIZE_SECURITY_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_SECURITY_PROVIDERS + ")";
+    public static final String RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_RESOURCE_BUNDLES + ")";
+    private static final String DEFAULT_NAME = "<default-value>";
+    public static final String SYSTEM_PROPERTY_PREFIX = ImageInfo.PROPERTY_NATIVE_IMAGE_PREFIX + OPTION_NAME + ".";
 
     private static String futureDefaultsAllValues() {
-        return StringUtil.joinSingleQuoted(ALL_VALUES);
+        return StringUtil.joinSingleQuoted(getAllValues());
     }
 
-    static {
-        assert ALL_VALUES.stream().allMatch(futureDefaultsAllValues()::contains) : "A value is missing in the user-facing help text";
+    private static LinkedHashSet<String> getAllValues() {
+        LinkedHashSet<String> result = new LinkedHashSet<>(ALL_FUTURE_DEFAULTS.size() + ALL_COMMANDS.size());
+        result.addAll(ALL_COMMANDS);
+        result.addAll(ALL_FUTURE_DEFAULTS);
+        return result;
     }
 
     @APIOption(name = OPTION_NAME, defaultValue = DEFAULT_NAME) //
@@ -72,27 +109,58 @@ public class FutureDefaultsOptions {
     static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> FutureDefaults = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-    private static EconomicSet<String> futureDefaults;
+    private static String getOptionHelpText() {
+        Objects.requireNonNull(FutureDefaultsOptions.FutureDefaults.getDescriptor(), "This must be called after the options are processed.");
+        return FutureDefaultsOptions.FutureDefaults.getDescriptor().getHelp().stream()
+                        .collect(Collectors.joining(System.lineSeparator()));
+    }
+
+    private static void verifyOptionDescription() {
+        var optionHelpText = getOptionHelpText();
+        VMError.guarantee(getAllValues().stream().allMatch(futureDefaultsAllValues()::contains), "A value is missing in the user-facing help text");
+        for (String optionValue : getAllValues()) {
+            if (!optionHelpText.contains(optionValue + "' -")) {
+                throw VMError.shouldNotReachHere("Must mention all options in the list of options. Missing option: " + optionValue);
+            }
+        }
+        if (!optionHelpText.contains(futureDefaultsAllValues())) {
+            throw VMError.shouldNotReachHere("Must mention all options in a comma-separated sequence: " + futureDefaultsAllValues());
+        }
+    }
+
+    private static Set<String> futureDefaults;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void parseAndVerifyOptions() {
-        futureDefaults = EconomicSet.create(ALL_VALUES.size());
+        verifyOptionDescription();
+        futureDefaults = new LinkedHashSet<>(getAllValues().size());
         var valuesWithOrigin = FutureDefaults.getValue().getValuesWithOrigins();
         valuesWithOrigin.forEach(valueWithOrigin -> {
             String value = valueWithOrigin.value();
             if (DEFAULT_NAME.equals(value)) {
-                throw UserError.abort("The '%s' from %s is forbidden. It can only contain: %s.",
+                throw UserError.abort("The '%s' from %s is forbidden. It can only contain: %s.%n%nUsage:%n%n%s",
                                 SubstrateOptionsParser.commandArgument(FutureDefaults, DEFAULT_NAME),
                                 valueWithOrigin.origin(),
-                                futureDefaultsAllValues());
+                                futureDefaultsAllValues(),
+                                getOptionHelpText());
             }
 
-            if (!ALL_VALUES.contains(value)) {
-                throw UserError.abort("The '%s' option from %s contains invalid value '%s'. It can only contain: %s.",
+            if (RETIRED_FUTURE_DEFAULTS.contains(value)) {
+                LogUtils.warning("The '%s' option from %s contains the value '%s' which is enabled by default in this GraalVM release (%s) and can be removed.",
                                 SubstrateOptionsParser.commandArgument(FutureDefaults, value),
                                 valueWithOrigin.origin(),
                                 value,
-                                futureDefaultsAllValues());
+                                VM.getVersion());
+                return;
+            }
+
+            if (!getAllValues().contains(value)) {
+                throw UserError.abort("The '%s' option from %s contains invalid value '%s'. It can only contain: %s.%n%nUsage:%n%n%s",
+                                SubstrateOptionsParser.commandArgument(FutureDefaults, value),
+                                valueWithOrigin.origin(),
+                                value,
+                                futureDefaultsAllValues(),
+                                getOptionHelpText());
             }
 
             if (value.equals(NONE_NAME)) {
@@ -104,23 +172,62 @@ public class FutureDefaultsOptions {
                 futureDefaults.clear();
             }
 
-            futureDefaults.add(value);
+            if (value.equals(ALL_NAME)) {
+                futureDefaults.addAll(ALL_FUTURE_DEFAULTS);
+            } else if (value.equals(RUN_TIME_INITIALIZE_JDK)) {
+                futureDefaults.addAll(List.of(RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES));
+            } else {
+                futureDefaults.add(value);
+            }
         });
+
+        /* Set build-time properties for user features */
+        for (String futureDefault : getFutureDefaults()) {
+            setSystemProperty(futureDefault, true);
+        }
+
+        for (String retiredFutureDefault : RETIRED_FUTURE_DEFAULTS) {
+            setSystemProperty(retiredFutureDefault, true);
+        }
     }
 
-    private static EconomicSet<String> getFutureDefaults() {
-        return Objects.requireNonNull(futureDefaults, "must be initialized before usage");
+    private static void setSystemProperty(String futureDefault, boolean value) {
+        System.setProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.toString(value));
     }
 
+    public static Set<String> getFutureDefaults() {
+        return Collections.unmodifiableSet(Objects.requireNonNull(futureDefaults, "must be initialized before usage"));
+    }
+
+    public static List<String> getRetiredFutureDefaults() {
+        return RETIRED_FUTURE_DEFAULTS;
+    }
+
+    /**
+     * @see FutureDefaultsOptions#FutureDefaults
+     */
     public static boolean allFutureDefaults() {
-        return getFutureDefaults().contains(ALL_NAME);
+        return getFutureDefaults().containsAll(ALL_FUTURE_DEFAULTS);
     }
 
-    public static boolean isJDKInitializedAtRunTime() {
-        return allFutureDefaults() || getFutureDefaults().contains(RUN_TIME_INITIALIZE_JDK_NAME);
+    /**
+     * @see FutureDefaultsOptions#FutureDefaults
+     */
+    public static boolean securityProvidersInitializedAtRunTime() {
+        return getFutureDefaults().contains(RUN_TIME_INITIALIZE_SECURITY_PROVIDERS);
     }
 
-    public static boolean treatNameAsType() {
-        return allFutureDefaults() || getFutureDefaults().contains(TREAT_NAME_AS_TYPE_NAME);
+    /**
+     * @see FutureDefaultsOptions#FutureDefaults
+     */
+    public static boolean fileSystemProvidersInitializedAtRunTime() {
+        return getFutureDefaults().contains(RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS);
+    }
+
+    /**
+     * @see FutureDefaultsOptions#FutureDefaults
+     */
+    public static boolean resourceBundlesInitializedAtRunTime() {
+        return getFutureDefaults().contains(RUN_TIME_INITIALIZE_RESOURCE_BUNDLES);
     }
 }

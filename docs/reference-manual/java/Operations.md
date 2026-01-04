@@ -14,7 +14,7 @@ The first thing to confirm when measuring performance is that the Java Virtual M
 
 GraalVM is configured to use the Graal JIT compiler as the top tier compiler by default.
 
-To enable the Graal JIT compiler for use in the [Java HotSpot Virtual Machine](https://docs.oracle.com/en/java/javase/23/vm/java-virtual-machine-technology-overview.html){:target="_blank"}, use the [`-XX:+UseGraalJIT`](https://download.java.net/java/early_access/jdk23/docs/specs/man/java.html#enabling-the-graal-jit-compiler){:target="_blank"} option.
+To enable the Graal JIT compiler for use in the [Java HotSpot Virtual Machine](https://docs.oracle.com/en/java/javase/25/vm/java-virtual-machine-technology-overview.html){:target="_blank"}, use the [`-XX:+UseGraalJIT`](https://download.java.net/java/early_access/jdk25/docs/specs/man/java.html#enabling-the-graal-jit-compiler){:target="_blank"} option.
 (The `-XX:+UseGraalJIT` option has to be used together with the `-XX:+UnlockExperimentalVMOptions` option that unlocks this experimental integration.)
 
 The following example runs the Java application `com.example.myapp` with the Graal JIT compiler enabled:
@@ -101,7 +101,7 @@ In this example, you would add the following options to your command line:
 
 These options are described in more detail in the [compiler debugging documentation](https://github.com/oracle/graal/blob/master/compiler/docs/Debugging.md){:target="_blank"}.
 In brief, these options tell the Graal JIT compiler to capture snapshots of its state at verbosity level 2 while compiling any method named `matchComplexExpressions` in a class with a simple name of `NodeLIRBuilder`.
-The complete format of the `MethodFilter` option is described in [MethodFilterHelp.txt](https://github.com/oracle/graal/blob/master/compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/debug/doc-files/MethodFilterHelp.txt){:target="_blank"}.
+The complete format of the `MethodFilter` option is described in [MethodFilterHelp.txt](https://github.com/oracle/graal/blob/vm-24.2.2/compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/debug/doc-files/MethodFilterHelp.txt){:target="_blank"}.
 
 Quite often, the crash location does not exist directly in the problematic method mentioned in the crash log but comes from an inlined method.
 

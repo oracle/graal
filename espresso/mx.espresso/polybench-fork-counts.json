@@ -1,0 +1,6 @@
+{
+  "polybench:interpreter/DeltaBlue.jar": 5,
+  "polybench:interpreter/Fibonacci.jar": 5,
+  "polybench:interpreter/Richards.jar": 5,
+  "polybench:interpreter/Sieve.jar": 5
+}

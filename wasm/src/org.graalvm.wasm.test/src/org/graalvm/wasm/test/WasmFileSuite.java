@@ -76,13 +76,11 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.wasm.GlobalRegistry;
-import org.graalvm.wasm.MemoryRegistry;
 import org.graalvm.wasm.RuntimeState;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmStore;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.test.options.WasmTestOptions;
@@ -117,10 +115,16 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     private static final int INITIAL_STATE_CHECK_ITERATIONS = 10;
     private static final int STATE_CHECK_PERIODICITY = 2000;
 
-    private static Map<String, String> getInterpretedNoInline() {
+    private static boolean isFallbackRuntime() {
+        return Truffle.getRuntime().getName().equals("Interpreted");
+    }
+
+    private static Map<String, String> getInterpreted() {
+        if (isFallbackRuntime()) {
+            return Map.of();
+        }
         return Map.ofEntries(
-                        Map.entry("engine.Compilation", "false"),
-                        Map.entry("compiler.Inlining", "false"));
+                        Map.entry("engine.Compilation", "false"));
     }
 
     private static Map<String, String> getSyncCompiledNoInline() {
@@ -149,6 +153,9 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     }
 
     private static Map<String, String> getAsyncCompiledShared() {
+        if (isFallbackRuntime()) {
+            return Map.of();
+        }
         return getAsyncCompiled();
     }
 
@@ -165,11 +172,25 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         return inCI() || inWindows();
     }
 
-    private static Value findMain(WasmStore wasmStore) {
-        for (final WasmInstance instance : wasmStore.moduleInstances().values()) {
-            final WasmFunctionInstance function = instance.inferEntryPoint();
+    private static WasmInstance toWasmInstance(Value instance) {
+        final WasmContext wasmContext = WasmContext.get(null);
+        return (WasmInstance) wasmContext.environment().asGuestValue(instance);
+    }
+
+    private static Value inferEntryPoint(Value moduleInstance) {
+        final WasmInstance wasmInstance = toWasmInstance(moduleInstance);
+        final WasmFunctionInstance function = wasmInstance.inferEntryPoint();
+        if (function != null) {
+            return Value.asValue(function);
+        }
+        return null;
+    }
+
+    private static Value findMain(List<Value> moduleInstances) {
+        for (final Value instance : moduleInstances) {
+            final Value function = inferEntryPoint(instance);
             if (function != null) {
-                return Value.asValue(function);
+                return function;
             }
         }
         throw new AssertionFailedError("No start function exported.");
@@ -185,16 +206,28 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             // This is needed so that we can call WasmContext.getCurrent().
             context.enter();
 
+            final List<Value> moduleInstances;
             try {
-                sources.forEach(context::eval);
+                moduleInstances = sources.stream().map(context::eval).toList();
             } catch (PolyglotException e) {
                 validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
                 return;
             }
 
             final WasmContext wasmContext = WasmContext.get(null);
-            final var contextStore = wasmContext.contextStore();
-            final Value mainFunction = findMain(contextStore);
+
+            final Value testFunction;
+            final String entryPoint = testCase.options().getProperty("entry-point");
+            if (entryPoint != null) {
+                String testModuleName = testCase.name();
+                Value testModule = context.getBindings(WasmLanguage.ID).getMember(testModuleName).getMember("exports");
+                testFunction = testModule.getMember(entryPoint);
+                if (testFunction == null) {
+                    throw new RuntimeException(String.format("Entry point %s not found in test module %s.", entryPoint, testCase.name()));
+                }
+            } else {
+                testFunction = findMain(moduleInstances);
+            }
 
             resetStatus(System.out, phaseIcon, phaseLabel);
 
@@ -205,13 +238,13 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             for (int i = 0; i != iterations; ++i) {
                 try {
                     testOut.reset();
-                    final Value result = arg == null ? mainFunction.execute() : mainFunction.execute(arg);
+                    final Value result = arg == null ? testFunction.execute() : testFunction.execute(arg);
                     WasmCase.validateResult(testCase.data().resultValidator(), result, testOut);
                 } catch (PolyglotException e) {
                     // If no exception is expected and the program returns with success exit status,
                     // then we check stdout.
                     if (e.isExit() && testCase.data().expectedErrorMessage() == null) {
-                        Assert.assertEquals("Program exited with non-zero return code.", e.getExitStatus(), 0);
+                        Assert.assertEquals("Program exited with non-zero return code.", 0, e.getExitStatus());
                         WasmCase.validateResult(testCase.data().resultValidator(), null, testOut);
                     } else if (testCase.data().expectedErrorTime() == WasmCaseData.ErrorType.Validation) {
                         validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
@@ -226,9 +259,10 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 } finally {
                     // Context may have already been closed, e.g. by __wasi_proc_exit.
                     if (!wasmContext.environment().getContext().isClosed()) {
+                        Collection<WasmInstance> instanceList = wasmContext.contextStore().moduleInstances().values();
                         // Save context state, and check that it's consistent with the previous one.
                         if (iterationNeedsStateCheck(i)) {
-                            final ContextState contextState = saveContext(contextStore);
+                            final ContextState contextState = saveContext(wasmContext, instanceList);
                             if (firstIterationContextState == null) {
                                 firstIterationContextState = contextState;
                             } else {
@@ -239,18 +273,19 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                         // Reset context state.
                         final boolean reinitMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
                         if (reinitMemory) {
-                            for (int j = 0; j < contextStore.memories().count(); ++j) {
-                                WasmMemoryLibrary.getUncached().reset(contextStore.memories().memory(j));
-                            }
-                            for (int j = 0; j < contextStore.tables().tableCount(); ++j) {
-                                contextStore.tables().table(j).reset();
+                            for (WasmInstance instance : instanceList) {
+                                for (int j = 0; j < instance.module().memoryCount(); ++j) {
+                                    WasmMemoryLibrary.getUncached().reset(instance.memory(j));
+                                }
+                                for (int j = 0; j < instance.module().tableCount(); ++j) {
+                                    instance.table(j).reset();
+                                }
                             }
                         }
-                        List<WasmInstance> instanceList = new ArrayList<>(contextStore.moduleInstances().values());
-                        instanceList.sort(Comparator.comparingInt(RuntimeState::startFunctionIndex));
-                        for (WasmInstance instance : instanceList) {
-                            if (!instance.isBuiltin()) {
-                                contextStore.reinitInstance(instance, reinitMemory);
+
+                        for (WasmInstance instance : instanceList.stream().sorted(Comparator.comparingInt(RuntimeState::startFunctionIndex)).toList()) {
+                            if (!instance.module().isBuiltin()) {
+                                instance.store().reinitInstance(instance, reinitMemory);
                             }
                         }
 
@@ -317,6 +352,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
             contextBuilder.option("wasm.Builtins", includedExternalModules());
             contextBuilder.option("wasm.WasiConstantRandomGet", "true");
+            contextBuilder.option("wasm.EvalReturnsInstance", "true");
             final String commandLineArgs = testCase.options().getProperty("command-line-args");
             if (commandLineArgs != null) {
                 // The first argument is the program name. We set it to the empty string in tests.
@@ -362,12 +398,16 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
             EnumSet<WasmBinaryTools.WabtOption> options = EnumSet.noneOf(WasmBinaryTools.WabtOption.class);
             String threadsOption = testCase.options().getProperty("wasm.Threads");
-            if (threadsOption != null && threadsOption.equals("true")) {
+            if ("true".equals(threadsOption)) {
                 options.add(WasmBinaryTools.WabtOption.THREADS);
             }
             String multiMemoryOption = testCase.options().getProperty("wasm.MultiMemory");
-            if (multiMemoryOption != null && multiMemoryOption.equals("true")) {
+            if ("true".equals(multiMemoryOption)) {
                 options.add(WasmBinaryTools.WabtOption.MULTI_MEMORY);
+            }
+            String exceptionsOption = testCase.options().getProperty("wasm.Exceptions");
+            if ("true".equals(exceptionsOption)) {
+                options.add(WasmBinaryTools.WabtOption.EXCEPTIONS);
             }
             ArrayList<Source> sources = testCase.getSources(options);
 
@@ -391,8 +431,12 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 interpreterIterations = Math.min(interpreterIterations, 1);
             }
 
-            context = contextBuilder.options(getInterpretedNoInline()).build();
+            context = contextBuilder.options(getInterpreted()).build();
             runInContext(testCase, context, sources, interpreterIterations, PHASE_INTERPRETER_ICON, "interpreter", testOut);
+
+            if (isFallbackRuntime()) {
+                return;
+            }
 
             // Run in synchronous compiled mode, with inlining turned off.
             // We need to run the test at least twice like this, since the first run will lead to
@@ -546,7 +590,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             }
             System.err.printf("\uD83D\uDCA5\u001B[31m %d/%d Wasm tests passed.\u001B[0m%n", qualifyingTestCases.size() - errors.size(), qualifyingTestCases.size());
             System.out.println();
-            fail();
+            fail("Some tests failed. See errors above.");
         } else {
             System.out.printf("\uD83C\uDF40\u001B[32m %d/%d Wasm tests passed.\u001B[0m%n", qualifyingTestCases.size() - errors.size(), qualifyingTestCases.size());
             System.out.println();
@@ -576,7 +620,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     }
 
     protected Collection<? extends WasmCase> collectTestCases() throws IOException {
-        return Stream.concat(collectStringTestCases().stream(), WasmCase.collectFileCases("test", testResource()).stream()).collect(Collectors.toList());
+        return Stream.concat(collectStringTestCases().stream(), WasmCase.collectFileCases(this.getClass(), "test", testResource()).stream()).collect(Collectors.toList());
     }
 
     protected Collection<? extends WasmCase> collectStringTestCases() {
@@ -591,20 +635,29 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         return getClass().getSimpleName();
     }
 
-    private static ContextState saveContext(WasmStore store) {
-        final MemoryRegistry memories = store.memories().duplicate();
-        final GlobalRegistry globals = store.globals().duplicate();
-        return new ContextState(memories, globals, store.fdManager().size());
+    private static InstanceState saveInstanceState(WasmInstance instance) {
+        final WasmMemory[] memories = new WasmMemory[instance.module().memoryCount()];
+        for (int i = 0; i < memories.length; i++) {
+            memories[i] = WasmMemoryLibrary.getUncached().duplicate(instance.memory(i));
+        }
+        final GlobalRegistry globals = instance.globals().duplicate();
+        return new InstanceState(memories, globals);
     }
 
-    private static void assertContextEqual(ContextState expectedState, ContextState actualState) {
+    private static ContextState saveContext(WasmContext context, Collection<WasmInstance> instances) {
+        return new ContextState(
+                        instances.stream().map(instance -> saveInstanceState(instance)).toList(),
+                        context.fdManager().size());
+    }
+
+    private static void assertInstanceEqual(InstanceState expectedState, InstanceState actualState) {
         // Compare memories
-        final MemoryRegistry expectedMemories = expectedState.memories();
-        final MemoryRegistry actualMemories = actualState.memories();
-        Assert.assertEquals("Mismatch in memory counts.", expectedMemories.count(), actualMemories.count());
-        for (int i = 0; i < expectedMemories.count(); i++) {
-            final WasmMemory expectedMemory = expectedMemories.memory(i);
-            final WasmMemory actualMemory = actualMemories.memory(i);
+        final WasmMemory[] expectedMemories = expectedState.memories();
+        final WasmMemory[] actualMemories = actualState.memories();
+        Assert.assertEquals("Mismatch in memory counts.", expectedMemories.length, actualMemories.length);
+        for (int i = 0; i < expectedMemories.length; i++) {
+            final WasmMemory expectedMemory = expectedMemories[i];
+            final WasmMemory actualMemory = actualMemories[i];
             if (expectedMemory == null) {
                 Assert.assertNull("Memory should be null", actualMemory);
             } else {
@@ -628,28 +681,20 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             long last = lastGlobals.loadAsLong(address);
             Assert.assertEquals("Mismatch in global at " + address + ". ", first, last);
         }
+    }
+
+    private static void assertContextEqual(ContextState expectedState, ContextState actualState) {
+        for (int i = 0; i < expectedState.instanceState().size(); i++) {
+            assertInstanceEqual(expectedState.instanceState().get(i), actualState.instanceState().get(i));
+        }
 
         // Check number of opened file descriptors
         Assert.assertEquals("Mismatch in file descriptor counts.", expectedState.openedFdCount, actualState.openedFdCount);
     }
 
-    private static final class ContextState {
-        private final MemoryRegistry memories;
-        private final GlobalRegistry globals;
-        private final int openedFdCount;
+    private record InstanceState(WasmMemory[] memories, GlobalRegistry globals) {
+    }
 
-        private ContextState(MemoryRegistry memories, GlobalRegistry globals, int openedFdCount) {
-            this.memories = memories;
-            this.globals = globals;
-            this.openedFdCount = openedFdCount;
-        }
-
-        public MemoryRegistry memories() {
-            return memories;
-        }
-
-        public GlobalRegistry globals() {
-            return globals;
-        }
+    private record ContextState(List<InstanceState> instanceState, int openedFdCount) {
     }
 }

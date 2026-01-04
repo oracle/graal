@@ -278,6 +278,10 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
         if (!calleeFlows.isStub()) {
             bb.analysisPolicy().registerAsImplementationInvoked(this, calleeFlows.getMethod());
         }
+
+        if (calleeFlows.getMethod().isDelayed()) {
+            saturateForOpenTypeWorld(bb);
+        }
     }
 
     /*
@@ -425,5 +429,16 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
 
     public MultiMethodKey getCallerMultiMethodKey() {
         return callerMultiMethodKey;
+    }
+
+    /**
+     * Saturates the actual return of the invoke type flow to ensure that the type state represents
+     * all the types that could exist in the open world.
+     */
+    public void saturateForOpenTypeWorld(PointsToAnalysis bb) {
+        if (actualReturn != null) {
+            actualReturn.enableFlow(bb);
+            actualReturn.onSaturated(bb);
+        }
     }
 }

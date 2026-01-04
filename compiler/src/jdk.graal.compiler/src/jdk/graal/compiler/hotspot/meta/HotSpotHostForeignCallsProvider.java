@@ -28,6 +28,7 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.core.target.Backend.ARITHMETIC_DREM;
 import static jdk.graal.compiler.core.target.Backend.ARITHMETIC_FREM;
+import static jdk.graal.compiler.hotspot.EncodedSnippets.isAfterSnippetEncoding;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_PARTITION;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_SORT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
@@ -79,6 +80,7 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.VM_ERROR;
 import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
 import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
+import static jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC.Shenandoah;
 import static jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC.Z;
 import static jdk.graal.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNCOMMON_TRAP;
 import static jdk.graal.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNPACK;
@@ -103,6 +105,7 @@ import static jdk.graal.compiler.hotspot.stubs.StubUtil.VM_MESSAGE_C;
 import static jdk.graal.compiler.hotspot.stubs.UnwindExceptionToCallerStub.EXCEPTION_HANDLER_FOR_RETURN_ADDRESS;
 import static jdk.graal.compiler.nodes.java.ForeignCallDescriptors.REGISTER_FINALIZER;
 import static jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
+import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.CBRT;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
@@ -118,7 +121,6 @@ import java.util.EnumMap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -238,6 +240,35 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                     "load_barrier_on_oop_array", void.class, long.class, long.class);
 
     /**
+     * Shenandoah runtime function entries.
+     */
+
+    // oopDesc* ShenandoahRuntime::load_reference_barrier_strong(oopDesc* o, oop* p);
+    public static final HotSpotForeignCallDescriptor SHENANDOAH_LOAD_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(),
+                    "ShenandoahRuntime::load_reference_barrier_strong", Object.class, Object.class, Word.class);
+    // oopDesc* ShenandoahRuntime::load_reference_barrier_strong_narrow(oopDesc* o, narrowOop* p);
+    public static final HotSpotForeignCallDescriptor SHENANDOAH_LOAD_BARRIER_NARROW = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(),
+                    "ShenandoahRuntime::load_reference_barrier_strong_narrow", Object.class, Object.class, Word.class);
+
+    // oopDesc* ShenandoahRuntime::load_reference_barrier_weak(oopDesc* o, oop* p);
+    public static final HotSpotForeignCallDescriptor SHENANDOAH_LOAD_BARRIER_WEAK = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(),
+                    "ShenandoahRuntime::load_reference_barrier_weak", Object.class, Object.class, Word.class);
+    // oopDesc* ShenandoahRuntime::load_reference_barrier_weak_narrow(oopDesc* o, narrowOop* p);
+    public static final HotSpotForeignCallDescriptor SHENANDOAH_LOAD_BARRIER_WEAK_NARROW = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(),
+                    "ShenandoahRuntime::load_reference_barrier_weak_narrow", Object.class, Object.class, Word.class);
+
+    // oopDesc* ShenandoahRuntime::load_reference_barrier_phantom(oopDesc* o, oop* p);
+    public static final HotSpotForeignCallDescriptor SHENANDOAH_LOAD_BARRIER_PHANTOM = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(),
+                    "ShenandoahRuntime::load_reference_barrier_phantom", Object.class, Object.class, Word.class);
+    // oopDesc* ShenandoahRuntime::load_reference_barrier_phantom_narrow(oopDesc* o, narrowOop* p);
+    public static final HotSpotForeignCallDescriptor SHENANDOAH_LOAD_BARRIER_PHANTOM_NARROW = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(),
+                    "ShenandoahRuntime::load_reference_barrier_phantom_narrow", Object.class, Object.class, Word.class);
+
+    // void ShenandoahRuntime::write_barrier_pre(oopDesc*)
+    public static final HotSpotForeignCallDescriptor SHENANDOAH_WRITE_BARRIER_PRE = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS,
+                    "ShenandoahRuntime::write_barrier_pre_stack_only", void.class, Object.class);
+
+    /**
      * Signature of an unsafe {@link System#arraycopy} stub.
      *
      * The signature is equivalent to {@link jdk.internal.misc.Unsafe#copyMemory(long, long, long)}.
@@ -348,7 +379,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
         registerForeignCall(INVOKE_STATIC_METHOD_ONE_ARG, invokeJavaMethodAddress, NativeCall);
 
-        if (!LibGraalSupport.inLibGraalRuntime()) {
+        if (!isAfterSnippetEncoding()) {
             /*
              * These functions are only used for testing purposes but their registration also
              * ensures that libgraal has support for InvokeJavaMethodStub built into the image,
@@ -489,12 +520,10 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, NEW_MULTI_ARRAY_OR_NULL, c.newMultiArrayOrNullAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE_OR_NULL, c.dynamicNewInstanceOrNullAddress, PREPEND_THREAD);
 
-        if (c.supportJVMTIVThreadNotification()) {
-            linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START, c.jvmtiVThreadStart, DONT_PREPEND_THREAD);
-            linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END, c.jvmtiVThreadEnd, DONT_PREPEND_THREAD);
-            linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT, c.jvmtiVThreadMount, DONT_PREPEND_THREAD);
-            linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT, c.jvmtiVThreadUnmount, DONT_PREPEND_THREAD);
-        }
+        linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START, c.jvmtiVThreadStart, DONT_PREPEND_THREAD);
+        linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END, c.jvmtiVThreadEnd, DONT_PREPEND_THREAD);
+        linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT, c.jvmtiVThreadMount, DONT_PREPEND_THREAD);
+        linkForeignCall(options, providers, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT, c.jvmtiVThreadUnmount, DONT_PREPEND_THREAD);
 
         link(new ExceptionHandlerStub(options, providers, foreignCalls.get(EXCEPTION_HANDLER.getSignature())));
         link(new UnwindExceptionToCallerStub(options, providers,
@@ -547,6 +576,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkStackOnlyForeignCall(options, providers, G1WBPRECALL_STACK_ONLY, c.writeBarrierPreAddress, PREPEND_THREAD);
         linkStackOnlyForeignCall(options, providers, G1WBPOSTCALL_STACK_ONLY, c.writeBarrierPostAddress, PREPEND_THREAD);
 
+        linkStackOnlyForeignCall(c.gc == Shenandoah, options, providers, SHENANDOAH_LOAD_BARRIER, c.shenandoahLoadBarrierStrong, DONT_PREPEND_THREAD);
+        linkStackOnlyForeignCall(c.gc == Shenandoah, options, providers, SHENANDOAH_LOAD_BARRIER_NARROW, c.shenandoahLoadBarrierStrongNarrow, DONT_PREPEND_THREAD);
+        linkStackOnlyForeignCall(c.gc == Shenandoah, options, providers, SHENANDOAH_LOAD_BARRIER_WEAK, c.shenandoahLoadBarrierWeak, DONT_PREPEND_THREAD);
+        linkStackOnlyForeignCall(c.gc == Shenandoah, options, providers, SHENANDOAH_LOAD_BARRIER_WEAK_NARROW, c.shenandoahLoadBarrierWeakNarrow, DONT_PREPEND_THREAD);
+        linkStackOnlyForeignCall(c.gc == Shenandoah, options, providers, SHENANDOAH_LOAD_BARRIER_PHANTOM, c.shenandoahLoadBarrierPhantom, DONT_PREPEND_THREAD);
+        linkStackOnlyForeignCall(c.gc == Shenandoah, options, providers, SHENANDOAH_LOAD_BARRIER_PHANTOM_NARROW, c.shenandoahLoadBarrierPhantomNarrow, DONT_PREPEND_THREAD);
+        linkStackOnlyForeignCall(c.gc == Shenandoah, options, providers, SHENANDOAH_WRITE_BARRIER_PRE, c.shenandoahWriteBarrierPre, DONT_PREPEND_THREAD);
+
         linkForeignCall(options, providers, LOG_PRINTF, c.logPrintfAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, LOG_OBJECT, c.logObjectAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, LOG_PRIMITIVE, c.logPrimitiveAddress, PREPEND_THREAD);
@@ -559,6 +596,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD);
 
         linkForeignCall(options, providers, TEST_DEOPTIMIZE_CALL_INT, c.testDeoptimizeCallInt, PREPEND_THREAD);
+        linkForeignCall(options, providers, TEST_DEOPTIMIZE_CALLER_OF_CALLER, c.testDeoptimizeCallerOfCaller, PREPEND_THREAD);
 
         registerArrayCopy(JavaKind.Byte, c.jbyteArraycopy, c.jbyteAlignedArraycopy, c.jbyteDisjointArraycopy, c.jbyteAlignedDisjointArraycopy);
         registerArrayCopy(JavaKind.Boolean, c.jbyteArraycopy, c.jbyteAlignedArraycopy, c.jbyteDisjointArraycopy, c.jbyteAlignedDisjointArraycopy);
@@ -705,6 +743,9 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerForeignCall(createDescriptor(POW.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticPowAddress, NativeCall);
         if (hotSpotVMConfig.arithmeticTanhAddress != 0L) {
             registerForeignCall(createDescriptor(TANH.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticTanhAddress, NativeCall);
+        }
+        if (hotSpotVMConfig.arithmeticCbrtAddress != 0L) {
+            registerForeignCall(createDescriptor(CBRT.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticCbrtAddress, NativeCall);
         }
     }
 

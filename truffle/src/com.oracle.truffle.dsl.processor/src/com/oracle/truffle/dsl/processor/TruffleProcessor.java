@@ -59,8 +59,10 @@ import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLCodeGenerator;
+import com.oracle.truffle.dsl.processor.bytecode.generator.InstructionRewriterTestGenerator;
 import com.oracle.truffle.dsl.processor.bytecode.parser.BytecodeDSLParser;
 import com.oracle.truffle.dsl.processor.bytecode.parser.CustomOperationParser;
+import com.oracle.truffle.dsl.processor.bytecode.parser.InstructionRewriterTestParser;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
@@ -185,6 +187,7 @@ public final class TruffleProcessor extends AbstractProcessor {
         annotations.add(TruffleTypes.ExportLibrary_Repeat_Name);
         annotations.add(TruffleTypes.GenerateBytecode_Name);
         annotations.add(TruffleTypes.OperationProxy_Proxyable_Name);
+        annotations.add(TruffleTypes.GenerateInstructionRewriter_Name);
         return annotations;
     }
 
@@ -196,6 +199,7 @@ public final class TruffleProcessor extends AbstractProcessor {
         generators.add(new AnnotationProcessor<>(new ExportsParser(), new ExportsGenerator(new StaticConstants())));
         generators.add(new AnnotationProcessor<>(CustomOperationParser.forProxyValidation(), CodeTypeElementFactory.noOpFactory()));
         generators.add(new AnnotationProcessor<>(new BytecodeDSLParser(), new BytecodeDSLCodeGenerator()));
+        generators.add(new AnnotationProcessor<>(new InstructionRewriterTestParser(), new InstructionRewriterTestGenerator()));
         return generators;
     }
 

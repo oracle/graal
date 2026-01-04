@@ -3,20 +3,20 @@ layout: docs
 toc_group: security-guide
 link_title: Sandboxing
 permalink: /security-guide/sandboxing/
-redirect_from: 
+redirect_from:
 - /security-guide/polyglot-sandbox/
 - /reference-manual/embed-languages/sandbox-resource-limits/
 ---
 
 # Sandboxing
 
-GraalVM allows a host application written in a JVM-based language to execute guest code written in Javascript via the [Polyglot API](../reference-manual/embedding/embed-languages.md).
+GraalVM allows a host application written in a JVM-based language to execute guest code written in Javascript or WebAssembly via the [Polyglot API](../reference-manual/embedding/embed-languages.md).
 Configured with a [sandbox policy](#sandbox-policies), a security boundary between a host application and guest code can be established.
 For example, host code can execute untrusted guest code using the [UNTRUSTED](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SandboxPolicy.html#UNTRUSTED) policy.
 Host code can also execute multiple mutually distrusting instances of guest code that will be protected from one another.
 Used this way, sandboxing supports a multi-tenant scenario:
 
-![Sandbox Security Boundary](sandbox_security_boundary.png)
+![Sandbox Security Boundary](images/sandbox_security_boundary.png)
 
 Use cases that benefit from introducing a security boundary are:
 * Usage of third party code, i.e., pulling in a dependency. Third party code is typically trusted and scanned for vulnerabilities before use, but sandboxing them is an additional precaution against supply-chain attacks.
@@ -232,7 +232,7 @@ Certain limits can be [reset](#resetting-resource-limits) at any point of time d
 
 The `sandbox.MaxCPUTime` option allows you to specify the maximum CPU time spent running guest code.
 CPU time spent depends on the underlying hardware.
-The maximum [CPU time](https://docs.oracle.com/en/java/javase/23/docs/api/java.management/java/lang/management/ThreadMXBean.html#getThreadCpuTime\(long\)) specifies how long a context can be active until it is automatically cancelled and the context is closed.
+The maximum [CPU time](https://docs.oracle.com/en/java/javase/25/docs/api/java.management/java/lang/management/ThreadMXBean.html#getThreadCpuTime\(long\)) specifies how long a context can be active until it is automatically cancelled and the context is closed.
 By default the time limit is checked every 10 milliseconds.
 This can be customized using the `sandbox.MaxCPUTimeCheckInterval` option.
 
@@ -342,7 +342,7 @@ try (Context context = Context.newBuilder("js")
 }
 ```
 
-The limit is checked by retained size computation triggered either based on [allocated](https://docs.oracle.com/en/java/javase/23/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) bytes or on [low memory notification](https://docs.oracle.com/en/java/javase/23/docs/api/java.management/java/lang/management/MemoryMXBean.html).
+The limit is checked by retained size computation triggered either based on [allocated](https://docs.oracle.com/en/java/javase/25/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) bytes or on [low memory notification](https://docs.oracle.com/en/java/javase/25/docs/api/java.management/java/lang/management/MemoryMXBean.html).
 
 The allocated bytes are checked by a separate high-priority thread that will be woken regularly.
 There is one such thread for each memory-limited context (one with `sandbox.MaxHeapMemory` set).
@@ -359,7 +359,7 @@ Retained size computation for a context can be customized using the expert optio
 
 Retained size computation for a context is triggered when a retained bytes estimate exceeds a certain factor of specified `sandbox.MaxHeapMemory`.
 The estimate is based on heap memory
-[allocated](https://docs.oracle.com/en/java/javase/23/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) by threads where the context has been active.
+[allocated](https://docs.oracle.com/en/java/javase/25/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) by threads where the context has been active.
 More precisely, the estimate is the result of previous retained bytes computation, if available, plus bytes allocated since the start of the previous computation.
 By default the factor of `sandbox.MaxHeapMemory` is 1.0 and it can be customized by the `sandbox.AllocatedBytesCheckFactor` option.
 The factor must be positive.
@@ -478,12 +478,36 @@ In the case of a misprediction, the result of these instructions is discarded.
 However, the execution may have caused side effects in the micro-architectural state of a CPU.
 For example, data may have been pulled into the cache during transient execution - a side-channel that can be read by timing data access.
 
-GraalVM protects against Spectre attacks by inserting speculative execution barrier instructions in runtime compiled guest code to prevent attackers from crafting speculative execution gadgets.
-A speculative execution barrier is placed at each target of a conditional branch that is relevant to Java memory safety to stop speculative execution.
+GraalVM protects against Spectre attacks by applying masking to memory accesses in runtime compiled code.
+Since the masking operation is also effective during speculative execution, accesses protected by masks are always scoped to the isolate heap.
+For memory accesses where masking is not applicable, GraalVM inserts speculative execution barrier instructions to prevent attackers from crafting speculative execution gadgets.
+On AArch64 protection relies solely on speculative execution barrier instructions.
+
+### Process Isolation
+
+As an experimental feature, the dedicated native-image isolate that runs the Polyglot engine in the ISOLATED and UNTRUSTED policy can run in a separate process.
+The feature is enabled by setting `engine.IsolateMode=external`, experimental options have to be allowed:
+```java
+try (Context context = Context.newBuilder("js")
+                              .allowExperimentalOptions(true)
+                              .sandbox(SandboxPolicy.ISOLATED)
+                              .out(new ByteArrayOutputStream())
+                              .err(new ByteArrayOutputStream())
+                              .option("engine.MaxIsolateMemory", "256MB")
+                              .option("engine.IsolateMode", "external")
+                              .build()) {
+    context.eval("js", "print('Hello JavaScript!');");
+}
+```
+
+Executing guest code in a separate process further deepens the isolation between the host application and guest code by providing a separate address space and signal domain.
+This means that defenses against leaking sensitive data from the same address space are no longer necessary and fatal crashes of the native-image isolate no longer affect the host application.
+These properties come at the expense of slower startup performance of a corresponding Polyglot engine as well as an increased communication overhead between host and guest code.
+Under the hood, host and guest processes communicate via Unix Domain sockets, transparently hidden behind the Polyglot API.
 
 ## Sharing Execution Engines
 
-Guest code of different trust domains has to be separated at the polyglot engine level, that is, only guest code of the same trust domain should share an engine.
+Guest code of different trust domains has to be separated at the Polyglot engine level, that is, only guest code of the same trust domain should share an engine.
 When multiple context share an engine, all of them must have the same sandbox policy (the engine's sandbox policy).
 Application developers may choose to share execution engines among execution contexts for performance reasons.
 While the context holds the state of the executed code, the engine holds the code itself.
@@ -520,7 +544,7 @@ The GraalVM sandbox differs from Security Managers in the following aspects:
 * *Isolation*: With the Java Security Manager, privileged code is almost on "equal footing" as untrusted code with respect to the language and runtime:
  * *Shared language*: With the Java Security Manager, untrusted code is written in the same language as privileged code, with the advantage of straightforward interoperability between the two. In contrast, the GraalVM sandbox a guest application written in a Truffle language needs to pass an explicit boundary to host code written in Java.
  * *Shared runtime*: With the Java Security Manager, untrusted code executes in the same JVM environment as trusted code, sharing JDK classes and runtime services such as the garbage collector or the compiler. In the GraalVM sandbox, untrusted code runs in dedicated VM instances (GraalVM isolates), separating services and JDK classes of host and guest by design.
-* *Resource limits*: The Java Security Manager cannot restrict the usage of computational resources such as CPU time or memory, allowing untrusted code to DoS the JVM. The GraalVM sandbox offers controls to set limits on several computational resources (CPU time, memory, threads, processes), guest code may consume to address availability concerns. 
+* *Resource limits*: The Java Security Manager cannot restrict the usage of computational resources such as CPU time or memory, allowing untrusted code to DoS the JVM. The GraalVM sandbox offers controls to set limits on several computational resources (CPU time, memory, threads, processes), guest code may consume to address availability concerns.
 * *Configuration*: Crafting a Java Security Manager policy was often found to be a complex and error-prone task, requiring a subject matter expert that knows exactly which parts of the program require what level of access. Configuring the GraalVM sandbox provides security profiles that focus on common sandboxing use cases and threat models.
 
 ## Reporting Vulnerabilities

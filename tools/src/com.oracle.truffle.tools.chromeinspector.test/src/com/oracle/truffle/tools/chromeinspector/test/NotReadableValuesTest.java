@@ -215,7 +215,7 @@ public class NotReadableValuesTest {
             }
 
             @Override
-            protected boolean hasLanguage() {
+            protected boolean hasLanguageId() {
                 // Provides the ProxyLanguage by default.
                 return true;
             }
@@ -341,7 +341,7 @@ public class NotReadableValuesTest {
             private static final Set<Long> NOT_READABLE = new HashSet<>(Arrays.asList(new Long[]{2L, 3L}));
 
             @Override
-            protected boolean hasLanguage() {
+            protected boolean hasLanguageId() {
                 // Provides the ProxyLanguage by default.
                 return true;
             }

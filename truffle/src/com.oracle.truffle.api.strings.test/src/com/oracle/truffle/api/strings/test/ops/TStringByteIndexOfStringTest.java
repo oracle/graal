@@ -91,10 +91,13 @@ public class TStringByteIndexOfStringTest extends TStringTestBase {
         TruffleString strB = TruffleString.fromJavaStringUncached("xyz", TruffleString.Encoding.UTF_16);
         TruffleString.WithMask[] withMask = {
                         nodeMaskByte.execute(strB.switchEncodingUncached(TruffleString.Encoding.UTF_8), new byte[]{0x20, 0x20, 0x20}, TruffleString.Encoding.UTF_8),
-                        nodeMaskChar.execute(strB.switchEncodingUncached(TruffleString.Encoding.UTF_16), new char[]{0x20, 0x20, 0x20}),
-                        nodeMaskInt.execute(strB.switchEncodingUncached(TruffleString.Encoding.UTF_32), new int[]{0x20, 0x20, 0x20})
+                        nodeMaskChar.execute(strB.switchEncodingUncached(TruffleString.Encoding.UTF_16LE), new char[]{0x20, 0x20, 0x20}),
+                        nodeMaskByte.execute(strB.switchEncodingUncached(TruffleString.Encoding.UTF_16BE), new byte[]{0, 0x20, 0, 0x20, 0, 0x20}, TruffleString.Encoding.UTF_16BE),
+                        nodeMaskInt.execute(strB.switchEncodingUncached(TruffleString.Encoding.UTF_32), new int[]{0x20, 0x20, 0x20}),
+                        nodeMaskByte.execute(strB.switchEncodingUncached(TruffleString.Encoding.UTF_32BE), new byte[]{0, 0, 0, 0x20, 0, 0, 0, 0x20, 0, 0, 0, 0x20}, TruffleString.Encoding.UTF_32BE)
         };
-        TruffleString.Encoding[] encodings = {TruffleString.Encoding.UTF_8, TruffleString.Encoding.UTF_16, TruffleString.Encoding.UTF_32};
+        TruffleString.Encoding[] encodings = {TruffleString.Encoding.UTF_8, TruffleString.Encoding.UTF_16LE, TruffleString.Encoding.UTF_16BE,
+                        TruffleString.Encoding.UTF_32LE, TruffleString.Encoding.UTF_32BE};
         for (int i = 0; i < encodings.length; i++) {
             TruffleString.Encoding encoding = encodings[i];
             TruffleString strASwitched = strA.switchEncodingUncached(encoding);

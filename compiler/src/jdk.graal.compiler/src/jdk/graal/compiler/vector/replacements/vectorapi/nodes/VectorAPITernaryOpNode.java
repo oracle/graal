@@ -30,11 +30,6 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
-import jdk.graal.compiler.vector.architecture.VectorArchitecture;
-import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
-import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
-import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIOperations;
-
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -50,6 +45,10 @@ import jdk.graal.compiler.nodes.calc.TernaryArithmeticNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
+import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIOperations;
 
 /**
  * Parsing and implementing VectorSupport::ternaryOp intrinsics.
@@ -78,7 +77,7 @@ public class VectorAPITernaryOpNode extends VectorAPIMacroNode implements Canoni
 
     protected VectorAPITernaryOpNode(MacroParams macroParams, SimdStamp vectorStamp, ArithmeticOpTable.TernaryOp<?> op, SimdConstant constantValue, FrameState stateAfter) {
         super(TYPE, macroParams, constantValue);
-        this.vectorStamp = vectorStamp;
+        this.vectorStamp = maybeConstantVectorStamp(vectorStamp, constantValue);
         this.op = op;
         this.stateAfter = stateAfter;
     }

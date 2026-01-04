@@ -69,11 +69,6 @@ public class WasmLMAllocationSupport implements GCAllocationSupport {
     }
 
     @Override
-    public ForeignCallDescriptor getNewDynamicHub() {
-        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
-    }
-
-    @Override
     public boolean useTLAB() {
         return false;
     }

@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes.methodhandle;
 
+import static com.oracle.truffle.espresso.threads.ThreadState.IN_NATIVE;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
@@ -32,6 +34,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.panama.DowncallStubNode;
 import com.oracle.truffle.espresso.runtime.panama.DowncallStubs;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.threads.Transition;
 
 public abstract class MHLinkToNativeNode extends MethodHandleIntrinsicNode {
     protected static final int LIMIT = 3;
@@ -51,7 +54,12 @@ public abstract class MHLinkToNativeNode extends MethodHandleIntrinsicNode {
 
     @Override
     public Object call(Object[] args) {
-        return execute(args);
+        Transition transition = Transition.transition(IN_NATIVE, this);
+        try {
+            return execute(args);
+        } finally {
+            transition.restore(this);
+        }
     }
 
     protected abstract Object execute(Object[] args);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -198,7 +199,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     }
 
     /** Returns the filter field flow corresponding to an unsafe accessed field. */
-    public FieldFilterTypeFlow getInstanceFieldFilterFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
+    public FieldFilterTypeFlow getInstanceFieldFilterFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, PointsToAnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers()) && field.isUnsafeAccessed() : field;
 
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
@@ -206,11 +207,11 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     }
 
     /** Returns the instance field flow corresponding to a field of the object's type. */
-    public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, AnalysisField field, boolean isStore) {
+    public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, PointsToAnalysisField field, boolean isStore) {
         return getInstanceFieldFlow(bb, null, null, field, isStore);
     }
 
-    public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field, boolean isStore) {
+    public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, PointsToAnalysisField field, boolean isStore) {
         assert !Modifier.isStatic(field.getModifiers()) : field;
 
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
@@ -218,7 +219,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         return isStore ? fieldTypeStore.writeFlow() : fieldTypeStore.readFlow();
     }
 
-    final FieldTypeStore getInstanceFieldTypeStore(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
+    final FieldTypeStore getInstanceFieldTypeStore(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, PointsToAnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers()) : field;
         assert bb != null && !bb.getUniverse().sealed() : "universe is sealed";
 
@@ -260,7 +261,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     }
 
     @SuppressWarnings("unused")
-    protected void linkFieldFlows(PointsToAnalysis bb, AnalysisField field, FieldTypeStore fieldStore) {
+    protected void linkFieldFlows(PointsToAnalysis bb, PointsToAnalysisField field, FieldTypeStore fieldStore) {
         // link the initial instance field flow to the field write flow
         field.getInitialFlow().addUse(bb, fieldStore.writeFlow());
         // link the field read flow to the sink flow that accumulates all field types

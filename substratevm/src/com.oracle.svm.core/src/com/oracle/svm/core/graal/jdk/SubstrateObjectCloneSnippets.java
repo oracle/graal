@@ -248,7 +248,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
                 return;
             }
 
-            Arguments args = new Arguments(doClone, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(doClone, node.graph(), tool.getLoweringStage());
             args.add("thisObj", node.getObject());
 
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);

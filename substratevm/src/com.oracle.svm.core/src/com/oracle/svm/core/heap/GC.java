@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.heap;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 public interface GC {
     /** Cause a collection of the Heap's choosing. */
     void collect(GCCause cause);
@@ -41,5 +44,6 @@ public interface GC {
     String getName();
 
     /** Human-readable default heap size. */
+    @Platforms(Platform.HOSTED_ONLY.class)
     String getDefaultMaxHeapSize();
 }

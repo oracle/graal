@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.graph.Edges;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -112,11 +113,6 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         }
 
         @Override
-        public boolean supportsRounding() {
-            return getLowerer().supportsRounding();
-        }
-
-        @Override
         public boolean divisionOverflowIsJVMSCompliant() {
             return getLowerer().divisionOverflowIsJVMSCompliant();
         }
@@ -145,26 +141,34 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     }
 
     @Override
-    protected void cleanupGraph(MethodScope methodScope) {
+    protected void cleanupGraph(MethodScope rootMethodScope) {
         GraphUtil.normalizeLoops(graph);
-        super.cleanupGraph(methodScope);
+        super.cleanupGraph(rootMethodScope);
 
-        for (Node node : graph.getNewNodes(methodScope.methodStartMark)) {
-            if (node instanceof MergeNode) {
-                MergeNode mergeNode = (MergeNode) node;
+        /*
+         * To avoid calling tryKillUnused for each individual floating node we remove during
+         * cleanup, we maintain unused nodes in a bitmap and kill them after we finish iterating the
+         * new nodes in the graph.
+         */
+        final NodeBitMap unusedNodes = new NodeBitMap(graph);
+
+        for (Node node : graph.getNewNodes(rootMethodScope.methodStartMark)) {
+            if (node instanceof MergeNode mergeNode) {
                 if (mergeNode.forwardEndCount() == 1) {
-                    graph.reduceTrivialMerge(mergeNode);
+                    graph.reduceTrivialMerge(mergeNode, false, unusedNodes);
                 }
             } else if (node instanceof BeginNode) {
                 if (!(node.predecessor() instanceof ControlSplitNode) && node.hasNoUsages()) {
                     GraphUtil.unlinkFixedNode((AbstractBeginNode) node);
                     node.safeDelete();
                 }
+            } else if (GraphUtil.shouldKillUnused(node)) {
+                unusedNodes.mark(node);
             }
         }
 
-        for (Node node : graph.getNewNodes(methodScope.methodStartMark)) {
-            GraphUtil.tryKillUnused(node);
+        if (unusedNodes.isNotEmpty()) {
+            GraphUtil.killAllWithUnusedFloatingInputs(unusedNodes, false);
         }
     }
 

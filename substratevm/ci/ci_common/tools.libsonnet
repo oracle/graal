@@ -56,26 +56,6 @@
   // std.get is not available in all versions
   std_get::(import '../../common-utils.libsonnet').std_get,
   //
-  local delete_timelimit(b) =
-    local public_fields = std.objectFields(b);
-    std.foldl(function(acc, k) acc +
-      local value = b[k];
-      if std.member(public_fields, k) then
-        if std.type(value) == "string" then
-          { [k]: value }
-        else
-          { [k]+: value }
-      else
-        if std.type(value) == "string" then
-          { [k]:: value }
-        else
-          { [k]+:: value }
-      ,
-      [k for k in std.objectFieldsAll(b) if k != "timelimit"],
-      {}
-    ),
-  delete_timelimit::delete_timelimit,
-  //
   local _make_visible(o, inc_hidden=true) =
     local objectFields = if inc_hidden then std.objectFieldsAll else std.objectFields;
     if std.type(o) == "array" then

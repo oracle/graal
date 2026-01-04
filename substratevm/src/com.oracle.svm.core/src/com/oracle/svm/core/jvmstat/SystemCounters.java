@@ -37,6 +37,7 @@ import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.attach.AttachApiSupport;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationListener;
@@ -85,7 +86,10 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     SystemCounters(PerfManager perfManager) {
-        boolean hasJavaMainSupport = ImageSingletons.contains(JavaMainWrapper.JavaMainSupport.class);
+        /*
+         * In layered images we currently assume there will always be java main support.
+         */
+        boolean hasJavaMainSupport = ImageLayerBuildingSupport.buildingImageLayer() || ImageSingletons.contains(JavaMainWrapper.JavaMainSupport.class);
         initDoneTime = perfManager.createLongConstant("sun.rt.vmInitDoneTime", PerfUnit.TICKS);
         javaCommand = hasJavaMainSupport ? perfManager.createStringConstant("sun.rt.javaCommand") : null;
         vmArgs = hasJavaMainSupport ? perfManager.createStringConstant("java.rt.vmArgs") : null;

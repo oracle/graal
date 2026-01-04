@@ -30,10 +30,6 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
-import jdk.graal.compiler.vector.architecture.VectorArchitecture;
-import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
-import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
-
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -49,6 +45,9 @@ import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
+import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 
 /**
  * Intrinsic node for the {@code VectorSupport.binaryOp} method. This operation applies a binary
@@ -88,7 +87,7 @@ public class VectorAPIBinaryOpNode extends VectorAPIMacroNode implements Canonic
 
     protected VectorAPIBinaryOpNode(MacroParams macroParams, SimdStamp vectorStamp, ArithmeticOpTable.BinaryOp<?> op, SimdConstant constantValue, FrameState stateAfter) {
         super(TYPE, macroParams, constantValue);
-        this.vectorStamp = vectorStamp;
+        this.vectorStamp = maybeConstantVectorStamp(vectorStamp, constantValue);
         this.op = op;
         this.stateAfter = stateAfter;
     }

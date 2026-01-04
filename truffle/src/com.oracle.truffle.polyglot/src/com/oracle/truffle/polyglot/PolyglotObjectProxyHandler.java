@@ -155,7 +155,7 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
                         @Cached ProxyInvokeNode proxyInvoke,
                         @Cached ToGuestValuesNode toGuests) {
             Method method = (Method) args[ARGUMENT_OFFSET];
-            Object[] arguments = toGuests.execute(node, languageContext, (Object[]) args[ARGUMENT_OFFSET + 1]);
+            Object[] arguments = toGuests.execute(node, (Object[]) args[ARGUMENT_OFFSET + 1]);
             return proxyInvoke.execute(languageContext, receiver, method, genericType, arguments);
         }
 

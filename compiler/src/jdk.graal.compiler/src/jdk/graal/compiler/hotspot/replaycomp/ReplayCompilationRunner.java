@@ -1,0 +1,736 @@
+/*
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package jdk.graal.compiler.hotspot.replaycomp;
+
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
+import static jdk.graal.compiler.serviceprovider.GraalServices.getCurrentThreadAllocatedBytes;
+import static jdk.graal.compiler.serviceprovider.GraalServices.getCurrentThreadCpuTime;
+
+import java.io.Closeable;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.io.Serial;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
+
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.GraalCompilerOptions;
+import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.debug.GlobalMetrics;
+import jdk.graal.compiler.debug.PathUtilities;
+import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
+import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
+import jdk.graal.compiler.hotspot.HotSpotGraalCompilerFactory;
+import jdk.graal.compiler.hotspot.HotSpotGraalOptionValues;
+import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
+import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
+import jdk.graal.compiler.hotspot.Platform;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.util.args.BooleanValue;
+import jdk.graal.compiler.util.args.Command;
+import jdk.graal.compiler.util.args.CommandGroup;
+import jdk.graal.compiler.util.args.IntegerValue;
+import jdk.graal.compiler.util.args.OptionValue;
+import jdk.graal.compiler.util.args.Program;
+import jdk.graal.compiler.util.args.StringValue;
+import jdk.graal.compiler.util.json.JsonParserException;
+import jdk.vm.ci.code.CompilationRequest;
+import jdk.vm.ci.code.CompilationRequestResult;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+
+/**
+ * The entry point for running replay compilations in jargraal and libgraal.
+ *
+ * @see ReplayCompilationSupport
+ * @see CompilerInterfaceDeclarations
+ */
+public class ReplayCompilationRunner {
+    /**
+     * The exit status of a replay compilation run.
+     */
+    public enum ExitStatus {
+        /**
+         * Successful execution.
+         */
+        Success(0),
+
+        /**
+         * Failed execution.
+         */
+        Failure(1);
+
+        private final int status;
+
+        ExitStatus(int status) {
+            this.status = status;
+        }
+
+        /**
+         * Exits the virtual machine with the corresponding status code.
+         */
+        public void exitVM() {
+            System.exit(status);
+        }
+
+        /**
+         * Returns the exit status code.
+         */
+        public int getStatus() {
+            return status;
+        }
+    }
+
+    /**
+     * Runs the replay compilation launcher based on the provided command-line arguments.
+     *
+     * @param args command-line arguments
+     * @param out output stream for printing messages
+     * @param bridge the implementation to use for interacting with the PAPI bridge library
+     * @return the exit status of the launcher
+     */
+    @SuppressWarnings("try")
+    public static ExitStatus run(String[] args, PrintStream out, HardwarePerformanceCounters.PAPIBridge bridge) {
+        Program program = new Program("mx replaycomp", "Replay compilations from files.");
+        OptionValue<Boolean> verboseArg = program.addNamed("--verbose", new BooleanValue("true|false", false, "Increase the verbosity of the output."));
+        OptionValue<Boolean> compareGraphsArg = program.addNamed("--compare-graphs", new BooleanValue("true|false", false, "Verify that the replayed graph equals the recorded one."));
+        OptionValue<String> inputPathArg = program.addPositional(new StringValue("TARGET", "Path to a directory with replay compilation files (or path to a single file)."));
+        CommandGroup<LauncherCommand> commandGroup = new CommandGroup<>("COMMAND", new ReplayCommand(), "The mode to replay in.");
+        commandGroup.addCommand(new BenchmarkCommand());
+        program.addCommandGroup(commandGroup);
+        program.parseAndValidate(args, true);
+        List<Path> inputFiles = getInputFiles(out, inputPathArg);
+        if (inputFiles == null) {
+            return ExitStatus.Failure;
+        }
+        return commandGroup.getSelectedCommand().run(out, inputFiles, verboseArg.getValue(), compareGraphsArg.getValue(), bridge);
+    }
+
+    /**
+     * A command implementing one use case of the replay compilation launcher.
+     */
+    private abstract static class LauncherCommand extends Command {
+        /**
+         * Constructs a launcher command.
+         *
+         * @param name the name of the command
+         * @param description the description of the command
+         */
+        private LauncherCommand(String name, String description) {
+            super(name, description);
+        }
+
+        /**
+         * Runs the command.
+         *
+         * @param out the stream for output
+         * @param inputFiles the files that should be replayed
+         * @param verbose increase the verbosity of the output
+         * @param compareGraphs whether the replayed graph should be compared with the recorded one
+         * @param bridge the implementation to use for interacting with the PAPI bridge library
+         * @return the exit status of the launcher
+         */
+        public abstract ExitStatus run(PrintStream out, List<Path> inputFiles, boolean verbose, boolean compareGraphs, HardwarePerformanceCounters.PAPIBridge bridge);
+    }
+
+    /**
+     * A command that replays a set of files (e.g., for debugging purposes).
+     */
+    private static final class ReplayCommand extends LauncherCommand {
+        private static final String RECORDED = "Recorded";
+
+        private static final String REPLAY = "Replay";
+
+        private ReplayCommand() {
+            super("--replay", "Replay compilations.");
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public ExitStatus run(PrintStream out, List<Path> inputFiles, boolean verbose, boolean compareGraphs, HardwarePerformanceCounters.PAPIBridge bridge) {
+            OptionValues systemOptions = new OptionValues(HotSpotGraalOptionValues.parseOptions());
+            OptionValues options = new OptionValues(systemOptions, GraalCompilerOptions.SystemicCompilationFailureRate, 0);
+            CompilerInterfaceDeclarations declarations = CompilerInterfaceDeclarations.build();
+            HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
+            CompilerConfigurationFactory factory = CompilerConfigurationFactory.selectFactory(null, options, runtime);
+            LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+            GlobalMetrics globalMetrics = new GlobalMetrics();
+            ReplayTaskStatistics statistics = new ReplayTaskStatistics();
+            for (Path file : inputFiles) {
+                ReplayCompilationTask task = statistics.startTask(file.toString());
+                try (AutoCloseable ignored = libgraal != null ? libgraal.openCompilationRequestScope() : null;
+                                Reproducer reproducer = Reproducer.initializeFromFile(file.toString(), declarations, runtime,
+                                                options, factory, globalMetrics, out, EconomicMap.create())) {
+                    if (verbose) {
+                        printProperties(reproducer.properties, file, out);
+                        printException(reproducer.request, reproducer.product, RECORDED, out);
+                        printGraph(reproducer.request, reproducer.product, RECORDED, out);
+                    }
+                    if (reproducer.product instanceof CompilationTaskProduct.CompilationTaskException recordedException) {
+                        out.printf("Expecting the replay of %s to throw %s%n", reproducer.request, recordedException.className());
+                    }
+                    ReplayResult result = reproducer.compile();
+                    if (verbose) {
+                        printException(reproducer.request, result.replayedProduct, REPLAY, out);
+                        printGraph(reproducer.request, result.replayedProduct, REPLAY, out);
+                    }
+                    result.compareCompilationProducts(compareGraphs);
+                    out.println("Successfully replayed " + reproducer.request);
+                } catch (ReplayParserFailure failure) {
+                    out.println("Replay failed: " + failure.getMessage());
+                    task.setFailureReason(failure.getMessage());
+                } catch (Exception e) {
+                    out.printf("Replay of %s failed with the below exception:%n", file);
+                    e.printStackTrace(out);
+                    return ExitStatus.Failure;
+                }
+            }
+            out.println();
+            statistics.printStatistics(out);
+            globalMetrics.print(options);
+            return ExitStatus.Success;
+        }
+
+        private static void printProperties(Map<String, String> properties, Path file, PrintStream out) {
+            if (properties == null) {
+                return;
+            }
+            out.printf("System properties of the recording VM from %s:%n", file);
+            for (Map.Entry<String, String> entry : properties.entrySet()) {
+                out.printf("    %s=%s%n", entry.getKey(), entry.getValue());
+            }
+            out.println();
+        }
+
+        private static void printException(HotSpotCompilationRequest request, CompilationTaskProduct product, String compilationKind, PrintStream out) {
+            if (product instanceof CompilationTaskProduct.CompilationTaskException taskException) {
+                out.printf("%s compilation of %s ended with the below exception:%n%s%n", compilationKind, request, taskException.stackTrace());
+            }
+        }
+
+        private static void printGraph(HotSpotCompilationRequest request, CompilationTaskProduct product, String compilationKind, PrintStream out) {
+            String finalGraph;
+            if (product instanceof CompilationTaskProduct.CompilationTaskArtifacts artifacts) {
+                finalGraph = artifacts.finalCanonicalGraph();
+            } else if (product instanceof CompilationTaskProduct.RecordedCompilationTaskArtifacts artifacts) {
+                finalGraph = artifacts.finalGraph();
+            } else {
+                return;
+            }
+            out.printf("%s compilation of %s completed with the below final canonical graph:%n%s%n", compilationKind, request, finalGraph);
+        }
+    }
+
+    private static final double ONE_MILLION = 1_000_000d;
+
+    /**
+     * A command that runs replay compilation as a benchmark.
+     */
+    private static final class BenchmarkCommand extends LauncherCommand {
+        private final OptionValue<Integer> iterationsArg;
+
+        private final OptionValue<String> resultsFileArg;
+
+        private final OptionValue<String> eventNamesArg;
+
+        private BenchmarkCommand() {
+            super("--benchmark", "Replay compilations as a benchmark.");
+            iterationsArg = addNamed("--iterations", new IntegerValue("N", 10, "The number of benchmark iterations."));
+            resultsFileArg = addNamed("--results-file", new StringValue("RESULTS_FILE", null, "Write benchmark metrics to the file in CSV format."));
+            eventNamesArg = addNamed("--event-names", new StringValue("EVENT_NAMES", null, "Comma-separated list of PAPI events to count for each iteration."));
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public ExitStatus run(PrintStream out, List<Path> inputFiles, boolean verbose, boolean compareGraphs, HardwarePerformanceCounters.PAPIBridge bridge) {
+            OptionValues options = new OptionValues(HotSpotGraalOptionValues.parseOptions());
+            CompilerInterfaceDeclarations declarations = CompilerInterfaceDeclarations.build();
+            List<String> eventNames = new ArrayList<>();
+            if (eventNamesArg.getValue() != null) {
+                eventNames = Arrays.asList(eventNamesArg.getValue().split(","));
+            }
+            HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
+            CompilerConfigurationFactory factory = CompilerConfigurationFactory.selectFactory(null, options, runtime);
+            LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+            GlobalMetrics globalMetrics = new GlobalMetrics();
+            List<Reproducer> reproducers = new ArrayList<>();
+            EconomicMap<Object, Object> internPool = EconomicMap.create();
+            for (Path file : inputFiles) {
+                try (AutoCloseable ignored = libgraal != null ? libgraal.openCompilationRequestScope() : null) {
+                    Reproducer reproducer = Reproducer.initializeFromFile(file.toString(), declarations, runtime, options,
+                                    factory, globalMetrics, out, internPool);
+                    if (reproducer.product instanceof CompilationTaskProduct.CompilationTaskException recordedException) {
+                        out.printf("The compilation in %s recorded an exception of type %s; only successful compilations are suitable for replay benchmarks%n", file, recordedException.className());
+                        return ExitStatus.Failure;
+                    }
+                    reproducers.add(reproducer);
+                } catch (ReplayParserFailure failure) {
+                    out.printf("Preparation failed for %s: %s%n", file, failure.getMessage());
+                    return ExitStatus.Failure;
+                } catch (Exception e) {
+                    out.printf("Preparation failed for %s, which may be caused by breaking JVMCI or replay changes. The causing exception is:%n", file);
+                    e.printStackTrace(out);
+                    return ExitStatus.Failure;
+                }
+            }
+            internPool.clear();
+            if (reproducers.isEmpty()) {
+                out.println("There are no compilations to replay");
+                return ExitStatus.Failure;
+            }
+            try (PrintStream outStat = (resultsFileArg.isSet()) ? new PrintStream(PathUtilities.openOutputStream(resultsFileArg.getValue())) : null) {
+                for (int i = 0; i < iterationsArg.getValue(); i++) {
+                    performCollection(out);
+                    try (BenchmarkIterationMetrics metrics = new BenchmarkIterationMetrics(i, eventNames, bridge)) {
+                        metrics.beginIteration(out, outStat);
+                        for (Reproducer reproducer : reproducers) {
+                            try (AutoCloseable ignored = libgraal != null ? libgraal.openCompilationRequestScope() : null) {
+                                ReplayResult replayResult = reproducer.compile();
+                                replayResult.compareCompilationProducts(compareGraphs);
+                                metrics.addVerifiedResult(replayResult);
+                            } catch (Exception e) {
+                                out.println("Replay failed: " + e);
+                                e.printStackTrace(out);
+                                return ExitStatus.Failure;
+                            }
+                        }
+                        metrics.endIteration(out, outStat);
+                    }
+                }
+            } catch (IOException e) {
+                out.println("Failed to write benchmark statistics to " + resultsFileArg.getValue());
+                return ExitStatus.Failure;
+            }
+            for (Reproducer reproducer : reproducers) {
+                reproducer.close();
+            }
+            globalMetrics.print(options);
+            return ExitStatus.Success;
+        }
+
+        private static void performCollection(PrintStream out) {
+            Runtime javaRuntime = Runtime.getRuntime();
+            double memBefore = (javaRuntime.totalMemory() - javaRuntime.freeMemory()) / ONE_MILLION;
+            long gcBeforeTimestamp = System.nanoTime();
+            System.gc();
+            long gcAfterTimestamp = System.nanoTime();
+            double memAfter = (javaRuntime.totalMemory() - javaRuntime.freeMemory()) / ONE_MILLION;
+            double gcMillis = (gcAfterTimestamp - gcBeforeTimestamp) / ONE_MILLION;
+            out.printf("GC before operation: completed in %.3f ms, heap usage %.3f MB -> %.3f MB.%n", gcMillis, memBefore, memAfter);
+        }
+    }
+
+    private static List<Path> getInputFiles(PrintStream out, OptionValue<String> inputPathArg) {
+        Path inputPath = Path.of(inputPathArg.getValue());
+        List<Path> inputFiles;
+        try {
+            inputFiles = findJsonFiles(inputPath);
+        } catch (IOException e) {
+            out.println(e.getMessage());
+            return null;
+        }
+        if (inputFiles.isEmpty()) {
+            out.println("No replay files found in " + inputPath);
+            return null;
+        }
+        return inputFiles;
+    }
+
+    /**
+     * Recursively searches for JSON files within the given root directory (or file) and its
+     * subdirectories. The returned list of paths is sorted lexicographically to ensure consistency
+     * between runs.
+     *
+     * @param root the root directory/file to start the search from
+     * @return a list of paths to JSON files found within the root directory/file and its
+     *         subdirectories
+     * @throws IOException if an I/O error occurs while traversing the file tree
+     */
+    private static List<Path> findJsonFiles(Path root) throws IOException {
+        List<Path> paths = new ArrayList<>();
+        Files.walkFileTree(root, new FileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                if (Files.isRegularFile(file) && file.toString().endsWith(".json")) {
+                    paths.add(file);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFileFailed(Path file, IOException exc) {
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        paths.sort(Path::compareTo);
+        return paths;
+    }
+
+    public static sealed class ReplayLauncherFailure extends Exception {
+        @Serial private static final long serialVersionUID = -1610853593485835928L;
+
+        public ReplayLauncherFailure(String message) {
+            super(message);
+        }
+    }
+
+    private static final class ReplayParserFailure extends ReplayLauncherFailure {
+        @Serial private static final long serialVersionUID = 6521004798119106469L;
+
+        ReplayParserFailure(String message) {
+            super(message);
+        }
+    }
+
+    /**
+     * The result of a single replay compilation.
+     *
+     * @param request the compilation request for the replay compilation
+     * @param result the result of the replayed compilation
+     * @param recordedProduct the product of the recorded compilation
+     * @param replayedProduct the product of the replayed compilation
+     */
+    public record ReplayResult(CompilationRequest request, CompilationRequestResult result, CompilationTaskProduct recordedProduct, CompilationTaskProduct replayedProduct) {
+        /**
+         * Verifies that the replayed compilation product matches the recorded one.
+         *
+         * @param compareGraphs whether the final graphs should be compared
+         * @throws ReplayLauncherFailure if the replayed compilation task product does not match the
+         *             recorded one
+         */
+        public void compareCompilationProducts(boolean compareGraphs) throws ReplayLauncherFailure {
+            if (recordedProduct instanceof CompilationTaskProduct.CompilationTaskException recordedException &&
+                            replayedProduct instanceof CompilationTaskProduct.CompilationTaskException replayedException &&
+                            !recordedException.className().equals(replayedException.className()) &&
+                            recordedException != CompilationTaskProduct.CompilationTaskException.UNKNOWN) {
+                throw new ReplayLauncherFailure("Replay compilation ended with a different exception than the recorded one");
+            } else if (compareGraphs && recordedProduct instanceof CompilationTaskProduct.RecordedCompilationTaskArtifacts(String finalGraph) &&
+                            replayedProduct instanceof CompilationTaskProduct.CompilationTaskArtifacts replayedArtifacts &&
+                            !finalGraph.equals(replayedArtifacts.finalCanonicalGraph())) {
+                throw new ReplayLauncherFailure("Replay compilation completed successfully but the final graphs differ");
+            } else if (recordedProduct.isSuccess() && !replayedProduct.isSuccess()) {
+                throw new ReplayLauncherFailure("Recorded compilation completed successfully but the replayed one ended with an exception");
+            } else if (!recordedProduct.isSuccess() && replayedProduct.isSuccess()) {
+                throw new ReplayLauncherFailure("Recorded compilation ended with an exception but the replayed one completed successfully");
+            }
+        }
+    }
+
+    /**
+     * A recorded compilation that is ready to be compiled (potentially multiple times).
+     */
+    public static final class Reproducer implements Closeable {
+        /**
+         * The compiler instance used for replaying the compilation.
+         */
+        private final HotSpotGraalCompiler replayCompiler;
+
+        /**
+         * The compilation request for the replayed compilation.
+         */
+        private final HotSpotCompilationRequest request;
+
+        /**
+         * The product of the recorded compilation task.
+         */
+        private final CompilationTaskProduct product;
+
+        /**
+         * The system properties from the recording run.
+         */
+        private final Map<String, String> properties;
+
+        /**
+         * The compiler options for replay.
+         */
+        private final OptionValues options;
+
+        private Reproducer(HotSpotGraalCompiler replayCompiler, HotSpotCompilationRequest request, CompilationTaskProduct product, Map<String, String> properties, OptionValues options) {
+            this.replayCompiler = replayCompiler;
+            this.request = request;
+            this.product = product;
+            this.properties = properties;
+            this.options = options;
+        }
+
+        /**
+         * Creates a new reproducer instance from a JSON file.
+         *
+         * @param fileName the name of the JSON file containing the recorded compilation
+         * @param declarations describes the compiler interface
+         * @param runtime the JVMCI runtime
+         * @param options the options for the replay compiler
+         * @param factory the factory used to create the compiler configuration
+         * @param globalMetrics the metrics object where metrics from the replayed compilations are
+         *            accumulated
+         * @param out stream for debug output
+         * @param internPool the pool of interned objects
+         * @return a new reproducer instance
+         * @throws ReplayLauncherFailure if an error occurs during initialization
+         */
+        @SuppressWarnings("try")
+        public static Reproducer initializeFromFile(String fileName, CompilerInterfaceDeclarations declarations, HotSpotJVMCIRuntime runtime,
+                        OptionValues options, CompilerConfigurationFactory factory, GlobalMetrics globalMetrics, PrintStream out, EconomicMap<Object, Object> internPool) throws ReplayLauncherFailure {
+            if (!inRuntimeCode() && !HotSpotReplacementsImpl.snippetsAreEncoded()) {
+                out.println("Encode snippets");
+                HotSpotJVMCIRuntime.runtime().getCompiler();
+            }
+            ReplayCompilationProxies proxies = new ReplayCompilationProxies(declarations, globalMetrics, options);
+            out.println("Loading " + fileName);
+            RecordedOperationPersistence.RecordedCompilationUnit compilationUnit;
+            try (FileReader reader = new FileReader(fileName)) {
+                RecordedOperationPersistence persistence = new RecordedOperationPersistence(declarations, Platform.ofCurrentHost(),
+                                HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget());
+                compilationUnit = persistence.load(reader, proxies::createProxy);
+                proxies.setTargetPlatform(compilationUnit.platform());
+                proxies.loadOperationResults(compilationUnit.operations(), internPool);
+            } catch (Exception exception) {
+                if (exception instanceof JsonParserException parserException && parserException.isAtEOF().isTrue()) {
+                    throw new ReplayParserFailure("Failed to parse an incomplete JSON file (likely caused by VM shutdown during the recorded compilation).");
+                }
+                throw new ReplayParserFailure("Parsing failed due to " + exception.getMessage());
+            }
+            HotSpotCompilationRequest request = compilationUnit.request();
+            if (LibGraalSupport.inLibGraalRuntime() && !compilationUnit.isLibgraal()) {
+                throw new ReplayLauncherFailure("Cannot replay jargraal compilation " + request + " in libgraal");
+            }
+            out.println("Initializing the replay compiler for " + request);
+            HotSpotGraalCompiler replayCompiler = HotSpotGraalCompilerFactory.createCompiler("VM-replay", runtime, options, factory, new ReplayCompilationSupport(proxies, factory.getName()));
+            HotSpotGraalRuntimeProvider graalRuntime = replayCompiler.getGraalRuntime();
+            if (!graalRuntime.getCompilerConfigurationName().equals(compilationUnit.compilerConfiguration())) {
+                throw new ReplayLauncherFailure(("Compiler configuration mismatch: the task was compiled using " + compilationUnit.compilerConfiguration() +
+                                " but the initialized compiler is " + graalRuntime.getCompilerConfigurationName()));
+            }
+            graalRuntime.getReplayCompilationSupport().setRecordedForeignCallLinkages(compilationUnit.linkages());
+            return new Reproducer(replayCompiler, request, compilationUnit.product(), compilationUnit.properties(), options);
+        }
+
+        /**
+         * Compiles (or recompiles) the method using the recorded data.
+         *
+         * @return a replay result object containing the compilation result and the replayed graph
+         */
+        @SuppressWarnings("try")
+        public ReplayResult compile() {
+            ReplayCompilationSupport support = replayCompiler.getGraalRuntime().getReplayCompilationSupport();
+            CompilationRequestResult result = replayCompiler.compileMethod(request, true, options);
+            CompilationTaskProduct replayProduct = support.clearCompilationTaskProduct();
+            return new ReplayResult(request, result, product, replayProduct);
+        }
+
+        /**
+         * Shuts down the {@link HotSpotGraalRuntime} associated with this reproducer.
+         */
+        @Override
+        public void close() {
+            ((HotSpotGraalRuntime) replayCompiler.getGraalRuntime()).shutdown();
+        }
+    }
+
+    /**
+     * Tracks the outcome of a single replayed compilation.
+     */
+    private static class ReplayCompilationTask {
+        private final String fileName;
+
+        private boolean success;
+
+        private String failureReason;
+
+        ReplayCompilationTask(String fileName) {
+            this.fileName = fileName;
+            this.success = true;
+        }
+
+        public void setFailureReason(String newFailureReason) {
+            failureReason = newFailureReason;
+            success = false;
+        }
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public boolean isFailure() {
+            return !success;
+        }
+    }
+
+    /**
+     * Tracks the outcomes of all replayed compilations, which is used to print summary statistics
+     * at the end.
+     */
+    private static class ReplayTaskStatistics {
+        private final List<ReplayCompilationTask> tasks;
+
+        ReplayTaskStatistics() {
+            this.tasks = new ArrayList<>();
+        }
+
+        public ReplayCompilationTask startTask(String fileName) {
+            ReplayCompilationTask task = new ReplayCompilationTask(fileName);
+            tasks.add(task);
+            return task;
+        }
+
+        public void printStatistics(PrintStream out) {
+            out.printf("Completed %d replay compilation task(s)%n", tasks.size());
+            out.printf("%8d task(s) succeeded%n", successCount());
+            out.printf("%8d task(s) failed%n", failureCount());
+            for (ReplayCompilationTask task : failedTasks()) {
+                out.printf("           %s %s%n", task.fileName, task.failureReason);
+            }
+        }
+
+        private long successCount() {
+            return tasks.stream().filter(ReplayCompilationTask::isSuccess).count();
+        }
+
+        private long failureCount() {
+            return tasks.stream().filter(ReplayCompilationTask::isFailure).count();
+        }
+
+        private List<ReplayCompilationTask> failedTasks() {
+            return tasks.stream().filter(ReplayCompilationTask::isFailure).toList();
+        }
+    }
+
+    /**
+     * Collects and prints compilation metrics for one iteration of a replay benchmark.
+     */
+    private static final class BenchmarkIterationMetrics implements AutoCloseable {
+        private final int iteration;
+
+        private long beginWallTime;
+
+        private long beginThreadTime;
+
+        private long beginMemory;
+
+        private int compiledBytecodes;
+
+        private int targetCodeSize;
+
+        private int targetCodeHash;
+
+        private final List<String> eventNames;
+
+        private final HardwarePerformanceCounters performanceCounters;
+
+        private BenchmarkIterationMetrics(int iteration, List<String> eventNames, HardwarePerformanceCounters.PAPIBridge bridge) {
+            this.iteration = iteration;
+            this.eventNames = eventNames;
+            if (!eventNames.isEmpty()) {
+                this.performanceCounters = new HardwarePerformanceCounters(eventNames, bridge);
+            } else {
+                this.performanceCounters = null;
+            }
+        }
+
+        public void beginIteration(PrintStream out, PrintStream outStat) {
+            if (iteration == 0 && outStat != null) {
+                outStat.print("iteration,wall_time_ns,thread_time_ns,allocated_memory,compiled_bytecodes,target_code_size,target_code_hash");
+                for (String eventName : eventNames) {
+                    outStat.print(",");
+                    outStat.print(eventName);
+                }
+                outStat.println();
+            }
+            out.printf("====== replaycomp iteration %d started ======%n", iteration);
+            if (performanceCounters != null) {
+                performanceCounters.start();
+            }
+            beginMemory = getCurrentThreadAllocatedBytes();
+            beginWallTime = System.nanoTime();
+            beginThreadTime = getCurrentThreadCpuTime();
+        }
+
+        public void addVerifiedResult(ReplayResult replayResult) {
+            CompilationResult result = ((CompilationTaskProduct.CompilationTaskArtifacts) replayResult.replayedProduct()).result();
+            compiledBytecodes += result.getBytecodeSize();
+            targetCodeSize += result.getTargetCodeSize();
+            targetCodeHash = targetCodeHash * 31 + Arrays.hashCode(result.getTargetCode());
+        }
+
+        public void endIteration(PrintStream out, PrintStream outStat) {
+            long endThreadTime = getCurrentThreadCpuTime();
+            long endWallTime = System.nanoTime();
+            long endMemory = getCurrentThreadAllocatedBytes();
+            Map<String, Long> counterValues = Collections.emptyMap();
+            if (performanceCounters != null) {
+                counterValues = performanceCounters.stop();
+            }
+            long wallTimeNanos = endWallTime - beginWallTime;
+            long threadTimeNanos = endThreadTime - beginThreadTime;
+            long allocatedMemory = endMemory - beginMemory;
+            if (outStat != null) {
+                outStat.printf("%d,%d,%d,%d,%d,%d,%08x", iteration, wallTimeNanos, threadTimeNanos, allocatedMemory, compiledBytecodes, targetCodeSize, targetCodeHash);
+                for (String eventName : eventNames) {
+                    outStat.print(",");
+                    outStat.print(counterValues.get(eventName));
+                }
+                outStat.println();
+            }
+            out.printf("         Thread time: %12.3f ms%n", threadTimeNanos / ONE_MILLION);
+            out.printf("    Allocated memory: %12.3f MB%n", allocatedMemory / ONE_MILLION);
+            out.printf("  Compiled bytecodes: %12d B%n", compiledBytecodes);
+            out.printf("    Target code size: %12d B%n", targetCodeSize);
+            out.printf("    Target code hash:     %08x%n", targetCodeHash);
+            for (String eventName : eventNames) {
+                out.printf("%20s: %12d%n", eventName, counterValues.get(eventName));
+            }
+            out.printf("====== replaycomp iteration %d completed (%.3f ms) ======%n", iteration, wallTimeNanos / ONE_MILLION);
+        }
+
+        @Override
+        public void close() {
+            if (performanceCounters != null) {
+                performanceCounters.close();
+            }
+        }
+    }
+}

@@ -40,43 +40,63 @@
  */
 package com.oracle.truffle.api.object;
 
+import static com.oracle.truffle.api.object.ObjectStorageOptions.UseVarHandle;
+
+import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.invoke.VarHandle;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 
-abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
-    private static final int INT_TO_DOUBLE_FLAG = 1;
-    private static final int INT_TO_LONG_FLAG = 2;
+/**
+ * Describes layout and behavior of a {@link DynamicObject} subclass and is used to create shapes.
+ *
+ * An object may change its shape but only to shapes of the same layout.
+ */
+final class LayoutImpl {
 
-    protected final LayoutStrategy strategy;
-    protected final Class<? extends DynamicObject> clazz;
+    static final String OPTION_PREFIX = "truffle.object.";
+
+    static final int INT_TO_DOUBLE_FLAG = 1;
+    static final int INT_TO_LONG_FLAG = 2;
+
+    final Class<? extends DynamicObject> clazz;
     private final int allowedImplicitCasts;
 
-    protected LayoutImpl(Class<? extends DynamicObject> clazz, LayoutStrategy strategy, int implicitCastFlags) {
-        this.strategy = strategy;
-        this.clazz = Objects.requireNonNull(clazz);
+    private final List<FieldInfo> objectFields;
+    private final List<FieldInfo> primitiveFields;
 
-        this.allowedImplicitCasts = implicitCastFlags;
+    LayoutImpl(Class<? extends DynamicObject> clazz, LayoutInfo layoutInfo, int allowedImplicitCasts) {
+        this.clazz = Objects.requireNonNull(clazz);
+        this.allowedImplicitCasts = allowedImplicitCasts;
+        this.objectFields = layoutInfo.objectFields;
+        this.primitiveFields = layoutInfo.primitiveFields;
     }
 
-    @Override
     public Class<? extends DynamicObject> getType() {
         return clazz;
     }
 
-    @Override
-    protected final Shape buildShape(Object dynamicType, Object sharedData, int flags, Assumption singleContextAssumption) {
-        return newShape(dynamicType, sharedData, flags, null);
+    Shape newShape(Object objectType, Object sharedData, int flags, Assumption constantObjectAssumption) {
+        return new Shape(this, objectType, sharedData, flags, constantObjectAssumption);
     }
-
-    protected abstract ShapeImpl newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption);
 
     public boolean isAllowedIntToDouble() {
         return (allowedImplicitCasts & INT_TO_DOUBLE_FLAG) != 0;
@@ -86,23 +106,22 @@ abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         return (allowedImplicitCasts & INT_TO_LONG_FLAG) != 0;
     }
 
-    protected abstract boolean hasObjectExtensionArray();
+    @SuppressWarnings("static-method")
+    boolean hasPrimitiveExtensionArray() {
+        return true;
+    }
 
-    protected abstract boolean hasPrimitiveExtensionArray();
+    int getObjectFieldCount() {
+        return objectFields.size();
+    }
 
-    protected abstract int getObjectFieldCount();
-
-    protected abstract int getPrimitiveFieldCount();
-
-    public abstract ShapeImpl.BaseAllocator createAllocator();
-
-    public LayoutStrategy getStrategy() {
-        return strategy;
+    int getPrimitiveFieldCount() {
+        return primitiveFields.size();
     }
 
     @Override
     public String toString() {
-        return "Layout[" + clazz.getName() + "]";
+        return "Layout[" + clazz.getName() + "]" + '(' + objectFields.size() + ',' + primitiveFields.size() + ')';
     }
 
     /**
@@ -127,16 +146,27 @@ abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
     @Platforms(Platform.HOSTED_ONLY.class)
     static void initializeDynamicObjectLayout(Class<?> dynamicObjectClass, MethodHandles.Lookup lookup) {
         assert ImageInfo.inImageBuildtimeCode() : "Only supported during image generation";
-        ((CoreLayoutFactory) getFactory()).registerLayoutClass(dynamicObjectClass.asSubclass(DynamicObject.class), lookup);
+        registerLayoutClass(dynamicObjectClass.asSubclass(DynamicObject.class), lookup);
     }
 
-    protected static final Map<Class<? extends DynamicObject>, Object> LAYOUT_INFO_MAP = new ConcurrentHashMap<>();
-    protected static final Map<LayoutImpl.Key, LayoutImpl> LAYOUT_MAP = new ConcurrentHashMap<>();
+    /**
+     * @implNote this field is looked up reflectively by TruffleBaseFeature.
+     */
+    static final Map<Class<? extends DynamicObject>, Object> LAYOUT_INFO_MAP = new ConcurrentHashMap<>();
+    /**
+     * @implNote this field is looked up reflectively by TruffleBaseFeature.
+     */
+    static final Map<LayoutImpl.Key, LayoutImpl> LAYOUT_MAP = new ConcurrentHashMap<>();
 
-    protected record Key(
+    record Key(
                     Class<? extends DynamicObject> type,
-                    int implicitCastFlags,
-                    LayoutStrategy strategy) {
+                    int implicitCastFlags) {
+
+        // letting Java generate hashcodes has slow startup
+        @Override
+        public int hashCode() {
+            return Objects.hash(type, implicitCastFlags);
+        }
 
         @Override
         public boolean equals(Object obj) {
@@ -146,7 +176,181 @@ abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
             if (!(obj instanceof Key other)) {
                 return false;
             }
-            return this.type == other.type && this.implicitCastFlags == other.implicitCastFlags && this.strategy == other.strategy;
+            return this.type == other.type && this.implicitCastFlags == other.implicitCastFlags;
+        }
+    }
+
+    private static LayoutInfo getOrCreateLayoutInfo(Class<? extends DynamicObject> dynamicObjectClass, MethodHandles.Lookup layoutLookup) {
+        Objects.requireNonNull(dynamicObjectClass, "DynamicObject layout class");
+        return LayoutInfo.getOrCreateNewLayoutInfo(dynamicObjectClass, layoutLookup);
+    }
+
+    private static LayoutImpl getOrCreateLayout(Class<? extends DynamicObject> clazz, MethodHandles.Lookup layoutLookup, int implicitCastFlags) {
+        Objects.requireNonNull(clazz, "DynamicObject layout class");
+        Key key = new Key(clazz, implicitCastFlags);
+        LayoutImpl layout = LAYOUT_MAP.get(key);
+        if (layout != null) {
+            return layout;
+        }
+        LayoutImpl newLayout = new LayoutImpl(clazz, getOrCreateLayoutInfo(clazz, layoutLookup), implicitCastFlags);
+        layout = LAYOUT_MAP.putIfAbsent(key, newLayout);
+        return layout == null ? newLayout : layout;
+    }
+
+    static LayoutImpl createLayoutImpl(Class<? extends DynamicObject> clazz, MethodHandles.Lookup layoutLookup, int implicitCastFlags) {
+        return getOrCreateLayout(clazz, layoutLookup, implicitCastFlags);
+    }
+
+    static void registerLayoutClass(Class<? extends DynamicObject> type, MethodHandles.Lookup layoutLookup) {
+        createLayoutImpl(type, layoutLookup, 0);
+    }
+
+    FieldInfo getObjectField(int index) {
+        return objectFields.get(index);
+    }
+
+    FieldInfo getPrimitiveField(int index) {
+        return primitiveFields.get(index);
+    }
+
+    static Shape createShape(Class<? extends DynamicObject> layoutClass,
+                    int implicitCastFlags,
+                    Object dynamicType,
+                    Object sharedData,
+                    int shapeFlags,
+                    EconomicMap<Object, Pair<Object, Integer>> constantProperties,
+                    Assumption singleContextAssumption,
+                    Lookup layoutLookup) {
+
+        CompilerAsserts.neverPartOfCompilation();
+        LayoutImpl impl = createLayoutImpl(layoutClass, layoutLookup, implicitCastFlags);
+        Shape shape = impl.newShape(dynamicType, sharedData, shapeFlags, singleContextAssumption);
+
+        if (constantProperties != null) {
+            var cursor = constantProperties.getEntries();
+            while (cursor.advance()) {
+                Object key = cursor.getKey();
+                Object value = cursor.getValue().getLeft();
+                int flags = cursor.getValue().getRight();
+                shape = shape.addProperty(new Property(key, new ExtLocations.ConstantLocation(value), flags));
+            }
+        }
+
+        return shape;
+    }
+
+    private static final class LayoutInfo {
+
+        final Class<? extends DynamicObject> clazz;
+        final List<FieldInfo> objectFields;
+        final List<FieldInfo> primitiveFields;
+
+        static LayoutInfo getOrCreateNewLayoutInfo(Class<? extends DynamicObject> dynamicObjectClass, MethodHandles.Lookup layoutLookup) {
+            LayoutInfo layoutInfo = (LayoutInfo) LAYOUT_INFO_MAP.get(dynamicObjectClass);
+            if (layoutInfo != null) {
+                return layoutInfo;
+            }
+
+            if (ImageInfo.inImageRuntimeCode()) {
+                throw new IllegalStateException("Layout not initialized ahead-of-time: " + dynamicObjectClass);
+            }
+
+            return createLayoutInfo(dynamicObjectClass, layoutLookup);
+        }
+
+        private static LayoutInfo createLayoutInfo(Class<? extends DynamicObject> dynamicObjectClass, MethodHandles.Lookup layoutLookup) {
+            LayoutInfo newLayoutInfo = new LayoutInfo(dynamicObjectClass, layoutLookup);
+            LayoutInfo layoutInfo = (LayoutInfo) LAYOUT_INFO_MAP.putIfAbsent(dynamicObjectClass, newLayoutInfo);
+            return layoutInfo == null ? newLayoutInfo : layoutInfo;
+        }
+
+        /**
+         * New layout.
+         */
+        LayoutInfo(Class<? extends DynamicObject> clazz, MethodHandles.Lookup layoutLookup) {
+            this.clazz = clazz.asSubclass(DynamicObject.class);
+
+            List<FieldInfo> objectFieldList = new ArrayList<>();
+            List<FieldInfo> primitiveFieldList = new ArrayList<>();
+
+            collectFields(clazz, DynamicObject.class, layoutLookup, objectFieldList, primitiveFieldList);
+
+            Collections.sort(objectFieldList);
+            Collections.sort(primitiveFieldList);
+
+            if (objectFieldList.size() + primitiveFieldList.size() > ExtLocations.MAX_DYNAMIC_FIELDS) {
+                throw new IllegalArgumentException("Too many @DynamicField annotated fields.");
+            }
+
+            this.objectFields = List.copyOf(objectFieldList);
+            this.primitiveFields = List.copyOf(primitiveFieldList);
+        }
+
+        /**
+         * Collects dynamic fields in class hierarchy (from high to low).
+         *
+         * @return the class lowermost in the hierarchy declaring dynamic fields
+         */
+        private static Class<? extends DynamicObject> collectFields(Class<? extends DynamicObject> clazz, Class<? extends DynamicObject> stop, MethodHandles.Lookup layoutLookup,
+                        List<FieldInfo> objectFieldList, List<FieldInfo> primitiveFieldList) {
+            if (clazz == DynamicObject.class || clazz == stop) {
+                return clazz;
+            }
+
+            Class<? extends DynamicObject> layoutClass = collectFields(clazz.getSuperclass().asSubclass(DynamicObject.class), stop, layoutLookup, objectFieldList, primitiveFieldList);
+
+            Class<? extends Annotation> dynamicFieldAnnotation = DynamicObject.getDynamicFieldAnnotation();
+            boolean hasDynamicFields = false;
+            for (Field field : clazz.getDeclaredFields()) {
+                if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
+                    assert !field.isAnnotationPresent(dynamicFieldAnnotation);
+                    continue;
+                }
+
+                if (field.getAnnotation(dynamicFieldAnnotation) != null) {
+                    checkDynamicFieldType(field);
+                    assert field.getDeclaringClass() == clazz;
+
+                    VarHandle varHandle = null;
+                    if (layoutLookup != null) {
+                        try {
+                            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(clazz, layoutLookup);
+                            varHandle = privateLookup.findVarHandle(clazz, field.getName(), field.getType());
+                        } catch (NoSuchFieldException | IllegalAccessException e) {
+                            throw CompilerDirectives.shouldNotReachHere(e);
+                        }
+                    } else if (UseVarHandle) {
+                        // Cannot use VarHandles without a Lookup.
+                        continue;
+                    }
+
+                    hasDynamicFields = true;
+                    if (field.getType() == Object.class) {
+                        objectFieldList.add(FieldInfo.fromField(field, varHandle));
+                    } else if (field.getType() == long.class) {
+                        primitiveFieldList.add(FieldInfo.fromField(field, varHandle));
+                    }
+                }
+            }
+
+            if (hasDynamicFields) {
+                layoutClass = clazz;
+            }
+            return layoutClass;
+        }
+
+        private static void checkDynamicFieldType(Field field) {
+            if (field.getType() != Object.class && field.getType() != long.class) {
+                throw new IllegalArgumentException("@DynamicField annotated field type must be either Object or long: " + field);
+            }
+            if (Modifier.isFinal(field.getModifiers())) {
+                throw new IllegalArgumentException("@DynamicField annotated field must not be final: " + field);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getName() + '[' + clazz.getName() + ']';
         }
     }
 }

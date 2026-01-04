@@ -453,7 +453,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         @Platforms(Platform.HOSTED_ONLY.class)
         private Label emitRuntimeFeatureTest(CPUFeature feature, Label falseLabel) {
             AMD64Address address = getFeatureMapAddress();
-            int mask = RuntimeCPUFeatureCheckImpl.instance().computeFeatureMask(EnumSet.of(feature));
+            int mask = RuntimeCPUFeatureCheckImpl.currentLayer().computeFeatureMask(EnumSet.of(feature));
             GraalError.guarantee(mask != 0, "Mask must not be 0 for features %s", feature);
             Class<?> fieldType = RuntimeCPUFeatureCheckImpl.getMaskField().getType();
             GraalError.guarantee(int.class.equals(fieldType), "Expected int field, got %s", fieldType);
@@ -464,7 +464,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         private AMD64Address getFeatureMapAddress() {
-            JavaConstant object = crb.getSnippetReflection().forObject(RuntimeCPUFeatureCheckImpl.instance());
+            JavaConstant object = crb.getSnippetReflection().forObject(RuntimeCPUFeatureCheckImpl.currentLayer());
             int fieldOffset = fieldOffset(RuntimeCPUFeatureCheckImpl.getMaskField(crb.getMetaAccess()));
             GraalError.guarantee(ConfigurationValues.getTarget().inlineObjects, "Dynamic feature check for callee saved registers requires inlined objects");
             Register heapBase = ReservedRegisters.singleton().getHeapBaseRegister();

@@ -417,7 +417,11 @@ public class AArch64ControlFlow {
         private final LabelRef[] remainingTargets;
         @Alive({REG}) protected AllocatableValue key;
 
-        public RangeTableSwitchOp(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key) {
+        private final boolean inputMayBeOutOfRange;
+        private final boolean mayEmitThreadedCode;
+
+        public RangeTableSwitchOp(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key,
+                        boolean inputMayBeOutOfRange, boolean mayEmitThreadedCode) {
             super(TYPE);
             this.lowKey = lowKey;
             assert defaultTarget != null;
@@ -426,6 +430,8 @@ public class AArch64ControlFlow {
             this.remainingStrategy = remainingStrategy;
             this.remainingTargets = remainingTargets;
             this.key = key;
+            this.inputMayBeOutOfRange = inputMayBeOutOfRange;
+            this.mayEmitThreadedCode = mayEmitThreadedCode;
         }
 
         @Override
@@ -443,28 +449,33 @@ public class AArch64ControlFlow {
                     keyOffsetReg = scratch2;
                 }
 
-                int interval = highKey - lowKey;
-                if (AArch64MacroAssembler.isComparisonImmediate(interval)) {
-                    masm.compare(32, keyOffsetReg, interval);
-                } else {
-                    masm.mov(scratch1, interval);
-                    masm.cmp(32, keyOffsetReg, scratch1);
-                }
+                if (inputMayBeOutOfRange || remainingStrategy != null) {
+                    int interval = highKey - lowKey;
+                    if (AArch64MacroAssembler.isComparisonImmediate(interval)) {
+                        masm.compare(32, keyOffsetReg, interval);
+                    } else {
+                        masm.mov(scratch1, interval);
+                        masm.cmp(32, keyOffsetReg, scratch1);
+                    }
 
-                Label outOfRangeLabel = defaultTarget.label();
-                if (remainingStrategy != null) {
-                    Label remainingLabel = new Label();
-                    outOfRangeLabel = remainingLabel;
+                    Label outOfRangeLabel = defaultTarget.label();
+                    if (remainingStrategy != null) {
+                        Label remainingLabel = new Label();
+                        outOfRangeLabel = remainingLabel;
 
-                    crb.getLIR().addSlowPath(this, () -> {
-                        masm.bind(remainingLabel);
-                        new StrategySwitchOp(remainingStrategy, remainingTargets, defaultTarget, key, AArch64LIRGenerator::toIntConditionFlag).emitCode(crb, masm);
-                    });
+                        crb.getLIR().addSlowPath(this, () -> {
+                            masm.bind(remainingLabel);
+                            new StrategySwitchOp(remainingStrategy, remainingTargets, defaultTarget, key, AArch64LIRGenerator::toIntConditionFlag).emitCode(crb, masm);
+                        });
+                    }
+                    // Jump to outOfRangeLabel if index is not within the jump table
+                    masm.branchConditionally(ConditionFlag.HI, outOfRangeLabel);
                 }
-                // Jump to outOfRangeLabel if index is not within the jump table
-                masm.branchConditionally(ConditionFlag.HI, outOfRangeLabel);
 
                 emitJumpTable(crb, masm, keyOffsetReg, scratch1, scratch2, lowKey, highKey, Arrays.stream(targets).map(LabelRef::label));
+                if (mayEmitThreadedCode) {
+                    masm.stopRecordingCodeSnippet(crb);
+                }
             }
         }
 

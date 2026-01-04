@@ -39,6 +39,9 @@ public class GraalError extends Error {
     private static final long serialVersionUID = 531632331813456233L;
     private final ArrayList<String> context = new ArrayList<>();
 
+    private final transient Object[] arguments;
+    private final String rawFormat;
+
     public static RuntimeException unimplemented(String msg) {
         throw new GraalError("unimplemented: %s", msg);
     }
@@ -246,6 +249,8 @@ public class GraalError extends Error {
      */
     public GraalError(String msg) {
         super(msg);
+        this.rawFormat = msg;
+        this.arguments = null;
     }
 
     /**
@@ -260,6 +265,8 @@ public class GraalError extends Error {
     @SuppressWarnings("this-escape")
     public GraalError(String msg, Object... args) {
         super(format(msg, args));
+        this.rawFormat = msg;
+        this.arguments = args;
         potentiallyAddContext(args);
     }
 
@@ -270,6 +277,8 @@ public class GraalError extends Error {
      */
     public GraalError(Throwable cause) {
         super(cause);
+        this.rawFormat = null;
+        this.arguments = null;
     }
 
     /**
@@ -279,7 +288,25 @@ public class GraalError extends Error {
     @SuppressWarnings("this-escape")
     public GraalError(Throwable cause, String msg, Object... args) {
         super(format(msg, args), cause);
+        this.rawFormat = msg;
+        this.arguments = args;
         potentiallyAddContext(args);
+    }
+
+    /**
+     * Return the raw format String passed into the constructor.
+     */
+    public String getRawFormat() {
+        return rawFormat;
+    }
+
+    /**
+     * Return the arguments passed into the constructor, with {@link Iterable} arguments expanded
+     * into a {@link List}. The expansion is performed by {@link #format(String, Object...)} when it
+     * formats the message for the constructor.
+     */
+    public Object[] getArguments() {
+        return arguments;
     }
 
     private void potentiallyAddContext(Object[] args) {
@@ -332,6 +359,8 @@ public class GraalError extends Error {
     public GraalError(GraalError e) {
         super(e);
         context.addAll(e.context);
+        this.rawFormat = null;
+        this.arguments = null;
     }
 
     public static GraalError asGraalError(Throwable t) {

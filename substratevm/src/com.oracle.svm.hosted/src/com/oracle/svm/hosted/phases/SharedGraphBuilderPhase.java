@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.phases;
 import static com.oracle.svm.core.SubstrateUtil.toUnboxedClass;
 import static jdk.graal.compiler.bytecode.Bytecodes.LDC2_W;
 
-import java.lang.annotation.Annotation;
+import java.lang.classfile.Opcode;
 import java.lang.constant.ConstantDescs;
 import java.lang.invoke.LambdaConversionException;
 import java.lang.invoke.MethodHandles;
@@ -42,19 +42,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.nativeimage.AnnotationAccess;
-
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration.BootstrapMethodRecord;
 import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
@@ -79,7 +76,9 @@ import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
-import com.oracle.svm.shaded.org.objectweb.asm.Opcodes;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -178,15 +177,21 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
     public abstract static class SharedBytecodeParser extends BytecodeParser {
 
-        private static final Class<?> SCOPED_SUBSTRATE_ANNOTATION;
         private static final Executable SESSION_EXCEPTION_HANDLER_METHOD;
         private static final Class<?> MAPPED_MEMORY_UTILS_PROXY_CLASS;
         private static final Class<?> ABSTRACT_MEMORY_SEGMENT_IMPL_CLASS;
 
         static {
-            SCOPED_SUBSTRATE_ANNOTATION = ReflectionUtil.lookupClass("com.oracle.svm.core.foreign.SVMScoped");
-            Class<?> substrateForeignUtilClass = ReflectionUtil.lookupClass("com.oracle.svm.core.foreign.SubstrateForeignUtil");
-            SESSION_EXCEPTION_HANDLER_METHOD = ReflectionUtil.lookupMethod(substrateForeignUtilClass, "sessionExceptionHandler", MemorySessionImpl.class, Object.class, long.class);
+            /*
+             * Class 'SubstrateForeignUtil' is optional because it is contained in a different
+             * distribution which may not always be available.
+             */
+            Class<?> substrateForeignUtilClass = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.foreign.SubstrateForeignUtil");
+            if (substrateForeignUtilClass != null) {
+                SESSION_EXCEPTION_HANDLER_METHOD = ReflectionUtil.lookupMethod(substrateForeignUtilClass, "sessionExceptionHandler", MemorySessionImpl.class, Object.class, long.class);
+            } else {
+                SESSION_EXCEPTION_HANDLER_METHOD = null;
+            }
             MAPPED_MEMORY_UTILS_PROXY_CLASS = ReflectionUtil.lookupClass("jdk.internal.access.foreign.MappedMemoryUtilsProxy");
             ABSTRACT_MEMORY_SEGMENT_IMPL_CLASS = ReflectionUtil.lookupClass("jdk.internal.foreign.AbstractMemorySegmentImpl");
         }
@@ -247,15 +252,31 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 }
             }
 
-            if (SCOPED_SUBSTRATE_ANNOTATION != null && SharedArenaSupport.SCOPED_ANNOTATION != null && graph.method() != null) {
+            if (!isMethodDeoptTarget() && graph.method() != null) {
+                /*
+                 * A note on deoptimization, runtime compilation and shared arena support on svm: We
+                 * instrument the runtime compiled versions of methods correctly. But instrumenting
+                 * the deopt versions is hard because we cannot just create fake frame states (the
+                 * frame state verification is very strict in this case) and we would need to
+                 * generate appropriate bytecode. If a transition from the runtime compiled method
+                 * to the deopt target happens, either a ScopedAccessError happened (i.e. the arena
+                 * was closed) or the arena is still valid when initiating the deoptimization.
+                 * Unfortunately, the deopt itself happens in a safepoint where other VM operations
+                 * may be scheduled as well. Also, lazy deoptimization is interruptible. We can
+                 * therefore not guarantee, that the session won't be closed during the transition
+                 * to the deopt target. In order to solve this, we will need to insert session
+                 * checks after each deopt entry in the deopt target (GR-66841).
+                 */
                 try {
-                    if (AnnotationAccess.isAnnotationPresent(method, (Class<? extends Annotation>) SCOPED_SUBSTRATE_ANNOTATION) && SharedArenaSupport.isAvailable()) {
+                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before instrumenting @Scoped method");
+                    if (AnnotationUtil.isAnnotationPresent(method, ForeignSupport.Scoped.class) && SharedArenaSupport.isAvailable()) {
                         // substituted, only add the scoped node
                         introduceScopeNodes();
-                    } else if (AnnotationAccess.isAnnotationPresent(method, SharedArenaSupport.SCOPED_ANNOTATION) && SharedArenaSupport.isAvailable()) {
+                    } else if (AnnotationUtil.isAnnotationPresent(method, SharedArenaSupport.SCOPED_ANNOTATION) && SharedArenaSupport.isAvailable()) {
                         // not substituted, also instrument
                         instrumentScopedMethod();
                     }
+                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After instrumenting @Scoped method");
                 } catch (Throwable e) {
                     throw GraalError.shouldNotReachHere(e);
                 }
@@ -323,12 +344,31 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             GraalError.guarantee(unwinds.size() == 1, "Exactly one unwind node expected.");
 
             final UnwindNode unwind = unwinds.get(0);
-            FrameState unwindMergeStateTemplate = null;
-            if (unwind.predecessor() instanceof MergeNode m) {
-                unwindMergeStateTemplate = m.stateAfter().duplicateWithVirtualState();
-            }
 
             for (SessionCheck sessionCheck : sessionsToCheck) {
+
+                Objects.requireNonNull(unwind);
+                Objects.requireNonNull(unwind.predecessor());
+
+                FrameState unwindMergeStateTemplate;
+
+                FixedNode prevBegin = (FixedNode) unwind.predecessor();
+                while (prevBegin instanceof BeginNode) {
+                    prevBegin = (FixedNode) prevBegin.predecessor();
+                }
+                if (prevBegin instanceof MergeNode m) {
+                    unwindMergeStateTemplate = m.stateAfter().duplicateWithVirtualState();
+                } else {
+                    // try to see if we can walk back and find only an exception object node
+                    if (prevBegin instanceof ExceptionObjectNode e) {
+                        unwindMergeStateTemplate = e.stateAfter().duplicateWithVirtualState();
+                    } else {
+                        throw GraalError.shouldNotReachHere("No merge predecessor found for " + unwind + " and prev begin " + prevBegin);
+                    }
+                }
+
+                GraalError.guarantee(unwindMergeStateTemplate != null, "Must have a state on the unwind predecessor but did not find any for %s", unwind);
+
                 graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before inserting exception handlers for scoped unwind paths");
                 assert sessionCheck.session != null : Assertions.errorMessage("At least the session must never be null", sessionsToCheck);
                 ValueNode[] args = new ValueNode[]{sessionCheck.session, sessionCheck.base == null ? ConstantNode.defaultForKind(JavaKind.Object, graph) : sessionCheck.base,
@@ -341,18 +381,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 ExceptionObjectNode eon = graph.add(new ExceptionObjectNode(s));
                 GraalError.guarantee(eon.stamp(NodeView.DEFAULT) != null, "Must have a stamp %s", eon);
 
-                /*
-                 * Build a fake state for the exception handler that is not existing in the
-                 * bytecode. This is fine because we will never deopt here. Note that this is a real
-                 * exception state with a bci, and not only one used for rethrowing.
-                 */
                 eon.setStateAfter(graph.addOrUnique(new FrameState(0, eon, graph.start().stateAfter().getCode(), false)));
 
                 /* a random bci 0, we are injecting an artificial call */
                 final int callBCI = 0;
                 InvokeWithExceptionNode invoke = graph.add(new InvokeWithExceptionNode(mct, eon, callBCI));
                 invoke.setStateAfter(graph.start().stateAfter().duplicateWithVirtualState());
-                invoke.stateAfter().invalidateForDeoptimization();
 
                 // hang the invoke in
                 FixedNode afterStart = graph.start().next();
@@ -380,10 +414,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 eonPhi.addInput(unwind.exception());
                 eonPhi.addInput(eon);
 
-                assert Objects.requireNonNull(unwindMergeStateTemplate).values().size() == 1 : Assertions.errorMessage("Exception path should only have exception object on stack",
-                                unwindMergeStateTemplate);
-
-                unwindMergeStateTemplate.replaceFirstInput(unwind.exception(), eonPhi);
+                unwindMergeStateTemplate.replaceAllInputs(unwind.exception(), eonPhi);
                 newMergeBeforeUnwind.setStateAfter(unwindMergeStateTemplate);
 
                 // duplicate for next occurrence
@@ -478,7 +509,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                      * For all patterns involving a vmClass the following holds: session is always
                      * p[0], and vmClass is always p[1]. However, in between we can have Class<E> e,
                      * int length, V v, M m then msp, offset, M m, S s, offsetInRange etc.
-                     * 
+                     *
                      * We always map AbstractMemorySegmentImpl msp to base and offset to offset
                      * (which always comes after). There can be arguments after offset which we
                      * ignore. And we skip all arguments between vmClass and msp. So any arg between
@@ -1483,7 +1514,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
                 BootstrapMethodRecord bootstrapMethodRecord = new BootstrapMethodRecord(bci, cpi, ((AnalysisMethod) method).getMultiMethod(MultiMethod.ORIGINAL_METHOD));
                 BootstrapMethodInfo bootstrapMethodInfo = BootstrapMethodConfiguration.singleton().getBootstrapMethodInfoCache().computeIfAbsent(bootstrapMethodRecord,
-                                key -> new BootstrapMethodInfo());
+                                _ -> new BootstrapMethodInfo());
                 ConstantNode bootstrapMethodInfoNode = ConstantNode.forConstant(getSnippetReflection().forObject(bootstrapMethodInfo), getMetaAccess(), getGraph());
 
                 /*
@@ -1516,7 +1547,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                     ValueNode currentNode;
                     if (constant instanceof PrimitiveConstant primitiveConstant) {
                         int argCpi = primitiveConstant.asInt();
-                        Object argConstant = loadConstantDynamic(argCpi, opcode == Opcodes.INVOKEDYNAMIC ? Opcodes.LDC : opcode);
+                        Object argConstant = loadConstantDynamic(argCpi, opcode == Opcode.INVOKEDYNAMIC.bytecode() ? Opcode.LDC.bytecode() : opcode);
                         if (argConstant instanceof ValueNode valueNode) {
                             ResolvedJavaMethod.Parameter[] parameters = bootstrapMethod.getParameters();
                             if (valueNode.getStackKind().isPrimitive() && i + 3 <= parameters.length && !parameters[i + 3].getKind().isPrimitive()) {

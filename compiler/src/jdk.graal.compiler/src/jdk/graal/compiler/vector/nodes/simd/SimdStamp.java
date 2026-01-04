@@ -84,7 +84,9 @@ public class SimdStamp extends ArithmeticStamp {
 
     private SimdStamp(Stamp[] components, boolean mayConstantFold) {
         super(getOpTable(components[0]));
-        GraalError.guarantee(hasSameOps(components), Arrays.toString(components));
+        if (!hasSameOps(components)) {
+            throw GraalError.shouldNotReachHereUnexpectedValue(Arrays.toString(components));
+        }
         this.components = components;
         this.mayConstantFold = mayConstantFold;
     }
@@ -119,6 +121,30 @@ public class SimdStamp extends ArithmeticStamp {
         Arrays.fill(components, zeroStamp);
         components[0] = element;
         return new SimdStamp(components);
+    }
+
+    /**
+     * Return a constant stamp for the given constant, legalizing 1-bit constants to 8-bit stamps.
+     */
+    public static Stamp constantComponentStamp(JavaConstant c) {
+        if (c.getJavaKind().isNumericInteger()) {
+            /*
+             * Use the kind's actual bits, but at least 8. Boolean vectors would otherwise have an
+             * illegal i1 stamp.
+             */
+            int bits = Math.max(c.getJavaKind().getBitCount(), 8);
+            return IntegerStamp.create(bits, c.asLong(), c.asLong());
+        } else {
+            return StampFactory.forConstant(c);
+        }
+    }
+
+    public static SimdStamp forConstants(JavaConstant[] values) {
+        Stamp[] stamps = new Stamp[values.length];
+        for (int i = 0; i < stamps.length; i++) {
+            stamps[i] = constantComponentStamp(values[i]);
+        }
+        return new SimdStamp(stamps);
     }
 
     @Override
@@ -457,6 +483,66 @@ public class SimdStamp extends ArithmeticStamp {
         } else {
             return false;
         }
+    }
+
+    /**
+     * Returns {@code true} if this SIMD stamp can be interpreted as a logic mask. This is the case
+     * if its components are {@link LogicValueStamp} on platform that use opmasks, or if its
+     * components are integers in the range [-1..0], i.e., only either all-ones or all-zeros.
+     */
+    public boolean isMask() {
+        for (Stamp s : components) {
+            if (s instanceof LogicValueStamp) {
+                return true;
+            } else if (s instanceof IntegerStamp integerStamp && integerStamp.lowerBound() >= -1 && integerStamp.upperBound() <= 0) {
+                /* OK so far. */
+                continue;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns {@code true} if this stamp is constant, with only logic false or integer zero
+     * entries.
+     */
+    public boolean isAllZeros() {
+        for (Stamp s : components) {
+            if (s instanceof LogicValueStamp logicValueStamp && logicValueStamp.equals(LogicValueStamp.FALSE)) {
+                continue;
+            } else if (s instanceof IntegerStamp integerStamp && integerStamp.lowerBound() == 0 && integerStamp.upperBound() == 0) {
+                continue;
+            } else if (s instanceof FloatStamp floatStamp && !floatStamp.canBeNaN() &&
+                            Double.doubleToRawLongBits(floatStamp.lowerBound()) == 0 && Double.doubleToRawLongBits(floatStamp.upperBound()) == 0) {
+                continue;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns {@code true} if this stamp is constant, with only logic true or integer -1 (all bits
+     * set) entries.
+     */
+    public boolean isAllOnes() {
+        for (Stamp s : components) {
+            if (s instanceof LogicValueStamp logicValueStamp && logicValueStamp.equals(LogicValueStamp.TRUE)) {
+                continue;
+            } else if (s instanceof IntegerStamp integerStamp && integerStamp.lowerBound() == -1 && integerStamp.upperBound() == -1) {
+                continue;
+            } else {
+                /*
+                 * No float case: all-1 bits is a non-canonical NaN that won't appear as a constant
+                 * stamp.
+                 */
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

@@ -25,6 +25,9 @@
 
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 
@@ -202,6 +205,7 @@ public final class EspressoFrame {
         clear(frame, localSlot);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void setLocalObject(InterpreterFrame frame, int localSlot, Object value) {
         assert !(value instanceof ReturnAddress);
         frame.setObjectStatic(localSlot, value);
@@ -211,18 +215,22 @@ public final class EspressoFrame {
         frame.setObjectStatic(localSlot, value);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void setLocalInt(InterpreterFrame frame, int localSlot, int value) {
         frame.setIntStatic(localSlot, value);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void setLocalFloat(InterpreterFrame frame, int localSlot, float value) {
         frame.setFloatStatic(localSlot, value);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void setLocalLong(InterpreterFrame frame, int localSlot, long value) {
         frame.setLongStatic(localSlot, value);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void setLocalDouble(InterpreterFrame frame, int localSlot, double value) {
         frame.setDoubleStatic(localSlot, value);
     }

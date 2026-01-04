@@ -24,11 +24,13 @@
  */
 package com.oracle.svm.hosted.lambda;
 
-import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
-import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
+import java.util.List;
 
+import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
+import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
+import com.oracle.svm.util.AnnotationUtil;
+
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -37,7 +39,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class LambdaSubstitutionType extends CustomSubstitutionType {
     private final String stableName;
 
-    @SuppressWarnings("try")
     LambdaSubstitutionType(ResolvedJavaType original, String stableName) {
         super(original);
         this.stableName = stableName;
@@ -48,10 +49,10 @@ public class LambdaSubstitutionType extends CustomSubstitutionType {
         return stableName;
     }
 
-    private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(LambdaFormHiddenMethod.Holder.INSTANCE);
+    private static final List<AnnotationValue> INJECTED_ANNOTATIONS = List.of(AnnotationUtil.newAnnotationValue(LambdaFormHiddenMethod.class));
 
     @Override
-    public AnnotationValue[] getInjectedAnnotations() {
+    public List<AnnotationValue> getInjectedAnnotations() {
         return INJECTED_ANNOTATIONS;
     }
 }

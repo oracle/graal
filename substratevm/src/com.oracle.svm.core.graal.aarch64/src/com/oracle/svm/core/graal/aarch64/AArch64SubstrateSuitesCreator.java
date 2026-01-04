@@ -27,7 +27,10 @@ package com.oracle.svm.core.graal.aarch64;
 import jdk.graal.compiler.core.aarch64.AArch64SuitesCreator;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.lir.dfa.MarkBasePointersPhase;
+import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 
 public class AArch64SubstrateSuitesCreator extends AArch64SuitesCreator {
@@ -41,4 +44,11 @@ public class AArch64SubstrateSuitesCreator extends AArch64SuitesCreator {
         throw GraalError.shouldNotReachHere("this path is unused");
     }
 
+    @Override
+    public LIRSuites createLIRSuites(OptionValues options) {
+        LIRSuites lirSuites = super.createLIRSuites(options);
+        // Derived pointers aren't supported
+        lirSuites.getAllocationStage().findPhase(MarkBasePointersPhase.class).remove();
+        return lirSuites;
+    }
 }

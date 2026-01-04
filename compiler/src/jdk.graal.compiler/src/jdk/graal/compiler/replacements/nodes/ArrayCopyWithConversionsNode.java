@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 
 import java.util.EnumSet;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.StrideUtil;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -41,15 +43,14 @@ import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.replacements.NodeStrideUtil;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.JavaKind;
 
 // JaCoCo Exclude
 
 /**
  * Specialized arraycopy stub that assumes disjoint source and target arrays, and supports
- * compression and inflation depending on {@code strideSrc} and {@code strideDst}.
+ * compression and inflation depending on {@code strideSrc} and {@code strideDst}, and endian
+ * conversion depending on {@code reverseBytes}.
  */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
 public class ArrayCopyWithConversionsNode extends MemoryKillStubIntrinsicNode {
@@ -60,6 +61,7 @@ public class ArrayCopyWithConversionsNode extends MemoryKillStubIntrinsicNode {
 
     private final Stride strideSrc;
     private final Stride strideDst;
+    private final boolean reverseBytes;
     @Input protected ValueNode arraySrc;
     @Input protected ValueNode offsetSrc;
     @Input protected ValueNode arrayDst;
@@ -90,32 +92,46 @@ public class ArrayCopyWithConversionsNode extends MemoryKillStubIntrinsicNode {
     public ArrayCopyWithConversionsNode(ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length,
                     @ConstantNodeParameter Stride strideSrc,
                     @ConstantNodeParameter Stride strideDst) {
-        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, null, strideSrc, strideDst, null);
+        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, null, strideSrc, strideDst, false, null);
     }
 
     public ArrayCopyWithConversionsNode(ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length,
                     @ConstantNodeParameter Stride strideSrc,
                     @ConstantNodeParameter Stride strideDst,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, null, strideSrc, strideDst, runtimeCheckedCPUFeatures);
+        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, null, strideSrc, strideDst, false, runtimeCheckedCPUFeatures);
+    }
+
+    public ArrayCopyWithConversionsNode(ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length,
+                    @ConstantNodeParameter Stride stride,
+                    @ConstantNodeParameter boolean reverseBytes) {
+        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, null, stride, stride, reverseBytes, null);
+    }
+
+    public ArrayCopyWithConversionsNode(ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length,
+                    @ConstantNodeParameter Stride stride,
+                    @ConstantNodeParameter boolean reverseBytes,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
+        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, null, stride, stride, reverseBytes, runtimeCheckedCPUFeatures);
     }
 
     /**
      * Variant with dynamicStride parameter, as described in {@link StrideUtil}.
      */
     public ArrayCopyWithConversionsNode(ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length, ValueNode dynamicStrides) {
-        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, dynamicStrides, null, null, null);
+        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, dynamicStrides, null, null, false, null);
     }
 
     public ArrayCopyWithConversionsNode(ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length, ValueNode dynamicStrides,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, dynamicStrides, null, null, runtimeCheckedCPUFeatures);
+        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, dynamicStrides, null, null, false, runtimeCheckedCPUFeatures);
     }
 
     protected ArrayCopyWithConversionsNode(NodeClass<? extends ArrayCopyWithConversionsNode> c,
                     ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length, ValueNode dynamicStrides,
                     @ConstantNodeParameter Stride strideSrc,
                     @ConstantNodeParameter Stride strideDst,
+                    @ConstantNodeParameter boolean reverseBytes,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
         // TruffleStrings is using the same stub generated by this node to read from
         // byte[]/char[]/int[] arrays and native buffers, so we have to use LocationIdentity.any()
@@ -123,6 +139,7 @@ public class ArrayCopyWithConversionsNode extends MemoryKillStubIntrinsicNode {
         super(c, StampFactory.forKind(JavaKind.Void), runtimeCheckedCPUFeatures, LocationIdentity.any());
         this.strideSrc = strideSrc;
         this.strideDst = strideDst;
+        this.reverseBytes = reverseBytes;
         this.arraySrc = arraySrc;
         this.offsetSrc = offsetSrc;
         this.arrayDst = arrayDst;
@@ -152,12 +169,33 @@ public class ArrayCopyWithConversionsNode extends MemoryKillStubIntrinsicNode {
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @NodeIntrinsic
+    @GenerateStub(name = "arrayCopyWithReverseBytesS2", parameters = {"S2", "true"})
+    @GenerateStub(name = "arrayCopyWithReverseBytesS4", parameters = {"S4", "true"})
+    public static native void arrayCopyWithReverseBytes(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length,
+                    @ConstantNodeParameter Stride stride,
+                    @ConstantNodeParameter boolean reverseBytes);
+
+    @NodeIntrinsic
+    public static native void arrayCopyWithReverseBytes(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length,
+                    @ConstantNodeParameter Stride stride,
+                    @ConstantNodeParameter boolean reverseBytes,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
+
+    @NodeIntrinsic
     @GenerateStub(name = "arrayCopyWithConversionsDynamicStrides")
     public static native void arrayCopy(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length, int stride);
 
     @NodeIntrinsic
     public static native void arrayCopy(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length, int stride,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
+
+    public boolean isReverseBytes() {
+        return reverseBytes;
+    }
+
+    public Stride getReverseBytesStride() {
+        return strideDst;
+    }
 
     public int getDirectStubCallIndex() {
         return NodeStrideUtil.getDirectStubCallIndex(dynamicStrides, strideSrc, strideDst);
@@ -179,7 +217,16 @@ public class ArrayCopyWithConversionsNode extends MemoryKillStubIntrinsicNode {
 
     @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
-        if (getDirectStubCallIndex() < 0) {
+        if (reverseBytes) {
+            gen.getLIRGeneratorTool().emitArrayCopyWithReverseBytes(
+                            strideDst,
+                            getRuntimeCheckedCPUFeatures(),
+                            gen.operand(arraySrc),
+                            gen.operand(offsetSrc),
+                            gen.operand(arrayDst),
+                            gen.operand(offsetDst),
+                            gen.operand(length));
+        } else if (getDirectStubCallIndex() < 0) {
             gen.getLIRGeneratorTool().emitArrayCopyWithConversion(
                             getRuntimeCheckedCPUFeatures(),
                             gen.operand(arraySrc),

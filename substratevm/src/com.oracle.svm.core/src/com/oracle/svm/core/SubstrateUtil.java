@@ -40,8 +40,6 @@ import java.util.regex.Pattern;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -135,6 +133,19 @@ public class SubstrateUtil {
         return sb.toString();
     }
 
+    /**
+     * Guarantees that the code is only executed at run time and not at image build time. The call
+     * should always be at the beginning of a method. It is not supposed to mark conditional code
+     * branches. It always indicates that the whole containing method is run-time only.
+     */
+    @AlwaysInline("Should be eliminated")
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void guaranteeRuntimeOnly() {
+        if (HOSTED) {
+            throw VMError.shouldNotReachHere("Should only be called at run time");
+        }
+    }
+
     @TargetClass(com.oracle.svm.core.SubstrateUtil.class)
     static final class Target_com_oracle_svm_core_SubstrateUtil {
         @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true)//
@@ -150,23 +161,6 @@ public class SubstrateUtil {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static FileDescriptor getFileDescriptor(FileOutputStream out) {
         return SubstrateUtil.cast(out, Target_java_io_FileOutputStream.class).fd;
-    }
-
-    /**
-     * Convert C-style to Java-style command line arguments. The first C-style argument, which is
-     * always the executable file name, is ignored.
-     *
-     * @param argc the number of arguments in the {@code argv} array.
-     * @param argv a C {@code char**}.
-     *
-     * @return the command line argument strings in a Java string array.
-     */
-    public static String[] convertCToJavaArgs(int argc, CCharPointerPointer argv) {
-        String[] args = new String[argc - 1];
-        for (int i = 1; i < argc; ++i) {
-            args[i - 1] = CTypeConversion.toJavaString(argv.read(i));
-        }
-        return args;
     }
 
     /**

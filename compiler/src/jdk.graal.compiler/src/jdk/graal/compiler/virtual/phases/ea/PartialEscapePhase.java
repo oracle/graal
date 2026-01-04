@@ -30,6 +30,7 @@ import static jdk.graal.compiler.core.common.GraalOptions.EscapeAnalyzeOnly;
 import java.util.Optional;
 
 import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.GraphState;
@@ -133,15 +134,29 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
     }
 
     @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        // This may be set more than once but the goal is to record whether PartialEscapePhase has
+        // even been run.
+        if (!graphState.isAfterStage(StageFlag.PARTIAL_ESCAPE)) {
+            graphState.setAfterStage(StageFlag.PARTIAL_ESCAPE);
+        }
+    }
+
+    @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
-        if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue(graph.getOptions()))) {
+        if (matchGraph(graph)) {
             if (readElimination || graph.hasVirtualizableAllocation()) {
                 try (DebugCloseable ignored = graph.getOptimizationLog().enterPartialEscapeAnalysis()) {
                     runAnalysis(graph, context);
                 }
             }
         }
+    }
+
+    protected boolean matchGraph(StructuredGraph graph) {
+        return VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue(graph.getOptions()));
     }
 
     @Override

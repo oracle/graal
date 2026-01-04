@@ -67,11 +67,11 @@ import static jdk.vm.ci.aarch64.AArch64.v9;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
@@ -163,7 +163,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
          *
          * https://developer.android.com/ndk/guides/abis#arm64-v8a
          */
-        if (Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(Platform.WINDOWS.class) || Platform.includedIn(Platform.ANDROID.class)) {
+        if (Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) || Platform.includedIn(Platform.ANDROID.class)) {
             regs.remove(r18);
         }
         allocatableRegs = List.copyOf(regs);
@@ -385,7 +385,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
                 }
             }
         } else {
-            Set<Register> usedRegisters = new HashSet<>();
+            EconomicSet<Register> usedRegisters = EconomicSet.create();
             VMError.guarantee(parameterTypes.length == type.fixedParameterAssignment.length, "Parameters/assignments size mismatch.");
 
             for (int i = firstActualArgument; i < locations.length; i++) {

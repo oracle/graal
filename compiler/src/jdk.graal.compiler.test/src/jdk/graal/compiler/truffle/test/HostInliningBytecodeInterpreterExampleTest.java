@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,12 +49,11 @@ import com.oracle.truffle.api.nodes.Node;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /*
- * If you update the code here, please also update truffle/docs/HostOptimization.md.
+ * If you update the code here, please also update truffle/docs/HostCompilation.md.
  */
 public class HostInliningBytecodeInterpreterExampleTest extends TruffleCompilerImplTest {
 
     @Test
-    @SuppressWarnings("try")
     public void test() throws Throwable {
         // call the method to initialize classes
         interpreterSwitch();
@@ -66,7 +65,7 @@ public class HostInliningBytecodeInterpreterExampleTest extends TruffleCompilerI
         OptionValues options = HostInliningTest.createHostInliningOptions(30000, -1);
 
         StructuredGraph graph = parseForCompile(method, options);
-        try (DebugContext.Scope ds = graph.getDebug().scope("Testing", method, graph)) {
+        try (DebugContext.Scope _ = graph.getDebug().scope("Testing", method, graph)) {
             super.createSuites(options).getHighTier().apply(graph, getDefaultHighTierContext());
             for (InvokeNode invoke : graph.getNodes().filter(InvokeNode.class)) {
                 ResolvedJavaMethod invokedMethod = invoke.getTargetMethod();

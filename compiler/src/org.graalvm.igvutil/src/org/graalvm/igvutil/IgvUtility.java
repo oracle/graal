@@ -38,6 +38,7 @@ import jdk.graal.compiler.graphio.parsing.BinaryReader;
 import jdk.graal.compiler.graphio.parsing.ModelBuilder;
 import jdk.graal.compiler.graphio.parsing.StreamSource;
 import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.graal.compiler.util.args.Command;
 import jdk.graal.compiler.util.args.CommandGroup;
 import jdk.graal.compiler.util.args.OptionValue;
@@ -128,8 +129,8 @@ public class IgvUtility {
 
         @Override
         void apply() throws IOException {
-            Set<String> nodeProperties = nodePropertyFilter.isSet() ? Set.of(nodePropertyFilter.getValue().split(",")) : null;
-            Set<String> graphProperties = graphPropertyFilter.isSet() ? Set.of(graphPropertyFilter.getValue().split(",")) : null;
+            Set<String> nodeProperties = nodePropertyFilter.isSet() ? CollectionsUtil.setOf(nodePropertyFilter.getValue().split(",")) : null;
+            Set<String> graphProperties = graphPropertyFilter.isSet() ? CollectionsUtil.setOf(graphPropertyFilter.getValue().split(",")) : null;
 
             exporter = new JsonExporter(graphProperties, nodeProperties);
 

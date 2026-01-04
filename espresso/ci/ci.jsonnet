@@ -9,13 +9,9 @@
   vm_guard_includes: [],
 
   local espresso_compiler_stub_gate = common.eclipse + common.jdt + common.predicates(true, true, false) +
-  # [GR-64739] move espresso JDK 21 gates to on demand
-   # common.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-compiler-stub-style-jdk21-linux-amd64', imports='/substratevm') + {
-   common.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='ondemand-espresso-compiler-stub-style-jdk21-linux-amd64', imports='/substratevm') + {
+   common.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-compiler-stub-style-jdkLatest-linux-amd64', imports='/substratevm', mx_args=['--native-images=false']) + {
     setup+: [
       ['cd', "../espresso-compiler-stub"],
-      # Ensure we can build an espresso-ni standalone with native-image from the substratevm suite
-      ['set-export', 'JAVA_HOME', '$ESPRESSO_JAVA_HOME']
     ],
     guard+: {
       includes+: [
@@ -32,10 +28,8 @@
   },
 
   local _builds = common.builds + [
-    # [GR-64739] move espresso JDK 21 gates to on demand
-    # common.jdk21_gate_linux_amd64 + espresso_compiler_stub_gate,
-    common.jdk21_on_demand_linux + espresso_compiler_stub_gate,
-    common.jdkLatest_gate_linux_amd64 + espresso_shared_gate,
+    common.jdkLatest_tier1_linux_amd64 + espresso_compiler_stub_gate,
+    common.jdkLatest_tier1_linux_amd64 + espresso_shared_gate,
     // Benchmarks
     // AWFY peak perf. benchmarks
     common.jdk21_weekly_bench_linux    + common.espresso_benchmark('jvm-ce-llvm', 'awfy:*'                                        , extra_args=['--vm.Xmx1g', '--vm.Xms1g'])         + {name: 'weekly-bench-espresso-jvm-ce-awfy-jdk21onLatest-linux-amd64'},

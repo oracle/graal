@@ -106,6 +106,17 @@ public final class SignatureSymbols {
     }
 
     /**
+     * Creates or retrieves a valid method signature symbol from a String.
+     *
+     * @return The signature Symbol if valid, null otherwise
+     *
+     * @see Validation#validSignatureDescriptor(ByteSequence)
+     */
+    public Symbol<Signature> getOrCreateValidSignature(String signatureString) {
+        return getOrCreateValidSignature(ByteSequence.create(signatureString), false);
+    }
+
+    /**
      * Creates or retrieves a valid method signature symbol from a byte sequence.
      *
      * @param ensureStrongReference if {@code true}, the returned symbol is guaranteed to be
@@ -140,7 +151,7 @@ public final class SignatureSymbols {
      * @return Array of Type symbols representing parameter types followed by return type
      */
     public Symbol<Type>[] parsed(Symbol<Signature> signature) {
-        return parse(SignatureSymbols.this.getTypes(), signature, 0);
+        return parse(SignatureSymbols.this.getTypes(), signature);
     }
 
     /**
@@ -186,12 +197,12 @@ public final class SignatureSymbols {
      * @throws ParserException.ClassFormatError if {the signature is not well-formed
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
-    static Symbol<Type>[] parse(TypeSymbols typeSymbols, Symbol<Signature> signature, int startIndex) throws ParserException.ClassFormatError {
-        if ((startIndex > signature.length() - 3) || signature.byteAt(startIndex) != '(') {
+    public static Symbol<Type>[] parse(TypeSymbols typeSymbols, Symbol<Signature> signature) throws ParserException.ClassFormatError {
+        if ((signature.length() < 3) || signature.byteAt(0) != '(') {
             throw new ParserException.ClassFormatError("Invalid method signature: " + signature);
         }
         final List<Symbol<Type>> buf = new ArrayList<>();
-        int i = startIndex + 1;
+        int i = 1;
         while (signature.byteAt(i) != ')') {
             final Symbol<Type> descriptor = typeSymbols.parse(signature, i, true);
             buf.add(descriptor);

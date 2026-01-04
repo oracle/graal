@@ -26,9 +26,9 @@ package com.oracle.svm.junit;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.util.HashSet;
 import java.util.List;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -119,7 +119,7 @@ public class SVMJUnitRunner {
         system.out().println("JUnit version " + Version.id());
 
         MxJUnitConfig config = new MxJUnitConfig();
-        var testsToRun = new HashSet<String>();
+        var testsToRun = EconomicSet.create();
         int i = 0;
         while (i < args.length) {
             String arg = args[i++];

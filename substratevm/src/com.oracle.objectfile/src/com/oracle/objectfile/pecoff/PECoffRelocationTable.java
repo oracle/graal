@@ -27,7 +27,6 @@ package com.oracle.objectfile.pecoff;
 
 import java.nio.ByteBuffer;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -45,6 +44,7 @@ import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_RELOCATION;
 import com.oracle.objectfile.pecoff.PECoffObjectFile.PECoffSection;
+import org.graalvm.collections.EconomicSet;
 
 @SuppressWarnings("unchecked")
 public class PECoffRelocationTable extends ObjectFile.Element {
@@ -195,7 +195,7 @@ public class PECoffRelocationTable extends ObjectFile.Element {
 
     @Override
     public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
-        HashSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
+        EconomicSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
         return deps;
     }
 

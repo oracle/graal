@@ -155,7 +155,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
             } else {
                 throw VMError.shouldNotReachHereUnexpectedInput(node); // ExcludeFromJacocoGeneratedReport
             }
-            Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(snippet, node.graph(), tool.getLoweringStage());
             args.add("obj", node.object());
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }

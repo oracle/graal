@@ -24,20 +24,21 @@
  */
 package com.oracle.svm.core.fieldvaluetransformer;
 
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Implements the field value transformation semantics of {@link Kind#ArrayIndexShift}.
  */
-public record ArrayIndexShiftFieldValueTransformer(Class<?> targetClass, JavaKind returnKind) implements FieldValueTransformer {
+public record ArrayIndexShiftFieldValueTransformer(ResolvedJavaType targetClass, JavaKind returnKind) implements JVMCIFieldValueTransformer {
 
     @Override
-    public Object transform(Object receiver, Object originalValue) {
-        return FieldOffsetFieldValueTransformer.box(returnKind, ConfigurationValues.getObjectLayout().getArrayIndexShift(JavaKind.fromJavaClass(targetClass.getComponentType())));
+    public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
+        return FieldOffsetFieldValueTransformer.constant(returnKind, ConfigurationValues.getObjectLayout().getArrayIndexShift(targetClass.getComponentType().getJavaKind()));
     }
 }

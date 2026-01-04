@@ -77,7 +77,7 @@ public class CEntryPointSupport implements InternalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate, ValueNode ensureJavaThreadNode) {
                 if (!ensureJavaThreadNode.isConstant()) {
-                    b.bailout("Parameter ensureJavaThread of enterAttachThread must be a compile time constant");
+                    throw b.bailout("Parameter ensureJavaThread of enterAttachThread must be a compile time constant");
                 }
                 b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, false, ensureJavaThreadNode.asJavaConstant().asInt() != 0));
                 return true;
@@ -87,7 +87,7 @@ public class CEntryPointSupport implements InternalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate, ValueNode startedByIsolate, ValueNode ensureJavaThread) {
                 if (!startedByIsolate.isConstant() || !ensureJavaThread.isConstant()) {
-                    b.bailout("Parameters ensureJavaThread and startedByIsolate of enterAttachThread must be a compile time constant");
+                    throw b.bailout("Parameters ensureJavaThread and startedByIsolate of enterAttachThread must be a compile time constant");
                 }
                 b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, startedByIsolate.asJavaConstant().asInt() != 0, ensureJavaThread.asJavaConstant().asInt() != 0));
                 return true;

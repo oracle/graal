@@ -22,9 +22,9 @@
 #
 
 suite = {
-    "mxversion": "7.46.0",
+    "mxversion": "7.65.0",
     "name": "espresso",
-    "version" : "25.0.0",
+    "version" : "25.1.0",
     "release" : False,
     "groupId" : "org.graalvm.espresso",
     "url" : "https://www.graalvm.org/reference-manual/java-on-truffle/",
@@ -81,6 +81,8 @@ suite = {
         ],
     },
 
+    "capture_suite_commit_info": False,
+
     # ------------- projects
 
     "projects": {
@@ -101,8 +103,56 @@ suite = {
             "sourceDirs": ["src"],
             # Contains classes in sun.nio.* that only compile with javac.
             "forceJavac": "true",
-            "javaCompliance": "8+",
+            "javaCompliance": "21+",
+            "patchModule": "java.base",
             "checkPackagePrefix": False,  # Contains classes in java.io and sun.nio.
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
+        "com.oracle.truffle.espresso.io.jdk21": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.truffle.espresso.io",
+            ],
+            "overlayTarget": "com.oracle.truffle.espresso.io",
+            # Contains classes in sun.nio.* that only compile with javac.
+            "forceJavac": "true",
+            "multiReleaseJarVersion": "21",
+            "patchModule": "java.base",
+            "javaCompliance": "21",
+            "checkPackagePrefix": False,  # Contains classes in java.io and sun.nio.
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
+        "com.oracle.truffle.espresso.io.jdk25": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.truffle.espresso.io",
+            ],
+            # GR-47124 spotbugs does not support jdk25
+            "spotbugs": "false",
+            "overlayTarget": "com.oracle.truffle.espresso.io",
+            # Contains classes in sun.nio.* that only compile with javac.
+            "forceJavac": "true",
+            "multiReleaseJarVersion": "25",
+            "patchModule": "java.base",
+            "javaCompliance": "25",
+            "checkPackagePrefix": False,  # Contains classes in java.io and sun.nio.
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
+        "com.oracle.truffle.espresso.memory.panama": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.truffle.espresso",
+                "truffle:TRUFFLE_API",
+            ],
+            "javaCompliance": "22+",
+            # GR-47124 spotbugs does not support jdk22
+            "spotbugs": "false",
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -140,9 +190,11 @@ suite = {
                 "java.logging",
                 "jdk.unsupported", # sun.misc.Signal
                 "java.management",
+                "jdk.management",
             ],
             "uses": [
                 "com.oracle.truffle.espresso.ffi.NativeAccess.Provider",
+                "com.oracle.truffle.espresso.ffi.memory.NativeMemory.Provider",
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "jacoco" : "include",
@@ -194,7 +246,7 @@ suite = {
             "requires": [
                 "java.logging",
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -228,10 +280,17 @@ suite = {
                     "jdk.vm.ci.code.stack",
                     "jdk.vm.ci.common",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
+                    "jdk.vm.ci.riscv64",
                     "jdk.vm.ci.runtime",
                 ],
             },
-            "javaCompliance": "8+",
+            "javaCompliance": "21+",
+            # Direct reference to jdk.vm.ci.meta.annotation and
+            # jdk.vm.ci.meta.ResolvedJavaRecordComponent causes
+            # spotbugs analysis to fail with "missing class" error.
+            "spotbugs": "false",
+
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -247,19 +306,28 @@ suite = {
             "os_arch": {
                 "windows": {
                     "<others>": {
-                        "cflags": ["-g", "-O3", "-Wall"],
+                        "cflags": ["-Zi", "-O2", "-Wall"],
+                        "multitarget": {
+                            "libc": ["default"],
+                        },
                     },
                 },
                 "linux-musl": {
                     "<others>": {
                         "cflags": ["-Wall", "-Werror", "-Wno-error=cpp"],
-                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
+                        "multitarget": {
+                            "libc": ["musl", "default"],
+                            "compiler": ["sulong-bitcode", "host", "*"]
+                        },
                     },
                 },
                 "<others>": {
                     "<others>": {
                         "cflags": ["-Wall", "-Werror"],
-                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
+                        "multitarget": {
+                            "libc": ["glibc", "musl", "default"],
+                            "compiler": ["sulong-bitcode", "host", "*"]
+                        },
                     },
                 },
             },
@@ -312,7 +380,9 @@ suite = {
                             "-Wl,-current_version,1.0.0",
                             "-Wl,-compatibility_version,1.0.0"
                         ],
-                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
+                        "multitarget": {
+                            "compiler": ["sulong-bitcode", "host", "*"]
+                        },
                     },
                 },
                 "linux": {
@@ -321,10 +391,11 @@ suite = {
                         "ldflags": [
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
-                            # newer LLVM versions default to --no-undefined-version
-                            "-Wl,--undefined-version",
                         ],
-                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
+                        "multitarget": {
+                            "libc": ["glibc", "musl", "default"],
+                            "compiler": ["sulong-bitcode", "host", "*"]
+                        },
                     },
                 },
                 "linux-musl": {
@@ -333,17 +404,53 @@ suite = {
                         "ldflags": [
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
-                            # newer LLVM versions default to --no-undefined-version
-                            "-Wl,--undefined-version",
                         ],
-                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
+                        "multitarget": {
+                            "libc": ["musl", "default"],
+                            "compiler": ["sulong-bitcode", "host", "*"]
+                        },
                     },
                 },
                 "windows": {
                     "<others>": {
-                        "cflags": ["-g", "-O3", "-Wall"],
+                        "cflags": ["-Zi", "-O2", "-Wall", "-std:c11"],
+                        "multitarget": {
+                            "libc": ["default"],
+                        },
                     },
                 }
+            },
+        },
+
+        # same as mokapot, but with statically linked OpenJDK libraries.
+        "com.oracle.truffle.espresso.fatpot": {
+            "class": "CustomLibJVMLinking",
+            "subDir": "src",
+            "dir": "com.oracle.truffle.espresso.mokapot",
+            "native": "shared_lib",
+            "deliverable": "jvm",
+            "platformDependent": True,
+            "os_arch": {
+                "darwin": {
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror", "-std=c11", "-DESPRESSO_NFI_STATIC"],
+                        "ldflags": [
+                            "-Wl,-install_name,@rpath/libjvm.dylib",
+                            "-Wl,-rpath,@loader_path/.",
+                            "-Wl,-rpath,@loader_path/..",
+                            "-Wl,-current_version,1.0.0",
+                            "-Wl,-compatibility_version,1.0.0"
+                        ],
+                        "multitarget": {
+                            "compiler": ["host", "*"]
+                        },
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "GR-66340: Darwin only for now",
+                    },
+                },
             },
         },
 
@@ -461,6 +568,7 @@ suite = {
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso",
+                "com.oracle.truffle.espresso.memory.panama",
             ],
             "distDependencies": [
                 "truffle:TRUFFLE_API",
@@ -548,7 +656,7 @@ suite = {
             "layout": {
                 "./": [{
                         "source_type": "dependency",
-                        "dependency": "espresso:JAVA_HOME",
+                        "dependency": "espresso:ESPRESSO_JAVA_HOME",
                         "path": "*",
                         "exclude": [
                             "lib/jfr",
@@ -562,7 +670,7 @@ suite = {
                     "dependency:espresso:ESPRESSO_STANDALONE_COMMON/*",
                 ],
                 "<jdk_lib_dir>/truffle/": [
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
                 ],
                 "lib/jvm.cfg": {
                     "source_type": "string",
@@ -596,6 +704,29 @@ suite = {
             "maven": False,
         },
 
+        "ESPRESSO_JVM_STANDALONE_MOKAPOT_SUPPORT": {
+            "type": "dir",
+            "platformDependent": True,
+            "platforms": "local",
+            "os": {
+                "darwin": {
+                    "layout": {
+                        "./fatpot/": [
+                            "dependency:espresso:com.oracle.truffle.espresso.fatpot/*/<multitarget_libc_selection>/<lib:jvm>",
+                        ]
+                    },
+                },
+                "<others>": {
+                    "layout": {
+                        "./": [
+                            "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
+                        ]
+                    },
+                },
+            },
+            "maven": False,
+        },
+
         "ESPRESSO_JVM_STANDALONE": {
             "type": "dir",
             "pruning_mode": "optional",
@@ -606,11 +737,11 @@ suite = {
             "layout": {
                 "bin/": [
                     "dependency:espresso:espresso",
-                    "dependency:ESPRESSO_JVM_STANDALONE_JAVA_LINKS/bin/*",
+                    "dependency:espresso:ESPRESSO_JVM_STANDALONE_JAVA_LINKS/bin/*",
                 ],
                 "./": [{
                         "source_type": "dependency",
-                        "dependency": "espresso:JAVA_HOME",
+                        "dependency": "espresso:ESPRESSO_JAVA_HOME",
                         "path": "*",
                         "exclude": [
                             "bin",  # those can't run without <jdk_lib_dir>/server
@@ -625,7 +756,7 @@ suite = {
                 ],
                 "languages/java/lib/": [
                     # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                    "dependency:espresso:ESPRESSO_JVM_STANDALONE_MOKAPOT_SUPPORT/*",
                 ],
                 "languages/java/": [
                     {
@@ -707,10 +838,19 @@ suite = {
                 "darwin-aarch64",
                 "windows-amd64",
             ],
+            "pruning_mode": "optional",
             "layout": {
                 "META-INF/resources/java/espresso-libs/<os>/<arch>/lib/": [
                     # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
+                ],
+                "META-INF/resources/java/espresso-libs/<os>/<arch>/lib/fatpot/": [
+                    {
+                        'source_type': 'dependency',
+                        'dependency': 'espresso:com.oracle.truffle.espresso.fatpot',
+                        'path': '*/<multitarget_libc_selection>/<lib:jvm>',
+                        'optional': True,
+                    },
                 ],
                 "META-INF/resources/java/espresso-libs/<os>/<arch>/": "dependency:espresso:ESPRESSO_SUPPORT/*",
             },
@@ -755,7 +895,7 @@ suite = {
             "platforms": "local",
             "layout": {
                 "lib/": [
-                    "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
+                    "dependency:espresso:com.oracle.truffle.espresso.native/*/<multitarget_libc_selection>/<lib:nespresso>",
                     "dependency:espresso:ESPRESSO_POLYGLOT/*",
                     "dependency:espresso:HOTSWAP/*",
                     "dependency:espresso:CONTINUATIONS/*",
@@ -782,8 +922,16 @@ suite = {
                 "./": "dependency:espresso:ESPRESSO_SUPPORT/*",
                 "lib/": [
                     # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
-                ]
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
+                ],
+                "lib/fatpot/": [
+                    {
+                        'source_type': 'dependency',
+                        'dependency': 'espresso:com.oracle.truffle.espresso.fatpot',
+                        'path': '*/<multitarget_libc_selection>/<lib:jvm>',
+                        'optional': True,
+                    },
+                ],
             },
             "maven": False,
         },
@@ -794,7 +942,15 @@ suite = {
             "platformDependent": True,
             "layout": {
                 "truffle/": [
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
+                ],
+                "truffle/fatpot/": [
+                    {
+                        'source_type': 'dependency',
+                        'dependency': 'espresso:com.oracle.truffle.espresso.fatpot',
+                        'path': '*/<multitarget_libc_selection>/<lib:jvm>',
+                        'optional': True,
+                    },
                 ],
             },
             "maven": False,
@@ -872,17 +1028,18 @@ suite = {
             "moduleInfo": {
                 "name": "jdk.internal.vm.ci.espresso",
                 "exports": [
-                    "com.oracle.truffle.espresso.jvmci,com.oracle.truffle.espresso.jvmci.meta to jdk.graal.compiler.espresso",
-                ]
+                    "com.oracle.truffle.espresso.jvmci,com.oracle.truffle.espresso.jvmci.meta to jdk.graal.compiler.espresso,jdk.graal.compiler.espresso.vmaccess",
+                ],
             },
             "dependencies": [
                 "com.oracle.truffle.espresso.jvmci",
             ],
             "description": "JVMCI implementation for Espresso",
+            "useModulePath": True,
             "maven": False,
         },
 
-        "JAVA_COMMUNITY": {
+        "JAVA_POM": {
             "class": "DynamicPOMDistribution",
             "description": "Java on Truffle (aka Espresso): a Java bytecode interpreter",
             "distDependencies": [
@@ -891,7 +1048,7 @@ suite = {
                 "truffle:TRUFFLE_NFI_LIBFFI",
                 "truffle:TRUFFLE_RUNTIME",
                 # sulong is not strictly required, but it'll work out of the box in more cases if it's there
-                "sulong:LLVM_NATIVE_COMMUNITY",
+                "sulong:LLVM_NATIVE_POM",
             ],
             # optionally provides:
             # - ESPRESSO_RUNTIME_RESOURCES
@@ -915,11 +1072,16 @@ suite = {
             # - sulong:SULONG_CORE
             # - sulong:SULONG_NATIVE
             # - sulong:SULONG_NFI
-            # - sulong-managed:SULONG_ENTERPRISE
-            # - sulong-managed:SULONG_ENTERPRISE_NATIVE
             # - truffle-enterprise:TRUFFLE_ENTERPRISE
             "dynamicDistDependencies": "jvm_standalone_deps",
             "maven": False,
+        },
+
+        "ESPRESSO_POLYBENCH_BENCHMARKS": {
+            "description": "Distribution for Espresso polybench benchmarks",
+            "layout": {
+                # Layout is dynamically populated in mx_register_dynamic_suite_constituents
+            },
         },
     }
 }

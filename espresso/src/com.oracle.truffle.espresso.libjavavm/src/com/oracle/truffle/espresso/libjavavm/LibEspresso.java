@@ -111,12 +111,23 @@ public final class LibEspresso {
                 context.close(true);
             }
             return JNIErrors.JNI_ERR();
+        } catch (IllegalArgumentException e) {
+            // This can happen during option processing (build call above)
+            // OptionType converters can throw IllegalArgumentException
+            STDERR.println(e.getMessage());
+            return JNIErrors.JNI_ERR();
         }
         Value java = bindings.getMember("<JavaVM>");
         if (!java.isNativePointer()) {
             STDERR.println("<JavaVM> is not available in the java bindings");
             return JNIErrors.JNI_ERR();
         }
+        /*
+         * Here we assume the value of asNativePointer actually refers to host memory which
+         * generally does not hold anymore since the introduction of NativeMemory (GR-70643).
+         * However, this could only pose problems in the unlikely case of explicitly choosing a
+         * "virtualized" NativeMemory while starting espresso from native.
+         */
         JNIJavaVM espressoJavaVM = WordFactory.pointer(java.asNativePointer());
         bindings.removeMember("<JavaVM>");
         ObjectHandle contextHandle = ObjectHandles.getGlobal().create(context);
@@ -161,7 +172,12 @@ public final class LibEspresso {
             STDERR.println("Cannot enter context: no context found");
             return JNIErrors.JNI_ERR();
         }
-        context.enter();
+        try {
+            context.enter();
+        } catch (PolyglotException | IllegalStateException e) {
+            STDERR.println("Cannot enter context: " + e.getMessage());
+            return JNIErrors.JNI_ERR();
+        }
         return JNIErrors.JNI_OK();
     }
 
@@ -173,7 +189,12 @@ public final class LibEspresso {
             STDERR.println("Cannot leave context: no context found");
             return JNIErrors.JNI_ERR();
         }
-        context.leave();
+        try {
+            context.leave();
+        } catch (IllegalStateException e) {
+            STDERR.println("Cannot leave context: " + e.getMessage());
+            return JNIErrors.JNI_ERR();
+        }
         return JNIErrors.JNI_OK();
     }
 
@@ -189,8 +210,13 @@ public final class LibEspresso {
         ObjectHandle contextHandle = javaVM.getFunctions().getContext();
         Context context = ObjectHandles.getGlobal().get(contextHandle);
         ObjectHandles.getGlobal().destroy(contextHandle);
-        context.leave();
-        context.close();
+        try {
+            context.leave();
+            context.close();
+        } catch (PolyglotException | IllegalStateException e) {
+            STDERR.println("Cannot close context: " + e.getMessage());
+            return JNIErrors.JNI_ERR();
+        }
         return JNIErrors.JNI_OK();
     }
 

@@ -2,6 +2,20 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 25.1.0
+* GR-65048: GR-65048: Introduced the `-Dpolyglot.engine.allowUnsupportedPlatform=true` system property to enable Truffle to run on unsupported platforms. If this property is enabled then the failure will be suppressed. Please see follow-up errors and warnings for instructions on how to continue. Note that using an unsupported platform will also force the fallback runtime without runtime optimization.
+* GR-66515 If neither a log handler nor the `log.file` option is set on the `Engine.Builder` or `Context.Builder`, Truffle and language log messages will be written to the Context’s error output stream by default. The `log.file` option is now also supported on `Context.Builder`.
+* GR-63588 A new entry (`Invalidated`) was added to the `opt deopt` truffle compilation logs. It is `true` or `false` depending on whether the compilation was also invalidated.
+* GR-66817 Make `--polyglot` the default for language launchers, so there is no need to specify it anymore to use other languages in standalones. As a result, `AbstractLanguageLauncher#getDefaultLanguages()` and `Launcher#canPolyglot()` have been deprecated.
+* GR-65404 Remove `PolyglotLauncher` as it is no longer used.
+* GR-68613: JavaScript polyglot isolate now includes support for the WebAssembly (Wasm) language.
+* GR-69590: Closing a garbage-collected engine or context now logs only the first failure by default. To log all failures, use `engine.CloseOnGCFailureAction.PrintAll`.
+* GR-35913: Updated the Javadoc of `Value#asHostObject()`, `Value#asNativePointer()`, and `Value#asProxyObject()` to clarify that these methods throw a `ClassCastException` rather than an `UnsupportedOperationException` when the value is not of the expected type.
+* GR-35913: `Value#asHostObject()` throws `UnsupportedOperationException` if object is allocated in a foreign heap.
+* GR-71402: Added `Value#hasStaticScope` and `Value#getStaticScope` returning the static scope representing static or class-level members associated with the meta object.
+* GR-71643: Added `Context.Builder#exceptionHandler(Consumer<PolyglotException>)` to customize how polyglot exceptions are handled before they are propagated to the host.
+* GR-69929: Reset a `CallTarget`’s execution profile when its associated nmethod is invalidated by HotSpot due to code cache “cold” flushing heuristics.
+
 ## Version 25.0.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
 * GR-51664 Improved `PolyglotException#toString` and `PolyglotException#printStackTrace`.
@@ -13,6 +27,13 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-55223 The option sandbox.MaxStackFrames is no longer mandatory for the UNTRUSTED polyglot sandbox policy thanks to improved deoptimization handling of compiled code.
 * GR-64488 FileSystem implementations can now provide disk-related metadata, including [total space](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/FileSystem.html##getFileStoreTotalSpace(java.nio.file.Path)), [usable space](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/FileSystem.html#getFileStoreUsableSpace(java.nio.file.Path)), [unallocated space](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/FileSystem.html#getFileStoreUnallocatedSpace(java.nio.file.Path)), [block size](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/FileSystem.html#getFileStoreBlockSize(java.nio.file.Path)), and [read-only status](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/FileSystem.html#isFileStoreReadOnly(java.nio.file.Path)).
 * GR-22699(EE-only) Added the ability to spawn `Engine` or `Context` isolated in a separate process by setting `Context.Builder.option("engine.IsolateMode", "external").`.
+* GR-64087 Removed the dependency on `org.graalvm.truffle:truffle-enterprise` from all language and tool POM artifacts. As a result, the community Maven artifacts (those with an artifact ID ending in `-community`) are now identical to their corresponding non-community artifacts. Consequently, all community language and tool POM artifacts have been deprecated. The only exception is `org.graalvm.truffle:java-community` vs. `org.graalvm.truffle:java`, which differ in the bundled Java runtime. Embedders using auxiliary engine caching, polyglot isolates, a isolated/untrusted sandbox policy, or the sandbox resource limits must now explicitly add the `org.graalvm.truffle:truffle-enterprise` Maven artifact to the classpath or module path.
+* GR-66339 Truffle now checks that its multi-release classes ([JEP 238](https://openjdk.org/jeps/238)) are loaded correctly and provides a descriptive error message if they are not.
+* GR-55996 Added the options `engine.SourceCacheStatistics` and `engine.SourceCacheStatisticDetails` to print polyglot source cache statistics on engine close.
+
+* GR-65561 Added `Context.Builder#apply`, `ContextBuilder#extendIO`, and `ContextBuilder#extendHostAccess` to enable composable Context configuration
+* GR-64947 Added `Engine.storeCache(Path)` to manually store [auxiliary engine caches](https://github.com/oracle/graal/blob/master/truffle/docs/AuxiliaryEngineCachingEnterprise.md) when needed.
+* GR-63009: The WebAssembly (Wasm) language is now available as a polyglot isolate.
 
 ## Version 24.2.0
 * GR-54905 When using Truffle NFI with the Panama backend, native access must now be granted to the Truffle module instead of the NFI Panama module. Use the `--enable-native-access=org.graalvm.truffle` Java command line option to enable the native access for the NFI Panama backend.
@@ -148,7 +169,7 @@ the close operation throws a [`PolyglotException`](https://www.graalvm.org/sdk/j
 
 ## Version 22.0.0
 * (GR-31170) Native Image API: Added `WINDOWS_AARCH64` Platform.
-* (GR-33657) Native Image API: Added `CEntryPoint#include` attribute which can be used to controll if the entry point should be automatically added to the shared library.
+* (GR-33657) Native Image API: Added `CEntryPoint#include` attribute which can be used to control if the entry point should be automatically added to the shared library.
 * (GR-22699)(EE-only) Added the ability to spawn a native-image isolate for a each `Engine` or `Context` by calling `Context.Builder.option("engine.SpawnIsolate", "true")`.  This enables heap isolation between the host and guest applications. Using isolates improves security, startup and warmup time of polyglot languages. In this mode, calls between host and guest are more costly as they need to cross a native boundary. It is recommended to use the `HostAccess.SCOPED` policy with this mode to avoid strong cyclic references between host and guest. This mode is experimental in this release and only supported for a limited set of languages. 
 
 ## Version 21.3.0

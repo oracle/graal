@@ -1,3 +1,0 @@
-DYNAMIC_IMPORTS=/compiler,/sdk,/substratevm,/sulong,/truffle
-COMPONENTS=antlr4,cmp,lg,llrc,llrl,llrn,nfi-libffi,ni,nil,pbm,pbi,sdk,sdkl,svm,svmt,svmnfi,svmsl,tfl,tfla,tflc,tflm
-NATIVE_IMAGES=lib:jvmcicompiler,polybench

@@ -24,18 +24,17 @@
  */
 package com.oracle.svm.hosted.webimage.codegen;
 
-import static jdk.graal.compiler.hightiercodegen.Emitter.of;
+import static com.oracle.svm.webimage.hightiercodegen.Emitter.of;
 
-import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
 import com.oracle.svm.webimage.type.TypeControl;
 
-import jdk.graal.compiler.hightiercodegen.Emitter;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -110,18 +109,11 @@ public class RuntimeModificationLowerer {
     private static void indexHubs(JSCodeGenTool tool) {
         WebImageTypeControl typeControl = tool.getJSProviders().typeControl();
         tool.genComment("Create an index between class names and hubs in the image.");
-        MetaAccessProvider meta = tool.getProviders().getMetaAccess();
         for (HostedType type : typeControl.emittedTypes()) {
             assignJsClassToHub(tool, typeControl, type);
             if (COMPULSORY_RUNTIME_HUBS.contains(type.getJavaClass())) {
                 // Only classes necessary for coercion are emitted.
                 assignToRuntimeHubs(tool, typeControl, type, type.getJavaClass().getName());
-            }
-        }
-        for (JavaKind kind : JavaKind.values()) {
-            if (kind.isPrimitive() && kind != JavaKind.Void) {
-                Class<?> arrayClass = Array.newInstance(kind.toJavaClass(), 0).getClass();
-                assignToRuntimeHubs(tool, typeControl, (HostedType) meta.lookupJavaType(arrayClass), kind.getJavaName() + "[]");
             }
         }
     }

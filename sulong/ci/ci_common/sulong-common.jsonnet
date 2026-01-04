@@ -6,7 +6,6 @@ local sulong_deps = common.deps.sulong;
 {
   local linux_amd64 = common.linux_amd64,
   local linux_aarch64 = common.linux_aarch64,
-  local darwin_amd64 = common.darwin_amd64,
   local darwin_aarch64 = common.darwin_aarch64,
   local windows_amd64 = common.windows_amd64,
 
@@ -25,6 +24,15 @@ local sulong_deps = common.deps.sulong;
     job:: error "job not set" + $.nameOrEmpty(self),
     bitcode_config:: [],
     sulong_config:: [],
+
+    /**
+     * Normalize targets. Tier targets are semantically gate, independent of the actual frequency.
+     * Reflect this in the job name.
+     */
+    local normalized_targets =
+        local norm(t) = if std.startsWith(t, "tier") then "gate" else t;
+        std.uniq(std.map(norm, self.targets)),
+
     gen_name_componentes::
       assert std.isArray(self.targets) : "targets must be an array" + $.nameOrEmpty(self);
       assert isNonEmptyString(self.suite) : "suite must be a non-empty string" + $.nameOrEmpty(self);
@@ -34,7 +42,7 @@ local sulong_deps = common.deps.sulong;
       assert isNonEmptyString(self.job) : "job must be a non-empty string" + $.nameOrEmpty(self);
       assert std.isArray(self.bitcode_config) : "bitcode_config must be an array" + $.nameOrEmpty(self);
       assert std.isArray(self.sulong_config) : "sulong_config must be an array" + $.nameOrEmpty(self);
-      self.targets + [self.suite] + [self.job] + self.bitcode_config + self.sulong_config + [self.jdk_name] + [self.os] + [self.arch],
+      normalized_targets + [self.suite] + [self.job] + self.bitcode_config + self.sulong_config + [self.jdk_name] + [self.os] + [self.arch],
     gen_name:: std.join("-", self.gen_name_componentes),
   },
 
@@ -78,28 +86,16 @@ local sulong_deps = common.deps.sulong;
 
   linux_amd64:: linux_amd64 + sulong_deps,
   linux_aarch64:: linux_aarch64 + sulong_deps,
-  darwin_amd64:: darwin_amd64 + sulong_deps,
   darwin_aarch64:: darwin_aarch64 + sulong_deps,
-  windows_amd64:: windows_amd64 + sulong_deps + {
-    local jdk = if self.jdk_name == "jdk-latest" then "jdkLatest" else self.jdk_name,
-    packages+: common.devkits["windows-" + jdk].packages
-  },
+  windows_amd64:: windows_amd64 + sulong_deps + common.deps.windows_devkit,
 
   sulong_notifications:: {
     notify_groups:: ["sulong"],
   },
 
-  gate:: {
-    targets+: ["gate"],
-  },
-
-  daily:: $.sulong_notifications {
-    targets+: ["daily"],
-  },
-
-  weekly:: $.sulong_notifications {
-    targets+: ["weekly"],
-  },
+  post_merge:: $.sulong_notifications + { targets+: ["tier4"] },
+  daily:: $.sulong_notifications + common.frequencies.daily,
+  weekly:: $.sulong_notifications + common.frequencies.weekly,
 
   mxCommand:: {
     extra_mx_args+:: [],
@@ -154,9 +150,12 @@ local sulong_deps = common.deps.sulong;
     gateTags:: std.split(tags, ","),
   },
 
-  style:: common.deps.eclipse + common.deps.jdt + common.deps.spotbugs + $.gateTags("style,fullbuild") + {
+  local strict_gate(tags) = $.gateTags(tags) + {
     extra_gate_args+:: ["--strict-mode"],
   },
+
+  style:: common.deps.eclipse + strict_gate("style"),
+  fullbuild:: common.deps.jdt + common.deps.spotbugs + strict_gate("fullbuild"),
 
   coverage(builds):: $.llvmBundled + $.requireGMP + $.mxGate + {
       local sameArchBuilds = std.filter(function(b) b.os == self.os && b.arch == self.arch, builds),
@@ -166,7 +165,7 @@ local sulong_deps = common.deps.sulong;
       skipPlatform:: coverageTags == [],
       gateTags:: ["build"] + coverageTags,
       # The Jacoco annotations interfere with partial evaluation. Use the DefaultTruffleRuntime to disable compilation just for the coverage runs.
-      extra_mx_args+: ["--no-jacoco-exclude-truffle", "-J-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime", "-J-Dpolyglot.engine.WarnInterpreterOnly=false"],
+      extra_mx_args+: ["-J-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime", "-J-Dpolyglot.engine.WarnInterpreterOnly=false"],
       extra_gate_args+: ["--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
       teardown+: [
         ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
@@ -193,8 +192,14 @@ local sulong_deps = common.deps.sulong;
   },
 } + {
 
-  [std.strReplace(name, "-", "_")]: common[name]
+  [std.strReplace(name, "-", "_")]: common[name] + { _jdkIsGraalVM:: false }
   for name in std.objectFieldsAll(common)
   if std.startsWith(name, "labsjdk")
+
+} + {
+
+  [name]: common[name] + { _jdkIsGraalVM:: true }
+  for name in std.objectFieldsAll(common)
+  if std.startsWith(name, "graalvm")
 
 }

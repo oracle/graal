@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -200,7 +201,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
                  * are pre-saturated.
                  */
                 if (field.getStorageKind().isObject()) {
-                    field.getStaticFieldFlow().addUse(bb, this);
+                    ((PointsToAnalysisField) field).getStaticFieldFlow().addUse(bb, this);
                 }
             }
         }
@@ -227,7 +228,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
                 } else {
                     for (AnalysisField field : objectType.unsafeAccessedFields()) {
                         if (field.getStorageKind().isObject()) {
-                            TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, objectFlow, source, field, false);
+                            TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, objectFlow, source, ((PointsToAnalysisField) field), false);
                             fieldFlow.addUse(bb, this);
                         }
                     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,8 +54,9 @@ public final class Section {
     public static final int CODE = 10;
     public static final int DATA = 11;
     public static final int DATA_COUNT = 12;
+    public static final int TAG = 13;
 
-    private static final int[] SECTION_ORDER = new int[13];
+    private static final int[] SECTION_ORDER = new int[14];
     public static final int LAST_SECTION_ID = SECTION_ORDER.length - 1;
 
     static {
@@ -65,13 +66,14 @@ public final class Section {
         SECTION_ORDER[FUNCTION] = 3;
         SECTION_ORDER[TABLE] = 4;
         SECTION_ORDER[MEMORY] = 5;
-        SECTION_ORDER[GLOBAL] = 6;
-        SECTION_ORDER[EXPORT] = 7;
-        SECTION_ORDER[START] = 8;
-        SECTION_ORDER[ELEMENT] = 9;
-        SECTION_ORDER[DATA_COUNT] = 10;
-        SECTION_ORDER[CODE] = 11;
-        SECTION_ORDER[DATA] = 12;
+        SECTION_ORDER[TAG] = 6;
+        SECTION_ORDER[GLOBAL] = 7;
+        SECTION_ORDER[EXPORT] = 8;
+        SECTION_ORDER[START] = 9;
+        SECTION_ORDER[ELEMENT] = 10;
+        SECTION_ORDER[DATA_COUNT] = 11;
+        SECTION_ORDER[CODE] = 12;
+        SECTION_ORDER[DATA] = 13;
     }
 
     private Section() {

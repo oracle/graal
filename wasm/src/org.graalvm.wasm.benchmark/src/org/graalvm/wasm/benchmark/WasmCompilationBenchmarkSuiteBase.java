@@ -73,7 +73,7 @@ public abstract class WasmCompilationBenchmarkSuiteBase {
 
         @Setup(Level.Trial)
         public void setup() throws IOException {
-            benchmarkCase = WasmCase.loadBenchmarkCase(benchmarkResource());
+            benchmarkCase = WasmCase.loadBenchmarkCase(this.getClass(), benchmarkResource());
         }
 
         @Setup(Level.Invocation)

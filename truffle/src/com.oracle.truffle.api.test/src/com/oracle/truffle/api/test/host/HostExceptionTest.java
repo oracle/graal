@@ -63,6 +63,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
@@ -100,7 +101,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class HostExceptionTest {
@@ -186,12 +186,14 @@ public class HostExceptionTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
+    @SuppressWarnings("deprecation")
     public void testAsHostExceptionIllegalArgument() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
         env.asHostException(new Exception());
     }
 
     @Test(expected = IllegalArgumentException.class)
+    @SuppressWarnings("deprecation")
     public void testAsHostExceptionNull() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
         env.asHostException(null);
@@ -528,7 +530,7 @@ public class HostExceptionTest {
         TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = RuntimeException.class;
         customExceptionVerifier = (t) -> {
-            assertFalse(env.isHostSymbol(t));
+            assertFalse(INTEROP.isHostObject(t) && INTEROP.isScope(t));
         };
         Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
         Runnable thrower = HostExceptionTest::thrower;
@@ -577,7 +579,7 @@ public class HostExceptionTest {
                 assertTrue("should have exception cause", INTEROP.hasExceptionCause(hostEx));
                 Object cause = INTEROP.getExceptionCause(hostEx);
                 assertTrue("cause should be an exception", INTEROP.isException(cause));
-                assertTrue("cause should be a host exception", env.isHostObject(cause));
+                assertTrue("cause should be a host exception", INTEROP.isHostObject(cause));
                 Class<? extends Throwable> causeClass = NoSuchFieldException.class;
                 assertTrue("cause should be instanceof " + causeClass.getSimpleName(), INTEROP.isMetaInstance(env.asHostSymbol(causeClass), cause));
                 assertFalse("cause should not have another cause", INTEROP.hasExceptionCause(cause));
@@ -628,7 +630,7 @@ public class HostExceptionTest {
                 assertTrue("should have exception cause", INTEROP.hasExceptionCause(hostEx));
                 Object cause = INTEROP.getExceptionCause(hostEx);
                 assertTrue("cause should be an exception", INTEROP.isException(cause));
-                assertTrue("cause should be a host exception", env.isHostObject(cause));
+                assertTrue("cause should be a host exception", INTEROP.isHostObject(cause));
                 Class<? extends Throwable> causeClass = NoSuchFieldException.class;
                 assertTrue("cause should be instanceof " + causeClass.getSimpleName(), INTEROP.isMetaInstance(env.asHostSymbol(causeClass), cause));
                 assertFalse("cause should not have another cause", INTEROP.hasExceptionCause(cause));
@@ -897,7 +899,7 @@ public class HostExceptionTest {
 
         hostExceptionVerifier = null;
         customExceptionVerifier = (guestEx) -> {
-            assertFalse(guestEx.toString(), env.isHostException(guestEx));
+            assertFalse(guestEx.toString(), INTEROP.isHostObject(guestEx) && INTEROP.isException(guestEx));
             assertTrue(guestEx.toString(), INTEROP.isException(guestEx));
 
             assertEquals(List.of(expectedMessage,
@@ -976,7 +978,7 @@ public class HostExceptionTest {
 
         hostExceptionVerifier = null;
         customExceptionVerifier = (guestEx) -> {
-            assertFalse(guestEx.toString(), env.isHostException(guestEx));
+            assertFalse(guestEx.toString(), INTEROP.isHostObject(guestEx) && INTEROP.isException(guestEx));
             assertTrue(guestEx.toString(), INTEROP.isException(guestEx));
 
             List<String> expectedStack = List.of(expectedMessage,
@@ -1218,10 +1220,10 @@ public class HostExceptionTest {
     }
 
     private void verifyHostException(Throwable ex) {
-        assertTrue(env.isHostObject(ex));
+        assertTrue(INTEROP.isHostObject(ex));
         assertNotNull("Unexpected exception: " + ex, expectedException);
-        assertThat(env.asHostObject(ex), instanceOf(expectedException));
-        assertThat(LanguageContext.get(null).getEnv().asHostException(ex), instanceOf(expectedException));
+        assertThat(asHostObject(ex), instanceOf(expectedException));
+        assertThat(asHostObject(ex), instanceOf(expectedException));
         try {
             assertTrue(InteropLibrary.getUncached().isMetaInstance(env.asHostSymbol(Throwable.class), ex));
         } catch (UnsupportedMessageException e) {
@@ -1229,11 +1231,19 @@ public class HostExceptionTest {
         }
     }
 
+    private static Object asHostObject(Object guestObject) {
+        try {
+            return INTEROP.asHostObject(guestObject);
+        } catch (UnsupportedMessageException | HeapIsolationException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
+    }
+
     @TruffleBoundary
     Object checkAndUnwrapException(Throwable ex) {
         // Avoid catching an AssertionError wrapped as a host exception.
-        if (env.isHostException(ex)) {
-            Throwable t = env.asHostException(ex);
+        if (INTEROP.isHostObject(ex) && INTEROP.isException(ex)) {
+            Throwable t = (Throwable) asHostObject(ex);
             if (t instanceof AssertionError) {
                 throw (AssertionError) t;
             }
@@ -1314,7 +1324,7 @@ public class HostExceptionTest {
                 throw CompilerDirectives.shouldNotReachHere(e);
             } catch (Exception ex) {
                 if (interop.isException(ex)) {
-                    assertTrue(env.isHostObject(ex));
+                    assertTrue(INTEROP.isHostObject(ex));
                     try {
                         throw interop.throwException(ex);
                     } catch (UnsupportedMessageException e) {

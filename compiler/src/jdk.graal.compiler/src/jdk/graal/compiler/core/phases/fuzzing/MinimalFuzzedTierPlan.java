@@ -30,7 +30,6 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.Formatter;
-import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
@@ -46,6 +45,7 @@ import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.BasePhase.NotApplicable;
 import jdk.graal.compiler.phases.PhaseSuite;
+import jdk.graal.compiler.util.EconomicHashSet;
 
 /**
  * {@link AbstractTierPlan} that only contains the phases required to satisfy a given set of
@@ -72,7 +72,7 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
                     long randomSeed,
                     String tierName) {
         super(originalPhases, tierName);
-        this.ignoredPhases = new HashSet<>();
+        this.ignoredPhases = new EconomicHashSet<>();
         this.randomSeed = randomSeed;
         computeMinimalFuzzedTierPlan(graphState, mandatoryStages);
     }
@@ -316,8 +316,8 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
     }
 
     public MinimalFuzzedTierPlan<C> copy() {
-        return new MinimalFuzzedTierPlan<>(new ArrayList<>(getSingleApplyPhases()), new ArrayList<>(getMultiApplyPhases()), new HashSet<>(getIgnoredPhases()), getPhaseSuite().copy(),
-                        getRandomSeed(), getTierName());
+        return new MinimalFuzzedTierPlan<>(new ArrayList<>(getSingleApplyPhases()), new ArrayList<>(getMultiApplyPhases()), new EconomicHashSet<>(getIgnoredPhases()),
+                        getPhaseSuite().copy(), getRandomSeed(), getTierName());
     }
 
 }

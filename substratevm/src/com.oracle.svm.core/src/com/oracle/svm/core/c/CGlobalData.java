@@ -31,7 +31,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 /**
  * An object of this class represents a chunk of static global data that is located outside the heap
  * and can be accessed directly {@linkplain PointerBase by address}. No
- * {@linkplain CEntryPointOptions#prologue()} Java execution context} is required.
+ * {@linkplain CEntryPointOptions#prologue() Java execution context} is required.
  */
 public abstract class CGlobalData<T extends PointerBase> {
     /**

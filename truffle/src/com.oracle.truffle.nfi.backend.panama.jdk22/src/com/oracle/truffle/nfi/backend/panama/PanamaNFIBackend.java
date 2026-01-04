@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,19 +71,25 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilder
 final class PanamaNFIBackend implements NFIBackend {
 
     private final PanamaNFILanguage language;
-    private Map<NativeSimpleType, PanamaType> simpleTypes;
+    private final Map<NativeSimpleType, PanamaType> simpleTypes;
+    private final Map<NativeSimpleType, PanamaType> arrayTypes;
 
     PanamaNFIBackend(PanamaNFILanguage language) {
         this.language = language;
+        simpleTypes = new EnumMap<>(NativeSimpleType.class);
+        arrayTypes = new EnumMap<>(NativeSimpleType.class);
         initializeTypes();
     }
 
     private void initializeTypes() {
-        simpleTypes = new EnumMap<>(NativeSimpleType.class);
         for (NativeSimpleType type : NativeSimpleType.values()) {
             switch (type) {
-                case VOID, UINT8, SINT8, UINT16, SINT16, UINT32, SINT32, UINT64, SINT64, POINTER, FLOAT, DOUBLE -> simpleTypes.put(type, new PanamaType(type));
+                case VOID, UINT8, SINT8, UINT16, SINT16, UINT32, SINT32, UINT64, SINT64, POINTER, FLOAT, DOUBLE -> simpleTypes.put(type, PanamaType.createSimple(type));
                 default -> simpleTypes.put(type, null);
+            }
+            switch (type) {
+                case UINT8, SINT8, UINT16, SINT16, UINT32, SINT32, UINT64, SINT64, FLOAT, DOUBLE -> arrayTypes.put(type, PanamaType.createArray(type));
+                default -> arrayTypes.put(type, null);
             }
         }
     }
@@ -166,8 +172,7 @@ final class PanamaNFIBackend implements NFIBackend {
     @SuppressWarnings("unused")
     @ExportMessage
     Object getArrayType(NativeSimpleType type) {
-        // TODO
-        return null;
+        return arrayTypes.get(type);
     }
 
     @ExportMessage

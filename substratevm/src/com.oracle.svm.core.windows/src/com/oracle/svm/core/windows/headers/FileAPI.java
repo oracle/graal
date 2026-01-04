@@ -34,8 +34,8 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
+import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 
 // Checkstyle: stop
 
@@ -67,11 +67,11 @@ public class FileAPI {
     public static native int OPEN_EXISTING();
 
     @CFunction
-    public static native int WriteFile(int hFile, CCharPointer lpBuffer, UnsignedWord nNumberOfBytesToWrite,
+    public static native int WriteFile(HANDLE hFile, CCharPointer lpBuffer, UnsignedWord nNumberOfBytesToWrite,
                     CIntPointer lpNumberOfBytesWritten, PointerBase lpOverlapped);
 
     @CFunction
-    public static native int FlushFileBuffers(int hFile);
+    public static native int FlushFileBuffers(HANDLE hFile);
 
     @CConstant
     public static native int STD_INPUT_HANDLE();
@@ -83,8 +83,19 @@ public class FileAPI {
     public static native int STD_ERROR_HANDLE();
 
     @CFunction
-    public static native int GetStdHandle(int stdHandle);
+    public static native HANDLE GetStdHandle(int stdHandle);
 
     @CFunction(transition = NO_TRANSITION)
     public static native int GetTempPathW(int nBufferLength, WCharPointer lpBuffer);
+
+    public static class NoTransition {
+        @CFunction(transition = NO_TRANSITION)
+        public static native int WriteFile(HANDLE hFile, CCharPointer lpBuffer, UnsignedWord nNumberOfBytesToWrite, CIntPointer lpNumberOfBytesWritten, PointerBase lpOverlapped);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native int FlushFileBuffers(HANDLE hFile);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native HANDLE GetStdHandle(int stdHandle);
+    }
 }

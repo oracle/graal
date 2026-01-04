@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,5 +59,22 @@ public interface InternalPlatform {
      */
     interface NATIVE_ONLY extends Platform {
 
+    }
+
+    /**
+     * Supported operating system: Windows, without registering OS-specific providers or making use
+     * of (or support for) JNI libraries.
+     *
+     * @since 25.0
+     */
+    interface WINDOWS_BASE extends NATIVE_ONLY {
+        /**
+         * Returns string representing WINDOWS OS.
+         *
+         * @since 21.0
+         */
+        default String getOS() {
+            return "windows";
+        }
     }
 }

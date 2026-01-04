@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,16 +27,6 @@ package jdk.graal.compiler.truffle.test;
 import java.util.concurrent.Semaphore;
 import java.util.function.Predicate;
 
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.calc.AddNode;
-import jdk.graal.compiler.nodes.java.AtomicReadAndAddNode;
-import jdk.graal.compiler.nodes.java.LoweredAtomicReadAndAddNode;
-import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-import jdk.graal.compiler.nodes.memory.ReadNode;
-import jdk.graal.compiler.nodes.memory.WriteNode;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.ResourceLimits;
@@ -47,10 +37,20 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.java.AtomicReadAndAddNode;
+import jdk.graal.compiler.nodes.java.LoweredAtomicReadAndAddNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.memory.ReadNode;
+import jdk.graal.compiler.nodes.memory.WriteNode;
+
 public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
 
     @Test
-    @SuppressWarnings("try")
     public void testStatementLimitSingleContext() {
         ResourceLimits limits = ResourceLimits.newBuilder().//
                         statementLimit(5000, null).//
@@ -65,13 +65,12 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
             /*
              * Verify that the statements fold to a single read/write.
              */
-            Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-            Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
+            Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
+            Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
         }
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testStatementLimitMultiContext() {
         ResourceLimits limits = ResourceLimits.newBuilder().//
                         statementLimit(5000, null).//
@@ -84,7 +83,6 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testStatementLimitMultiContextTwoEqualConfigs() {
         ResourceLimits limits0 = ResourceLimits.newBuilder().//
                         statementLimit(5000, null).//
@@ -103,7 +101,6 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testStatementLimitMultiContextTwoDifferentConfigs() {
         ResourceLimits limits0 = ResourceLimits.newBuilder().//
                         statementLimit(5000, null).//
@@ -129,9 +126,9 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
                 if (!TruffleOptions.AOT) {
                     Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("JavaThread::<JVMCIReservedOop0>")));
                 }
-                Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-                Assert.assertEquals(0, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementLimit")));
-                Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
+                Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
+                Assert.assertEquals(0, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementLimit")));
+                Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
             }
         }
     }
@@ -149,13 +146,12 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
         if (!TruffleOptions.AOT) {
             Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("JavaThread::<JVMCIReservedOop0>")));
         }
-        Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-        Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-        Assert.assertEquals(0, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementLimit")));
+        Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
+        Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
+        Assert.assertEquals(0, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementLimit")));
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testStatementLimitEngineMultiThread() throws InterruptedException {
         ResourceLimits limits = ResourceLimits.newBuilder().//
                         statementLimit(5000, null).//
@@ -175,15 +171,14 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
                  * Verify that the statements fold to a single read for the context and a single
                  * read/write for the statement counts.
                  */
-                Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-                Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
+                Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
+                Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
                 Assert.assertEquals(0, countNodes(graph, InvokeWithExceptionNode.TYPE));
             }
         }
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testStatementLimitContextMultiThread() throws InterruptedException {
         ResourceLimits limits = ResourceLimits.newBuilder().//
                         statementLimit(5000, null).//
@@ -254,7 +249,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
     }
 
     private static <T> int countNodes(StructuredGraph graph, NodeClass<T> nodeClass) {
-        return countNodes(graph, nodeClass, (n) -> true);
+        return countNodes(graph, nodeClass, (_) -> true);
     }
 
     @SuppressWarnings("unchecked")

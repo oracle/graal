@@ -94,6 +94,18 @@ public interface VersionFilter extends LanguageFilter {
         }
     }
 
+    final class Java11To21 implements VersionFilter {
+        public static final Java11To21 INSTANCE = new Java11To21();
+
+        private Java11To21() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.inRange(11, 21);
+        }
+    }
+
     final class Java13OrEarlier implements VersionFilter {
         public static final Java13OrEarlier INSTANCE = new Java13OrEarlier();
 
@@ -166,6 +178,18 @@ public interface VersionFilter extends LanguageFilter {
         }
     }
 
+    final class Java21 implements VersionFilter {
+        public static final Java21 INSTANCE = new Java21();
+
+        private Java21() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.inRange(21, 21);
+        }
+    }
+
     final class Java22OrLater implements VersionFilter {
         public static final Java22OrLater INSTANCE = new Java22OrLater();
 
@@ -175,6 +199,18 @@ public interface VersionFilter extends LanguageFilter {
         @Override
         public boolean isValidFor(JavaVersion version) {
             return version.java22OrLater();
+        }
+    }
+
+    final class Java23OrEarlier implements VersionFilter {
+        public static final Java23OrEarlier INSTANCE = new Java23OrEarlier();
+
+        private Java23OrEarlier() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java23OrEarlier();
         }
     }
 
@@ -199,6 +235,18 @@ public interface VersionFilter extends LanguageFilter {
         @Override
         public boolean isValidFor(JavaVersion version) {
             return version.java25OrLater();
+        }
+    }
+
+    final class Java9To21 implements VersionFilter {
+        public static final Java9To21 INSTANCE = new Java9To21();
+
+        private Java9To21() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java21OrEarlier() && version.java9OrLater();
         }
     }
 }

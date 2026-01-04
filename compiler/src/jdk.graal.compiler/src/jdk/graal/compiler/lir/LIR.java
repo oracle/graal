@@ -27,6 +27,7 @@ package jdk.graal.compiler.lir;
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.graal.compiler.asm.CodeSnippetRecord;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
@@ -206,6 +207,10 @@ public final class LIR extends LIRGenerator.VariableProvider implements EventCou
 
     /**
      * Add a chunk of assembly that will be emitted out of line after all LIR has been emitted.
+     *
+     * If called during assembler code snippet recording, the slow path will not be duplicated.
+     * Instead, it will be shared among replayed code snippets. See {@link CodeSnippetRecord} for
+     * more details.
      */
     public void addSlowPath(LIRInstruction op, Runnable slowPath) {
         if (slowPaths == null) {

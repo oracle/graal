@@ -47,19 +47,20 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
-import com.oracle.svm.core.option.BundleMember.Role;
 import com.oracle.svm.core.option.GCOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -72,14 +73,20 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
@@ -122,30 +129,6 @@ public class SubstrateOptions {
     @Option(help = "Build shared library")//
     public static final HostedOptionKey<Boolean> SharedLibrary = new HostedOptionKey<>(false);
 
-    @Option(help = "Persist and reload all graphs across layers. If false, graphs defined in the base layer can be reparsed by the current layer and inlined before analysis, " +
-                    "but will not be inlined after analysis has completed via our other inlining infrastructure")//
-    public static final HostedOptionKey<Boolean> UseSharedLayerGraphs = new HostedOptionKey<>(true) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (!newValue) {
-                UseSharedLayerStrengthenedGraphs.update(values, false);
-            }
-        }
-    };
-
-    @Option(help = "Persist and reload strengthened graphs across layers. If false, inlining after analysis will be disabled")//
-    public static final HostedOptionKey<Boolean> UseSharedLayerStrengthenedGraphs = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue) {
-                UserError.guarantee(UseSharedLayerStrengthenedGraphs.getValueOrDefault(values),
-                                "UseSharedLayerStrengthenedGraph is a subset of UseSharedLayerGraphs, so the former cannot be enabled alone.");
-            } else {
-                NeverInline.update(values, "SubstrateStringConcatHelper.simpleConcat");
-            }
-        }
-    };
-
     @APIOption(name = "static")//
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
     public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false, key -> {
@@ -162,31 +145,6 @@ public class SubstrateOptions {
                             "Building static executable images is only supported with musl libc. Remove the '--static' option or add the '--libc=musl' option.");
         }
     });
-
-    public static final String LAYER_OPTION_PREFIX = "-H:Layer"; // "--layer"
-    public static final String LAYER_CREATE_OPTION = LAYER_OPTION_PREFIX + "Create"; // "-create"
-    // @APIOption(name = LAYER_CREATE_OPTION) // use when non-experimental
-    @Option(help = "Experimental: Build a Native Image layer.")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LayerCreate = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
-
-    // public static final String LAYER_USE_OPTION = LAYER_OPTION_PREFIX + "-use";
-    // @APIOption(name = LAYER_USE_OPTION) // use when non-experimental
-    @Option(help = "Experimental: Build an image based on a Native Image layer.")//
-    @BundleMember(role = Role.Input) //
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> LayerUse = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build());
-
-    @Option(help = "Experimental: Perform strict checking of options used for layered image build.")//
-    public static final HostedOptionKey<Boolean> LayerOptionVerification = new HostedOptionKey<>(true);
-
-    @Option(help = "Experimental: Provide verbose output of difference in builder options between layers.")//
-    public static final HostedOptionKey<Boolean> LayerOptionVerificationVerbose = new HostedOptionKey<>(false);
-
-    @Option(help = "Mark singleton as application layer only")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ApplicationLayerOnlySingletons = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
-
-    @Option(help = "Register class as being initialized in the app layer.")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ApplicationLayerInitializedClasses = new HostedOptionKey<>(
-                    AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @APIOption(name = "libc")//
     @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
@@ -232,20 +190,6 @@ public class SubstrateOptions {
     @Option(help = "Builds image with libstdc++ statically linked into the image (if needed)", type = Expert, stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<Boolean> StaticLibStdCpp = new HostedOptionKey<>(false);
 
-    public static final int ForceFallback = 10;
-    public static final int Automatic = 5;
-    public static final int NoFallback = 0;
-
-    public static final String OptionNameForceFallback = "force-fallback";
-    public static final String OptionNameAutoFallback = "auto-fallback";
-    public static final String OptionNameNoFallback = "no-fallback";
-
-    @APIOption(name = OptionNameForceFallback, fixedValue = "" + ForceFallback, customHelp = "force building of fallback image") //
-    @APIOption(name = OptionNameAutoFallback, fixedValue = "" + Automatic, customHelp = "build stand-alone image if possible") //
-    @APIOption(name = OptionNameNoFallback, fixedValue = "" + NoFallback, customHelp = "build stand-alone image or report failure") //
-    @Option(help = "Define when fallback-image generation should be used.")//
-    public static final HostedOptionKey<Integer> FallbackThreshold = new HostedOptionKey<>(Automatic);
-
     public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String KEEP_ALIVE_PREFIX = "-keepalive";
@@ -271,7 +215,7 @@ public class SubstrateOptions {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static Predicate<String> makeFilter(List<String> definedFilters) {
         if (definedFilters.isEmpty()) {
-            return javaName -> true;
+            return _ -> true;
         }
         return javaName -> {
             for (String wildCard : definedFilters) {
@@ -358,7 +302,15 @@ public class SubstrateOptions {
              * precision of implicit stack traces. But for optimized release builds, including pgo
              * builds, it is a valuable image size reduction.
              */
-            SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, newLevel == OptimizationLevel.O3);
+            if (!values.containsKey(SubstrateOptions.ReduceImplicitExceptionStackTraceInformation) && newLevel == OptimizationLevel.O3) {
+                SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, true);
+            } else if (newLevel == OptimizationLevel.BUILD_TIME) {
+                /*
+                 * Disable in economy mode as there is no final canonicalizer which is required for
+                 * cleanup up after this phase.
+                 */
+                SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, false);
+            }
 
             GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
 
@@ -374,34 +326,38 @@ public class SubstrateOptions {
     };
 
     public static void configureOs(EconomicMap<OptionKey<?>, Object> values) {
-        enable(GraalOptions.ReduceCodeSize, values);
-        enable(ReduceImplicitExceptionStackTraceInformation, values);
-        enable(GraalOptions.OptimizeLongJumps, values);
+        enableForOs(GraalOptions.ReduceCodeSize, values);
+        enableForOs(ReduceImplicitExceptionStackTraceInformation, values);
+        enableForOs(GraalOptions.OptimizeLongJumps, values);
 
         /*
          * Remove all loop optimizations that can increase code size, i.e., duplicate a loop body
          * somehow.
          */
-        disable(GraalOptions.LoopPeeling, values);
-        disable(GraalOptions.LoopUnswitch, values);
-        disable(GraalOptions.FullUnroll, values);
-        disable(GraalOptions.PartialUnroll, values);
+        disableForOs(GraalOptions.LoopPeeling, values);
+        disableForOs(GraalOptions.LoopUnswitch, values);
+        disableForOs(GraalOptions.FullUnroll, values);
+        disableForOs(GraalOptions.PartialUnroll, values);
 
         /*
-         * Do not align loop headers to further reduce code size.
+         * Do not align code to further reduce code size.
          */
+        ConcealedOptions.CodeAlignment.update(values, 1);
         GraalOptions.LoopHeaderAlignment.update(values, 0);
         GraalOptions.IsolatedLoopHeaderAlignment.update(values, 0);
+        // We cannot check for architecture at the moment because ImageSingletons has not been
+        // initialized yet
+        disableForOs(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
 
         /*
          * Do not run PEA - it can fan out allocations too much.
          */
-        disable(GraalOptions.PartialEscapeAnalysis, values);
+        disableForOs(GraalOptions.PartialEscapeAnalysis, values);
 
         /*
          * Do not fan out division.
          */
-        disable(GraalOptions.OptimizeDiv, values);
+        disableForOs(GraalOptions.OptimizeDiv, values);
 
         /*
          * Do more conditional elimination.
@@ -411,14 +367,22 @@ public class SubstrateOptions {
         /*
          * Every dead code elimination should be non-optional
          */
-        disable(DeadCodeEliminationPhase.Options.ReduceDCE, values);
+        disableForOs(DeadCodeEliminationPhase.Options.ReduceDCE, values);
     }
 
-    public static void disable(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
+    /**
+     * Sets {@code key} to false in {@code values} as a consequence of {@code -Os} having been
+     * specified. This silently overrides any existing value for {@code key} in {@code values}.
+     */
+    public static void disableForOs(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
         key.update(values, false);
     }
 
-    public static void enable(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
+    /**
+     * Sets {@code key} to true in {@code values} as a consequence of {@code -Os} having been
+     * specified. This silently overrides any existing value for {@code key} in {@code values}.
+     */
+    public static void enableForOs(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
         key.update(values, true);
     }
 
@@ -506,6 +470,21 @@ public class SubstrateOptions {
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
+    @Option(help = "Provide debuginfo for runtime-compiled code.")//
+    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(false, SubstrateOptions::validateRuntimeDebugInfo);
+
+    private static void validateRuntimeDebugInfo(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue()) {
+            if (!useDebugInfoGeneration()) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option can only be enabled if debug info generation is enabled ('-g')");
+            } else if (!OS.LINUX.isCurrent()) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option is only supported on Linux.");
+            } else if (!RuntimeCompilation.isEnabled()) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option only works if run-time compilation support is enabled.");
+            }
+        }
+    }
+
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> CLibraryPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
@@ -546,7 +525,7 @@ public class SubstrateOptions {
 
     @Option(help = "Please use '--gc=*' instead. Possible values are listed with '--help'.")//
     public static final HostedOptionKey<ReplacingLocatableMultiOptionValue.DelimitedString> SupportedGCs = new HostedOptionKey<>(
-                    ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.SERIAL.getValue())) {
+                    ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.Serial.getValue())) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, ReplacingLocatableMultiOptionValue.DelimitedString oldValue,
                         ReplacingLocatableMultiOptionValue.DelimitedString newValue) {
@@ -560,17 +539,16 @@ public class SubstrateOptions {
 
             super.onValueUpdate(values, oldValue, newValue);
         }
-
     };
 
     @Fold
     public static boolean useSerialGC() {
-        return !SubstrateOptions.SupportedGCs.hasBeenSet() || SubstrateOptions.SupportedGCs.getValue().contains(GCOptionValue.SERIAL.getValue());
+        return !SubstrateOptions.SupportedGCs.hasBeenSet() || SubstrateOptions.SupportedGCs.getValue().contains(GCOptionValue.Serial.getValue());
     }
 
     @Fold
     public static boolean useEpsilonGC() {
-        return SubstrateOptions.SupportedGCs.getValue().contains(GCOptionValue.EPSILON.getValue());
+        return SubstrateOptions.SupportedGCs.getValue().contains(GCOptionValue.Epsilon.getValue());
     }
 
     @Fold
@@ -587,9 +565,9 @@ public class SubstrateOptions {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 if (newValue) {
-                    SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.SERIAL.getValue()));
+                    SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.Serial.getValue()));
                 } else if (!values.containsKey(SubstrateOptions.SupportedGCs) ||
-                                ((ReplacingLocatableMultiOptionValue.DelimitedString) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.SERIAL.getValue())) {
+                                ((ReplacingLocatableMultiOptionValue.DelimitedString) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.Serial.getValue())) {
                     SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter());
                 }
             }
@@ -602,19 +580,37 @@ public class SubstrateOptions {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 if (newValue) {
-                    SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.EPSILON.getValue()));
-                } else if (((AccumulatingLocatableMultiOptionValue.Strings) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.EPSILON.getValue())) {
+                    SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.Epsilon.getValue()));
+                } else if (((AccumulatingLocatableMultiOptionValue.Strings) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.Epsilon.getValue())) {
                     SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter());
                 }
             }
         };
+
+        @Option(help = "The number of nanoseconds that the isolate teardown can take before warnings are printed. Disabled if less or equal to 0.", //
+                        deprecated = true, deprecationMessage = "Use -XX:TearDownWarningSeconds=<secs> instead")//
+        public static final RuntimeOptionKey<Long> TearDownWarningNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+
+        @Option(help = "The number of nanoseconds that the isolate teardown can take before a fatal error is thrown. Disabled if less or equal to 0.", //
+                        deprecated = true, deprecationMessage = "Use -XX:TearDownFailureSeconds=<secs> instead")//
+        public static final RuntimeOptionKey<Long> TearDownFailureNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+
+        public static final int Automatic = 5;
+        public static final int NoFallback = 0;
+
+        public static final String OptionNameAutoFallback = "auto-fallback";
+        public static final String OptionNameNoFallback = "no-fallback";
+
+        @APIOption(name = OptionNameAutoFallback, fixedValue = "" + Automatic, customHelp = "build stand-alone image if possible", deprecated = "No effect, no replacement available") //
+        @APIOption(name = OptionNameNoFallback, fixedValue = "" + NoFallback, customHelp = "build stand-alone image or report failure", deprecated = "No effect, no replacement available") //
+        @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
+        public static final HostedOptionKey<Integer> FallbackThreshold = new HostedOptionKey<>(Automatic);
     }
 
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "Enable detection and runtime container configuration support.")//
     public static final HostedOptionKey<Boolean> UseContainerSupport = new HostedOptionKey<>(true);
 
-    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
 
@@ -633,12 +629,8 @@ public class SubstrateOptions {
         return maxJavaStackTraceDepth;
     }
 
-    public static void updateMaxJavaStackTraceDepth(EconomicMap<OptionKey<?>, Object> runtimeValues, int newValue) {
-        ConcealedOptions.MaxJavaStackTraceDepth.update(runtimeValues, newValue);
-    }
-
     /* Same option name and specification as the Java HotSpot VM. */
-    @Option(help = "Maximum total size of NIO direct-buffer allocations")//
+    @Option(help = "Maximum total size of NIO direct-buffer allocations", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Long> MaxDirectMemorySize = new RuntimeOptionKey<>(0L);
 
     @Option(help = "Verify naming conventions during image construction.")//
@@ -656,6 +648,7 @@ public class SubstrateOptions {
     @Option(help = "Force no direct relocations to be present in the text section of the generated image", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> NoDirectRelocationsInText = new HostedOptionKey<>(true);
 
+    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "Support multiple isolates.", deprecated = true, deprecationMessage = "This option disables a major feature of GraalVM Native Image and will be removed in a future release") //
     public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
 
@@ -782,6 +775,9 @@ public class SubstrateOptions {
     @Option(help = "Print GC warnings as part of build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputGCWarnings = new HostedOptionKey<>(true);
 
+    @Option(help = "Write code breakdown information into CSV file", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputCodeBreakdownFile = new HostedOptionKey<>(false);
+
     @BundleMember(role = BundleMember.Role.Output)//
     @Option(help = "Print build output statistics as JSON to the specified file. " +
                     "The output conforms to the JSON schema located at: " +
@@ -789,9 +785,6 @@ public class SubstrateOptions {
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> BuildOutputJSONFile = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build());
 
     public static final String NATIVE_IMAGE_OPTIONS_ENV_VAR = "NATIVE_IMAGE_OPTIONS";
-
-    @Option(help = "Internal option to forward the value of " + NATIVE_IMAGE_OPTIONS_ENV_VAR)//
-    public static final HostedOptionKey<String> BuildOutputNativeImageOptionsEnvVarValue = new HostedOptionKey<>(null);
 
     public static final String BUILD_MEMORY_USAGE_REASON_TEXT_PROPERTY = "svm.build.memoryUsageReasonText";
 
@@ -857,24 +850,18 @@ public class SubstrateOptions {
         }
     }
 
-    /*
-     * Isolate tear down options.
-     */
-
-    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
-    @Option(help = "The number of nanoseconds before and between which tearing down an isolate gives a warning message.  0 implies no warning.")//
-    public static final RuntimeOptionKey<Long> TearDownWarningNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
-
-    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
-    @Option(help = "The number of nanoseconds before tearing down an isolate gives a failure message.  0 implies no message.")//
-    public static final RuntimeOptionKey<Long> TearDownFailureNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
-
     public static long getTearDownWarningNanos() {
-        return TearDownWarningNanos.getValue();
+        if (ConcealedOptions.TearDownWarningSeconds.getValue() != 0) {
+            return TimeUtils.secondsToNanos(ConcealedOptions.TearDownWarningSeconds.getValue());
+        }
+        return DeprecatedOptions.TearDownWarningNanos.getValue();
     }
 
     public static long getTearDownFailureNanos() {
-        return TearDownFailureNanos.getValue();
+        if (ConcealedOptions.TearDownFailureSeconds.getValue() != 0) {
+            return TimeUtils.secondsToNanos(ConcealedOptions.TearDownFailureSeconds.getValue());
+        }
+        return DeprecatedOptions.TearDownFailureNanos.getValue();
     }
 
     @Option(help = "Define the maximum number of stores for which the loop that zeroes out objects is unrolled.")//
@@ -883,8 +870,11 @@ public class SubstrateOptions {
     @Option(help = "Deprecated, has no effect.", deprecated = true)//
     static final HostedOptionKey<Boolean> StackTrace = new HostedOptionKey<>(true);
 
-    @Option(help = "Parse and consume standard options and system properties from the command line arguments when the VM is created.")//
+    @Option(help = "Parse and consume standard options and system properties from the command line arguments when the VM is created.", stability = OptionStability.STABLE)//
     public static final HostedOptionKey<Boolean> ParseRuntimeOptions = new HostedOptionKey<>(true);
+
+    @Option(help = "Initialize the VM and run startup hooks.")//
+    public static final HostedOptionKey<Boolean> InitializeVM = new HostedOptionKey<>(true);
 
     @Option(help = "Enable wildcard expansion in command line arguments on Windows.")//
     public static final HostedOptionKey<Boolean> EnableWildcardExpansion = new HostedOptionKey<>(true);
@@ -896,9 +886,12 @@ public class SubstrateOptions {
     @Option(help = "Perform trivial method inlining in the AOT compiled native image")//
     public static final HostedOptionKey<Boolean> AOTTrivialInline = new HostedOptionKey<>(true);
 
-    @LayerVerifiedOption(kind = Kind.Removed, severity = Severity.Error, positional = false)//
+    @LayerVerifiedOption(kind = Kind.Removed, severity = Severity.Warn, positional = false)//
     @Option(help = "file:doc-files/NeverInlineHelp.txt", type = OptionType.Debug)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NeverInline = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+
+    @Option(help = "file:doc-files/NeverInlineHelp.txt")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NeverInlineTrivial = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial.")//
     public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(20);
@@ -935,12 +928,7 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             if ("llvm".equals(newValue)) {
-                boolean isLLVMBackendMissing;
-                if (ModuleSupport.modulePathBuild) {
-                    isLLVMBackendMissing = ModuleLayer.boot().findModule("org.graalvm.nativeimage.llvm").isEmpty();
-                } else {
-                    isLLVMBackendMissing = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.graal.llvm.LLVMFeature") == null;
-                }
+                boolean isLLVMBackendMissing = JVMCIReflectionUtil.bootModuleLayer().findModule("org.graalvm.nativeimage.llvm").isEmpty();
                 if (isLLVMBackendMissing) {
                     throw UserError.invalidOptionValue(CompilerBackend, newValue,
                                     "The LLVM backend for GraalVM Native Image is missing and needs to be built from source. " +
@@ -1026,21 +1014,41 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> DeadlockWatchdogExitOnTimeout = new HostedOptionKey<>(true);
 
     /**
-     * The alignment for AOT and JIT compiled methods. The value is constant folded during image
-     * generation, i.e., cannot be changed at run time, so that it can be used in uninterruptible
-     * code.
+     * The alignment for JIT compiled methods.
      */
     @Fold
-    public static int codeAlignment() {
+    public static int runtimeCodeAlignment() {
+        int value = ConcealedOptions.CodeAlignment.getValue();
+        // In runtime compiled methods, data is also aligned according to the return value of this
+        // method. As a result, it needs to be at least defaultCodeAlignment() so that it can
+        // support the allocation of large constants such as SIMD ones.
+        return Math.max(value, defaultCodeAlignment());
+    }
+
+    /**
+     * The alignment for AOT compiled methods.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static int buildTimeCodeAlignment() {
         int value = ConcealedOptions.CodeAlignment.getValue();
         if (value > 0) {
+            // In contrast to runtimeCodeAlignment, this value can be less than
+            // defaultCodeAlignment() so that methods can be more densely packed in the generated
+            // native image.
             return value;
         }
 
-        if (ConfigurationValues.getTarget().arch instanceof AMD64 && optimizationLevel() != OptimizationLevel.SIZE) {
-            return 32;
-        }
-        return 16;
+        return defaultCodeAlignment();
+    }
+
+    private static int defaultCodeAlignment() {
+        return ConfigurationValues.getTarget().arch instanceof AMD64 ? 32 : 16;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static int buildTimeCodeAlignment(OptionValues options) {
+        int value = ConcealedOptions.CodeAlignment.getValue(options);
+        return value > 0 ? value : buildTimeCodeAlignment();
     }
 
     @Option(help = "Determines if VM internal threads (e.g., a dedicated VM operation or reference handling thread) are allowed in this image.", type = OptionType.Expert) //
@@ -1050,8 +1058,13 @@ public class SubstrateOptions {
     @Option(help = "Determines if debugging-specific helper methods are embedded into the image. Those methods can be called directly from the debugger to obtain or print additional information.", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> IncludeDebugHelperMethods = new HostedOptionKey<>(false);
 
+    private static final String ENABLE_DEBUGINFO_OPTION = "-g";
+    // Only raise error if -g is used in current layer build but missing in the previous layer build
+    @LayerVerifiedOption(apiOption = ENABLE_DEBUGINFO_OPTION, kind = Kind.Added, severity = Severity.Error, message = "If you want to use " + ENABLE_DEBUGINFO_OPTION +
+                    " in this layer, use a base layer that also got built with " + ENABLE_DEBUGINFO_OPTION + ".")//
+    // ... but use stricter check for raw (non-API) use of GenerateDebugInfo
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
-    @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
+    @APIOption(name = ENABLE_DEBUGINFO_OPTION, fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
         @Override
@@ -1073,11 +1086,21 @@ public class SubstrateOptions {
         return useLIRBackend() && GenerateDebugInfo.getValue() > 0;
     }
 
+    @Option(help = "Number of threads used to generate debug info.") //
+    public static final HostedOptionKey<Integer> DebugInfoGenerationThreadCount = new HostedOptionKey<>(0, SubstrateOptions::validateDebugInfoGenerationThreadCount);
+
+    private static void validateDebugInfoGenerationThreadCount(HostedOptionKey<Integer> optionKey) {
+        int value = optionKey.getValue();
+        if (value < 0) {
+            throw UserError.invalidOptionValue(optionKey, value, "The value must be bigger than 0");
+        }
+    }
+
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
     static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
 
     @Option(help = "Temporary option to disable checking of image builder module dependencies or increasing its verbosity", type = OptionType.Debug)//
-    public static final HostedOptionKey<Integer> CheckBootModuleDependencies = new HostedOptionKey<>(ModuleSupport.modulePathBuild ? 1 : 0);
+    public static final HostedOptionKey<Integer> CheckBootModuleDependencies = new HostedOptionKey<>(1);
 
     @Platforms(HOSTED_ONLY.class)
     public static Path getDebugInfoSourceCacheRoot() {
@@ -1121,7 +1144,12 @@ public class SubstrateOptions {
             if (values.containsKey(this)) {
                 return (Boolean) values.get(this);
             }
-            return ImageInfo.isExecutable();
+            /*
+             * GR-70850: ImageInfo.isExecutable is inconsistent across layers. Since only an
+             * executable application layer is currently supported on Layered Images, the current
+             * solution is to enable this by default.
+             */
+            return ImageInfo.isExecutable() || ImageLayerBuildingSupport.buildingImageLayer();
         }
 
         @Override
@@ -1202,7 +1230,6 @@ public class SubstrateOptions {
         @Option(help = "The largest page size of machines that can run the image. The default of 0 automatically selects a typically suitable value.")//
         protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
 
-        @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
         @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
         public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
 
@@ -1211,7 +1238,10 @@ public class SubstrateOptions {
         @Option(help = "Generated code style for prefetch instructions: for 0 or less no prefetch instructions are generated and for 1 or more prefetch instructions are introduced after each allocation.")//
         public static final HostedOptionKey<Integer> AllocatePrefetchStyle = new HostedOptionKey<>(null);
 
-        /** Use {@link SubstrateOptions#codeAlignment()} instead. */
+        /**
+         * Use {@link SubstrateOptions#buildTimeCodeAlignment()} or
+         * {@link SubstrateOptions#runtimeCodeAlignment()} instead.
+         */
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
         @Option(help = "Alignment of AOT and JIT compiled code in bytes. The default of 0 automatically selects a suitable value.")//
         public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(0);
@@ -1223,8 +1253,40 @@ public class SubstrateOptions {
         /** Use {@link SubstrateOptions#hasDumpRuntimeCompiledMethodsSupport()} instead. */
         @Option(help = "Dump the instructions of runtime compiled methods in temporary files.") //
         public static final RuntimeOptionKey<Boolean> DumpRuntimeCompiledMethods = new RuntimeOptionKey<>(false, key -> {
-            if (key.hasBeenSet() && Platform.includedIn(Platform.WINDOWS.class)) {
+            if (key.hasBeenSet() && Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
                 throw UserError.invalidOptionValue(key, key.getValue(), "Dumping runtime compiled code is not supported on Windows.");
+            }
+        });
+
+        @Option(help = "Avoid linker relocations for code and instead emit address computations.", type = OptionType.Expert) //
+        @LayerVerifiedOption(severity = Severity.Error, kind = Kind.Changed, positional = false) //
+        public static final HostedOptionKey<Boolean> RelativeCodePointers = new HostedOptionKey<>(false, SubstrateOptions::validateRelativeCodePointers);
+
+        /** Use {@link SubstrateOptions#getTearDownWarningNanos()} instead. */
+        @Option(help = "The number of seconds that the isolate teardown can take before warnings are printed. Disabled if less or equal to 0.")//
+        public static final RuntimeOptionKey<Long> TearDownWarningSeconds = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+
+        /** Use {@link SubstrateOptions#getTearDownFailureNanos()} instead. */
+        @Option(help = "The number of seconds that the isolate teardown can take before a fatal error is thrown. Disabled if less or equal to 0.")//
+        public static final RuntimeOptionKey<Long> TearDownFailureSeconds = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+
+        /** Use {@link SubstrateOptions#useInterfaceHashing()} instead. */
+        @Option(help = "Enables hashing-based interface type checks and interface method dispatch. This option is only available when ClosedTypeWorldHubLayout is disabled.", type = OptionType.Debug) //
+        public static final HostedOptionKey<Boolean> UseInterfaceHashing = new HostedOptionKey<>(null, key -> {
+            if (key.hasBeenSet() && key.getValue()) {
+                UserError.guarantee(!useClosedTypeWorldHubLayout(), "Support for interface hashing is only available with an open world hub layout. " +
+                                "Enable the open world hub layout with %s",
+                                SubstrateOptionsParser.commandArgument(ClosedTypeWorldHubLayout, "-"));
+            }
+        });
+
+        /** Use {@link SubstrateOptions#useRistretto()} instead. */
+        @Option(help = "Prepare native image to compile bytecodes at runtime.")//
+        public static final HostedOptionKey<Boolean> GraalJITCompileAtRuntime = new HostedOptionKey<>(false, actualValue -> {
+            if (actualValue.getValue()) {
+                if (!RuntimeClassLoading.Options.RuntimeClassLoading.getValue()) {
+                    throw UserError.abort("Cannot enable Ristretto compilation if RuntimeClassLoading is not enabled.");
+                }
             }
         });
     }
@@ -1235,7 +1297,6 @@ public class SubstrateOptions {
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
 
-    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "Enables signal handling", stability = OptionStability.EXPERIMENTAL, type = Expert)//
     public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<>(null, Immutable) {
         @Override
@@ -1243,7 +1304,12 @@ public class SubstrateOptions {
             if (values.containsKey(this)) {
                 return (Boolean) values.get(this);
             }
-            return ImageInfo.isExecutable();
+            /*
+             * GR-70850: ImageInfo.isExecutable is inconsistent across layers. Since only an
+             * executable application layer is currently supported on Layered Images, the current
+             * solution is to enable this by default.
+             */
+            return ImageInfo.isExecutable() || ImageLayerBuildingSupport.buildingImageLayer();
         }
 
         @Override
@@ -1270,6 +1336,11 @@ public class SubstrateOptions {
     @Option(help = "Create a heap dump and exit.")//
     public static final RuntimeOptionKey<Boolean> DumpHeapAndExit = new RuntimeOptionKey<>(false, Immutable);
 
+    @Option(help = "Name of a csv file into which image heap metadata should be dumped. " +
+                    "This csv file will be located in the same directory as the image. " +
+                    "If this option is an empty string, the metadata will not be dumped.") //
+    public static final HostedOptionKey<String> ImageHeapMetadataDumpFileName = new HostedOptionKey<>("");
+
     @Option(help = "Print some VM information and exit.")//
     public static final RuntimeOptionKey<Boolean> PrintVMInfoAndExit = new RuntimeOptionKey<>(false, Immutable);
 
@@ -1294,6 +1365,7 @@ public class SubstrateOptions {
         return getImagePath().resolve(reportsPath).toString();
     }
 
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
     public static class ReportingSupport {
         Path reportsPath;
 
@@ -1417,39 +1489,45 @@ public class SubstrateOptions {
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> Preserve = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Ignore classes or packages (comma separated) from the ones included with '-H:Preserve'. This can be used to workaround potential issues related to '-H:Preserve'.", type = OptionType.Debug) //
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IgnorePreserveForClasses = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
-
-    @Option(help = "Force include include all public types and methods that can be reached using normal Java access rules.")//
-    public static final HostedOptionKey<Boolean> UseBaseLayerInclusionPolicy = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IgnorePreserveForClasses = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @Option(help = "Support for calls via the Java Foreign Function and Memory API", type = Expert) //
     public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(true);
 
     @Fold
     public static boolean isForeignAPIEnabled() {
-        /*
-         * FFM API should be enabled by default only if running on a supported and tested platform.
-         * However, if the option is explicitly enabled, we still return 'true'.
-         */
-        return SubstrateOptions.ForeignAPISupport.getValue() &&
-                        (SubstrateOptions.ForeignAPISupport.hasBeenSet() || Platform.includedIn(PLATFORM_JNI.class) && Platform.includedIn(NATIVE_ONLY.class));
+        return SubstrateOptions.ForeignAPISupport.getValue();
     }
 
     @Option(help = "Support for intrinsics from the Java Vector API", type = Expert) //
     public static final HostedOptionKey<Boolean> VectorAPISupport = new HostedOptionKey<>(false);
 
     @Option(help = "Enable support for Arena.ofShared ", type = Expert)//
-    public static final HostedOptionKey<Boolean> SharedArenaSupport = new HostedOptionKey<>(false, key -> {
-        if (key.getValue()) {
-            // GR-65268: Shared arenas cannot be used together with runtime compilations
-            UserError.guarantee(!RuntimeCompilation.isEnabled(), "Arena.ofShared is not supported with runtime compilations. " +
-                            "Replace usages of Arena.ofShared with Arena.ofAuto and disable shared arena support.");
+    public static final HostedOptionKey<Boolean> SharedArenaSupport = new HostedOptionKey<>(true, key -> {
+        if (isSharedArenaSupportEnabled()) {
             // GR-65162: Shared arenas cannot be used together with Vector API support
-            UserError.guarantee(!VectorAPIEnabled.getValue(), "Support for Arena.ofShared is not available with Vector API support. " +
-                            "Either disable Vector API support using %s or replace usages of Arena.ofShared with Arena.ofAuto and disable shared arena support.",
-                            SubstrateOptionsParser.commandArgument(VectorAPISupport, "-"));
+            UserError.guarantee(!VectorAPIEnabled.getValue(), "Support for Arena.ofShared (which is part of the FFM API) is not available with Vector API support. " +
+                            "Either disable Vector API support using %s or replace usages of Arena.ofShared with Arena.ofAuto and disable shared arena support using %s.",
+                            SubstrateOptionsParser.commandArgument(VectorAPISupport, "-"),
+                            SubstrateOptionsParser.commandArgument(key, "-"));
         }
     });
+
+    @Fold
+    public static boolean isSharedArenaSupportEnabled() {
+        if (!isForeignAPIEnabled() || !SubstrateOptions.SharedArenaSupport.getValue()) {
+            return false;
+        }
+        if (SubstrateOptions.SharedArenaSupport.hasBeenSet()) {
+            return true;
+        }
+        if (VectorAPIEnabled.getValue()) {
+            // GR-65162: Shared arenas cannot be used together with Vector API support
+            return false;
+        }
+        return Platform.includedIn(PLATFORM_JNI.class) && Platform.includedIn(NATIVE_ONLY.class);
+    }
 
     @Option(help = "Assume new types cannot be added after analysis", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ClosedTypeWorld = new HostedOptionKey<>(true) {
@@ -1462,6 +1540,19 @@ public class SubstrateOptions {
     @Option(help = "Use the closed type world dynamic hub representation. This is only allowed when the option ClosedTypeWorld is also set to true.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ClosedTypeWorldHubLayout = new HostedOptionKey<>(true);
 
+    @Option(help = "Defines a threshold for interfaceIDs which can be covered by hashing if UseInterfaceHashing is enabled. Must be <= 65535 (ushort max). Larger interfaceIDs are handled by the slow path.", type = OptionType.Debug) //
+    public static final HostedOptionKey<Integer> InterfaceHashingMaxId = new HostedOptionKey<>(0xffff, key -> {
+        if (key.hasBeenSet()) {
+            UserError.guarantee(useInterfaceHashing(), "Interface hashing needs to be enabled for the InterfaceHashingMaxId to be used. " +
+                            "Enable interface hashing with %s",
+                            SubstrateOptionsParser.commandArgument(ConcealedOptions.UseInterfaceHashing, "+"));
+        }
+        int value = key.getValue();
+        if (!NumUtil.isUShort(value)) {
+            UserError.invalidOptionValue(key, value, "The specified value must be <= 65535 (ushort max)");
+        }
+    });
+
     @Fold
     public static boolean useClosedTypeWorldHubLayout() {
         return ClosedTypeWorldHubLayout.getValue();
@@ -1472,11 +1563,18 @@ public class SubstrateOptions {
         return ClosedTypeWorld.getValue();
     }
 
-    @Option(help = "Throws an exception on potential type conflict during heap persisting if enabled", type = OptionType.Debug) //
-    public static final HostedOptionKey<Boolean> AbortOnNameConflict = new HostedOptionKey<>(false);
+    @Fold
+    public static boolean useInterfaceHashing() {
+        if (ConcealedOptions.UseInterfaceHashing.getValue() != null) {
+            return ConcealedOptions.UseInterfaceHashing.getValue();
+        }
+        return !useClosedTypeWorldHubLayout();
+    }
 
-    @Option(help = "Enables logging of failed hash code injection", type = OptionType.Debug) //
-    public static final HostedOptionKey<Boolean> LoggingHashCodeInjection = new HostedOptionKey<>(false);
+    @Fold
+    public static int interfaceHashingMaxId() {
+        return InterfaceHashingMaxId.getValue();
+    }
 
     public static class TruffleStableOptions {
 
@@ -1523,12 +1621,9 @@ public class SubstrateOptions {
         return PrintClosedArenaUponThrow.getValue();
     }
 
-    @Option(help = "Avoid linker relocations for code and instead emit address computations.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Boolean> RelativeCodePointers = new HostedOptionKey<>(false, SubstrateOptions::validateRelativeCodePointers);
-
     @Fold
     public static boolean useRelativeCodePointers() {
-        return RelativeCodePointers.getValue();
+        return ConcealedOptions.RelativeCodePointers.getValue();
     }
 
     private static void validateRelativeCodePointers(HostedOptionKey<Boolean> optionKey) {
@@ -1536,13 +1631,6 @@ public class SubstrateOptions {
             String enabledOption = SubstrateOptionsParser.commandArgument(optionKey, "+");
 
             UserError.guarantee(Platform.includedIn(PLATFORM_JNI.class) || Platform.includedIn(NATIVE_ONLY.class), "%s is supported only with hardware target platforms.", enabledOption);
-
-            /*
-             * GR-59707: Dispatch tables must potentially be patched at runtime still. Method
-             * offsets for dispatch need to be passed on between layer builds rather than using
-             * symbol names.
-             */
-            UserError.guarantee(!ImageLayerBuildingSupport.buildingImageLayer(), "%s is currently not supported with layered images.", enabledOption);
 
             // The concept of a code base would need to be introduced in the LLVM backend first.
             UserError.guarantee(!useLLVMBackend(), "%s is currently not supported with the LLVM backend.", enabledOption);
@@ -1557,10 +1645,10 @@ public class SubstrateOptions {
     }
 
     public static boolean hasDumpRuntimeCompiledMethodsSupport() {
-        return !Platform.includedIn(Platform.WINDOWS.class) && ConcealedOptions.DumpRuntimeCompiledMethods.getValue();
+        return !Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && ConcealedOptions.DumpRuntimeCompiledMethods.getValue();
     }
 
-    @Option(help = "file:doc-files/TrackDynamicAccessHelp.txt")//
+    @Option(help = "file:doc-files/TrackDynamicAccessHelp.txt", stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TrackDynamicAccess = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
@@ -1576,4 +1664,42 @@ public class SubstrateOptions {
             }
         }
     };
+
+    @Option(help = "Fallback to economy mode in case a compilation during native image generation fails.")//
+    public static final HostedOptionKey<Boolean> EnableFallbackCompilation = new HostedOptionKey<>(false, SubstrateOptions::validateEnableFallbackCompilation);
+
+    private static void validateEnableFallbackCompilation(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue() && SubstrateOptions.useEconomyCompilerConfig()) {
+            throw UserError.invalidOptionValue(optionKey, true,
+                            String.format("Combining the option %s with %s is not supported", SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableFallbackCompilation, "+"),
+                                            SubstrateOptionsParser.commandArgument(SubstrateOptions.Optimize, "b")));
+        }
+    }
+
+    public static boolean canEnableFallbackCompilation() {
+        return !EnableFallbackCompilation.getValue() && !useEconomyCompilerConfig();
+    }
+
+    @Option(help = "Passes the numbers of warnings that occurred in the driver phase to the builder.", type = OptionType.Debug, stability = OptionStability.STABLE) //
+    public static final HostedOptionKey<Integer> DriverWarningsCount = new HostedOptionKey<>(0);
+
+    @APIOption(name = "-Werror", defaultValue = "all")//
+    @Option(help = "Treat warnings as errors and terminate build.")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TreatWarningsAsError = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build(), key -> {
+        key.getValue().getValuesWithOrigins().forEach(option -> {
+            if (!option.origin().commandLineLike()) {
+                throw UserError.abort("Option '%s' provided by %s can only be used on the command line.",
+                                SubstrateOptionsParser.commandArgument(key, option.value()), option.origin());
+            }
+        });
+    });
+
+    /**
+     * Determine if Ristretto is enabled as the bytecode JIT at runtime.
+     */
+    @Fold
+    public static boolean useRistretto() {
+        return ConcealedOptions.GraalJITCompileAtRuntime.getValue();
+    }
+
 }

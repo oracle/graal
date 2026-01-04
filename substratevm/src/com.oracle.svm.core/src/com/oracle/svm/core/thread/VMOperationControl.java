@@ -48,8 +48,6 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
-import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
@@ -72,7 +70,7 @@ import jdk.graal.compiler.word.Word;
  * is enabled, a dedicated VM operation thread is spawned during isolate startup and used for the
  * execution of all VM operations.</li>
  * </ul>
- *
+ * <p>
  * It is possible that the execution of a VM operation triggers another VM operation explicitly or
  * implicitly (e.g. a GC). Such recursive VM operations are executed immediately (see
  * {@link #immediateQueues}).
@@ -144,12 +142,13 @@ public final class VMOperationControl {
         data.setNativeVMOperation(operation);
         /*
          * Note we don't call enqueueFromNonJavaThread b/c this thread still has characteristics of
-         * a Java thread even though VMTheads#threadExit has already been called.
+         * a Java thread even though VMThreads#threadExit has already been called.
          */
         get().mainQueues.enqueueUninterruptibly(operation, data);
 
-        waitUntilVMOperationThreadDetached();
+        VMThreads.waitInNativeUntilDetached(get().dedicatedVMOperationThread.getIsolateThread());
         assert get().mainQueues.isEmpty();
+        assert VMThreads.firstThread().isNull() : "the VM operation thread must detach last";
     }
 
     private final NativeStopVMOperationThread stopVMOperationThreadOperation = new NativeStopVMOperationThread();
@@ -166,32 +165,6 @@ public final class VMOperationControl {
         }
     }
 
-    @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
-    @Uninterruptible(reason = "Executed during teardown after VMThreads#threadExit")
-    private static void waitUntilVMOperationThreadDetached() {
-        CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
-        waitUntilVMOperationThreadDetachedInNative();
-        CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
-    }
-
-    /**
-     * Wait until the VM operation thread reached a point where it detached from SVM and is
-     * therefore no longer executing Java code.
-     */
-    @Uninterruptible(reason = "Must not stop while in native.")
-    @NeverInline("Provide a return address for the Java frame anchor.")
-    private static void waitUntilVMOperationThreadDetachedInNative() {
-        // this method may only access data in the image heap
-        VMThreads.THREAD_MUTEX.lockNoTransition();
-        try {
-            while (VMThreads.nextThread(VMThreads.firstThread()).isNonNull()) {
-                VMThreads.THREAD_LIST_CONDITION.blockNoTransition();
-            }
-        } finally {
-            VMThreads.THREAD_MUTEX.unlock();
-        }
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isDedicatedVMOperationThread() {
         return isDedicatedVMOperationThread(CurrentIsolate.getCurrentThread());
@@ -199,10 +172,10 @@ public final class VMOperationControl {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isDedicatedVMOperationThread(IsolateThread thread) {
-        if (useDedicatedVMOperationThread()) {
-            return thread == get().dedicatedVMOperationThread.getIsolateThread();
+        if (!useDedicatedVMOperationThread()) {
+            return false;
         }
-        return false;
+        return thread == get().dedicatedVMOperationThread.getIsolateThread();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

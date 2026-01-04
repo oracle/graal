@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.substitutions.jvmci;
 
+import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime.openJVMCITo;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -42,6 +44,23 @@ final class Target_jdk_vm_ci_runtime_JVMCI {
     @Substitution
     public static @JavaType(internalName = "Ljdk/vm/ci/runtime/JVMCIRuntime;") StaticObject initializeRuntime(@Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
+        Meta meta = context.getMeta();
+        if (meta.jvmci.GraalJVMCICompiler != null) {
+            /*
+             * On HotSpot, HotSpotJVMCIRuntime.runtime uses JVMCIServiceLocator.getProviders which
+             * triggers Services.openJVMCITo for the module of HotSpotGraalJVMCIServiceLocator
+             * (jdk.graal.compiler). Achieve the same here by directly calling Services.openJVMCITo
+             * for the module of GraalJVMCICompiler (jdk.graal.compiler).
+             *
+             * Note that it is not enough to do this in
+             * EspressoJVMCIRuntime.createEspressoGraalJVMCICompiler since GraalServices could be
+             * used before the compiler is initialized.
+             *
+             * This is done only if GraalJVMCICompiler exists (i.e., jdk.graal.compiler is not an
+             * empty module).
+             */
+            openJVMCITo(meta.jvmci.GraalJVMCICompiler.module(), meta);
+        }
         return (StaticObject) context.getMeta().jvmci.EspressoJVMCIRuntime_runtime.invokeDirectStatic();
     }
 

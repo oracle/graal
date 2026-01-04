@@ -24,15 +24,16 @@
  */
 package jdk.graal.compiler.loop.test;
 
-import java.util.HashSet;
 import java.util.Set;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
-import org.junit.Assert;
-import org.junit.Test;
+import jdk.graal.compiler.util.EconomicHashSet;
 
 public class LoopsDataTest extends GraalCompilerTest {
 
@@ -94,7 +95,7 @@ public class LoopsDataTest extends GraalCompilerTest {
     public void testInnerFirst() {
         LoopsData loops = getLoopsData();
 
-        Set<Loop> seen = new HashSet<>();
+        Set<Loop> seen = new EconomicHashSet<>();
         for (Loop loop : loops.innerFirst()) {
             assertFalse(seen.contains(loop), "%s has already been seen", loop);
             if (loop.parent() != null) {
@@ -108,7 +109,7 @@ public class LoopsDataTest extends GraalCompilerTest {
     public void testOuterFirst() {
         LoopsData loops = getLoopsData();
 
-        Set<Loop> seen = new HashSet<>();
+        Set<Loop> seen = new EconomicHashSet<>();
         for (Loop loop : loops.outerFirst()) {
             assertFalse(seen.contains(loop), "%s has already been seen", loop);
             if (loop.parent() != null) {

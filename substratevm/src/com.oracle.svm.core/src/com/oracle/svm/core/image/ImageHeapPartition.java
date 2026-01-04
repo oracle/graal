@@ -32,6 +32,9 @@ public interface ImageHeapPartition {
     /** Returns the name of the partition. */
     String getName();
 
+    /** Returns true if the partition is writable. */
+    boolean isWritable();
+
     /** Returns the offset at which this partition is allocated. */
     long getStartOffset();
 
@@ -39,7 +42,4 @@ public interface ImageHeapPartition {
      * Returns the size of the partition (i.e., the sum of all allocated objects + some overhead).
      */
     long getSize();
-
-    /* Returns true if this partition is only used as a filler. */
-    boolean isFiller();
 }

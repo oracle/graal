@@ -26,7 +26,6 @@
 package com.oracle.objectfile.pecoff;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -252,7 +251,7 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
 
     @Override
     public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
-        return new ArrayList<>(ObjectFile.defaultDependencies(decisions, this));
+        return ObjectFile.defaultDependencies(decisions, this);
     }
 
     @Override

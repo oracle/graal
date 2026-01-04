@@ -60,11 +60,14 @@ public final class WasmContextOptions {
     @CompilationFinal private boolean threads;
     @CompilationFinal private boolean simd;
     @CompilationFinal private boolean relaxedSimd;
+    @CompilationFinal private boolean exceptions;
+    @CompilationFinal private boolean typedFunctionReferences;
 
     @CompilationFinal private boolean memoryOverheadMode;
     @CompilationFinal private boolean constantRandomGet;
     @CompilationFinal private boolean directByteBufferMemoryAccess;
     @CompilationFinal private boolean debugTestMode;
+    @CompilationFinal private boolean evalReturnsInstance;
 
     private final OptionValues optionValues;
 
@@ -90,10 +93,13 @@ public final class WasmContextOptions {
         this.unsafeMemory = readBooleanOption(WasmOptions.UseUnsafeMemory);
         this.simd = readBooleanOption(WasmOptions.SIMD);
         this.relaxedSimd = readBooleanOption(WasmOptions.RelaxedSIMD);
+        this.exceptions = readBooleanOption(WasmOptions.Exceptions);
+        this.typedFunctionReferences = readBooleanOption(WasmOptions.TypedFunctionReferences);
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
         this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
         this.directByteBufferMemoryAccess = readBooleanOption(WasmOptions.DirectByteBufferMemoryAccess);
         this.debugTestMode = readBooleanOption(WasmOptions.DebugTestMode);
+        this.evalReturnsInstance = readBooleanOption(WasmOptions.EvalReturnsInstance);
     }
 
     private void checkOptionDependencies() {
@@ -157,6 +163,14 @@ public final class WasmContextOptions {
         return relaxedSimd;
     }
 
+    public boolean supportExceptions() {
+        return exceptions;
+    }
+
+    public boolean supportTypedFunctionReferences() {
+        return typedFunctionReferences;
+    }
+
     public boolean memoryOverheadMode() {
         return memoryOverheadMode;
     }
@@ -173,6 +187,10 @@ public final class WasmContextOptions {
         return debugTestMode;
     }
 
+    public boolean evalReturnsInstance() {
+        return evalReturnsInstance;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -186,10 +204,13 @@ public final class WasmContextOptions {
         hash = 53 * hash + (this.unsafeMemory ? 1 : 0);
         hash = 53 * hash + (this.simd ? 1 : 0);
         hash = 53 * hash + (this.relaxedSimd ? 1 : 0);
+        hash = 53 * hash + (this.exceptions ? 1 : 0);
+        hash = 53 * hash + (this.typedFunctionReferences ? 1 : 0);
         hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
         hash = 53 * hash + (this.constantRandomGet ? 1 : 0);
         hash = 53 * hash + (this.directByteBufferMemoryAccess ? 1 : 0);
         hash = 53 * hash + (this.debugTestMode ? 1 : 0);
+        hash = 53 * hash + (this.evalReturnsInstance ? 1 : 0);
         return hash;
     }
 
@@ -234,6 +255,12 @@ public final class WasmContextOptions {
         if (this.relaxedSimd != other.relaxedSimd) {
             return false;
         }
+        if (this.exceptions != other.exceptions) {
+            return false;
+        }
+        if (this.typedFunctionReferences != other.typedFunctionReferences) {
+            return false;
+        }
         if (this.memoryOverheadMode != other.memoryOverheadMode) {
             return false;
         }
@@ -244,6 +271,9 @@ public final class WasmContextOptions {
             return false;
         }
         if (this.debugTestMode != other.debugTestMode) {
+            return false;
+        }
+        if (this.evalReturnsInstance != other.evalReturnsInstance) {
             return false;
         }
         return true;

@@ -95,7 +95,7 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 //  tanh(+/-0) = +/-0
 //
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/c8bbcaf5de6982f673504a8dc766fb80bb6f0d07/src/hotspot/cpu/x86/stubGenerator_x86_64_tanh.cpp#L30-L499",
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/stubGenerator_x86_64_tanh.cpp#L30-L499",
           sha1 = "176c2b79553d5fc09ae3e24da215c27ff1b4db72")
 // @formatter:on
 public final class AMD64MathTanhOp extends AMD64MathIntrinsicUnaryOp {

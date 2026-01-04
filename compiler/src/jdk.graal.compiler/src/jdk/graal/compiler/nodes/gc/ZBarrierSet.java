@@ -33,6 +33,7 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -58,12 +59,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * read or write of an object from the heap should have an associated read barrier. Barriers for
  * non-heap locations like handles can be handled by subclasses.
  */
-public class ZBarrierSet implements BarrierSet {
+public class ZBarrierSet extends BarrierSet {
 
     private final ResolvedJavaType objectArrayType;
     private final ResolvedJavaField referentField;
 
     public ZBarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField) {
+        super(GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION, false);
         this.referentField = referentField;
         this.objectArrayType = objectArrayType;
     }
@@ -125,16 +127,6 @@ public class ZBarrierSet implements BarrierSet {
     }
 
     @Override
-    public BarrierType fieldWriteBarrierType(ResolvedJavaField field, JavaKind storageKind) {
-        return storageKind == JavaKind.Object ? BarrierType.FIELD : BarrierType.NONE;
-    }
-
-    @Override
-    public BarrierType arrayWriteBarrierType(JavaKind storageKind) {
-        return storageKind == JavaKind.Object ? BarrierType.ARRAY : BarrierType.NONE;
-    }
-
-    @Override
     public BarrierType readWriteBarrier(ValueNode object, ValueNode value) {
         if (value.stamp(NodeView.DEFAULT).isObjectStamp()) {
             ResolvedJavaType type = StampTool.typeOrNull(object);
@@ -151,22 +143,7 @@ public class ZBarrierSet implements BarrierSet {
     }
 
     @Override
-    public boolean hasWriteBarrier() {
-        return true;
-    }
-
-    @Override
-    public boolean hasReadBarrier() {
-        return true;
-    }
-
-    @Override
     public void addBarriers(FixedAccessNode n, CoreProviders context) {
-    }
-
-    @Override
-    public boolean mayNeedPreWriteBarrier(JavaKind storageKind) {
-        return false;
     }
 
     @Override

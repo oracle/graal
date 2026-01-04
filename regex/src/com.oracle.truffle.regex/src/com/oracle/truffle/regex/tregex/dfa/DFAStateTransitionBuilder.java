@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
+import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
 import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
@@ -62,16 +63,12 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFA, NFAState, 
     private DFAStateNodeBuilder source;
     private DFAStateNodeBuilder target;
 
-    public DFAStateTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFA, NFAState> targetStateSet, CodePointSet matcherBuilder) {
-        super(transitions, targetStateSet, matcherBuilder);
+    public DFAStateTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFA, NFAState> targetStateSet, CodePointSet matcherBuilder, long[] constraints, long[] operations) {
+        super(transitions, targetStateSet, matcherBuilder, constraints, operations);
     }
 
-    public DFAStateTransitionBuilder(TransitionSet<NFA, NFAState, NFAStateTransition> transitionSet, CodePointSet matcherBuilder) {
-        super(transitionSet, matcherBuilder);
-    }
-
-    public DFAStateTransitionBuilder createNodeSplitCopy() {
-        return new DFAStateTransitionBuilder(getTransitionSet(), getCodePointSet());
+    public DFAStateTransitionBuilder(TransitionSet<NFA, NFAState, NFAStateTransition> transitionSet, CodePointSet matcherBuilder, long[] constraints, long[] operations) {
+        super(transitionSet, matcherBuilder, constraints, operations);
     }
 
     @Override
@@ -101,6 +98,10 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFA, NFAState, 
         this.target = target;
     }
 
+    public short getBqSuccessor() {
+        return hasBqTransition() ? getBqTransition().getId() : (short) getTarget().getId();
+    }
+
     @TruffleBoundary
     @Override
     public String toString() {
@@ -121,6 +122,7 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFA, NFAState, 
                         Json.prop("source", source.getId()),
                         Json.prop("target", target.getId()),
                         Json.prop("matcherBuilder", getCodePointSet().toString()),
-                        Json.prop("nfaTransitions", nfaTransitions));
+                        Json.prop("nfaTransitions", nfaTransitions),
+                        Json.prop("guards", TransitionConstraint.combineToJson(getConstraints(), getOperations())));
     }
 }

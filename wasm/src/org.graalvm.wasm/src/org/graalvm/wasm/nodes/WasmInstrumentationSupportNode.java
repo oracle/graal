@@ -58,7 +58,7 @@ import com.oracle.truffle.api.source.Source;
  * Represents the statements in the source file of a wasm binary. Provides some helper methods to
  * interact with the instrumentation system.
  */
-public final class WasmInstrumentationSupportNode extends Node {
+public final class WasmInstrumentationSupportNode extends Node implements WasmNotifyFunction {
     @Children private final WasmBaseStatementNode[] statementNodes;
 
     private int sourceLocation;
@@ -78,6 +78,7 @@ public final class WasmInstrumentationSupportNode extends Node {
         }
     }
 
+    @Override
     public void notifyLine(VirtualFrame frame, int currentLineIndex, int nextLineIndex, int currentSourceLocation) {
         CompilerAsserts.partialEvaluationConstant(currentLineIndex);
         CompilerAsserts.partialEvaluationConstant(nextLineIndex);

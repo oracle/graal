@@ -499,6 +499,9 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         annotatePatchingImmediate(1, 4);
         emitByte(0xE9);
         emitInt(0);
+        if (isRecordingCodeSnippet()) {
+            abortRecordingCodeSnippet();
+        }
     }
 
     @SuppressWarnings("unused")
@@ -625,6 +628,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public final int testlAndJcc(Register src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
         return applyMIOpAndJcc(AMD64MIOp.TEST, OperandSize.DWORD, src, imm32, cc, branchTarget, isShortJmp, false, null);
+    }
+
+    public final int testqAndJcc(Register src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        return applyMIOpAndJcc(AMD64MIOp.TEST, OperandSize.QWORD, src, imm32, cc, branchTarget, isShortJmp, false, null);
     }
 
     public final int testAndJcc(OperandSize size, Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {

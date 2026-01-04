@@ -55,10 +55,11 @@ import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
 import com.oracle.truffle.nfi.backend.spi.NFIState;
 
-@TruffleLanguage.Registration(id = "internal/nfi-panama", name = "nfi-panama", version = "0.1", characterMimeTypes = PanamaNFILanguage.MIME_TYPE, internal = true, services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED)
+@TruffleLanguage.Registration(id = PanamaNFILanguage.ID, name = "nfi-panama", version = "0.1", characterMimeTypes = PanamaNFILanguage.MIME_TYPE, internal = true, services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED)
 public class PanamaNFILanguage extends TruffleLanguage<AbstractPanamaNFIContext> {
 
     public static final String MIME_TYPE = "trufflenfi/panama";
+    static final String ID = "internal/nfi-panama";
 
     @CompilationFinal private NFIBackend backend;
 

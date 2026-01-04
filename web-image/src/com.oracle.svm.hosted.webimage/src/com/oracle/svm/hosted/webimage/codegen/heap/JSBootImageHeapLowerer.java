@@ -53,6 +53,9 @@ import com.oracle.svm.hosted.webimage.logging.LoggerContext;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.util.metrics.BootHeapMetricsCollector;
 import com.oracle.svm.hosted.webimage.util.metrics.CodeSizeCollector;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
+import com.oracle.svm.webimage.hightiercodegen.IEmitter;
 import com.oracle.svm.webimage.object.ConstantIdentityMapping;
 import com.oracle.svm.webimage.object.ConstantIdentityMapping.IdentityNode;
 import com.oracle.svm.webimage.object.ObjectInspector.ArrayType;
@@ -62,9 +65,6 @@ import com.oracle.svm.webimage.object.ObjectInspector.ObjectDefinition;
 import com.oracle.svm.webimage.object.ObjectInspector.ObjectType;
 import com.oracle.svm.webimage.object.ObjectInspector.ValueType;
 
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
-import jdk.graal.compiler.hightiercodegen.Emitter;
-import jdk.graal.compiler.hightiercodegen.IEmitter;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -279,7 +279,7 @@ public class JSBootImageHeapLowerer {
                 JVMCIError.shouldNotReachHere("All value types should have already been resolved");
             }
 
-            int hashCode = providers.getIdentityHashCodeProvider().identityHashCode(node.getDefinition().getConstant());
+            int hashCode = providers.getConstantReflection().identityHashCode(node.getDefinition().getConstant());
 
             if (def instanceof ObjectType) {
                 try (CodeSizeCollector collector = CodeSizeCollector.trackObjectSize(jsLTools::getCodeSize)) {

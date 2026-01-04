@@ -31,5 +31,5 @@ public interface ImageHeap {
 
     ImageHeapObject addFillerObject(int size);
 
-    int countAndVerifyDynamicHubs();
+    int countPatchAndVerifyDynamicHubs();
 }

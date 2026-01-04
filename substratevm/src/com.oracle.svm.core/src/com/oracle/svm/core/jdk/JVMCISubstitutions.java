@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,7 +70,7 @@ final class Target_jdk_vm_ci_services_Services {
 @TargetClass(value = AMD64.class)
 final class Target_jdk_vm_ci_amd64_AMD64 {
     @Alias AMD64Kind largestKind;
-
+    @Alias AMD64Kind largestMaskKind;
 }
 
 /** Dummy class to have a class with the file's name. */
@@ -79,5 +79,11 @@ public final class JVMCISubstitutions {
     public static void updateLargestStorableKind(AMD64 architecture, AMD64Kind largestStorableKind) {
         Target_jdk_vm_ci_amd64_AMD64 arch = SubstrateUtil.cast(architecture, Target_jdk_vm_ci_amd64_AMD64.class);
         arch.largestKind = largestStorableKind;
+    }
+
+    @Platforms(Platform.AMD64.class)
+    public static void updateLargestStorableMaskKind(AMD64 architecture, AMD64Kind largestStorableMaskKind) {
+        Target_jdk_vm_ci_amd64_AMD64 arch = SubstrateUtil.cast(architecture, Target_jdk_vm_ci_amd64_AMD64.class);
+        arch.largestMaskKind = largestStorableMaskKind;
     }
 }

@@ -59,7 +59,6 @@ public class JfrAllocationEvents {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void emit(long startTicks, DynamicHub hub, UnsignedWord allocationSize, UnsignedWord tlabSize, boolean allocatedOutsideTlab) {
         if (HasJfrSupport.get()) {
-
             if (allocatedOutsideTlab) {
                 emitObjectAllocationOutsideTLAB(startTicks, hub, allocationSize);
             } else if (tlabSize.notEqual(0)) {

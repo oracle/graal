@@ -42,27 +42,27 @@ import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.webimage.Labeler;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.WebImageTypeControl;
 import com.oracle.svm.hosted.webimage.codegen.irwalk.WebImageJSIRWalker;
 import com.oracle.svm.hosted.webimage.codegen.long64.Long64Lowerer;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.ReconstructionData;
+import com.oracle.svm.hosted.webimage.codegen.reconstruction.ScheduleWithReconstructionResult;
 import com.oracle.svm.hosted.webimage.codegen.type.ClassMetadataLowerer;
 import com.oracle.svm.hosted.webimage.logging.LoggerContext;
 import com.oracle.svm.hosted.webimage.metrickeys.ImageBreakdownMetricKeys;
 import com.oracle.svm.hosted.webimage.metrickeys.MethodMetricKeys;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
-import com.oracle.svm.hosted.webimage.util.AnnotationUtil;
 import com.oracle.svm.hosted.webimage.util.metrics.CodeSizeCollector;
 import com.oracle.svm.hosted.webimage.util.metrics.MethodMetricsCollector;
-import com.oracle.svm.webimage.Labeler;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
 
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.hightiercodegen.CodeBuffer;
-import jdk.graal.compiler.hightiercodegen.reconstruction.ReconstructionData;
-import jdk.graal.compiler.hightiercodegen.reconstruction.ScheduleWithReconstructionResult;
 import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -301,14 +301,15 @@ public class ClassLowerer {
      * Emits a static method on the given type for initializing JS resource, if any are present.
      */
     private static void lowerJSResources(HostedType type, JSCodeGenTool loweringTool) {
-        var requiredJSResources = AnnotationUtil.getDeclaredAnnotationsByType(type, JSResource.class, JSResource.Group.class, JSResource.Group::value);
+        var requiredJSResources = AnnotationUtil.getAnnotationsByType(type, JSResource.class, JSResource.Group.class, JSResource.Group::value);
 
         /*
          * JavaScriptResource is annotated as @Repeatable(JavaScriptResource.Group.class).
          * getDeclaredAnnotationsByType() must detect @Repeatable and thus also look for
          * JavaScriptResource.Group.
          */
-        assert requiredJSResources.size() != 0 || !type.isAnnotationPresent(JSResource.Group.class) : "Repeated annotation not detected by getDeclaredAnnotationsByType";
+        assert !requiredJSResources.isEmpty() ||
+                        !AnnotationUtil.isAnnotationPresent(type, JSResource.Group.class) : "Repeated annotation not detected by getDeclaredAnnotationsByType";
 
         List<String> resourceNames = new ArrayList<>(requiredJSResources.size());
 

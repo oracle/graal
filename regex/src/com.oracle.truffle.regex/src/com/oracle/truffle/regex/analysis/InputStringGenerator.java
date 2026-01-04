@@ -67,7 +67,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.util.TruffleNull;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
@@ -77,7 +77,8 @@ public final class InputStringGenerator {
 
         private static final String PROP_INPUT = "input";
         private static final String PROP_FROM_INDEX = "fromIndex";
-        private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_INPUT, PROP_FROM_INDEX);
+        private static final String PROP_MATCH_START = "matchStart";
+        private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_INPUT, PROP_FROM_INDEX, PROP_MATCH_START);
 
         private final TruffleString input;
         private final int fromIndex;
@@ -111,6 +112,7 @@ public final class InputStringGenerator {
             switch (symbol) {
                 case PROP_INPUT:
                 case PROP_FROM_INDEX:
+                case PROP_MATCH_START:
                     return true;
                 default:
                     return false;
@@ -124,6 +126,8 @@ public final class InputStringGenerator {
                     return input;
                 case PROP_FROM_INDEX:
                     return fromIndex;
+                case PROP_MATCH_START:
+                    return matchStart;
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw UnknownIdentifierException.create(symbol);
@@ -196,7 +200,7 @@ public final class InputStringGenerator {
             return forward ? index + nPrepended < elements.size() : index + nPrepended > 0;
         }
 
-        private InputString toTString(Random rng, Encodings.Encoding encoding) {
+        private InputString toTString(Random rng, Encoding encoding) {
             CodePointSet anyChar = ALLOWED_CHARACTERS.createIntersectionSingleRange(encoding.getFullSet());
             int prefixLength = (int) (clampedGauss(rng) * 20);
             int suffixLength = (int) (clampedGauss(rng) * 20);
@@ -226,7 +230,7 @@ public final class InputStringGenerator {
             int iBeforeMatch = matchStart - (int) (clampedGauss(rng) * matchStart);
             int iAfterMatch = (int) (clampedGauss(rng, 0.05) * Math.min(10, Math.max(0, elements.size() - nPrepended)));
             int fromIndex = iBeforeMatch + iAfterMatch;
-            if (encoding == Encodings.UTF_16_RAW) {
+            if (encoding == Encoding.UTF_16_RAW) {
                 char[] chars = new char[codepoints.length];
                 for (int i = 0; i < codepoints.length; i++) {
                     chars[i] = (char) codepoints[i];
@@ -235,19 +239,26 @@ public final class InputStringGenerator {
                 return new InputString(string, fromIndex, matchStart);
             }
             TruffleString string = TruffleString.fromIntArrayUTF32Uncached(codepoints).switchEncodingUncached(encoding.getTStringEncoding());
-            return new InputString(string, translateIndex(string, encoding, fromIndex), translateIndex(string, encoding, matchStart));
+            return new InputString(string, translateIndex(string, encoding, codepoints, fromIndex), translateIndex(string, encoding, codepoints, matchStart));
         }
 
-        private static int translateIndex(TruffleString string, Encodings.Encoding encoding, int index) {
+        private static int translateIndex(TruffleString string, Encoding encoding, int[] codepoints, int index) {
             TruffleString.Encoding tsEncoding = encoding.getTStringEncoding();
-            if (encoding == Encodings.UTF_32) {
+            if (encoding.isUTF32()) {
                 return index;
-            } else {
-                int indexEnc = index == string.codePointLengthUncached(tsEncoding) ? string.byteLength(tsEncoding) : string.codePointIndexToByteIndexUncached(0, index, tsEncoding);
-                if (encoding == Encodings.UTF_16) {
-                    return indexEnc >> 1;
+            } else if (encoding.isUTF16()) {
+                int cpIndex = index;
+                for (int i = 1; i < index; i++) {
+                    int prevCp = codepoints[i - 1];
+                    int cp = codepoints[i];
+                    if (cp >= Character.MIN_LOW_SURROGATE && cp <= Character.MAX_LOW_SURROGATE && prevCp >= Character.MIN_HIGH_SURROGATE && prevCp <= Character.MAX_HIGH_SURROGATE) {
+                        cpIndex--;
+                    }
                 }
-                return indexEnc;
+                int indexEnc = cpIndex == string.codePointLengthUncached(tsEncoding) ? string.byteLength(tsEncoding) : string.codePointIndexToByteIndexUncached(0, cpIndex, tsEncoding);
+                return indexEnc >> 1;
+            } else {
+                return index == string.codePointLengthUncached(tsEncoding) ? string.byteLength(tsEncoding) : string.codePointIndexToByteIndexUncached(0, index, tsEncoding);
             }
         }
 

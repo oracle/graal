@@ -42,44 +42,10 @@ package org.graalvm.wasm;
 
 /**
  * Information about a custom section.
+ *
+ * @param name Name of the custom section.
+ * @param offset Location in the custom sections array.
+ * @param length Length of the custom section.
  */
-public class WasmCustomSection {
-    /**
-     * Name of the custom section.
-     */
-    private final String name;
-
-    /**
-     * Location in the custom sections array.
-     */
-    private final int offset;
-
-    /**
-     * Length of the custom section.
-     */
-    private final int length;
-
-    public WasmCustomSection(String name, int offset, int length) {
-        this.name = name;
-        this.offset = offset;
-        this.length = length;
-    }
-
-    /**
-     * Returns the name of the custom section.
-     * 
-     * @return name of the custom section.
-     */
-    public String name() {
-        return name;
-    }
-
-    public int offset() {
-        return offset;
-    }
-
-    public int length() {
-        return length;
-    }
-
+public record WasmCustomSection(String name, int offset, int length) {
 }

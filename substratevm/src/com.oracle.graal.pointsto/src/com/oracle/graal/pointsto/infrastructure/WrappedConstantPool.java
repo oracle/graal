@@ -30,7 +30,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
-import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.GraalError;
@@ -185,6 +187,11 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
         return null;
     }
 
+    @Override
+    public List<BootstrapMethodInvocation> lookupBootstrapMethodInvocations(boolean invokeDynamic) {
+        return wrapped.lookupBootstrapMethodInvocations(invokeDynamic).stream().map(WrappedBootstrapMethodInvocation::new).collect(Collectors.toUnmodifiableList());
+    }
+
     public class WrappedBootstrapMethodInvocation implements BootstrapMethodInvocation {
 
         private final BootstrapMethodInvocation wrapped;
@@ -217,5 +224,19 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
         public List<JavaConstant> getStaticArguments() {
             return wrapped.getStaticArguments().stream().map(WrappedConstantPool.this::lookupConstant).collect(Collectors.toList());
         }
+
+        @Override
+        public void resolve() {
+            wrapped.resolve();
+        }
+
+        @Override
+        public JavaConstant lookup() {
+            return lookupConstant(wrapped.lookup());
+        }
+    }
+
+    public ConstantPool getWrapped() {
+        return wrapped;
     }
 }

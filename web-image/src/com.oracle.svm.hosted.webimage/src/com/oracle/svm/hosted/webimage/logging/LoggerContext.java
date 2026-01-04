@@ -157,7 +157,7 @@ public final class LoggerContext implements AutoCloseable {
         /*
          * We need to set this option to an empty string to enable usage of counters.
          */
-        optionMap.put(DebugOptions.Count, "");
+        optionMap.put(DebugOptions.Counters, "");
         return new OptionValues(optionMap);
     }
 

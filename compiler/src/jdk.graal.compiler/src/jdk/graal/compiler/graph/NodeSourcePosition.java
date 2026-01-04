@@ -34,7 +34,6 @@ import java.util.Objects;
 import jdk.graal.compiler.bytecode.BytecodeDisassembler;
 import jdk.graal.compiler.bytecode.Bytecodes;
 import jdk.graal.compiler.debug.Assertions;
-
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -219,9 +218,14 @@ public class NodeSourcePosition extends BytecodePosition implements Iterable<Nod
 
     @Override
     public String toString() {
+        return toString("");
+    }
+
+    public String toString(String indent) {
         StringBuilder sb = new StringBuilder(100);
         NodeSourcePosition pos = this;
         while (pos != null) {
+            sb.append(indent);
             format(sb, pos);
             if (pos.sourceLanguagePosition != null) {
                 sb.append(" source=" + pos.sourceLanguagePosition.toShortString());

@@ -49,7 +49,7 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.VMError;
@@ -175,7 +175,7 @@ public class WasmHeap extends Heap {
     }
 
     @Override
-    protected List<Class<?>> getAllClasses() {
+    protected List<Class<?>> getClassesInImageHeap() {
         /* Two threads might race to set classList, but they compute the same result. */
         if (classList == null) {
             ArrayList<Class<?>> list = new ArrayList<>(imageHeapInfo.dynamicHubCount);
@@ -192,16 +192,6 @@ public class WasmHeap extends Heap {
         return Word.unsigned(WasmAllocation.getObjectSize());
     }
 
-    @Override
-    public UnsignedWord getImageHeapReservedBytes() {
-        throw VMError.shouldNotReachHere("Native Memory Tracking is not supported");
-    }
-
-    @Override
-    public UnsignedWord getImageHeapCommittedBytes() {
-        throw VMError.shouldNotReachHere("Native Memory Tracking is not supported");
-    }
-
     private static final class ClassListBuilderVisitor implements MemoryWalker.ImageHeapRegionVisitor, ObjectVisitor {
         private final List<Class<?>> list;
 
@@ -211,7 +201,7 @@ public class WasmHeap extends Heap {
 
         @Override
         public <T> void visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
-            if (!access.isWritable(region) && !access.consistsOfHugeObjects(region)) {
+            if (!access.isWritable(region) && !access.usesUnalignedChunks(region)) {
                 access.visitObjects(region, this);
             }
         }
@@ -253,8 +243,13 @@ public class WasmHeap extends Heap {
     }
 
     @Override
-    public int getPreferredAddressSpaceAlignment() {
-        throw VMError.shouldNotReachHere("WasmHeap.getPreferredAddressSpaceAlignment");
+    public int getHeapBaseAlignment() {
+        return 1;
+    }
+
+    @Override
+    public int getImageHeapAlignment() {
+        return 1;
     }
 
     @Override
@@ -334,7 +329,7 @@ public class WasmHeap extends Heap {
     }
 
     @Override
-    public void optionValueChanged(RuntimeOptionKey<?> key) {
+    public void optionValueChanged(NotifyGCRuntimeOptionKey<?> key) {
         // Nothing to do
     }
 

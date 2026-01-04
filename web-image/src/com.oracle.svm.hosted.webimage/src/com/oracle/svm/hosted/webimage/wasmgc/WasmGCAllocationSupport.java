@@ -33,6 +33,7 @@ import java.lang.reflect.Array;
 
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -81,8 +82,15 @@ public class WasmGCAllocationSupport {
     private static Class<?> getCheckedComponentClass(DynamicHub componentType) {
         if (probability(EXTREMELY_FAST_PATH_PROBABILITY, componentType != null) && probability(EXTREMELY_FAST_PATH_PROBABILITY, componentType != DynamicHub.fromClass(void.class))) {
             DynamicHub arrayHub = componentType.getArrayHub();
-            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, arrayHub != null) && probability(EXTREMELY_FAST_PATH_PROBABILITY, arrayHub.isInstantiated())) {
-                return DynamicHub.toClass(componentType);
+            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, arrayHub != null)) {
+                if (probability(EXTREMELY_FAST_PATH_PROBABILITY, arrayHub.isInstantiated())) {
+                    return DynamicHub.toClass(componentType);
+                }
+            } else if (RuntimeClassLoading.isSupported()) {
+                arrayHub = getOrCreateArrayHubStub(componentType);
+                if (probability(EXTREMELY_FAST_PATH_PROBABILITY, arrayHub != null)) {
+                    return DynamicHub.toClass(componentType);
+                }
             }
         }
 
@@ -95,10 +103,15 @@ public class WasmGCAllocationSupport {
         } else if (componentType == DynamicHub.fromClass(void.class)) {
             throw new IllegalArgumentException("Cannot allocate void array.");
         } else if (componentType.getArrayHub() == null || !componentType.getArrayHub().isInstantiated()) {
-            throw MissingReflectionRegistrationUtils.errorForArray(DynamicHub.toClass(componentType), 1);
+            throw MissingReflectionRegistrationUtils.reportArrayInstantiation(DynamicHub.toClass(componentType), 1);
         } else {
             throw VMError.shouldNotReachHereUnexpectedInput(componentType); // ExcludeFromJacocoGeneratedReport
         }
+    }
+
+    private static DynamicHub getOrCreateArrayHubStub(DynamicHub componentType) {
+        assert RuntimeClassLoading.isSupported();
+        return componentType.getOrCreateArrayHub();
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)

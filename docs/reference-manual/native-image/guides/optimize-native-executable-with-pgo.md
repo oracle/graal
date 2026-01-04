@@ -49,7 +49,8 @@ Make sure you have installed a GraalVM JDK.
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-1.  Save [the following code](https://github.com/graalvm/graalvm-demos/blob/master/streams/Streams.java) to the file named _Streams.java_:
+1.  Save [the following code](https://github.com/graalvm/graalvm-demos/blob/master/native-image/optimize-with-pgo/Streams.java) to the file named _Streams.java_:
+
     ```java
     import java.util.Arrays;
     import java.util.Random;

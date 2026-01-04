@@ -43,8 +43,7 @@ import java.util.regex.Pattern;
  * Truffle VFS implementation of {@link java.nio.file.Path}.
  *
  * <p>
- * This file must be compatible with all Java versions supported by Espresso, strict Java 8
- * compatibility is required.
+ * This file must be compatible with 21+.
  */
 final class TrufflePath implements Path {
 

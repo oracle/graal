@@ -28,8 +28,7 @@ import java.nio.file.FileSystem;
  * Replaces JDK's own {@link DefaultFileSystemProvider} to link to a Truffle-based
  * {@code FileSystem}.
  * <p>
- * This file must be compatible with all Java versions supported by Espresso, strict Java 8
- * compatibility is required.
+ * This file must be compatible with 21+.
  */
 public final class DefaultFileSystemProvider {
     private static final TruffleFileSystemProvider INSTANCE = new TruffleFileSystemProvider();

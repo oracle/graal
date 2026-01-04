@@ -61,6 +61,8 @@ import com.oracle.svm.hosted.webimage.wasm.codegen.WasmIRWalker.Requirements;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmIsNonZeroNode;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmPopcntNode;
 import com.oracle.svm.hosted.webimage.wasm.snippets.WasmImportForeignCallDescriptor;
+import com.oracle.svm.webimage.hightiercodegen.NodeLowerer;
+import com.oracle.svm.webimage.hightiercodegen.variables.ResolvedVar;
 import com.oracle.svm.webimage.wasm.WasmForeignCallDescriptor;
 import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
 import com.oracle.svm.webimage.wasm.types.WasmUtil;
@@ -70,8 +72,6 @@ import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
-import jdk.graal.compiler.hightiercodegen.NodeLowerer;
-import jdk.graal.compiler.hightiercodegen.variables.ResolvedVar;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.AbstractEndNode;
@@ -129,6 +129,8 @@ import jdk.graal.compiler.nodes.calc.SignumNode;
 import jdk.graal.compiler.nodes.calc.SqrtNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.calc.UnaryNode;
+import jdk.graal.compiler.nodes.calc.UnsignedMaxNode;
+import jdk.graal.compiler.nodes.calc.UnsignedMinNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
@@ -171,10 +173,12 @@ import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
 import jdk.graal.compiler.replacements.nodes.ArrayFillNode;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.replacements.nodes.ObjectClone;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.vm.ci.code.CodeUtil;
@@ -589,9 +593,12 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
 
         ForeignCallDescriptor descriptor = n.getDescriptor();
         return switch (descriptor) {
-            case SnippetRuntime.SubstrateForeignCallDescriptor substrateDescriptor -> lowerSubstrateForeignCall(substrateDescriptor, args);
-            case WasmImportForeignCallDescriptor wasmImportForeignCallDescriptor -> lowerWasmImportForeignCall(wasmImportForeignCallDescriptor, args);
-            case WasmForeignCallDescriptor wasmForeignCallDescriptor -> lowerWasmForeignCall(wasmForeignCallDescriptor, args);
+            case SnippetRuntime.SubstrateForeignCallDescriptor substrateDescriptor ->
+                lowerSubstrateForeignCall(substrateDescriptor, args);
+            case WasmImportForeignCallDescriptor wasmImportForeignCallDescriptor ->
+                lowerWasmImportForeignCall(wasmImportForeignCallDescriptor, args);
+            case WasmForeignCallDescriptor wasmForeignCallDescriptor ->
+                lowerWasmForeignCall(wasmForeignCallDescriptor, args);
             default -> throw VMError.shouldNotReachHereUnexpectedInput(descriptor);
         };
     }
@@ -644,7 +651,7 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
 
     private Instruction lowerIsNonZero(WasmIsNonZeroNode n, Requirements reqs) {
         ValueNode value = n.getValue();
-        assert util.mapType(value.getStackKind()) == WasmPrimitiveType.i32 : value.getStackKind();
+        assert util.mapType(value.getStackKind()) == i32 : value.getStackKind();
         if (reqs.hasStrictLogic()) {
             return Binary.Op.I32Ne.create(lowerExpression(value), Const.forInt(0));
         } else {
@@ -763,7 +770,8 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
                 i32Input = switch (inputBits) {
                     case 8 -> Unary.Op.I32Extend8.create(input);
                     case 16 -> Unary.Op.I32Extend16.create(input);
-                    default -> throw GraalError.unimplemented("Sign extend from " + inputBits + "bit to " + resultBits + "bit"); // ExcludeFromJacocoGeneratedReport
+                    default ->
+                        throw GraalError.unimplemented("Sign extend from " + inputBits + "bit to " + resultBits + "bit"); // ExcludeFromJacocoGeneratedReport
                 };
             }
 
@@ -902,6 +910,8 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
                     assert type == f64 : type;
                     yield Unary.Op.F64Promote32;
                 }
+                default ->
+                    throw GraalError.unimplemented("FloatConvertNode, op: " + floatConvert.getFloatConvert()); // ExcludeFromJacocoGeneratedReport
             };
         } else if (node instanceof ReinterpretNode) {
             assert node.getStackKind().getBitCount() == node.getValue().getStackKind().getBitCount() : node.getStackKind().getBitCount() + " != " + node.getValue().getStackKind().getBitCount();
@@ -933,8 +943,16 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
 
     private Instruction lowerUnaryMathIntrinsic(UnaryMathIntrinsicNode node) {
         assert node.getStackKind() == JavaKind.Double : node.getStackKind();
+        return lowerUnaryMathIntrinsic(node.getOperation(), node.getValue());
+    }
 
-        ImportDescriptor.Function imported = switch (node.getOperation()) {
+    protected Instruction lowerUnaryMathIntrinsicGeneration(UnaryMathIntrinsicGenerationNode node) {
+        assert node.getStackKind() == JavaKind.Double : node.getStackKind();
+        return lowerUnaryMathIntrinsic(node.getOperation(), node.getValue());
+    }
+
+    private Instruction lowerUnaryMathIntrinsic(UnaryMathIntrinsicNode.UnaryOperation operation, ValueNode value) {
+        ImportDescriptor.Function imported = switch (operation) {
             case LOG -> WasmImports.F64Log;
             case LOG10 -> WasmImports.F64Log10;
             case SIN -> WasmImports.F64Sin;
@@ -942,9 +960,10 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
             case TAN -> WasmImports.F64Tan;
             case TANH -> WasmImports.F64Tanh;
             case EXP -> WasmImports.F64Exp;
+            case CBRT -> WasmImports.F64Cbrt;
         };
 
-        return new Call(masm.idFactory.forFunctionImport(imported), lowerExpression(node.getValue()));
+        return new Call(masm.idFactory.forFunctionImport(imported), lowerExpression(value));
     }
 
     protected Instruction lowerConditional(ConditionalNode n) {
@@ -971,21 +990,25 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
     }
 
     protected Instruction lowerBinary(BinaryNode node) {
-        // Special case. The floating point remainder operation doesn't exist in WASM.
+        JavaKind stackKind = node.getStackKind();
         if (node instanceof RemNode) {
-            WasmPrimitiveType type = WasmUtil.mapPrimitiveType(node.getStackKind());
+            // Special case. The floating point remainder operation doesn't exist in WASM.
+            WasmPrimitiveType type = WasmUtil.mapPrimitiveType(stackKind);
             assert type.isFloat() : type;
             ImportDescriptor.Function func = type == f32 ? WasmImports.F32Rem : WasmImports.F64Rem;
             return new Call(masm.idFactory.forFunctionImport(func), lowerExpression(node.getX()), lowerExpression(node.getY()));
         } else if (node instanceof BinaryMathIntrinsicNode binaryMathIntrinsic) {
             return lowerBinaryMathIntrinsic(binaryMathIntrinsic);
+        } else if (node instanceof MinMaxNode<?> minMaxNode && WasmUtil.mapPrimitiveType(stackKind).isInt()) {
+            // Special case. Integer min/max does not exist in Wasm
+            return lowerIntegerMinMaxNode(minMaxNode);
         }
 
         Binary.Op op = getBinaryOp(node);
         assert op != null;
         Instruction opY = lowerExpression(node.getY());
 
-        if (node instanceof ShiftNode && node.getStackKind() == JavaKind.Long) {
+        if (node instanceof ShiftNode && stackKind == JavaKind.Long) {
             /*
              * The shift amount for shift nodes is always i32 in the Graal IR, but WASM requires it
              * to match the first operand. We first have to extend the shift amount to 64 bits.
@@ -1078,12 +1101,47 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
 
     private Instruction lowerBinaryMathIntrinsic(BinaryMathIntrinsicNode node) {
         assert node.getStackKind() == JavaKind.Double : node.getStackKind();
+        return lowerBinaryMathIntrinsic(node.getOperation(), node.getX(), node.getY());
+    }
 
-        ImportDescriptor.Function imported = switch (node.getOperation()) {
+    protected Instruction lowerBinaryMathIntrinsicGeneration(BinaryMathIntrinsicGenerationNode node) {
+        assert node.getStackKind() == JavaKind.Double : node.getStackKind();
+        return lowerBinaryMathIntrinsic(node.getOperation(), node.getX(), node.getY());
+    }
+
+    private Instruction lowerBinaryMathIntrinsic(BinaryMathIntrinsicNode.BinaryOperation operation, ValueNode x, ValueNode y) {
+        ImportDescriptor.Function imported = switch (operation) {
             case POW -> WasmImports.F64Pow;
         };
 
-        return new Call(masm.idFactory.forFunctionImport(imported), lowerExpression(node.getX()), lowerExpression(node.getY()));
+        return new Call(masm.idFactory.forFunctionImport(imported), lowerExpression(x), lowerExpression(y));
+    }
+
+    /**
+     * Min/Max nodes for integer types don't have a corresponding Wasm instruction and are generated
+     * using an explicit compare and the {@code select} instruction.
+     */
+    private Instruction lowerIntegerMinMaxNode(MinMaxNode<?> minMaxNode) {
+        WasmPrimitiveType integerType = WasmUtil.mapPrimitiveType(minMaxNode.getStackKind());
+        assert integerType.isInt() : integerType;
+
+        boolean isI32 = integerType == i32;
+        Binary.Op compareOp = switch (minMaxNode) {
+            case UnsignedMinNode ignored -> isI32 ? Binary.Op.I32LtU : Binary.Op.I64LtU;
+            case UnsignedMaxNode ignored -> isI32 ? Binary.Op.I32GtU : Binary.Op.I64GtU;
+            case MinNode ignored -> isI32 ? Binary.Op.I32LtS : Binary.Op.I64LtS;
+            case MaxNode ignored -> isI32 ? Binary.Op.I32GtS : Binary.Op.I64GtS;
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(minMaxNode);
+        };
+
+        Instruction opX = lowerExpression(minMaxNode.getX());
+        Instruction opY = lowerExpression(minMaxNode.getY());
+        // The operands must not be inlined and always be represented as variables because we use
+        // them twice below.
+        assert opX instanceof Instruction.LocalGet : opX;
+        assert opY instanceof Instruction.LocalGet : opY;
+
+        return new Instruction.Select(opX, opY, compareOp.create(opX, opY), integerType);
     }
 
     protected Instruction lowerCompareNode(CompareNode compare) {

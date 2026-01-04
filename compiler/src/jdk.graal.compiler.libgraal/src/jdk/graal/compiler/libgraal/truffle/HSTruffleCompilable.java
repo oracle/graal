@@ -57,13 +57,13 @@ import org.graalvm.jniutils.JNICalls.JNIMethod;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -73,6 +73,7 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
     private static volatile JNIMethod prepareForCompilationNewMethod;
     private static volatile JNIMethod getSuccessfulCompilationCountMethod;
     private static volatile JNIMethod onCompilationSuccessMethod;
+    private static volatile JNIMethod canBeInlinedMethod;
 
     private final TruffleFromLibGraalCalls calls;
     /**
@@ -173,6 +174,31 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         return calls.getJNICalls().callStaticInt(env, calls.getPeer(), method, args);
+    }
+
+    @Override
+    public boolean canBeInlined() {
+        JNIEnv env = JNIMethodScope.env();
+        JNIMethod method = findCanBeInlinedMethod(env);
+        if (method != null) {
+            return callCanBeInlinedMethod(method, env, getHandle());
+        }
+        return true;
+    }
+
+    private JNIMethod findCanBeInlinedMethod(JNIEnv env) {
+        JNIMethod res = canBeInlinedMethod;
+        if (res == null) {
+            res = calls.findJNIMethod(env, "canBeInlined", boolean.class, Object.class);
+            canBeInlinedMethod = res;
+        }
+        return res.getJMethodID().isNonNull() ? res : null;
+    }
+
+    private boolean callCanBeInlinedMethod(JNIMethod method, JNIEnv env, JObject p0) {
+        JNI.JValue args = StackValue.get(1, JNI.JValue.class);
+        args.addressOf(0).setJObject(p0);
+        return calls.getJNICalls().callStaticBoolean(env, calls.getPeer(), method, args);
     }
 
     @TruffleFromLibGraal(IsTrivial)
@@ -285,7 +311,7 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
     @TruffleFromLibGraal(IsSameOrSplit)
     @Override
     public boolean isSameOrSplit(TruffleCompilable ast) {
-        JObject astHandle = ast == null ? WordFactory.nullPointer() : ((HSTruffleCompilable) ast).getHandle();
+        JObject astHandle = ast == null ? Word.nullPointer() : ((HSTruffleCompilable) ast).getHandle();
         return HSTruffleCompilableGen.callIsSameOrSplit(calls, env(), getHandle(), astHandle);
     }
 

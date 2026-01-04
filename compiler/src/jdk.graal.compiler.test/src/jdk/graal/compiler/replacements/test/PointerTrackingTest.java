@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,23 +24,33 @@
  */
 package jdk.graal.compiler.replacements.test;
 
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.word.WordCastNode;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class PointerTrackingTest extends ReplacementsTest implements Snippets {
+    @Before
+    public void before() {
+        HotSpotGraalRuntime runtime = (HotSpotGraalRuntime) Graal.getRequiredCapability(RuntimeProvider.class);
+        Assume.assumeTrue("doesn't aggressively move objects", runtime.getGarbageCollector() != HotSpotGraalRuntime.HotSpotGC.Shenandoah);
+    }
 
     @Test
     public void testTracking() {
@@ -93,10 +103,9 @@ public class PointerTrackingTest extends ReplacementsTest implements Snippets {
     }
 
     @Test(expected = GraalError.class)
-    @SuppressWarnings("try")
     public void testVerification() {
         DebugContext debug = getDebugContext();
-        try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PointerTrackingTest")) {
+        try (DebugCloseable _ = debug.disableIntercept(); DebugContext.Scope _ = debug.scope("PointerTrackingTest")) {
             compile(getResolvedJavaMethod("verificationSnippet"), null);
         }
     }

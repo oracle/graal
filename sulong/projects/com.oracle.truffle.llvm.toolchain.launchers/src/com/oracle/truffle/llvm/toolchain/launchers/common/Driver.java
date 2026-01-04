@@ -43,16 +43,23 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public class Driver {
 
     protected final String exe;
     protected final boolean isBundledTool;
+    private final String toolName;
 
-    public Driver(String exe, boolean inLLVMDir) {
+    public Driver(String toolName, String exe, boolean inLLVMDir) {
+        this.toolName = String.format("%s:%s", getClass().getSimpleName(), toolName);
         this.exe = inLLVMDir ? getLLVMExecutable(exe).toString() : exe;
         this.isBundledTool = inLLVMDir;
+    }
+
+    public Driver(String exe, boolean inLLVMDir) {
+        this(Objects.toString(Paths.get(exe).getFileName(), ""), exe, inLLVMDir);
     }
 
     public Driver(String exe) {
@@ -174,7 +181,7 @@ public class Driver {
         } catch (IOException e) {
             System.exit(1);
         } catch (Exception e) {
-            System.err.println("Exception: " + e);
+            log("Exception: %s", e);
             System.exit(1);
         }
     }
@@ -210,7 +217,7 @@ public class Driver {
             // set exit code
             int exitCode = p.exitValue();
             if (verbose) {
-                System.err.println("exit code: " + exitCode);
+                log("exit code: %s", exitCode);
             }
             return exitCode;
         } catch (IOException ioe) {
@@ -243,10 +250,10 @@ public class Driver {
         return pb.inheritIO();
     }
 
-    public static void printMissingToolMessage(String llvmRoot) {
-        System.err.println("Tool execution failed. Are you sure the toolchain is available at " + llvmRoot);
-        System.err.println();
-        System.err.println("More infos: https://www.graalvm.org/docs/reference-manual/languages/llvm/");
+    public void printMissingToolMessage(String llvmRoot) {
+        log("Tool execution failed. Are you sure the toolchain is available at %s", llvmRoot);
+        log();
+        log("More infos: https://www.graalvm.org/docs/reference-manual/languages/llvm/");
     }
 
     private void printInfos(boolean verbose, boolean help, boolean earlyExit, ArrayList<String> toolArgs) {
@@ -261,9 +268,9 @@ public class Driver {
             System.out.println("GraalVM version: " + getVersion());
         }
         if (verbose) {
-            System.err.println("GraalVM wrapper script for " + getTool());
-            System.err.println("GraalVM version: " + getVersion());
-            System.err.println("running: " + String.join(" ", toolArgs));
+            log("GraalVM wrapper script for %s", getTool());
+            log("GraalVM version: %s", getVersion());
+            log("running: %s", String.join(" ", toolArgs));
         }
         if (help) {
             if (!earlyExit) {
@@ -280,5 +287,17 @@ public class Driver {
 
     public static Path getLLVMExecutable(String tool) {
         return getLLVMBinDir().resolve(tool);
+    }
+
+    public final void log() {
+        System.err.printf("[%s]\n", toolName);
+    }
+
+    public final void log(String msg) {
+        System.err.printf("[%s] %s\n", toolName, msg);
+    }
+
+    public final void log(String format, Object... args) {
+        log(String.format(format, args));
     }
 }

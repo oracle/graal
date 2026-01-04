@@ -25,18 +25,20 @@
 package com.oracle.svm.hosted;
 
 import java.lang.annotation.Annotation;
+import java.util.function.Function;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public interface SharedArenaSupport {
 
@@ -54,12 +56,14 @@ public interface SharedArenaSupport {
         return ImageSingletons.lookup(SharedArenaSupport.class);
     }
 
-    BasePhase<MidTierContext> createOptimizeSharedArenaAccessPhase();
+    BasePhase<MidTierContext> createOptimizeSharedArenaAccessPhase(boolean hosted);
 
     void registerSafeArenaAccessorClass(AnalysisMetaAccess metaAccess, Class<?> klass);
 
+    void registerSafeArenaAccessorsForRuntimeCompilation(Function<ResolvedJavaMethod, ResolvedJavaMethod> createMethod, Function<ResolvedJavaType, ResolvedJavaType> createType);
+
     static boolean isScopedMethod(ResolvedJavaMethod method) {
         ResolvedJavaMethod originalMethod = OriginalMethodProvider.getOriginalMethod(method);
-        return originalMethod != null && AnnotationAccess.isAnnotationPresent(originalMethod, SCOPED_ANNOTATION);
+        return originalMethod != null && AnnotationUtil.isAnnotationPresent(originalMethod, SCOPED_ANNOTATION);
     }
 }

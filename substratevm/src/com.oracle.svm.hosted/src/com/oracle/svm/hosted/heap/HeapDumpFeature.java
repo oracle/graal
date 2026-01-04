@@ -28,9 +28,10 @@ import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 
-import com.oracle.svm.core.encoder.SymbolEncoder;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -38,7 +39,9 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.HeapDumpSupport;
 
 import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.dump.HProfType;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata;
@@ -47,9 +50,22 @@ import com.oracle.svm.core.heap.dump.HeapDumpStartupHook;
 import com.oracle.svm.core.heap.dump.HeapDumpSupportImpl;
 import com.oracle.svm.core.heap.dump.HeapDumpWriter;
 import com.oracle.svm.core.heap.dump.HeapDumping;
+import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
@@ -83,18 +99,19 @@ public class HeapDumpFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        HeapDumpMetadata metadata = new HeapDumpMetadata();
-        HeapDumpSupportImpl heapDumpSupport = new HeapDumpSupportImpl(metadata);
-
-        ImageSingletons.add(HeapDumpSupport.class, heapDumpSupport);
-        ImageSingletons.add(HeapDumping.class, heapDumpSupport);
-        ImageSingletons.add(HeapDumpMetadata.class, metadata);
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            HeapDumpSupportImpl heapDumpSupport = new HeapDumpSupportImpl();
+            ImageSingletons.add(HeapDumpSupport.class, heapDumpSupport);
+            ImageSingletons.add(HeapDumping.class, heapDumpSupport);
+            ImageSingletons.add(HeapDumpMetadata.class, new HeapDumpMetadata());
+        }
+        ImageSingletons.add(HeapDumpMetadata.HeapDumpEncodedData.class, new HeapDumpMetadata.HeapDumpEncodedData());
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         /* Heap dumping on signal and on OutOfMemoryError are opt-in features. */
-        if (VMInspectionOptions.hasHeapDumpSupport()) {
+        if (VMInspectionOptions.hasHeapDumpSupport() && ImageLayerBuildingSupport.firstImageBuild()) {
             RuntimeSupport.getRuntimeSupport().addStartupHook(new HeapDumpStartupHook());
             RuntimeSupport.getRuntimeSupport().addShutdownHook(new HeapDumpShutdownHook());
         }
@@ -102,7 +119,7 @@ public class HeapDumpFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        Field dataField = ReflectionUtil.lookupField(HeapDumpMetadata.class, "data");
+        Field dataField = ReflectionUtil.lookupField(HeapDumpMetadata.HeapDumpEncodedData.class, "data");
         isDataFieldReachable = access.isReachable(dataField);
     }
 
@@ -111,7 +128,7 @@ public class HeapDumpFeature implements InternalFeature {
         if (isDataFieldReachable) {
             AfterCompilationAccessImpl accessImpl = (AfterCompilationAccessImpl) access;
             byte[] metadata = encodeMetadata(accessImpl.getTypes());
-            HeapDumpMetadata.singleton().setData(metadata);
+            HeapDumpMetadata.HeapDumpEncodedData.setData(metadata);
             access.registerAsImmutable(metadata);
         }
     }
@@ -121,17 +138,14 @@ public class HeapDumpFeature implements InternalFeature {
      * {@link HeapDumpMetadata} for more details).
      */
     private static byte[] encodeMetadata(Collection<? extends SharedType> types) {
-        int maxTypeId = types.stream().mapToInt(t -> t.getHub().getTypeID()).max().orElse(0);
-        assert maxTypeId > 0;
-
         UnsafeArrayTypeWriter output = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
-        encodeMetadata(output, types, maxTypeId);
+        encodeMetadata(output, types);
 
         int length = TypeConversion.asS4(output.getBytesWritten());
         return output.toArray(new byte[length]);
     }
 
-    private static void encodeMetadata(UnsafeArrayTypeWriter output, Collection<? extends SharedType> types, int maxTypeId) {
+    private static void encodeMetadata(UnsafeArrayTypeWriter output, Collection<? extends SharedType> types) {
         /* Write header. */
         long totalFieldCountOffset = output.getBytesWritten();
         output.putS4(0); // total field count (patched later on)
@@ -140,15 +154,33 @@ public class HeapDumpFeature implements InternalFeature {
         long fieldNameCountOffset = output.getBytesWritten();
         output.putS4(0); // field name count (patched later on)
 
-        output.putUV(maxTypeId);
+        EconomicMap<String, Integer> fieldNames = EconomicMap.create();
+        int priorFieldNamesSize = 0;
+        int prevLayersMaxTypeId = -1;
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            LayeredHeapDumpEncodedTypesTracker layeredTracking = ImageSingletons.lookup(LayeredHeapDumpEncodedTypesTracker.class);
+            prevLayersMaxTypeId = DynamicImageLayerInfo.singleton().getPreviousMaxTypeId();
+            /*
+             * We only need to encode newly added field names within this layer's metadata. So, we
+             * pre-populate the map with all the field names of previous layers.
+             */
+            for (String fieldName : layeredTracking.getPriorFieldNames()) {
+                fieldNames.put(fieldName, priorFieldNamesSize);
+                priorFieldNamesSize++;
+            }
+        }
 
         /* Write the class and field information. */
         int totalFieldCount = 0;
         int classCount = 0;
         SymbolEncoder symbolEncoder = SymbolEncoder.singleton();
-        EconomicMap<String, Integer> fieldNames = EconomicMap.create();
         for (SharedType type : types) {
             if (type.isInstanceClass()) {
+                int typeId = type.getHub().getTypeID();
+                if (typeId <= prevLayersMaxTypeId) {
+                    /* This type's information has been installed in a prior layer. */
+                    continue;
+                }
                 ArrayList<SharedField> instanceFields = collectFields(type.getInstanceFields(false));
                 ArrayList<SharedField> staticFields = collectFields(type.getStaticFields());
                 if (instanceFields.isEmpty() && staticFields.isEmpty()) {
@@ -158,7 +190,7 @@ public class HeapDumpFeature implements InternalFeature {
                 classCount++;
                 totalFieldCount += instanceFields.size() + staticFields.size();
 
-                output.putUV(type.getHub().getTypeID());
+                output.putUV(typeId);
                 output.putUV(instanceFields.size());
                 output.putUV(staticFields.size());
 
@@ -177,19 +209,29 @@ public class HeapDumpFeature implements InternalFeature {
         /* Patch the header. */
         output.patchS4(totalFieldCount, totalFieldCountOffset);
         output.patchS4(classCount, classCountOffset);
-        output.patchS4(fieldNames.size(), fieldNameCountOffset);
+        output.patchS4(fieldNames.size() - priorFieldNamesSize, fieldNameCountOffset);
 
-        /* Write the field names. */
+        /* Write the newly added field names. */
+        boolean recordFieldNames = !ImageLayerBuildingSupport.lastImageBuild();
+        List<String> encodedFieldNames = recordFieldNames ? new ArrayList<>() : null;
         int index = 0;
         MapCursor<String, Integer> cursor = fieldNames.getEntries();
         while (cursor.advance()) {
             assert cursor.getValue() == index;
-            byte[] utf8 = cursor.getKey().getBytes(StandardCharsets.UTF_8);
-            output.putUV(utf8.length);
-            for (byte b : utf8) {
-                output.putS1(b);
+            if (index >= priorFieldNamesSize) {
+                byte[] utf8 = cursor.getKey().getBytes(StandardCharsets.UTF_8);
+                output.putUV(utf8.length);
+                for (byte b : utf8) {
+                    output.putS1(b);
+                }
+            }
+            if (recordFieldNames) {
+                encodedFieldNames.add(cursor.getKey());
             }
             index++;
+        }
+        if (recordFieldNames) {
+            ImageSingletons.lookup(LayeredHeapDumpEncodedTypesTracker.class).recordEncodedFieldNames(encodedFieldNames);
         }
     }
 
@@ -242,5 +284,55 @@ public class HeapDumpFeature implements InternalFeature {
             case Long -> HProfType.LONG;
             default -> throw VMError.shouldNotReachHere("Unexpected storage kind.");
         };
+    }
+}
+
+@AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredHeapDumpEncodedTypesTracker.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+class LayeredHeapDumpEncodedTypesTracker {
+    private List<String> encodedFieldNames;
+    private final List<String> priorFieldNames;
+
+    LayeredHeapDumpEncodedTypesTracker() {
+        this(List.of());
+    }
+
+    LayeredHeapDumpEncodedTypesTracker(List<String> priorFieldNames) {
+        this.priorFieldNames = priorFieldNames;
+    }
+
+    void recordEncodedFieldNames(List<String> nameList) {
+        this.encodedFieldNames = nameList;
+    }
+
+    public List<String> getPriorFieldNames() {
+        return priorFieldNames;
+    }
+
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredHeapDumpEncodedTypesTracker>() {
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredHeapDumpEncodedTypesTracker singleton) {
+                    writer.writeStringList("encodedFieldNames", singleton.encodedFieldNames);
+                    return LayeredPersistFlags.CREATE;
+                }
+
+                @Override
+                public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
+                    return SingletonInstantiator.class;
+                }
+            });
+        }
+    }
+
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredHeapDumpEncodedTypesTracker> {
+        @Override
+        public LayeredHeapDumpEncodedTypesTracker createFromLoader(ImageSingletonLoader loader) {
+            List<String> encodedFieldNames = Collections.unmodifiableList(loader.readStringList("encodedFieldNames"));
+            return new LayeredHeapDumpEncodedTypesTracker(encodedFieldNames);
+        }
     }
 }

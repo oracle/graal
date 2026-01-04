@@ -47,7 +47,7 @@ public class WebImageWasmLMCompileQueue extends WebImageCompileQueue {
 
         suites.getLowTier().replacePlaceholder(AddressLoweringPhase.class, backend.newAddressLoweringPhase(backend.getCodeCache()));
 
-        featureHandler.forEachGraalFeature(feature -> feature.registerGraalPhases(backend.getProviders(), suites, true));
+        featureHandler.forEachGraalFeature(feature -> feature.registerGraalPhases(backend.getProviders(), suites, true, false));
         return suites;
     }
 }

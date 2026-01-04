@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# Runs SIMD benchmarks from the wat suite.
+
+set -e
+
+RESULTS_FILE_PATH=$1
+VM=$2
+VM_CONFIG=$3
+UPLOAD_CMD=$4
+
+for benchmark in vector-double-mul vector-double-nearest vector-double-round vector-int-add vector-int-mix vector-int-mul vector-narrow vector-q15mulr vector-trunc-sat
+do
+  mx --dy /compiler --kill-with-sigquit benchmark \
+    "--machine-name=${MACHINE_NAME}" \
+    "--results-file=${RESULTS_FILE_PATH}" \
+    wasm:WASM_BENCHMARKCASES -- \
+    --jvm ${VM} --jvm-config ${VM_CONFIG} \
+    --add-modules=jdk.incubator.vector \
+    -Dwasmbench.benchmarkName=$benchmark -- \
+    WatBenchmarkSuite
+
+  ${UPLOAD_CMD} "${RESULTS_FILE_PATH}"
+done

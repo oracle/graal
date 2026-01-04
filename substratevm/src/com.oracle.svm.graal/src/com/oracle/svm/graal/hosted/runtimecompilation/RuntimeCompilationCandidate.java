@@ -32,7 +32,7 @@ public final class RuntimeCompilationCandidate {
     AnalysisMethod implementationMethod;
     AnalysisMethod targetMethod;
 
-    RuntimeCompilationCandidate(AnalysisMethod implementationMethod, AnalysisMethod targetMethod) {
+    public RuntimeCompilationCandidate(AnalysisMethod implementationMethod, AnalysisMethod targetMethod) {
         this.implementationMethod = implementationMethod;
         this.targetMethod = targetMethod;
     }

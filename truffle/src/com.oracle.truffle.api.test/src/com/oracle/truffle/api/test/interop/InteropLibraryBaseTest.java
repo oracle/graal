@@ -167,6 +167,7 @@ public abstract class InteropLibraryBaseTest extends AbstractParametrizedLibrary
         assertUnsupported(() -> lib.getSourceLocation(value));
     }
 
+    @SuppressWarnings("deprecation")
     protected final void assertNoLanguage(Object value) {
         InteropLibrary lib = createLibrary(InteropLibrary.class, value);
         assertFalse(lib.hasLanguage(value));

@@ -28,8 +28,8 @@ import static jdk.graal.compiler.serviceprovider.GraalServices.getSavedProperty;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.graph.Node;
@@ -72,6 +72,7 @@ import jdk.graal.compiler.nodes.spi.ValueProxy;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.phases.Phase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
+import jdk.graal.compiler.util.EconomicHashSet;
 
 /**
  * This phase add counters for the dynamically executed number of nodes. Incrementing the counter
@@ -129,7 +130,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
     }
 
     private static void addSectionCounters(FixedWithNextNode start, Collection<HIRBlock> sectionBlocks, Collection<CFGLoop<HIRBlock>> childLoops, ScheduleResult schedule, ControlFlowGraph cfg) {
-        HashSet<HIRBlock> blocks = new HashSet<>(sectionBlocks);
+        Set<HIRBlock> blocks = new EconomicHashSet<>(sectionBlocks);
         for (CFGLoop<HIRBlock> loop : childLoops) {
             blocks.removeAll(loop.getBlocks());
         }

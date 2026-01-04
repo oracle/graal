@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
@@ -34,6 +36,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -86,7 +89,15 @@ public abstract class ObjectHeader {
 
     public abstract Word encodeAsUnmanagedObjectHeader(DynamicHub hub);
 
-    public abstract void verifyDynamicHubOffsetInImageHeap(long offsetFromHeapBase);
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public abstract void verifyDynamicHubOffset(long offsetFromHeapBase);
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean verifyDynamicHubOffset(DynamicHub hub) {
+        long offsetFromHeapBase = Word.objectToUntrackedPointer(hub).subtract(KnownIntrinsics.heapBase()).rawValue();
+        verifyDynamicHubOffset(offsetFromHeapBase);
+        return true;
+    }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public DynamicHub dynamicHubFromObjectHeader(Word header) {
@@ -165,7 +176,7 @@ public abstract class ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean isDynamicHub(Pointer potentialDynamicHub) {
-        if (Heap.getHeap().isInImageHeap(potentialDynamicHub)) {
+        if (Heap.getHeap().isInImageHeap(potentialDynamicHub) || Metaspace.singleton().isInAllocatedMemory(potentialDynamicHub)) {
             Pointer potentialHubOfDynamicHub = readPotentialDynamicHubFromPointer(potentialDynamicHub);
             return potentialHubOfDynamicHub.equal(Word.objectToUntrackedPointer(DynamicHub.class));
         }

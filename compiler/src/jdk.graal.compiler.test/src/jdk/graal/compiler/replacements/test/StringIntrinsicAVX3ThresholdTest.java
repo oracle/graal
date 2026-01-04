@@ -74,8 +74,12 @@ public class StringIntrinsicAVX3ThresholdTest extends SubprocessTest {
     }
 
     @Test
-    public void compareTo() {
+    public void compareTo1() {
         testWithAVX3Threshold(StringCompareToTest.class);
+    }
+
+    @Test
+    public void compareTo2() {
         testWithAVX3Threshold(StringCompareToAVX512Test.class);
     }
 

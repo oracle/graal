@@ -69,7 +69,7 @@ public final class JNIAccessibleMethodDescriptor {
         return of(methodName, parameterTypes, null);
     }
 
-    private static JNIAccessibleMethodDescriptor of(String methodName, Class<?>[] parameterTypes, Class<?> returnType) {
+    public static JNIAccessibleMethodDescriptor of(String methodName, Class<?>[] parameterTypes, Class<?> returnType) {
         StringBuilder sb = new StringBuilder("(");
         for (Class<?> type : parameterTypes) {
             sb.append(MetaUtil.toInternalName(type.getName()));

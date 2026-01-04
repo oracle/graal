@@ -22,24 +22,38 @@
  */
 package org.graalvm.visualizer.graph;
 
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.NAME_ROOT;
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.NAME_START;
+import jdk.graal.compiler.graphio.parsing.model.InputBlock;
+import jdk.graal.compiler.graphio.parsing.model.InputEdge;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Properties.EqualityPropertyMatcher;
+import org.graalvm.visualizer.data.Source;
 
-import java.awt.*;
-import java.util.*;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import org.graalvm.visualizer.data.Source;
-
-import jdk.graal.compiler.graphio.parsing.model.*;
-import jdk.graal.compiler.graphio.parsing.model.Properties;
-import jdk.graal.compiler.graphio.parsing.model.Properties.EqualityPropertyMatcher;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.NAME_ROOT;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.NAME_START;
 
 /**
  * Visual model of an {@link InputGraph}. Captures positions, sizes, routing
@@ -319,20 +333,18 @@ public class Diagram {
         return d;
     }
 
-    public void removeAllFigures(Collection<Figure> figuresToRemove) {
-        if (figuresToRemove instanceof Set) {
-            removeAllFigures(((Set) figuresToRemove));
-        }
-        Set s = new HashSet<>(figuresToRemove);
-        removeAllFigures(s);
-    }
-
     public void removeAllFigures(Set<Figure> figuresToRemove) {
         if (!figuresToRemove.isEmpty()) {
             invalidateSlotMap();
         }
+        // First mark all Figures to be deleted
         for (Figure f : figuresToRemove) {
-            freeFigure(f);
+            f.setDeleted();
+        }
+        // Now remove the edges associated with the deleted figures
+        HashSet<Object> cleaned = new HashSet<>();
+        for (Figure f : figuresToRemove) {
+            freeFigure(f, cleaned);
         }
 
         for (Figure f : figuresToRemove) {
@@ -348,16 +360,21 @@ public class Diagram {
         return representedIds;
     }
 
-    private void freeFigure(Figure succ) {
+    private void freeFigure(Figure succ, HashSet<Object> cleaned) {
         Set<Integer> representedIds = sourceMap == null ? null : collectFigureIds(succ);
         List<InputSlot> inputSlots = new ArrayList<>(succ.getInputSlots());
         for (InputSlot s : inputSlots) {
-            succ.removeInputSlot(s);
+            succ.removeInputSlot(s, cleaned);
         }
 
         List<OutputSlot> outputSlots = new ArrayList<>(succ.getOutputSlots());
         for (OutputSlot s : outputSlots) {
-            succ.removeOutputSlot(s);
+            succ.removeOutputSlot(s, cleaned);
+        }
+
+        if (cleaned != null) {
+            // When doing a bulk cleaning, the edges of deleted figures aren't directly updated so clear then here.
+            succ.clear();
         }
 
         assert succ.getInputSlots().isEmpty();
@@ -372,7 +389,7 @@ public class Diagram {
 
     public void removeFigure(Figure succ) {
         assert this.figureMap.containsValue(succ);
-        freeFigure(succ);
+        freeFigure(succ, null);
         this.figureMap.remove(succ.getId());
         invalidateSlotMap();
     }
@@ -383,6 +400,57 @@ public class Diagram {
 
     public InputGraph getGraph() {
         return graph;
+    }
+
+
+    public Iterable<Connection> iterateConnections() {
+        return new Iterable<>() {
+            @Override
+            public Iterator<Connection> iterator() {
+                return new Iterator<>() {
+
+                    final Iterator<Figure> figureMapIterator = figureMap.values().iterator();
+                    Iterator<InputSlot> inputSlotIterator = Collections.emptyIterator();
+                    Iterator<Connection> connectionIterator = Collections.emptyIterator();
+
+                    @Override
+                    public boolean hasNext() {
+                        while (true) {
+                            if (connectionIterator.hasNext()) {
+                                return true;
+                            }
+                            if (inputSlotIterator.hasNext()) {
+                                connectionIterator = inputSlotIterator.next().getConnections().iterator();
+                                continue;
+                            }
+                            if (figureMapIterator.hasNext()) {
+                                inputSlotIterator = figureMapIterator.next().getInputSlots().iterator();
+                                continue;
+                            }
+                            return false;
+                        }
+                    }
+
+                    @Override
+                    public Connection next() {
+                        if (!hasNext()) {
+                            throw new NoSuchElementException();
+                        }
+                        return connectionIterator.next();
+                    }
+
+                    @Override
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+
+                    @Override
+                    public void forEachRemaining(Consumer<? super Connection> action) {
+                        throw new UnsupportedOperationException();
+                    }
+                };
+            }
+        };
     }
 
     public Set<Connection> getConnections() {

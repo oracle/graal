@@ -84,7 +84,7 @@ public class Switch02 extends JTTTest {
                 x = new LinkedList<>();
                 break;
             case (char) 0xFFFF - 18:
-                x = new HashSet<>();
+                x = new HashSet<>(); // STABLE ITERATION ORDER: empty
                 result = 876765 / val;
                 break;
             case (char) 0xFFFF - 19:
@@ -92,7 +92,7 @@ public class Switch02 extends JTTTest {
                 break;
             case (char) 0xFFFF - 21:
                 result = 858112498 / val;
-                x = new HashMap<>();
+                x = new HashMap<>(); // STABLE ITERATION ORDER: empty
                 break;
             default:
                 result = 34324341 / val;
@@ -137,7 +137,7 @@ public class Switch02 extends JTTTest {
                 x = new LinkedList<>();
                 break;
             case (short) -0x7FFF + 18:
-                x = new HashSet<>();
+                x = new HashSet<>(); // STABLE ITERATION ORDER: empty
                 result = 876765 / val;
                 break;
             case (short) -0x7FFF + 19:
@@ -145,7 +145,7 @@ public class Switch02 extends JTTTest {
                 break;
             case (short) -0x7FFF + 21:
                 result = 858112498 / val;
-                x = new HashMap<>();
+                x = new HashMap<>(); // STABLE ITERATION ORDER: empty
                 break;
             default:
                 result = 34324341 / val;
@@ -190,7 +190,7 @@ public class Switch02 extends JTTTest {
                 x = new LinkedList<>();
                 break;
             case (byte) -0x7F + 18:
-                x = new HashSet<>();
+                x = new HashSet<>(); // STABLE ITERATION ORDER: empty
                 result = 876765 / val;
                 break;
             case (byte) -0x7F + 19:
@@ -201,7 +201,7 @@ public class Switch02 extends JTTTest {
                 break;
             case (byte) -0x7F + 21:
                 result = 858112498 / val;
-                x = new HashMap<>();
+                x = new HashMap<>(); // STABLE ITERATION ORDER: empty
                 break;
             default:
                 result = 34324341 / val;

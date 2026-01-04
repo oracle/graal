@@ -112,12 +112,11 @@ def build_layers(native_image_path, coordinates, delimiter):
             command = [
                     native_image_path,
                     '-J-ea', '-J-esa',
-                    '--no-fallback',
                     '-cp' ,f'{jar_path}:{dependency_path}',
                     '-H:+UnlockExperimentalVMOptions',
                     f'-H:LayerCreate=layer.nil,path={jar_path}',
                     '-H:+ReportExceptionStackTraces',
-                    '-o', f'{artifact_id}-{version}'
+                    '-o', f'lib-{artifact_id}-{version}'
             ]
             print(f'Command: {' '.join(command)}')
             subprocess.run(command, check=True)

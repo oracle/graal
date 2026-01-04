@@ -43,6 +43,7 @@ wasmImports.compat = {
     f64tanh: Math.tanh,
     f64exp: Math.exp,
     f64pow: Math.pow,
+    f64cbrt: Math.cbrt,
     f32rem: (x, y) => x % y,
 };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,32 +39,42 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
+import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.graal.pointsto.meta.AnalysisElement;
+import com.oracle.graal.pointsto.meta.AnalysisElement.ElementNotification;
+import com.oracle.graal.pointsto.meta.AnalysisElement.MethodOverrideReachableNotification;
+import com.oracle.graal.pointsto.meta.AnalysisElement.SubtypeReachableNotification;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.annotate.Delete;
@@ -89,19 +99,26 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
+import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @SuppressWarnings("deprecation")
 public class FeatureImpl {
 
-    public abstract static class FeatureAccessImpl implements Feature.FeatureAccess {
+    public abstract static class FeatureAccessImpl implements InternalFeature.InternalFeatureAccess {
 
         protected final FeatureHandler featureHandler;
         protected final ImageClassLoader imageClassLoader;
@@ -163,8 +180,25 @@ public class FeatureImpl {
     }
 
     public static class IsInConfigurationAccessImpl extends FeatureAccessImpl implements Feature.IsInConfigurationAccess {
-        IsInConfigurationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext) {
+        private final MetaAccessProvider metaAccess;
+
+        IsInConfigurationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
+            this.metaAccess = metaAccess;
+        }
+
+        @Override
+        public ResolvedJavaType findTypeByName(String className) {
+            Class<?> clazz = findClassByName(className);
+            if (clazz == null) {
+                return null;
+            }
+            return getMetaAccess().lookupJavaType(clazz);
+        }
+
+        @Override
+        public MetaAccessProvider getMetaAccess() {
+            return metaAccess;
         }
     }
 
@@ -179,6 +213,7 @@ public class FeatureImpl {
             this.mainEntryPoint = mainEntryPoint;
         }
 
+        @Override
         public MetaAccessProvider getMetaAccess() {
             return metaAccess;
         }
@@ -189,6 +224,35 @@ public class FeatureImpl {
 
         public Pair<Method, CEntryPointData> getMainEntryPoint() {
             return mainEntryPoint;
+        }
+
+        @Override
+        public ReflectiveAccess getReflectiveAccess() {
+            return ReflectiveAccessImpl.singleton();
+        }
+
+        @Override
+        public ResourceAccess getResourceAccess() {
+            return ResourceAccessImpl.singleton();
+        }
+
+        @Override
+        public JNIAccess getJNIAccess() {
+            return JNIAccessImpl.singleton();
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return ForeignAccessImpl.singleton();
+        }
+
+        @Override
+        public ResolvedJavaType findTypeByName(String className) {
+            Class<?> clazz = findClassByName(className);
+            if (clazz == null) {
+                return null;
+            }
+            return getMetaAccess().lookupJavaType(clazz);
         }
     }
 
@@ -209,8 +273,27 @@ public class FeatureImpl {
             return bb.getUniverse();
         }
 
+        @Override
         public AnalysisMetaAccess getMetaAccess() {
             return bb.getMetaAccess();
+        }
+
+        @Override
+        public AnalysisType findTypeByName(String className) {
+            Class<?> clazz = findClassByName(className);
+            if (clazz == null) {
+                return null;
+            }
+            try {
+                return getMetaAccess().lookupJavaType(clazz);
+            } catch (AnalysisError.TypeNotFoundError e) {
+                // Type not found during analysis
+                return null;
+            }
+        }
+
+        public List<AnalysisType> findSubtypes(AnalysisType baseClass) {
+            return imageClassLoader.findSubclasses(baseClass.getJavaClass(), false).stream().map(getMetaAccess()::lookupJavaType).toList();
         }
 
         public boolean isReachable(Class<?> clazz) {
@@ -238,11 +321,11 @@ public class FeatureImpl {
         }
 
         public Set<Class<?>> reachableSubtypes(Class<?> baseClass) {
-            return reachableSubtypes(getMetaAccess().lookupJavaType(baseClass)).stream()
+            return reachableSubtypes(getMetaAccess().lookupJavaType(baseClass)).toHashSet().stream()
                             .map(AnalysisType::getJavaClass).collect(Collectors.toCollection(HashSet::new));
         }
 
-        Set<AnalysisType> reachableSubtypes(AnalysisType baseType) {
+        EconomicSet<AnalysisType> reachableSubtypes(AnalysisType baseType) {
             return AnalysisUniverse.reachableSubtypes(baseType);
         }
 
@@ -257,16 +340,16 @@ public class FeatureImpl {
             return baseMethod.collectMethodImplementations(true);
         }
 
-        public void rescanObject(Object obj) {
-            getUniverse().getHeapScanner().rescanObject(obj);
+        public void rescanObject(Object obj, ScanReason reason) {
+            getUniverse().getHeapScanner().rescanObject(obj, reason);
         }
 
-        public void rescanField(Object receiver, Field field) {
-            getUniverse().getHeapScanner().rescanField(receiver, field);
+        public void rescanField(Object receiver, Field field, ScanReason reason) {
+            getUniverse().getHeapScanner().rescanField(receiver, field, reason);
         }
 
-        public void rescanRoot(Field field) {
-            getUniverse().getHeapScanner().rescanRoot(field);
+        public void rescanRoot(Field field, ScanReason reason) {
+            getUniverse().getHeapScanner().rescanRoot(field, reason);
         }
 
         public Field findField(String declaringClassName, String fieldName) {
@@ -279,7 +362,7 @@ public class FeatureImpl {
 
         public void ensureInitialized(String className) {
             try {
-                imageClassLoader.forName(className, true);
+                imageClassLoader.typeForName(className).initialize();
             } catch (ClassNotFoundException e) {
                 throw VMError.shouldNotReachHere(e);
             }
@@ -307,6 +390,15 @@ public class FeatureImpl {
         }
 
         /**
+         * Register a callback which will execute once for each analysis type created. Note this
+         * callback runs when the created AnalysisType is already visible within the analysis
+         * universe.
+         */
+        public void registerOnTypeCreatedCallback(Consumer<AnalysisType> callback) {
+            getUniverse().registerOnTypeCreatedCallback(callback);
+        }
+
+        /**
          * Register a callback that is executed when an object of the specified type or any of its
          * subtypes is marked as reachable. The callback is executed before the object is added to
          * the shadow heap. A callback may throw an {@link UnsupportedFeatureException} to reject an
@@ -321,7 +413,7 @@ public class FeatureImpl {
 
         @Override
         public <T> void registerObjectReachabilityHandler(Consumer<T> callback, Class<T> clazz) {
-            ObjectReachableCallback<T> wrapper = (access, obj, reason) -> callback.accept(obj);
+            ObjectReachableCallback<T> wrapper = (_, obj, _) -> callback.accept(obj);
             getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(wrapper);
         }
 
@@ -358,14 +450,13 @@ public class FeatureImpl {
     public static class BeforeAnalysisAccessImpl extends AnalysisAccessBase implements Feature.BeforeAnalysisAccess {
 
         private final NativeLibraries nativeLibraries;
-        private final ReachabilityHandler reachabilityHandler;
         private final ClassForNameSupport classForNameSupport;
+        private final Map<Consumer<DuringAnalysisAccess>, ElementNotification> reachabilityNotifications = new ConcurrentHashMap<>();
 
         public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries,
                         DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
             this.nativeLibraries = nativeLibraries;
-            this.reachabilityHandler = new ConcurrentReachabilityHandler();
             this.classForNameSupport = ClassForNameSupport.currentLayer();
         }
 
@@ -401,15 +492,15 @@ public class FeatureImpl {
 
         @Override
         public void registerAsUnsafeAllocated(Class<?> clazz) {
-            registerAsUnsafeAllocated(getMetaAccess().lookupJavaType(clazz));
+            registerAsUnsafeAllocated(getMetaAccess().lookupJavaType(clazz), false);
         }
 
-        public void registerAsUnsafeAllocated(AnalysisType aType) {
+        public void registerAsUnsafeAllocated(AnalysisType aType, boolean preserved) {
             if (aType.isAbstract()) {
                 throw UserError.abort("Cannot register an abstract class as instantiated: " + aType.toJavaName(true));
             }
             aType.registerAsUnsafeAllocated("From feature");
-            classForNameSupport.registerUnsafeAllocated(ConfigurationCondition.alwaysTrue(), aType.getJavaClass());
+            classForNameSupport.registerUnsafeAllocated(AccessCondition.unconditional(), aType.getJavaClass(), preserved);
         }
 
         @Override
@@ -439,7 +530,7 @@ public class FeatureImpl {
         }
 
         public boolean registerAsUnsafeAccessed(AnalysisField aField, Object reason) {
-            assert !AnnotationAccess.isAnnotationPresent(aField, Delete.class);
+            assert !AnnotationUtil.isAnnotationPresent(aField, Delete.class);
             return aField.registerAsUnsafeAccessed(reason);
         }
 
@@ -451,7 +542,7 @@ public class FeatureImpl {
             bb.addRootMethod(aMethod, invokeSpecial, reason, otherRoots);
         }
 
-        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, ObjectScanner.ScanReason reason, MultiMethod.MultiMethodKey... otherRoots) {
+        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, ScanReason reason, MultiMethod.MultiMethodKey... otherRoots) {
             bb.addRootMethod(aMethod, invokeSpecial, reason, otherRoots);
         }
 
@@ -469,26 +560,99 @@ public class FeatureImpl {
 
         @Override
         public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Object... elements) {
-            reachabilityHandler.registerReachabilityHandler(this, callback, elements);
+            /*
+             * All callback->notification pairs are tracked by the reachabilityNotifications map to
+             * prevent registering the same callback multiple times. The notifications are also
+             * tracked by each AnalysisElement, i.e., each trigger, and are removed as soon as they
+             * are notified.
+             */
+            ElementNotification notification = reachabilityNotifications.computeIfAbsent(callback, ElementNotification::new);
+
+            if (notification.isNotified()) {
+                /* Already notified from an earlier registration, nothing to do. */
+                return;
+            }
+
+            for (Object trigger : elements) {
+                AnalysisElement analysisElement = switch (trigger) {
+                    case Class<?> clazz -> getMetaAccess().lookupJavaType(clazz);
+                    case Field field -> getMetaAccess().lookupJavaField(field);
+                    case Executable executable -> getMetaAccess().lookupJavaMethod(executable);
+                    case AnalysisElement ae -> ae;
+                    default -> throw UserError.abort("'registerReachabilityHandler' called with an element that is not a Class, Field, or Executable: %s",
+                                    trigger.getClass().getTypeName());
+                };
+
+                analysisElement.registerReachabilityNotification(notification);
+                if (analysisElement.isTriggered()) {
+                    /*
+                     * Element already triggered, just notify the callback. At this point we could
+                     * just notify the callback and bail out, but, for debugging, it may be useful
+                     * to execute the notification for each trigger. Note that although the
+                     * notification can be shared between multiple triggers the notification
+                     * mechanism ensures that the callback itself is only executed once.
+                     */
+                    analysisElement.notifyReachabilityCallback(getUniverse(), notification);
+                }
+            }
         }
 
         @Override
         public void registerMethodOverrideReachabilityHandler(BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod) {
-            reachabilityHandler.registerMethodOverrideReachabilityHandler(this, callback, baseMethod);
+            AnalysisMethod baseAnalysisMethod = getMetaAccess().lookupJavaMethod(baseMethod);
+            MethodOverrideReachableNotification notification = new MethodOverrideReachableNotification(callback);
+            baseAnalysisMethod.registerOverrideReachabilityNotification(notification);
+
+            /*
+             * Notify for already reachable overrides. When a new override becomes reachable all
+             * installed reachability callbacks in the supertypes declaring the method are
+             * triggered.
+             */
+            for (AnalysisMethod override : reachableMethodOverrides(baseAnalysisMethod)) {
+                notification.notifyCallback(getUniverse(), override);
+            }
         }
 
         @Override
         public void registerSubtypeReachabilityHandler(BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
-            reachabilityHandler.registerSubtypeReachabilityHandler(this, callback, baseClass);
+            AnalysisType baseType = getMetaAccess().lookupJavaType(baseClass);
+            SubtypeReachableNotification notification = new SubtypeReachableNotification(callback);
+            baseType.registerSubtypeReachabilityNotification(notification);
+
+            /*
+             * Notify for already reachable subtypes. When a new type becomes reachable all
+             * installed reachability callbacks in the supertypes are triggered.
+             */
+            for (AnalysisType subtype : reachableSubtypes(baseType)) {
+                notification.notifyCallback(getUniverse(), subtype);
+            }
         }
 
         @Override
         public void registerClassInitializerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
-            reachabilityHandler.registerClassInitializerReachabilityHandler(this, callback, clazz);
+            /*
+             * In our current static analysis implementations, there is no difference between the
+             * reachability of a class and the reachability of its class initializer.
+             */
+            registerReachabilityHandler(callback, clazz);
         }
 
         @Override
         public void registerFieldValueTransformer(Field field, FieldValueTransformer transformer) {
+            FieldValueInterceptionSupport.singleton().registerLegacyFieldValueTransformer(field, transformer);
+        }
+
+        /**
+         * Registers a field value transformer for the provided field. See the JavaDoc of
+         * {@link FieldValueTransformer} for details.
+         *
+         * @param field This should be the <em>original</em> (Host VM) field. See
+         *            {@link OriginalFieldProvider#getOriginalField}.
+         * @param transformer the transformer that should be applied
+         */
+        public void registerFieldValueTransformer(ResolvedJavaField field, JVMCIFieldValueTransformer transformer) {
+            VMError.guarantee(!(field instanceof OriginalFieldProvider),
+                            "The ResolvedJavaField %s must be the original (Host VM) field. You can use OriginalFieldProvider.getOriginalField() to retrieve that", field);
             FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(field, transformer);
         }
 
@@ -500,6 +664,25 @@ public class FeatureImpl {
             AnalysisMethod aMethod = bb.getMetaAccess().lookupJavaMethod(method);
             VMError.guarantee(aMethod.getAllMultiMethods().size() == 1, "Opaque method return called for method with >1 multimethods: %s ", method);
             aMethod.setOpaqueReturn();
+        }
+
+        /**
+         * Calling this method allows a given {@link Stable} {@code field} to be folded before
+         * analysis, which may improve analysis precision and allow more classes to be initialized
+         * via simulation. Users of this method are <b>required to somehow initialize the field
+         * before analysis</b>, ideally next to the call to {@code allowStableFieldFolding} or at
+         * least write a comment there to explain how the {@code field} is initialized. Trying to
+         * fold such a {@link Stable} field which still has a default value by the time the analysis
+         * is started results in a <b>build failure</b>, because if the initialization occurs later,
+         * the folding might result in a non-deterministic behavior, as the field will get folded
+         * before/during analysis only in some builds when the initialization happened fast enough,
+         * resulting in unstable number of reachable methods and unstable decisions of the
+         * simulation of class initializers.
+         *
+         * @see SVMHost#allowStableFieldFoldingBeforeAnalysis
+         */
+        public void allowStableFieldFoldingBeforeAnalysis(Field field) {
+            getHostVM().allowStableFieldFoldingBeforeAnalysis(getMetaAccess().lookupJavaField(field));
         }
     }
 
@@ -558,7 +741,31 @@ public class FeatureImpl {
         }
     }
 
-    public static class BeforeUniverseBuildingAccessImpl extends FeatureAccessImpl implements Feature.BeforeUniverseBuildingAccess {
+    public abstract static class HostedFeatureAccessImpl extends FeatureAccessImpl {
+
+        HostedFeatureAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, debugContext);
+        }
+
+        @Override
+        public abstract HostedMetaAccess getMetaAccess();
+
+        @Override
+        public HostedType findTypeByName(String className) {
+            Class<?> clazz = findClassByName(className);
+            if (clazz == null) {
+                return null;
+            }
+            try {
+                return getMetaAccess().lookupJavaType(clazz);
+            } catch (AnalysisError.TypeNotFoundError e) {
+                // Type not found during analysis
+                return null;
+            }
+        }
+    }
+
+    public static class BeforeUniverseBuildingAccessImpl extends HostedFeatureAccessImpl implements Feature.BeforeUniverseBuildingAccess {
         protected final HostedMetaAccess hMetaAccess;
 
         BeforeUniverseBuildingAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext, HostedMetaAccess hMetaAccess) {
@@ -566,12 +773,13 @@ public class FeatureImpl {
             this.hMetaAccess = hMetaAccess;
         }
 
+        @Override
         public HostedMetaAccess getMetaAccess() {
             return hMetaAccess;
         }
     }
 
-    public static class CompilationAccessImpl extends FeatureAccessImpl implements Feature.CompilationAccess {
+    public static class CompilationAccessImpl extends HostedFeatureAccessImpl implements Feature.CompilationAccess {
 
         protected final AnalysisUniverse aUniverse;
         protected final HostedUniverse hUniverse;
@@ -614,6 +822,7 @@ public class FeatureImpl {
             heap.registerAsImmutable(root, includeObject);
         }
 
+        @Override
         public HostedMetaAccess getMetaAccess() {
             return (HostedMetaAccess) getProviders().getMetaAccess();
         }
@@ -691,7 +900,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class AfterHeapLayoutAccessImpl extends FeatureAccessImpl implements Feature.AfterHeapLayoutAccess {
+    public static class AfterHeapLayoutAccessImpl extends HostedFeatureAccessImpl implements Feature.AfterHeapLayoutAccess {
         protected final HostedMetaAccess hMetaAccess;
         protected final NativeImageHeap heap;
 
@@ -701,6 +910,7 @@ public class FeatureImpl {
             this.hMetaAccess = hMetaAccess;
         }
 
+        @Override
         public HostedMetaAccess getMetaAccess() {
             return hMetaAccess;
         }
@@ -710,7 +920,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class BeforeImageWriteAccessImpl extends FeatureAccessImpl implements Feature.BeforeImageWriteAccess {
+    public static class BeforeImageWriteAccessImpl extends HostedFeatureAccessImpl implements Feature.BeforeImageWriteAccess {
         private List<Function<LinkerInvocation, LinkerInvocation>> linkerInvocationTransformers = null;
 
         protected final String imageName;
@@ -753,7 +963,8 @@ public class FeatureImpl {
             return hUniverse;
         }
 
-        public HostedMetaAccess getHostedMetaAccess() {
+        @Override
+        public HostedMetaAccess getMetaAccess() {
             return hMetaAccess;
         }
 
@@ -772,15 +983,17 @@ public class FeatureImpl {
         }
     }
 
-    public static class AfterAbstractImageCreationAccessImpl extends FeatureAccessImpl implements InternalFeature.AfterAbstractImageCreationAccess {
+    public static class AfterAbstractImageCreationAccessImpl extends HostedFeatureAccessImpl implements InternalFeature.AfterAbstractImageCreationAccess {
         protected final AbstractImage abstractImage;
         protected final SubstrateBackend substrateBackend;
+        private final HostedMetaAccess hMetaAccess;
 
-        AfterAbstractImageCreationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext, AbstractImage abstractImage,
+        AfterAbstractImageCreationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, HostedMetaAccess hMetaAccess, DebugContext debugContext, AbstractImage abstractImage,
                         SubstrateBackend substrateBackend) {
             super(featureHandler, imageClassLoader, debugContext);
             this.abstractImage = abstractImage;
             this.substrateBackend = substrateBackend;
+            this.hMetaAccess = hMetaAccess;
         }
 
         public AbstractImage getImage() {
@@ -790,22 +1003,28 @@ public class FeatureImpl {
         public SubstrateBackend getSubstrateBackend() {
             return substrateBackend;
         }
+
+        @Override
+        public HostedMetaAccess getMetaAccess() {
+            return hMetaAccess;
+        }
     }
 
-    public static class AfterImageWriteAccessImpl extends FeatureAccessImpl implements Feature.AfterImageWriteAccess {
+    public static class AfterImageWriteAccessImpl extends HostedFeatureAccessImpl implements Feature.AfterImageWriteAccess {
         private final HostedUniverse hUniverse;
         protected final LinkerInvocation linkerInvocation;
         protected final Path tempDirectory;
         protected final NativeImageKind imageKind;
+        private final HostedMetaAccess hMetaAcces;
 
         AfterImageWriteAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, HostedUniverse hUniverse, LinkerInvocation linkerInvocation, Path tempDirectory,
-                        NativeImageKind imageKind,
-                        DebugContext debugContext) {
+                        NativeImageKind imageKind, HostedMetaAccess hMetaAcces, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
             this.hUniverse = hUniverse;
             this.linkerInvocation = linkerInvocation;
             this.tempDirectory = tempDirectory;
             this.imageKind = imageKind;
+            this.hMetaAcces = hMetaAcces;
         }
 
         public HostedUniverse getUniverse() {
@@ -831,6 +1050,11 @@ public class FeatureImpl {
 
         public List<String> getImageSymbols(boolean onlyGlobal) {
             return linkerInvocation.getImageSymbols(onlyGlobal);
+        }
+
+        @Override
+        public HostedMetaAccess getMetaAccess() {
+            return hMetaAcces;
         }
     }
 }

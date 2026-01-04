@@ -170,6 +170,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
 
     protected abstract void updateInterval();
 
+    @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
     protected abstract void uninstall(IsolateThread thread);
 
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)

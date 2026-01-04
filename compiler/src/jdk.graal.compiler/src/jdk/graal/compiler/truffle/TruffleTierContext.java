@@ -61,6 +61,7 @@ public final class TruffleTierContext extends HighTierContext {
 
     public final StructuredGraph graph;
     public final PerformanceInformationHandler handler;
+    public final boolean forceNodeSourcePositions;
 
     private TruffleTierContext(PartialEvaluator partialEvaluator,
                     OptionValues compilerOptions,
@@ -68,7 +69,8 @@ public final class TruffleTierContext extends HighTierContext {
                     TruffleCompilable compilable,
                     CompilationIdentifier compilationId, SpeculationLog log,
                     TruffleCompilationTask task, PerformanceInformationHandler handler,
-                    ResolvedJavaMethod initialMethod) {
+                    ResolvedJavaMethod initialMethod,
+                    boolean forceNodeSourcePositions) {
         super(partialEvaluator.getProviders(), new PhaseSuite<>(), OptimisticOptimizations.NONE);
         Objects.requireNonNull(debug);
         Objects.requireNonNull(compilable);
@@ -83,7 +85,8 @@ public final class TruffleTierContext extends HighTierContext {
         this.log = log;
         this.task = task;
         this.handler = handler;
-        this.graph = createInitialGraph(initialMethod);
+        this.forceNodeSourcePositions = forceNodeSourcePositions;
+        this.graph = createInitialGraph(initialMethod, forceNodeSourcePositions);
     }
 
     private TruffleTierContext(TruffleTierContext parent,
@@ -97,7 +100,8 @@ public final class TruffleTierContext extends HighTierContext {
                         parent.log,
                         parent.task,
                         parent.handler,
-                        initialMethod);
+                        initialMethod,
+                        parent.forceNodeSourcePositions);
     }
 
     public static TruffleTierContext createInitialContext(PartialEvaluator partialEvaluator,
@@ -117,7 +121,14 @@ public final class TruffleTierContext extends HighTierContext {
             throw new RetryableBailoutException("Compilable not ready for compilation.");
         }
         ResolvedJavaMethod method = partialEvaluator.rootForCallTarget(compilable);
-        TruffleTierContext context = new TruffleTierContext(partialEvaluator, compilerOptions, debug, compilable, compilationId, log, task, handler, method);
+        int deoptCycleDetectionThreshold = TruffleCompilerOptions.DeoptCycleDetectionThreshold.getValue(compilerOptions);
+        boolean forceNodeSourcePositions;
+        if (deoptCycleDetectionThreshold >= 0 && compilable.getSuccessfulCompilationCount() >= deoptCycleDetectionThreshold) {
+            forceNodeSourcePositions = true;
+        } else {
+            forceNodeSourcePositions = false;
+        }
+        TruffleTierContext context = new TruffleTierContext(partialEvaluator, compilerOptions, debug, compilable, compilationId, log, task, handler, method, forceNodeSourcePositions);
         context.recordStabilityAssumptions();
         return context;
     }
@@ -147,14 +158,14 @@ public final class TruffleTierContext extends HighTierContext {
         return new TruffleTierContext(this, inlinedCompilable, partialEvaluator.getCallDirect());
     }
 
-    private StructuredGraph createInitialGraph(ResolvedJavaMethod method) {
+    private StructuredGraph createInitialGraph(ResolvedJavaMethod method, boolean forceSourcePositions) {
         // @formatter:off
         StructuredGraph.Builder builder = new StructuredGraph.Builder(this.debug.getOptions(), this.debug, StructuredGraph.AllowAssumptions.YES).
                 name(this.compilable.getName()).
                 method(method).
                 speculationLog(this.log).
                 compilationId(this.compilationId).
-                trackNodeSourcePosition(partialEvaluator.graphBuilderConfigForParsing.trackNodeSourcePosition()).
+                trackNodeSourcePosition(forceSourcePositions || partialEvaluator.getGraphBuilderConfigForParsing().trackNodeSourcePosition()).
                 cancellable(new CancellableTask(this.task));
         // @formatter:on
         return partialEvaluator.customizeStructuredGraphBuilder(builder).build();

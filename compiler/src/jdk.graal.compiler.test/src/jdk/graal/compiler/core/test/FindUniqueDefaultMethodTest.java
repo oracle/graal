@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -137,10 +137,9 @@ public class FindUniqueDefaultMethodTest extends GraalCompilerTest {
         assertDeepEquals(value, ret.result().asJavaConstant().asBoxedPrimitive());
     }
 
-    @SuppressWarnings("try")
     protected StructuredGraph buildGraph(final String snippet) {
         DebugContext debug = getDebugContext();
-        try (DebugContext.Scope s = debug.scope("InstanceOfTest", getMetaAccess().lookupJavaMethod(getMethod(snippet)))) {
+        try (DebugContext.Scope _ = debug.scope("InstanceOfTest", getMetaAccess().lookupJavaMethod(getMethod(snippet)))) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES, debug);
             compile(graph.method(), graph);
             debug.dump(DebugContext.BASIC_LEVEL, graph, snippet);

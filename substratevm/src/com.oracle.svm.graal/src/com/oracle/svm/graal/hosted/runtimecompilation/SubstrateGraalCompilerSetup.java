@@ -57,12 +57,12 @@ public class SubstrateGraalCompilerSetup {
         }
     }
 
-    public SubstrateProviders getSubstrateProviders(AnalysisMetaAccess aMetaAccess, WordTypes wordTypes) {
+    public SubstrateRuntimeProviders getSubstrateProviders(AnalysisMetaAccess aMetaAccess, WordTypes wordTypes) {
         if (SubstrateOptions.supportCompileInIsolates()) {
             assert sMetaAccess instanceof IsolateAwareMetaAccess;
             return new IsolateAwareProviders(aMetaAccess, (IsolateAwareMetaAccess) sMetaAccess);
         } else {
-            return new SubstrateProviders(aMetaAccess, sMetaAccess, wordTypes);
+            return new SubstrateRuntimeProviders(aMetaAccess, sMetaAccess, wordTypes);
         }
     }
 

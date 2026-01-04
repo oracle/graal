@@ -177,7 +177,6 @@ public class MapInterop extends EspressoInterop {
         }
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     public static Object getHashEntriesIterator(StaticObject receiver,
                     @CachedLibrary(limit = "1") InteropLibrary setLibrary,

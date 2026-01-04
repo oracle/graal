@@ -37,6 +37,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   # enable asserts in the JVM building the image and enable asserts in the resulting native image
   libgraal_compiler:: self.libgraal_compiler_base(),
   libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC']),
+  libgraal_compiler_shenandoah:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseShenandoahGC']),
   # enable economy mode building with the -Ob flag
   libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']) + {
     environment+: {
@@ -69,6 +70,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   # -ea assertions are enough to keep execution time reasonable
   libgraal_truffle: self.libgraal_truffle_base(),
   libgraal_truffle_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC']),
+  libgraal_truffle_shenandoah: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseShenandoahGC']),
   # enable economy mode building with the -Ob flag
   libgraal_truffle_quickbuild: self.libgraal_truffle_base(['-Ob']),
 
@@ -76,28 +78,31 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   libgraal_truffle_coverage: self.libgraal_truffle_base(['-Ob'], coverage=true),
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
-  local gate_jobs = {
-    "gate-vm-libgraal_compiler-labsjdk-latest-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {} + galahad.exclude,
-    "gate-vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
-    "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
-    "gate-vm-libgraal_compiler-labsjdk-latest-linux-aarch64": {},
-    "gate-vm-libgraal_compiler-labsjdk-latest-darwin-aarch64": {},
-    "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-windows-amd64": {} + galahad.exclude
+  local tier2 = {
   },
+  local tier2s = g.as_gates(tier2),
 
-  local gates = g.as_gates(gate_jobs),
+  local tier3 = {
+    "vm-libgraal_compiler-labsjdk-latest-linux-aarch64": {} + galahad.exclude,
+    "vm-libgraal_compiler-labsjdk-latest-linux-amd64": {},
+    "vm-libgraal_compiler-labsjdk-latest-darwin-aarch64": {},
+    "vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
+    "vm-libgraal_truffle-labsjdk-latest-linux-amd64": {} + galahad.exclude,
+  },
+  local tier3s = g.as_gates(tier3),
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
   local dailies = {
-    "daily-vm-libgraal_truffle_zgc-labsjdk-latest-linux-amd64": {},
+    "vm-libgraal_truffle_zgc-labsjdk-latest-linux-amd64": {},
+    "vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
 
-    "daily-vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:10:00"),
-  } + g.as_dailies(gate_jobs),
+    "vm-libgraal_compiler_quickbuild-labsjdk-latest-windows-amd64": {} + galahad.exclude,
+    "vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:30:00"),
+  } + g.as_dailies(tier2) + g.as_dailies(tier3),
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
   local weeklies = {
-    "weekly-vm-libgraal_truffle_coverage*": {}
+    "vm-libgraal_truffle_coverage*": {}
   },
 
   # See definition of `monthlies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -107,25 +112,25 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     if (os_arch == 'windows-amd64') then
       c.svm_common_windows_amd64(jdk)
     else
-      c.svm_common,
+      graal_common.deps.svm,
 
   local all_os_arches = [
     "linux-amd64",
     "linux-aarch64",
-    "darwin-amd64",
     "darwin-aarch64",
     "windows-amd64"
   ],
 
   # Builds run on all platforms (platform = JDK + OS + ARCH)
   local all_platforms_builds = [
-    c.vm_base(os(os_arch), arch(os_arch), 'gate') +
+    c.vm_base(os(os_arch), arch(os_arch), 'tier3') +
     svm_common(os_arch, jdk) +
     vm.custom_vm +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  jdk_name = "labsjdk",
-                 gates_manifest=gates,
+                 tier2_manifest=tier2s,
+                 tier3_manifest=tier3s,
                  dailies_manifest=dailies,
                  weeklies_manifest=weeklies,
                  monthlies_manifest=monthlies).build +
@@ -154,7 +159,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     vm.custom_vm +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
-                 gates_manifest=gates,
+                 tier2_manifest=tier2s,
+                 tier3_manifest=tier3s,
                  dailies_manifest=dailies,
                  weeklies_manifest=weeklies,
                  monthlies_manifest=monthlies).build +
@@ -169,6 +175,29 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     ]
   ],
 
+  # Builds run on all platforms (platform = JDK + OS + ARCH)
+  local all_platforms_shenandoah_builds = [
+    adjust_windows_version(c.vm_base(os(os_arch), arch(os_arch), 'gate')) +
+    svm_common(os_arch, jdk) +
+    vm.custom_vm +
+    g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
+                 include_common_os_arch=false,
+                 tier2_manifest=tier2s,
+                 tier3_manifest=tier3s,
+                 dailies_manifest=dailies,
+                 weeklies_manifest=weeklies,
+                 monthlies_manifest=monthlies).build +
+    vm["vm_java_" + jdk]
+    for jdk in [
+      "Latest",
+    ]
+    for os_arch in all_os_arches
+    for task in [
+      "libgraal_compiler_shenandoah",
+      "libgraal_truffle_shenandoah",
+    ]
+  ],
+
   # Coverage builds
   local coverage_jdkLatest_builds = [
     c.vm_base(os(os_arch), arch(os_arch), 'gate') +
@@ -176,7 +205,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     vm.custom_vm +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
-                 gates_manifest=gates,
+                 tier2_manifest=tier2s,
+                 tier3_manifest=tier3s,
                  dailies_manifest=dailies,
                  weeklies_manifest=weeklies,
                  monthlies_manifest=monthlies).build +
@@ -198,10 +228,12 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   local all_builds =
     all_platforms_builds +
     all_platforms_zgc_builds +
+    all_platforms_shenandoah_builds +
     coverage_jdkLatest_builds,
 
   builds: if
-      g.check_manifest(gates, all_builds, std.thisFile, "gates").result
+      g.check_manifest(tier2s, all_builds, std.thisFile, "tier2 jobs").result &&
+      g.check_manifest(tier3s, all_builds, std.thisFile, "tier3 jobs").result
     then
       local conf = repo_config.vm.libgraal_predicate_conf;
       [utils.add_gate_predicate(b, suites=conf.suites, extra_excludes=conf.extra_excludes) for b in all_builds]

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
+import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
+import com.oracle.truffle.regex.tregex.automaton.TransitionOp;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -90,6 +92,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         this.states = new NFAState[stateIDCounter.getCount()];
         // reserve last slot for loopBack matcher
         this.transitions = new NFAStateTransition[transitionIDCounter.getCount() + 1];
+
         for (NFAState s : states) {
             assert this.states[s.getId()] == null;
             this.states[s.getId()] = s;
@@ -99,6 +102,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
             for (NFAStateTransition t : s.getSuccessors()) {
                 assert this.transitions[t.getId()] == null || (s == dummyInitialState && this.transitions[t.getId()] == t);
                 this.transitions[t.getId()] = t;
+                assert checkBQGuardSourceAndTargets(t);
             }
             if (s == dummyInitialState) {
                 for (NFAStateTransition t : s.getPredecessors()) {
@@ -111,6 +115,17 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
             assert this.transitions[initialLoopBack.getId()] == null;
             this.transitions[initialLoopBack.getId()] = initialLoopBack;
         }
+    }
+
+    private static boolean checkBQGuardSourceAndTargets(NFAStateTransition t) {
+        for (long constraint : t.getConstraints()) {
+            assert TransitionConstraint.getStateID(constraint) == t.getSource().getId();
+        }
+        for (long operation : t.getOperations()) {
+            assert TransitionOp.getSource(operation) == TransitionOp.NO_SOURCE || TransitionOp.getSource(operation) == t.getSource().getId();
+            assert TransitionOp.getTarget(operation) == t.getTarget().getId();
+        }
+        return true;
     }
 
     public NFAState getUnAnchoredInitialState() {

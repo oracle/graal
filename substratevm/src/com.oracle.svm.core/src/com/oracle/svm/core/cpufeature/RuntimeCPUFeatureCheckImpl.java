@@ -43,7 +43,18 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -68,7 +79,13 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.riscv64.RISCV64;
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class, other = PartiallyLayerAware.class)
 class RuntimeCPUFeatureCheckFeature implements InternalFeature {
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -91,7 +108,9 @@ class RuntimeCPUFeatureCheckFeature implements InternalFeature {
 final class RuntimeCPUFeatureCheckInitializer implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
-        RuntimeCPUFeatureCheckImpl.instance().reinitialize();
+        for (var impl : RuntimeCPUFeatureCheckImpl.layeredSingletons()) {
+            impl.reinitialize();
+        }
     }
 }
 
@@ -104,17 +123,23 @@ final class RuntimeCPUFeatureCheckInitializer implements RuntimeSupport.Hook {
  */
 @AutomaticallyRegisteredImageSingleton
 @NodeIntrinsicFactory
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class, other = PartiallyLayerAware.class)
 public final class RuntimeCPUFeatureCheckImpl {
 
-    public static RuntimeCPUFeatureCheckImpl instance() {
-        return ImageSingletons.lookup(RuntimeCPUFeatureCheckImpl.class);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static RuntimeCPUFeatureCheckImpl currentLayer() {
+        return LayeredImageSingletonSupport.singleton().lookup(RuntimeCPUFeatureCheckImpl.class, false, true);
+    }
+
+    static RuntimeCPUFeatureCheckImpl[] layeredSingletons() {
+        return MultiLayeredImageSingleton.getAllLayers(RuntimeCPUFeatureCheckImpl.class);
     }
 
     /**
      * Stores the CPU features available at run time.
      *
      * The field is {@linkplain RuntimeCPUFeatureCheckInitializer initialized at run time} and
-     * accessed via an {@linkplain #instance() image singleton}.
+     * accessed via an {@linkplain #layeredSingletons() image singleton}.
      *
      * We only emit run time checks for a limited set features. To compress the encoding, only
      * features specified by {@link RuntimeCPUFeatureCheck#getSupportedFeatures(Architecture)} are
@@ -299,9 +324,9 @@ public final class RuntimeCPUFeatureCheckImpl {
              */
             MetaAccessProvider metaAccess = b.getMetaAccess();
             ResolvedJavaField field = getMaskField(metaAccess);
-            ConstantNode object = b.add(ConstantNode.forConstant(b.getSnippetReflection().forObject(instance()), metaAccess));
+            ConstantNode object = b.add(ConstantNode.forConstant(b.getSnippetReflection().forObject(currentLayer()), metaAccess));
             ValueNode featureMask = b.add(LoadFieldNode.create(null, object, field));
-            int mask = instance().computeFeatureMask(features);
+            int mask = currentLayer().computeFeatureMask(features);
             GraalError.guarantee(JavaKind.Int.equals(field.getType().getJavaKind()), "Expected field to be an int");
             LogicNode featureBitIsZero = b.add(IntegerTestNode.create(featureMask, ConstantNode.forInt(mask), NodeView.DEFAULT));
             ValueNode condition = b.add(ConditionalNode.create(featureBitIsZero, ConstantNode.forBoolean(true), ConstantNode.forBoolean(false), NodeView.DEFAULT));

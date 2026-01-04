@@ -26,7 +26,10 @@ package jdk.graal.compiler.hotspot.test;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.HashMap;
+
+import jdk.graal.compiler.util.EconomicHashMap;
+import org.junit.Assert;
+import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
@@ -37,9 +40,6 @@ import jdk.graal.compiler.nodes.LoweredCallTargetNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets;
-import org.junit.Assert;
-import org.junit.Test;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -158,7 +158,7 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
 
     @Test
     public void testObject() {
-        Object[] src = {"one", "two", "three", new ArrayList<>(), new HashMap<>()};
+        Object[] src = {"one", "two", "three", new ArrayList<>(), new EconomicHashMap<>()};
         testHelper("objectArraycopy", src);
     }
 
@@ -167,7 +167,7 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
      */
     @Test
     public void testArrayStoreException() {
-        Object[] src = {"one", "two", "three", new ArrayList<>(), new HashMap<>()};
+        Object[] src = {"one", "two", "three", new ArrayList<>(), new EconomicHashMap<>()};
         Object[] dst = new CharSequence[src.length];
         // Will throw ArrayStoreException for 4th element
         test("objectArraycopy", src, 0, dst, 0, src.length);

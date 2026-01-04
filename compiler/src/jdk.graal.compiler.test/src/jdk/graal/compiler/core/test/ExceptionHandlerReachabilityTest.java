@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,19 @@
  */
 package jdk.graal.compiler.core.test;
 
-import java.io.IOException;
+import static java.lang.constant.ConstantDescs.CD_int;
+
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.Label;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
 
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -74,20 +73,16 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * </pre>
  *
  */
-public class ExceptionHandlerReachabilityTest extends CustomizedBytecodePatternTest {
+public class ExceptionHandlerReachabilityTest extends GraalCompilerTest implements CustomizedBytecodePattern {
 
     @Test
     public void test() {
-        testParseAndRun(SharedExceptionHandlerClass.class.getName(), "sharedExceptionHandlerMethod", new Class<?>[]{int.class});
-    }
-
-    public void testParseAndRun(String clazzName, String methodName, Class<?>[] args) {
         try {
-            Class<?> testClass = getClass(clazzName);
-            ResolvedJavaMethod method = asResolvedJavaMethod(testClass.getMethod(methodName, args));
+            Class<?> testClass = getClass(SharedExceptionHandlerClass.class.getName() + "$Test");
+            ResolvedJavaMethod method = asResolvedJavaMethod(testClass.getMethod("sharedExceptionHandlerMethod", int.class));
 
             // test successful parsing
-            parseEager(method, StructuredGraph.AllowAssumptions.YES, getInitialOptions());
+            parseEager(method, AllowAssumptions.YES, getInitialOptions());
 
             // test successful compilation + execution
             int actual = (int) test(method, null, 11).returnValue;
@@ -98,109 +93,58 @@ public class ExceptionHandlerReachabilityTest extends CustomizedBytecodePatternT
         } catch (ClassNotFoundException | NoSuchMethodException e) {
             throw GraalError.shouldNotReachHere(e);
         }
-
     }
 
     @Override
-    protected byte[] generateClass(String className) {
-        try {
-            ClassReader classReader = new ClassReader(className);
-            final ClassWriter cw = new ClassWriter(classReader, ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-            classReader.accept(new ClassVisitor(Opcodes.ASM9, cw) {
+    public byte[] generateClass(String className) {
+        ClassDesc classSharedExceptionHandlerClass = cd(SharedExceptionHandlerClass.class);
+        MethodTypeDesc mtdII = MethodTypeDesc.of(CD_int, CD_int);
 
-                @Override
-                public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-                    MethodVisitor mv = super.visitMethod(access, name, desc, signature, exceptions);
-                    if (name.equals("sharedExceptionHandlerMethod")) {
-                        return new SharedExceptionHandlerReplacer(mv, className.replace('.', '/'));
-                    }
-                    return mv;
-                }
-
-            }, ClassReader.EXPAND_FRAMES);
-
-            return cw.toByteArray();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static class SharedExceptionHandlerReplacer extends MethodVisitor {
-        private final MethodVisitor mv;
-        private final String clazzName;
-
-        SharedExceptionHandlerReplacer(MethodVisitor methodVisitor, String clazzName) {
-            super(ASM9, null);
-            this.mv = methodVisitor;
-            this.clazzName = clazzName;
-        }
-
-        @Override
-        public void visitCode() {
-            mv.visitCode();
-            Label label0 = new Label();
-            Label label1 = new Label();
-
-            Label startEx1 = new Label();
-            Label endEx1 = new Label();
-            Label handlerEx1 = new Label();
-            Label startEx2 = new Label();
-            Label endEx2 = new Label();
-            Label handlerEx2 = new Label();
-            mv.visitVarInsn(ILOAD, 0);
-            mv.visitVarInsn(ISTORE, 1);
-            mv.visitTryCatchBlock(startEx1, endEx1, handlerEx1, "java/lang/IllegalArgumentException");
-            mv.visitLabel(startEx1);
-            mv.visitVarInsn(ILOAD, 1);
-            mv.visitMethodInsn(INVOKESTATIC, clazzName, "foo", "(I)I", false);
-            mv.visitVarInsn(ISTORE, 1);
-            mv.visitLabel(endEx1);
-            mv.visitJumpInsn(GOTO, label0);
-            mv.visitLabel(handlerEx1);
-            // --- REMOVE storing exception to make stack frames compatible:
-            // mv.visitVarInsn(ASTORE, 2);
-            mv.visitVarInsn(ILOAD, 1);
-            mv.visitMethodInsn(INVOKESTATIC, clazzName, "baz", "(I)I", false);
-            mv.visitVarInsn(ISTORE, 1);
-            mv.visitVarInsn(ILOAD, 1);
-            mv.visitInsn(IRETURN);
-            mv.visitLabel(label0);
-            mv.visitTryCatchBlock(startEx2, endEx2, handlerEx2, "java/lang/NumberFormatException");
-            mv.visitLabel(startEx2);
-            mv.visitVarInsn(ILOAD, 1);
-            mv.visitMethodInsn(INVOKESTATIC, clazzName, "bar", "(I)I", false);
-            mv.visitVarInsn(ISTORE, 1);
-            mv.visitLabel(endEx2);
-            mv.visitJumpInsn(GOTO, label1);
-            mv.visitLabel(handlerEx2);
-            // --- REMOVE storing exception to make stack frames compatible:
-            // mv.visitVarInsn(ASTORE, 2);
-            mv.visitVarInsn(ILOAD, 1);
-            mv.visitMethodInsn(INVOKESTATIC, clazzName, "doSomething", "(I)I", false);
-            mv.visitVarInsn(ISTORE, 1);
-            // --- ADD jump to first exception handler from within second exception handler:
-            mv.visitJumpInsn(GOTO, handlerEx1);
-            // --- REMOVE duplicate code from first handler:
-            // mv.visitVarInsn(ILOAD, 1);
-            // mv.visitMethodInsn(INVOKESTATIC, clazzName, "baz", "(I)I", false);
-            // mv.visitVarInsn(ISTORE, 1);
-            // mv.visitVarInsn(ILOAD, 1);
-            // mv.visitInsn(IRETURN);
-            mv.visitLabel(label1);
-            mv.visitVarInsn(ILOAD, 1);
-            mv.visitInsn(IRETURN);
-            mv.visitMaxs(1, 3);
-            mv.visitEnd();
-        }
+        // @formatter:off
+        return ClassFile.of().build(ClassDesc.of(className), classBuilder -> classBuilder
+                        .withMethodBody("sharedExceptionHandlerMethod", mtdII, ACC_PUBLIC_STATIC, b -> {
+                            Label handlerEx1 = b.newLabel();
+                            b
+                                            .iload(0)
+                                            .istore(1)
+                                            .trying(tryBlock -> {
+                                                tryBlock
+                                                                .iload(1)
+                                                                .invokestatic(classSharedExceptionHandlerClass, "foo", mtdII)
+                                                                .istore(1);
+                                            }, catchBuilder -> catchBuilder.catching(cd(IllegalArgumentException.class), catchBlock -> {
+                                                catchBlock
+                                                                .labelBinding(handlerEx1)
+                                                                .iload(1)
+                                                                .invokestatic(classSharedExceptionHandlerClass, "baz", mtdII)
+                                                                .istore(1)
+                                                                .iload(1)
+                                                                .ireturn();
+                                            }))
+                                            .trying(tryBlock -> {
+                                                tryBlock
+                                                                .iload(1)
+                                                                .invokestatic(classSharedExceptionHandlerClass, "bar", mtdII)
+                                                                .istore(1);
+                                            }, catchBuilder -> catchBuilder.catching(cd(NumberFormatException.class), catchBlock -> {
+                                                catchBlock
+                                                                .iload(1)
+                                                                .invokestatic(classSharedExceptionHandlerClass, "doSomething", mtdII)
+                                                                .istore(1)
+                                                                .goto_(handlerEx1);
+                                            }))
+                                            .iload(1)
+                                            .ireturn();
+                        }));
+        // @formatter:on
     }
 
     public class SharedExceptionHandlerClass {
-
         /**
-         * The bytecode of this method will be modified by {@link SharedExceptionHandlerReplacer}.
-         * The modified bytecode contains a {@code goto} from within the second exception handler to
-         * the first exception handler. This reduces the overall bytecode size due to code sharing.
-         * The pattern is produced by code obfuscation tools, see [GR-47376].
+         * The bytecode of this method will be modified and placed in an inner class. The modified
+         * bytecode contains a {@code goto} from within the second exception handler to the first
+         * exception handler. This reduces the overall bytecode size due to code sharing. The
+         * pattern is produced by code obfuscation tools, see [GR-47376].
          */
         public static int sharedExceptionHandlerMethod(int i) {
             int x = i;

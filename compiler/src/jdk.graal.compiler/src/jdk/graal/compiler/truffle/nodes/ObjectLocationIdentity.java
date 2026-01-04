@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,13 @@ import jdk.vm.ci.meta.JavaKind;
 
 /**
  * A {@link LocationIdentity} wrapping an object.
+ *
+ * Used by Truffle unsafe accesses to associate unique location identities with DynamicObject and
+ * FrameWithoutBoxing accesses, backed by non-null object references (compared by identity). The
+ * compiler can assume that accesses with different location identities (except for "any") do not
+ * interfere with each other (or when they do are constrained by memory barriers), even when they
+ * may access the same relative memory address (array or field offset) of objects of the same array
+ * or instance class.
  */
 public final class ObjectLocationIdentity extends LocationIdentity implements JavaConstantFormattable {
 

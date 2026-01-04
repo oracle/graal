@@ -205,7 +205,13 @@ import jdk.vm.ci.meta.SpeculationLog;
  * appropriately to comply with the layouts above.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/250eb743c112fbcc45bf2b3ded1c644b19893577/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L157-L463",
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c2d76f9844aadf77a0b213a9169a7c5c8c8f1ffb/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L149-L578",
+          sha1 = "1a404bc87f697f293c4766fff2f7ea00e3057a53")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/9eeb86d972ac4cc38d923b2b868b426bbd27a4e8/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L465-L625",
+          sha1 = "2d66e0ccf8dbf69f575be2633d5a17f77a20131d")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/250eb743c112fbcc45bf2b3ded1c644b19893577/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L627-L788",
+          sha1 = "e88d7b8c4bb85358c6a810ee1d7d92fde5db42e6")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L157-L463",
           sha1 = "223a88b7bdd10862cd3b112181e1d17682b0fbe2")
 // @formatter:on
 public class MonitorSnippets implements Snippets {
@@ -428,7 +434,7 @@ public class MonitorSnippets implements Snippets {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/9eeb86d972ac4cc38d923b2b868b426bbd27a4e8/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L465-L625",
+    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L465-L625",
               sha1 = "2d66e0ccf8dbf69f575be2633d5a17f77a20131d")
     // @formatter:on
     @SuppressWarnings("unused")
@@ -556,7 +562,7 @@ public class MonitorSnippets implements Snippets {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/250eb743c112fbcc45bf2b3ded1c644b19893577/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L627-L788",
+    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L627-L788",
               sha1 = "e88d7b8c4bb85358c6a810ee1d7d92fde5db42e6")
     // @formatter:on
     private static boolean tryLightweightUnlocking(Object object, Word thread, Word lock, boolean trace, Counters counters) {
@@ -851,7 +857,7 @@ public class MonitorSnippets implements Snippets {
             GraalError.guarantee(HotSpotReplacementsUtil.useLightweightLocking(config), "should only be used with lightweight locking");
 
             StructuredGraph graph = checkFastPathMonitorEnterNode.graph();
-            Arguments args = new Arguments(checkMonitorenter, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(checkMonitorenter, graph, tool.getLoweringStage());
             // Speculation.equals is too weak so it can incorrectly cache snippet graphs so just
             // disable caching of these graphs.
             args.setCacheable(false);
@@ -911,7 +917,7 @@ public class MonitorSnippets implements Snippets {
             GraalError.guarantee(!monitorenterNode.getMonitorId().isEliminated(), "current monitor is eliminated: %s", monitorenterNode);
             GraalError.guarantee(verifyLockOrder(monitorenterNode), "locks are disordered: %s", monitorenterNode);
 
-            Arguments args = new Arguments(monitorenter, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(monitorenter, graph, tool.getLoweringStage());
             args.add("object", monitorenterNode.object());
             args.add("hub", Objects.requireNonNull(monitorenterNode.getObjectData()));
             args.add("lockDepth", monitorenterNode.getMonitorId().getLockDepth());
@@ -927,7 +933,7 @@ public class MonitorSnippets implements Snippets {
         public void lower(MonitorExitNode monitorexitNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = monitorexitNode.graph();
 
-            Arguments args = new Arguments(monitorexit, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(monitorexit, graph, tool.getLoweringStage());
             args.add("object", monitorexitNode.object());
             args.add("lockDepth", monitorexitNode.getMonitorId().getLockDepth());
             args.add("threadRegister", registers.getThreadRegister());
@@ -1002,7 +1008,7 @@ public class MonitorSnippets implements Snippets {
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
 
-                        Arguments args = new Arguments(checkCounter, graph.getGuardsStage(), tool.getLoweringStage());
+                        Arguments args = new Arguments(checkCounter, graph, tool.getLoweringStage());
                         args.add("errMsg", new CStringConstant(msg));
                         inlineeGraph = template(tool, invoke, args).copySpecializedGraph(graph.getDebug());
                         InliningUtil.inline(invoke, inlineeGraph, false, null);

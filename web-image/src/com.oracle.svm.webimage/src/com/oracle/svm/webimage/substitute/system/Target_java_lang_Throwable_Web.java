@@ -115,15 +115,6 @@ public final class Target_java_lang_Throwable_Web {
     }
 
     @Substitute
-    private StackTraceElement[] getOurStackTrace() {
-        if (stackTrace != null) {
-            return stackTrace;
-        } else {
-            return new StackTraceElement[0];
-        }
-    }
-
-    @Substitute
     public void printStackTrace(PrintStream s) {
         JSExceptionSupport.printStackTrace(this, s::println);
     }
@@ -131,5 +122,14 @@ public final class Target_java_lang_Throwable_Web {
     @Substitute
     public void printStackTrace(PrintWriter w) {
         JSExceptionSupport.printStackTrace(this, w::println);
+    }
+}
+
+@TargetClass(java.lang.StackTraceElement.class)
+@SuppressWarnings({"static-method", "unused"})
+final class Target_java_lang_StackTraceElement_Web {
+    @Substitute
+    static StackTraceElement[] of(Object x, int depth) {
+        return new StackTraceElement[]{SyntheticStackSupport.MAIN_STACK_TRACE_ELEMENT};
     }
 }

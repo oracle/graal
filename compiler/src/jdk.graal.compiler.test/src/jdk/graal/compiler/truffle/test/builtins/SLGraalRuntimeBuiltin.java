@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.truffle.test.builtins;
 
-import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
@@ -34,9 +33,11 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
+
+import jdk.graal.compiler.util.EconomicHashSet;
 
 public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
 
@@ -64,7 +65,7 @@ public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
      */
     @TruffleBoundary
     protected static final Set<DirectCallNode> findCallsTo(RootNode root, OptimizedCallTarget originalCallTarget) {
-        final Set<DirectCallNode> allCallNodes = new HashSet<>();
+        final Set<DirectCallNode> allCallNodes = new EconomicHashSet<>();
         root.accept(new NodeVisitor() {
             @Override
             public boolean visit(Node node) {

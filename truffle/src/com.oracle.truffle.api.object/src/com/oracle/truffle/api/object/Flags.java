@@ -60,10 +60,6 @@ final class Flags {
 
     /** Define property as constant in the shape. */
     static final int CONST = 1 << 5;
-    /** Declare property with constant initial value in the shape. */
-    static final int DECLARE = 1 << 6;
-    /** Split off separate shape. */
-    static final int SEPARATE_SHAPE = 1 << 7;
 
     private Flags() {
         // do not instantiate
@@ -81,8 +77,12 @@ final class Flags {
         return getFlag(flags, IMPLICIT_CAST_INT_TO_DOUBLE);
     }
 
-    static boolean isSetExisting(int flags) {
+    static boolean isPutIfPresent(int flags) {
         return getFlag(flags, IF_PRESENT);
+    }
+
+    static boolean isPutIfAbsent(int flags) {
+        return getFlag(flags, IF_ABSENT);
     }
 
     static boolean isUpdateFlags(int flags) {
@@ -93,11 +93,4 @@ final class Flags {
         return getFlag(flags, CONST);
     }
 
-    static boolean isDeclaration(int flags) {
-        return getFlag(flags, DECLARE);
-    }
-
-    static boolean isSeparateShape(int flags) {
-        return getFlag(flags, SEPARATE_SHAPE);
-    }
 }

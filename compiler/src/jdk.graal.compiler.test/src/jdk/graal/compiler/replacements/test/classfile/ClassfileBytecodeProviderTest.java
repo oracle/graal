@@ -87,6 +87,11 @@ import java.util.Formatter;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.api.test.ModuleSupport;
@@ -99,17 +104,12 @@ import jdk.graal.compiler.bytecode.BytecodeTableSwitch;
 import jdk.graal.compiler.bytecode.Bytecodes;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.phases.VerifyPhase;
+import jdk.graal.compiler.core.test.VerifyPhase;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.classfile.ClassfileBytecode;
 import jdk.graal.compiler.replacements.classfile.ClassfileBytecodeProvider;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.test.SubprocessUtil;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaMethodProfile.ProfiledMethod;

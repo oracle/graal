@@ -46,11 +46,9 @@ public final class MemoryWalker {
 
         UnsignedWord getSize(T region);
 
-        String getRegionName(T region);
-
         boolean isWritable(T region);
 
-        boolean consistsOfHugeObjects(T region);
+        boolean usesUnalignedChunks(T region);
 
         void visitObjects(T region, ObjectVisitor visitor);
     }

@@ -156,7 +156,7 @@ public class LLVMSymtab extends LLVMSection implements SymbolTable {
     }
 
     private Entry addEntry(Entry entry) {
-        entriesByName.compute(entry.getName(), (k, v) -> SymbolTable.tryReplace(v, entry));
+        entriesByName.compute(entry.getName(), (_, v) -> SymbolTable.tryReplace(v, entry));
         if (entry.getDefinedSection() != null) {
             entriesBySection.compute(entry.getDefinedSection().getName(), (k, v) -> {
                 if (v == null) {

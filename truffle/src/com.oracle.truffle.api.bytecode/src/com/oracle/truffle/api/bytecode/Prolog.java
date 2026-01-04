@@ -47,6 +47,8 @@ import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 
@@ -71,4 +73,21 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 @Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.TYPE})
 public @interface Prolog {
+    /**
+     * Indicates whether this operation requires the bytecode index to be updated. By default, the
+     * DSL assumes that all operations with caches require the bytecode index to be updated. The DSL
+     * will emit a warning if specifying this attribute is necessary.
+     * <p>
+     * If this attribute has been set to <code>false</code>, then the {@link StoreBytecodeIndex}
+     * annotation can be used to enable this property for individual {@link Specialization} or
+     * {@link Fallback}-annotated methods.
+     * <p>
+     * This annotation only has an effect if {@link GenerateBytecode#storeBytecodeIndexInFrame()} is
+     * set to <code>true</code> or if the {@link GenerateBytecode#enableUncachedInterpreter()
+     * uncached interpreter tier} is enabled.
+     *
+     * @see StoreBytecodeIndex
+     * @since 25.1
+     */
+    boolean storeBytecodeIndex() default true;
 }

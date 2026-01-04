@@ -54,7 +54,7 @@ enum {
   JMM_VERSION_4   = 0x20040000, // JDK 21
 };
 
-typedef struct {
+typedef struct jmmOptionalSupport {
   unsigned int isLowMemoryDetectionSupported : 1;
   unsigned int isCompilationTimeMonitoringSupported : 1;
   unsigned int isThreadContentionMonitoringSupported : 1;

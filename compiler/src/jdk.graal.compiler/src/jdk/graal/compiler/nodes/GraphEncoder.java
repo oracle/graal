@@ -209,6 +209,7 @@ public class GraphEncoder {
         inliningLogCodec.prepare(graph, this::addObject);
         optimizationLogCodec.prepare(graph, this::addObject);
         for (Node node : graph.getNodes()) {
+            node.beforeEncode();
             NodeClass<? extends Node> nodeClass = node.getNodeClass();
 
             // Create encoding id for the node class

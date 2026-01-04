@@ -49,7 +49,6 @@ import java.util.function.Predicate;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.Instruction.InstructionIterable;
 import com.oracle.truffle.api.dsl.Bind;
@@ -57,6 +56,7 @@ import com.oracle.truffle.api.dsl.Bind.DefaultExpression;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -220,8 +220,7 @@ public abstract class BytecodeNode extends Node {
      * @param bytecodeIndex the bytecode index, used to determine liveness of source sections. A
      *            valid bytecode index can be obtained by calling
      *            {@link BytecodeLocation#getBytecodeIndex()} or using @{@link Bind
-     *            Bind}("$bytecodeIndex") annotation. The value must be a partial evaluation
-     *            constant.
+     *            Bind}("$bytecodeIndex") annotation.
      * @since 24.2
      */
     public abstract SourceSection getSourceLocation(int bytecodeIndex);
@@ -237,8 +236,7 @@ public abstract class BytecodeNode extends Node {
      * @param bytecodeIndex the bytecode index, used to determine liveness of source sections. A
      *            valid bytecode index can be obtained by calling
      *            {@link BytecodeLocation#getBytecodeIndex()} or using @{@link Bind
-     *            Bind}("$bytecodeIndex") annotation. The value must be a partial evaluation
-     *            constant.
+     *            Bind}("$bytecodeIndex") annotation.
      * @since 24.2
      */
     public abstract SourceSection[] getSourceLocations(int bytecodeIndex);
@@ -278,6 +276,7 @@ public abstract class BytecodeNode extends Node {
      * @return the source location, or null if a location could not be found
      * @since 24.2
      */
+    @TruffleBoundary
     public final SourceSection getSourceLocation(FrameInstance frameInstance) {
         int bci = findBytecodeIndex(frameInstance);
         if (bci == -1) {
@@ -296,6 +295,7 @@ public abstract class BytecodeNode extends Node {
      * @return the source locations, or null if they could not be found
      * @since 24.2
      */
+    @TruffleBoundary
     public final SourceSection[] getSourceLocations(FrameInstance frameInstance) {
         int bci = findBytecodeIndex(frameInstance);
         if (bci == -1) {
@@ -445,6 +445,41 @@ public abstract class BytecodeNode extends Node {
      * @since 24.2
      */
     public abstract TagTree getTagTree();
+
+    /**
+     * Returns a {@link BytecodeFrame} capturing the materialized interpreter state. Note that
+     * materialized frames <strong>may become invalid</strong> once the interpreter resumes; see the
+     * {@link BytecodeFrame} javadoc for more info.
+     * <p>
+     * Prefer to capture the frame using this method (rather than {@link #createCopiedFrame}) when
+     * capturing the frame is a frequent operation or when future updates to the frame should be
+     * observable.
+     *
+     * @param bytecodeIndex the current bytecode index
+     * @param frame the current materialized frame
+     * @return the captured bytecode frame
+     * @since 25.1
+     */
+    public final BytecodeFrame createMaterializedFrame(int bytecodeIndex, MaterializedFrame frame) {
+        return new BytecodeFrame(frame, this, bytecodeIndex);
+    }
+
+    /**
+     * Returns a {@link BytecodeFrame} capturing a copy of the interpreter state. The copy is always
+     * valid, but will not observe subsequent changes to the frame.
+     * <p>
+     * Prefer to capture the frame using this method (rather than {@link #createMaterializedFrame})
+     * when capturing the frame is an infrequent operation or when the frame does not need to
+     * observe future updates.
+     *
+     * @param bytecodeIndex the current bytecode index
+     * @param frame the current frame
+     * @return the captured bytecode frame
+     * @since 25.1
+     */
+    public final BytecodeFrame createCopiedFrame(int bytecodeIndex, Frame frame) {
+        return new BytecodeFrame(BytecodeFrame.copyFrame(frame), this, bytecodeIndex);
+    }
 
     /**
      * Returns a new array containing the current value of each local in the frame. This method
@@ -688,6 +723,7 @@ public abstract class BytecodeNode extends Node {
      */
     @ExplodeLoop
     public final void copyLocalValues(int bytecodeIndex, Frame source, Frame destination, int localOffset, int localCount) {
+        CompilerAsserts.partialEvaluationConstant(bytecodeIndex);
         CompilerAsserts.partialEvaluationConstant(localOffset);
         CompilerAsserts.partialEvaluationConstant(localCount);
         if (localCount < 0) {
@@ -1216,17 +1252,19 @@ public abstract class BytecodeNode extends Node {
      * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
      *
      * @see #getLocalValues(int, Frame)
+     * @see BytecodeFrame#get(FrameInstance, FrameInstance.FrameAccess)
      * @param frameInstance the frame instance
-     * @return a new array of local values, or null if the frame instance does not correspond to an
+     * @return a new array of local values, or null if the frame instance does not correspond to a
      *         {@link BytecodeRootNode}
      * @since 24.2
      */
+    @TruffleBoundary
     public static Object[] getLocalValues(FrameInstance frameInstance) {
         BytecodeNode bytecode = get(frameInstance);
         if (bytecode == null) {
             return null;
         }
-        Frame frame = resolveFrame(frameInstance);
+        Frame frame = bytecode.resolveFrameImpl(frameInstance, FrameAccess.READ_ONLY);
         int bci = bytecode.findBytecodeIndexImpl(frame, frameInstance.getCallNode());
         return bytecode.getLocalValues(bci, frame);
     }
@@ -1236,11 +1274,13 @@ public abstract class BytecodeNode extends Node {
      * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
      *
      * @see #getLocalNames(int)
+     * @see BytecodeFrame#get(FrameInstance, FrameInstance.FrameAccess)
      * @param frameInstance the frame instance
-     * @return a new array of names, or null if the frame instance does not correspond to an
+     * @return a new array of names, or null if the frame instance does not correspond to a
      *         {@link BytecodeRootNode}
      * @since 24.2
      */
+    @TruffleBoundary
     public static Object[] getLocalNames(FrameInstance frameInstance) {
         BytecodeNode bytecode = get(frameInstance);
         if (bytecode == null) {
@@ -1255,28 +1295,53 @@ public abstract class BytecodeNode extends Node {
      * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
      *
      * @see #setLocalValues(int, Frame, Object[])
+     * @see BytecodeFrame#get(FrameInstance, FrameInstance.FrameAccess)
      * @param frameInstance the frame instance
      * @return whether the locals could be set with the information available in the frame instance
      * @since 24.2
      */
+    @TruffleBoundary
     public static boolean setLocalValues(FrameInstance frameInstance, Object[] values) {
         BytecodeNode bytecode = get(frameInstance);
         if (bytecode == null) {
             return false;
         }
         int bci = bytecode.findBytecodeIndex(frameInstance);
-        bytecode.setLocalValues(bci, frameInstance.getFrame(FrameAccess.READ_WRITE), values);
+        bytecode.setLocalValues(bci, bytecode.resolveFrameImpl(frameInstance, FrameAccess.READ_WRITE), values);
         return true;
     }
 
-    private static Frame resolveFrame(FrameInstance frameInstance) {
-        Frame frame = frameInstance.getFrame(FrameAccess.READ_ONLY);
-        if (frameInstance.getCallTarget() instanceof RootCallTarget root) {
-            if (root.getRootNode() instanceof ContinuationRootNode continuation) {
-                frame = continuation.findFrame(frame);
-            }
-        }
-        return frame;
+    /**
+     * Internal method to be overridden by generated code.
+     *
+     * @since 25.1
+     */
+    protected abstract Frame resolveFrameImpl(FrameInstance frameInstance, FrameInstance.FrameAccess access);
+
+    /**
+     * Internal method to be overridden by generated code.
+     * <p>
+     * By default, frames are unavailable in stack trace elements unless
+     * {@link GenerateBytecode#captureFramesForTrace()} is set.
+     *
+     * @since 25.1
+     */
+    @SuppressWarnings("unused")
+    protected Frame resolveFrameImpl(TruffleStackTraceElement element) {
+        return null;
+    }
+
+    /**
+     * Internal method to be overridden by generated code.
+     * <p>
+     * By default, frames are unavailable in stack trace elements unless
+     * {@link GenerateBytecode#captureFramesForTrace()} is set.
+     *
+     * @since 25.1
+     */
+    @SuppressWarnings("unused")
+    protected Frame resolveNonVirtualFrameImpl(TruffleStackTraceElement element) {
+        return null;
     }
 
     /**
@@ -1291,20 +1356,21 @@ public abstract class BytecodeNode extends Node {
      */
     @TruffleBoundary
     public static BytecodeNode get(FrameInstance frameInstance) {
+        assert !(frameInstance.getCallNode() instanceof BytecodeRootNode) : "A BytecodeRootNode should not be used as a call location.";
         return get(frameInstance.getCallNode());
     }
 
     /**
      * Gets the bytecode location for a given Node, if it can be found in the parent chain.
      *
-     * @param node the node
+     * @param node the node, which must be a partial evaluation constant.
      * @return the corresponding bytecode location or null if no location can be found.
      * @since 24.2
      */
     @ExplodeLoop
     public static BytecodeNode get(Node node) {
-        Node location = node;
-        for (Node currentNode = location; currentNode != null; currentNode = currentNode.getParent()) {
+        CompilerAsserts.partialEvaluationConstant(node);
+        for (Node currentNode = node; currentNode != null; currentNode = currentNode.getParent()) {
             if (currentNode instanceof BytecodeNode bytecodeNode) {
                 return bytecodeNode;
             }
@@ -1320,6 +1386,7 @@ public abstract class BytecodeNode extends Node {
      * @return the corresponding bytecode location or null if no location can be found.
      * @since 24.2
      */
+    @TruffleBoundary
     public static BytecodeNode get(TruffleStackTraceElement element) {
         Node location = element.getLocation();
         if (location == null) {

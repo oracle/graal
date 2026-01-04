@@ -75,6 +75,7 @@ import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -279,6 +280,21 @@ public interface GraphBuilderContext extends GraphBuilderTool {
             parent = parent.getParent();
         }
         return result;
+    }
+
+    /**
+     * Gets the inlining chain of this context.
+     *
+     * @return the inlining chain of this context represented as a {@link BytecodePosition}, or
+     *         {@code null} if this is the context for the parse root.
+     */
+    default BytecodePosition getInliningChain() {
+        BytecodePosition inliningContext = null;
+        for (GraphBuilderContext cur = getParent(); cur != null; cur = cur.getParent()) {
+            BytecodePosition caller = new BytecodePosition(null, cur.getMethod(), cur.bci());
+            inliningContext = inliningContext == null ? caller : inliningContext.addCaller(caller);
+        }
+        return inliningContext;
     }
 
     /**

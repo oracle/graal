@@ -30,7 +30,6 @@ import java.util.Map;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -52,9 +51,12 @@ import com.oracle.svm.core.graal.llvm.runtime.LLVMExceptionUnwind;
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.layeredimagesingleton.UnsupportedLayeredSingleton;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
@@ -81,7 +83,8 @@ import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
  */
 @AutomaticallyRegisteredFeature
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-public class LLVMFeature implements Feature, InternalFeature, UnsupportedLayeredSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+public class LLVMFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -97,39 +100,18 @@ public class LLVMFeature implements Feature, InternalFeature, UnsupportedLayered
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (ModuleSupport.modulePathBuild) {
-            ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, NodeClass.class, LLVMGraphBuilderPlugins.class);
-            ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, NodeClass.class, SubstrateLLVMLoweringProvider.class);
+        ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, NodeClass.class, LLVMGraphBuilderPlugins.class);
+        ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, NodeClass.class, SubstrateLLVMLoweringProvider.class);
 
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LLVMFeature.class, false, "jdk.internal.vm.ci", "jdk.vm.ci.code.site", "jdk.vm.ci.code", "jdk.vm.ci.meta");
-        }
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LLVMFeature.class, false, "jdk.internal.vm.ci", "jdk.vm.ci.code.site", "jdk.vm.ci.code", "jdk.vm.ci.meta");
 
-        ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
-            @Override
-            public SubstrateBackend newBackend(Providers newProviders) {
-                return new SubstrateLLVMBackend(newProviders);
-            }
-        });
+        ImageSingletons.add(SubstrateBackendFactory.class, new LLVMSubstrateBackendFactory());
 
         ImageSingletons.add(SubstrateLoweringProviderFactory.class, SubstrateLLVMLoweringProvider::new);
 
-        ImageSingletons.add(NativeImageCodeCacheFactory.class, new NativeImageCodeCacheFactory() {
-            @Override
-            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform platform, Path tempDir) {
-                return new LLVMNativeImageCodeCache(compileQueue.getCompilationResults(), heap, platform, tempDir);
-            }
-        });
+        ImageSingletons.add(NativeImageCodeCacheFactory.class, new LLVMCodeCacheFactory());
 
-        ImageSingletons.add(ObjectFileFactory.class, new ObjectFileFactory() {
-            @Override
-            public ObjectFile newObjectFile(int pageSize, Path tempDir, BigBang bb) {
-                if (LLVMOptions.UseLLVMDataSection.getValue()) {
-                    return new LLVMObjectFile(pageSize, tempDir, bb);
-                } else {
-                    return ObjectFile.getNativeObjectFile(pageSize);
-                }
-            }
-        });
+        ImageSingletons.add(ObjectFileFactory.class, new LLVMObjectFileFactory());
 
         if (LLVMOptions.UseLLVMDataSection.getValue()) {
             ImageSingletons.add(CCompilerInvoker.class, new LLVMCCompilerInvoker(ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory()));
@@ -184,6 +166,34 @@ public class LLVMFeature implements Feature, InternalFeature, UnsupportedLayered
             }
 
             return version;
+        }
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+    private static final class LLVMSubstrateBackendFactory extends SubstrateBackendFactory {
+        @Override
+        public SubstrateBackend newBackend(Providers newProviders) {
+            return new SubstrateLLVMBackend(newProviders);
+        }
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+    private static final class LLVMCodeCacheFactory extends NativeImageCodeCacheFactory {
+        @Override
+        public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform platform, Path tempDir) {
+            return new LLVMNativeImageCodeCache(compileQueue.getCompilationResults(), heap, platform, tempDir);
+        }
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+    private static final class LLVMObjectFileFactory implements ObjectFileFactory {
+        @Override
+        public ObjectFile newObjectFile(int pageSize, Path tempDir, BigBang bb) {
+            if (LLVMOptions.UseLLVMDataSection.getValue()) {
+                return new LLVMObjectFile(pageSize, tempDir, bb);
+            } else {
+                return ObjectFile.getNativeObjectFile(pageSize);
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,11 +82,12 @@ public abstract class WasmBenchmarkSuiteBase {
 
         @Setup(Level.Trial)
         public void setup() throws IOException, InterruptedException {
-            benchmarkCase = WasmCase.loadBenchmarkCase(benchmarkResource());
+            benchmarkCase = WasmCase.loadBenchmarkCase(getClass(), benchmarkResource());
             System.out.println("...::: Benchmark " + benchmarkCase.name() + " :::...");
 
             final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
             contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,wasi_snapshot_preview1");
+            contextBuilder.option("wasm.EvalReturnsInstance", "true");
             contextBuilder.allowExperimentalOptions(true);
             if (!Objects.isNull(DISABLE_COMPILATION_FLAG)) {
                 contextBuilder.option("engine.Compilation", "false");
@@ -106,7 +107,7 @@ public abstract class WasmBenchmarkSuiteBase {
             sources.forEach(context::eval);
 
             String mainModuleName = benchmarkCase.name();
-            Value benchmarkModule = context.getBindings(WasmLanguage.ID).getMember(mainModuleName);
+            Value benchmarkModule = context.getBindings(WasmLanguage.ID).getMember(mainModuleName).getMember("exports");
             Value benchmarkSetupOnce = benchmarkModule.getMember("benchmarkSetupOnce");
             benchmarkSetupEach = benchmarkModule.getMember("benchmarkSetupEach");
             benchmarkTeardownEach = benchmarkModule.getMember("benchmarkTeardownEach");

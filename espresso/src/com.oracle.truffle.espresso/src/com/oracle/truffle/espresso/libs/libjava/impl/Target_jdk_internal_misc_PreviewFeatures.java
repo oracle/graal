@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(type = "Ljdk/internal/misc/PreviewFeatures;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_jdk_internal_misc_PreviewFeatures {
     @Substitution
     public static boolean isPreviewEnabled(@Inject EspressoLanguage lang) {

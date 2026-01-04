@@ -27,13 +27,13 @@ package com.oracle.svm.core.genscavenge.compacting;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.vm.ci.code.CodeUtil.K;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
@@ -42,21 +42,31 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 
 /**
  * LIFO stack for objects to visit during the mark phase. Without it, recursive calls could exhaust
- * the {@linkplain com.oracle.svm.core.stack.StackOverflowCheck yellow zone stack space} during GC.
+ * the {@linkplain StackOverflowCheck yellow zone stack space} during GC. Callers can also push
+ * other kinds of values, for example indexes for object arrays to keep track of the scanned range.
  */
 public final class MarkStack {
     private static final int SEGMENT_SIZE = 64 * K - /* avoid potential malloc() overallocation */ 64;
 
     @Fold
     static int entriesPerSegment() {
-        return (SEGMENT_SIZE - SizeOf.get(Segment.class)) / ConfigurationValues.getObjectLayout().getReferenceSize();
+        int headerSize = SizeOf.get(Segment.class);
+        assert headerSize % entrySize() == 0 : "must be aligned";
+        return (SEGMENT_SIZE - headerSize) / entrySize();
+    }
+
+    @Fold
+    static int entrySize() {
+        return ConfigurationValues.getObjectLayout().getReferenceSize();
     }
 
     private Segment top;
@@ -68,42 +78,68 @@ public final class MarkStack {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void push(Object obj) {
+    public void pushObject(Object obj) {
         assert obj != null;
+        Pointer entry = pushSlot();
+        ObjectAccess.writeObject(Word.nullPointer(), entry, obj);
+    }
 
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void pushInt(int value) {
+        Pointer entry = pushSlot();
+        entry.writeInt(0, value);
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private Pointer pushSlot() {
         if (top.isNull() || cursor == entriesPerSegment()) {
             top = allocateSegment(top);
             cursor = 0;
         }
 
-        UnsignedWord offset = getOffsetAtIndex(cursor);
-        ObjectAccess.writeObject(top, offset, obj);
+        Pointer entry = getEntryAddress(cursor);
         cursor++;
+        return entry;
     }
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public Object pop() {
+    public Object popObject() {
         assert !isEmpty();
 
-        cursor--;
-        UnsignedWord offset = getOffsetAtIndex(cursor);
-        Object obj = ObjectAccess.readObject(top, offset);
-
+        Pointer entry = getEntryAddress(cursor - 1);
+        Object obj = ObjectAccess.readObject(Word.nullPointer(), entry);
         assert obj != null;
 
+        popSlot();
+        return obj;
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public int popInt() {
+        assert !isEmpty();
+
+        Pointer entry = getEntryAddress(cursor - 1);
+        int v = entry.readInt(0);
+
+        popSlot();
+        return v;
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void popSlot() {
+        cursor--;
         if (cursor == 0) {
             if (top.getNext().isNonNull()) { // free eagerly, use cursor==0 only if completely empty
-                Segment t = top;
-                top = top.getNext();
-                cursor = entriesPerSegment();
-                NullableNativeMemory.free(t);
+                freeTopSegment();
             } else {
                 // keep a single segment
             }
         }
-
-        return obj;
     }
 
     @AlwaysInline("GC performance")
@@ -134,11 +170,19 @@ public final class MarkStack {
         return segment;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void freeTopSegment() {
+        Segment t = top;
+        top = top.getNext();
+        cursor = entriesPerSegment();
+        NullableNativeMemory.free(t);
+    }
+
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static UnsignedWord getOffsetAtIndex(int index) {
-        int refSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-        return Word.unsigned(index).multiply(refSize).add(SizeOf.unsigned(Segment.class));
+    private Pointer getEntryAddress(int index) {
+        Pointer firstEntry = ((Pointer) top).add(SizeOf.unsigned(Segment.class));
+        return firstEntry.add(Word.unsigned(index).multiply(entrySize()));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

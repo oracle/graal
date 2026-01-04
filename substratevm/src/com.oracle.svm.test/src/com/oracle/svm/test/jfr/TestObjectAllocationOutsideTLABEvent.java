@@ -56,27 +56,28 @@ public class TestObjectAllocationOutsideTLABEvent extends JfrRecordingTest {
         String[] events = new String[]{JfrEvent.ObjectAllocationOutsideTLAB.getName()};
         Recording recording = startRecording(events);
 
+        /* Do a GC before the allocations to avoid that the GC interferes with the test. */
+        System.gc();
+
         /*
          * Use a separate thread for allocating the objects, to have better control over the TLAB
          * and to make sure the objects are actually allocated outside the TLAB.
          */
         Thread testThread = new Thread(() -> {
-            final long largeObjectThreshold = SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue();
-            final int arraySize = NumUtil.safeToInt(largeObjectThreshold - 1024);
+            int arrayDataSize = arrayDataSizeForOutOfTLABAllocation();
 
-            // Allocate a small object to make sure we have a TLAB.
-            Object o = new Object();
-            GraalDirectives.blackhole(o);
+            /* Allocate a small object to make sure we have a TLAB. */
+            GraalDirectives.blackhole(new Object());
 
-            allocateByteArray(arraySize / Byte.BYTES);
-            allocateCharArray(arraySize / Character.BYTES);
+            /* Allocate large arrays that don't fit into the TLAB. */
+            GraalDirectives.blackhole(allocateByteArray(arrayDataSize / Byte.BYTES));
+            GraalDirectives.blackhole(allocateCharArray(arrayDataSize / Character.BYTES));
         }, TEST_THREAD_NAME);
 
         testThread.start();
         testThread.join();
 
         stopRecording(recording, TestObjectAllocationOutsideTLABEvent::validateEvents);
-
     }
 
     @NeverInline("Prevent escape analysis.")
@@ -89,9 +90,17 @@ public class TestObjectAllocationOutsideTLABEvent extends JfrRecordingTest {
         return new char[length];
     }
 
+    /**
+     * Returns the required array data size in bytes such that an array is too large to be allocated
+     * in the TLAB, yet still small enough to fit within an aligned heap chunk.
+     */
+    private static int arrayDataSizeForOutOfTLABAllocation() {
+        long largeObjectThreshold = SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue();
+        return NumUtil.safeToInt(largeObjectThreshold - 512);
+    }
+
     private static void validateEvents(List<RecordedEvent> events) {
-        final long largeObjectThreshold = SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue();
-        final int arrayLength = NumUtil.safeToInt(largeObjectThreshold - 1024);
+        int arrayDataSize = arrayDataSizeForOutOfTLABAllocation();
 
         boolean foundByteArray = false;
         boolean foundCharArray = false;
@@ -105,7 +114,7 @@ public class TestObjectAllocationOutsideTLABEvent extends JfrRecordingTest {
             long allocationSize = event.<Long> getValue("allocationSize");
             String className = event.<RecordedClass> getValue("objectClass").getName();
 
-            if (allocationSize >= arrayLength) {
+            if (allocationSize >= arrayDataSize) {
                 if (className.equals(char[].class.getName())) {
                     foundCharArray = true;
                 } else if (className.equals(byte[].class.getName())) {
@@ -119,5 +128,4 @@ public class TestObjectAllocationOutsideTLABEvent extends JfrRecordingTest {
         assertTrue(foundByteArray);
         assertTrue(foundCharArray);
     }
-
 }

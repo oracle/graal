@@ -291,7 +291,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * @return the read {@code String}
      */
     @CompilerDirectives.TruffleBoundary
-    public String readString(int startOffset, WasmFunctionNode node) {
+    public String readString(int startOffset, WasmFunctionNode<?> node) {
         ByteArrayList bytes = new ByteArrayList();
         byte currentByte;
         int offset = startOffset;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,8 +51,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.Term;
 
 public final class ASTTransitionCanonicalizer extends StateTransitionCanonicalizer<RegexAST, Term, ASTTransition, TransitionBuilder<RegexAST, Term, ASTTransition>> {
 
-    public ASTTransitionCanonicalizer(RegexAST stateIndex, boolean forward, boolean prioritySensitive) {
-        super(stateIndex, forward, prioritySensitive);
+    public ASTTransitionCanonicalizer(RegexAST stateIndex, boolean forward, boolean prioritySensitive, boolean booleanMatch) {
+        super(stateIndex, forward, prioritySensitive, booleanMatch);
     }
 
     @Override
@@ -61,8 +61,9 @@ public final class ASTTransitionCanonicalizer extends StateTransitionCanonicaliz
     }
 
     @Override
-    protected TransitionBuilder<RegexAST, Term, ASTTransition> createTransitionBuilder(ASTTransition[] transitions, StateSet<RegexAST, Term> targetStateSet, CodePointSet matcherBuilder) {
-        return new TransitionBuilder<>(transitions, targetStateSet, matcherBuilder);
+    protected TransitionBuilder<RegexAST, Term, ASTTransition> createTransitionBuilder(ASTTransition[] transitions, StateSet<RegexAST, Term> targetStateSet, CodePointSet matcherBuilder,
+                    long[] constraints, long[] operations) {
+        return new TransitionBuilder<>(transitions, targetStateSet, matcherBuilder, constraints, operations);
     }
 
     @SuppressWarnings("unchecked")
@@ -74,5 +75,10 @@ public final class ASTTransitionCanonicalizer extends StateTransitionCanonicaliz
     @Override
     protected ASTTransition[] createTransitionArray(int size) {
         return new ASTTransition[size];
+    }
+
+    @Override
+    protected boolean shouldPruneAfterFinalState() {
+        return false;
     }
 }

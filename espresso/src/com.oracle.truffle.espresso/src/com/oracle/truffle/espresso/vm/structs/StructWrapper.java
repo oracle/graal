@@ -22,19 +22,24 @@
  */
 package com.oracle.truffle.espresso.vm.structs;
 
+import static com.oracle.truffle.espresso.ffi.NativeType.BITFIELD_INT;
 import static com.oracle.truffle.espresso.ffi.NativeType.BOOLEAN;
 import static com.oracle.truffle.espresso.ffi.NativeType.INT;
 import static com.oracle.truffle.espresso.ffi.NativeType.LONG;
 import static com.oracle.truffle.espresso.ffi.NativeType.OBJECT;
 import static com.oracle.truffle.espresso.ffi.NativeType.POINTER;
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.jni.JNIHandles;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.structs.GenerateStructs.KnownStruct;
 
@@ -49,9 +54,10 @@ import com.oracle.truffle.espresso.vm.structs.GenerateStructs.KnownStruct;
  * the processor will generate two classes for each of them:
  * <ul>
  * <li>A {@link StructStorage storage class} to store the size of the struct, and the offsets of
- * each struct member. It also provides a {@link StructStorage#wrap(JNIHandles, TruffleObject)}
- * method, that returns an instance of {@link StructWrapper this class}. These classes are intended
- * to be per-context singletons.</li>
+ * each struct member. It also provides a
+ * {@link StructStorage#wrap(JNIHandles,NativeMemory, TruffleObject)} method, that returns an
+ * instance of {@link StructWrapper this class}. These classes are intended to be per-context
+ * singletons.</li>
  * <li>A {@link StructWrapper wrapper class}, as described above. This generated class will also
  * have public getters and setters for each member of the struct.</li>
  * </ul>
@@ -719,6 +725,43 @@ import com.oracle.truffle.espresso.vm.structs.GenerateStructs.KnownStruct;
                                                 POINTER,
                                                 POINTER,
                                 }),
+                /*-
+                 * typedef struct jmmOptionalSupport {
+                 *   unsigned int isLowMemoryDetectionSupported : 1;
+                 *   unsigned int isCompilationTimeMonitoringSupported : 1;
+                 *   unsigned int isThreadContentionMonitoringSupported : 1;
+                 *   unsigned int isCurrentThreadCpuTimeSupported : 1;
+                 *   unsigned int isOtherThreadCpuTimeSupported : 1;
+                 *   unsigned int isObjectMonitorUsageSupported : 1;
+                 *   unsigned int isSynchronizerUsageSupported : 1;
+                 *   unsigned int isThreadAllocatedMemorySupported : 1;
+                 *   unsigned int isRemoteDiagnosticCommandsSupported : 1;
+                 *   unsigned int : 22;
+                 * } jmmOptionalSupport;
+                 */
+                @KnownStruct(structName = "jmmOptionalSupport", //
+                                memberNames = {
+                                                "isLowMemoryDetectionSupported",
+                                                "isCompilationTimeMonitoringSupported",
+                                                "isThreadContentionMonitoringSupported",
+                                                "isCurrentThreadCpuTimeSupported",
+                                                "isOtherThreadCpuTimeSupported",
+                                                "isObjectMonitorUsageSupported",
+                                                "isSynchronizerUsageSupported",
+                                                "isThreadAllocatedMemorySupported",
+                                                "isRemoteDiagnosticCommandsSupported",
+                                }, //
+                                types = {
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                                BITFIELD_INT,
+                                }),
 })
 public abstract class StructWrapper {
     private final JNIHandles handles;
@@ -731,13 +774,25 @@ public abstract class StructWrapper {
     }
 
     public void free(NativeAccess nativeAccess) {
-        nativeAccess.freeMemory(pointer);
+        try {
+            nativeAccess.nativeMemory().freeMemory(NativeUtils.interopAsPointer(pointer));
+        } catch (IllegalMemoryAccessException e) {
+            // Should not reach here as we are in control of the arguments!
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere(e);
+        }
     }
 
-    protected StructWrapper(JNIHandles handles, TruffleObject pointer, long capacity) {
+    protected StructWrapper(JNIHandles handles, NativeMemory nativeMemory, TruffleObject pointer, long capacity) {
         this.handles = handles;
         this.pointer = pointer;
-        this.buffer = NativeUtils.directByteBuffer(pointer, capacity);
+        try {
+            this.buffer = nativeMemory.wrapNativeMemory(NativeUtils.interopAsPointer(pointer), Math.toIntExact(capacity));
+        } catch (IllegalMemoryAccessException e) {
+            // Should not reach here as we are in control of the arguments!
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere(e);
+        }
     }
 
     protected boolean getBoolean(int offset) {
@@ -778,6 +833,53 @@ public abstract class StructWrapper {
 
     protected void putInt(int offset, int value) {
         buffer.putInt(offset, value);
+    }
+
+    protected int getBitFieldInt(int offset, byte startBit, byte endBit) {
+        assert 0 <= startBit && startBit < 8 : startBit;
+        assert endBit > 0 : endBit;
+        assert startBit != endBit : startBit + "!=" + endBit;
+        assert endBit - startBit <= 32 : startBit + ".." + endBit;
+        long v = getBits(offset, endBit) >> startBit;
+        long mask = (1L << (endBit - startBit)) - 1;
+        return Math.toIntExact(v & mask);
+    }
+
+    private long getBits(int offset, byte endBit) {
+        long v;
+        if (endBit <= 8) {
+            v = buffer.get(offset) & 0xff;
+        } else if (endBit <= 16) {
+            v = buffer.getChar(offset);
+        } else if (endBit <= 32) {
+            v = buffer.getInt(offset) & 0xffff_ffffL;
+        } else {
+            v = buffer.getLong(offset);
+        }
+        return v;
+    }
+
+    protected void putBitFieldInt(int offset, byte startBit, byte endBit, int value) {
+        assert 0 <= startBit && startBit < 8 : startBit;
+        assert endBit > 0 : endBit;
+        assert startBit != endBit : startBit + "!=" + endBit;
+        assert endBit - startBit <= 32 : startBit + ".." + endBit;
+        long mask = ((1L << (endBit - startBit)) - 1) << startBit;
+        long v = getBits(offset, endBit);
+        v = (v & ~mask) | (((long) value << startBit) & mask);
+        putBits(offset, endBit, v);
+    }
+
+    private void putBits(int offset, byte endBit, long v) {
+        if (endBit <= 8) {
+            buffer.put(offset, (byte) v);
+        } else if (endBit <= 16) {
+            buffer.putChar(offset, (char) v);
+        } else if (endBit <= 32) {
+            buffer.putInt(offset, (int) v);
+        } else {
+            buffer.putLong(offset, v);
+        }
     }
 
     protected float getFloat(int offset) {

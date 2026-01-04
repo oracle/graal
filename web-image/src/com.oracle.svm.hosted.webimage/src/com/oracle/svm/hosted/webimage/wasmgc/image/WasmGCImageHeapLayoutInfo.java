@@ -47,10 +47,16 @@ public class WasmGCImageHeapLayoutInfo extends ImageHeapLayoutInfo {
      *            correspond directly to the image heap size in the Wasm binary (this cannot be
      *            known before the binary is assembled).
      */
-    public WasmGCImageHeapLayoutInfo(long startOffset, long serializedSize, long theoreticalSize) {
-        super(startOffset, theoreticalSize, 0, theoreticalSize, 0L, 0L, 0L, 0L);
+    public WasmGCImageHeapLayoutInfo(long serializedSize, long theoreticalSize) {
+        super(0, theoreticalSize, 0, theoreticalSize, 0L, 0L, 0L, 0L);
 
         this.serializedSize = serializedSize;
+    }
+
+    @Override
+    protected boolean verifyAlignment() {
+        /* Ignore alignment. */
+        return true;
     }
 
     public long getSerializedSize() {

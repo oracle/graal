@@ -32,6 +32,15 @@ import com.oracle.truffle.espresso.classfile.descriptors.Type;
  * Provides access to some VM-specific capabilities, such as throwing exceptions, or obtaining the
  * implementor's supported {@link JavaVersion}.
  *
+ * <h2 id="simpleFormat">Simple message format</h2>
+ * <p>
+ * A strict subset of {@link String#format(String, Object...)} that <b>ONLY</b> supports:
+ * <ul>
+ * <li>"%s" -> {@link Object#toString()}</li>
+ * <li>"%n" -> {@link System#lineSeparator()}</li>
+ * <li>"%%" -> "%"</li> The number of arguments and modifiers must match exactly.
+ * </ul>
+ *
  * @param <C> The class providing access to the VM-side java {@link Class}.
  * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
  * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
@@ -47,13 +56,13 @@ public interface RuntimeAccess<C extends TypeAccess<C, M, F>, M extends MethodAc
      * is given by the passed {@link ErrorType}.
      * <p>
      * The caller provides an error message that can be constructed using
-     * {@code String.format(Locale.ENGLISH, messageFormat, args)}.
+     * <a href="#simpleFormat">Simple message format</a>
      */
     RuntimeException throwError(ErrorType error, String messageFormat, Object... args);
 
     /**
      * If {@code error} is an exception that can be thrown by {@link #throwError}, returns the
-     * correspondin {@link ErrorType}. Returns null otherwise.
+     * corresponding {@link ErrorType}. Returns null otherwise.
      */
     ErrorType getErrorType(Throwable error);
 
@@ -81,7 +90,7 @@ public interface RuntimeAccess<C extends TypeAccess<C, M, F>, M extends MethodAc
      * aborted.
      * <p>
      * The caller provides an error message that can be constructed using
-     * {@code String.format(Locale.ENGLISH, messageFormat, args)}.
+     * <a href="#simpleFormat">Simple message format</a>
      */
     RuntimeException fatal(String messageFormat, Object... args);
 
@@ -89,7 +98,7 @@ public interface RuntimeAccess<C extends TypeAccess<C, M, F>, M extends MethodAc
      * Signals that an unexpected exception was seen and that the current operation must be aborted.
      * <p>
      * The caller provides the unexpected exception and an error message that can be constructed
-     * using {@code String.format(Locale.ENGLISH, messageFormat, args)}.
+     * using <a href="#simpleFormat">Simple message format</a>
      */
     RuntimeException fatal(Throwable t, String messageFormat, Object... args);
 }

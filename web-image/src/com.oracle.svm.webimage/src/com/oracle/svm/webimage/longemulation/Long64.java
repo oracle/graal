@@ -579,6 +579,22 @@ public class Long64 {
         return xorInternal(left.low, left.high, right.low, right.high);
     }
 
+    public static Long64 min(Long64 left, Long64 right) {
+        return lessThan(left, right) ? left : right;
+    }
+
+    public static Long64 max(Long64 left, Long64 right) {
+        return lessThan(left, right) ? right : left;
+    }
+
+    public static Long64 umin(Long64 left, Long64 right) {
+        return belowThan(left, right) ? left : right;
+    }
+
+    public static Long64 umax(Long64 left, Long64 right) {
+        return belowThan(left, right) ? right : left;
+    }
+
     public static Long64 abs(Long64 x) {
         return absInternal(x.low, x.high);
     }

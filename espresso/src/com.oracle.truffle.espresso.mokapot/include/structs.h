@@ -27,9 +27,9 @@
 #include <stddef.h>
 
 typedef struct member_info {
-	char* id;
-	size_t offset;
-	struct member_info *next;
+    char* id;
+    size_t offset;
+    struct member_info *next;
 } member_info;
 
 JNIEXPORT size_t JNICALL lookupMemberOffset(void* info, char* id);

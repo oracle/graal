@@ -98,7 +98,7 @@ public class DashboardDumpFeature implements InternalFeature {
                 } catch (IOException ex) {
                     System.getLogger(DashboardDumpFeature.class.getName()).log(Level.ERROR, "IOException during Dashboard json dump header", ex);
                 }
-                ReportUtils.report("Dashboard JSON dump header", getFile("dump"), false, os -> {
+                ReportUtils.report("Dashboard JSON dump header", getFile("dump"), false, _ -> {
                 });
             }
             if (isBgvFormat()) {
@@ -131,7 +131,7 @@ public class DashboardDumpFeature implements InternalFeature {
                                 "Dashboard PointsTo analysis JSON dump",
                                 getFile("dump"),
                                 true,
-                                os -> {
+                                _ -> {
                                     try {
                                         try (JsonBuilder.ObjectBuilder builder = objectBuilder.append("points-to").object()) {
                                             pointsTo.toJson(builder);
@@ -168,7 +168,7 @@ public class DashboardDumpFeature implements InternalFeature {
                                 "Dashboard Code-Breakdown JSON dump",
                                 getFile("dump"),
                                 true,
-                                os -> {
+                                _ -> {
                                     try (JsonBuilder.ObjectBuilder builder = objectBuilder.append("code-breakdown").object()) {
                                         dump.toJson(builder);
                                     } catch (IOException ex) {
@@ -202,7 +202,7 @@ public class DashboardDumpFeature implements InternalFeature {
                                 "Dashboard Heap-Breakdown JSON dump",
                                 getFile("dump"),
                                 true,
-                                os -> {
+                                _ -> {
                                     try (JsonBuilder.ObjectBuilder builder = objectBuilder.append("heap-breakdown").object()) {
                                         dump.toJson(builder);
                                     } catch (IOException ex) {

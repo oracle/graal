@@ -61,7 +61,7 @@ public interface VectorLIRGeneratorTool extends ArithmeticLIRGeneratorTool {
 
     Value emitVectorPackedComparison(CanonicalCondition condition, Value vectorA, Value vectorB, boolean unorderedIsTrue);
 
-    Value emitVectorToBitMask(LIRKind resultKind, Value vector);
+    Value emitVectorToBitMask(LIRKind resultKind, Value vector, boolean inputIsMask);
 
     Value emitVectorGather(LIRKind resultKind, Value base, Value offsets);
 
@@ -76,4 +76,8 @@ public interface VectorLIRGeneratorTool extends ArithmeticLIRGeneratorTool {
     Value emitMoveOpMaskToInteger(LIRKind resultKind, Value mask, int maskLen);
 
     Value emitMoveIntegerToOpMask(LIRKind resultKind, Value mask);
+
+    Value emitVectorCompress(LIRKind resultKind, Value source, Value mask);
+
+    Value emitVectorExpand(LIRKind resultKind, Value source, Value mask);
 }

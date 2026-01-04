@@ -40,7 +40,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Activation;
 import jdk.graal.compiler.debug.DebugContext.Description;
 import jdk.graal.compiler.debug.DebugContext.Scope;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.common.JVMCIError;
 
@@ -118,7 +118,7 @@ public class CompletionExecutor {
          * {@link DebugContext#disabled} is used by default to avoid the cost of creating a
          * {@link DebugContext}, so the task should override this if one is needed.
          */
-        default DebugContext getDebug(@SuppressWarnings("unused") OptionValues options, @SuppressWarnings("unused") List<DebugHandlersFactory> factories) {
+        default DebugContext getDebug(@SuppressWarnings("unused") OptionValues options, @SuppressWarnings("unused") List<DebugDumpHandlersFactory> factories) {
             return DebugContext.disabled(null);
         }
     }

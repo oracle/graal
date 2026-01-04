@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,17 +26,19 @@
 
 package com.oracle.objectfile.debugentry;
 
+import java.lang.reflect.Modifier;
+
 /**
  * An abstract class providing modelling a generic class member which includes behaviour and data
  * shared by both field and method entries.
  */
 public abstract class MemberEntry {
-    protected FileEntry fileEntry;
-    protected final int line;
-    protected final String memberName;
-    protected final StructureTypeEntry ownerType;
-    protected final TypeEntry valueType;
-    protected final int modifiers;
+    private final FileEntry fileEntry;
+    private final int line;
+    private final String memberName;
+    private final StructureTypeEntry ownerType;
+    private final TypeEntry valueType;
+    private final int modifiers;
 
     public MemberEntry(FileEntry fileEntry, String memberName, StructureTypeEntry ownerType, TypeEntry valueType, int modifiers) {
         this(fileEntry, 0, memberName, ownerType, valueType, modifiers);
@@ -52,9 +54,13 @@ public abstract class MemberEntry {
         this.modifiers = modifiers;
     }
 
+    public void seal() {
+        // nothing to do here
+    }
+
     public String getFileName() {
         if (fileEntry != null) {
-            return fileEntry.getFileName();
+            return fileEntry.fileName();
         } else {
             return "";
         }
@@ -64,7 +70,7 @@ public abstract class MemberEntry {
         if (fileEntry != null) {
             return fileEntry.getFullName();
         } else {
-            return null;
+            return "";
         }
     }
 
@@ -81,6 +87,12 @@ public abstract class MemberEntry {
         return fileEntry;
     }
 
+    /**
+     * Fetch the file index from its owner class entry with {@link ClassEntry#getFileIdx}. The file
+     * entry must only be fetched for members whose owner is a {@link ClassEntry}.
+     * 
+     * @return the file index of this members file in the owner class entry
+     */
     public int getFileIdx() {
         if (ownerType instanceof ClassEntry) {
             return ((ClassEntry) ownerType).getFileIdx(fileEntry);
@@ -90,11 +102,15 @@ public abstract class MemberEntry {
         return 1;
     }
 
+    public String getMemberName() {
+        return memberName;
+    }
+
     public int getLine() {
         return line;
     }
 
-    public StructureTypeEntry ownerType() {
+    public StructureTypeEntry getOwnerType() {
         return ownerType;
     }
 
@@ -106,7 +122,45 @@ public abstract class MemberEntry {
         return modifiers;
     }
 
+    public static String memberModifiers(int modifiers) {
+        StringBuilder builder = new StringBuilder();
+        if (Modifier.isPublic(modifiers)) {
+            builder.append("public ");
+        } else if (Modifier.isProtected(modifiers)) {
+            builder.append("protected ");
+        } else if (Modifier.isPrivate(modifiers)) {
+            builder.append("private ");
+        }
+        if (Modifier.isFinal(modifiers)) {
+            builder.append("final ");
+        }
+        if (Modifier.isAbstract(modifiers)) {
+            builder.append("abstract ");
+        } else if (Modifier.isVolatile(modifiers)) {
+            builder.append("volatile ");
+        } else if (Modifier.isTransient(modifiers)) {
+            builder.append("transient ");
+        } else if (Modifier.isSynchronized(modifiers)) {
+            builder.append("synchronized ");
+        }
+        if (Modifier.isNative(modifiers)) {
+            builder.append("native ");
+        }
+        if (Modifier.isStatic(modifiers)) {
+            builder.append("static");
+        } else {
+            builder.append("instance");
+        }
+
+        return builder.toString();
+    }
+
     public String getModifiersString() {
-        return ownerType.memberModifiers(modifiers);
+        return memberModifiers(modifiers);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Member(%s %s %s owner=%s %s:%d)", getModifiersString(), valueType.getTypeName(), memberName, ownerType.getTypeName(), getFullFileName(), line);
     }
 }

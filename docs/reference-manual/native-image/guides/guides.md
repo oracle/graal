@@ -1,5 +1,5 @@
 ---
-layout: ni-docs-landing
+layout: docs
 toc_group: how-to-guides
 link_title: Guides
 permalink: /guides/
@@ -36,8 +36,8 @@ Here you will learn how to:
 - [Optimize Size of a Native Executable using Build Reports](optimize-native-executable-size-using-build-report.md)
 - [Optimize Memory Footprint of a Native Executable](optimize-memory-footprint.md)
 - [Specify Class Initialization Explicitly](specify-class-initialization.md)
-- [Use Gradle to Build a Native Executable from a Java Application](https://graalvm.github.io/native-build-tools/latest/gradle-plugin-quickstart.html)
-- [Use Maven to Build a Native Executable from a Java Application](https://graalvm.github.io/native-build-tools/latest/maven-plugin-quickstart.html)
+- [Use Gradle to Build a Native Executable from a Java Application](https://graalvm.github.io/native-build-tools/latest/end-to-end-gradle-guide.html)
+- [Use Maven to Build a Native Executable from a Java Application](https://graalvm.github.io/native-build-tools/latest/end-to-end-maven-guide.html)
 
 ## Microservices Frameworks
 

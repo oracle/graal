@@ -58,3 +58,10 @@ final class MixedFactorySameMarshallers {
 @GenerateNativeToNativeBridge(factory = MixedFactorySameMarshallers.class, implementation = LocalService.class)
 abstract class MixedFactorySameMarshallersService implements ForeignObject, Service {
 }
+
+/*
+ * In Mx JavaProjects, a class must share its name with the Java source file to allow correct
+ * up-to-date status checking.
+ */
+public class MixedSameMarshallers {
+}

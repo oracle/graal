@@ -28,40 +28,61 @@ import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrat
 import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
 import java.lang.reflect.Modifier;
-import java.util.EnumSet;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.configure.ClassNameSupport;
-import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
-import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LayerVerifiedOption;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 
 @AutomaticallyRegisteredImageSingleton
-public final class ClassForNameSupport implements MultiLayeredImageSingleton, UnsavedSingleton {
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = ClassForNameSupport.LayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
+public final class ClassForNameSupport {
+
+    public static final String CLASSES_REGISTERED = "classes registered";
+    public static final String CLASSES_REGISTERED_STATES = "classes registered states";
+    public static final String UNSAFE_REGISTERED = "unsafe registered";
+    public static final String RESPECTS_CLASS_LOADER = "respects class loader";
 
     public static final class Options {
+        @LayerVerifiedOption(kind = LayerVerifiedOption.Kind.Changed, severity = LayerVerifiedOption.Severity.Error)//
         @Option(help = "Class.forName and similar respect their class loader argument.", stability = EXPERIMENTAL)//
         public static final HostedOptionKey<Boolean> ClassForNameRespectsClassLoader = new HostedOptionKey<>(false);
     }
@@ -82,12 +103,6 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
         }
     }
 
-    private ClassLoader libGraalLoader;
-
-    public void setLibGraalLoader(ClassLoader libGraalLoader) {
-        this.libGraalLoader = libGraalLoader;
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public static ClassForNameSupport currentLayer() {
         return LayeredImageSingletonSupport.singleton().lookup(ClassForNameSupport.class, false, true);
@@ -98,28 +113,51 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
     }
 
     /**
-     * The map used to collect registered classes. Not used when respecting class loaders.
+     * The map used to collect registered classes. Not used when respecting class loaders. This map
+     * only collects data for the current layer.
      */
     private final EconomicMap<String, ConditionalRuntimeValue<Object>> knownClasses;
     /**
      * The map used to collect registered class names. When respecting class loaders this replaces
      * knownClasses.
      */
-    private final EconomicMap<String, RuntimeConditionSet> knownClassNames;
+    private final EconomicMap<String, RuntimeDynamicAccessMetadata> knownClassNames;
     /**
      * The map used to collect exceptions that should be thrown by Class.forName. Only used when
      * respecting class loaders.
      */
     private final EconomicMap<String, Throwable> knownExceptions;
     /**
-     * The map used to collect unsafe allocated classes.
+     * The map used to collect unsafe allocated classes. This map only collects data for the current
+     * layer.
      */
-    private final EconomicMap<Class<?>, RuntimeConditionSet> unsafeInstantiatedClasses;
+    private final EconomicMap<Class<?>, RuntimeDynamicAccessMetadata> unsafeInstantiatedClasses;
+
+    /**
+     * The map used to collect classes registered in previous layers. The boolean associated to each
+     * class is true if the registered value is complete and false in the case of a negative query.
+     * A complete data registered in the current layer will overwrite a negative query in previous
+     * layers. In this case, the data will be stored in {@link ClassForNameSupport#knownClasses} of
+     * the current layer and the boolean value will be changed in the map of the next extension
+     * layer.
+     */
+    @Platforms(HOSTED_ONLY.class) //
+    private final Map<String, Boolean> previousLayerClasses;
+
+    /**
+     * The set used to collect unsafe allocated classes in previous layers.
+     */
+    @Platforms(HOSTED_ONLY.class) //
+    private final Set<String> previousLayerUnsafe;
 
     private static final Object NEGATIVE_QUERY = new Object();
 
     public ClassForNameSupport() {
-        if (respectClassLoader()) {
+        this(Map.of(), Set.of(), respectClassLoader());
+    }
+
+    public ClassForNameSupport(Map<String, Boolean> previousLayerClasses, Set<String> previousLayerUnsafe, boolean respectsClassLoader) {
+        if (respectsClassLoader) {
             knownClasses = null;
             knownClassNames = ImageHeapMap.createNonLayeredMap();
             knownExceptions = ImageHeapMap.createNonLayeredMap();
@@ -129,26 +167,29 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
             knownExceptions = null;
         }
         unsafeInstantiatedClasses = ImageHeapMap.createNonLayeredMap();
+        this.previousLayerClasses = previousLayerClasses;
+        this.previousLayerUnsafe = previousLayerUnsafe;
     }
 
+    @Fold
     public static boolean respectClassLoader() {
         return Options.ClassForNameRespectsClassLoader.getValue();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerClass(Class<?> clazz, ClassLoader runtimeClassLoader) {
-        registerClass(ConfigurationCondition.alwaysTrue(), clazz, runtimeClassLoader);
+        registerClass(AccessCondition.unconditional(), clazz, runtimeClassLoader, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerClass(ConfigurationCondition condition, Class<?> clazz, ClassLoader runtimeClassLoader) {
+    public void registerClass(AccessCondition condition, Class<?> clazz, ClassLoader runtimeClassLoader, boolean preserved) {
         assert !clazz.isPrimitive() : "primitive classes cannot be looked up by name";
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return; // must be defined at runtime before it can be looked up
         }
         String name = clazz.getName();
         if (respectClassLoader()) {
-            registerKnownClassName(condition, name);
+            registerKnownClassName(condition, name, preserved);
             Class<?> elemental = clazz;
             while (elemental.isArray()) {
                 elemental = elemental.getComponentType();
@@ -161,31 +202,20 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
                 ConditionalRuntimeValue<Object> existingEntry = knownClasses.get(name);
                 Object currentValue = existingEntry == null ? null : existingEntry.getValueUnconditionally();
 
-                /* TODO: Remove workaround once GR-53985 is implemented */
-                if (currentValue instanceof Class<?> currentClazz && clazz.getClassLoader() != currentClazz.getClassLoader()) {
-                    /* Ensure runtime lookup of LibGraalClassLoader classes */
-                    if (isLibGraalClass(currentClazz)) {
-                        return;
-                    }
-                    if (isLibGraalClass(clazz)) {
-                        currentValue = null;
-                    }
-                }
-
                 if (currentValue == null || // never seen
                                 currentValue == NEGATIVE_QUERY ||
                                 currentValue == clazz) {
                     currentValue = clazz;
-                    var cond = updateConditionalValue(existingEntry, currentValue, condition);
-                    knownClasses.put(name, cond);
+                    var cond = updateConditionalValue(existingEntry, currentValue, condition, preserved);
+                    addKnownClass(name, cond);
                 } else if (currentValue instanceof Throwable) { // failed at linking time
-                    var cond = updateConditionalValue(existingEntry, currentValue, condition);
+                    var cond = updateConditionalValue(existingEntry, currentValue, condition, preserved);
                     /*
                      * If the class has already been seen as throwing an error, we don't overwrite
                      * this error. Nevertheless, we have to update the set of conditionals to be
                      * correct.
                      */
-                    knownClasses.put(name, cond);
+                    addKnownClass(name, cond);
                 } else {
                     throw VMError.shouldNotReachHere("""
                                     Invalid Class.forName value for %s: %s
@@ -199,29 +229,39 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
         }
     }
 
-    @Platforms(HOSTED_ONLY.class)
-    private boolean isLibGraalClass(Class<?> clazz) {
-        return libGraalLoader != null && clazz.getClassLoader() == libGraalLoader;
+    private void addKnownClass(String name, ConditionalRuntimeValue<Object> cond) {
+        addKnownClass(name, (map) -> map.put(name, cond), cond);
+    }
+
+    private void addKnownClass(String name, Consumer<EconomicMap<String, ConditionalRuntimeValue<Object>>> callback, ConditionalRuntimeValue<Object> cond) {
+        Boolean previousLayerData = previousLayerClasses.get(name);
+        /* GR-66387: The runtime condition should be combined across layers. */
+        if (previousLayerData == null || (!previousLayerData && cond.getValueUnconditionally() != NEGATIVE_QUERY)) {
+            callback.accept(knownClasses);
+        }
     }
 
     public static ConditionalRuntimeValue<Object> updateConditionalValue(ConditionalRuntimeValue<Object> existingConditionalValue, Object newValue,
-                    ConfigurationCondition additionalCondition) {
+                    AccessCondition additionalCondition, boolean preserved) {
         if (existingConditionalValue == null) {
-            return new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(additionalCondition), newValue);
+            return new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.createHosted(additionalCondition, preserved), newValue);
         } else {
-            existingConditionalValue.getConditions().addCondition(additionalCondition);
+            existingConditionalValue.getDynamicAccessMetadata().addCondition(additionalCondition);
             existingConditionalValue.updateValue(newValue);
+            if (!preserved) {
+                existingConditionalValue.getDynamicAccessMetadata().setNotPreserved();
+            }
             return existingConditionalValue;
         }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerExceptionForClass(ConfigurationCondition condition, String className, Throwable t) {
+    public void registerExceptionForClass(AccessCondition condition, String className, Throwable t, boolean preserved) {
         if (RuntimeClassLoading.isSupported()) {
             return;
         }
         if (respectClassLoader()) {
-            registerKnownClassName(condition, className);
+            registerKnownClassName(condition, className, preserved);
             synchronized (knownExceptions) {
                 knownExceptions.put(className, t);
             }
@@ -231,9 +271,9 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerNegativeQuery(ConfigurationCondition condition, String className) {
+    public void registerNegativeQuery(AccessCondition condition, String className) {
         if (respectClassLoader()) {
-            registerKnownClassName(condition, className);
+            registerKnownClassName(condition, className, false);
         } else {
             /*
              * If the class is not accessible by the builder class loader, but was already
@@ -244,35 +284,46 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
         }
     }
 
-    private void registerKnownClassName(ConfigurationCondition condition, String className) {
+    private void registerKnownClassName(AccessCondition condition, String className, boolean preserved) {
         assert respectClassLoader();
         synchronized (knownClassNames) {
-            RuntimeConditionSet existingConditions = knownClassNames.get(className);
-            if (existingConditions == null) {
-                knownClassNames.put(className, RuntimeConditionSet.createHosted(condition));
+            RuntimeDynamicAccessMetadata existingMetadata = knownClassNames.get(className);
+            if (existingMetadata == null) {
+                knownClassNames.put(className, RuntimeDynamicAccessMetadata.createHosted(condition, preserved));
             } else {
-                existingConditions.addCondition(condition);
+                existingMetadata.addCondition(condition);
+                if (!preserved) {
+                    existingMetadata.setNotPreserved();
+                }
             }
         }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerUnsafeAllocated(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerUnsafeAllocated(AccessCondition condition, Class<?> clazz, boolean preserved) {
         if (!clazz.isArray() && !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers())) {
             /* Otherwise, UNSAFE.allocateInstance results in InstantiationException */
-            var conditionSet = unsafeInstantiatedClasses.putIfAbsent(clazz, RuntimeConditionSet.createHosted(condition));
-            if (conditionSet != null) {
-                conditionSet.addCondition(condition);
+            if (!previousLayerUnsafe.contains(clazz.getName())) {
+                var conditionSet = unsafeInstantiatedClasses.putIfAbsent(clazz, RuntimeDynamicAccessMetadata.createHosted(condition, preserved));
+                if (conditionSet != null) {
+                    conditionSet.addCondition(condition);
+                    if (!preserved) {
+                        conditionSet.setNotPreserved();
+                    }
+                }
             }
         }
     }
 
-    private void updateCondition(ConfigurationCondition condition, String className, Object value) {
+    private void updateCondition(AccessCondition condition, String className, Object value) {
         synchronized (knownClasses) {
-            var runtimeConditions = knownClasses.putIfAbsent(className, new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(condition), value));
-            if (runtimeConditions != null) {
-                runtimeConditions.getConditions().addCondition(condition);
-            }
+            var cond = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.createHosted(condition, false), value);
+            addKnownClass(className, (map) -> {
+                var runtimeConditions = map.putIfAbsent(className, cond);
+                if (runtimeConditions != null) {
+                    runtimeConditions.getDynamicAccessMetadata().addCondition(condition);
+                }
+            }, cond);
         }
     }
 
@@ -285,9 +336,9 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public Set<String> getKnownClassNames() {
+    public EconomicSet<String> getKnownClassNames() {
         EconomicMap<String, ?> map = respectClassLoader() ? knownClassNames : knownClasses;
-        Set<String> set = new HashSet<>(map.size());
+        EconomicSet<String> set = EconomicSet.create(map.size());
         for (String key : map.getKeys()) {
             set.add(key);
         }
@@ -302,18 +353,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
         if (className == null) {
             return null;
         }
-        Object result = null;
-        for (var singleton : layeredSingletons()) {
-            Object newResult = singleton.forName0(className, classLoader);
-            result = newResult != null ? newResult : result;
-            /*
-             * The class might have been registered in a shared layer but was not yet available. In
-             * that case, the extension layers need to be checked too.
-             */
-            if (result != null && result != NEGATIVE_QUERY) {
-                break;
-            }
-        }
+        Object result = queryResultFor(className, classLoader);
         // Note: for non-predefined classes, we (currently) don't need to check the provided loader
         // TODO rewrite stack traces (GR-42813)
         if (result instanceof Class<?>) {
@@ -330,7 +370,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
             }
         } else if (result == null) {
             if (throwMissingRegistrationErrors()) {
-                MissingReflectionRegistrationUtils.forClass(className);
+                MissingReflectionRegistrationUtils.reportClassAccess(className);
             }
 
             if (returnNullOnException) {
@@ -340,6 +380,22 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
             }
         }
         throw VMError.shouldNotReachHere("Class.forName result should be Class, ClassNotFoundException or Error: " + result);
+    }
+
+    private static Object queryResultFor(String className, ClassLoader classLoader) {
+        Object result = null;
+        for (var singleton : layeredSingletons()) {
+            Object newResult = singleton.forName0(className, classLoader);
+            result = newResult != null ? newResult : result;
+            /*
+             * The class might have been registered in a shared layer but was not yet available. In
+             * that case, the extension layers need to be checked too.
+             */
+            if (result != null && result != NEGATIVE_QUERY) {
+                break;
+            }
+        }
+        return result;
     }
 
     private Object forName0(String className, ClassLoader classLoader) {
@@ -356,9 +412,9 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
             /* Invalid class names always throw, no need for reflection data */
             return new ClassNotFoundException(className);
         }
-        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+        if (MetadataTracer.enabled()) {
             // NB: the early returns above ensure we do not trace calls with bad type args.
-            MetadataTracer.singleton().traceReflectionType(className);
+            MetadataTracer.singleton().traceReflectionType(ClassNameSupport.reflectionNameToTypeName(className));
         }
         return result == NEGATIVE_QUERY ? new ClassNotFoundException(className) : result;
     }
@@ -371,15 +427,15 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
         }
     }
 
-    public static RuntimeConditionSet getConditionFor(Class<?> jClass) {
+    public static RuntimeDynamicAccessMetadata getDynamicAccessMetadataFor(Class<?> jClass) {
         Objects.requireNonNull(jClass);
         String jClassName = jClass.getName();
         if (respectClassLoader()) {
-            RuntimeConditionSet conditionSet = getConditionForName(jClassName);
-            if (conditionSet == null) {
-                return RuntimeConditionSet.unmodifiableEmptySet();
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadataForName(jClassName);
+            if (dynamicAccessMetadata == null) {
+                return RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata();
             }
-            return conditionSet;
+            return dynamicAccessMetadata;
         }
         ConditionalRuntimeValue<Object> conditionalClass = null;
         for (var singleton : layeredSingletons()) {
@@ -389,36 +445,69 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
             }
         }
         if (conditionalClass == null) {
-            return RuntimeConditionSet.unmodifiableEmptySet();
+            return RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata();
         } else {
-            return conditionalClass.getConditions();
+            return conditionalClass.getDynamicAccessMetadata();
         }
     }
 
-    public static boolean isRegisteredClass(String className) {
-        assert respectClassLoader();
-        RuntimeConditionSet conditionSet = getConditionForName(className);
-        if (conditionSet == null) {
-            return false;
+    public static boolean isPreserved(Class<?> jClass) {
+        Objects.requireNonNull(jClass);
+        String jClassName = jClass.getName();
+        if (respectClassLoader()) {
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadataForName(jClassName);
+            if (dynamicAccessMetadata == null) {
+                return false;
+            }
+            return dynamicAccessMetadata.isPreserved();
         }
-        return conditionSet.satisfied();
+        for (var singleton : layeredSingletons()) {
+            ConditionalRuntimeValue<Object> conditionalClass = singleton.knownClasses.get(jClassName);
+            if (conditionalClass != null) {
+                return conditionalClass.getDynamicAccessMetadata().isPreserved();
+            }
+        }
+        return false;
+    }
+
+    public static boolean isUnsafeAllocatedPreserved(Class<?> jClass) {
+        Objects.requireNonNull(jClass);
+        for (var singleton : layeredSingletons()) {
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = singleton.unsafeInstantiatedClasses.get(jClass);
+            if (dynamicAccessMetadata != null) {
+                return dynamicAccessMetadata.isPreserved();
+            }
+        }
+        return false;
+    }
+
+    public static boolean isRegisteredClass(String className) {
+        if (respectClassLoader()) {
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadataForName(className);
+            if (dynamicAccessMetadata == null) {
+                return false;
+            }
+            return dynamicAccessMetadata.satisfied();
+        } else {
+            return queryResultFor(className, null) != null;
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean isCurrentLayerRegisteredClass(String className) {
         assert respectClassLoader();
-        RuntimeConditionSet conditionSet = currentLayer().knownClassNames.get(className);
-        if (conditionSet == null) {
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = currentLayer().knownClassNames.get(className);
+        if (dynamicAccessMetadata == null) {
             return false;
         }
-        return conditionSet.satisfied();
+        return dynamicAccessMetadata.satisfied();
     }
 
-    private static RuntimeConditionSet getConditionForName(String className) {
+    private static RuntimeDynamicAccessMetadata getDynamicAccessMetadataForName(String className) {
         for (var singleton : layeredSingletons()) {
-            RuntimeConditionSet conditionSet = singleton.knownClassNames.get(className);
-            if (conditionSet != null) {
-                return conditionSet;
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = singleton.knownClassNames.get(className);
+            if (dynamicAccessMetadata != null) {
+                return dynamicAccessMetadata;
             }
         }
         return null;
@@ -445,27 +534,86 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
      */
     public static boolean canUnsafeInstantiateAsInstance(DynamicHub hub) {
         Class<?> clazz = DynamicHub.toClass(hub);
-        RuntimeConditionSet conditionSet = null;
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = null;
         for (var singleton : layeredSingletons()) {
-            conditionSet = singleton.unsafeInstantiatedClasses.get(clazz);
-            if (conditionSet != null) {
+            dynamicAccessMetadata = singleton.unsafeInstantiatedClasses.get(clazz);
+            if (dynamicAccessMetadata != null) {
                 break;
             }
         }
-        if (conditionSet != null) {
-            if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
-                ConfigurationType type = MetadataTracer.singleton().traceReflectionType(clazz.getName());
-                if (type != null) {
-                    type.setUnsafeAllocated();
-                }
-            }
-            return conditionSet.satisfied();
+        if (dynamicAccessMetadata != null) {
+            return dynamicAccessMetadata.satisfied();
         }
         return false;
     }
 
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<ClassForNameSupport>() {
+
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, ClassForNameSupport singleton) {
+                    List<String> classNames = new ArrayList<>();
+                    List<Boolean> classStates = new ArrayList<>();
+                    EconomicSet<String> unsafeNames = EconomicSet.create(singleton.previousLayerUnsafe);
+
+                    var cursor = singleton.knownClasses.getEntries();
+                    while (cursor.advance()) {
+                        classNames.add(cursor.getKey());
+                        boolean isNegativeQuery = cursor.getValue().getValueUnconditionally() == NEGATIVE_QUERY;
+                        classStates.add(!isNegativeQuery);
+                    }
+
+                    for (var entry : singleton.previousLayerClasses.entrySet()) {
+                        /*
+                         * If a complete entry overwrites a negative query from a previous layer,
+                         * the previousLayerClasses map entry needs to be skipped to register the
+                         * new entry for extension layers.
+                         */
+                        if (!classNames.contains(entry.getKey())) {
+                            classNames.add(entry.getKey());
+                            classStates.add(entry.getValue());
+                        }
+                    }
+
+                    singleton.unsafeInstantiatedClasses.getKeys().iterator().forEachRemaining(c -> unsafeNames.add(c.getName()));
+
+                    writer.writeStringList(CLASSES_REGISTERED, classNames);
+                    writer.writeBoolList(CLASSES_REGISTERED_STATES, classStates);
+                    writer.writeStringList(UNSAFE_REGISTERED, unsafeNames.toList());
+                    /*
+                     * The option is not accessible when the singleton is loaded, so the boolean
+                     * needs to be persisted.
+                     */
+                    writer.writeInt(RESPECTS_CLASS_LOADER, respectClassLoader() ? 1 : 0);
+
+                    return LayeredPersistFlags.CREATE;
+                }
+
+                @Override
+                public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
+                    return SingletonInstantiator.class;
+                }
+            });
+        }
+    }
+
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<ClassForNameSupport> {
+        @Override
+        public ClassForNameSupport createFromLoader(ImageSingletonLoader loader) {
+            List<String> previousLayerClassKeys = loader.readStringList(CLASSES_REGISTERED);
+            List<Boolean> previousLayerClassStates = loader.readBoolList(CLASSES_REGISTERED_STATES);
+
+            Map<String, Boolean> previousLayerClasses = new HashMap<>();
+            for (int i = 0; i < previousLayerClassKeys.size(); ++i) {
+                previousLayerClasses.put(previousLayerClassKeys.get(i), previousLayerClassStates.get(i));
+            }
+
+            Set<String> previousLayerUnsafe = Set.copyOf(loader.readStringList(UNSAFE_REGISTERED));
+            boolean respectsClassLoader = loader.readInt(RESPECTS_CLASS_LOADER) == 1;
+
+            return new ClassForNameSupport(Collections.unmodifiableMap(previousLayerClasses), previousLayerUnsafe, respectsClassLoader);
+        }
     }
 }

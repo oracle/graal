@@ -55,6 +55,7 @@ import jdk.graal.compiler.nodes.calc.IntegerTestNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.NarrowableArithmeticNode;
 import jdk.graal.compiler.nodes.calc.ShiftNode;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.nodes.simd.LogicValueStamp;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
@@ -222,17 +223,6 @@ public final class VectorAMD64 extends VectorArchitecture {
         // to additionally check if the long value fits into the mantissa of a double.
         if (isImpossibleLongToDoubleConversion(result, input)) {
             return 1;
-        }
-
-        if (op.getCategory().equals(FloatConvertCategory.FloatingPointToInteger)) {
-            ArithmeticOpTable.FloatConvertOp stampChecks = ArithmeticOpTable.forStamp(input).getFloatConvert(op);
-            if (stampChecks.inputCanBeNaN(input) || stampChecks.canOverflowInteger(input)) {
-                /*
-                 * This instruction is not supported yet because we would need fixup code to map
-                 * AMD64 semantics to Java semantics (GR-51421).
-                 */
-                return 1;
-            }
         }
 
         AVXSize avxSize = convertOps.getSupportedAVXSize(op.getCategory(), ((PrimitiveStamp) input).getBits(), ((PrimitiveStamp) result).getBits(), maxLength);
@@ -431,9 +421,15 @@ public final class VectorAMD64 extends VectorArchitecture {
         return Math.min(maxPhysicalSize, maxDesiredSize);
     }
 
-    public void updateMaxVectorSizeForArchitecture(AMD64 newArch) {
+    /**
+     * To be called only when (re-)configuring the compiler for an SVM runtime compilation. Resets
+     * precomputed values stored in this vector architecture instance for the now known runtime
+     * target architecture.
+     */
+    public void updateForRuntimeArchitecture(AMD64 newArch) {
         this.cachedMaxVectorLength = 0;  // force recomputation
         this.maxVectorSize = maxVectorSizeForArchitecture(newArch);
+        this.vectorAPITypeTable = null;
     }
 
     /**
@@ -469,14 +465,6 @@ public final class VectorAMD64 extends VectorArchitecture {
         AVXSize elementSize = gatherOps.getSupportedAVXElementSize(elementStamp, maxLength);
         AVXSize offsetSize = gatherOps.getSupportedAVXOffsetSize(offsetStamp, maxLength);
         return Math.min(getSupportedVectorLength(elementStamp, maxLength, elementSize), getSupportedVectorLength(offsetStamp, maxLength, offsetSize));
-    }
-
-    public boolean supportsCPUFeature(String feature) {
-        try {
-            return arch.getFeatures().contains(CPUFeature.valueOf(feature));
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
     }
 
     @Override
@@ -623,6 +611,17 @@ public final class VectorAMD64 extends VectorArchitecture {
     }
 
     @Override
+    public int getSupportedVectorCompressExpandLength(Stamp elementStamp, int maxLength) {
+        if (!hasMinimumVectorizationRequirements(maxLength)) {
+            return 1;
+        }
+
+        AVXSize avxSize = compressExpandOps.getSupportedAVXSize(elementStamp, maxLength);
+        int supportedLength = getSupportedVectorLength(elementStamp, maxLength, avxSize);
+        return Math.min(supportedLength, maxLength);
+    }
+
+    @Override
     public int getObjectAlignment() {
         return objectAlignment;
     }
@@ -702,16 +701,10 @@ public final class VectorAMD64 extends VectorArchitecture {
                                             // AMD64VectorLoweringPhase)
                                             op(QWORD_BITS, DOUBLE_BITS, VectorFeatureAssertion.AVX1_AVX2_AVX512DQ_VL)),
 
-                            /*
-                             * The instructions in this category don't match Java semantics. At the
-                             * moment they can only be used when we know that input is not NaN and
-                             * will not overflow the result. As in the scalar case, we will want to
-                             * emit the required fixup code for these special cases (GR-51421).
-                             */
                             entry(FloatConvertCategory.FloatingPointToInteger,
-                                            op(SINGLE_BITS, DWORD_BITS, VectorFeatureAssertion.AVX1_AVX512F_VL),
+                                            op(SINGLE_BITS, DWORD_BITS, VectorFeatureAssertion.AVX2_AVX512F_VL),
                                             op(SINGLE_BITS, QWORD_BITS, VectorFeatureAssertion.AVX512DQ_VL),
-                                            op(DOUBLE_BITS, DWORD_BITS, VectorFeatureAssertion.AVX1_AVX512F_VL),
+                                            op(DOUBLE_BITS, DWORD_BITS, VectorFeatureAssertion.AVX2_AVX512F_VL),
                                             op(DOUBLE_BITS, QWORD_BITS, VectorFeatureAssertion.AVX512DQ_VL)),
 
                             entry(FloatConvertCategory.FloatingPointToFloatingPoint,
@@ -1187,6 +1180,41 @@ public final class VectorAMD64 extends VectorArchitecture {
         }
     }
 
+    private final AMD64SupportedCompressExpandVectorInstructionsTable compressExpandOps = new AMD64SupportedCompressExpandVectorInstructionsTable(this);
+
+    private static final class AMD64VectorCompressExpandInstructionsMap extends AMD64SimpleVectorInstructionsTable.AMD64SimpleVectorInstructionsMap {
+        @SuppressWarnings("unchecked")
+        AMD64VectorCompressExpandInstructionsMap() {
+            super(
+                            entry(IntegerStamp.class,
+                                            op(BYTE_BITS, VectorFeatureAssertion.AVX512_VBMI2_VL),
+                                            op(WORD_BITS, VectorFeatureAssertion.AVX512_VBMI2_VL),
+                                            op(DWORD_BITS, VectorFeatureAssertion.AVX512F_VL),
+                                            op(QWORD_BITS, VectorFeatureAssertion.AVX512F_VL)),
+
+                            entry(FloatStamp.class,
+                                            op(SINGLE_BITS, VectorFeatureAssertion.AVX512F_VL),
+                                            op(DOUBLE_BITS, VectorFeatureAssertion.AVX512F_VL)));
+        }
+    }
+
+    private static final class AMD64SupportedCompressExpandVectorInstructionsTable extends AMD64SimpleVectorInstructionsTable {
+
+        private static final AMD64VectorCompressExpandInstructionsMap COMPRESS_EXPAND_INSTRUCTIONS_MAP = new AMD64VectorCompressExpandInstructionsMap();
+
+        private AMD64SupportedCompressExpandVectorInstructionsTable(VectorAMD64 vectorAMD64) {
+            super(vectorAMD64, COMPRESS_EXPAND_INSTRUCTIONS_MAP);
+        }
+
+        public AVXSize getSupportedAVXSize(Stamp stamp, int maxLength) {
+            if (stamp instanceof AbstractObjectStamp) {
+                // For compress/expand, treat pointers like integers of the appropriate size.
+                return getEntry(IntegerStamp.class, oopBits((AbstractObjectStamp) stamp), maxLength);
+            }
+            return getEntry(stamp.getClass(), PrimitiveStamp.getBits(stamp), maxLength);
+        }
+    }
+
     private static class VectorSimpleOperation {
         private final int bits;
         protected final VectorFeatureAssertion requiredFeatures;
@@ -1301,7 +1329,7 @@ public final class VectorAMD64 extends VectorArchitecture {
 
         @SuppressWarnings("unchecked")
         private AMD64VectorInstructionsMap(VectorOpEntry<T>... entries) {
-            table = Map.ofEntries(entries);
+            table = CollectionsUtil.mapOfEntries(entries);
         }
 
         static class VectorOpEntry<T> implements Map.Entry<Object, T[]> {

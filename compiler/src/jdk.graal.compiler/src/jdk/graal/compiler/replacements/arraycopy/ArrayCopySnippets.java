@@ -715,7 +715,7 @@ public abstract class ArrayCopySnippets implements Snippets {
             }
 
             // create the snippet
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippetInfo, arraycopy.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippetInfo, arraycopy.graph(), tool.getLoweringStage());
             args.add("src", arraycopy.getSource());
             args.add("srcPos", arraycopy.getSourcePosition());
             args.add("dest", arraycopy.getDestination());
@@ -751,7 +751,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                 return;
             }
 
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(getSnippet(arraycopy.getSnippet()), arraycopy.graph().getGuardsStage(), tool.getLoweringStage());
+            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(getSnippet(arraycopy.getSnippet()), arraycopy.graph(), tool.getLoweringStage());
             args.add("src", arraycopy.getSource());
             args.add("srcPos", arraycopy.getSourcePosition());
             args.add("dest", arraycopy.getDestination());

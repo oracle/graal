@@ -42,8 +42,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
-import com.oracle.truffle.compiler.HostMethodInfo;
-
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.debug.Assertions;
@@ -82,6 +80,7 @@ import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.truffle.HostMethodInfo;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -106,6 +105,9 @@ public class HostInliningPhase extends AbstractInliningPhase {
         @Option(help = "Maximum budget for Truffle host inlining for runtime compiled methods.")//
         public static final OptionKey<Integer> TruffleHostInliningBaseBudget = new OptionKey<>(5_000);
 
+        @Option(help = "Maximum exploration budget for Truffle host inlining when exploring inlining candidates.")//
+        public static final OptionKey<Integer> TruffleHostInliningExploreBudget = new OptionKey<>(10_000);
+
         @Option(help = "Maximum budget for Truffle host inlining for runtime compiled methods with a BytecodeInterpreterSwitch annotation.")//
         public static final OptionKey<Integer> TruffleHostInliningByteCodeInterpreterBudget = new OptionKey<>(100_000);
 
@@ -116,7 +118,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
         public static final OptionKey<Integer> TruffleHostInliningMaxExplorationDepth = new OptionKey<>(1000);
 
         @Option(help = "Maximum number of subtree invokes for a subtree to get inlined until it is considered too complex.")//
-        public static final OptionKey<Integer> TruffleHostInliningMaxSubtreeInvokes = new OptionKey<>(20);
+        public static final OptionKey<Integer> TruffleHostInliningMaxSubtreeInvokes = new OptionKey<>(32);
 
         @Option(help = "Minimum relative frequency for calls to get inlined. Default 0.001 on HotSpot and no minimum frequency on SVM.")//
         public static final OptionKey<Double> TruffleHostInliningMinFrequency = new OptionKey<>(DEFAULT_MIN_FREQUENCY);
@@ -144,7 +146,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
     }
 
     protected boolean isEnabledFor(TruffleHostEnvironment env, ResolvedJavaMethod method) {
-        return isBytecodeInterpreterSwitch(env, method);
+        return isBytecodeInterpreterSwitch(env, method) || isInliningRoot(env, method);
     }
 
     protected String isTruffleBoundary(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
@@ -154,12 +156,16 @@ public class HostInliningPhase extends AbstractInliningPhase {
         return null;
     }
 
-    private boolean isBytecodeInterpreterSwitch(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
+    protected final boolean isBytecodeInterpreterSwitch(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
         return env.getHostMethodInfo(translateMethod(targetMethod)).isBytecodeInterpreterSwitch();
     }
 
     private boolean isInliningCutoff(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
         return env.getHostMethodInfo(translateMethod(targetMethod)).isInliningCutoff();
+    }
+
+    private boolean isInliningRoot(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
+        return env.getHostMethodInfo(translateMethod(targetMethod)).isInliningRoot();
     }
 
     protected ResolvedJavaMethod translateMethod(ResolvedJavaMethod method) {
@@ -213,11 +219,10 @@ public class HostInliningPhase extends AbstractInliningPhase {
              * all together and fail if the graph becomes too big.
              */
             sizeLimit = Options.TruffleHostInliningByteCodeInterpreterBudget.getValue(context.graph.getOptions());
-            exploreLimit = Options.TruffleHostInliningBaseBudget.getValue(context.graph.getOptions());
         } else {
             sizeLimit = Options.TruffleHostInliningBaseBudget.getValue(context.graph.getOptions());
-            exploreLimit = sizeLimit;
         }
+        exploreLimit = Options.TruffleHostInliningExploreBudget.getValue(context.graph.getOptions());
 
         if (sizeLimit < 0) {
             /*
@@ -901,7 +906,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
 
     /**
      * Returns <code>true</code> if a call tree should get inlined, otherwise <code>false</code>.
-     * This method does not yet make determine wheter the call site is in budget. See
+     * This method does not yet determine whether the call site is in budget. See
      * {@link #isInBudget(CallTree, int, int)} for that.
      */
     private boolean shouldInline(InliningPhaseContext context, CallTree call) {
@@ -1007,7 +1012,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
          * or non-direct virtual calls.
          */
         if (call.subTreeFastPathInvokes >= context.maxSubtreeInvokes) {
-            call.reason = "call has too many fast-path invokes - too complex, please optimize, see truffle/docs/HostOptimization.md";
+            call.reason = "call has too many fast-path invokes - too complex, please optimize, see truffle/docs/HostCompilation.md";
             return false;
         }
 
@@ -1351,6 +1356,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                         info.isTruffleBoundary() ||
                         types.isInInterpreter(callee) ||
                         types.isInInterpreterFastPath(callee) ||
+                        types.isHasNextTier(callee) ||
                         types.isTransferToInterpreterMethod(callee));
     }
 

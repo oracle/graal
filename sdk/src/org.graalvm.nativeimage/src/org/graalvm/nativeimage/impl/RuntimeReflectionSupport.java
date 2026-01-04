@@ -40,32 +40,39 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+
 public interface RuntimeReflectionSupport extends ReflectionRegistry {
     // needed as reflection-specific ImageSingletons key
-    void registerAllMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllMethodsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
 
-    void registerAllDeclaredMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllDeclaredMethodsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
 
-    void registerAllFields(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllFields(AccessCondition condition, boolean preserved, Class<?> clazz);
 
-    void registerAllDeclaredFields(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllDeclaredFields(AccessCondition condition, boolean preserved, Class<?> clazz);
 
-    void registerAllConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllFieldsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
 
-    void registerAllDeclaredConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllDeclaredFieldsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
 
-    void registerAllClassesQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllConstructorsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
 
-    void registerAllDeclaredClassesQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllDeclaredConstructorsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
 
-    void registerAllRecordComponentsQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllClassesQuery(AccessCondition condition, boolean preserved, Class<?> clazz);
 
-    void registerAllPermittedSubclassesQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllDeclaredClassesQuery(AccessCondition condition, boolean preserved, Class<?> clazz);
 
-    void registerAllNestMembersQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllRecordComponentsQuery(AccessCondition condition, Class<?> clazz);
 
-    void registerAllSignersQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllPermittedSubclassesQuery(AccessCondition condition, boolean preserved, Class<?> clazz);
 
-    void registerClassLookupException(ConfigurationCondition condition, String typeName, Throwable t);
+    void registerAllNestMembersQuery(AccessCondition condition, boolean preserved, Class<?> clazz);
 
+    void registerAllSignersQuery(AccessCondition condition, Class<?> clazz);
+
+    void registerClassLookupException(AccessCondition condition, String typeName, Throwable t);
+
+    void registerUnsafeAllocation(AccessCondition condition, boolean preserved, Class<?>... classes);
 }

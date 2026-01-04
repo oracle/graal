@@ -65,11 +65,15 @@ public class IOAccessTest {
     public void testInvalid() {
         AbstractPolyglotTest.assertFails(() -> Context.newBuilder().allowIO(true).allowIO(IOAccess.ALL).build(),
                         IllegalArgumentException.class,
-                        (iae) -> assertEquals("The method Context.Builder.allowIO(boolean) and the method Context.Builder.allowIO(IOAccess) are mutually exclusive.", iae.getMessage()));
+                        (iae) -> assertEquals(
+                                        "The method Context.Builder.allowIO(boolean) and the method Context.Builder.allowIO(IOAccess) or Context.Builder.extendIO(IOAccess, Consumer<IOAccess.Builder>) are mutually exclusive.",
+                                        iae.getMessage()));
 
         AbstractPolyglotTest.assertFails(() -> Context.newBuilder().fileSystem(new MemoryFileSystem()).allowIO(IOAccess.ALL).build(),
                         IllegalArgumentException.class,
-                        (iae) -> assertEquals("The method Context.Builder.allowIO(IOAccess) and the method Context.Builder.fileSystem(FileSystem) are mutually exclusive.", iae.getMessage()));
+                        (iae) -> assertEquals(
+                                        "The method Context.Builder.allowIO(IOAccess) or Context.Builder.extendIO(IOAccess, Consumer<IOAccess.Builder>) and the method Context.Builder.fileSystem(FileSystem) are mutually exclusive.",
+                                        iae.getMessage()));
 
         AbstractPolyglotTest.assertFails(() -> IOAccess.newBuilder().allowHostFileAccess(true).fileSystem(new MemoryFileSystem()).build(),
                         IllegalArgumentException.class,

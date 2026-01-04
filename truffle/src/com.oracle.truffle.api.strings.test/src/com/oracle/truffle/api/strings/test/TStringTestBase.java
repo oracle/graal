@@ -399,7 +399,7 @@ public class TStringTestBase {
                             : encoding == ISO_8859_1 ? TruffleString.CodeRange.LATIN_1 : TruffleString.CodeRange.VALID;
             TruffleString.CodeRange[] codeRanges = {TruffleString.CodeRange.ASCII, TruffleString.CodeRange.LATIN_1, TruffleString.CodeRange.BMP, codeRangeValid, TruffleString.CodeRange.BROKEN};
             Encodings.TestData dat = Encodings.TEST_DATA[encoding.ordinal()];
-            int[] byteIndices01 = encoding == UTF_32 ? indices04 : encoding == UTF_16 ? indices02 : indices01;
+            int[] byteIndices01 = getNaturalStride(encoding) == 2 ? indices04 : getNaturalStride(encoding) == 1 ? indices02 : indices01;
             byte[][] bytes = new byte[][]{dat.encodedAscii, dat.encodedLatin, dat.encodedBMP, dat.encodedValid, dat.encodedBroken};
             int[][] codepoints = new int[][]{asciiCodePoints, latinCodePoints, bmpCodePoints, dat.codepoints, dat.codepointsBroken};
             int[][] byteIndices = new int[][]{byteIndices01, byteIndices01, byteIndices01, dat.byteIndices, indices0};
@@ -724,10 +724,10 @@ public class TStringTestBase {
     }
 
     public static int getNaturalStride(TruffleString.Encoding encoding) {
-        if (isUTF32(encoding)) {
+        if (encoding == TruffleString.Encoding.UTF_32LE || encoding == TruffleString.Encoding.UTF_32BE) {
             return 2;
         }
-        if (isUTF16(encoding)) {
+        if (encoding == TruffleString.Encoding.UTF_16LE || encoding == TruffleString.Encoding.UTF_16BE) {
             return 1;
         }
         return 0;
@@ -746,6 +746,10 @@ public class TStringTestBase {
             default:
                 throw new RuntimeException("should not reach here");
         }
+    }
+
+    public static boolean isCompactionSupported(TruffleString.Encoding encoding) {
+        return encoding == TruffleString.Encoding.UTF_16 || encoding == TruffleString.Encoding.UTF_32;
     }
 
     protected static ArrayList<Object[]> crossProductErrorHandling(Iterable<Node> nodes) {

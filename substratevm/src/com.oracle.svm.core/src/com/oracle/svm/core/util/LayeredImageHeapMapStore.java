@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.util;
 
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,12 +31,21 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
+import com.oracle.svm.core.traits.SingletonTraits;
 
-public class LayeredImageHeapMapStore implements MultiLayeredImageSingleton, UnsavedSingleton {
+/**
+ * Per layer store for the {@link LayeredImageHeapMap}s. There exists one
+ * {@link LayeredImageHeapMapStore} per layer and each entry in the underlying
+ * {@link #imageHeapMapStore} corresponds to a specific {@link LayeredImageHeapMap}, identified by
+ * its {@link LayeredImageHeapMap#getMapKey()}.
+ */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
+public class LayeredImageHeapMapStore {
     private final Map<String, EconomicMap<Object, Object>> imageHeapMapStore = new HashMap<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -51,10 +59,5 @@ public class LayeredImageHeapMapStore implements MultiLayeredImageSingleton, Uns
 
     public Map<String, EconomicMap<Object, Object>> getImageHeapMapStore() {
         return imageHeapMapStore;
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
 }

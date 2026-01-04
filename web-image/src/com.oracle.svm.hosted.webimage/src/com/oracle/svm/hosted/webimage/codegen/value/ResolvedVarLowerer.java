@@ -29,10 +29,10 @@ import org.graalvm.collections.EconomicSet;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
+import com.oracle.svm.webimage.hightiercodegen.variables.ResolvedVar;
 
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
-import jdk.graal.compiler.hightiercodegen.variables.ResolvedVar;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ValueNode;

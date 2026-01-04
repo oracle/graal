@@ -109,9 +109,4 @@ public class CoreProvidersDelegate implements CoreProviders {
     public SnippetReflectionProvider getSnippetReflection() {
         return providers.getSnippetReflection();
     }
-
-    @Override
-    public IdentityHashCodeProvider getIdentityHashCodeProvider() {
-        return providers.getIdentityHashCodeProvider();
-    }
 }

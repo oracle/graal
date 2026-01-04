@@ -49,6 +49,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -66,14 +67,14 @@ final class PolyglotSourceCache {
     private final WeakCache weakCache;
     private SourceCacheListener sourceCacheListener;
 
-    PolyglotSourceCache(ReferenceQueue<Source> deadSourcesQueue, TracingSourceCacheListener sourceCacheListener) {
-        this.sourceCacheListener = sourceCacheListener;
+    PolyglotSourceCache(ReferenceQueue<Source> deadSourcesQueue, TracingSourceCacheListener sourceCacheListener, SourceCacheStatisticsListener sourceCacheStatisticsListener) {
+        this.sourceCacheListener = new SourceCacheListenerDispatch(sourceCacheListener, sourceCacheStatisticsListener);
         this.weakCache = new WeakCache(deadSourcesQueue);
         this.strongCache = new StrongCache();
     }
 
-    void patch(SourceCacheListener listener) {
-        this.sourceCacheListener = listener;
+    void patch(SourceCacheListener listener, SourceCacheStatisticsListener statisticsListener) {
+        this.sourceCacheListener = new SourceCacheListenerDispatch(listener, statisticsListener);
     }
 
     CallTarget parseCached(ParseOrigin origin, PolyglotLanguageContext context, Source source, String[] argumentNames) {
@@ -92,14 +93,9 @@ final class PolyglotSourceCache {
             }
             target = weakCache.lookup(origin, context, source, argumentNames, true);
         } else {
-            long parseStart = 0;
-            if (sourceCacheListener != null) {
-                parseStart = System.currentTimeMillis();
-            }
+            long parseStart = System.currentTimeMillis();
             target = parseImpl(origin, context, argumentNames, source);
-            if (sourceCacheListener != null) {
-                sourceCacheListener.onCacheMiss(source, target, SourceCacheListener.CacheType.UNCACHED, parseStart);
-            }
+            sourceCacheListener.onCacheMiss(source, target, SourceCacheListener.CacheType.UNCACHED, parseStart);
         }
         return target;
     }
@@ -294,23 +290,16 @@ final class PolyglotSourceCache {
             StrongCacheValue value = sourceCache.get(key);
             if (value == null) {
                 if (parse) {
-                    long parseStart = 0;
-                    if (sourceCacheListener != null) {
-                        parseStart = System.currentTimeMillis();
-                    }
+                    long parseStart = System.currentTimeMillis();
                     try {
                         value = new StrongCacheValue(parseImpl(origin, context, argumentNames, source));
                         StrongCacheValue prevValue = sourceCache.putIfAbsent(key, value);
                         if (prevValue != null) {
                             value = prevValue;
                         }
-                        if (sourceCacheListener != null) {
-                            sourceCacheListener.onCacheMiss(source, value.target, SourceCacheListener.CacheType.STRONG, parseStart);
-                        }
+                        sourceCacheListener.onCacheMiss(source, value.target, SourceCacheListener.CacheType.STRONG, parseStart);
                     } catch (Throwable t) {
-                        if (sourceCacheListener != null) {
-                            sourceCacheListener.onCacheFail(context.context.layer, source, SourceCacheListener.CacheType.STRONG, parseStart, t);
-                        }
+                        sourceCacheListener.onCacheFail(context.context.layer, source, SourceCacheListener.CacheType.STRONG, parseStart, t);
                         throw t;
                     }
                 } else {
@@ -318,9 +307,7 @@ final class PolyglotSourceCache {
                 }
             } else {
                 value.hits.incrementAndGet();
-                if (sourceCacheListener != null) {
-                    sourceCacheListener.onCacheHit(source, value.target, SourceCacheListener.CacheType.STRONG, value.hits.get());
-                }
+                sourceCacheListener.onCacheHit(source, value.target, SourceCacheListener.CacheType.STRONG, value.hits.get());
             }
             return value.target;
         }
@@ -359,10 +346,7 @@ final class PolyglotSourceCache {
             WeakCacheValue value = sourceCache.get(ref);
             if (value == null) {
                 if (parse) {
-                    long parseStart = 0;
-                    if (sourceCacheListener != null) {
-                        parseStart = System.currentTimeMillis();
-                    }
+                    long parseStart = System.currentTimeMillis();
                     try {
                         value = new WeakCacheValue(parseImpl(origin, context, argumentNames, sourceValue), sourceValue);
                         WeakCacheValue prev = sourceCache.putIfAbsent(ref, value);
@@ -372,13 +356,9 @@ final class PolyglotSourceCache {
                              */
                             value = prev;
                         }
-                        if (sourceCacheListener != null) {
-                            sourceCacheListener.onCacheMiss(source, value.target, SourceCacheListener.CacheType.WEAK, parseStart);
-                        }
+                        sourceCacheListener.onCacheMiss(source, value.target, SourceCacheListener.CacheType.WEAK, parseStart);
                     } catch (Throwable t) {
-                        if (sourceCacheListener != null) {
-                            sourceCacheListener.onCacheFail(context.context.layer, source, SourceCacheListener.CacheType.WEAK, parseStart, t);
-                        }
+                        sourceCacheListener.onCacheFail(context.context.layer, source, SourceCacheListener.CacheType.WEAK, parseStart, t);
                         throw t;
                     }
                 } else {
@@ -386,9 +366,7 @@ final class PolyglotSourceCache {
                 }
             } else {
                 value.hits.incrementAndGet();
-                if (sourceCacheListener != null) {
-                    sourceCacheListener.onCacheHit(source, value.target, SourceCacheListener.CacheType.WEAK, value.hits.get());
-                }
+                sourceCacheListener.onCacheHit(source, value.target, SourceCacheListener.CacheType.WEAK, value.hits.get());
             }
             return value.target;
         }
@@ -417,7 +395,7 @@ final class PolyglotSourceCache {
             while ((sourceRef = (WeakSourceKey) deadSourcesQueue.poll()) != null) {
                 WeakCache cache = sourceRef.cacheRef.get();
                 WeakCacheValue value = cache != null ? cache.sourceCache.remove(sourceRef) : null;
-                if (value != null && cacheListener != null) {
+                if (value != null) {
                     cacheListener.onCacheEvict(value.source, value.target, SourceCacheListener.CacheType.WEAK, value.hits.get());
                 }
             }
@@ -496,4 +474,39 @@ final class PolyglotSourceCache {
         }
     }
 
+    private static final class SourceCacheListenerDispatch implements SourceCacheListener {
+        private final SourceCacheListener[] listeners;
+
+        SourceCacheListenerDispatch(SourceCacheListener... listeners) {
+            this.listeners = Arrays.stream(listeners).filter(Objects::nonNull).toArray(SourceCacheListener[]::new);
+        }
+
+        @Override
+        public void onCacheHit(Source source, CallTarget target, CacheType cacheType, long hits) {
+            for (SourceCacheListener l : listeners) {
+                l.onCacheHit(source, target, cacheType, hits);
+            }
+        }
+
+        @Override
+        public void onCacheMiss(Source source, CallTarget target, CacheType cacheType, long startTime) {
+            for (SourceCacheListener l : listeners) {
+                l.onCacheMiss(source, target, cacheType, startTime);
+            }
+        }
+
+        @Override
+        public void onCacheFail(PolyglotSharingLayer sharingLayer, Source source, CacheType cacheType, long startTime, Throwable throwable) {
+            for (SourceCacheListener l : listeners) {
+                l.onCacheFail(sharingLayer, source, cacheType, startTime, throwable);
+            }
+        }
+
+        @Override
+        public void onCacheEvict(Source source, CallTarget target, CacheType cacheType, long hits) {
+            for (SourceCacheListener l : listeners) {
+                l.onCacheEvict(source, target, cacheType, hits);
+            }
+        }
+    }
 }

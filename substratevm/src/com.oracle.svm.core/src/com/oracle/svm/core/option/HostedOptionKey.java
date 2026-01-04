@@ -40,16 +40,16 @@ import java.util.function.Consumer;
  * @see com.oracle.svm.core.option
  */
 public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionKey<T> {
-    private final Consumer<HostedOptionKey<T>> validation;
+    private final Consumer<HostedOptionKey<T>> buildTimeValidation;
     private OptionOrigin lastOrigin;
 
     public HostedOptionKey(T defaultValue) {
         this(defaultValue, null);
     }
 
-    public HostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> validation) {
+    public HostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> buildTimeValidation) {
         super(defaultValue);
-        this.validation = validation;
+        this.buildTimeValidation = buildTimeValidation;
     }
 
     /**
@@ -103,8 +103,8 @@ public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionK
 
     @Override
     public void validate() {
-        if (validation != null) {
-            validation.accept(this);
+        if (buildTimeValidation != null) {
+            buildTimeValidation.accept(this);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,26 +41,30 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.regex.tregex.TRegexCompilationRequest;
 
 public final class RegexRootNode extends RootNode {
 
     public static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
 
+    private final RegexSource source;
     @Child private RegexBodyNode body;
 
-    public RegexRootNode(RegexLanguage language, RegexBodyNode body) {
+    public RegexRootNode(RegexLanguage language, RegexSource source, RegexBodyNode body) {
         super(language, SHARED_EMPTY_FRAMEDESCRIPTOR);
+        this.source = source;
         this.body = body;
     }
 
     public RegexSource getSource() {
-        return body.getSource();
+        return source;
     }
 
     public RegexBodyNode getBodyUnwrapped() {
@@ -72,11 +76,15 @@ public final class RegexRootNode extends RootNode {
 
     @Override
     public SourceSection getSourceSection() {
-        return body.getSourceSection();
+        return body == null ? null : body.getSourceSection();
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
+        if (body == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            body = insert(new TRegexCompilationRequest(getLanguage(RegexLanguage.class), source).compile());
+        }
         return body.execute(frame);
     }
 

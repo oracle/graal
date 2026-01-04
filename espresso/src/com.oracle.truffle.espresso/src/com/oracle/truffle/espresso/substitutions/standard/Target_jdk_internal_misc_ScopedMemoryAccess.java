@@ -61,9 +61,10 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
         /* nop */
     }
 
-    @Substitution
+    @Substitution(hasReceiver = true)
     @TruffleBoundary
-    public static boolean closeScope0(@JavaType(internalName = "Ljdk/internal/foreign/MemorySessionImpl;") StaticObject session, @Inject EspressoContext context) {
+    public static boolean closeScope0(@SuppressWarnings("unused") StaticObject self, @JavaType(internalName = "Ljdk/internal/foreign/MemorySessionImpl;") StaticObject session,
+                    @Inject EspressoContext context) {
         CloseScopedMemoryAction action = new CloseScopedMemoryAction(session);
         Future<Void> future = context.getEnv().submitThreadLocal(null, action);
         TruffleSafepoint.setBlockedThreadInterruptible(null, f -> {
@@ -76,14 +77,14 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
         return !action.found;
     }
 
-    @Substitution
+    @Substitution(hasReceiver = true)
     abstract static class CloseScope0 extends SubstitutionNode {
-        abstract void execute(@JavaType(internalName = "Ljdk/internal/foreign/MemorySessionImpl;") StaticObject session,
+        abstract void execute(StaticObject self, @JavaType(internalName = "Ljdk/internal/foreign/MemorySessionImpl;") StaticObject session,
                         @JavaType(internalName = "Ljdk/internal/misc/ScopedMemoryAccess$ScopedAccessError;") StaticObject error);
 
         @Specialization
         @SuppressWarnings("unused")
-        static void doCloseScope(StaticObject session, StaticObject err,
+        static void doCloseScope(@SuppressWarnings("unused") StaticObject self, StaticObject session, StaticObject err,
                         @Cached Once warn) {
             // GR-65277
             if (warn.once()) {

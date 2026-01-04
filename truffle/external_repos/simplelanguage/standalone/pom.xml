@@ -121,6 +121,7 @@
                                     <executable>
                                         ${env.JAVA_HOME}/bin/native-image</executable>
                                     <commandlineArgs>
+                                        -Dpolyglotimpl.DisableVersionChecks=true
                                         -p %classpath
                                         -H:+ReportExceptionStackTraces
                                         -m ${launcherClass}

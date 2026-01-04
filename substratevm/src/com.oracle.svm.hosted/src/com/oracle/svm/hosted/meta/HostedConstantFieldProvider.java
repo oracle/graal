@@ -58,7 +58,7 @@ public class HostedConstantFieldProvider extends SharedConstantFieldProvider {
     public static boolean isFinalField(HostedField field) {
         if (field.location == HostedField.LOC_UNMATERIALIZED_STATIC_CONSTANT) {
             return true;
-        } else if (!field.isWritten() && field.isValueAvailable()) {
+        } else if (!field.isWritten()) {
             return true;
         }
         return false;

@@ -30,17 +30,24 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.RuntimeOptions.Descriptor;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.util.ClassUtil;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.ModifiableOptionValues;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
@@ -52,6 +59,7 @@ import jdk.graal.compiler.options.OptionsParser;
  *
  * @see com.oracle.svm.core.option
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = ApplicationLayerOnly.class)
 public class RuntimeOptionValues extends ModifiableOptionValues {
     private final EconomicSet<String> allOptionNames;
 
@@ -60,22 +68,31 @@ public class RuntimeOptionValues extends ModifiableOptionValues {
         this.allOptionNames = allOptionNames;
     }
 
-    @Fold
+    /**
+     * In layered images we only expose the actual singleton within the final layer. In other layers
+     * we expose a {@link SharedLayerRuntimeOptionsValues} singleton which does not allow values to
+     * be modified.
+     */
     public static RuntimeOptionValues singleton() {
-        return ImageSingletons.lookup(RuntimeOptionValues.class);
+        if (!SubstrateUtil.HOSTED || ImageLayerBuildingSupport.lastImageBuild()) {
+            return ImageSingletons.lookup(RuntimeOptionValues.class);
+        } else {
+            return ImageSingletons.lookup(SharedLayerRuntimeOptionsValues.class);
+        }
     }
 
-    @Fold
-    public EconomicSet<String> getAllOptionNames() {
+    UnmodifiableEconomicSet<String> getAllOptionNames() {
         return allOptionNames;
     }
 }
 
 @AutomaticallyRegisteredImageSingleton(RuntimeOptionsSupport.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
 
     @Override
     public void set(String optionName, Object value) {
+        assert !(SubstrateUtil.HOSTED && ImageLayerBuildingSupport.buildingImageLayer());
         if (XOptions.setOption(optionName)) {
             return;
         }
@@ -97,6 +114,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T get(String optionName) {
+        assert !(SubstrateUtil.HOSTED && ImageLayerBuildingSupport.buildingImageLayer());
         if (!RuntimeOptionValues.singleton().getAllOptionNames().contains(optionName)) {
             throw new RuntimeException("Unknown option: " + optionName);
         }

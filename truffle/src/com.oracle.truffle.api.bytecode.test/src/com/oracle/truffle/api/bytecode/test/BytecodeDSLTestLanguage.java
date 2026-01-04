@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.api.bytecode.test;
 
+import org.graalvm.polyglot.Context;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * Placeholder language for Bytecode DSL test interpreters.
@@ -58,6 +61,20 @@ public class BytecodeDSLTestLanguage extends TruffleLanguage<Object> {
     @Override
     protected Object createContext(Env env) {
         return new Object();
+    }
+
+    /**
+     * Ensures compilation is disabled (when supported). This allows tests to validate the behaviour
+     * of assertions, which are optimized away in compiled code.
+     */
+    public static Context createPolyglotContextWithCompilationDisabled() {
+        var builder = Context.newBuilder(ID);
+        if (TruffleTestAssumptions.isOptimizingRuntime()) {
+            builder.option("engine.Compilation", "false");
+        }
+        Context result = builder.build();
+        result.enter();
+        return result;
     }
 
     public static final LanguageReference<BytecodeDSLTestLanguage> REF = LanguageReference.create(BytecodeDSLTestLanguage.class);

@@ -418,8 +418,6 @@ public class EscapeAnalysisTest extends EATestBase {
      */
     @Test
     public void testNewNode() {
-        // Tracking of creation interferes with escape analysis
-        Assume.assumeFalse(Node.TRACK_CREATION_POSITION);
         // JaCoco can add escaping allocations (e.g. allocation of coverage recording data
         // structures)
         Assume.assumeFalse("JaCoCo found -> skipping", SubprocessUtil.isJaCoCoAttached());

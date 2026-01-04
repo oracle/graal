@@ -26,20 +26,17 @@ package com.oracle.svm.core.graal.meta;
 
 import java.util.Map;
 
+import com.oracle.svm.core.graal.GraalConfiguration;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
-
-import com.oracle.svm.core.graal.GraalConfiguration;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -48,8 +45,6 @@ public interface SubstrateLoweringProvider extends LoweringProvider {
     void setConfiguration(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers);
 
     Map<Class<? extends Node>, NodeLoweringProvider<?>> getLowerings();
-
-    ValueNode implicitLoadConvertWithBooleanCoercionIfNecessary(StructuredGraph graph, JavaKind kind, ValueNode value);
 
     Stamp loadStamp(Stamp stamp, JavaKind kind);
 

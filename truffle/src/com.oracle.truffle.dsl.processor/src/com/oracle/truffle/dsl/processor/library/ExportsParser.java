@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -220,7 +220,19 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 Element existingEnclosingElement = existing.getMessageElement().getEnclosingElement();
                 Element currentEnclosingElement = exportedMessage.getMessageElement().getEnclosingElement();
                 if (ElementUtils.elementEquals(existingEnclosingElement, currentEnclosingElement)) {
-                    String error = String.format("Duplicate exported library message %s.", messageName);
+                    LibraryMessage resolvedMessage = existing.getResolvedMessage();
+                    LibraryMessage replacementOf = resolvedMessage.getReplacementOf();
+                    String error;
+                    if (replacementOf != null && resolvedMessage.getDeprecatedOverloads().contains(replacementOf)) {
+                        /*
+                         * Both the deprecated message and its replacement are being exported. This
+                         * configuration is not supported; only the replacement should be exported.
+                         */
+                        error = String.format("Cannot export both a deprecated message and a new message '%s' that declares a replacement for it. " +
+                                        "Remove the @ExportMessage annotation from the deprecated methods to resolve this problem.", messageName);
+                    } else {
+                        error = String.format("Duplicate exported library message %s.", messageName);
+                    }
                     model.addError(member, error);
                     model.addError(existing.getMessageElement(), error);
                 } else if (ElementUtils.isSubtype(currentEnclosingElement.asType(), existingEnclosingElement.asType())) {
@@ -233,6 +245,29 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 }
             } else {
                 exportedMessages.put(messageName, exportedMessage);
+            }
+        }
+
+        Map<ExportsLibrary, Set<LibraryMessage>> generatedLibraryMessages = new HashMap<>();
+
+        for (ExportsLibrary library : model.getExportedLibraries().values()) {
+            Map<String, ExportMessageData> exportedMessages = library.getExportedMessages();
+            for (ExportMessageData exportedMessage : exportedMessages.values()) {
+                LibraryMessage libraryMessage = exportedMessage.getResolvedMessage();
+                LibraryMessage replacementOf = libraryMessage.getReplacementOf();
+                ExportMessageData replacedExport;
+                if (replacementOf != null && !libraryMessage.getDeprecatedOverloads().contains(replacementOf) && (replacedExport = exportedMessages.get(replacementOf.getName())) != null) {
+                    /*
+                     * Both the deprecated message and its replacement are being exported. This
+                     * configuration is not supported; only the replacement should be exported. The
+                     * check for replacementOf with the same message name is performed above to
+                     * avoid reporting a misleading duplicate message error.
+                     */
+                    String error = String.format("Cannot export both a deprecated message '%s' and a new message '%s' that declares a replacement for it. " +
+                                    "Remove the @ExportMessage annotation from the deprecated methods to resolve this problem.", replacementOf.getName(),
+                                    exportedMessage.getResolvedMessage().getName());
+                    replacedExport.addError(error);
+                }
             }
         }
 
@@ -420,6 +455,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
             Set<LibraryMessage> missingAbstractMessage = new LinkedHashSet<>();
             Set<LibraryMessage> missingAbstractMessageAsWarning = new LinkedHashSet<>();
+            Set<LibraryMessage> generatedMessages = generatedLibraryMessages.get(exportLib);
             for (LibraryMessage message : exportLib.getLibrary().getMethods()) {
                 List<Element> elementsWithSameName = potentiallyMissedOverrides.getOrDefault(message.getName(), Collections.emptyList());
                 if (!elementsWithSameName.isEmpty()) {
@@ -435,7 +471,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     }
                 }
                 if (message.isAbstract() && !message.getName().equals("accepts")) {
-                    if (!exportLib.isExported(message)) {
+                    // if not exported. Generated messages were not exported, we check them first.
+                    if (generatedMessages != null && generatedMessages.contains(message) || !exportLib.isExported(message)) {
                         boolean isAbstract;
                         if (!message.getAbstractIfExported().isEmpty()) {
                             isAbstract = false;
@@ -446,7 +483,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                                 }
                             }
                         } else if (message.getAbstractIfExportedAsWarning().isEmpty()) {
-                            isAbstract = !exportLib.hasExportDelegation();
+                            isAbstract = !exportLib.hasExportDelegation() && message.getReplacementOf() == null;
                         } else {
                             isAbstract = false;
                         }
@@ -457,7 +494,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
                         if (!message.getAbstractIfExportedAsWarning().isEmpty()) {
                             for (LibraryMessage abstractIfExportedAsWarning : message.getAbstractIfExportedAsWarning()) {
-                                if (exportLib.getExportedMessages().containsKey(abstractIfExportedAsWarning.getName())) {
+                                if (!(generatedMessages != null && generatedMessages.contains(abstractIfExportedAsWarning)) &&
+                                                exportLib.getExportedMessages().containsKey(abstractIfExportedAsWarning.getName())) {
                                     missingAbstractMessageAsWarning.add(message);
                                     break;
                                 }
@@ -1301,8 +1339,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 element.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateAOT_Exclude));
             }
 
-            boolean isStatic = element.getModifiers().contains(Modifier.STATIC);
-            if (!isStatic) {
+            boolean isStaticMethod = element.getModifiers().contains(Modifier.STATIC);
+            if (!isStaticMethod) {
                 element.getParameters().add(0, new CodeVariableElement(exportedElement.getReceiverType(), "this"));
                 element.getModifiers().add(Modifier.STATIC);
             }
@@ -1593,5 +1631,4 @@ public class ExportsParser extends AbstractParser<ExportsData> {
     public List<DeclaredType> getTypeDelegatedAnnotationTypes() {
         return Arrays.asList(types.ExportMessage, types.ExportMessage_Repeat);
     }
-
 }

@@ -208,14 +208,6 @@ public class WebImageWasmGCLoweringProvider extends WebImageLoweringProvider {
     }
 
     /**
-     * @see WebImageWasmLMLoweringProvider#supportsRounding()
-     */
-    @Override
-    public boolean supportsRounding() {
-        return true;
-    }
-
-    /**
      * @see WebImageWasmLMLoweringProvider#writesStronglyOrdered()
      */
     @Override

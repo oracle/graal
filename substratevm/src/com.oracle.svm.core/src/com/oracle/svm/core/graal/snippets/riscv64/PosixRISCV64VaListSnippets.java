@@ -26,6 +26,18 @@ package com.oracle.svm.core.graal.snippets.riscv64;
 
 import java.util.Map;
 
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
+
+import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.graal.nodes.VaListInitializationNode;
+import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
+import com.oracle.svm.core.graal.stackvalue.StackValueNode;
+import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -43,18 +55,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
-
-import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.graal.nodes.VaListInitializationNode;
-import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
-import com.oracle.svm.core.graal.stackvalue.StackValueNode;
-import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.code.BytecodeFrame;
 
 /**
@@ -175,7 +175,7 @@ final class PosixRISCV64VaListSnippets extends SubstrateTemplates implements Sni
                     // getStackKind() should be at least int
                     throw VMError.shouldNotReachHereUnexpectedInput(node.getStackKind()); // ExcludeFromJacocoGeneratedReport
             }
-            Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(snippet, node.graph(), tool.getLoweringStage());
             args.add("vaListPointer", node.getVaList());
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }

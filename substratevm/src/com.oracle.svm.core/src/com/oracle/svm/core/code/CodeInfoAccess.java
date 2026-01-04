@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
  * questions.
  */
 package com.oracle.svm.core.code;
+
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -184,6 +186,13 @@ public final class CodeInfoAccess {
         return cast(info).getCodeStart();
     }
 
+    /** @see CodeInfoImpl#setCodeStart */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void setCodeStart(CodeInfo info, CodePointer codeStart) {
+        CodeInfoImpl impl = cast(info);
+        impl.setCodeStart(codeStart);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getCodeEntryPointOffset(CodeInfo info) {
         return cast(info).getCodeEntryPointOffset();
@@ -193,6 +202,13 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getCodeSize(CodeInfo info) {
         return cast(info).getCodeSize();
+    }
+
+    /** @see CodeInfoImpl#setCodeSize */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void setCodeSize(CodeInfo info, UnsignedWord codeSize) {
+        CodeInfoImpl impl = cast(info);
+        impl.setCodeSize(codeSize);
     }
 
     /** @see CodeInfoImpl#getDataSize */
@@ -245,7 +261,9 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long relativeIP(CodeInfo info, CodePointer ip) {
         assert contains(info, ip);
-        return ((UnsignedWord) ip).subtract((UnsignedWord) cast(info).getCodeStart()).rawValue();
+        CodeInfoImpl impl = cast(info);
+        UnsignedWord baseOffset = ((UnsignedWord) ip).subtract((UnsignedWord) impl.getCodeStart());
+        return baseOffset.add(impl.getRelativeIPOffset()).rawValue();
     }
 
     public static CodePointer absoluteIP(CodeInfo info, long relativeIP) {
@@ -347,10 +365,6 @@ public final class CodeInfoAccess {
         }
     }
 
-    public static Log log(CodeInfo info, Log log) {
-        return info.isNull() ? log.string("null") : log.string("CodeInfo@").hex(info);
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getTier(CodeInfo info) {
         return cast(info).getTier();
@@ -442,6 +456,15 @@ public final class CodeInfoAccess {
     public static CodeInfo getNextImageCodeInfo(CodeInfo info) {
         assert isAOTImageCode(info);
         return cast(info).getNextImageCodeInfo();
+    }
+
+    /** @see CodeInfoImpl#setNextImageCodeInfo */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void setNextImageCodeInfo(CodeInfo info, CodeInfo next) {
+        assert isAOTImageCode(info);
+        CodeInfoImpl impl = cast(info);
+        assert impl.getNextImageCodeInfo().isNull();
+        impl.setNextImageCodeInfo(next);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

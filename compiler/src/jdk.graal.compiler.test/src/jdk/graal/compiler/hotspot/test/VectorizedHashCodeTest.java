@@ -26,7 +26,6 @@ package jdk.graal.compiler.hotspot.test;
 
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -36,6 +35,7 @@ import org.junit.Test;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin;
 import jdk.graal.compiler.test.AddExports;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.internal.util.ArraysSupport;
 
 @AddExports({"java.base/jdk.internal.util"})
@@ -80,7 +80,7 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
             Object array = f.apply(baseArray);
             int len = getLength.apply(baseArray);
 
-            Set<Integer> intValues = new HashSet<>();
+            Set<Integer> intValues = new EconomicHashSet<>();
             intValues.add(0);
             intValues.add(1);
             intValues.add(len / 2);

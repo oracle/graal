@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -332,9 +332,11 @@ public abstract class SequentialMatchers extends Matchers {
         public void createSplitMatcher(int i, CodePointSet cps, CompilationBuffer compilationBuffer, CodePointSet... splitRanges) {
             for (int j = 0; j < splitRanges.length; j++) {
                 CodePointSet intersection = splitRanges[j].createIntersection(cps, compilationBuffer);
+                assert i < buffers[j].length();
                 if (intersection.matchesSomething()) {
-                    assert i < buffers[j].length();
                     buffers[j].set(i, CharMatchers.createMatcher(intersection, compilationBuffer));
+                } else {
+                    buffers[j].set(i, null);
                 }
             }
         }

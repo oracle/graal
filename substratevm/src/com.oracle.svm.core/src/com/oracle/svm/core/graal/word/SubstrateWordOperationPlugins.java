@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.graal.word;
 
+import com.oracle.svm.util.AnnotationUtil;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -39,9 +42,6 @@ import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.word.WordOperationPlugin;
 import jdk.graal.compiler.word.WordTypes;
-import org.graalvm.nativeimage.AnnotationAccess;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -60,7 +60,7 @@ public class SubstrateWordOperationPlugins extends WordOperationPlugin {
             }
         }
 
-        SubstrateOperation operation = AnnotationAccess.getAnnotation(method, SubstrateOperation.class);
+        SubstrateOperation operation = AnnotationUtil.getAnnotation(method, SubstrateOperation.class);
         if (operation == null) {
             processWordOperation(b, args, wordTypes.getWordOperation(method, b.getMethod().getDeclaringClass()));
             return true;

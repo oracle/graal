@@ -41,16 +41,14 @@
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.generic;
+import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STATIC;
 
-import java.io.DataInput;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Supplier;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -58,7 +56,6 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
@@ -71,11 +68,10 @@ import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeParameterElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 
 public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSLModels> {
 
@@ -89,11 +85,19 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
             return results;
         }
 
+        TypeMirror abstractBuilder;
+        CodeTypeElement abstractBuilderType = null;
+        if (modelList.getModels().size() > 1) {
+            abstractBuilderType = createAbstractBuilderType(modelList.getModels().getFirst(), modelList.getModels().getFirst().getTemplateType());
+            abstractBuilder = abstractBuilderType.asType();
+        } else {
+            abstractBuilder = null;
+        }
         for (BytecodeDSLModel model : modelList.getModels()) {
             if (modelList.hasErrors()) {
-                results.add(new BytecodeRootNodeErrorElement(model));
+                results.add(new BytecodeRootNodeErrorElement(model, abstractBuilder));
             } else {
-                results.add(new BytecodeRootNodeElement(model));
+                results.add(new BytecodeRootNodeElement(model, abstractBuilder));
             }
         }
 
@@ -106,14 +110,6 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
          * defining the public interface for the Builders. Test code writes parsers using this
          * abstract builder's interface so that the parser can be used to test each variant.
          */
-        CodeTypeElement abstractBuilderType = (CodeTypeElement) ElementUtils.castTypeElement(modelList.getModels().getFirst().abstractBuilderType);
-
-        for (BytecodeDSLModel model : modelList.getModels()) {
-            if (abstractBuilderType != ElementUtils.castTypeElement(model.abstractBuilderType)) {
-                throw new AssertionError("Invalid builder type.");
-            }
-        }
-
         Iterator<CodeTypeElement> builders = results.stream().map(result -> (CodeTypeElement) ElementUtils.findTypeElement(result, "Builder")).iterator();
 
         /**
@@ -173,8 +169,23 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
             }
         }
 
-        // Add helper methods to reflectively invoke static methods.
-        abstractBuilderType.addAll(createReflectiveHelpers(modelList, abstractBuilderType.asType()));
+        TypeMirror descriptorType = findBytecodeVariantType(abstractBuilderType.asType());
+        TypeMirror returnType = generic(context.getType(List.class), descriptorType);
+
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(Modifier.PUBLIC, Modifier.STATIC), returnType, "variants");
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startReturn().startStaticCall(context.getType(List.class), "of");
+        for (BytecodeDSLModel model : modelList.getModels()) {
+            b.startGroup();
+            b.newLine();
+            b.startIndention();
+            b.staticReference(new GeneratedTypeMirror(ElementUtils.getPackageName(model.getTemplateType()),
+                            model.getName()), "BYTECODE");
+            b.end(); // indention
+            b.end(); // group
+        }
+        b.end().end();
+        abstractBuilderType.add(ex);
 
         results.add(abstractBuilderType);
 
@@ -182,7 +193,7 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
 
     }
 
-    public static CodeTypeElement createAbstractBuilderType(TypeElement templateType) {
+    public static CodeTypeElement createAbstractBuilderType(BytecodeDSLModel model, TypeElement templateType) {
         String abstractBuilderName = templateType.getSimpleName() + "Builder";
         CodeTypeElement abstractBuilderType = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, ElementUtils.findPackageElement(templateType), abstractBuilderName);
         abstractBuilderType.setSuperClass(ProcessorContext.types().BytecodeBuilder);
@@ -192,7 +203,27 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
         constructor.addParameter(new CodeVariableElement(ProcessorContext.getInstance().getType(Object.class), "token"));
         constructor.createBuilder().statement("super(token)");
         abstractBuilderType.add(constructor);
+
+        abstractBuilderType.add(new BytecodeVariantElement(templateType.asType(), model.languageClass, abstractBuilderType.asType()));
+
         return abstractBuilderType;
+    }
+
+    public static TypeMirror findBytecodeVariantType(TypeMirror builderType) {
+        TypeElement e = findInnerClass(ElementUtils.castTypeElement(builderType), "BytecodeVariant");
+        if (e == null) {
+            return null;
+        }
+        return e.asType();
+    }
+
+    static TypeElement findInnerClass(TypeElement type, String name) {
+        for (TypeElement field : ElementFilter.typesIn(type.getEnclosedElements())) {
+            if (field.getSimpleName().toString().equals(name)) {
+                return field;
+            }
+        }
+        return null;
     }
 
     private boolean hasExpectErrors(Element element) {
@@ -217,78 +248,12 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
         return false;
     }
 
-    private List<CodeExecutableElement> createReflectiveHelpers(BytecodeDSLModels modelList, TypeMirror abstractBuilderType) {
-        List<CodeExecutableElement> result = new ArrayList<>();
-        ProcessorContext ctx = ProcessorContext.getInstance();
+    static final class BytecodeVariantElement extends CodeTypeElement {
+        BytecodeVariantElement(TypeMirror rootType, TypeMirror languageClass, TypeMirror builderType) {
+            super(Set.of(PUBLIC, STATIC, Modifier.ABSTRACT), ElementKind.CLASS, null, "BytecodeVariant");
+            setSuperClass(generic(ProcessorContext.types().BytecodeDescriptor, rootType, languageClass, builderType));
 
-        TypeMirror templateType = modelList.getTemplateType().asType();
-        TypeMirror languageClass = modelList.getModels().getFirst().languageClass;
-
-        CodeTypeParameterElement tExtendsBasicInterpreter = new CodeTypeParameterElement(CodeNames.of("T"), templateType);
-        result.add(createReflectiveHelper("newConfigBuilder", templateType, types.BytecodeConfig_Builder, null));
-        result.add(createReflectiveHelper("create", templateType, generic(types.BytecodeRootNodes, tExtendsBasicInterpreter.asType()), tExtendsBasicInterpreter,
-                        new CodeVariableElement(languageClass, "language"),
-                        new CodeVariableElement(types.BytecodeConfig, "config"),
-                        new CodeVariableElement(generic(types.BytecodeParser, ElementHelpers.wildcard(abstractBuilderType, null)), "builder")));
-        result.add(createReflectiveHelper("deserialize", templateType, generic(types.BytecodeRootNodes, tExtendsBasicInterpreter.asType()), tExtendsBasicInterpreter,
-                        new CodeVariableElement(languageClass, "language"),
-                        new CodeVariableElement(types.BytecodeConfig, "config"),
-                        new CodeVariableElement(generic(ctx.getDeclaredType(Supplier.class), ctx.getDeclaredType(DataInput.class)), "input"),
-                        new CodeVariableElement(types.BytecodeDeserializer, "callback")));
-
-        return result;
+            add(GeneratorUtils.createConstructorUsingFields(Set.of(Modifier.PROTECTED), this));
+        }
     }
-
-    private static CodeExecutableElement createReflectiveHelper(String name, TypeMirror templateType, DeclaredType returnType, CodeTypeParameterElement typeParameter, CodeVariableElement... params) {
-        String helperName = "invoke" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(Modifier.PUBLIC, Modifier.STATIC), returnType, helperName);
-
-        if (!returnType.getTypeArguments().isEmpty()) {
-            GeneratorUtils.mergeSuppressWarnings(ex, "unchecked");
-        }
-
-        if (typeParameter != null) {
-            ex.getTypeParameters().add(typeParameter);
-        }
-
-        ex.addParameter(new CodeVariableElement(generic(Class.class, ElementHelpers.wildcard(templateType, null)), "interpreterClass"));
-        for (CodeVariableElement param : params) {
-            ex.addParameter(param);
-        }
-
-        CodeTreeBuilder b = ex.createBuilder();
-        ProcessorContext ctx = ProcessorContext.getInstance();
-
-        b.startTryBlock();
-        b.startDeclaration(ctx.getDeclaredType(Method.class), "method");
-        b.startCall("interpreterClass.getMethod");
-        b.doubleQuote(name);
-        for (CodeVariableElement param : params) {
-            b.typeLiteral(param.asType());
-        }
-        b.end();
-        b.end();
-
-        b.startReturn().cast(returnType);
-        b.startCall("method.invoke");
-        b.string("null"); // static method
-        for (CodeVariableElement param : params) {
-            b.variable(param);
-        }
-        b.end();
-        b.end();
-
-        b.end().startCatchBlock(ctx.getDeclaredType(InvocationTargetException.class), "e");
-        b.startIf().string("e.getCause() instanceof RuntimeException err").end().startBlock();
-        b.startThrow().string("err").end();
-        b.end().startElseBlock();
-        b.startThrow().startNew(ctx.getDeclaredType(AssertionError.class)).string("e.getCause()").end(2);
-        b.end();
-        b.end().startCatchBlock(ctx.getDeclaredType(Exception.class), "e");
-        b.startThrow().startNew(ctx.getDeclaredType(AssertionError.class)).string("e").end(2);
-        b.end();
-
-        return ex;
-    }
-
 }

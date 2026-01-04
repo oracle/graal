@@ -25,7 +25,6 @@
 package jdk.graal.compiler.replacements;
 
 import static jdk.graal.compiler.core.common.GraalOptions.EmitStringSubstitutions;
-import static jdk.graal.compiler.core.common.GraalOptions.InlineGraalStubs;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTIndexMasking;
 import static jdk.graal.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMax;
@@ -45,7 +44,6 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
@@ -80,6 +78,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
@@ -89,6 +88,7 @@ import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
+import jdk.graal.compiler.nodes.calc.OrNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
 import jdk.graal.compiler.nodes.calc.RightShiftNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
@@ -103,7 +103,6 @@ import jdk.graal.compiler.nodes.debug.VerifyHeapNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.ClassIsArrayNode;
-import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.GuardedUnsafeLoadNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
@@ -164,9 +163,7 @@ import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.IdentityHashCodeNode;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.vm.ci.code.CodeUtil;
@@ -178,7 +175,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -280,7 +276,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
             } else if (n instanceof LoadHubOrNullNode) {
                 lowerLoadHubOrNullNode((LoadHubOrNullNode) n, tool);
             } else if (n instanceof LoadArrayComponentHubNode) {
-                lowerLoadArrayComponentHubNode((LoadArrayComponentHubNode) n);
+                lowerLoadArrayComponentHubNode((LoadArrayComponentHubNode) n, tool);
             } else if (n instanceof UnsafeCompareAndSwapNode) {
                 lowerCompareAndSwapNode((UnsafeCompareAndSwapNode) n);
             } else if (n instanceof UnsafeCompareAndExchangeNode) {
@@ -313,10 +309,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
                 }
             } else if (n instanceof VerifyHeapNode) {
                 lowerVerifyHeap((VerifyHeapNode) n);
-            } else if (n instanceof UnaryMathIntrinsicNode) {
-                lowerUnaryMath((UnaryMathIntrinsicNode) n, tool);
-            } else if (n instanceof BinaryMathIntrinsicNode) {
-                lowerBinaryMath((BinaryMathIntrinsicNode) n, tool);
             } else if (n instanceof UnpackEndianHalfNode) {
                 lowerSecondHalf((UnpackEndianHalfNode) n);
             } else if (n instanceof RegisterFinalizerNode) {
@@ -400,59 +392,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         n.lower(byteOrder);
     }
 
-    private void lowerBinaryMath(BinaryMathIntrinsicNode math, LoweringTool tool) {
-        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
-            return;
-        }
-        ResolvedJavaMethod method = math.graph().method();
-        if (method != null) {
-            if (replacements.isSnippet(method)) {
-                // In the context of SnippetStub, i.e., Graal-generated stubs, use the LIR
-                // lowering to emit the stub assembly code instead of the Node lowering.
-                return;
-            }
-            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && method.getDeclaringClass().getName().equals("Ljava/lang/Math;")) {
-                // A root compilation of the intrinsic method should emit the full assembly
-                // implementation.
-                return;
-            }
-            if (InlineGraalStubs.getValue(math.graph().getOptions())) {
-                return;
-            }
-        }
-        StructuredGraph graph = math.graph();
-        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, math.getOperation().foreignCallSignature, math.getX(), math.getY()));
-        graph.addAfterFixed(tool.lastFixedNode(), call);
-        math.replaceAtUsages(call);
-    }
-
-    private void lowerUnaryMath(UnaryMathIntrinsicNode math, LoweringTool tool) {
-        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
-            return;
-        }
-        ResolvedJavaMethod method = math.graph().method();
-        if (method != null) {
-            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && method.getDeclaringClass().getName().equals("Ljava/lang/Math;")) {
-                // A root compilation of the intrinsic method should emit the full assembly
-                // implementation.
-                return;
-            }
-            if (InlineGraalStubs.getValue(math.graph().getOptions())) {
-                return;
-            }
-        }
-        lowerUnaryMathToForeignCall(math, tool);
-    }
-
-    protected void lowerUnaryMathToForeignCall(UnaryMathIntrinsicNode math, LoweringTool tool) {
-        StructuredGraph graph = math.graph();
-        ForeignCallDescriptor desc = foreignCalls.getDescriptor(math.getOperation().foreignCallSignature);
-        Stamp s = UnaryMathIntrinsicNode.UnaryOperation.computeStamp(math.getOperation(), math.getValue().stamp(NodeView.DEFAULT));
-        ForeignCallNode call = graph.add(new ForeignCallNode(desc, s, List.of(math.getValue())));
-        graph.addAfterFixed(tool.lastFixedNode(), call);
-        math.replaceAtUsages(call);
-    }
-
     protected void lowerVerifyHeap(VerifyHeapNode n) {
         GraphUtil.removeFixedWithUnusedInputs(n);
     }
@@ -483,7 +422,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         assert loadField.getStackKind() != JavaKind.Illegal : loadField;
         StructuredGraph graph = loadField.graph();
         ResolvedJavaField field = loadField.field();
-        ValueNode object = loadField.isStatic() ? staticFieldBase(graph, field) : loadField.object();
+        ValueNode object = loadField.isStatic() ? staticFieldBase(graph, field, tool) : loadField.object();
         object = createNullCheckedValue(object, loadField, tool);
         Stamp loadStamp = loadStamp(loadField.stamp(NodeView.DEFAULT), getStorageKind(field));
 
@@ -500,7 +439,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
     protected void lowerStoreFieldNode(StoreFieldNode storeField, LoweringTool tool) {
         StructuredGraph graph = storeField.graph();
         ResolvedJavaField field = storeField.field();
-        ValueNode object = storeField.isStatic() ? staticFieldBase(graph, field) : storeField.object();
+        ValueNode object = storeField.isStatic() ? staticFieldBase(graph, field, tool) : storeField.object();
         object = createNullCheckedValue(object, storeField, tool);
         ValueNode value = implicitStoreConvert(graph, getStorageKind(storeField.field()), storeField.value());
         AddressNode address = createFieldAddress(graph, object, field);
@@ -615,9 +554,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
                  * The guard on the read hub should be the null check of the array that was
                  * introduced earlier.
                  */
-                ValueNode arrayClass = createReadHub(graph, array, tool);
+                ValueNode arrayClass = createReadHub(graph, array, tool, tool.lastFixedNode());
                 boolean isKnownObjectArray = arrayType != null && !arrayType.getType().getComponentType().isPrimitive();
-                ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, isKnownObjectArray, storeIndexed);
+                ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, isKnownObjectArray, storeIndexed, tool, tool.lastFixedNode());
                 LogicNode typeTest = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value, false));
                 condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, BranchProbabilityNode.NOT_LIKELY_PROFILE);
             }
@@ -667,7 +606,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         if (graph.getGuardsStage().allowsFloatingGuards()) {
             return;
         }
-        ValueNode hub = createReadHub(graph, loadHub.getValue(), tool);
+        ValueNode hub = createReadHub(graph, loadHub.getValue(), tool, tool.lastFixedNode());
         loadHub.replaceAtUsagesAndDelete(hub);
     }
 
@@ -706,7 +645,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         final AbstractPointerStamp hubStamp = (AbstractPointerStamp) loadHubOrNullNode.stamp(NodeView.DEFAULT);
         ValueNode nullHub = ConstantNode.forConstant(hubStamp.asAlwaysNull(), JavaConstant.NULL_POINTER, tool.getMetaAccess(), graph);
         final ValueNode nonNullValue = graph.addOrUniqueWithInputs(PiNode.create(value, stamp.asNonNull(), ifNode.falseSuccessor()));
-        ValueNode hub = createReadHub(graph, nonNullValue, tool);
+        ValueNode hub = createReadHub(graph, nonNullValue, tool, ifNode.falseSuccessor());
         ValueNode[] values = new ValueNode[]{nullHub, hub};
         final PhiNode hubPhi = graph.unique(new ValuePhiNode(hubStamp, merge, values));
         final FixedNode oldNext = predecessor.next();
@@ -715,9 +654,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         loadHubOrNullNode.replaceAtUsagesAndDelete(hubPhi);
     }
 
-    protected void lowerLoadArrayComponentHubNode(LoadArrayComponentHubNode loadHub) {
+    protected void lowerLoadArrayComponentHubNode(LoadArrayComponentHubNode loadHub, LoweringTool tool) {
         StructuredGraph graph = loadHub.graph();
-        ValueNode hub = createReadArrayComponentHub(graph, loadHub.getValue(), false, loadHub);
+        ValueNode hub = createReadArrayComponentHub(graph, loadHub.getValue(), false, loadHub, tool, tool.lastFixedNode());
         graph.replaceFixed(loadHub, hub);
     }
 
@@ -834,7 +773,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         } else {
             memoryRead.setGuard(guard);
         }
-        ValueNode readValue = performBooleanCoercionIfNecessary(implicitLoadConvert(graph, readKind, memoryRead, compressible), readKind);
+        ValueNode readValue = implicitUnsafeLoadConvert(graph, readKind, memoryRead, compressible);
         load.replaceAtUsages(readValue);
         return memoryRead;
     }
@@ -849,18 +788,18 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         // An unsafe read must not float otherwise it may float above
         // a test guaranteeing the read is safe.
         memoryRead.setForceFixed(true);
-        ValueNode readValue = performBooleanCoercionIfNecessary(implicitLoadConvert(graph, readKind, memoryRead, false), readKind);
+        ValueNode readValue = implicitUnsafeLoadConvert(graph, readKind, memoryRead, false);
         load.replaceAtUsages(readValue);
         graph.replaceFixedWithFixed(load, memoryRead);
     }
 
-    private static ValueNode performBooleanCoercionIfNecessary(ValueNode readValue, JavaKind readKind) {
-        if (readKind == JavaKind.Boolean) {
-            StructuredGraph graph = readValue.graph();
-            IntegerEqualsNode eq = graph.addOrUnique(new IntegerEqualsNode(readValue, ConstantNode.forInt(0, graph)));
-            return graph.addOrUnique(new ConditionalNode(eq, ConstantNode.forBoolean(false, graph), ConstantNode.forBoolean(true, graph)));
-        }
-        return readValue;
+    /**
+     * Coerce integer values into a boolean 0 or 1 to match Java semantics. The returned nodes have
+     * not been added to the graph.
+     */
+    private static ValueNode performBooleanCoercion(ValueNode readValue) {
+        IntegerEqualsNode eq = new IntegerEqualsNode(readValue, ConstantNode.forInt(0));
+        return new ConditionalNode(eq, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true));
     }
 
     protected void lowerUnsafeStoreNode(RawStoreNode store) {
@@ -1240,7 +1179,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         return fieldIdentity;
     }
 
-    public abstract ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField field);
+    public abstract ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField field, LoweringTool tool);
 
     public abstract int arrayLengthOffset();
 
@@ -1273,45 +1212,66 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         return stamp;
     }
 
-    public final ValueNode implicitLoadConvertWithBooleanCoercionIfNecessary(StructuredGraph graph, JavaKind kind, ValueNode value) {
-        return performBooleanCoercionIfNecessary(implicitLoadConvert(graph, kind, value), kind);
+    protected abstract ValueNode newCompressionNode(CompressionOp op, ValueNode value);
+
+    /**
+     * Perform sign or zero extensions for subword types, and convert potentially unsafe 8 bit
+     * boolean values into 0 or 1. The nodes have already been added to the graph.
+     */
+    public final ValueNode implicitUnsafeLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
+        if (compressible && kind.isObject()) {
+            return implicitLoadConvert(graph, kind, value, compressible);
+        } else {
+            ValueNode ret = implicitUnsafePrimitiveLoadConvert(kind, value);
+            if (!ret.isAlive()) {
+                ret = graph.addOrUniqueWithInputs(ret);
+            }
+            return ret;
+        }
     }
 
     public final ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value) {
         return implicitLoadConvert(graph, kind, value, true);
     }
 
-    public ValueNode implicitLoadConvert(JavaKind kind, ValueNode value) {
-        return implicitLoadConvert(kind, value, true);
-    }
-
+    /**
+     * Perform sign or zero extensions for subword types and add the nodes to the graph.
+     */
     protected final ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value, boolean compressible) {
-        ValueNode ret = implicitLoadConvert(kind, value, compressible);
+        ValueNode ret;
+        if (useCompressedOops(kind, compressible)) {
+            ret = newCompressionNode(CompressionOp.Uncompress, value);
+        } else {
+            ret = implicitPrimitiveLoadConvert(kind, value);
+        }
+
         if (!ret.isAlive()) {
-            ret = graph.addOrUnique(ret);
+            ret = graph.addOrUniqueWithInputs(ret);
         }
         return ret;
     }
 
-    protected abstract ValueNode newCompressionNode(CompressionOp op, ValueNode value);
+    /**
+     * Perform sign or zero extensions for subword types. The caller is expected to add an resulting
+     * nodes to the graph.
+     */
+    public static ValueNode implicitPrimitiveLoadConvert(JavaKind kind, ValueNode value) {
+        return switch (kind) {
+            case Byte, Short -> new SignExtendNode(value, 32);
+            case Boolean, Char -> new ZeroExtendNode(value, 32);
+            default -> value;
+        };
+    }
 
     /**
-     * @param compressible whether the convert should be compressible
+     * Perform sign or zero extensions for subword types, and convert potentially unsafe 8 bit
+     * boolean values into 0 or 1. The caller is expected to add an resulting * nodes to the graph.
      */
-    protected ValueNode implicitLoadConvert(JavaKind kind, ValueNode value, boolean compressible) {
-        if (useCompressedOops(kind, compressible)) {
-            return newCompressionNode(CompressionOp.Uncompress, value);
+    public static ValueNode implicitUnsafePrimitiveLoadConvert(JavaKind kind, ValueNode value) {
+        if (kind == JavaKind.Boolean) {
+            return performBooleanCoercion(new ZeroExtendNode(value, 32));
         }
-
-        switch (kind) {
-            case Byte:
-            case Short:
-                return new SignExtendNode(value, 32);
-            case Boolean:
-            case Char:
-                return new ZeroExtendNode(value, 32);
-        }
-        return value;
+        return implicitPrimitiveLoadConvert(kind, value);
     }
 
     public ValueNode arrayImplicitStoreConvert(StructuredGraph graph,
@@ -1368,20 +1328,65 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
             return newCompressionNode(CompressionOp.Compress, value);
         }
 
-        switch (kind) {
-            case Boolean:
-            case Byte:
-                return new NarrowNode(value, 8);
-            case Char:
-            case Short:
-                return new NarrowNode(value, 16);
-        }
-        return value;
+        return implicitPrimitiveStoreConvert(kind, value);
     }
 
-    protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, LoweringTool tool);
+    public static ValueNode implicitPrimitiveStoreConvert(JavaKind kind, ValueNode value) {
+        return switch (kind) {
+            case Boolean, Byte -> new NarrowNode(value, 8);
+            case Char, Short -> new NarrowNode(value, 16);
+            default -> value;
+        };
+    }
 
-    protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, boolean isKnownObjectArray, FixedNode anchor);
+    /**
+     * Simulate a primitive store.
+     *
+     * So for code like:
+     *
+     * <pre>
+     * static class Data {
+     *     int value = 0xF0F0F0F0;
+     * }
+     *
+     * Data data = new Data();
+     * UNSAFE.putByte(data, FIELD_OFFSET, 0x0F);
+     * </pre>
+     *
+     * The field value of the data object is 0xF0F0F0F0 before the unsafe write operation and
+     * 0xF0F0F00F after the unsafe write operation. We are not allowed to touch the upper 3 bytes.
+     * To simulate the write operation we extract the appropriate bytes and combine them.
+     * <p>
+     * Example for a byte operation, currently stored value 0xF0F0F0F0 and value to store
+     * 0x0000000F:
+     *
+     * <pre>
+     * lowerBytesMask   = 00000000 00000000 00000000 11111111
+     * upperBytesMask   = 11111111 11111111 11111111 00000000
+     * currentStored    = 11110000 11110000 11110000 11110000
+     * valueToStore     = 00000000 00000000 00000000 00001111
+     * newValue         = (currentStored & upperBytesMask) | (valueToStore & lowerBytesMask)
+     *                  = 11110000 11110000 11110000 00001111
+     * </pre>
+     *
+     */
+    public static ValueNode simulatePrimitiveStore(JavaKind kind, ValueNode currentValue, ValueNode valueToStore) {
+        // compute the masks
+        int bitCount = kind.getByteCount() * 8;
+        int lowerBytesMask = (int) CodeUtil.mask(bitCount);
+        int upperBytesMask = ~lowerBytesMask;
+
+        // extract the upper bytes from the current entry
+        ValueNode upperBytes = AndNode.create(ConstantNode.forInt(upperBytesMask), currentValue, NodeView.DEFAULT);
+        // extract the lower bytes from the value
+        ValueNode lowerBytes = AndNode.create(ConstantNode.forInt(lowerBytesMask), valueToStore, NodeView.DEFAULT);
+        // combine both
+        return OrNode.create(upperBytes, lowerBytes, NodeView.DEFAULT);
+    }
+
+    protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, LoweringTool tool, FixedWithNextNode insertAfter);
+
+    protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, boolean isKnownObjectArray, FixedNode anchor, LoweringTool tool, FixedWithNextNode insertAfter);
 
     protected ValueNode proxyIndex(AccessIndexedNode n, ValueNode index, ValueNode array, LoweringTool tool) {
         StructuredGraph graph = index.graph();

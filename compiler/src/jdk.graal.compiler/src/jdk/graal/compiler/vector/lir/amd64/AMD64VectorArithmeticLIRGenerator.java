@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.vector.lir.amd64;
 
-import static jdk.graal.compiler.vector.lir.amd64.AMD64VectorNodeMatchRules.getRegisterSize;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMIOp.VPERMILPS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMIOp.VPERMPD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMIOp.VPERMQ;
@@ -33,10 +32,9 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231PD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231PS;
 import static jdk.graal.compiler.lir.LIRValueUtil.asConstant;
 import static jdk.graal.compiler.lir.LIRValueUtil.isConstantValue;
+import static jdk.graal.compiler.vector.lir.amd64.AMD64VectorNodeMatchRules.getRegisterSize;
 
 import java.util.function.BiFunction;
-
-import jdk.graal.compiler.vector.lir.VectorLIRGeneratorTool;
 
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding;
@@ -63,12 +61,14 @@ import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.amd64.AMD64ConvertFloatToIntegerOp;
 import jdk.graal.compiler.lir.amd64.AMD64Ternary;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryConstOp;
+import jdk.graal.compiler.lir.amd64.vector.AMD64VectorConvertFloatToIntegerOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorMove;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorMove.AVXMoveToIntOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorShuffle;
-import jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary.AVXConvertOp;
+import jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary.AVXConvertToFloatOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary.AVXUnaryOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary.AVXUnaryRVMOp;
+import jdk.graal.compiler.vector.lir.VectorLIRGeneratorTool;
 import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
@@ -102,8 +102,6 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
     public AMD64SIMDInstructionEncoding getSimdEncoding() {
         return simdEncoding;
     }
-
-    protected abstract Value emitIntegerMinMax(Value a, Value b, AMD64MathMinMaxFloatOp minmaxop, Signedness signedness);
 
     public abstract Variable emitVectorOpMaskTestMove(Value left, boolean negateLeft, Value right, Value trueValue, Value falseValue);
 
@@ -238,9 +236,9 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
         return emitConvertOp(LIRKind.combine(inputVal).changeType(kind), opcode, inputVal, narrow);
     }
 
-    protected Value emitConvertOp(PlatformKind kind, VexRVMConvertOp opcode, Value inputVal) {
+    protected Value emitConvertOp(PlatformKind kind, VexRVMConvertOp opcode, Value inputVal, Signedness signedness) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(inputVal).changeType(kind));
-        getLIRGen().append(new AVXConvertOp(opcode, result, asAllocatable(inputVal), simdEncoding));
+        getLIRGen().append(new AVXConvertToFloatOp(opcode, result, asAllocatable(inputVal), simdEncoding, signedness));
         return result;
     }
 
@@ -445,7 +443,7 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
      * Emit a scalar floating point to integer conversion that needs fixup code to adjust the result
      * to Java semantics.
      */
-    protected AllocatableValue emitFloatConvertWithFixup(AMD64Kind kind, VexRMOp op, Value input, boolean canBeNaN, boolean canOverflow, boolean narrow) {
+    protected AllocatableValue emitFloatConvertWithFixup(AMD64Kind kind, VexRMOp op, Value input, boolean canBeNaN, boolean canOverflow, boolean narrow, Signedness signedness) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(input).changeType(kind));
         /*
          * If the convert is a narrowing convert (e.g. D2F), we have to encode with the argument
@@ -453,28 +451,50 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
          */
         AVXSize size = narrow ? getRegisterSize(input) : getRegisterSize(result);
         AMD64ConvertFloatToIntegerOp.OpcodeEmitter emitter = (crb, masm, dst, src) -> op.emit(masm, size, dst, src);
-        getLIRGen().append(new AMD64ConvertFloatToIntegerOp(getLIRGen(), emitter, result, input, canBeNaN, canOverflow));
+        getLIRGen().append(new AMD64ConvertFloatToIntegerOp(getLIRGen(), emitter, result, input, canBeNaN, canOverflow, signedness));
+        return result;
+    }
+
+    /**
+     * Emit a vector floating point to integer conversion that needs fixup code to adjust the result
+     * to Java semantics.
+     */
+    protected AllocatableValue emitVectorFloatConvertWithFixup(AMD64Kind kind, VexRMOp op, Value input, boolean canBeNaN, boolean canOverflow, boolean narrow, Signedness signedness) {
+        Variable result = getLIRGen().newVariable(LIRKind.combine(input).changeType(kind));
+        /*
+         * If the convert is a narrowing convert (e.g. D2F), we have to encode with the argument
+         * size instead of the result size.
+         */
+        AVXSize size = narrow ? getRegisterSize(input) : getRegisterSize(result);
+        AMD64VectorConvertFloatToIntegerOp.OpcodeEmitter emitter = (crb, masm, dst, src) -> op.emit(masm, size, dst, src);
+        getLIRGen().append(new AMD64VectorConvertFloatToIntegerOp(getLIRGen(), emitter, size, result, input, canBeNaN, canOverflow, signedness));
         return result;
     }
 
     @Override
-    public Value emitMathMax(Value a, Value b) {
-        return emitMathMinMax(a, b, AMD64MathMinMaxFloatOp.Max);
+    public Value emitMathMax(LIRKind cmpKind, Value a, Value b) {
+        if (((AMD64Kind) a.getPlatformKind()).isInteger()) {
+            return emitIntegerMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Max, Signedness.SIGNED);
+        }
+        return emitMathMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Max);
     }
 
     @Override
-    public Value emitMathMin(Value a, Value b) {
-        return emitMathMinMax(a, b, AMD64MathMinMaxFloatOp.Min);
+    public Value emitMathMin(LIRKind cmpKind, Value a, Value b) {
+        if (((AMD64Kind) a.getPlatformKind()).isInteger()) {
+            return emitIntegerMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Min, Signedness.SIGNED);
+        }
+        return emitMathMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Min);
     }
 
     @Override
-    public Value emitMathUnsignedMax(Value a, Value b) {
-        return emitIntegerMinMax(a, b, AMD64MathMinMaxFloatOp.Max, Signedness.UNSIGNED);
+    public Value emitMathUnsignedMax(LIRKind cmpKind, Value a, Value b) {
+        return emitIntegerMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Max, Signedness.UNSIGNED);
     }
 
     @Override
-    public Value emitMathUnsignedMin(Value a, Value b) {
-        return emitIntegerMinMax(a, b, AMD64MathMinMaxFloatOp.Min, Signedness.UNSIGNED);
+    public Value emitMathUnsignedMin(LIRKind cmpKind, Value a, Value b) {
+        return emitIntegerMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Min, Signedness.UNSIGNED);
     }
 
     public Variable emitReverseBytes(Value input) {
@@ -509,6 +529,16 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
     public Value emitVectorPermute(LIRKind resultKind, Value source, Value indices) {
         Variable result = getLIRGen().newVariable(resultKind);
         getLIRGen().append(AMD64VectorShuffle.PermuteOp.create(getAMD64LIRGen(), result, asAllocatable(source), asAllocatable(indices), getSimdEncoding()));
+        return result;
+    }
+
+    /**
+     * Do a slice operation, see
+     * {@code jdk.incubator.vector.Vector<E>::slice(int, jdk.incubator.vector.Vector<E>)}.
+     */
+    public Value emitVectorSlice(LIRKind resultKind, Value src1, Value src2, int origin) {
+        Variable result = getLIRGen().newVariable(resultKind);
+        getLIRGen().append(new AMD64VectorShuffle.SliceOp(getAMD64LIRGen(), result, asAllocatable(src1), asAllocatable(src2), origin, getSimdEncoding()));
         return result;
     }
 }

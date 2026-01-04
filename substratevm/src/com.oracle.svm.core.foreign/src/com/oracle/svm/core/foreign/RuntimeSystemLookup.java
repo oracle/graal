@@ -44,6 +44,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.BasedOnJDKClass;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.word.Word;
 import jdk.internal.foreign.Utils;
@@ -57,6 +58,10 @@ public final class RuntimeSystemLookup {
     static final SymbolLookup INSTANCE = makeSystemLookup();
 
     public static SymbolLookup makeSystemLookup() {
+        if (!ForeignFunctionsRuntime.isLibcSupported()) {
+            throw VMError.unsupportedFeature("defaultLookup (system lookup) requires libc support");
+        }
+
         if (Platform.includedIn(WINDOWS.class)) {
             /*
              * Windows support has some subtleties: one would ideally load ucrtbase.dll, but some

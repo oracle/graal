@@ -70,6 +70,12 @@ public class TStringReadCharUTF16Test extends TStringTestBase {
         forAllStrings(new TruffleString.Encoding[]{TruffleString.Encoding.UTF_16}, true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             for (int i = 0; i < array.length / 2; i++) {
                 Assert.assertEquals(TStringTestUtil.readValue(array, 1, i), node.execute(a, i));
+                Assert.assertEquals(TStringTestUtil.readValue(array, 1, i), node.executeLE(a, i));
+            }
+        });
+        forAllStrings(new TruffleString.Encoding[]{TruffleString.Encoding.UTF_16BE}, true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
+            for (int i = 0; i < array.length / 2; i++) {
+                Assert.assertEquals(Character.reverseBytes((char) TStringTestUtil.readValue(array, 1, i)), node.executeBE(a, i));
             }
         });
     }

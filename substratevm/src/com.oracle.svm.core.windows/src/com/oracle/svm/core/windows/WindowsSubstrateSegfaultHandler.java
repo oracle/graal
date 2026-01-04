@@ -73,6 +73,8 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
         if (ErrHandlingAPI.AddVectoredContinueHandler(0, HANDLER_LITERAL.getFunctionPointer()).isNull()) {
             VMError.shouldNotReachHere("SubstrateSegfaultHandler installation failed.");
         }
+        /* Install secondary signal handler. */
+        ErrHandlingAPI.SetUnhandledExceptionFilter(HANDLER_LITERAL.getFunctionPointer());
     }
 
     private static final CEntryPointLiteral<CFunctionPointer> HANDLER_LITERAL = CEntryPointLiteral.create(WindowsSubstrateSegfaultHandler.class, "handler", ErrHandlingAPI.EXCEPTION_POINTERS.class);

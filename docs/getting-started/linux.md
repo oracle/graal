@@ -19,15 +19,31 @@ Select the installation option that you prefer.
 ## SDKMAN!
 
 Install Oracle GraalVM with [SDKMAN!](https://sdkman.io/){:target="_blank"}:
+
 ```bash
 sdk install java <version>-graal
 ```
+
 To install GraalVM Community Edition, change the distribution from `graal` to `graalce` in the command.
 
 SDKMAN! helps you install and easily switch between JDKs.
-Check which GraalVM releases are available for installation by running: 
+
+To check which GraalVM releases are available for installation, run:
+
 ```bash
 sdk list java
+```
+
+To switch to the specified GraalVM version for your current terminal session, run:
+
+```bash
+sdk use java <version>-graal
+```
+
+To set a version as the default for all new terminal sessions, run:
+
+```bash
+sdk default java <version>-graal
 ```
 
 ## From an Archive
@@ -58,7 +74,7 @@ Optionally, you can specify GraalVM as the default JRE or JDK installation in yo
 
 ## Script-Friendly URLs
 
-[Script-friendly URLs](https://www.oracle.com/java/technologies/jdk-script-friendly-urls/){:target="_blank"} enable you to download GraalVM from a command line, or automatically in your script and Dockerfile by using a download URL. 
+Script-friendly URLs enable you to download GraalVM from a command line, or automatically in your script and Dockerfile by using a download URL. 
 Substitute `<version>` and `<architecture>` with the JDK version and `aarch64` or `x64` architecture.
 ```bash
 # Download with wget
@@ -75,7 +91,8 @@ For other installation options, visit the [GraalVM Downloads page](https://www.g
 
 ## Prerequisites for Native Image on Linux
 
-Native Image depends on the local toolchain (header files for the C library, `glibc-devel`, `zlib`, `gcc`, and/or `libstdc++-static`). 
+Native Image depends on the local toolchain, including header files for the C library, `glibc-devel`, `zlib`, `gcc`, and/or `libstdc++-static`.
+
 These dependencies can be installed (if not yet installed) using a package manager on your Linux machine.
 
 On **Oracle Linux** use the `yum` package manager:

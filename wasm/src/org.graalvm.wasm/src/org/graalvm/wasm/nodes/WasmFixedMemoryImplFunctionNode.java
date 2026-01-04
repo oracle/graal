@@ -70,22 +70,24 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
     private final WasmCodeEntry codeEntry;
     private final int bytecodeStartOffset;
     private final int bytecodeEndOffset;
+    private final int exceptionTableOffset;
     private final Node[] callNodes;
 
     private static final WasmFunctionBaseNode[] EMPTY_FUNCTION_BASE_NODES = new WasmFunctionBaseNode[0];
 
     @Children private WasmFunctionBaseNode[] functionBaseNodes = EMPTY_FUNCTION_BASE_NODES;
 
-    protected WasmFixedMemoryImplFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, Node[] callNodes) {
+    protected WasmFixedMemoryImplFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, int exceptionTableOffset, Node[] callNodes) {
         this.module = module;
         this.codeEntry = codeEntry;
         this.bytecodeStartOffset = bytecodeStartOffset;
         this.bytecodeEndOffset = bytecodeEndOffset;
+        this.exceptionTableOffset = exceptionTableOffset;
         this.callNodes = callNodes;
     }
 
-    public static WasmFixedMemoryImplFunctionNode create(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, Node[] callNodes) {
-        return WasmFixedMemoryImplFunctionNodeGen.create(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, callNodes);
+    public static WasmFixedMemoryImplFunctionNode create(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, int exceptionTableOffset, Node[] callNodes) {
+        return WasmFixedMemoryImplFunctionNodeGen.create(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, exceptionTableOffset, callNodes);
     }
 
     @Specialization(guards = {"memoryCount() == 1"}, limit = "3")
@@ -115,7 +117,7 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
     @NeverDefault
     protected WasmFunctionBaseNode createSpecializedFunctionNode(WasmMemoryLibrary[] memoryLibs) {
         CompilerAsserts.neverPartOfCompilation();
-        WasmInstrumentableFunctionNode instrumentableFunctionNode = new WasmInstrumentableFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, callNodes, memoryLibs);
+        var instrumentableFunctionNode = new WasmInstrumentableFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, exceptionTableOffset, callNodes, memoryLibs);
         WasmFunctionBaseNode baseNode = new WasmFunctionBaseNode(instrumentableFunctionNode);
         functionBaseNodes = Arrays.copyOf(functionBaseNodes, functionBaseNodes.length + 1);
         functionBaseNodes[functionBaseNodes.length - 1] = insert(baseNode);
@@ -130,7 +132,7 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
         for (int memoryIndex = 0; memoryIndex < module.memoryCount(); memoryIndex++) {
             memoryLibs[memoryIndex] = insert(WasmMemoryLibrary.getFactory().createDispatched(3));
         }
-        WasmInstrumentableFunctionNode instrumentableFunctionNode = new WasmInstrumentableFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, callNodes, memoryLibs);
+        var instrumentableFunctionNode = new WasmInstrumentableFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, exceptionTableOffset, callNodes, memoryLibs);
         WasmFunctionBaseNode baseNode = new WasmFunctionBaseNode(instrumentableFunctionNode);
         functionBaseNodes = new WasmFunctionBaseNode[]{insert(baseNode)};
         notifyInserted(instrumentableFunctionNode);

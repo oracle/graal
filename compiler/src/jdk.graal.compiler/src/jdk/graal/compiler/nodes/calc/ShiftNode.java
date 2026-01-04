@@ -27,8 +27,6 @@ package jdk.graal.compiler.nodes.calc;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import java.util.Set;
-
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -42,6 +40,7 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 
@@ -105,7 +104,7 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
             return RightShiftNode.create(x, y, view);
         } else if (IntegerStamp.OPS.getUShr().equals(op)) {
             return UnsignedRightShiftNode.create(x, y, view);
-        } else if (Set.of(IntegerStamp.OPS.getShiftOps()).contains(op)) {
+        } else if (CollectionsUtil.setOf(IntegerStamp.OPS.getShiftOps()).contains(op)) {
             GraalError.unimplemented(String.format("creating %s via ShiftNode#shiftOp is not implemented yet", op));
         } else {
             GraalError.shouldNotReachHere(String.format("%s is not a shift operation!", op));

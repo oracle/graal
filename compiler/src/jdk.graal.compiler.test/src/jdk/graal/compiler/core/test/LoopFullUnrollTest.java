@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,10 +84,9 @@ public class LoopFullUnrollTest extends GraalCompilerTest {
         test("testNegativeTripCount", 0);
     }
 
-    @SuppressWarnings("try")
     private void test(String snippet, int loopCount) {
         DebugContext debug = getDebugContext();
-        try (DebugContext.Scope s = debug.scope(getClass().getSimpleName(), new DebugDumpScope(snippet))) {
+        try (DebugContext.Scope _ = debug.scope(getClass().getSimpleName(), new DebugDumpScope(snippet))) {
             final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO, debug);
 
             new DisableOverflownCountedLoopsPhase().apply(graph);

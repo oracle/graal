@@ -34,11 +34,11 @@ import java.nio.channels.SelectableChannel;
  * descriptors used this class are purely virtual and should not be passed down to native code.
  *
  * <p>
- * This file must be compatible with all Java versions supported by Espresso, strict Java 8
- * compatibility is required.
+ * This file must be compatible with 21+
  */
 final class FileDispatcherImpl extends sun.nio.ch.FileDispatcher {
-
+    // to avoid code duplication of NativeDispatcher operations
+    private final TruffleDispatcher truffleDispatcher = new TruffleDispatcher();
     static {
         sun.nio.ch.IOUtil.load();
     }
@@ -106,27 +106,27 @@ final class FileDispatcherImpl extends sun.nio.ch.FileDispatcher {
 
     @Override
     int read(FileDescriptor fd, long address, int len) throws IOException {
-        return read0(fd, address, len);
+        return truffleDispatcher.read(fd, address, len);
     }
 
     @Override
     long readv(FileDescriptor fd, long address, int len) throws IOException {
-        return readv0(fd, address, len);
+        return truffleDispatcher.readv(fd, address, len);
     }
 
     @Override
     int write(FileDescriptor fd, long address, int len) throws IOException {
-        return write0(fd, address, len);
+        return truffleDispatcher.write(fd, address, len);
     }
 
     @Override
     long writev(FileDescriptor fd, long address, int len) throws IOException {
-        return writev0(fd, address, len);
+        return truffleDispatcher.writev(fd, address, len);
     }
 
     @Override
     void close(FileDescriptor fd) throws IOException {
-        close0(fd);
+        truffleDispatcher.close(fd);
     }
 
     @Override
@@ -212,16 +212,6 @@ final class FileDispatcherImpl extends sun.nio.ch.FileDispatcher {
     private static native void release0(FileDescriptor fd, long pos, long size) throws IOException;
 
     private static native long size0(FileDescriptor fd) throws IOException;
-
-    private static native int read0(FileDescriptor fd, long address, int len) throws IOException;
-
-    private static native int readv0(FileDescriptor fd, long address, int len) throws IOException;
-
-    private static native int write0(FileDescriptor fd, long address, int len) throws IOException;
-
-    private static native int writev0(FileDescriptor fd, long address, int len) throws IOException;
-
-    private static native void close0(FileDescriptor fd) throws IOException;
 
     private static native int pread0(FileDescriptor fd, long address, int len, long position) throws IOException;
 

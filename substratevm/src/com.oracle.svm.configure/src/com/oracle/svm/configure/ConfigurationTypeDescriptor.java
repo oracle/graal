@@ -24,8 +24,13 @@
  */
 package com.oracle.svm.configure;
 
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.Collection;
 
+import com.oracle.svm.util.StringUtil;
+
+import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.util.json.JsonPrintable;
 
 /**
@@ -40,7 +45,24 @@ import jdk.graal.compiler.util.json.JsonPrintable;
 public interface ConfigurationTypeDescriptor extends Comparable<ConfigurationTypeDescriptor>, JsonPrintable {
     enum Kind {
         NAMED,
-        PROXY
+        PROXY,
+        LAMBDA
+    }
+
+    static ConfigurationTypeDescriptor fromClass(Class<?> clazz) {
+        Class<?>[] interfaces = clazz.getInterfaces();
+        String[] interfaceNames = new String[interfaces.length];
+        for (int i = 0; i < interfaces.length; i++) {
+            interfaceNames[i] = interfaces[i].getTypeName();
+        }
+        if (Proxy.isProxyClass(clazz)) {
+            return ProxyConfigurationTypeDescriptor.fromInterfaceReflectionNames(Arrays.asList(interfaceNames));
+        } else if (LambdaUtils.isLambdaClass(clazz)) {
+            String declaringClass = StringUtil.split(clazz.getTypeName(), LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)[0];
+            return LambdaConfigurationTypeDescriptor.fromReflectionNames(declaringClass, Arrays.asList(interfaceNames));
+        } else {
+            return NamedConfigurationTypeDescriptor.fromReflectionName(clazz.getTypeName());
+        }
     }
 
     Kind getDescriptorType();

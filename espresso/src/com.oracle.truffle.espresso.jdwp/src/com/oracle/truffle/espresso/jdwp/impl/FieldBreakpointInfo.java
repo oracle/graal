@@ -66,6 +66,6 @@ public final class FieldBreakpointInfo extends AbstractBreakpointInfo implements
 
     @Override
     public void dispose() {
-        field.disposeFieldBreakpoint();
+        field.removeFieldBreakpointInfo(getRequestId());
     }
 }

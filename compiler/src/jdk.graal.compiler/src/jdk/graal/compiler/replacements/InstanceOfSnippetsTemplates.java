@@ -31,15 +31,12 @@ import java.util.List;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.ConditionAnchorNode;
 import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PhiNode;
-import jdk.graal.compiler.nodes.ShortCircuitOrNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
@@ -110,7 +107,12 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
      */
     protected InstanceOfUsageReplacer createReplacer(FloatingNode instanceOf, Instantiation instantiation, Node usage, final StructuredGraph graph) {
         InstanceOfUsageReplacer replacer;
-        if (!canMaterialize(usage)) {
+
+        final boolean mustMaterializeAsConditional = usage instanceof ConditionalNode cn && cn.trueValue().isConstant() && cn.falseValue().isConstant();
+        if (mustMaterializeAsConditional) {
+            ConditionalNode c = (ConditionalNode) usage;
+            replacer = new MaterializationUsageReplacer(instantiation, c.trueValue(), c.falseValue(), instanceOf, c);
+        } else {
             ValueNode trueValue = ConstantNode.forInt(1, graph);
             ValueNode falseValue = ConstantNode.forInt(0, graph);
             if (instantiation.isInitialized() && (trueValue != instantiation.trueValue || falseValue != instantiation.falseValue)) {
@@ -122,26 +124,8 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
                 falseValue = instantiation.falseValue;
             }
             replacer = new NonMaterializationUsageReplacer(instantiation, trueValue, falseValue, instanceOf, usage);
-        } else {
-            assert usage instanceof ConditionalNode : "unexpected usage of " + instanceOf + ": " + usage;
-            ConditionalNode c = (ConditionalNode) usage;
-            replacer = new MaterializationUsageReplacer(instantiation, c.trueValue(), c.falseValue(), instanceOf, c);
         }
         return replacer;
-    }
-
-    /**
-     * Determines if an {@code instanceof} usage can be materialized.
-     */
-    protected boolean canMaterialize(Node usage) {
-        if (usage instanceof ConditionalNode) {
-            ConditionalNode cn = (ConditionalNode) usage;
-            return cn.trueValue().isConstant() && cn.falseValue().isConstant();
-        }
-        if (usage instanceof IfNode || usage instanceof FixedGuardNode || usage instanceof ShortCircuitOrNode || usage instanceof ConditionAnchorNode) {
-            return false;
-        }
-        return true;
     }
 
     /**

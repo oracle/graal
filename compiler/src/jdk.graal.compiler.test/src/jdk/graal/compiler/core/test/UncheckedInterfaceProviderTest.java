@@ -98,7 +98,7 @@ public class UncheckedInterfaceProviderTest extends GraalCompilerTest {
         for (BlackholeNode b : graph.getNodes().filter(BlackholeNode.class)) {
             MatcherAssert.assertThat(b.getValue(), is(instanceOf(UncheckedInterfaceProvider.class)));
             Stamp uncheckedStamp = ((UncheckedInterfaceProvider) b.getValue()).uncheckedStamp();
-            String context = b.getValue().toString(Verbosity.Debugger);
+            String context = b.getValue().toString(Verbosity.All);
             Assert.assertNotNull(context, uncheckedStamp);
             ResolvedJavaType uncheckedType = StampTool.typeOrNull(uncheckedStamp);
             ResolvedJavaType type = StampTool.typeOrNull(b.getValue());

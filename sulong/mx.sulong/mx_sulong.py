@@ -114,13 +114,12 @@ def sulong_standalone_deps():
     include_truffle_runtime = not mx.env_var_to_bool("EXCLUDE_TRUFFLE_RUNTIME")
     deps = mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=include_truffle_runtime)
     if has_suite('sulong-managed'):
-        # SULONG_ENTERPRISE and SULONG_MANAGED do not belong in the EE standalone of SULONG_NATIVE, but we want a single definition of libllvmvm.
-        # So we compromise here by including them. We do not use or distribute the EE standalone of SULONG_NATIVE so it does not matter.
+        # SULONG_MANAGED does not belong in the EE standalone of SULONG_NATIVE, but we want a single definition of libllvmvm.
+        # So we compromise here by including SULONG_MANAGED if sulong-managed is imported.
+        # We do not use or distribute the EE standalone of SULONG_NATIVE so it does not matter.
         # See also the comments in suite.py, in SULONG_*_STANDALONE_RELEASE_ARCHIVE.
         deps += [
-            'sulong-managed:SULONG_ENTERPRISE',
             'sulong-managed:SULONG_MANAGED',
-            'sulong-managed:SULONG_ENTERPRISE_NATIVE',
         ]
     return deps
 
@@ -399,9 +398,7 @@ if 'CPPFLAGS' in os.environ:
 
 
 # Legacy bm suite
-mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite(False))
-# Polybench bm suite
-mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite(True))
+mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 # LLVM unit tests suite
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.LLVMUnitTestsSuite())
 

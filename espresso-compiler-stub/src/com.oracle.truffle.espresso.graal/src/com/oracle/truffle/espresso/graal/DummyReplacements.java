@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.graal;
 
 import java.util.BitSet;
+import java.util.Map;
 
 import jdk.graal.compiler.api.replacements.SnippetTemplateCache;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
@@ -34,12 +35,12 @@ import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.spi.SnippetParameterInfo;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -71,6 +72,11 @@ public final class DummyReplacements implements Replacements {
     }
 
     @Override
+    public Map<SnippetTemplate.CacheKey, SnippetTemplate> getTemplatesCache() {
+        throw GraalError.unimplementedOverride();
+    }
+
+    @Override
     public Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method) {
         throw GraalError.unimplementedOverride();
     }
@@ -98,11 +104,6 @@ public final class DummyReplacements implements Replacements {
 
     @Override
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
-        throw GraalError.unimplementedOverride();
-    }
-
-    @Override
-    public void registerConditionalPlugin(InvocationPlugin plugin) {
         throw GraalError.unimplementedOverride();
     }
 

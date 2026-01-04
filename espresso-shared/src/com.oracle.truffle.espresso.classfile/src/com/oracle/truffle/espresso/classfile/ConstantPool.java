@@ -295,7 +295,7 @@ public abstract class ConstantPool {
         throw unexpectedEntry(index, tagAt(index), description, expected);
     }
 
-    private void checkTag(int index, byte expectedTag) {
+    protected void checkTag(int index, byte expectedTag) {
         byte tag = byteTagAt(index);
         if (tag != expectedTag) {
             throw unexpectedEntry(index, Tag.fromValue(tag), null, Tag.fromValue(expectedTag));

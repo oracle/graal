@@ -31,7 +31,7 @@ import java.util.List;
 import jdk.graal.compiler.debug.GraalError;
 
 public class WebImageTestOptions {
-    public static final String JS_CMD = System.getProperty("webimage.test.js");
+    public static final List<String> JS_CMD = Arrays.asList(System.getProperty("webimage.test.js", ",").split(","));
     private static final String LAUNCHER = System.getProperty("webimage.test.launcher");
 
     /**

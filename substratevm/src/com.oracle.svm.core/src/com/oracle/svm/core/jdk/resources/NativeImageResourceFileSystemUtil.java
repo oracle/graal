@@ -36,24 +36,15 @@ public final class NativeImageResourceFileSystemUtil {
     }
 
     public static byte[] getBytes(String resourceName, boolean readOnly) {
-        Object entry = Resources.getAtRuntime(resourceName, true);
+        Object entry = Resources.getAtRuntime(resourceName);
         if (entry == null) {
             return new byte[0];
         }
-        byte[] bytes = ((ResourceStorageEntry) entry).getData().get(0);
+        byte[] bytes = ((ResourceStorageEntry) entry).getData()[0];
         if (readOnly) {
             return bytes;
         } else {
             return Arrays.copyOf(bytes, bytes.length);
-        }
-    }
-
-    public static int getSize(String resourceName) {
-        Object entry = Resources.getAtRuntime(resourceName, true);
-        if (entry == null) {
-            return 0;
-        } else {
-            return ((ResourceStorageEntry) entry).getData().get(0).length;
         }
     }
 

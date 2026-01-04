@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.runtime;
 
+import java.nio.file.Path;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -223,18 +224,10 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
         }
     }
 
-    // Support for deprecated frame transfer: GR-38296
-    @Override
-    public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, long bytecodeTarget) {
-        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
-        BytecodeOSRMetadata.OsrEntryDescription targetMetadata = osrMetadata.getLazyState().get(bytecodeTarget);
-        osrMetadata.transferFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target, bytecodeTarget, targetMetadata);
-    }
-
     @Override
     public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, long bytecodeTarget, Object targetMetadata) {
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
-        osrMetadata.transferFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target, bytecodeTarget, targetMetadata);
+        osrMetadata.transferFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target, targetMetadata);
     }
 
     @Override
@@ -327,15 +320,8 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public void flushCompileQueue(Object runtimeData) {
-        EngineData engine = (EngineData) runtimeData;
-        BackgroundCompileQueue queue = OptimizedTruffleRuntime.getRuntime().getCompileQueue();
-        // compile queue might be null if no call target was yet created
-        if (queue != null) {
-            for (OptimizedCallTarget target : queue.getQueuedTargets(engine)) {
-                target.cancelCompilation("Polyglot engine was closed.");
-            }
-        }
+    public void shutdownCompilationForEngine(Object runtimeData) {
+        OptimizedTruffleRuntime.getRuntime().shutdownCompilationForEngine((EngineData) runtimeData);
     }
 
     @Override
@@ -366,6 +352,11 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     @Override
     public boolean onEngineClosing(Object runtimeData) {
         return ((EngineData) runtimeData).onEngineClosing();
+    }
+
+    @Override
+    public boolean onStoreCache(Object runtimeData, Path targetPath, long cancelledWord) {
+        return ((EngineData) runtimeData).onStoreCache(targetPath, cancelledWord);
     }
 
     @Override
@@ -421,5 +412,12 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     @Override
     public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
         return OptimizedTruffleRuntime.createTerminatingThreadLocal(initialValue, onThreadTermination);
+    }
+
+    @Override
+    public void setInitializedTimestamp(CallTarget target, long timestamp) {
+        if (target instanceof OptimizedCallTarget optimizedCallTarget) {
+            optimizedCallTarget.setInitializedTimestamp(timestamp);
+        }
     }
 }

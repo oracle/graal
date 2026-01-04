@@ -274,7 +274,7 @@ public final class YoungGeneration extends Generation {
         // survivor space. If it does not, we return null here to tell the caller.
         int age = originalSpace.getNextAgeForPromotion();
         Space toSpace = getSurvivorToSpaceAt(age - 1);
-        return toSpace.copyAlignedObject(original, originalSpace);
+        return ObjectPromoter.copyAlignedObject(original, originalSpace, toSpace);
     }
 
     @AlwaysInline("GC performance")
@@ -289,7 +289,7 @@ public final class YoungGeneration extends Generation {
 
         int age = originalSpace.getNextAgeForPromotion();
         Space toSpace = getSurvivorToSpaceAt(age - 1);
-        toSpace.promoteUnalignedHeapChunk(originalChunk, originalSpace);
+        ObjectPromoter.promoteUnalignedHeapChunk(originalChunk, originalSpace, toSpace);
         return original;
     }
 
@@ -305,9 +305,9 @@ public final class YoungGeneration extends Generation {
         int age = originalSpace.getNextAgeForPromotion();
         Space toSpace = getSurvivorToSpaceAt(age - 1);
         if (isAligned) {
-            toSpace.promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
+            ObjectPromoter.promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace, toSpace);
         } else {
-            toSpace.promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
+            ObjectPromoter.promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace, toSpace);
         }
         return true;
     }

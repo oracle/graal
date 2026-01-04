@@ -447,6 +447,7 @@ meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.Class<?>)
 meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.String)
 meth public com.oracle.truffle.api.instrumentation.Instrumenter getInstrumenter()
 meth public com.oracle.truffle.api.nodes.ExecutableNode parseInline(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.MaterializedFrame)
+meth public com.oracle.truffle.api.nodes.LanguageInfo getHostLanguage()
 meth public com.oracle.truffle.api.nodes.LanguageInfo getLanguageInfo(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>>)
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
@@ -468,8 +469,7 @@ meth public org.graalvm.polyglot.io.MessageEndpoint startServer(java.net.URI,org
 meth public void registerService(java.lang.Object)
 meth public void setAsynchronousStackDepth(int)
 supr java.lang.Object
-hfds err,in,instrumenter,messageTransport,options,out,polyglotInstrument,services
-hcls MessageTransportProxy
+hfds instrumenter,options,polyglotInstrument,services
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.instrumentation.TruffleInstrument$Registration
  outer com.oracle.truffle.api.instrumentation.TruffleInstrument
@@ -590,4 +590,9 @@ meth public java.util.function.Predicate<{java.util.function.Predicate%0}> negat
 meth public java.util.function.Predicate<{java.util.function.Predicate%0}> or(java.util.function.Predicate<? super {java.util.function.Predicate%0}>)
 meth public static <%0 extends java.lang.Object> java.util.function.Predicate<{%%0}> isEqual(java.lang.Object)
 meth public static <%0 extends java.lang.Object> java.util.function.Predicate<{%%0}> not(java.util.function.Predicate<? super {%%0}>)
+
+CLSS public abstract interface !annotation jdk.internal.vm.annotation.AOTSafeClassInitializer
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
 

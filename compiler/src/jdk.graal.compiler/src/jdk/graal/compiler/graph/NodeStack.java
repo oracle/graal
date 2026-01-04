@@ -58,6 +58,20 @@ public final class NodeStack {
         values = newValues;
     }
 
+    /**
+     * Reverse the order of the top n elements of this stack.
+     */
+    public void reverseTopElements(int n) {
+        if (n > 1) {
+            for (int i = 0; i < (n >> 1); ++i) {
+                Node a = values[tos - 1 - i];
+                Node b = values[tos - n + i];
+                values[tos - 1 - i] = b;
+                values[tos - n + i] = a;
+            }
+        }
+    }
+
     public Node get(int index) {
         return values[index];
     }

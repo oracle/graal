@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,14 +41,13 @@
 package com.oracle.truffle.regex.charset;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.chardata.CharacterSet;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 /**
  * A storage-agnostic implementation of a sorted list of disjoint integer ranges with inclusive
  * lower and upper bounds. Holds the invariant {@link #rangesAreSortedNonAdjacentAndDisjoint()}.
  */
-public interface SortedListOfRanges extends CharacterSet {
+public interface SortedListOfRanges {
 
     /**
      * Returns the inclusive lower bound of the range stored at index {@code i}.
@@ -100,7 +99,7 @@ public interface SortedListOfRanges extends CharacterSet {
         if (isEmpty()) {
             return 1;
         }
-        return (getMin() <= encoding.getMinValue() ? 0 : 1) + size() - (getMax() >= encoding.getMaxValue() ? 1 : 0);
+        return (getMin() <= Encoding.getMinValue() ? 0 : 1) + size() - (getMax() >= encoding.getMaxValue() ? 1 : 0);
     }
 
     /**
@@ -125,7 +124,7 @@ public interface SortedListOfRanges extends CharacterSet {
      */
     default int inverseGetMin(Encoding encoding) {
         assert !isEmpty() && !matchesEverything(encoding);
-        return getMin() == encoding.getMinValue() ? getHi(0) + 1 : encoding.getMinValue();
+        return getMin() == Encoding.getMinValue() ? getHi(0) + 1 : Encoding.getMinValue();
     }
 
     /**
@@ -457,7 +456,6 @@ public interface SortedListOfRanges extends CharacterSet {
     /**
      * Returns {@code true} if this list contains the given {@code codePoint}.
      */
-    @Override
     default boolean contains(int codePoint) {
         int low = 0;
         int high = size() - 1;
@@ -620,11 +618,11 @@ public interface SortedListOfRanges extends CharacterSet {
     static void invert(SortedListOfRanges a, Encoding encoding, RangesBuffer target) {
         target.clear();
         if (a.isEmpty()) {
-            target.appendRange(encoding.getMinValue(), encoding.getMaxValue());
+            target.appendRange(Encoding.getMinValue(), encoding.getMaxValue());
             return;
         }
-        if (a.getMin() > encoding.getMinValue()) {
-            target.appendRange(encoding.getMinValue(), a.getMin() - 1);
+        if (a.getMin() > Encoding.getMinValue()) {
+            target.appendRange(Encoding.getMinValue(), a.getMin() - 1);
         }
         for (int i = 1; i < a.size(); i++) {
             target.appendRange(a.getHi(i - 1) + 1, a.getLo(i) - 1);
@@ -667,7 +665,7 @@ public interface SortedListOfRanges extends CharacterSet {
      * {@link Encoding#getMaxValue()}.
      */
     default boolean matchesMinAndMax(Encoding encoding) {
-        return matchesSomething() && getMin() == encoding.getMinValue() && getMax() == encoding.getMaxValue();
+        return matchesSomething() && getMin() == Encoding.getMinValue() && getMax() == encoding.getMaxValue();
     }
 
     /**
@@ -727,7 +725,7 @@ public interface SortedListOfRanges extends CharacterSet {
      * {@link Encoding#getMaxValue()}) <i>not</i> contained in this list.
      */
     default int inverseValueCount(Encoding encoding) {
-        return (encoding.getMaxValue() - encoding.getMinValue()) + 1 - valueCount();
+        return (encoding.getMaxValue() - Encoding.getMinValue()) + 1 - valueCount();
     }
 
     /**
@@ -736,7 +734,7 @@ public interface SortedListOfRanges extends CharacterSet {
      */
     default boolean matchesEverything(Encoding encoding) {
         // ranges should be consolidated to one
-        return size() == 1 && getLo(0) == encoding.getMinValue() && getHi(0) == encoding.getMaxValue();
+        return size() == 1 && getLo(0) == Encoding.getMinValue() && getHi(0) == encoding.getMaxValue();
     }
 
     default boolean equalsListOfRanges(SortedListOfRanges o) {
@@ -799,11 +797,11 @@ public interface SortedListOfRanges extends CharacterSet {
     default String inverseRangesToString(Encoding encoding) {
         StringBuilder sb = new StringBuilder();
         if (matchesNothing()) {
-            sb.append(Range.toString(encoding.getMinValue(), encoding.getMaxValue()));
+            sb.append(Range.toString(Encoding.getMinValue(), encoding.getMaxValue()));
             return sb.toString();
         }
-        if (getLo(0) > encoding.getMinValue()) {
-            sb.append(Range.toString(encoding.getMinValue(), getLo(0) - 1));
+        if (getLo(0) > Encoding.getMinValue()) {
+            sb.append(Range.toString(Encoding.getMinValue(), getLo(0) - 1));
         }
         for (int ia = 1; ia < size(); ia++) {
             sb.append(Range.toString(getHi(ia - 1) + 1, getLo(ia) - 1));

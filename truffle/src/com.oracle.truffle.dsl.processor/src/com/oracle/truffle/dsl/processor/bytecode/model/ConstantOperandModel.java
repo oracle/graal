@@ -43,7 +43,9 @@ package com.oracle.truffle.dsl.processor.bytecode.model;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.type.TypeMirror;
 
-public record ConstantOperandModel(TypeMirror type, String name, String doc, Boolean specifyAtEnd, int dimensions, AnnotationMirror mirror) {
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
+
+public record ConstantOperandModel(TypeMirror type, ImmediateKind kind, String name, String doc, Boolean specifyAtEnd, int dimensions, AnnotationMirror mirror) {
     public String getNameOrDefault(String defaultName) {
         return name.isEmpty() ? defaultName : name;
     }

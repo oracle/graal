@@ -45,8 +45,9 @@ package com.oracle.truffle.api.frame;
  * type must not be stored in a field or cast to {@link java.lang.Object}. If this is necessary, the
  * frame must be explicitly converted into a materialized frame using the
  * {@link VirtualFrame#materialize()} method.
- * 
+ *
  * @since 0.8 or earlier
  */
+// Bind.DefaultExpression("$frame")
 public interface VirtualFrame extends Frame {
 }

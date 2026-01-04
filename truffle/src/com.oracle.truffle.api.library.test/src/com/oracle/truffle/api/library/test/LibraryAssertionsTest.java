@@ -108,7 +108,7 @@ public class LibraryAssertionsTest extends AbstractLibraryTest {
         }
 
         ReflectionLibrary reflection = createCached(ReflectionLibrary.class, "");
-        assertEquals(42, reflection.send("", Message.resolve(TestLibrary1.class, "foo"), 42));
+        assertEquals(42, reflection.send("", Message.resolveExact(TestLibrary1.class, "foo", Object.class, int.class), 42));
         assertEquals(expectedCalls, fooCalls);
     }
 

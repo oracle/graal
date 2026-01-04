@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,7 @@ import com.oracle.truffle.api.debug.DebuggerSession;
 public class DebugValidationSuite extends AbstractBinarySuite {
 
     private static AbstractBinarySuite.BinaryBuilder getDefaultDebugBuilder() {
-        return newBuilder().addType(EMPTY_BYTES, EMPTY_BYTES).addFunction((byte) 0, EMPTY_BYTES, "0B").addFunctionExport((byte) 0, "_main");
+        return newBuilder().addType(EMPTY_INTS, EMPTY_INTS).addFunction(0, EMPTY_INTS, "0B").addFunctionExport(0, "_main");
     }
 
     @Test
@@ -789,7 +789,7 @@ public class DebugValidationSuite extends AbstractBinarySuite {
         DebuggerSession session = debugger.startSession(event -> {
         });
         try {
-            Value val = context.eval(source);
+            Value val = context.eval(source).newInstance().getMember("exports");
             val.getMember("_main").execute();
             session.suspendNextExecution();
         } finally {

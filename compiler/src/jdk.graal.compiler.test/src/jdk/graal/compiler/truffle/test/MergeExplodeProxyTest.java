@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,7 @@
  */
 package jdk.graal.compiler.truffle.test;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.nodes.ProxyNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.phases.util.GraphOrder;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -43,8 +38,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
-import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.nodes.ProxyNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.phases.util.GraphOrder;
 
 /**
  * Collection of tests that penetrate the partial evaluation logic to produce {@linkplain ProxyNode}
@@ -747,7 +747,6 @@ public class MergeExplodeProxyTest extends PartialEvaluationTest {
 
     }
 
-    @Ignore("GR-21520: Merge explode partial evaluation cannot proxy nodes that are not alive in the framestate of inner loop begins")
     @Test
     public void testNoneLiveLoopExitProxy() {
         byte[] bytecodes = new byte[]{

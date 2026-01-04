@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Formatter;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -43,6 +42,7 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.util.EconomicHashMap;
 
 /**
  * Provides tools to save a serialized version of the {@link Suites} to a file and load the
@@ -136,7 +136,7 @@ public final class PhasePlanSerializer {
      */
     @SuppressWarnings("unchecked")
     public static <C> Suites loadPhasePlan(DataInputStream in, Suites originalSuites) throws IOException {
-        Map<String, BasePhase<? super C>> lookup = new HashMap<>();
+        Map<String, BasePhase<? super C>> lookup = new EconomicHashMap<>();
         collect(lookup, ((PhaseSuite<C>) originalSuites.getHighTier()), "high tier");
         collect(lookup, ((PhaseSuite<C>) originalSuites.getMidTier()), "mid tier");
         collect(lookup, ((PhaseSuite<C>) originalSuites.getLowTier()), "low tier");

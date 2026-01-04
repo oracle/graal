@@ -63,9 +63,19 @@ public class EmptyEconomicSetTest {
         EconomicSet.emptySet().add(1);
     }
 
+    @Test(expected = UnsupportedOperationException.class)
+    public void testAddNull() {
+        EconomicSet.emptySet().add(null);
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void testRemove() {
         EconomicSet.emptySet().remove(1);
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testRemoveNull() {
+        EconomicSet.emptySet().remove(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -76,6 +86,11 @@ public class EmptyEconomicSetTest {
     @Test
     public void testContains() {
         Assert.assertFalse(EconomicSet.emptySet().contains(1));
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testContainsNull() {
+        Assert.assertFalse(EconomicSet.emptySet().contains(null));
     }
 
     @Test

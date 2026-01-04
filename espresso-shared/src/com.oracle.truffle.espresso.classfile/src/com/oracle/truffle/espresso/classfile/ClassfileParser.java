@@ -44,12 +44,14 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SCOPED;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SIGNATURE_POLYMORPHIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STABLE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STRICT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNCHRONIZED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNTHETIC;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_VALUE_BASED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VOLATILE;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
@@ -154,6 +156,7 @@ public final class ClassfileParser {
     public static final int JAVA_23_VERSION = 67;
     public static final int JAVA_24_VERSION = 68;
     public static final int JAVA_25_VERSION = 69;
+    public static final int JAVA_26_VERSION = 70;
 
     public static final int STRICTER_ACCESS_CTRL_CHECK_VERSION = JAVA_1_5_VERSION;
     public static final int STACKMAP_ATTRIBUTE_MAJOR_VERSION = JAVA_6_VERSION;
@@ -892,7 +895,7 @@ public final class ClassfileParser {
                 flags = switch (location) {
                     case Method -> parseMethodVMAnnotations(subStream);
                     case Field -> parseFieldVMAnnotations(subStream);
-                    case Class -> 0;
+                    case Class -> parseClassVMAnnotations(subStream);
                 };
             }
 
@@ -938,6 +941,20 @@ public final class ClassfileParser {
                 Symbol<?> annotType = pool.utf8At(typeIndex, "annotation type");
                 if (ParserTypes.jdk_internal_vm_annotation_Stable.equals(annotType)) {
                     flags |= ACC_STABLE;
+                }
+            }
+            return flags;
+        }
+
+        private int parseClassVMAnnotations(ClassfileStream subStream) {
+            int flags = 0;
+            int count = subStream.readU2();
+            for (int j = 0; j < count; j++) {
+                int typeIndex = parseAnnotation(subStream);
+                // Validation of the type is done at runtime by guest java code.
+                Symbol<?> annotType = pool.utf8At(typeIndex, "annotation type");
+                if (ParserTypes.jdk_internal_ValueBased.equals(annotType)) {
+                    flags |= ACC_VALUE_BASED;
                 }
             }
             return flags;
@@ -1102,6 +1119,9 @@ public final class ClassfileParser {
         if (isHidden) {
             methodFlags |= ACC_HIDDEN;
         }
+        if (ParserMethod.isDeclaredSignaturePolymorphic(classType, signature, methodFlags, parsingContext.getJavaVersion())) {
+            methodFlags |= ACC_SIGNATURE_POLYMORPHIC;
+        }
 
         return ParserMethod.create(methodFlags, name, signature, methodAttributes);
     }
@@ -1110,7 +1130,10 @@ public final class ClassfileParser {
         return attributeCount == 0 ? Attribute.EMPTY_ARRAY : new Attribute[attributeCount];
     }
 
-    private static int parseAnnotation(ClassfileStream subStream) {
+    /**
+     * Parse one annotation in an annotation attribute and return the annotation type index.
+     */
+    public static int parseAnnotation(ClassfileStream subStream) {
         int typeIndex = subStream.readU2();
         int numElementValuePairs = subStream.readU2();
         for (int k = 0; k < numElementValuePairs; k++) {
@@ -1247,6 +1270,10 @@ public final class ClassfileParser {
                         throw classFormatError("Duplicate PermittedSubclasses attribute");
                     }
                     classAttributes[i] = permittedSubclasses = parsePermittedSubclasses(attributeName);
+                } else if (attributeName.equals(ParserNames.RuntimeVisibleAnnotations)) {
+                    RuntimeVisibleAnnotationsAttribute annotations = commonAttributeParser.parseRuntimeVisibleAnnotations(attributeSize, AnnotationLocation.Class);
+                    classFlags |= annotations.flags;
+                    classAttributes[i] = annotations.attribute;
                 } else {
                     Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
                     // stream.skip(attributeSize);
@@ -1466,6 +1493,12 @@ public final class ClassfileParser {
             Symbol<Name> innerClassName = null;
             if (innerClassIndex != 0) {
                 innerClassName = pool.className(innerClassIndex);
+            }
+            if (outerClassIndex != 0) {
+                Symbol<Name> outerClassName = pool.className(outerClassIndex);
+                if (outerClassName.length() > 0 && outerClassName.byteAt(0) == '[') {
+                    throw classFormatError("Outer class is an array class");
+                }
             }
 
             for (int j = 0; j < i; ++j) {

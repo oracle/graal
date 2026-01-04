@@ -62,8 +62,11 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
  */
 public class SafepointCheckCounter {
     private static final FastThreadLocalInt valueTL = FastThreadLocalFactory.createInt("SafepointCheckCounter.value").setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
-    /** Can be used to reset the thread-local value after a safepoint. */
-    static final int MAX_VALUE = Integer.MAX_VALUE;
+    /**
+     * Can be used to reset the thread-local value after a safepoint. We explicitly keep some
+     * distance to {@link Integer#MAX_VALUE} to avoid corner cases.
+     */
+    static final int MAX_VALUE = Integer.MAX_VALUE >>> 1;
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static boolean compareAndSet(IsolateThread thread, int oldValue, int newValue) {
