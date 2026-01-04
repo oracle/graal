@@ -23,6 +23,7 @@ This provides ultimate insights into the execution and behavior of your program 
 - [Insights with R](#insights-with-r)
 - [Insight into C Code](#insight-into-c-code)
 - [Inspecting Values](#inspecting-values)
+- [Tracking reads and writes of local variables](#tracking-local-variables)
 - [Modifying Local Variables](#modifying-local-variables)
 - [Insight to a Specific Location](#insight-to-a-specific-location)
 - [Delaying Insight Initialization in Node.JS](#delaying-insight-initialization-in-nodejs)
@@ -457,6 +458,50 @@ Two is the result 2
 ```
 
 To summarize this section, GraalVM Insight is a useful tool for polyglot, language agnostic aspect oriented programming.
+
+## Tracking Local Variables
+
+Not only that GraalVM Insight can access local variables, but it can also act
+when those variables are being accessed or modified. Imagine following code
+snippet:
+
+```js
+function main(n) {
+    let a = n + 2;
+    let b = n * 3;
+    let r = b - a;
+    return r;
+}
+print(main(5));
+```
+
+It prints out a number `8`.
+Apply the following Insight script `vars.js` to track which variable depends on
+which in the `main`:
+
+```js
+insight.on('enter', function zeroNonEvenNumbers(ctx, frame) {
+    print(`writeVariableNameEnter ${ctx.attributes.writeVariableName}`);
+}, {
+    writes: true,
+    rootNameFilter: 'main'
+});
+insight.on('return', function zeroNonEvenNumbers(ctx, frame) {
+    print(`writeVariableNameReturn ${ctx.attributes.writeVariableName} = ${ctx.returnValue()}`);
+}, {
+    writes: true,
+    rootNameFilter: 'main'
+});
+insight.on('return', function zeroNonEvenNumbers(ctx, frame) {
+    print(`  readVariableName ${ctx.attributes.readVariableName} = ${ctx.returnValue()}`);
+}, {
+    reads: true,
+    rootNameFilter: 'main'
+});
+```
+
+When launched with `js --insight=vars.js main.js` it prints information about
+writing and reading of the local variables.
 
 ## Modifying Local Variables
 
