@@ -480,20 +480,20 @@ Apply the following Insight script `vars.js` to track which variable depends on
 which in the `main`:
 
 ```js
-insight.on('enter', function zeroNonEvenNumbers(ctx, frame) {
-    print(`writeVariableNameEnter ${ctx.attributes.writeVariableName}`);
+insight.on('enter', function(ctx, frame) {
+    print(`writeVariableNameEnter ${ctx.attributes().writeVariableName}`);
 }, {
     writes: true,
     rootNameFilter: 'main'
 });
-insight.on('return', function zeroNonEvenNumbers(ctx, frame) {
-    print(`writeVariableNameReturn ${ctx.attributes.writeVariableName} = ${ctx.returnValue()}`);
+insight.on('return', function(ctx, frame) {
+    print(`writeVariableNameReturn ${ctx.attributes().writeVariableName} = ${ctx.returnValue(frame)}`);
 }, {
     writes: true,
     rootNameFilter: 'main'
 });
-insight.on('return', function zeroNonEvenNumbers(ctx, frame) {
-    print(`  readVariableName ${ctx.attributes.readVariableName} = ${ctx.returnValue()}`);
+insight.on('return', function(ctx, frame) {
+    print(`  readVariableName ${ctx.attributes().readVariableName} = ${ctx.returnValue(frame)}`);
 }, {
     reads: true,
     rootNameFilter: 'main'
@@ -501,7 +501,22 @@ insight.on('return', function zeroNonEvenNumbers(ctx, frame) {
 ```
 
 When launched with `js --insight=vars.js main.js` it prints information about
-writing and reading of the local variables.
+writing and reading of the local variables:
+
+```
+writeVariableNameEnter a
+  readVariableName n = 5
+writeVariableNameReturn a = 7
+writeVariableNameEnter b
+  readVariableName n = 5
+writeVariableNameReturn b = 15
+writeVariableNameEnter r
+  readVariableName b = 15
+  readVariableName a = 7
+writeVariableNameReturn r = 8
+  readVariableName r = 8
+8
+```
 
 ## Modifying Local Variables
 
