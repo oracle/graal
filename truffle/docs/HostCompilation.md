@@ -108,7 +108,7 @@ class BytecodeNode extends Node {
                     }
                     break;
                 default:
-                    // propagates transferToInterpeter from within the call
+                    // propagates transferToInterpreter from within the call
                     throw CompilerDirectives.shouldNotReachHere();
             }
         }
@@ -337,7 +337,7 @@ Consider the following example:
 ```
 int execute(int argument) {
 	if (argument == 0) {
-	   CompilerDirectives.transferToInterpeterAndInvalidate();
+	   CompilerDirectives.transferToInterpreterAndInvalidate();
 	   throw new RuntimeException("Invalid zero argument " + argument);
 	}
 	return argument;
@@ -349,7 +349,7 @@ The Java compiler generates bytecode equivalent to the following code:
 ```
 int execute(int argument) {
 	if (argument == 0) {
-	   CompilerDirectives.transferToInterpeterAndInvalidate();
+	   CompilerDirectives.transferToInterpreterAndInvalidate();
 	   throw new RuntimeException(new StringBuilder("Invalid zero argument ").append(argument).build());
 	}
 	return argument;
@@ -363,7 +363,7 @@ It is therefore recommended to extract a single method for the slow-path part of
 ```
 int execute(int argument) {
 	if (argument == 0) {
-	   CompilerDirectives.transferToInterpeterAndInvalidate();
+	   CompilerDirectives.transferToInterpreterAndInvalidate();
 	   throw invalidZeroArgument(argument);
 	}
 	return argument;
