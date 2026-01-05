@@ -52,6 +52,16 @@ import org.graalvm.word.impl.WordFactoryOperation;
 
 /**
  * A concrete implementation of the various word interface types.
+ * <p>
+ * In an execution environment where Word is a boxed value (e.g. not in Native Image), a Word value
+ * will throw {@link UnsatisfiedLinkError} if any of the {@link Pointer} memory access operations
+ * (i.e., read, write, compare-and-swap etc.) or conversion-to-Object operations (i.e., toObject)
+ * are invoked on it.
+ * <p>
+ * In a Native Image, Word values are distinct from Object values. To avoid problems related to this
+ * execution environment context dependent semantics of Word values, Word values must never be used
+ * as Objects, even when {@code javac} would allow it (e.g., {@code Map<Long, Word>}). The Native
+ * Image builder will detect such usages and raise an error.
  */
 public final class Word implements SignedWord, UnsignedWord, Pointer {
 
@@ -104,11 +114,6 @@ public final class Word implements SignedWord, UnsignedWord, Pointer {
     /**
      * Unsafe conversion from a Java long value to a {@link PointerBase pointer}. The parameter is
      * treated as an unsigned 64-bit value (in contrast to the semantics of a Java long).
-     * <p>
-     * In an execution environment where this method returns a boxed value (e.g. not in Native
-     * Image), the returned value will throw {@link UnsatisfiedLinkError} if any of the
-     * {@link Pointer} memory access operations (i.e., read, write, compare-and-swap etc.) are
-     * invoked on it.
      *
      * @param val a 64-bit unsigned value
      * @return the value cast to PointerBase
