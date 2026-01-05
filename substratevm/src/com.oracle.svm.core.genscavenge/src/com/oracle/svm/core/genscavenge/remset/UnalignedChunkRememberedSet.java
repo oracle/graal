@@ -59,7 +59,7 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 final class UnalignedChunkRememberedSet {
 

@@ -44,7 +44,7 @@ import jdk.graal.compiler.nodes.extended.JavaWriteNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.TargetDescription;

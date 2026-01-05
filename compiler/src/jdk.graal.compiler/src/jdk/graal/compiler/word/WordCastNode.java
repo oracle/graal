@@ -54,6 +54,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * Casts between Word and Object exposed by the {@link ObjectAccess#fromAddress},

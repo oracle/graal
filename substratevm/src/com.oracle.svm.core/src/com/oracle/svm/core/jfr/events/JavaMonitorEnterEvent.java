@@ -37,7 +37,7 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 public class JavaMonitorEnterEvent {
     public static void emit(Object obj, long previousOwnerTid, long startTicks) {

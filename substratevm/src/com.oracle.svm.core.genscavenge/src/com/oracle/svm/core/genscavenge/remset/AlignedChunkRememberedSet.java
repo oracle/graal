@@ -56,7 +56,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 public final class AlignedChunkRememberedSet {
     private AlignedChunkRememberedSet() {

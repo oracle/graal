@@ -54,7 +54,7 @@ import jdk.graal.compiler.hotspot.nodes.PatchReturnAddressNode;
 import jdk.graal.compiler.hotspot.nodes.StubForeignCallNode;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 import jdk.vm.ci.code.Register;
 
 /**

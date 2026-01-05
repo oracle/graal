@@ -40,7 +40,7 @@ import com.oracle.svm.core.util.PointerUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * An AlignedHeapChunk can hold many Objects.

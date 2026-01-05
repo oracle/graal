@@ -39,7 +39,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PRO
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.graal.compiler.nodes.extended.MembarNode.memoryBarrier;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
-import static jdk.graal.compiler.word.ObjectAccess.objectToTrackedWord;
+import static org.graalvm.word.restricted.ObjectAccess.objectToTrackedWord;
 
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Word;

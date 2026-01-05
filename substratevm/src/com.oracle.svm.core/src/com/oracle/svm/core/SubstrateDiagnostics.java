@@ -115,7 +115,7 @@ import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 public class SubstrateDiagnostics {
     private static final int MAX_THREADS_TO_PRINT = 100_000;

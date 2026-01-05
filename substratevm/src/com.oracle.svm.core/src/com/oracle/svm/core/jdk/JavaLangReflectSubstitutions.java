@@ -41,7 +41,7 @@ import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
-import jdk.graal.compiler.word.BarrieredAccess;
+import org.graalvm.word.restricted.BarrieredAccess;
 
 @TargetClass(java.lang.reflect.Array.class)
 final class Target_java_lang_reflect_Array {

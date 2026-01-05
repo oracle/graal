@@ -46,7 +46,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * Centralized management of {@linkplain JNIObjectHandle JNI handles for Java objects}. There are

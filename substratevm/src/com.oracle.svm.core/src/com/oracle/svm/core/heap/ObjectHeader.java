@@ -42,7 +42,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 import jdk.graal.compiler.word.WordOperationPlugin;
 
 /**

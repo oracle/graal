@@ -83,7 +83,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * Simple mark-sweep garbage collector using tri-coloring for the WasmLM backend. Objects have one

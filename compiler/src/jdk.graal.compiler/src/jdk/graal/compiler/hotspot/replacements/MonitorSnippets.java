@@ -155,7 +155,7 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.DeoptimizationAction;

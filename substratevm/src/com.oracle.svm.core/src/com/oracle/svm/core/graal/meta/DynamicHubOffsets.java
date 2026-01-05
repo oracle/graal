@@ -42,7 +42,7 @@ import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.BarrieredAccess;
+import org.graalvm.word.restricted.BarrieredAccess;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 

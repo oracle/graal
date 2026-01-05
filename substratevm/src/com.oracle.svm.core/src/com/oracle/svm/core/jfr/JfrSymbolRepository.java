@@ -45,7 +45,7 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.nmt.NmtCategory;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * In Native Image, we use {@link java.lang.String} objects that live in the image heap as symbols.

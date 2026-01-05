@@ -49,7 +49,7 @@ import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 abstract class AbstractLog implements Log {
     private static final byte[] NEWLINE = System.lineSeparator().getBytes(StandardCharsets.US_ASCII);

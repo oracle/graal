@@ -45,7 +45,7 @@ import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonTraits;
 
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 public abstract class AbstractRawFileOperationSupport implements RawFileOperationSupport {
     private final boolean useNativeByteOrder;

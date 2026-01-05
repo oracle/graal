@@ -56,7 +56,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * Support for allocating and accessing non-moving arrays. Such arrays are safe to access during

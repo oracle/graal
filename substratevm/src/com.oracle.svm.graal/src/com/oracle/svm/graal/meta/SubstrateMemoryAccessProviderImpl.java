@@ -38,7 +38,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.BarrieredAccess;
+import org.graalvm.word.restricted.BarrieredAccess;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;

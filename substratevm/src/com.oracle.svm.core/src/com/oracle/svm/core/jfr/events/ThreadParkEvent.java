@@ -38,7 +38,7 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.JavaMonitorQueuedSynchronizer;
 
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 public class ThreadParkEvent {
     public static void emit(long startTicks, Object obj, boolean isAbsolute, long time) {

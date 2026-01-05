@@ -50,7 +50,7 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
 
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 public final class JfrOldObjectRepository implements JfrRepository {
     private static final int OBJECT_DESCRIPTION_MAX_LENGTH = 100;

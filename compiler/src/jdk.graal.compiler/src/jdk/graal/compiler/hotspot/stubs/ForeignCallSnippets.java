@@ -47,7 +47,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 import jdk.vm.ci.meta.DeoptimizationAction;
 
 public class ForeignCallSnippets implements Snippets {

@@ -48,7 +48,7 @@ import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 public class InteriorObjRefWalker {
     /**

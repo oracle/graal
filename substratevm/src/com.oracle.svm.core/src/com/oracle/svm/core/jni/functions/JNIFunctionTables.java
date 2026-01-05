@@ -50,7 +50,7 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerO
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 import jdk.internal.misc.Unsafe;
 
 /**

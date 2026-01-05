@@ -32,8 +32,8 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.word.BarrieredAccess;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.BarrieredAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * The methods in this class are mainly used to fill or copy Java heap memory. All methods guarantee

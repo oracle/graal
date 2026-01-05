@@ -46,7 +46,7 @@ import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 final class SubstrateIdentityHashCodeSnippets extends IdentityHashCodeSnippets {
 

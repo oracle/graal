@@ -44,7 +44,7 @@ import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport {
     private final AtomicReference<PinnedObjectImpl> pinnedObjects = new AtomicReference<>();

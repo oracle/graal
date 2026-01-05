@@ -63,7 +63,7 @@ import com.oracle.svm.core.util.Utf8.WrappedAsciiCString;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.util.SignatureUtil;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.Signature;
 

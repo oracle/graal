@@ -34,7 +34,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * Functionality for referring to an image heap object using its isolate-independent location.

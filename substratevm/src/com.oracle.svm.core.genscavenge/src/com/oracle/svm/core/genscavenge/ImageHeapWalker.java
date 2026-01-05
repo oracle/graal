@@ -43,7 +43,7 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.UnsignedUtils;
 
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 public final class ImageHeapWalker {
     private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> ALIGNED_READ_ONLY_WALKER = new AlignedReadOnlyMemoryWalkerAccess();

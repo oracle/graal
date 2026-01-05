@@ -44,6 +44,8 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.word.restricted.BarrieredAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * Encapsulates information for Java types representing raw words (as opposed to Objects).

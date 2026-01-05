@@ -44,7 +44,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.thread.VMOperation;
 
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /** Promotes individual objects or whole heap chunks to a target {@link Space}. */
 public class ObjectPromoter {

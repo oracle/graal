@@ -57,7 +57,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * Equivalent of {@link HeapImpl} for the Wasm backend.

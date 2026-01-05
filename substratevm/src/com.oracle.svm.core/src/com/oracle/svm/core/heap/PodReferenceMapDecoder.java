@@ -44,8 +44,8 @@ import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.BarrieredAccess;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.BarrieredAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 import org.graalvm.word.Word;
 
 public final class PodReferenceMapDecoder {

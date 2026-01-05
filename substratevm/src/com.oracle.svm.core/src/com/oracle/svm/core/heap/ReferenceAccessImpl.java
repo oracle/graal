@@ -42,8 +42,8 @@ import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.word.BarrieredAccess;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.BarrieredAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class ReferenceAccessImpl implements ReferenceAccess {

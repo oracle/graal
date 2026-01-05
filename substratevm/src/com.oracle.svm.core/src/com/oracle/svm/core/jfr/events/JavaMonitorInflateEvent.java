@@ -38,7 +38,7 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 public class JavaMonitorInflateEvent {
     public static void emit(Object obj, long startTicks, MonitorInflationCause cause) {

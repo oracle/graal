@@ -79,7 +79,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 
 import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.ValueKindFactory;

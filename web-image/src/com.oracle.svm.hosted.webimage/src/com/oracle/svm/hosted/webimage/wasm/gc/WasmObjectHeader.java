@@ -44,7 +44,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * The object header is a 32-bit word (currently 64bit, see GR-42105). The two least-significant

@@ -45,8 +45,8 @@ import com.oracle.svm.core.util.TimeUtils;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.word.BarrieredAccess;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.BarrieredAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;

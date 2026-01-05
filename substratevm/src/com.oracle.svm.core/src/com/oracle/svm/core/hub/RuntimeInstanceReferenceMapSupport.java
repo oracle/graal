@@ -46,7 +46,7 @@ import com.oracle.svm.core.util.ByteArrayReader;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * Manages and deduplicates {@link InstanceReferenceMap}s for {@link DynamicHub}s that are loaded at

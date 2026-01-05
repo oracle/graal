@@ -52,7 +52,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * The common structure of the chunks of memory which make up the heap. HeapChunks are aggregated

@@ -41,7 +41,7 @@ import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.webimage.print.WebImagePrintingProvider;
 
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * Printing functionality for the Wasm backend.
