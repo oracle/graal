@@ -41,6 +41,7 @@ public final class RegisterAllocationVerifier {
 
     // FromPredecessors resolver
     public BlockMap<VerifierState> blockDefinitions;
+    public BlockMap<Set<Value>> blockDefinitions2;
 
     public RegisterAllocationVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, PhiResolution phiResolution) {
         this.lir = lir;
@@ -48,10 +49,8 @@ public final class RegisterAllocationVerifier {
         var cfg = lir.getControlFlowGraph();
         this.blockInstructions = blockInstructions;
         this.blockEntryStates = new BlockMap<>(cfg);
-        this.blockEntryStates.put(this.lir.getControlFlowGraph().getStartBlock(), new VerifierState());
-
+        this.blockEntryStates.put(cfg.getStartBlock(), new VerifierState());
         this.blockStates = new BlockMap<>(cfg);
-
         this.phiResolution = phiResolution;
 
         this.blockDefinitions = new BlockMap<>(cfg);
@@ -300,6 +299,49 @@ public final class RegisterAllocationVerifier {
         // and thus we cannot determine its location.
     }
 
+    public BlockMap<Set<Value>> getDefinitionSets() {
+        BlockMap<Set<Value>> blockDefinitions = new BlockMap<>(this.lir.getControlFlowGraph());
+        for (var blockId : lir.getBlocks()) {
+            var block = lir.getBlockById(blockId);
+            var instructions = blockInstructions.get(block);
+            Set<Value> definitions = new HashSet<>();
+
+            for (var instruction : instructions) {
+                switch (instruction) {
+                    case RAVInstruction.Op op -> {
+                        for (int i = 0; i < op.dests.count; i++) {
+                            var location = op.dests.curr[i];
+                            if (location == null) {
+                                continue;
+                            }
+
+                            definitions.add(location);
+                        }
+
+                        for (int i = 0; i < op.temp.count; i++) {
+                            var location = op.temp.curr[i];
+                            if (location == null || Value.ILLEGAL.equals(location)) {
+                                continue;
+                            }
+
+                            definitions.add(location);
+                        }
+                    }
+                    case RAVInstruction.Move move -> definitions.add(move.to);
+                    case RAVInstruction.Reload reload -> definitions.add(reload.to);
+                    case RAVInstruction.Spill spill -> definitions.add(spill.to);
+                    case RAVInstruction.StackMove stackMove -> definitions.add(stackMove.to);
+                    case RAVInstruction.VirtualMove virtMove -> definitions.add(virtMove.location); // Is this right?
+                    default -> throw new IllegalStateException();
+                }
+            }
+
+            blockDefinitions.put(block, definitions);
+        }
+
+        return blockDefinitions;
+    }
+
     /**
      * Fill in missing variable locations for current block's label instruction and predecessor
      * jump instructions.
@@ -331,11 +373,38 @@ public final class RegisterAllocationVerifier {
                 locations.retainAll(varLoc);
             }
 
+            Register location = null;
             if (locations.size() != 1) {
-                return false;
+                if (locations.isEmpty()) {
+                    return false;
+                }
+
+                for (int j = 0; j < block.getPredecessorCount(); j++) {
+                    int time = -1;
+                    Register blockReg = null;
+                    for (var loc : locations) {
+                        var pred = block.getPredecessorAt(j);
+                        var state = this.blockStates.get(pred);
+
+                        var regTime = state.registerValues.getTime(loc);
+                        if (regTime > time) {
+                            // TODO: replace time with priority of Moves inserted by the Register Allocator.
+                            time = regTime; // Max time
+                            blockReg = loc;
+                        }
+                    }
+
+                    if (location == null) {
+                        location = blockReg;
+                    } else if (location != blockReg) {
+                        // Not same for all blocks, so none choosen.
+                        return false;
+                    }
+                }
+            } else {
+                location = locations.stream().findFirst().get();
             }
 
-            Register location = locations.stream().findFirst().get();
             var registerValue = location.asValue(labelInstr.dests.orig[i].getValueKind());
 
             labelInstr.dests.curr[i] = registerValue;
@@ -375,6 +444,13 @@ public final class RegisterAllocationVerifier {
         worklist.add(defBlock);
         propagateMap.put(defBlock, defBlockVariablesToPropagate);
 
+        // Monitor_notowner01 + Moniitor_contended01
+        // B23  216       stack:48|QWORD[.] = MOVE input: rsi|QWORD[.] moveKind: QWORD // LSRAEliminateSpillMove: store at definition
+        // old variable supposed to be overwriten stored in spillSpill slots...
+        // TODO: any location we store the new variables in, needs to be propagated as well
+        // and this can be done in successors and needs to be accounted for...
+        // TODO: Reconsider any move with label variable.
+
         while (!worklist.isEmpty()) {
             var curr = worklist.remove();
             if (processed.contains(curr)) {
@@ -396,6 +472,10 @@ public final class RegisterAllocationVerifier {
                 if (!registerDefinition.isUnknown() && registerDefinition instanceof ValueAllocationState valState && !valState.getValue().equals(variable)) {
                     // This block has redefined the value of said register,
                     // and we will not pass it further.
+                    continue;
+                }
+
+                if (this.blockDefinitions2.get(curr).contains(register.asValue(variable.getValueKind()))) {
                     continue;
                 }
 
@@ -422,7 +502,23 @@ public final class RegisterAllocationVerifier {
                     // for example: B0 defines [v0] in label, B1 is it's successor as well as it's
                     // predecessor, and if it does not overwrite this register, it would change
                     // entry state for B0 to include v0, which is defined by B0.
-                    throw new GraalError("Circular definition for variable detected.");
+
+                    String errorMsg = "[";
+                    var values = labelInstr.dests;
+                    for (int j = 0; j < values.count; j++) {
+                        errorMsg += values.orig[j].toString();
+                        if (values.curr[j] != null) {
+                            errorMsg += " -> " + values.curr[j].toString();
+                        } else {
+                            errorMsg += " -> ?";
+                        }
+
+                        if (j != values.count - 1) {
+                            errorMsg += ", ";
+                        }
+                    }
+
+                    throw new GraalError("Circular definition for variable detected " + curr + " -> " + defBlock + " on LABEL " + errorMsg + "]");
                 }
 
                 boolean dominates = succ.dominates(defBlock);
@@ -458,53 +554,87 @@ public final class RegisterAllocationVerifier {
     private void resolvePhiFromJump(BasicBlock<?> block) {
         var state = this.blockStates.get(block);
         var jumpInstr = (RAVInstruction.Op) this.blockInstructions.get(block).getLast();
+
         for (int i = 0; i < jumpInstr.alive.count; i++) {
             if (jumpInstr.alive.curr[i] != null) {
                 continue;
             }
 
             var inputValue = jumpInstr.alive.orig[i];
-            if (LIRValueUtil.isVariable(inputValue) || inputValue instanceof ConstantValue) {
-                // Does not work for constants if there is more of them
-                var locations = state.registerValues.getValueLocations(inputValue);
-                if (locations.isEmpty()) {
-                    continue;
+            if (!LIRValueUtil.isVariable(inputValue) && !(inputValue instanceof ConstantValue)) {
+                continue;
+            }
+
+            var registerValue = this.getRegisterBeforeJump(state, inputValue);
+            if (registerValue == null) {
+                registerValue = this.getStackSlotBeforeJump(state, inputValue);
+                if (registerValue == null) {
+                    return;
                 }
+            }
 
-                var register = locations.stream().findFirst().get();
-                if (locations.size() != 1) {
-                    int time = -1;
-                    for (var location : locations) {
-                        var locTime = state.registerValues.getTime(location);
-                        if (locTime > time) {
-                            register = location;
-                            time = locTime;
-                        }
+            jumpInstr.alive.curr[i] = registerValue;
+            for (int j = 0; j < block.getSuccessorCount(); j++) {
+                var succ = block.getSuccessorAt(j);
+                var labelInstr = (RAVInstruction.Op) this.blockInstructions.get(succ).getFirst();
+
+                labelInstr.dests.curr[i] = jumpInstr.alive.curr[i];
+
+                for (int k = 0; k < succ.getPredecessorCount(); k++) {
+                    // Sibling jumps need to be updated as well in order to pass input checks.
+                    var sibling = succ.getPredecessorAt(k);
+                    if (sibling.equals(block)) {
+                        continue;
                     }
-                }
 
-                var registerValue = register.asValue(jumpInstr.alive.orig[i].getValueKind());
-                jumpInstr.alive.curr[i] = registerValue;
-
-                for (int j = 0; j < block.getSuccessorCount(); j++) {
-                    var succ = block.getSuccessorAt(j);
-                    var labelInstr = (RAVInstruction.Op) this.blockInstructions.get(succ).getFirst();
-
-                    labelInstr.dests.curr[i] = jumpInstr.alive.curr[i];
-
-                    for (int k = 0; k < succ.getPredecessorCount(); k++) {
-                        // Sibling jumps need to be updated as well in order to pass input checks.
-                        var sibling = succ.getPredecessorAt(k);
-                        if (sibling.equals(block)) {
-                            continue;
-                        }
-
-                        var siblingJumpInstr = (RAVInstruction.Op) this.blockInstructions.get(sibling).getLast();
-                        siblingJumpInstr.alive.curr[i] = jumpInstr.alive.curr[i];
-                    }
+                    var siblingJumpInstr = (RAVInstruction.Op) this.blockInstructions.get(sibling).getLast();
+                    siblingJumpInstr.alive.curr[i] = jumpInstr.alive.curr[i];
                 }
             }
         }
+    }
+
+    private Value getRegisterBeforeJump(VerifierState state, Value inputValue) {
+        // Does not work for constants if there is more of them
+        var locations = state.registerValues.getValueLocations(inputValue);
+        if (locations.isEmpty()) {
+            return null;
+        }
+
+        var register = locations.stream().findFirst().get();
+        if (locations.size() != 1) {
+            int time = -1;
+            for (var location : locations) {
+                var locTime = state.registerValues.getTime(location);
+                if (locTime > time) {
+                    register = location;
+                    time = locTime;
+                }
+            }
+        }
+
+        return register.asValue(inputValue.getValueKind());
+    }
+
+    private Value getStackSlotBeforeJump(VerifierState state, Value inputValue) {
+        var locations = state.spillSlotValues.getValueLocations(inputValue);
+        if (locations.isEmpty()) {
+            return null;
+        }
+
+        var spillSlot = locations.stream().findFirst().get();
+        if (locations.size() != 1) {
+            int time = -1;
+            for (var location : locations) {
+                var locTime = state.spillSlotValues.getTime(location);
+                if (locTime > time) {
+                    spillSlot = location;
+                    time = locTime;
+                }
+            }
+        }
+
+        return spillSlot;
     }
 
     private boolean hasMissingRegistersInLabel(RAVInstruction.Op op) {
@@ -596,7 +726,7 @@ public final class RegisterAllocationVerifier {
      * This method needs to be run, because sometimes already processed blocks
      * do not get their labels updated with newly defined variables and thus
      * resolution is not complete.
-     *
+     * <p>
      * TODO: this might be better be handled by some dependency graph
      *
      * @param worklist Worklist to which we add new blocks for processing.
@@ -638,8 +768,8 @@ public final class RegisterAllocationVerifier {
      * @return true, if valid, otherwise false
      */
     public boolean verifyInstructionInputs() {
-        for (int i = 0; i < this.lir.getBlocks().length; i++) {
-            var block = this.lir.getBlocks()[i];
+        for (var blockId : this.lir.getBlocks()) {
+            var block = this.lir.getBlockById(blockId);
             var state = this.blockEntryStates.get(block);
             var instructions = this.blockInstructions.get(block);
 
@@ -672,6 +802,8 @@ public final class RegisterAllocationVerifier {
                 }
                 this.blockDefinitions.put(block, state);
             }
+
+            this.blockDefinitions2 = this.getDefinitionSets();
         }
 
         this.calculateEntryBlocks();
@@ -855,7 +987,7 @@ public final class RegisterAllocationVerifier {
                     errorMsg += " -> ?";
                 }
 
-                if (j != values.count-1) {
+                if (j != values.count - 1) {
                     errorMsg += ", ";
                 }
             }
@@ -872,8 +1004,8 @@ public final class RegisterAllocationVerifier {
                         }
 
                         if ((phiResolution == PhiResolution.FromPredecessors
-                                        || phiResolution == PhiResolution.FromUsage)
-                                        && op.dests.curr[i] == null) {
+                                || phiResolution == PhiResolution.FromUsage)
+                                && op.dests.curr[i] == null) {
                             // This can happen for certain instructions - jump or label, and we need to
                             // resolve appropriate registers for these, if we do not, we throw in check()
                             continue;
@@ -916,19 +1048,19 @@ public final class RegisterAllocationVerifier {
                 case RAVInstruction.Reload reload ->
                         this.registerValues.putClone(ValueUtil.asRegister(reload.to), this.spillSlotValues.get(reload.from));
                 case RAVInstruction.Move move -> {
-                        var value = this.registerValues.get(ValueUtil.asRegister(move.from));
-                        if (value.isUnknown()) {
-                            // Hotfix for blockDefinitions, where if we moved a Value we need to make
-                            // sure it's saved in the state, so that value is not propagated further
-                            // causing Circular Exception
-                            // TestCase: ConditionalElimination17
-                            value = new ValueAllocationState(Value.ILLEGAL);
-                        }
+                    var value = this.registerValues.get(ValueUtil.asRegister(move.from));
+                    if (value.isUnknown()) {
+                        // Hotfix for blockDefinitions, where if we moved a Value we need to make
+                        // sure it's saved in the state, so that value is not propagated further
+                        // causing Circular Exception
+                        // TestCase: ConditionalElimination17
+                        value = new ValueAllocationState(Value.ILLEGAL);
+                    }
 
-                        this.registerValues.putClone(ValueUtil.asRegister(move.to), value);
+                    this.registerValues.putClone(ValueUtil.asRegister(move.to), value);
                 }
                 case RAVInstruction.StackMove move ->
-                    this.spillSlotValues.putClone(move.to, this.spillSlotValues.get(move.from));
+                        this.spillSlotValues.putClone(move.to, this.spillSlotValues.get(move.from));
                 case RAVInstruction.VirtualMove virtMove -> {
                     if (virtMove.location instanceof RegisterValue) {
                         this.registerValues.put(ValueUtil.asRegister(virtMove.location), new ValueAllocationState(virtMove.variableOrConstant));
@@ -1126,7 +1258,7 @@ public final class RegisterAllocationVerifier {
     }
 
     @SuppressWarnings("serial")
-    public class HashAllocationStateMap<K> extends HashMap<K, AllocationState> implements AllocationStateMap<K> {
+    public static class HashAllocationStateMap<K> extends HashMap<K, AllocationState> implements AllocationStateMap<K> {
         protected Map<K, Integer> locationTimings;
         protected int time;
 
