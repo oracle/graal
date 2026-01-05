@@ -971,24 +971,20 @@ public final class ObjectAccess {
     /// assert derived2.equal(oop2.add(7)); // JIT: ok, Native Image: build failure
     /// ```
     ///
-    /// This is an optional operation that will throw an [UnsupportedOperationException] if
+    /// This is an optional operation that will throw an [UnsatisfiedLinkError] if
     /// not supported.
     ///
     /// @see #objectToUntrackedPointer(Object)
     @SuppressWarnings("unused")
     @Operation(opcode = Opcode.OBJECT_TO_TRACKED)
-    public static Pointer objectToTrackedPointer(Object val) {
-        throw new UnsupportedOperationException();
-    }
+    public static native Pointer objectToTrackedPointer(Object val);
 
     /**
      * Same as {@link #objectToTrackedPointer(Object)} but with {@link Word} return type.
      */
     @SuppressWarnings("unused")
     @Operation(opcode = Opcode.OBJECT_TO_TRACKED)
-    public static Word objectToTrackedWord(Object val) {
-        throw new UnsupportedOperationException();
-    }
+    public static native Word objectToTrackedWord(Object val);
 
     /// Converts the [Object] value in `val` to a [Pointer] value representing the
     /// object's current address. If the object is subsequently moved (e.g. by the garbage
@@ -1007,22 +1003,18 @@ public final class ObjectAccess {
     /// if (oop.equal(oop2)) System.out.println(obj + " was moved");
     /// ```
     ///
-    /// This is an optional operation that will throw an [UnsupportedOperationException] if
+    /// This is an optional operation that will throw an [UnsatisfiedLinkError] if
     /// not supported.
     ///
     /// @see #objectToTrackedPointer(Object)
     @SuppressWarnings("unused")
     @Operation(opcode = Opcode.OBJECT_TO_UNTRACKED)
-    public static Pointer objectToUntrackedPointer(Object val) {
-        throw new UnsupportedOperationException();
-    }
+    public static native Pointer objectToUntrackedPointer(Object val);
 
     /**
      * Same as {@link #objectToUntrackedPointer(Object)} but with {@link Word} return type.
      */
     @SuppressWarnings("unused")
     @Operation(opcode = Opcode.OBJECT_TO_UNTRACKED)
-    public static Word objectToUntrackedWord(Object val) {
-        throw new UnsupportedOperationException();
-    }
+    public static native Word objectToUntrackedWord(Object val);
 }
