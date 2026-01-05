@@ -33,8 +33,6 @@ import org.graalvm.word.Word.Opcode;
 import org.graalvm.word.Word.Operation;
 import org.graalvm.word.WordBase;
 
-import jdk.graal.compiler.nodes.memory.address.AddressNode.Address;
-
 /**
  * Low-level memory access for Objects. Similarly to the readXxx and writeXxx methods defined for
  * {@link Pointer}, these methods access the raw memory without any null checks, read- or write
@@ -945,9 +943,7 @@ public final class ObjectAccess {
 
     @SuppressWarnings("unused")
     @Operation(opcode = Opcode.FROM_ADDRESS)
-    public static Word fromAddress(Address address) {
-        throw new UnsupportedOperationException();
-    }
+    public native static Word fromAddress(WordBase address);
 
     /// Converts the [Object] value in `val` to a [Pointer] value representing the
     /// object's current address. If the object is subsequently moved (e.g. by the garbage
