@@ -1614,7 +1614,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.functionEnter();
         JNIValidation.validateInstanceField(obj,
                 fieldId,
-                JNIPrimitiveType.OBJECT, false);
+                null, false);
         JNIObjectHandle result = JNIFunctions.GetObjectField(env, obj, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1740,7 +1740,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.OBJECT, false);
+        JNIValidation.validateStaticField(clazz, fieldId, null, false);
         JNIObjectHandle result = JNIFunctions.GetStaticObjectField(env, clazz, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1753,7 +1753,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.OBJECT, false);
+        JNIValidation.validateStaticField(clazz, fieldId, null, false);
         boolean result = JNIFunctions.GetStaticBooleanField(env, clazz, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1856,7 +1856,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj, fieldId, JNIPrimitiveType.OBJECT, true);
+        JNIValidation.validateInstanceField(obj, fieldId, null, true);
         JNIFunctions.SetObjectField(env, obj, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -1956,7 +1956,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.OBJECT, true);
+        JNIValidation.validateStaticField(clazz, fieldId, null, true);
         JNIFunctions.SetStaticObjectField(env, clazz, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -2222,7 +2222,6 @@ public final class ValidatedJNIFunctions {
     }
 
     enum JNIPrimitiveType {
-        OBJECT,
         BOOLEAN,
         BYTE,
         CHAR,
@@ -2304,6 +2303,11 @@ public final class ValidatedJNIFunctions {
             }
         }
 
+        /**
+         * @param expectedType
+         *   non-null  → primitive field of this type
+         *   null      → reference (object) field
+         */
         static void validateStaticField(JNIObjectHandle clazz, JNIFieldId field, JNIPrimitiveType expectedType, boolean isSetter) {
             if (clazz.equal(Word.nullPointer())) {
                 failFatally("Static field access on null class");
@@ -2312,14 +2316,31 @@ public final class ValidatedJNIFunctions {
             if (field.isNull()) {
                 failFatally("Static field ID is null");
             }
-
             validateClass(clazz, false);
 
-            if (expectedType == null) {
-                failFatally("Expected field type is null");
+            Class<?> actualType = field.getClass();
+            if (expectedType != null) {
+                // primitive expected
+                if (!actualType.isPrimitive()) {
+                    failFatally("Expected primitive field, found object");
+                }
+
+                if (actualType != toJavaPrimitiveClass(expectedType)) {
+                    failFatally("Primitive field type mismatch");
+                }
+            } else {
+                // object expected
+                if (actualType.isPrimitive()) {
+                    failFatally("Expected object field, found primitive");
+                }
             }
         }
 
+        /**
+         * @param expectedType
+         *   non-null  → primitive field of this type
+         *   null      → reference (object) field
+         */
         static void validateInstanceField(JNIObjectHandle obj, JNIFieldId field, JNIPrimitiveType expectedType, boolean isSetter) {
             if (obj.equal(Word.nullPointer())) {
                 failFatally("Instance field access on null object");
@@ -2328,11 +2349,23 @@ public final class ValidatedJNIFunctions {
             if (field.isNull()) {
                 failFatally("Instance field ID is null");
             }
-
             validateJNIObjectHandle(obj);
 
-            if (expectedType == null) {
-                failFatally("Expected field type is null");
+            Class<?> actualType = field.getClass();
+            if (expectedType != null) {
+                // primitive expected
+                if (!actualType.isPrimitive()) {
+                    failFatally("Expected primitive field, found object");
+                }
+
+                if (actualType != toJavaPrimitiveClass(expectedType)) {
+                    failFatally("Primitive field type mismatch");
+                }
+            } else {
+                // object expected
+                if (actualType.isPrimitive()) {
+                    failFatally("Expected object field, found primitive");
+                }
             }
         }
         static void validateString(JNIObjectHandle str) {
