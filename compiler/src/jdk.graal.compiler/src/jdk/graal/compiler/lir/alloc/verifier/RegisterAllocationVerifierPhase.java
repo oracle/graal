@@ -311,10 +311,13 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
 
                         var virtualMove = new RAVInstruction.VirtualMove(instruction, variable, location);
                         previousInstr.addVirtualMove(virtualMove);
+
                         continue; // No need to store virtual move here, it is stored into previous instruction.
                     }
 
+                    boolean speculative = false;
                     if (this.isSpeculativeMove(instruction)) {
+                        speculative = true;
                         // Speculative moves are in form ry = MOVE vx, which could be removed if variable
                         // ends up being allocated to the same register as ry. If it was removed
                         // we need to re-add it because it holds important information about where value of
@@ -338,7 +341,9 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
 
                     this.preallocMap.put(instruction, opRAVInstr);
 
-                    previousInstr = opRAVInstr;
+                    if (!speculative) {
+                        previousInstr = opRAVInstr;
+                    }
                 }
 
                 if (newVars.isEmpty()) {
