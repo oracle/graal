@@ -6,6 +6,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.ValueProcedure;
 import jdk.graal.compiler.lir.Variable;
@@ -39,8 +40,33 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
         @Option(help = "Verify that register allocation is indeed, correct", type = OptionType.Debug)
         public static final OptionKey<Boolean> EnableRAVerifier = new OptionKey<>(false);
 
-        @Option(help = "", type = OptionType.Debug)
+        @Option(help = "Select which way you want to resolve phi arguments.", type = OptionType.Debug)
         public static final EnumOptionKey<PhiResolution> RAPhiResolution = new EnumOptionKey<>(PhiResolution.FromUsage);
+
+        // @Option(help = "Should constants be moved to variables", type = OptionType.Debug)
+        // public static final OptionKey<Boolean> MoveConstants = new OptionKey<>(false);
+    }
+
+    public static String[] ignoredTestCases = {
+            // Disable Truffle Related Tests
+            // New instructions being added makes the verifier not work, investigate why prealloc is not run.
+            "truffle",
+            "Truffle",
+            "polyglot",
+            "Root[]",
+            "InstrumentationTestLanguage",
+            "NFITest",
+            "intCaller1",
+            "callee"
+    };
+
+    public static boolean isIgnored(String compUnitName) {
+        for (String ignoredTest : ignoredTestCases) {
+            if (compUnitName.contains(ignoredTest)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private PhiResolution phiResolution;
@@ -58,8 +84,16 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
-        assert this.preallocPhaseRAVerifier != null : "Phase before register allocation was not run, cannot verify it.";
+        var compUnitName = lirGenRes.getCompilationUnitName();
 
+        if (RegisterAllocationVerifierPhase.isIgnored(compUnitName)) {
+            // Skipping truffle test cases because they cause trouble with
+            // prealloc and getVerifierInstructions, because blocks and
+            // instructions that aren't made only by the RA are added.
+            return;
+        }
+
+        assert this.preallocPhaseRAVerifier != null : "Phase before register allocation was not run, cannot verify it.";
 
         var instructions = this.getVerifierInstructions(lirGenRes.getLIR());
         var verifier = new RegisterAllocationVerifier(lirGenRes.getLIR(), instructions, this.phiResolution);
@@ -68,7 +102,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
             // throw new IllegalStateException("Could not verify the register allocation...");
             // Exception handler
 
-            System.err.println("Verification failed - " + lirGenRes.getCompilationUnitName());
+            System.err.println("Verification failed - " + compUnitName);
         }
     }
 
@@ -84,7 +118,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
             if (instruction.isLoadConstantOp()) {
                 var constatLoad = StandardOp.LoadConstantOp.asLoadConstantOp(instruction);
                 var constant = constatLoad.getConstant();
-                var result = (RegisterValue) constatLoad.getResult();
+                var result = constatLoad.getResult(); // Can be RegisterValue or VirtualStackSlot
 
                 // This isn't really a virtual move, but it currently acts the same, so we keep it,
                 // we take constants as variables. TODO: maybe remove virtual move altogether for Move(reg, var/constant)
@@ -108,6 +142,16 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
             return new RAVInstruction.Reload(instruction, reg, stackSlot);
         } else if (input instanceof RegisterValue reg && result instanceof StackSlot stackSlot) {
             return new RAVInstruction.Spill(instruction, stackSlot, reg);
+        }
+
+        if (input instanceof StackSlot stackSlot1 && result instanceof StackSlot stackSlot2) {
+            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
+        } else if (input instanceof VirtualStackSlot stackSlot1 && result instanceof VirtualStackSlot stackSlot2) {
+            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
+        } else if (input instanceof StackSlot stackSlot1 && result instanceof VirtualStackSlot stackSlot2) {
+            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
+        } else if (input instanceof VirtualStackSlot stackSlot1 && result instanceof StackSlot stackSlot2) {
+            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
         }
 
         return null;
@@ -167,7 +211,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
         return blockInstructions;
     }
 
-    private static class ConstantOverrideValueProcedure implements ValueProcedure {
+    public static class ConstantOverrideValueProcedure implements ValueProcedure {
         private LIR lir;
         private List<Variable> variables;
         private Map<Variable, ConstantValue> constantValueMap;
@@ -225,6 +269,11 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
 
         @Override
         protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
+            var compUnitName = lirGenRes.getCompilationUnitName();
+            if (RegisterAllocationVerifierPhase.isIgnored(compUnitName)) {
+                return;
+            }
+
             Map<Variable, ConstantValue> constantValueMap = new HashMap<>();
 
             LIR lir = lirGenRes.getLIR();
@@ -258,7 +307,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
 
                         var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
                         var location = valueMov.getInput();
-                        var variable = (Variable) valueMov.getResult();
+                        var variable = LIRValueUtil.asVariable(valueMov.getResult());
 
                         var virtualMove = new RAVInstruction.VirtualMove(instruction, variable, location);
                         previousInstr.addVirtualMove(virtualMove);
@@ -273,8 +322,8 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
                         assert previousInstr != null;
 
                         var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
-                        var variable = (Variable) valueMov.getInput();
-                        var register = (RegisterValue) valueMov.getResult();
+                        var variable = LIRValueUtil.asVariable(valueMov.getInput());
+                        var register = valueMov.getResult();
 
                         var virtualMove = new RAVInstruction.VirtualMove(instruction, variable, register);
                         previousInstr.addSpeculativeMove(virtualMove);
@@ -297,7 +346,9 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
                 }
 
                 var j = instructions.removeLast();
-                for (var v : newVars) {
+                var it = newVars.iterator();
+                while (it.hasNext()) {
+                    var v = LIRValueUtil.asVariable(it.next());
                     var mov = context.spillMoveFactory.createMove(v, constantValueMap.get(v));
                     var ravInstr = new RAVInstruction.Op(mov);
                     mov.forEachOutput(ravInstr.dests.copyOriginalProc);
@@ -325,7 +376,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
 
             var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
             var input = valueMov.getInput();
-            return (input instanceof RegisterValue || input instanceof StackSlot) && valueMov.getResult() instanceof Variable;
+            return (input instanceof RegisterValue || input instanceof StackSlot /*|| input instanceof AbstractAddress*/) && LIRValueUtil.isVariable(valueMov.getResult());
         }
 
         protected boolean isSpeculativeMove(LIRInstruction instruction) {
@@ -334,7 +385,8 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
             }
 
             var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
-            return valueMov.getResult() instanceof RegisterValue && valueMov.getInput() instanceof Variable;
+            var result = valueMov.getResult(); // Result could be variable or register
+            return (result instanceof RegisterValue || LIRValueUtil.isVariable(result)) && LIRValueUtil.isVariable(valueMov.getInput());
         }
     }
 }

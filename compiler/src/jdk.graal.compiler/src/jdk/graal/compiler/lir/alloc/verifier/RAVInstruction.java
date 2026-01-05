@@ -3,8 +3,9 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.lir.InstructionValueProcedure;
 import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.Value;
 
 import java.util.EnumSet;
@@ -18,6 +19,8 @@ public class RAVInstruction {
         protected List<VirtualMove> speculativeMoveList;
 
         public Base(LIRInstruction lirInstruction) {
+            // We do not actually need the original instruction here,
+            // but is useful to have when debugging.
             this.lirInstruction = lirInstruction;
             this.virtualMoveList = new LinkedList<>();
             this.speculativeMoveList = new LinkedList<>();
@@ -95,22 +98,22 @@ public class RAVInstruction {
         };
 
         public Value getCurrent(int index) {
-            assert index < this.count;
+            assert index < this.count : "Index out of bounds";
             return this.curr[index];
         }
 
         public Value getOrig(int index) {
-            assert index < this.count;
+            assert index < this.count : "Index out of bounds";
             return this.orig[index];
         }
 
         public void addCurrent(int index, Value value) {
-            assert index < this.count;
+            assert index < this.count : "Index out of bounds";
             this.curr[index] = value;
         }
 
         public void addOrig(int index, Value value) {
-            assert index < this.orig.length;
+            assert index < this.orig.length : "Index out of bounds";
             this.orig[index] = value;
         }
 
@@ -154,7 +157,12 @@ public class RAVInstruction {
         }
 
         public boolean hasMissingDefinitions() {
-            return this.dests.count > 0 && this.dests.orig[0] instanceof Variable && this.dests.curr[0] == null;
+            for (int i = 0; i < this.dests.count; i++) {
+                if (this.dests.curr[i] == null) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -164,6 +172,23 @@ public class RAVInstruction {
 
         public Move(LIRInstruction instr, RegisterValue from, RegisterValue to) {
             super(instr);
+            this.from = from;
+            this.to = to;
+        }
+    }
+
+    // StackMove class to handle STACKMOVE instruction, temporary for now
+    // before I decide how all Moves should be handled + all possible combinations.
+    public static class StackMove extends Base {
+        public Value from;
+        public Value to;
+
+        public StackMove(LIRInstruction instr, Value from, Value to) {
+            super(instr);
+
+            assert from instanceof StackSlot || from instanceof VirtualStackSlot : "StackMove needs to receive instanceof StackSlot or VirtualStackSlot";
+            assert to instanceof StackSlot || to instanceof VirtualStackSlot : "StackMove needs to receive instanceof StackSlot or VirtualStackSlot";
+
             this.from = from;
             this.to = to;
         }
