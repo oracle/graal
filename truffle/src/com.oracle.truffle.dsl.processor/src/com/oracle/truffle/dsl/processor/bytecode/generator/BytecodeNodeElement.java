@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeNodeElement.ExecutionMode.FAST_PATH;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeNodeElement.ExecutionMode.SLOW_PATH;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.arrayOf;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createNeverPartOfCompilation;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
@@ -77,6 +79,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -2205,7 +2208,8 @@ final class BytecodeNodeElement extends AbstractElement {
          */
         b.statement("assert sp >= targetSp - 1");
         b.startWhile().string("sp > targetSp").end().startBlock();
-        b.statement(BytecodeRootNodeElement.clearFrame("frame", "--sp"));
+        b.statement("sp--");
+        emitClearStack(b, "sp", type(Object.class), FAST_PATH);
         b.end();
         b.statement("sp = targetSp");
         b.startReturn().string(parent.encodeState("bci", "sp")).end();
@@ -2432,7 +2436,8 @@ final class BytecodeNodeElement extends AbstractElement {
         }
         b.string(BytecodeRootNodeElement.uncheckedGetFrameObject("sp - stackPopCount + i"));
         b.end();
-        b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - stackPopCount + i"));
+
+        emitClearStack(b, "sp - stackPopCount + i", type(Object.class), FAST_PATH);
 
         b.end();
 
@@ -2447,7 +2452,8 @@ final class BytecodeNodeElement extends AbstractElement {
             b.typeLiteral(type(Object[].class));
             b.end();
             b.end();
-            b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - mergeCount + i"));
+
+            emitClearStack(b, "sp - mergeCount + i", type(Object[].class), FAST_PATH);
 
             b.declaration(type(int.class), "dynamicLength", "dynamicArray.length");
             b.startStatement().startStaticCall(type(System.class), "arraycopy");
@@ -2510,7 +2516,8 @@ final class BytecodeNodeElement extends AbstractElement {
         b.startStatement();
         b.string("result[offset + i] = ").string(BytecodeRootNodeElement.uncheckedGetFrameObject("sp - count + i"));
         b.end();
-        b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - count + i"));
+
+        emitClearStack(b, "sp - count + i", type(Object.class), FAST_PATH);
         b.end(); // for
 
         if (parent.model.hasVariadicReturn) {
@@ -2524,7 +2531,7 @@ final class BytecodeNodeElement extends AbstractElement {
             b.typeLiteral(type(Object[].class));
             b.end();
             b.end();
-            b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - mergeCount + i"));
+            emitClearStack(b, "sp - mergeCount + i", type(Object[].class), FAST_PATH);
 
             b.declaration(type(int.class), "dynamicLength", "dynamicArray.length");
             b.startStatement().startStaticCall(type(System.class), "arraycopy");
@@ -2626,15 +2633,8 @@ final class BytecodeNodeElement extends AbstractElement {
             BytecodeRootNodeElement.startSetFrame(b, returnType).string("frame").string("sp - 2").string("value").end();
             b.end();
 
-            if (ElementUtils.isPrimitive(inputType)) {
-                // we only need to clear in compiled code for liveness if primitive
-                b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
-                b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
-                b.end();
-            } else {
-                // always clear for references for gc behavior.
-                b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
-            }
+            emitClearStack(b, "sp - 1", inputType, FAST_PATH);
+
         } else {
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             b.startDeclaration(type(Object.class), "local");
@@ -2723,7 +2723,8 @@ final class BytecodeNodeElement extends AbstractElement {
             b.startStatement();
             BytecodeRootNodeElement.startSetFrame(b, type(Object.class)).string("frame").string("sp - 2").string("local").end();
             b.end();
-            b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
+
+            emitClearStack(b, "sp - 1", type(Object.class), FAST_PATH);
         }
     }
 
@@ -2802,15 +2803,16 @@ final class BytecodeNodeElement extends AbstractElement {
                         b.end();
                     }
 
-                    b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
-                    b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 2"));
+                    emitClearStack(b, "sp - 1", inputType, FAST_PATH);
+                    emitClearStack(b, "sp - 2", type(Object.class), FAST_PATH);
+
                 } else {
                     b.startStatement();
                     BytecodeRootNodeElement.startSetFrame(b, slotType).string(localsFrame).tree(readSlot);
                     b.string("local");
                     b.end();
                     b.end();
-                    b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
+                    emitClearStack(b, "sp - 1", inputType, FAST_PATH);
                 }
                 emitReturnNextInstruction(b, instr);
             } else {
@@ -2867,17 +2869,9 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.end(); // set frame
                 b.end(); // statement
 
+                emitClearStack(b, "sp - 1", inputType, FAST_PATH);
                 if (materialized) {
-                    b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
-                    b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
-                    b.lineComment("Clear primitive for compiler liveness analysis");
-                    b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 2"));
-                    b.end();
-                } else {
-                    b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
-                    b.lineComment("Clear primitive for compiler liveness analysis");
-                    b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
-                    b.end();
+                    emitClearStack(b, "sp - 2", types.MaterializedFrame, FAST_PATH);
                 }
 
                 emitReturnNextInstruction(b, instr);
@@ -3044,9 +3038,9 @@ final class BytecodeNodeElement extends AbstractElement {
 
             parent.emitQuickening(b, "this", "bc", "bci", null, "newInstruction");
 
-            b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
+            emitClearStack(b, "sp - 1", type(Object.class), FAST_PATH);
             if (instr.kind == InstructionKind.STORE_LOCAL_MATERIALIZED) {
-                b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 2"));
+                emitClearStack(b, "sp - 2", types.MaterializedFrame, FAST_PATH);
             }
             emitReturnNextInstruction(b, instr);
         }
@@ -3223,7 +3217,7 @@ final class BytecodeNodeElement extends AbstractElement {
             boolean isGeneric = ElementUtils.isObject(inputType);
 
             if (isGeneric) {
-                b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
+                emitClearStack(b, "sp - 1", type(Object.class), FAST_PATH);
             } else {
                 b.startIf().string("frame.getTag(sp - 1) != ").staticReference(parent.frameTagsElement.get(inputType)).end().startBlock();
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
@@ -3232,10 +3226,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.end();
                 b.end();
 
-                b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
-                b.lineComment("Always clear in compiled code for liveness analysis");
-                b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
-                b.end();
+                emitClearStack(b, "sp - 1", inputType, FAST_PATH);
             }
         } else {
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
@@ -3292,7 +3283,8 @@ final class BytecodeNodeElement extends AbstractElement {
             b.end(); // case operandIndex == -1
 
             parent.emitQuickening(b, "this", "bc", "bci", null, "newInstruction");
-            b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
+
+            emitClearStack(b, "sp - 1", type(Object.class), SLOW_PATH);
         }
     }
 
@@ -3462,6 +3454,9 @@ final class BytecodeNodeElement extends AbstractElement {
         } else {
             if (!parent.model.isBoxingEliminated(type(boolean.class))) {
                 b.declaration(type(boolean.class), "condition", booleanValue);
+
+                emitClearStack(b, "sp - 1", type(boolean.class), FAST_PATH);
+
             } else if (instr.isQuickening()) {
                 TypeMirror inputType = instr.signature.getDynamicOperandType(0);
 
@@ -3477,9 +3472,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.end();
                 b.end(); // declaration
 
-                b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
-                b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
-                b.end();
+                emitClearStack(b, "sp - 1", type(boolean.class), FAST_PATH);
 
                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
@@ -3497,6 +3490,8 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.string("sp - 1");
                 b.end(); // require frame
                 b.end(); // declaration
+
+                emitClearStack(b, "sp - 1", type(boolean.class), SLOW_PATH);
 
                 TypeMirror boxingType = type(boolean.class);
 
@@ -3580,23 +3575,68 @@ final class BytecodeNodeElement extends AbstractElement {
         } else {
             // Stack: [..., value, convertedValue]
             // pop convertedValue
-            b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
+            emitClearStack(b, "sp - 1", type(boolean.class), FAST_PATH);
         }
         b.statement("return true");
         b.end().startElseBlock();
         if (shortCircuitInstruction.producesBoolean()) {
-            // Stack: [..., convertedValue]
-            // clear convertedValue
-            b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
+            emitClearStack(b, "sp - 1", type(boolean.class), FAST_PATH);
         } else {
             // Stack: [..., value, convertedValue]
             // clear convertedValue and value
-            b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 1"));
-            b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - 2"));
+            emitClearStack(b, "sp - 1", type(boolean.class), FAST_PATH);
+            emitClearStack(b, "sp - 2", type(Object.class), FAST_PATH);
         }
 
         b.statement("return false");
         b.end(); // else
+    }
+
+    enum ExecutionMode {
+        FAST_PATH,
+        SLOW_PATH;
+
+        public boolean isFastPath() {
+            return this == FAST_PATH;
+        }
+
+        public boolean isSlowPath() {
+            return !isFastPath();
+        }
+
+    }
+
+    private void emitClearStack(CodeTreeBuilder b, String stackPointer, TypeMirror guaranteedType, ExecutionMode mode) {
+        if (!ElementUtils.isObject(guaranteedType) && parent.model.additionalAssertions) {
+            // we only verify the guaranteed type with additional assertions enabled
+            // to ensure we do not impact any heuristics on the host VM.
+            b.startAssert();
+            if (tier.isCached()) {
+                BytecodeRootNodeElement.startGetFrame(b, "frame", null, true);
+                b.string(stackPointer);
+                b.end(); // get frame
+            } else {
+                b.string(BytecodeRootNodeElement.uncheckedGetFrameObject(stackPointer));
+            }
+            b.instanceOf(ElementUtils.boxType(guaranteedType));
+            b.end();
+        }
+
+        if (ElementUtils.isPrimitive(guaranteedType)) {
+            if (mode.isFastPath() && tier.isCached()) {
+                b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
+                b.lineComment("Clear for liveness analysis.");
+                b.statement(BytecodeRootNodeElement.clearFrame("frame", stackPointer));
+                b.end(); // if
+            } else {
+                // we do not clear primitives for slow-paths at all.
+                b.lineComment("Primitive clear omitted for " + stackPointer);
+            }
+        } else {
+            // unconditionally clear possible references to ensure the value
+            // is not alive longer than necessary for garbage collection.
+            b.statement(BytecodeRootNodeElement.clearFrame("frame", stackPointer));
+        }
     }
 
     private static boolean isInstructionReachable(InstructionModel model) {
@@ -4195,27 +4235,21 @@ final class BytecodeNodeElement extends AbstractElement {
 
         // When stackEffect is negative, values should be cleared from the top of the
         // stack.
-        InstructionModel quickeningRoot = instr.getQuickeningRoot();
+        Signature signature = instr.getQuickeningRoot().signature;
         int operandIndex = 0;
         for (int i = stackEffect; i < 0; i++) {
-            TypeMirror genericType = quickeningRoot.signature.operandTypes.get(operandIndex);
-            if (ElementUtils.isPrimitive(genericType)) {
-                /*
-                 * If the generic type is primitive we can omit clearing in the interpreter, as the
-                 * clear is only needed for liveness in the compiler. Currently, we can't do that
-                 * for specialized quickenings as we might miss quickeninging reference types on the
-                 * stack if executeAndSpecialize is called. In the future when we keep all stack
-                 * effects in this method we be able to do better and avoid clearing also for
-                 * quickenings.
-                 */
-                b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
-                b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - " + -i));
-                b.end();
-            } else {
-                b.statement(BytecodeRootNodeElement.clearFrame("frame", "sp - " + -i));
-            }
+            /*
+             * If the generic type is primitive we can omit clearing in the interpreter, as the
+             * clear is only needed for liveness in the compiler. Currently, we can't do that for
+             * specialized quickenings as we might miss quickening reference types on the stack if
+             * executeAndSpecialize is called. In the future when we keep all stack effects in this
+             * method we be able to do better and avoid clearing also for quickenings.
+             */
+            TypeMirror genericType = signature.getDynamicOperandType(operandIndex);
+            emitClearStack(b, "sp - " + -i, genericType, FAST_PATH);
             operandIndex++;
         }
+
     }
 
     private void storeBciInFrame(CodeTreeBuilder b) {
