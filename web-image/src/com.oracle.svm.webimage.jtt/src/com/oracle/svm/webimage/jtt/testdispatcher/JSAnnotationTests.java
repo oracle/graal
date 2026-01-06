@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.util.Arrays;
 
 import com.oracle.svm.webimage.jtt.api.ArrayProxyTest;
 import com.oracle.svm.webimage.jtt.api.CoercionConversionTest;
+import com.oracle.svm.webimage.jtt.api.ExternalProxyConversionTest;
 import com.oracle.svm.webimage.jtt.api.HtmlApiExamplesTest;
 import com.oracle.svm.webimage.jtt.api.JSErrorsTest;
 import com.oracle.svm.webimage.jtt.api.JSNumberTest;
@@ -79,6 +80,8 @@ public class JSAnnotationTests extends JTTTestDispatcher {
             JSObjectCoercionTest.main(remainingArgs);
         } else if (checkClass(ArrayProxyTest.class, className)) {
             ArrayProxyTest.main(remainingArgs);
+        } else if (checkClass(ExternalProxyConversionTest.class, className)) {
+            ExternalProxyConversionTest.main(remainingArgs);
         } else {
             throw new IllegalArgumentException("unexpected class name");
         }

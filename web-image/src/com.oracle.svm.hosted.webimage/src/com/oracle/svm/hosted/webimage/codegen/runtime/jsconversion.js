@@ -42,6 +42,34 @@
  */
 class Conversion {
     /**
+     * Extracts the underlying Java object from the given proxy.
+     *
+     * Only call this method if the object is a proxy created by `toProxy`.
+     */
+    unproxy(jsJavaProxy) {
+        const optionalUnproxied = this.tryUnproxy(jsJavaProxy);
+        if (optionalUnproxied === undefined) {
+            throw new TypeError(`Tried to unproxy a non-Java-object proxy: ${String(jsJavaProxy)}`);
+        }
+
+        return optionalUnproxied;
+    }
+
+    /**
+     * Tests whether the given JS object is a proxy over a Java object as
+     * created by `toProxy` and returns the underlying Java object.
+     * Returns `undefined` if the object is not one of our proxies.
+     */
+    tryUnproxy(jsProxyCandidate) {
+        let looksLikeProxy = Object.getOwnPropertyDescriptor(jsProxyCandidate, runtime.symbol.isProxy)?.value === true;
+        if (looksLikeProxy) {
+            return jsProxyCandidate[runtime.symbol.javaNative];
+        }
+
+        return undefined;
+    }
+
+    /**
      * Associates the given Java object with the given JS value.
      */
     setJavaScriptNative(javaObject, jsNative) {
@@ -401,16 +429,6 @@ class Conversion {
     }
 
     /**
-     * Creates an anonymous JavaScript object, and does the mirror handshake.
-     */
-    createAnonymousJavaScriptObject() {
-        const x = {};
-        const jsObject = this.createJSObject(x);
-        x[runtime.symbol.javaNative] = jsObject;
-        return x;
-    }
-
-    /**
      * Obtains or creates the proxy handler for the given Java class
      */
     getOrCreateProxyHandler(hub) {
@@ -436,7 +454,16 @@ class Conversion {
             },
         };
 
-        return new Proxy(targetWrapper["Java Proxy"], proxyHandler);
+        const proxyFun = targetWrapper["Java Proxy"];
+
+        Object.defineProperty(proxyFun, runtime.symbol.isProxy, {
+            value: true,
+            writable: false,
+            enumerable: false,
+            configurable: false,
+        });
+
+        return new Proxy(proxyFun, proxyHandler);
     }
 
     /**
@@ -460,11 +487,10 @@ class Conversion {
             return this.createJSUndefined();
         }
 
-        // Step 3: check if the javaNative property is set.
-        // This covers objects that already have Java counterparts (for example, Java proxies).
-        const javaValue = x[runtime.symbol.javaNative];
-        if (javaValue !== undefined) {
-            return javaValue;
+        // Step 3: Unproxy Java proxies to get the underlying Java object
+        const optionalUnproxied = this.tryUnproxy(x);
+        if (optionalUnproxied !== undefined) {
+            return optionalUnproxied;
         }
 
         // Step 4: use the JavaScript type to select the appropriate Java representation.
@@ -482,9 +508,8 @@ class Conversion {
                 return this.createJSSymbol(x);
             case "object":
             case "function":
-                // We know this is a normal object created in JavaScript,
-                // otherwise it would have a runtime.symbol.javaNative property,
-                // and the conversion would have returned in Step 3.
+                // We know this is not a proxy of a Java object because the
+                // conversion would have returned in Step 3.
                 return this.createJSObject(x);
             default:
                 throw new Error("unexpected type: " + tpe);
@@ -549,7 +574,7 @@ class Conversion {
      * @return {*} the mirror instance wrapped into a JavaScript Java Proxy
      */
     coerceToFacadeClass(obj, jsObjectClazz) {
-        const rawJavaHub = jsObjectClazz[runtime.symbol.javaNative];
+        const rawJavaHub = this.unproxy(jsObjectClazz);
         const internalJavaClass = rawJavaHub[runtime.symbol.jsClass];
         const rawJavaMirror = new internalJavaClass();
         // Note: only one-way handshake, since the JavaScript object could be recast to a different Java facade class.
@@ -1028,15 +1053,12 @@ class ProxyHandler {
                 // then proxies that represent java.lang.String are converted to JavaScript strings.
                 const javaScriptResult = javaToString.call(this);
                 if (typeof javaScriptResult === "function" || typeof javaScriptResult === "object") {
-                    const javaResult = javaScriptResult[runtime.symbol.javaNative];
+                    const javaResult = conversion.tryUnproxy(javaScriptResult);
                     if (javaResult !== undefined && conversion.isJavaLangString(javaResult)) {
                         return conversion.extractJavaScriptString(javaResult);
-                    } else {
-                        return javaScriptResult;
                     }
-                } else {
-                    return javaScriptResult;
                 }
+                return javaScriptResult;
             };
         }
 
@@ -1072,7 +1094,7 @@ class ProxyHandler {
     _invokeProxyMethod(name, overloads, javaScriptJavaProxy, ...javaScriptArgs) {
         // For static methods, javaScriptThis is set to null.
         const isStatic = javaScriptJavaProxy === null;
-        const javaThis = isStatic ? null : javaScriptJavaProxy[runtime.symbol.javaNative];
+        const javaThis = isStatic ? null : conversion.unproxy(javaScriptJavaProxy);
         const javaArgs = conversion.eachJavaScriptToJava(javaScriptArgs);
         for (let i = 0; i < overloads.length; i++) {
             const metadata = overloads[i];
@@ -1102,6 +1124,10 @@ class ProxyHandler {
         }
         const methodName = name !== null ? "method '" + name + "'" : "single abstract method";
         throw new Error("No matching signature for " + methodName + " and argument list '" + javaScriptArgs + "'");
+    }
+
+    _extractJavaObject(target) {
+        return target(runtime.symbol.javaNative);
     }
 
     /**
@@ -1135,6 +1161,15 @@ class ProxyHandler {
     }
 
     getOwnPropertyDescriptor(target, key) {
+        if (key === runtime.symbol.isProxy) {
+            return {
+                value: true,
+                writable: false,
+                enumerable: false,
+                configurable: false,
+            };
+        }
+
         const value = this._loadMethod(target, key);
         if (value === undefined) {
             return undefined;
@@ -1155,13 +1190,18 @@ class ProxyHandler {
     }
 
     has(target, key) {
+        if (key === runtime.symbol.isProxy) {
+            return true;
+        }
         return this._loadMethod(target, key) !== undefined;
     }
 
     get(target, key) {
-        const javaObject = target(runtime.symbol.javaNative);
+        const javaObject = this._extractJavaObject(target);
         if (key === runtime.symbol.javaNative) {
             return javaObject;
+        } else if (key === runtime.symbol.isProxy) {
+            return true;
         } else if (this.isArray) {
             const componentKindOrdinal = this.componentKindOrdinal;
             const length = conversion.getArrayLength(javaObject);
@@ -1194,7 +1234,7 @@ class ProxyHandler {
             const potentialIdx = getArrayIndex(key);
 
             if (potentialIdx !== undefined) {
-                const javaObject = target(runtime.symbol.javaNative);
+                const javaObject = this._extractJavaObject(target);
                 conversion.storeArrayElement(javaObject, this.componentKindOrdinal, potentialIdx, value);
                 return true;
             }
@@ -1216,7 +1256,7 @@ class ProxyHandler {
 
     apply(target, javaScriptThisArg, javaScriptArgs) {
         // We need to convert the Proxy's target function to the Java Proxy.
-        const javaScriptJavaProxy = conversion.toProxy(target(runtime.symbol.javaNative));
+        const javaScriptJavaProxy = conversion.toProxy(this._extractJavaObject(target));
         // Note: the JavaScript this argument for the apply method is never exposed to Java, so we just ignore it.
         return this._applyWithObject(javaScriptJavaProxy, javaScriptArgs);
     }
@@ -1241,7 +1281,7 @@ class ProxyHandler {
     }
 
     construct(target, argumentsList) {
-        const javaThis = target(runtime.symbol.javaNative);
+        const javaThis = this._extractJavaObject(target);
         // This is supposed to be a proxy handler for java.lang.Class objects
         // and javaThis is supposed to be some Class instance.
         if (!conversion.isJavaLangClass(javaThis)) {
@@ -1264,10 +1304,10 @@ class ProxyHandler {
         // lookup the constructor.
         const instanceProxyHandler = conversion.getOrCreateProxyHandler(conversion.getHub(javaInstance));
         const javaConstructorMethod = instanceProxyHandler._getJavaConstructorMethod();
-        // Convert the Java instance to JS (usually creates a proxy)
-        const javaScriptInstance = conversion.javaToJavaScript(javaInstance);
+        // Get JS proxy for the Java object
+        const jsProxy = conversion.toProxy(javaInstance);
         // Call the Java constructor method.
-        javaConstructorMethod(javaScriptInstance, ...argumentsList);
-        return javaScriptInstance;
+        javaConstructorMethod(jsProxy, ...argumentsList);
+        return jsProxy;
     }
 }

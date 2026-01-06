@@ -309,7 +309,7 @@ class JSConversion extends Conversion {
      * @return {*} the resulting JavaScript value
      */
     coerceJavaProxyToJavaScriptType(proxyHandler, proxy, tpe) {
-        const o = proxy[runtime.symbol.javaNative];
+        const o = this.unproxy(proxy);
         switch (tpe) {
             case "boolean":
                 // Due to Java booleans being numbers, the double-negation is necessary.
@@ -344,19 +344,21 @@ class JSConversion extends Conversion {
         let typeHub;
         if (typeof type === "string") {
             typeHub = runtime.hubs[type];
-        } else if (typeof type === "object") {
-            const javaType = type[runtime.symbol.javaNative];
+        } else {
+            const javaType = this.tryUnproxy(type);
             if (javaType !== undefined && this.isJavaLangClass(javaType)) {
                 typeHub = javaType;
             }
         }
+
         if (typeHub === undefined) {
             throw new Error(
                 "Cannot coerce JavaScript value with the requested type descriptor (use String or Java Class): " + type
             );
         }
+
+        let javaValue = this.tryUnproxy(javaScriptValue);
         // Check if the current object is a Java Proxy, in which case no coercion is possible.
-        let javaValue = javaScriptValue[runtime.symbol.javaNative];
         if (javaValue !== undefined) {
             const valueHub = this.getHub(javaValue);
             if (this.isSupertype(typeHub, valueHub)) {

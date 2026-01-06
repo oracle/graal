@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,14 @@
 
 package com.oracle.svm.webimage.jtt.api;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSObject;
+import org.graalvm.webimage.api.JSString;
+import org.graalvm.webimage.api.JSValue;
 
 public class JSObjectSubclassTest {
     public static final String[] OUTPUT = {
@@ -69,25 +75,31 @@ public class JSObjectSubclassTest {
                     "7.0",
     };
 
+    /// The `VM` object that stores among other things the exported types (the same as is returned
+    /// by `GraalVM.run`).
+    private static JSObject vmObject;
+
     public static void main(String[] args) {
+        vmObject = getVm(new Object());
         jsObjectSubclass();
         exportedReturningObject();
         heapGeneratedObjects();
         nonInstantiatedImported();
+        cloningJSMirror();
     }
 
     private static void jsObjectSubclass() {
         DeclaredJSObject declared = new DeclaredJSObject("made in Java");
         System.out.println(declared);
         System.out.println(declared.declaration);
-        DeclaredJSObject declaredFromJavaScript = newDeclaredJSObjectFromJavaScript("made in JavaScript");
+        DeclaredJSObject declaredFromJavaScript = newDeclaredJSObjectFromJavaScript(vmObject, "made in JavaScript").as(DeclaredJSObject.class);
         System.out.println(declaredFromJavaScript);
         System.out.println(declaredFromJavaScript.declaration);
 
         SubclassOfDeclaredJSObject subclassedDeclared = new SubclassOfDeclaredJSObject("made in Java", 1);
         System.out.println(subclassedDeclared);
         System.out.println(subclassedDeclared.declaration);
-        SubclassOfDeclaredJSObject subclassedDeclaredFromJavaScript = newSubclassOfDeclaredJSObjectFromJavaScript("made in JavaScript", 2);
+        SubclassOfDeclaredJSObject subclassedDeclaredFromJavaScript = newSubclassOfDeclaredJSObjectFromJavaScript(vmObject, "made in JavaScript", 2).as(SubclassOfDeclaredJSObject.class);
         System.out.println(subclassedDeclaredFromJavaScript);
         System.out.println(subclassedDeclaredFromJavaScript.declaration);
 
@@ -105,14 +117,14 @@ public class JSObjectSubclassTest {
         SubclassOfImportedJSObject subclassedImported = new SubclassOfImportedJSObject("made in Java", 3);
         System.out.println(subclassedImported);
         System.out.println(subclassedImported.importDeclaration);
-        SubclassOfImportedJSObject subclassedImportedFromJavaScript = newSubclassOfImportedJSObjectFromJavaScript("made in JavaScript", 4).as(SubclassOfImportedJSObject.class);
+        SubclassOfImportedJSObject subclassedImportedFromJavaScript = newSubclassOfImportedJSObjectFromJavaScript(vmObject, "made in JavaScript", 4).as(SubclassOfImportedJSObject.class);
         System.out.println(subclassedImportedFromJavaScript);
         System.out.println(subclassedImportedFromJavaScript.importDeclaration);
 
         SubsubclassOfImportedJSObject subsubclassedImported = new SubsubclassOfImportedJSObject("made in Java", 5);
         System.out.println(subsubclassedImported);
         System.out.println(subsubclassedImported.importDeclaration);
-        SubsubclassOfImportedJSObject subsubclassedImportedFromJavaScript = newSubsubclassOfImportedJSObjectFromJavaScript("made in JavaScript", 6).as(SubsubclassOfImportedJSObject.class);
+        SubsubclassOfImportedJSObject subsubclassedImportedFromJavaScript = newSubsubclassOfImportedJSObjectFromJavaScript(vmObject, "made in JavaScript", 6).as(SubsubclassOfImportedJSObject.class);
         System.out.println(subsubclassedImportedFromJavaScript);
         System.out.println(subsubclassedImportedFromJavaScript.importDeclaration);
 
@@ -128,47 +140,71 @@ public class JSObjectSubclassTest {
      * Test imported JS objects that are never instantiated in Java code.
      */
     private static void nonInstantiatedImported() {
-        ImportedNonInstantiated obj = getImported();
+        ImportedNonInstantiated obj = getImported().as(ImportedNonInstantiated.class);
         double x = obj.add(3, 4);
         System.out.println(x);
     }
 
-    @JS("return new ImportedNonInstantiated();")
+    private static void cloningJSMirror() {
+        JSObject obj1 = JSObject.create();
+        JSObject obj2 = cloneObject(obj1);
+        assertNotSame(obj1, obj2, "Cloned JSObject wrapper is equal to original");
+        assertFalse(obj1.equalsJavaScript(obj2), "Cloned JS object is equal to original");
+
+        JSObject obj3 = cloneObjectWithProperty(obj1, "foo", JSString.of("bar"));
+        assertFalse(JSObject.hasOwn(obj1, "foo"), "Original object got extra field");
+        assertTrue(JSObject.hasOwn(obj3, "foo"), "Cloned object does not have extra field");
+    }
+
+    @JS("return o.$vm;")
+    private static native JSObject getVm(Object o);
+
+    @JS("return {...obj};")
+    private static native JSObject cloneObject(JSObject obj);
+
+    @JS("""
+                    let cloned = {...obj};
+                    cloned[key] = value;
+                    return cloned;
+                    """)
     @JS.Coerce
-    private static native ImportedNonInstantiated getImported();
+    private static native JSObject cloneObjectWithProperty(JSObject obj, String key, JSValue value);
 
-    @JS("const DeclaredJSObject = name.$vm.exports.com.oracle.svm.webimage.jtt.api.DeclaredJSObject; return new DeclaredJSObject(name);")
-    private static native DeclaredJSObject newDeclaredJSObjectFromJavaScript(String name);
+    @JS("return new ImportedNonInstantiated();")
+    private static native JSObject getImported();
 
-    @JS("const SubclassOfDeclaredJSObject = name.$vm.exports.com.oracle.svm.webimage.jtt.api.SubclassOfDeclaredJSObject; return new SubclassOfDeclaredJSObject(name, index);")
-    private static native SubclassOfDeclaredJSObject newSubclassOfDeclaredJSObjectFromJavaScript(String name, int index);
+    @JS("const DeclaredJSObject = vm.exports.com.oracle.svm.webimage.jtt.api.DeclaredJSObject; return new DeclaredJSObject(name);")
+    private static native JSObject newDeclaredJSObjectFromJavaScript(JSObject vm, String name);
+
+    @JS("const SubclassOfDeclaredJSObject = vm.exports.com.oracle.svm.webimage.jtt.api.SubclassOfDeclaredJSObject; return new SubclassOfDeclaredJSObject(name, index);")
+    private static native JSObject newSubclassOfDeclaredJSObjectFromJavaScript(JSObject vm, String name, int index);
 
     @JS("return new ImportedJSObject(name);")
     private static native JSObject newImportedJSObjectFromJavaScript(String name);
 
-    @JS("const SubclassOfImportedJSObject = name.$vm.exports.com.oracle.svm.webimage.jtt.api.SubclassOfImportedJSObject; return new SubclassOfImportedJSObject(name, index);")
-    private static native JSObject newSubclassOfImportedJSObjectFromJavaScript(String name, int index);
+    @JS("const SubclassOfImportedJSObject = vm.exports.com.oracle.svm.webimage.jtt.api.SubclassOfImportedJSObject; return new SubclassOfImportedJSObject(name, index);")
+    private static native JSObject newSubclassOfImportedJSObjectFromJavaScript(JSObject vm, String name, int index);
 
-    @JS("const SubsubclassOfImportedJSObject = name.$vm.exports.com.oracle.svm.webimage.jtt.api.SubsubclassOfImportedJSObject; return new SubsubclassOfImportedJSObject(name, index);")
-    private static native JSObject newSubsubclassOfImportedJSObjectFromJavaScript(String name, int index);
+    @JS("const SubsubclassOfImportedJSObject = vm.exports.com.oracle.svm.webimage.jtt.api.SubsubclassOfImportedJSObject; return new SubsubclassOfImportedJSObject(name, index);")
+    private static native JSObject newSubsubclassOfImportedJSObjectFromJavaScript(JSObject vm, String name, int index);
 
     @JS("return new Namespace.InnerImportedJSObject(name);")
     private static native JSObject newInnerImportedJSObjectFromJavaScript(String name);
 
     private static void exportedReturningObject() {
-        callExportsFromJavaScript("dummy");
+        callExportsFromJavaScript(vmObject);
     }
 
-    @JS("const x = dummy.$vm.exports.com.oracle.svm.webimage.jtt.api.ExportedReturningObject.getSubclass(); x.printSubclass(); x.print();")
-    private static native void callExportsFromJavaScript(String dummy);
+    @JS("const x = vm.exports.com.oracle.svm.webimage.jtt.api.ExportedReturningObject.getSubclass(); x.printSubclass(); x.print();")
+    private static native void callExportsFromJavaScript(JSObject vm);
 
     private static void heapGeneratedObjects() {
-        inspectHeapOnlyPoint("dummy");
+        inspectHeapOnlyPoint(vmObject);
     }
 
     // TODO GR-65036 This will have to be updated since the x and y values will be JS primitives
-    @JS("const { x, y } = dummy.$vm.exports.com.oracle.svm.webimage.jtt.api.HeapOnlyPointStatics.getPoint(); console.log(x.$as('number')); console.log(y.$as('number'));")
-    private static native void inspectHeapOnlyPoint(String dummy);
+    @JS("const { x, y } = vm.exports.com.oracle.svm.webimage.jtt.api.HeapOnlyPointStatics.getPoint(); console.log(x.$as('number')); console.log(y.$as('number'));")
+    private static native void inspectHeapOnlyPoint(JSObject vm);
 }
 
 @JS.Export
