@@ -1470,7 +1470,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         }
 
                         Object resolvedObject = resolveLinkedObject(bci(), cpi, opcode, bootstrap, parameterLength, staticArguments, isVarargs, isPrimitive);
-                        if (resolvedObject instanceof Throwable) {
+                        if (resolvedObject instanceof Throwable || resolvedObject instanceof UnresolvedJavaType) {
                             return resolvedObject;
                         }
                         ValueNode resolvedObjectNode = (ValueNode) resolvedObject;
