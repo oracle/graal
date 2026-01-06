@@ -27,14 +27,13 @@ package com.oracle.svm.graal.isolated;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.Word;
+import org.graalvm.word.restricted.ObjectAccess;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
-
-import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * Functionality for referring to an image heap object using its isolate-independent location.

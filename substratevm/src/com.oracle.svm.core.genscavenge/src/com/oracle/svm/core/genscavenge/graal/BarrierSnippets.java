@@ -77,7 +77,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.gc.WriteBarrierSnippets;
-import org.graalvm.word.restricted.ObjectAccess;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -184,7 +183,8 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             return;
         }
 
-        Word addr = ObjectAccess.fromAddress(address);
+        Word addr = Word.from(address);
+
         if (shouldOutline && !eliminated) {
             callPostWriteBarrierStub(POST_WRITE_BARRIER, fixedObject, addr);
             return;
@@ -217,7 +217,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             return;
         }
 
-        Word addr = ObjectAccess.fromAddress(address);
+        Word addr = Word.from(address);
         Word startAddress = WriteBarrierSnippets.getPointerToFirstArrayElement(addr, length, elementStride);
         Word endAddress = WriteBarrierSnippets.getPointerToLastArrayElement(addr, length, elementStride);
 

@@ -452,10 +452,9 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 b.push(returnKind, objectToUntracked);
                 break;
 
-            case FROM_ADDRESS:
+            case FROM_WORDBASE:
                 assert NumUtil.assertArrayLength(args, 1);
-                WordCastNode addressToWord = b.add(WordCastNode.addressToWord(args[0], wordKind));
-                b.push(returnKind, addressToWord);
+                b.push(returnKind, args[0]);
                 break;
 
             case TO_OBJECT:

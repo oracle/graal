@@ -960,10 +960,6 @@ public final class ObjectAccess {
     @Operation(opcode = Opcode.WRITE_OBJECT)
     public static native void writeObject(Object object, int offset, Object val);
 
-    @SuppressWarnings("unused")
-    @Operation(opcode = Opcode.FROM_ADDRESS)
-    public native static Word fromAddress(WordBase address);
-
     /// Converts the [Object] value in `val` to a [Pointer] value representing the
     /// object's current address. If the object is subsequently moved (e.g. by the garbage
     /// collector), the returned pointer value is updated accordingly. If a derived pointer value is

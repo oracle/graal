@@ -29,6 +29,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.Word;
+import org.graalvm.word.restricted.ObjectAccess;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -42,7 +43,6 @@ import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
-import org.graalvm.word.restricted.ObjectAccess;
 
 public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets implements Snippets {
     static class Counters {
@@ -64,7 +64,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
 
     @Snippet
     public void serialPreciseWriteBarrier(Address address, @ConstantParameter Counters counters, @ConstantParameter boolean verifyOnly) {
-        serialWriteBarrier(ObjectAccess.fromAddress(address), counters, verifyOnly);
+        serialWriteBarrier(Word.from(address), counters, verifyOnly);
     }
 
     @Snippet
@@ -75,7 +75,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
 
         int cardShift = cardTableShift();
         Word cardTableAddress = cardTableAddress();
-        Word addr = ObjectAccess.fromAddress(address);
+        Word addr = Word.from(address);
         Word start = cardTableAddress.add(getPointerToFirstArrayElement(addr, length, elementStride).unsignedShiftRight(cardShift));
         Word end = cardTableAddress.add(getPointerToLastArrayElement(addr, length, elementStride).unsignedShiftRight(cardShift));
 

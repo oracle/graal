@@ -33,6 +33,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.Word;
+import org.graalvm.word.restricted.ObjectAccess;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -63,7 +64,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
-import org.graalvm.word.restricted.ObjectAccess;
 
 /**
  * Implementation of the write barriers for the G1 garbage collector.
@@ -121,7 +121,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                     int traceStartCycle, Counters counters) {
         Word thread = getThread();
         verifyOop(object);
-        Word field = ObjectAccess.fromAddress(address);
+        Word field = Word.from(address);
         byte markingValue = thread.readByte(satbQueueMarkingActiveOffset(), SATB_QUEUE_MARKING_ACTIVE_LOCATION);
 
         boolean trace = isTracingActive(traceStartCycle);
@@ -184,7 +184,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
         Pointer oop;
         if (usePrecise) {
-            oop = ObjectAccess.fromAddress(address);
+            oop = Word.from(address);
         } else {
             if (verifyBarrier()) {
                 verifyNotArray(object);
@@ -267,7 +267,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         Word indexAddress = thread.add(satbQueueIndexOffset());
         long indexValue = indexAddress.readWord(0, SATB_QUEUE_INDEX_LOCATION).rawValue();
         long scale = objectArrayIndexScale();
-        Word start = getPointerToFirstArrayElement(ObjectAccess.fromAddress(address), length, elementStride);
+        Word start = getPointerToFirstArrayElement(Word.from(address), length, elementStride);
 
         for (int i = 0; GraalDirectives.injectIterationCount(10, i < length); i++) {
             Word arrElemPtr = start.add(Word.unsigned(i * scale));
@@ -294,7 +294,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         }
 
         Word base = cardTableBase();
-        Word addr = ObjectAccess.fromAddress(address);
+        Word addr = Word.from(address);
         Word start = base.add(cardTableOffset(getPointerToFirstArrayElement(addr, length, elementStride)));
         Word end = base.add(cardTableOffset(getPointerToLastArrayElement(addr, length, elementStride)));
 
