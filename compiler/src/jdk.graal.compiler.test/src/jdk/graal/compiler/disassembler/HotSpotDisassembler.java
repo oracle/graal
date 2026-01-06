@@ -27,6 +27,7 @@ package jdk.graal.compiler.disassembler;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -164,6 +165,8 @@ public class HotSpotDisassembler implements Disassembler {
             instructions.add(new DecodedInstruction(currentAddress, size, dis[0], dis.length == 2 ? dis[1] : "", bytes));
         }
 
+        static final Pattern instPattern = Pattern.compile("\\.inst\\s+0x0000([0-9a-fA-F]{4})");
+
         /**
          * Get the currently collected disassembly output.
          */
@@ -176,11 +179,26 @@ public class HotSpotDisassembler implements Disassembler {
             if (idx == -1) {
                 idx = disassembly.indexOf(" ; undefined");
             }
+
+            String result;
             if (idx >= 0) {
-                return disassembly.substring(0, idx).trim();
+                result = disassembly.substring(0, idx).trim();
             } else {
-                return disassembly.toString().trim();
+                result = disassembly.toString().trim();
             }
+            if (currentArchitecture == Architecture.AArch64) {
+                // Some binutils versions use udf instead of instead .inst so try to be consistent
+                Matcher matcher = instPattern.matcher(result);
+                StringBuilder udf = new StringBuilder();
+                while (matcher.find()) {
+                    String hex = matcher.group(1);
+                    int num = Integer.parseUnsignedInt(hex, 16);
+                    matcher.appendReplacement(udf, "udf #" + num);
+                }
+                matcher.appendTail(udf);
+                result = udf.toString();
+            }
+            return result;
         }
 
         /**
