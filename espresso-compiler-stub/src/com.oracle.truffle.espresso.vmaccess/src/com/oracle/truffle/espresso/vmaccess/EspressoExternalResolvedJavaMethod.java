@@ -222,7 +222,7 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
 
     @Override
     protected boolean hasAnnotations() {
-        throw JVMCIError.unimplemented();
+        return getAccess().hasAnnotations(methodMirror);
     }
 
     @Override

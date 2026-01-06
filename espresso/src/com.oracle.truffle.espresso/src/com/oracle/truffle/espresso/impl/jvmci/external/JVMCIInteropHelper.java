@@ -106,6 +106,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.NEW_OBJECT_ARRAY,
                         InvokeMember.NEW_PRIMITIVE_ARRAY,
                         InvokeMember.GET_RAW_ANNOTATION_BYTES,
+                        InvokeMember.HAS_ANNOTATIONS,
                         InvokeMember.GET_DECLARED_TYPES,
                         InvokeMember.COPY_BYTE_ARRAY,
         };
@@ -154,6 +155,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String NEW_OBJECT_ARRAY = "newObjectArray";
         static final String NEW_PRIMITIVE_ARRAY = "newPrimitiveArray";
         static final String GET_RAW_ANNOTATION_BYTES = "getRawAnnotationBytes";
+        static final String HAS_ANNOTATIONS = "hasAnnotations";
         static final String GET_DECLARED_TYPES = "getDeclaredTypes";
         static final String COPY_BYTE_ARRAY = "copyByteArray";
 
@@ -690,6 +692,24 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                 return StaticObject.NULL;
             }
             return new TruffleReadOnlyBytes(bytes);
+        }
+
+        @Specialization(guards = "HAS_ANNOTATIONS.equals(member)")
+        static boolean hasAnnotations(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
+            if (arguments.length != 1) {
+                arityError.enter(node);
+                throw ArityException.create(1, 1, arguments.length);
+            }
+            if (!(arguments[0] instanceof AttributedElement element)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an espresso klass, method, or field as first argument");
+            }
+            return JVMCIUtils.getRawAnnotationBytes(element, JVMCIUtils.DECLARED_ANNOTATIONS, EspressoContext.get(node).getMeta()) != null;
         }
 
         @Specialization(guards = "GET_DECLARED_TYPES.equals(member)")
