@@ -263,6 +263,9 @@ public interface InsightAPI {
              * </ul>
              *
              * @return map of attributes or {@code null}
+             * @since 1.3
+             * @see OnConfig#reads
+             * @see OnConfig#writes
              */
             Map<String, Object> attributes();
         }
@@ -289,7 +292,17 @@ public interface InsightAPI {
         public boolean expressions;
         public boolean statements;
         public boolean roots;
+        /** Enable Insight on local variable write locations. The {@link OnEventHandler.Context#attributes}
+         * shall then contain attribute named {@link StandardTags.WriteVariableTag#NAME}.
+         * @see OnEventHandler.Context#attributes
+         * @since 1.3
+         */
         public boolean writes;
+        /** Enable insight on local variable reads locations. The {@link OnEventHandler.Context#attributes}
+         * shall then contain attribute named {@link StandardTags.ReadVariableTag#NAME}.
+         * @see OnEventHandler.Context#attributes
+         * @since 1.3
+         */
         public boolean reads;
 
         /** String with a regular expression to match name of functions.
