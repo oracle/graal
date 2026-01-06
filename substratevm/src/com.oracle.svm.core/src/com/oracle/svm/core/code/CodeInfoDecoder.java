@@ -817,7 +817,7 @@ public final class CodeInfoDecoder {
     /**
      * This limited implementation of {@code FrameInfoDecoder.ValueInfoAllocator} doesn't need to
      * allocate anything at runtime but only supports a limited number of
-     * {@link FrameInfoQueryResult.ValueInfo} objects (20).
+     * {@link FrameInfoQueryResult.ValueInfo} objects.
      * <p>
      * Those objects are re-used so they should not be held onto cross calls to
      * {@link #newValueInfoArray}.
@@ -829,7 +829,6 @@ public final class CodeInfoDecoder {
      * objects).
      */
     public static final class SingleShotValueInfoAllocator implements FrameInfoDecoder.ValueInfoAllocator {
-        private static final int NUM_PREALLOCATED_VALUE_INFO = 20;
         /**
          * The pre-allocated array to be returned by {@code #newValueInfoArray}.
          */
@@ -841,8 +840,8 @@ public final class CodeInfoDecoder {
         private int nextPreAllocatedValueInfo;
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        public SingleShotValueInfoAllocator() {
-            valueInfos = new FrameInfoQueryResult.ValueInfo[NUM_PREALLOCATED_VALUE_INFO];
+        public SingleShotValueInfoAllocator(int numValueInfos) {
+            valueInfos = new FrameInfoQueryResult.ValueInfo[numValueInfos];
             preAllocatedValueInfos = new FrameInfoQueryResult.ValueInfo[valueInfos.length];
             for (int i = 0; i < preAllocatedValueInfos.length; i++) {
                 preAllocatedValueInfos[i] = new FrameInfoQueryResult.ValueInfo();

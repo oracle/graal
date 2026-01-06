@@ -1668,6 +1668,7 @@ suite = {
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
+                    "jdk.vm.ci.code.site",
                 ],
                 "java.base" : [
                     "jdk.internal.misc", # Unsafe
