@@ -25,7 +25,8 @@
 package org.graalvm.tools.insight.test;
 
 // @formatter:off // @replace regex='.*' replacement=''
-import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.WriteVariableTag;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -257,9 +258,9 @@ public interface InsightAPI {
              * Examples:
              * <ul>
              *   <li>In case of {@code reads: true} event, the attribute
-             * {@link StandardTags.ReadVariableTag#NAME} is available.</li>
+             * {@link ReadVariableTag#NAME} is available.</li>
              *   <li>In case of {@code writes: true} event, the attribute
-             * {@link StandardTags.WriteVariableTag#NAME} is available</li>
+             * {@link WriteVariableTag#NAME} is available</li>
              * </ul>
              *
              * @return map of attributes or {@code null}
@@ -293,13 +294,13 @@ public interface InsightAPI {
         public boolean statements;
         public boolean roots;
         /** Enable Insight on local variable write locations. The {@link OnEventHandler.Context#attributes}
-         * shall then contain attribute named {@link StandardTags.WriteVariableTag#NAME}.
+         * shall then contain attribute named {@link WriteVariableTag#NAME}.
          * @see OnEventHandler.Context#attributes
          * @since 1.3
          */
         public boolean writes;
         /** Enable insight on local variable reads locations. The {@link OnEventHandler.Context#attributes}
-         * shall then contain attribute named {@link StandardTags.ReadVariableTag#NAME}.
+         * shall then contain attribute named {@link ReadVariableTag#NAME}.
          * @see OnEventHandler.Context#attributes
          * @since 1.3
          */
