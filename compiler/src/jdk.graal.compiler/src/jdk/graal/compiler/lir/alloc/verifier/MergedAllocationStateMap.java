@@ -80,8 +80,7 @@ public class MergedAllocationStateMap {
     }
 
     public AllocationState get(Value key) {
-        String keyString = this.getValueKeyString(key);
-        return internalMap.get(keyString);
+        return this.get(key, AllocationState.getDefault());
     }
 
     public AllocationState get(Value key, AllocationState defaultValue) {

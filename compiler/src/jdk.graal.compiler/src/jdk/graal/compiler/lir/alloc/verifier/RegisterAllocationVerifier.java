@@ -33,8 +33,7 @@ public final class RegisterAllocationVerifier {
     public Map<Variable, Variable> usageAliasMap;
 
     // FromPredecessors resolver
-    public BlockMap<MergedBlockVerifierState> blockDefinitions;
-    public BlockMap<Set<Value>> blockDefinitions2;
+    public BlockMap<Set<Value>> blockDefinitions;
 
     public RegisterAllocationVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, PhiResolution phiResolution) {
         this.lir = lir;
@@ -362,7 +361,6 @@ public final class RegisterAllocationVerifier {
                     continue;
                 }
 
-                // TODO: maybe we just need the locations to have size 1 to stop
                 locations.retainAll(varLoc);
             }
 
@@ -419,18 +417,18 @@ public final class RegisterAllocationVerifier {
         var propagateMap = new HashMap<BasicBlock<?>, List<Variable>>();
         var variableToRegisters = new HashMap<Variable, RegisterValue>();
         var defBlockVariablesToPropagate = new LinkedList<Variable>();
-        var defForEntry = this.blockDefinitions.get(defBlock);
+        // var defForEntry = this.blockDefinitions.get(defBlock);
         for (int i = 0; i < labelInstr.dests.count; i++) {
             var register = (RegisterValue) labelInstr.dests.curr[i];
             var variable = LIRValueUtil.asVariable(labelInstr.dests.orig[i]);
 
-            var registerDefinition = defForEntry.values.get(register);
-            if (registerDefinition.isUnknown()) {
-                defForEntry.values.put(register, new ValueAllocationState(variable));
-            }
+            // var registerDefinition = defForEntry.values.get(register);
+            // if (registerDefinition.isUnknown()) {
+            //     defForEntry.values.put(register, new ValueAllocationState(variable));
+            // }
 
             defBlockVariablesToPropagate.add(variable);
-            variableToRegisters.put(variable,  register);
+            variableToRegisters.put(variable, register);
         }
 
         Queue<BasicBlock<?>> worklist = new LinkedList<>();
@@ -462,14 +460,7 @@ public final class RegisterAllocationVerifier {
                 var variable = LIRValueUtil.asVariable(itToPropagate.next());
                 var register = variableToRegisters.get(variable);
 
-                var registerDefinition = def.values.get(register);
-                if (!registerDefinition.isUnknown() && registerDefinition instanceof ValueAllocationState valState && !valState.getValue().equals(variable)) {
-                    // This block has redefined the value of said register,
-                    // and we will not pass it further.
-                    continue;
-                }
-
-                if (this.blockDefinitions2.get(curr).contains(register)) {
+                if (def.contains(register)) {
                     continue;
                 }
 
@@ -764,17 +755,7 @@ public final class RegisterAllocationVerifier {
             // Currently only useful to this resolution type, but later
             // we should only go through instructions once and then just merge
             // with entry state and successors.
-            for (var blockId : this.lir.getBlocks()) {
-                var block = this.lir.getBlockById(blockId);
-                var instructions = this.blockInstructions.get(block);
-                var state = new MergedBlockVerifierState(phiResolution);
-                for (var instr : instructions) {
-                    state.update(instr);
-                }
-                this.blockDefinitions.put(block, state);
-            }
-
-            this.blockDefinitions2 = this.getDefinitionSets();
+            this.blockDefinitions = this.getDefinitionSets();
         }
 
         this.calculateEntryBlocks();
