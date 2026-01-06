@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -137,7 +137,7 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember implements Pr
         return newObjectTarget;
     }
 
-    Class<?> getDeclaringClassObject() {
+    public Class<?> getDeclaringClassObject() {
         return getDeclaringClass().getClassObject();
     }
 
@@ -151,6 +151,10 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember implements Pr
 
     boolean isStatic() {
         return Modifier.isStatic(modifiers);
+    }
+
+    public int getModifiers() {
+        return modifiers;
     }
 
     @Platforms(HOSTED_ONLY.class)

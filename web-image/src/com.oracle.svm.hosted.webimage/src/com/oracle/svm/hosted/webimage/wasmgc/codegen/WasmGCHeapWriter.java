@@ -718,7 +718,7 @@ public class WasmGCHeapWriter {
         try {
             return heap.hConstantReflection.readFieldValue(field, instance);
         } catch (AnalysisError.TypeNotFoundError ex) {
-            throw NativeImageHeap.reportIllegalType(ex.getType(), info);
+            throw heap.reportIllegalType(ex.getType(), info);
         }
     }
 

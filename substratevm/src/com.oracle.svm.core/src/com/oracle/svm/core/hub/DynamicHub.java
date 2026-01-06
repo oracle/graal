@@ -460,7 +460,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         Object loader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
         Object classData = SharedSecrets.getJavaLangAccess().classData(hostedJavaClass);
         this.companion = DynamicHubCompanion.createHosted(hostedJavaClass.getModule(), superType, sourceFileName,
-                        modifiers, loader, nestHost, simpleBinaryName, declaringClass, signature, classData);
+                        modifiers, loader, nestHost, simpleBinaryName, declaringClass, signature, classData, this);
     }
 
     /**
