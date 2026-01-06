@@ -6,7 +6,6 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRValueUtil;
-import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.Variable;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
@@ -33,7 +32,9 @@ public final class RegisterAllocationVerifier {
     public Map<Variable, Variable> usageAliasMap;
 
     // FromPredecessors resolver
-    public BlockMap<Set<Value>> blockDefinitions;
+    public BlockMap<DefinitionSet> blockDefinitions;
+
+    public FromUsageResolver fromUsageResolver;
 
     public RegisterAllocationVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, PhiResolution phiResolution) {
         this.lir = lir;
@@ -50,6 +51,8 @@ public final class RegisterAllocationVerifier {
         this.labelMap = new HashMap<>();
         this.variableRegisterMap = new HashMap<>();
         this.usageAliasMap = new HashMap<>();
+
+        this.fromUsageResolver = new FromUsageResolver(lir, blockInstructions);
     }
 
     private boolean doPrecessorsHaveStates(BasicBlock<?> block) {
@@ -62,241 +65,12 @@ public final class RegisterAllocationVerifier {
         return true;
     }
 
-    private RegisterValue getRegisterFromUsage(
-            LinkedList<BasicBlock<?>> path,
-            BasicBlock<?> defBlock,
-            RAVInstruction.Base usageInstruction,
-            RegisterValue register,
-            Variable variable
-    ) {
-        while (!path.isEmpty()) {
-            var block = path.peek();
-            if (block == defBlock) {
-                break;
-            }
-
-            path.poll();
-        }
-
-        Value stackSlot = null;
-        boolean reachedUsage = false;
-        for (var block : path.reversed()) { // TODO: reconsider circular paths
-            var instructions = this.blockInstructions.get(block).reversed();
-            for (var instruction : instructions) {
-                if (instruction == usageInstruction) {
-                    reachedUsage = true;
-                    continue;
-                }
-
-                if (!reachedUsage) {
-                    continue;
-                }
-
-                // Tracking the value bottom up, from the usage up to the label definition
-                // looking for any changes to the target register that could highlight
-                // different register is supposed to be used, in case of reload/spill combo or
-                // register move. If we are wrong about the target register then, it will
-                // get thrown out in the verification stage. TODO: maybe try to use multiple usages to be sure?
-                switch (instruction) {
-                    case RAVInstruction.Spill spill -> {
-                        if (spill.to.equals(stackSlot)) {
-                            register = spill.from;
-                        }
-                    }
-                    case RAVInstruction.Move move -> {
-                        if (move.to.equals(register)) {
-                            register = move.from;
-                        }
-                    }
-                    case RAVInstruction.Reload reload -> {
-                        if (reload.to.equals(register)) {
-                            register = null; // No longer holds the variable
-                            stackSlot = reload.from;
-                        }
-                    }
-                    case RAVInstruction.VirtualMove move -> {
-                        if (move.location.equals(register) && !move.variableOrConstant.equals(variable)) {
-                            throw new Error("Target register has different variable."); // TODO: deal with this when we find an example
-                        }
-                    }
-                    // For Op, if there is a redefinition, we let the later stages handle that
-                    default -> {
-                    }
-                }
-            }
-        }
-
-        return register;
-    }
-
-    private void mapLabelVariableFromUsage(
-            // @formatter:off
-            Map<RAVInstruction.Op, BasicBlock<?>> labelToBlockMap,
-            Variable variable, RegisterValue regGuess,
-            LinkedList<BasicBlock<?>> path, RAVInstruction.Base useInstruction)
-            // @formatter:on
-    {
-        var variableLabelInstr = this.labelMap.get(variable);
-        if (variableLabelInstr == null) {
-            return;
-        }
-
-        var labelBlock = labelToBlockMap.get(variableLabelInstr);
-        var register = this.getRegisterFromUsage(path, labelBlock, useInstruction, regGuess, variable);
-
-        this.variableRegisterMap.put(variable, register);
-        this.labelMap.remove(variable);
-        this.usageAliasMap.remove(variable);
-
-        for (int j = 0; j < variableLabelInstr.dests.count; j++) {
-            if (variableLabelInstr.dests.orig[j].equals(variable)) {
-                variableLabelInstr.dests.curr[j] = register;
-
-                // Need to iterate over predecessors and fill jumps as well
-                for (int k = 0; k < labelBlock.getPredecessorCount(); k++) {
-                    var pred = labelBlock.getPredecessorAt(k);
-                    var jumpOp = (RAVInstruction.Op) this.blockInstructions.get(pred).getLast();
-                    jumpOp.alive.curr[j] = register;
-                }
-            }
-        }
-
-        for (var aliasEntry : this.usageAliasMap.entrySet()) {
-            var originalVariable = LIRValueUtil.asVariable(aliasEntry.getValue());
-            if (!originalVariable.equals(variable)) {
-                continue;
-            }
-
-            var aliasVariable = LIRValueUtil.asVariable(aliasEntry.getKey());
-            var aliasLabelInstr = this.labelMap.get(aliasVariable);
-            if (aliasLabelInstr == null) {
-                continue;
-            }
-
-            this.labelMap.remove(aliasVariable);
-
-            var aliasLabelBlock = labelToBlockMap.get(aliasLabelInstr);
-            for (int j = 0; j < aliasLabelInstr.dests.count; j++) {
-                if (aliasLabelInstr.dests.orig[j].equals(aliasVariable)) {
-                    aliasLabelInstr.dests.curr[j] = register;
-
-                    // Need to iterate over predecessors and fill jumps as well
-                    for (int k = 0; k < aliasLabelBlock.getPredecessorCount(); k++) {
-                        var pred = aliasLabelBlock.getPredecessorAt(k);
-                        var jumpOp = (RAVInstruction.Op) this.blockInstructions.get(pred).getLast();
-                        jumpOp.alive.curr[j] = register;
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Resolves label variable registers by finding where they are used.
-     */
-    private void resolvePhiFromUsage() {
-        Queue<LinkedList<BasicBlock<?>>> worklist = new LinkedList<>();
-
-        // TODO: need to store paths in a more memory friendly way
-        // because we always copy the whole path when entering successor
-        // which is unnecessary and explodes in memory usage, making
-        // this method by far the most resource demanding, while
-        // not being the best.
-
-        LinkedList<BasicBlock<?>> firstPath = new LinkedList<>();
-        firstPath.add(this.lir.getControlFlowGraph().getStartBlock());
-        worklist.add(firstPath);
-
-        Map<RAVInstruction.Op, BasicBlock<?>> labelToBlockMap = new HashMap<>();
-
-        Set<BasicBlock<?>> visited = new HashSet<>();
-        while (!worklist.isEmpty()) {
-            var path = worklist.poll();
-            var block = path.getLast();
-
-            if (visited.contains(block)) {
-                // TODO: for some reason blocks that were already visited
-                // are present here which causes few issues.
-                continue;
-            }
-
-            visited.add(block);
-
-            var instructions = this.blockInstructions.get(block);
-            var labelInstr = (RAVInstruction.Op) instructions.getFirst();
-            for (int i = 0; i < labelInstr.dests.count; i++) {
-                if (labelInstr.dests.curr[i] == null) {
-                    Variable variable = LIRValueUtil.asVariable(labelInstr.dests.orig[i]);
-                    this.labelMap.put(variable, labelInstr);
-                    labelToBlockMap.put(labelInstr, block);
-                }
-            }
-
-            for (var instruction : instructions) {
-                switch (instruction) {
-                    case RAVInstruction.VirtualMove move -> {
-                        if (LIRValueUtil.isVariable(move.variableOrConstant) && move.location instanceof RegisterValue register) {
-                            this.mapLabelVariableFromUsage(labelToBlockMap, LIRValueUtil.asVariable(move.variableOrConstant), register, path, instruction);
-                        }
-                    }
-                    case RAVInstruction.Op op -> {
-                        for (int i = 0; i < op.uses.count; i++) {
-                            if (LIRValueUtil.isVariable(op.uses.orig[i]) && op.uses.curr[i] instanceof RegisterValue register) {
-                                this.mapLabelVariableFromUsage(labelToBlockMap, LIRValueUtil.asVariable(op.uses.orig[i]), register, path, instruction);
-                            }
-                        }
-
-                        if (instruction.lirInstruction instanceof StandardOp.JumpOp) {
-                            // Always only one successor for this jump op
-                            // Assumption here is, that we resolve aliases with original registers immediately
-                            // so in-case an alias was defined after that happened, it's not resolved and will fail.
-                            var label = (RAVInstruction.Op) this.blockInstructions.get(block.getSuccessorAt(0)).getFirst();
-                            for (int i = 0; i < op.alive.count; i++) {
-                                if (!LIRValueUtil.isVariable(op.alive.orig[i])) {
-                                    continue;
-                                }
-
-                                var variable = LIRValueUtil.asVariable(op.alive.orig[i]);
-                                if (this.labelMap.get(variable) != null) {
-                                    this.usageAliasMap.put(variable, LIRValueUtil.asVariable(label.dests.orig[i]));
-                                }
-                            }
-                        } else {
-                            for (int i = 0; i < op.alive.count; i++) {
-                                if (LIRValueUtil.isVariable(op.alive.orig[i]) && op.alive.curr[i] instanceof RegisterValue register) {
-                                    this.mapLabelVariableFromUsage(labelToBlockMap, LIRValueUtil.asVariable(op.alive.orig[i]), register, path, instruction);
-                                }
-                            }
-                        }
-                    }
-                    default -> {
-                    }
-                }
-            }
-
-            for (int i = 0; i < block.getSuccessorCount(); i++) {
-                var succ = block.getSuccessorAt(i);
-                if (visited.contains(succ)) {
-                    continue;
-                }
-
-                var nextPath = new LinkedList<>(path);
-                nextPath.add(succ);
-                worklist.add(nextPath);
-            }
-        }
-
-        // We no longer throw an error when label map is not empty
-        // because if such thing happens, then variable was not used,
-        // and thus we cannot determine its location.
-    }
-
-    public BlockMap<Set<Value>> getDefinitionSets() {
-        BlockMap<Set<Value>> blockDefinitions = new BlockMap<>(this.lir.getControlFlowGraph());
+    public BlockMap<DefinitionSet> getDefinitionSets() {
+        BlockMap<DefinitionSet> blockDefinitions = new BlockMap<>(this.lir.getControlFlowGraph());
         for (var blockId : lir.getBlocks()) {
             var block = lir.getBlockById(blockId);
             var instructions = blockInstructions.get(block);
-            Set<Value> definitions = new HashSet<>();
+            var definitions = new DefinitionSet();
 
             for (var instruction : instructions) {
                 switch (instruction) {
@@ -387,7 +161,7 @@ public final class RegisterAllocationVerifier {
 
                     if (location == null) {
                         location = blockReg;
-                    } else if (location.equals(blockReg)) {
+                    } else if (!location.equals(blockReg)) {
                         // Not same for all blocks, so none choosen.
                         return false;
                     }
@@ -417,15 +191,9 @@ public final class RegisterAllocationVerifier {
         var propagateMap = new HashMap<BasicBlock<?>, List<Variable>>();
         var variableToRegisters = new HashMap<Variable, RegisterValue>();
         var defBlockVariablesToPropagate = new LinkedList<Variable>();
-        // var defForEntry = this.blockDefinitions.get(defBlock);
         for (int i = 0; i < labelInstr.dests.count; i++) {
             var register = (RegisterValue) labelInstr.dests.curr[i];
             var variable = LIRValueUtil.asVariable(labelInstr.dests.orig[i]);
-
-            // var registerDefinition = defForEntry.values.get(register);
-            // if (registerDefinition.isUnknown()) {
-            //     defForEntry.values.put(register, new ValueAllocationState(variable));
-            // }
 
             defBlockVariablesToPropagate.add(variable);
             variableToRegisters.put(variable, register);
@@ -465,10 +233,6 @@ public final class RegisterAllocationVerifier {
                 }
 
                 variablesToBePropagated.add(variable);
-
-                if (state != null) {
-                    state.values.put(register, new ValueAllocationState(variable));
-                }
             }
 
             if (variablesToBePropagated.isEmpty()) {
@@ -748,7 +512,7 @@ public final class RegisterAllocationVerifier {
 
     public boolean run() {
         if (this.phiResolution == PhiResolution.FromUsage) {
-            this.resolvePhiFromUsage();
+            this.fromUsageResolver.resolvePhiFromUsage();
         }
 
         if (this.phiResolution == PhiResolution.FromPredecessors) {
