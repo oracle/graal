@@ -296,7 +296,7 @@ public class RistrettoUtils {
             return;
         }
         InterpreterResolvedObjectType t = (InterpreterResolvedObjectType) iType;
-        Log.log().string("Dumping vtable ").string(t.getName()).newline();
+        Log.log().string("Dumping vtable ").string(t.toClassName()).newline();
         InterpreterResolvedJavaMethod[] table = t.getVtable();
         if (table == null) {
             Log.log().string("No vtable found").newline();
@@ -314,7 +314,7 @@ public class RistrettoUtils {
 
                 jitEntryPoint = Word.pointer(rMethod.installedCode.getEntryPoint());
             }
-            Log.log().string("\tslot=").signed(method.getVTableIndex()).string(" -> ").string(method.getDeclaringClass().getName()).string("::").string(method.getName()).string(", AOT addr=")
+            Log.log().string("\tslot=").signed(method.getVTableIndex()).string(" -> ").string(method.getDeclaringClass().toClassName()).string("::").string(method.getName()).string(", AOT addr=")
                             .hex(method.getNativeEntryPoint()).string(", JIT addr=").hex(jitEntryPoint).newline();
         }
     }
