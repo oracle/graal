@@ -27,14 +27,19 @@ package jdk.graal.compiler.nodes.extended;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.OrderedMemoryAccess;
@@ -45,14 +50,13 @@ import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Lowerable;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Read a raw memory location according to Java field or array read semantics. It will perform read
  * barriers, implicit conversions and optionally oop uncompression.
  */
+@NodeIntrinsicFactory
 @NodeInfo(nameTemplate = "JavaRead#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
 public class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode, Canonicalizable, OrderedMemoryAccess, SingleMemoryKill {
 
@@ -111,5 +115,17 @@ public class JavaReadNode extends FixedAccessNode implements Lowerable, Guarding
     @Override
     public MemoryOrderMode getMemoryOrder() {
         return memoryOrder;
+    }
+
+    @NodeIntrinsic
+    public static native Object readObject(Object base, long offset, @ConstantNodeParameter BarrierType barrierType, @ConstantNodeParameter LocationIdentity locationIdentity);
+
+    public static boolean intrinsify(GraphBuilderContext b, ValueNode base, ValueNode offset, BarrierType barrierType, LocationIdentity locationIdentity) {
+        // Since the return value of the NodeIntrinsic must match the JavaKind, assume
+        // JavaKind.Object for now. This could be generalized if necessary.
+        JavaKind javaKind = JavaKind.Object;
+        OffsetAddressNode address = b.add(new OffsetAddressNode(base, offset));
+        b.push(javaKind, b.add(new JavaReadNode(javaKind, address, locationIdentity, barrierType, MemoryOrderMode.PLAIN, true)));
+        return true;
     }
 }

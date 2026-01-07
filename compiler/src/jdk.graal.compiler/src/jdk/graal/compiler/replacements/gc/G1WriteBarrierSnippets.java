@@ -37,6 +37,7 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
@@ -46,6 +47,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.gc.G1ArrayRangePostWriteBarrierNode;
 import jdk.graal.compiler.nodes.gc.G1ArrayRangePreWriteBarrierNode;
@@ -141,7 +143,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             // The load is always issued except the cases of CAS and referent field.
             Object previousObject;
             if (doLoad) {
-                previousObject = field.readObjectNoBarrier(0, LocationIdentity.any());
+                previousObject = JavaReadNode.readObject(field, 0, BarrierType.NONE, LocationIdentity.any());
                 if (trace) {
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(previousObject).rawValue());
                     verifyOop(previousObject);
@@ -269,7 +271,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
         for (int i = 0; GraalDirectives.injectIterationCount(10, i < length); i++) {
             Word arrElemPtr = start.add(Word.unsigned(i * scale));
-            Object previousObject = arrElemPtr.readObjectNoBarrier(0, LocationIdentity.any());
+            Object previousObject = JavaReadNode.readObject(arrElemPtr, 0, BarrierType.NONE, LocationIdentity.any());
             verifyOop(previousObject);
             if (probability(FREQUENT_PROBABILITY, previousObject != null)) {
                 if (probability(FREQUENT_PROBABILITY, indexValue != 0)) {

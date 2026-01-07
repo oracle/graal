@@ -260,12 +260,6 @@ public final class Word implements SignedWord, UnsignedWord, Pointer {
     @Operation(opcode = Word.Opcode.READ_POINTER)
     public native Object readObject(WordBase offset, LocationIdentity locationIdentity);
 
-    /**
-     * Reads the object value at {@code offset} without performing any read-barrier.
-     */
-    @Operation(opcode = Word.Opcode.READ_HEAP)
-    public native Object readObjectNoBarrier(int offset, LocationIdentity locationIdentity);
-
     @Override
     @Operation(opcode = Word.Opcode.READ_POINTER)
     public native byte readByte(int offset, LocationIdentity locationIdentity);
@@ -1117,7 +1111,6 @@ public final class Word implements SignedWord, UnsignedWord, Pointer {
         READ_OBJECT,
         READ_BARRIERED,
         READ_BARRIERED_VOLATILE,
-        READ_HEAP,
         WRITE_POINTER,
         WRITE_POINTER_SIDE_EFFECT_FREE,
         WRITE_POINTER_VOLATILE,

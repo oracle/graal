@@ -31,7 +31,6 @@ import static org.graalvm.word.LocationIdentity.any;
 import java.util.Arrays;
 import java.util.Locale;
 
-import jdk.graal.compiler.core.common.memory.BarrierType;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.impl.Word;
 import org.graalvm.word.impl.Word.Opcode;
@@ -46,6 +45,7 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.Condition.CanonicalizedCondition;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -397,21 +397,6 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                     assert location != null : snippetReflection.asObject(Object.class, args[2].asJavaConstant());
                 }
                 b.push(returnKind, readVolatileOp(b, readKind, address, location, opcode));
-                break;
-            }
-            case READ_HEAP: {
-                assert NumUtil.assertArrayLength(args, 3, 4);
-                JavaKind readKind = wordTypes.asKind(wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass()));
-                AddressNode address = makeAddress(b, args[0], args[1]);
-                BarrierType barrierType = snippetReflection.asObject(BarrierType.class, args[2].asJavaConstant());
-                LocationIdentity location;
-                if (args.length == 3) {
-                    location = any();
-                } else {
-                    assert GraphUtil.assertIsConstant(args[3]);
-                    location = snippetReflection.asObject(LocationIdentity.class, args[3].asJavaConstant());
-                }
-                b.push(returnKind, readOp(b, readKind, address, location, barrierType, true));
                 break;
             }
 
