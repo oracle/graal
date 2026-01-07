@@ -83,7 +83,6 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-import org.graalvm.word.impl.ObjectAccess;
 
 /**
  * Simple mark-sweep garbage collector using tri-coloring for the WasmLM backend. Objects have one
@@ -368,7 +367,7 @@ public class WasmLMGC implements GC {
     private static void releaseSpace() {
         WasmHeap.getHeapImpl().walkCollectedHeapObjects(o -> {
             if (WasmObjectHeader.isWhiteObject(o)) {
-                WasmAllocation.logicalFree(ObjectAccess.objectToUntrackedPointer(o));
+                WasmAllocation.logicalFree(Word.objectToUntrackedPointer(o));
             } else {
                 VMError.guarantee(WasmObjectHeader.isBlackObject(o), "Found gray object after mark phase");
                 WasmObjectHeader.markWhite(o);
@@ -706,7 +705,7 @@ final class SizedObjectStack {
     public void push(Object o) {
         VMError.guarantee(hasSpace(), "Tried to push onto full stack");
         assert o != null;
-        stack[currentSize] = ObjectAccess.objectToUntrackedWord(o);
+        stack[currentSize] = Word.objectToUntrackedWord(o);
         currentSize++;
     }
 }

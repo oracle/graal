@@ -42,7 +42,6 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
-import org.graalvm.word.impl.ObjectAccess;
 import jdk.graal.compiler.word.WordOperationPlugin;
 
 /**
@@ -95,7 +94,7 @@ public abstract class ObjectHeader {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean verifyDynamicHubOffset(DynamicHub hub) {
-        long offsetFromHeapBase = ObjectAccess.objectToUntrackedPointer(hub).subtract(KnownIntrinsics.heapBase()).rawValue();
+        long offsetFromHeapBase = Word.objectToUntrackedPointer(hub).subtract(KnownIntrinsics.heapBase()).rawValue();
         verifyDynamicHubOffset(offsetFromHeapBase);
         return true;
     }
@@ -179,7 +178,7 @@ public abstract class ObjectHeader {
     private boolean isDynamicHub(Pointer potentialDynamicHub) {
         if (Heap.getHeap().isInImageHeap(potentialDynamicHub) || Metaspace.singleton().isInAllocatedMemory(potentialDynamicHub)) {
             Pointer potentialHubOfDynamicHub = readPotentialDynamicHubFromPointer(potentialDynamicHub);
-            return potentialHubOfDynamicHub.equal(ObjectAccess.objectToUntrackedPointer(DynamicHub.class));
+            return potentialHubOfDynamicHub.equal(Word.objectToUntrackedPointer(DynamicHub.class));
         }
         return false;
     }

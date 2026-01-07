@@ -54,7 +54,6 @@ import jdk.graal.compiler.hotspot.nodes.StubForeignCallNode;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.nodes.UnwindNode;
 import jdk.graal.compiler.options.OptionValues;
-import org.graalvm.word.impl.ObjectAccess;
 import jdk.vm.ci.code.Register;
 
 /**
@@ -77,7 +76,7 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
 
     @Snippet
     private static void unwindExceptionToCaller(Object exception, Word returnAddress, @ConstantParameter Register threadRegister) {
-        Pointer exceptionOop = ObjectAccess.objectToTrackedPointer(exception);
+        Pointer exceptionOop = Word.objectToTrackedPointer(exception);
         if (logging(GraalHotSpotVMConfig.INJECTED_OPTIONVALUES)) {
             printf("unwinding exception %p (", exceptionOop.rawValue());
             decipher(exceptionOop.rawValue());

@@ -65,7 +65,6 @@ import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.word.impl.ObjectAccess;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -720,7 +719,7 @@ public final class InterpreterToVM {
         VMError.guarantee(callTargetHub.isInterface() == isInvokeInterface || callTargetClass == Object.class);
 
         int vtableOffset = DynamicHubUtils.determineDispatchTableOffset(thisHub, callTargetHub, vTableIndex);
-        MethodRef vtableEntry = ObjectAccess.objectToTrackedPointer(thisHub).readWord(vtableOffset);
+        MethodRef vtableEntry = Word.objectToTrackedPointer(thisHub).readWord(vtableOffset);
         return getSVMVTableCodePointer(vtableEntry);
     }
 

@@ -46,8 +46,6 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.log.Log;
 
-import org.graalvm.word.impl.ObjectAccess;
-
 public class ThreadStackPrinter {
     /**
      * Number of pre-allocated ValueInfos used to provide the data necessary to print extra
@@ -161,7 +159,7 @@ public class ThreadStackPrinter {
             if (invocationCount >= 3) {
                 logJavaFrameMinimalInfo(log, sp, ip, codeInfo, deoptFrame, true);
                 log.string("CodeInfo ").zhex(codeInfo).string(", ");
-                log.string("DeoptimizedFrame ").zhex(ObjectAccess.objectToUntrackedPointer(deoptFrame));
+                log.string("DeoptimizedFrame ").zhex(Word.objectToUntrackedPointer(deoptFrame));
             } else {
                 if (expectedSP.isNonNull() && sp != expectedSP) {
                     logNativeFrame(log, expectedSP, ip, sp.subtract(expectedSP).rawValue());

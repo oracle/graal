@@ -36,7 +36,7 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_management_HiddenWait;
 
-import org.graalvm.word.impl.ObjectAccess;
+import org.graalvm.word.impl.Word;
 
 public class JavaMonitorWaitEvent {
     public static void emit(long startTicks, Object obj, long notifierTid, long timeout, boolean timedOut) {
@@ -61,7 +61,7 @@ public class JavaMonitorWaitEvent {
             JfrNativeEventWriter.putThread(data, notifierTid);
             JfrNativeEventWriter.putLong(data, timeout);
             JfrNativeEventWriter.putBoolean(data, timedOut);
-            JfrNativeEventWriter.putLong(data, ObjectAccess.objectToUntrackedPointer(obj).rawValue());
+            JfrNativeEventWriter.putLong(data, Word.objectToUntrackedPointer(obj).rawValue());
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }

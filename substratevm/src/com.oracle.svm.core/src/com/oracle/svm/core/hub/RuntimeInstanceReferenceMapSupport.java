@@ -46,7 +46,6 @@ import com.oracle.svm.core.util.ByteArrayReader;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
-import org.graalvm.word.impl.ObjectAccess;
 
 /**
  * Manages and deduplicates {@link InstanceReferenceMap}s for {@link DynamicHub}s that are loaded at
@@ -116,7 +115,7 @@ public class RuntimeInstanceReferenceMapSupport {
     private static int toCompressedOffset(byte[] metaspaceRefMapArray) {
         assert Metaspace.singleton().isInAddressSpace(metaspaceRefMapArray);
 
-        NonmovableArray<Byte> array = (NonmovableArray<Byte>) ObjectAccess.objectToUntrackedPointer(metaspaceRefMapArray);
+        NonmovableArray<Byte> array = (NonmovableArray<Byte>) Word.objectToUntrackedPointer(metaspaceRefMapArray);
         InstanceReferenceMap metaspaceMap = NonmovableArrays.getArrayBase(array);
         return InstanceReferenceMapEncoder.computeReferenceMapCompressedOffset(metaspaceMap);
     }

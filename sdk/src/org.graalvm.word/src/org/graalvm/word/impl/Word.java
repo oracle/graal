@@ -139,6 +139,79 @@ public final class Word implements SignedWord, UnsignedWord, Pointer {
         return box(val);
     }
 
+    /// Converts the [Object] value in `val` to a [Pointer] value representing the
+    /// object's current address. If the object is subsequently moved (e.g. by the garbage
+    /// collector), the returned pointer value is updated accordingly. If a derived pointer value is
+    /// obtained by applying pointer arithmetic to the returned pointer value, it will also be
+    /// updated accordingly. If derived pointers are not supported, an error is thrown. In the case
+    /// of Native Image, the error is thrown at build time.
+    ///
+    /// Examples of expected usage:
+    /// ```
+    /// // Pointer value is tracked across a garbage collection
+    /// Pointer oop = ObjectAccess.objectToTrackedPointer(obj);
+    /// System.gc();
+    /// Pointer oop2 = ObjectAccess.objectToTrackedPointer(obj);
+    /// assert oop.equal(oop2); // `oop` will have been updated if `obj` was moved
+    ///
+    /// // Derived pointer value is tracked across a garbage collection
+    /// Pointer oop = ObjectAccess.objectToTrackedPointer(obj);
+    /// Pointer derived1 = oop.add(1);
+    /// Pointer derived2 = oop.add(7);
+    /// assert derived1.equal(oop.add(1)); // No safepoint between def and use of derived1
+    /// System.gc();
+    /// Pointer oop2 = ObjectAccess.objectToTrackedPointer(obj);
+    /// assert oop.equal(oop2);
+    /// assert derived2.equal(oop2.add(7)); // JIT: ok, Native Image: build failure
+    /// ```
+    ///
+    /// This is an optional operation that will throw an [UnsatisfiedLinkError] if
+    /// not supported.
+    ///
+    /// @see #objectToUntrackedPointer(Object)
+    @SuppressWarnings("unused")
+    @Operation(opcode = Opcode.OBJECT_TO_TRACKED)
+    public static native Pointer objectToTrackedPointer(Object val);
+
+    /**
+     * Same as {@link #objectToTrackedPointer(Object)} but with {@link Word} return type.
+     */
+    @SuppressWarnings("unused")
+    @Operation(opcode = Opcode.OBJECT_TO_TRACKED)
+    public static native Word objectToTrackedWord(Object val);
+
+    /// Converts the [Object] value in `val` to a [Pointer] value representing the
+    /// object's current address. If the object is subsequently moved (e.g. by the garbage
+    /// collector), the pointer value is not updated. As such, this method **must only be used when
+    /// the address is being used for purely informational purposes** (e.g. printing out the
+    /// object's address) or when the **caller guarantees the object will not be moved** (e.g. the
+    /// caller is part of the garbage collector implementation or the caller guarantees not to
+    /// use the value across a safepoint).
+    ///
+    /// Examples of expected usage:
+    /// ```
+    /// // Pointer value is not tracked across a garbage collection
+    /// Pointer oop = ObjectAccess.objectToUntrackedPointer(obj);
+    /// System.gc();
+    /// Pointer oop2 = ObjectAccess.objectToUntrackedPointer(obj);
+    /// if (oop.equal(oop2)) System.out.println(obj + " was moved");
+    /// ```
+    ///
+    /// This is an optional operation that will throw an [UnsatisfiedLinkError] if
+    /// not supported.
+    ///
+    /// @see #objectToTrackedPointer(Object)
+    @SuppressWarnings("unused")
+    @Operation(opcode = Opcode.OBJECT_TO_UNTRACKED)
+    public static native Pointer objectToUntrackedPointer(Object val);
+
+    /**
+     * Same as {@link #objectToUntrackedPointer(Object)} but with {@link Word} return type.
+     */
+    @SuppressWarnings("unused")
+    @Operation(opcode = Opcode.OBJECT_TO_UNTRACKED)
+    public static native Word objectToUntrackedWord(Object val);
+
     @Override
     @Operation(opcode = Word.Opcode.TO_OBJECT)
     public native Object toObject();

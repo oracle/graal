@@ -60,8 +60,6 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonTraits;
 
-import org.graalvm.word.impl.ObjectAccess;
-
 /**
  * Provides buffered, OS-independent operations on files. Most of the code is implemented in a way
  * that it can be used from uninterruptible code.
@@ -225,7 +223,7 @@ public class BufferedFileOperationSupport {
     public boolean write(BufferedFile f, byte[] data) {
         DynamicHub hub = KnownIntrinsics.readHub(data);
         UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
-        Pointer dataPtr = ObjectAccess.objectToUntrackedPointer(data).add(baseOffset);
+        Pointer dataPtr = Word.objectToUntrackedPointer(data).add(baseOffset);
         return write(f, dataPtr, Word.unsigned(data.length));
     }
 

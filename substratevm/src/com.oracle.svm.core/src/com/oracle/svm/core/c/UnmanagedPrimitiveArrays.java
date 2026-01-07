@@ -43,7 +43,6 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.word.impl.ObjectAccess;
 
 /**
  * Support for allocating and accessing primitive element arrays created in unmanaged memory. They
@@ -105,7 +104,7 @@ public final class UnmanagedPrimitiveArrays {
         DynamicHub destHub = KnownIntrinsics.readHub(dest);
         VMError.guarantee(LayoutEncoding.isPrimitiveArray(destHub.getLayoutEncoding()), "Copying is only supported for primitive arrays");
         VMError.guarantee(srcPos >= 0 && destPos >= 0 && length >= 0 && destPos + length <= ArrayLengthNode.arrayLength(dest));
-        Pointer destAddressAtPos = ObjectAccess.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));
+        Pointer destAddressAtPos = Word.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));
         Pointer srcAddressAtPos = getAddressOf(src, destHub.getLayoutEncoding(), srcPos);
         JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos, destAddressAtPos, Word.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(destHub.getLayoutEncoding())));
         return dest;
@@ -116,7 +115,7 @@ public final class UnmanagedPrimitiveArrays {
         DynamicHub destHub = KnownIntrinsics.readHub(dest);
         VMError.guarantee(LayoutEncoding.isPrimitiveArray(destHub.getLayoutEncoding()), "Copying is only supported for primitive arrays");
         VMError.guarantee(srcPos >= 0 && destPos >= 0 && length >= 0 && destPos + length <= ArrayLengthNode.arrayLength(dest));
-        Pointer destAddressAtPos = ObjectAccess.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));
+        Pointer destAddressAtPos = Word.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));
         Pointer srcAddressAtPos = getAddressOf(src, destHub.getLayoutEncoding(), srcPos);
 
         UnsignedWord size = Word.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(destHub.getLayoutEncoding()));
@@ -138,7 +137,7 @@ public final class UnmanagedPrimitiveArrays {
         DynamicHub srcHub = KnownIntrinsics.readHub(src);
         VMError.guarantee(LayoutEncoding.isPrimitiveArray(srcHub.getLayoutEncoding()), "Copying is only supported for primitive arrays");
         VMError.guarantee(srcPos >= 0 && destPos >= 0 && length >= 0 && srcPos + length <= ArrayLengthNode.arrayLength(src));
-        Pointer srcAddressAtPos = ObjectAccess.objectToUntrackedPointer(src).add(LayoutEncoding.getArrayElementOffset(srcHub.getLayoutEncoding(), srcPos));
+        Pointer srcAddressAtPos = Word.objectToUntrackedPointer(src).add(LayoutEncoding.getArrayElementOffset(srcHub.getLayoutEncoding(), srcPos));
         Pointer destAddressAtPos = getAddressOf(dest, srcHub.getLayoutEncoding(), destPos);
         JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos, destAddressAtPos, Word.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(srcHub.getLayoutEncoding())));
         return dest;

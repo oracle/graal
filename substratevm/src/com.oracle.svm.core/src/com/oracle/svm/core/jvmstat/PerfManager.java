@@ -54,7 +54,6 @@ import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.options.Option;
-import org.graalvm.word.impl.ObjectAccess;
 
 /**
  * Used to create and manage performance data entries.
@@ -126,7 +125,7 @@ public class PerfManager {
         waitForInitialization();
         PerfLong entry = longEntries.get(name);
         assert Heap.getHeap().isInImageHeap(entry);
-        return (CLongPointer) ObjectAccess.objectToUntrackedPointer(entry).add(Word.unsigned(PerfLong.VALUE_OFFSET));
+        return (CLongPointer) Word.objectToUntrackedPointer(entry).add(Word.unsigned(PerfLong.VALUE_OFFSET));
     }
 
     public boolean hasLongPerfEntry(String name) {

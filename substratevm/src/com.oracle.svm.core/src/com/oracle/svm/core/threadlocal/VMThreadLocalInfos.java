@@ -48,8 +48,6 @@ import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonTraits;
 
-import org.graalvm.word.impl.ObjectAccess;
-
 @AutomaticallyRegisteredImageSingleton
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class VMThreadLocalInfos {
@@ -82,7 +80,7 @@ public class VMThreadLocalInfos {
             } else if (info.threadLocalClass == FastThreadLocalObject.class) {
                 if (isJavaHeapAccessAllowed) {
                     Object value = readThreadLocalObject(threadLocals, info.offset);
-                    log.string("(Object) ").zhex(ObjectAccess.objectToUntrackedPointer(value));
+                    log.string("(Object) ").zhex(Word.objectToUntrackedPointer(value));
                     if (value != null) {
                         log.indent(true);
                         SubstrateDiagnostics.printObjectInfo(log, value);

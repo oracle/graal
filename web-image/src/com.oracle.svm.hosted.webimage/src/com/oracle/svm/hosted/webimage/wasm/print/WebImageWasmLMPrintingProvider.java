@@ -41,8 +41,6 @@ import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.webimage.print.WebImagePrintingProvider;
 
-import org.graalvm.word.impl.ObjectAccess;
-
 /**
  * Printing functionality for the Wasm backend.
  * <p>
@@ -57,7 +55,7 @@ public class WebImageWasmLMPrintingProvider extends WebImagePrintingProvider {
     public void print(Descriptor fd, char[] chars) {
         DynamicHub hub = KnownIntrinsics.readHub(chars);
         UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
-        CShortPointer dataPtr = (CShortPointer) ObjectAccess.objectToUntrackedPointer(chars).add(baseOffset);
+        CShortPointer dataPtr = (CShortPointer) Word.objectToUntrackedPointer(chars).add(baseOffset);
         WasmPrintNode.print(fd.num, 2, dataPtr, Word.unsigned(chars.length));
     }
 

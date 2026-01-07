@@ -93,7 +93,6 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.extended.MembarNode;
-import org.graalvm.word.impl.ObjectAccess;
 
 public final class HeapImpl extends Heap {
     /** Synchronization means for notifying {@link #refPendingList} waiters without deadlocks. */
@@ -158,7 +157,7 @@ public final class HeapImpl extends Heap {
         // This method is not really uninterruptible (mayBeInlined) but converts arbitrary objects
         // to pointers. An object that is outside the image heap may be moved by a GC but it will
         // never be moved into the image heap. So, this is fine.
-        return isInImageHeap(ObjectAccess.objectToUntrackedPointer(obj));
+        return isInImageHeap(Word.objectToUntrackedPointer(obj));
     }
 
     @Override
@@ -174,7 +173,7 @@ public final class HeapImpl extends Heap {
         // This method is not really uninterruptible (mayBeInlined) but converts arbitrary objects
         // to pointers. An object that is outside the image heap may be moved by a GC but it will
         // never be moved into the image heap. So, this is fine.
-        return isInPrimaryImageHeap(ObjectAccess.objectToUntrackedPointer(obj));
+        return isInPrimaryImageHeap(Word.objectToUntrackedPointer(obj));
     }
 
     @Override

@@ -47,7 +47,6 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
-import org.graalvm.word.impl.ObjectAccess;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
 import jdk.vm.ci.code.stack.StackIntrospection;
@@ -55,6 +54,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCI;
+import org.graalvm.word.impl.Word;
 
 public class SubstrateStackIntrospection implements StackIntrospection {
 
@@ -385,7 +385,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
                         result.append("  null");
                     } else {
                         result.append("  class: ").append(val.getClass().getName());
-                        result.append("  address: 0x").append(Long.toHexString(ObjectAccess.objectToUntrackedPointer(val).rawValue()));
+                        result.append("  address: 0x").append(Long.toHexString(Word.objectToUntrackedPointer(val).rawValue()));
                     }
                 } else {
                     result.append("  kind: ").append(con.getJavaKind().toString());

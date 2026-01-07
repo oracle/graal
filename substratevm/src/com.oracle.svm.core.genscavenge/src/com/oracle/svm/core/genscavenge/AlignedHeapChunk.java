@@ -40,7 +40,6 @@ import com.oracle.svm.core.util.PointerUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.impl.ObjectAccess;
 
 /**
  * An AlignedHeapChunk can hold many Objects.
@@ -131,7 +130,7 @@ public final class AlignedHeapChunk {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static AlignedHeader getEnclosingChunk(Object obj) {
         assert ObjectHeaderImpl.isAlignedObject(obj);
-        Pointer ptr = ObjectAccess.objectToUntrackedPointer(obj);
+        Pointer ptr = Word.objectToUntrackedPointer(obj);
         return getEnclosingChunkFromObjectPointer(ptr);
     }
 

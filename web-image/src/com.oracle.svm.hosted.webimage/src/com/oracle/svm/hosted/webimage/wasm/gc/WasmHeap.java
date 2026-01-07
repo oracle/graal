@@ -57,7 +57,6 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import org.graalvm.word.impl.ObjectAccess;
 
 /**
  * Equivalent of {@link HeapImpl} for the Wasm backend.
@@ -271,7 +270,7 @@ public class WasmHeap extends Heap {
         // This method is not really uninterruptible (mayBeInlined) but converts arbitrary objects
         // to pointers. An object that is outside the image heap may be moved by a GC but it will
         // never be moved into the image heap. So, this is fine.
-        return isInImageHeap(ObjectAccess.objectToUntrackedPointer(obj));
+        return isInImageHeap(Word.objectToUntrackedPointer(obj));
     }
 
     @Override
@@ -286,7 +285,7 @@ public class WasmHeap extends Heap {
         // This method is not really uninterruptible (mayBeInlined) but converts arbitrary objects
         // to pointers. An object that is outside the image heap may be moved by a GC but it will
         // never be moved into the image heap. So, this is fine.
-        return isInPrimaryImageHeap(ObjectAccess.objectToUntrackedPointer(obj));
+        return isInPrimaryImageHeap(Word.objectToUntrackedPointer(obj));
     }
 
     @Override

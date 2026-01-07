@@ -41,10 +41,10 @@
 
 /**
  * This package provides implementation support for word types as well as extra operations like
- * {@linkplain org.graalvm.word.impl.ObjectAccess#objectToUntrackedPointer(java.lang.Object)
- * converting an Object reference to a raw pointer}. Like <em>restricted</em> methods in the Java SE
- * API (e.g. {@link java.lang.foreign.MemorySegment#reinterpret(long)}), extra steps are required to
- * use the classes in this package (i.e., exporting {@code org.graalvm.word.impl} on the command
- * line with {@code --add-exports}).
+ * {@linkplain org.graalvm.word.impl.Word#objectToUntrackedPointer(Object) converting an Object
+ * reference to a raw pointer}. Like <em>restricted</em> methods in the Java SE API (e.g.
+ * {@link java.lang.foreign.MemorySegment#reinterpret(long)}), extra steps are required to use the
+ * classes in this package (i.e., exporting {@code org.graalvm.word.impl} on the command line with
+ * {@code --add-exports}).
  */
 package org.graalvm.word.impl;

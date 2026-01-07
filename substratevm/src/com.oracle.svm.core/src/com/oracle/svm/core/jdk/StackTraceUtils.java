@@ -66,7 +66,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.impl.ObjectAccess;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -513,8 +512,8 @@ final class BacktraceVisitor extends JavaStackFrameVisitor {
             VMError.guarantee((0xffffffff_00000000L & sourceMethodNameOop) == 0L, "Compressed source methode name reference with high bits");
             backtrace[pos + 1] = (sourceClassOop << 32) | sourceMethodNameOop;
         } else {
-            backtrace[pos + 1] = assertNonZero(ObjectAccess.objectToUntrackedPointer(sourceClass).rawValue());
-            backtrace[pos + 2] = assertNonZero(ObjectAccess.objectToUntrackedPointer(sourceMethodName).rawValue());
+            backtrace[pos + 1] = assertNonZero(Word.objectToUntrackedPointer(sourceClass).rawValue());
+            backtrace[pos + 2] = assertNonZero(Word.objectToUntrackedPointer(sourceMethodName).rawValue());
         }
     }
 

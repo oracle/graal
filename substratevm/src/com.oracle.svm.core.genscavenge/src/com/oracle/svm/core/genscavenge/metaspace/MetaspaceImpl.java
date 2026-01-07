@@ -54,7 +54,6 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
 import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.impl.ObjectAccess;
 
 /**
  * {@link Metaspace} implementation for serial and epsilon GC. The metaspace uses the same address
@@ -90,7 +89,7 @@ public class MetaspaceImpl implements Metaspace {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isInAllocatedMemory(Object obj) {
-        return isInAllocatedMemory(ObjectAccess.objectToTrackedPointer(obj));
+        return isInAllocatedMemory(Word.objectToTrackedPointer(obj));
     }
 
     @Override
@@ -102,7 +101,7 @@ public class MetaspaceImpl implements Metaspace {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isInAddressSpace(Object obj) {
-        return isInAddressSpace(ObjectAccess.objectToTrackedPointer(obj));
+        return isInAddressSpace(Word.objectToTrackedPointer(obj));
     }
 
     @Override

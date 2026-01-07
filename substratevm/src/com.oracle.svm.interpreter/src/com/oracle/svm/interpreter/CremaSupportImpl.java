@@ -133,10 +133,10 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 
 import jdk.graal.compiler.nodes.extended.MembarNode;
-import org.graalvm.word.impl.ObjectAccess;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.word.impl.Word;
 
 public class CremaSupportImpl implements CremaSupport {
     private static final int[] EMPTY_INT_ARRAY = new int[0];
@@ -498,7 +498,7 @@ public class CremaSupportImpl implements CremaSupport {
         int wordSize = ConfigurationValues.getTarget().wordSize;
         assert KnownOffsets.singleton().getVTableEntrySize() == wordSize : "only word size is implemented at the moment";
 
-        Pointer hubStart = ObjectAccess.objectToUntrackedPointer(hub);
+        Pointer hubStart = Word.objectToUntrackedPointer(hub);
         Pointer hubEnd = LayoutEncoding.getMetaspaceObjectEnd(hub);
 
         Pointer pos = hubStart.add(KnownOffsets.singleton().getVTableBaseOffset());

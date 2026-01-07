@@ -44,7 +44,7 @@ import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.impl.ObjectAccess;
+import org.graalvm.word.impl.Word;
 
 public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport {
     private final AtomicReference<PinnedObjectImpl> pinnedObjects = new AtomicReference<>();
@@ -181,7 +181,7 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
                 throw new UnsupportedOperationException("Pinned object addressing has been disabled.");
             }
             assert open : "Should not call addressOfObject() on a closed PinnedObject.";
-            return ObjectAccess.objectToUntrackedPointer(referent);
+            return Word.objectToUntrackedPointer(referent);
         }
 
         @Override

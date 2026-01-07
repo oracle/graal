@@ -28,7 +28,6 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.word.impl.Word;
-import org.graalvm.word.impl.ObjectAccess;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
@@ -57,9 +56,9 @@ import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
 /**
- * Casts between Word and Object exposed by the {@link ObjectAccess#objectToTrackedPointer},
- * {@link ObjectAccess#objectToUntrackedPointer} and {@link Word#toObject()} operations. It has an
- * impact on the pointer maps for the GC, so it must not be scheduled or optimized away.
+ * Casts between Word and Object exposed by the {@link Word#objectToTrackedPointer},
+ * {@link Word#objectToUntrackedPointer} and {@link Word#toObject()} operations. It has an impact on
+ * the pointer maps for the GC, so it must not be scheduled or optimized away.
  */
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 public final class WordCastNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable {

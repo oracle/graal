@@ -747,7 +747,7 @@ public class SubstrateDiagnostics {
                         if (threadObj == null) {
                             log.string(" null");
                         } else {
-                            log.string(" \"").string(threadObj.getName()).string("\" - ").zhex(ObjectAccess.objectToUntrackedPointer(threadObj));
+                            log.string(" \"").string(threadObj.getName()).string("\" - ").zhex(Word.objectToUntrackedPointer(threadObj));
                             if (threadObj.isDaemon()) {
                                 log.string(", daemon");
                             }

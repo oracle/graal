@@ -50,8 +50,8 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerO
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
-import org.graalvm.word.impl.ObjectAccess;
 import jdk.internal.misc.Unsafe;
+import org.graalvm.word.impl.Word;
 
 /**
  * Performs the initialization of the JNI function table structures at runtime.
@@ -145,7 +145,7 @@ public final class JNIFunctionTables {
     private static Pointer dataAddress(WordBase[] dataArray) {
         final DynamicHub hub = DynamicHub.fromClass(dataArray.getClass());
         final UnsignedWord offsetOfFirstArrayElement = LayoutEncoding.getArrayElementOffset(hub.getLayoutEncoding(), 0);
-        return ObjectAccess.objectToUntrackedPointer(dataArray).add(offsetOfFirstArrayElement);
+        return Word.objectToUntrackedPointer(dataArray).add(offsetOfFirstArrayElement);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

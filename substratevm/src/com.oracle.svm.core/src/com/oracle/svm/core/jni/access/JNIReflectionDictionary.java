@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.impl.ObjectAccess;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.configure.ClassNameSupport;
@@ -318,7 +317,7 @@ public final class JNIReflectionDictionary {
             return Word.zero();
         }
         assert Heap.getHeap().isInImageHeap(method);
-        return (JNIMethodId) ObjectAccess.objectToUntrackedPointer(method).subtract(KnownIntrinsics.heapBase());
+        return (JNIMethodId) Word.objectToUntrackedPointer(method).subtract(KnownIntrinsics.heapBase());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

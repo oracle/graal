@@ -56,7 +56,6 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.word.impl.ObjectAccess;
 
 /**
  * Support for allocating and accessing non-moving arrays. Such arrays are safe to access during
@@ -283,7 +282,7 @@ public final class NonmovableArrays {
         DynamicHub destHub = KnownIntrinsics.readHub(dest);
         assert LayoutEncoding.isArray(destHub.getLayoutEncoding()) && destHub == readHub(src) : "Copying is only supported for arrays with identical types";
         assert srcPos >= 0 && destPos >= 0 && length >= 0 && srcPos + length <= lengthOf(src) && destPos + length <= ArrayLengthNode.arrayLength(dest);
-        Pointer destAddressAtPos = ObjectAccess.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));
+        Pointer destAddressAtPos = Word.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));
         if (LayoutEncoding.isPrimitiveArray(destHub.getLayoutEncoding())) {
             Pointer srcAddressAtPos = addressOf(src, srcPos);
             JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos, destAddressAtPos, Word.unsigned(length << readElementShift(src)));
@@ -322,7 +321,7 @@ public final class NonmovableArrays {
             return new HostedNonmovableArray<>(array);
         }
         assert array == null || Heap.getHeap().isInImageHeap(array);
-        return (array != null) ? (NonmovableArray<T>) ObjectAccess.objectToUntrackedPointer(array) : Word.nullPointer();
+        return (array != null) ? (NonmovableArray<T>) Word.objectToUntrackedPointer(array) : Word.nullPointer();
     }
 
     /** Returns a {@link NonmovableObjectArray} for an object array in the image heap. */

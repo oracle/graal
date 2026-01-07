@@ -75,7 +75,7 @@ public final class ReferenceInternals {
     /** Barrier-less read of {@link Target_java_lang_ref_Reference#referent} as a pointer. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> Pointer getReferentPointer(Reference<T> instance) {
-        return ObjectAccess.objectToUntrackedPointer(ObjectAccess.readObject(instance, Word.signed(Target_java_lang_ref_Reference.referentFieldOffset)));
+        return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, Word.signed(Target_java_lang_ref_Reference.referentFieldOffset)));
     }
 
     @SuppressWarnings("unchecked")
@@ -121,7 +121,7 @@ public final class ReferenceInternals {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> Pointer getReferentFieldAddress(Reference<T> instance) {
-        return ObjectAccess.objectToUntrackedPointer(instance).add(Word.unsigned(Target_java_lang_ref_Reference.referentFieldOffset));
+        return Word.objectToUntrackedPointer(instance).add(Word.unsigned(Target_java_lang_ref_Reference.referentFieldOffset));
     }
 
     public static long getReferentFieldOffset() {
@@ -137,7 +137,7 @@ public final class ReferenceInternals {
     /** Barrier-less read of {@link Target_java_lang_ref_Reference#discovered} as a pointer. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> Pointer getDiscoveredPointer(Reference<T> instance) {
-        return ObjectAccess.objectToUntrackedPointer(ObjectAccess.readObject(instance, Word.signed(Target_java_lang_ref_Reference.discoveredFieldOffset)));
+        return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, Word.signed(Target_java_lang_ref_Reference.discoveredFieldOffset)));
     }
 
     public static long getQueueFieldOffset() {

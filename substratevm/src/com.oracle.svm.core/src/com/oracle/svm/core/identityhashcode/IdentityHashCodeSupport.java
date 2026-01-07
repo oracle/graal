@@ -91,7 +91,7 @@ public final class IdentityHashCodeSupport {
          * writing the object header to the object's previous location after is has been moved).
          */
         ObjectHeader oh = Heap.getHeap().getObjectHeader();
-        Word objPtr = ObjectAccess.objectToUntrackedWord(obj);
+        Word objPtr = Word.objectToUntrackedWord(obj);
         Word header = oh.readHeaderFromPointer(objPtr);
         if (oh.hasOptionalIdentityHashField(header)) {
             /*
@@ -108,7 +108,7 @@ public final class IdentityHashCodeSupport {
 
     @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.")
     public static int computeHashCodeFromAddress(Object obj) {
-        Word address = ObjectAccess.objectToUntrackedWord(obj);
+        Word address = Word.objectToUntrackedWord(obj);
         long salt = Heap.getHeap().getIdentityHashSalt(obj);
         SignedWord salted = Word.signed(salt).xor(address);
         int hash = mix32(salted.rawValue()) >>> 1; // shift: ensure positive, same as on HotSpot

@@ -91,7 +91,7 @@ public class ObjectPromoter {
          * references. That's okay, because all references in the copy are visited and overwritten
          * later on anyways (the card table is also updated at that point if necessary).
          */
-        Pointer originalMemory = ObjectAccess.objectToUntrackedPointer(originalObj);
+        Pointer originalMemory = Word.objectToUntrackedPointer(originalObj);
         UnmanagedMemoryUtil.copyLongsForward(originalMemory, copyMemory, originalSize);
 
         Object copy = copyMemory.toObjectNonNull();
