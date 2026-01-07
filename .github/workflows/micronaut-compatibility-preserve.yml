@@ -53,4 +53,4 @@ jobs:
   call-template:
     uses: './.github/workflows/micronaut-template.yml'
     with:
-      NATIVE_IMAGE_OPTIONS: '-H:+UnlockExperimentalVMOptions -H:+ReportExceptionStackTraces -H:+CompatibilityMode -H:Preserve=all -H:-UnlockExperimentalVMOptions'
+      NATIVE_IMAGE_OPTIONS: '-H:+UnlockExperimentalVMOptions -H:+ReportExceptionStackTraces -H:+PlatformInterfaceCompatibilityMode -H:+CompatibilityMode -H:Preserve=all -H:-UnlockExperimentalVMOptions'
