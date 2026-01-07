@@ -490,6 +490,12 @@ final class BytecodeNodeElement extends AbstractElement {
                         new String[]{"frame", "localOffset", "localIndex", "value"},
                         new TypeMirror[]{types.Frame, type(int.class), type(int.class), specializedType});
         CodeTreeBuilder b = ex.createBuilder();
+
+        if (parent.model.localAccessorsUsed.isEmpty()) {
+            BytecodeRootNodeElement.emitThrowIllegalStateException(ex, b, "method should not be reached");
+            return ex;
+        }
+
         AbstractBytecodeNodeElement.buildVerifyFrameDescriptor(b, true);
         if (tier.isCached()) {
             b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
@@ -581,6 +587,12 @@ final class BytecodeNodeElement extends AbstractElement {
         ex.getModifiers().add(FINAL);
 
         CodeTreeBuilder b = ex.createBuilder();
+
+        if (parent.model.localAccessorsUsed.isEmpty()) {
+            BytecodeRootNodeElement.emitThrowIllegalStateException(ex, b, "method should not be reached");
+            return ex;
+        }
+
         AbstractBytecodeNodeElement.buildVerifyFrameDescriptor(b, true);
 
         if (tier.isCached()) {

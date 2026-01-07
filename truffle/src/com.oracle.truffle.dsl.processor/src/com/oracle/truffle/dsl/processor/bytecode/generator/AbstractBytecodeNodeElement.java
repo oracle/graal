@@ -348,6 +348,12 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         ex.getModifiers().add(FINAL);
 
         CodeTreeBuilder b = ex.createBuilder();
+
+        if (parent.model.localAccessorsUsed.isEmpty()) {
+            BytecodeRootNodeElement.emitThrowIllegalStateException(ex, b, "method should not be reached");
+            return ex;
+        }
+
         buildVerifyFrameDescriptor(b, true);
 
         b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
@@ -375,6 +381,12 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
                         new String[]{"frame", "localOffset", "localIndex", "value"},
                         new TypeMirror[]{types.Frame, type(int.class), type(int.class), type(Object.class)});
         CodeTreeBuilder b = ex.createBuilder();
+
+        if (parent.model.localAccessorsUsed.isEmpty()) {
+            BytecodeRootNodeElement.emitThrowIllegalStateException(ex, b, "method should not be reached");
+            return ex;
+        }
+
         AbstractBytecodeNodeElement.buildVerifyFrameDescriptor(b, true);
 
         b.startStatement();
@@ -1257,7 +1269,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
     record InstrumentationGroup(int instructionLength, boolean instrumentation, boolean tagInstrumentation, InstructionImmediate tagNodeImmediate)
                     implements
-                        Comparable<AbstractBytecodeNodeElement.InstrumentationGroup> {
+                    Comparable<AbstractBytecodeNodeElement.InstrumentationGroup> {
         InstrumentationGroup(InstructionModel instr) {
             this(instr.getInstructionLength(), instr.isInstrumentation(), instr.isTagInstrumentation(),
                             instr.isTagInstrumentation() ? instr.getImmediate(ImmediateKind.TAG_NODE) : null);
