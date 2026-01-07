@@ -187,6 +187,12 @@ final class SizeParameters {
     }
 
     @Uninterruptible(reason = ACCESS_RAW_SIZE_PARAMETERS)
+    public UnsignedWord getInitialHeapSize() {
+        assert isInitialized();
+        return sizes.getInitialHeapSize();
+    }
+
+    @Uninterruptible(reason = ACCESS_RAW_SIZE_PARAMETERS)
     public UnsignedWord getMaxHeapSize() {
         assert isInitialized();
         return sizes.getMaxHeapSize();

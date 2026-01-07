@@ -370,26 +370,26 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         }
 
         UnsignedWord maxOldSize = maxHeap.subtract(maxYoung);
+        UnsignedWord initialOldSize = initialHeap.subtract(initialYoung);
 
         UnsignedWord survivorSize;
         UnsignedWord edenSize;
         UnsignedWord oldSize;
         UnsignedWord promoSize;
-        if (sizes.isInitialized()) {
+        if (sizes.isInitialized() && sameInitialSizes(initialEden, initialSurvivor, initialYoung, initialOldSize, initialHeap)) {
             /* Copy and limit existing values. */
             survivorSize = UnsignedUtils.min(sizes.getSurvivorSize(), maxSurvivorSize);
             edenSize = UnsignedUtils.min(sizes.getEdenSize(), maxEdenSize);
             oldSize = UnsignedUtils.min(sizes.getOldSize(), maxOldSize);
             promoSize = UnsignedUtils.min(sizes.getPromoSize(), maxOldSize);
         } else {
-            /* Set initial values. */
+            /* Set initial values (either during startup or when relevant option values change). */
             survivorSize = initialSurvivor;
             edenSize = initialEden;
-            oldSize = initialHeap.subtract(initialYoung);
+            oldSize = initialOldSize;
             promoSize = UnsignedUtils.min(edenSize, oldSize);
         }
 
-        UnsignedWord initialOldSize = initialHeap.subtract(initialYoung);
         UnsignedWord youngSize = edenSize.add(survivorSize);
         UnsignedWord heapSize = edenSize.add(survivorSize).add(oldSize);
 
@@ -400,6 +400,13 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
                         promoSize,
                         initialYoung, youngSize, maxYoung,
                         minHeap, initialHeap, heapSize, maxHeap);
+    }
+
+    /** The initial sizes only change when a relevant GC-specific option value is modified. */
+    private boolean sameInitialSizes(UnsignedWord initialEden, UnsignedWord initialSurvivor, UnsignedWord initialYoung, UnsignedWord initialOld, UnsignedWord initialHeap) {
+        assert sizes.isInitialized();
+        return sizes.getInitialEdenSize() == initialEden && sizes.getInitialSurvivorSize() == initialSurvivor && sizes.getInitialYoungSize() == initialYoung &&
+                        sizes.getInitialOldSize() == initialOld && sizes.getInitialHeapSize() == initialHeap;
     }
 
     protected UnsignedWord getHeapSizeLimit() {
