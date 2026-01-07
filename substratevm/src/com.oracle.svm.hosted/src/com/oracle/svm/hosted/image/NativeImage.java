@@ -871,19 +871,10 @@ public abstract class NativeImage extends AbstractImage {
 
     private void printHeapStatistics(ImageHeapPartition[] partitions) {
         if (NativeImageOptions.PrintHeapHistogram.getValue()) {
-            // A histogram for the whole heap.
-            ObjectGroupHistogram.print(heap);
-            // Histograms for each partition.
-            printHistogram(partitions);
+            new HeapHistogramPrinter(heap, partitions).print();
         }
         if (NativeImageOptions.PrintImageHeapPartitionSizes.getValue()) {
             printSizes(partitions);
-        }
-    }
-
-    private void printHistogram(ImageHeapPartition[] partitions) {
-        for (ImageHeapPartition partition : partitions) {
-            printHistogram(partition, heap.getObjects());
         }
     }
 
@@ -891,45 +882,6 @@ public abstract class NativeImage extends AbstractImage {
         for (ImageHeapPartition partition : partitions) {
             printSize(partition);
         }
-    }
-
-    private static void printHistogram(ImageHeapPartition partition, Iterable<ObjectInfo> objects) {
-        HeapHistogram histogram = new HeapHistogram();
-        EconomicSet<ObjectInfo> uniqueObjectInfo = EconomicSet.create();
-
-        long uniqueCount = 0L;
-        long uniqueSize = 0L;
-        long canonicalizedCount = 0L;
-        long canonicalizedSize = 0L;
-        for (ObjectInfo info : objects) {
-            if (info.getConstant().isWrittenInPreviousLayer()) {
-                continue;
-            }
-            if (partition == info.getPartition()) {
-                if (uniqueObjectInfo.add(info)) {
-                    histogram.add(info, info.getSize());
-                    uniqueCount += 1L;
-                    uniqueSize += info.getSize();
-                } else {
-                    canonicalizedCount += 1L;
-                    canonicalizedSize += info.getSize();
-                }
-            }
-        }
-
-        long nonuniqueCount = uniqueCount + canonicalizedCount;
-        long nonuniqueSize = uniqueSize + canonicalizedSize;
-        assert partition.getSize() >= nonuniqueSize : "the total size can contain some overhead";
-
-        double countPercent = 100.0D * ((double) uniqueCount / (double) nonuniqueCount);
-        double sizePercent = 100.0D * ((double) uniqueSize / (double) nonuniqueSize);
-        double sizeOverheadPercent = 100.0D * (1.0D - ((double) partition.getSize() / (double) nonuniqueSize));
-        histogram.printHeadings(String.format("=== Partition: %s   count: %d / %d = %.1f%%  object size: %d / %d = %.1f%%  total size: %d (%.1f%% overhead) ===", //
-                        partition.getName(), //
-                        uniqueCount, nonuniqueCount, countPercent, //
-                        uniqueSize, nonuniqueSize, sizePercent, //
-                        partition.getSize(), sizeOverheadPercent));
-        histogram.print();
     }
 
     private static void printSize(ImageHeapPartition partition) {
