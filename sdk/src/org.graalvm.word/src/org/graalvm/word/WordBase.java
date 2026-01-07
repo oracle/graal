@@ -41,9 +41,9 @@
 package org.graalvm.word;
 
 /**
- * The root of the interface hierarchy for machine-word-sized values. Word values must never be
- * compared with {@code ==}. Instead, use {@code w1.rawValue() == w2.rawValue()} or
- * {@link ComparableWord#equal(ComparableWord)}.
+ * The root of the interface hierarchy for machine-word-sized values. Word values must only be
+ * compared with {@code ==} in code guaranteed not to be using boxed word values. In all other code,
+ * use {@code w1.rawValue() == w2.rawValue()} or {@link ComparableWord#equal(ComparableWord)}.
  *
  * @since 19.0
  */
