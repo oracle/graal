@@ -32,7 +32,7 @@ import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.common.type.Stamp;

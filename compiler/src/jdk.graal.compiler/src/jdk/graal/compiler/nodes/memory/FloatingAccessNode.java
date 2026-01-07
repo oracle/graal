@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.nodes.memory;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;

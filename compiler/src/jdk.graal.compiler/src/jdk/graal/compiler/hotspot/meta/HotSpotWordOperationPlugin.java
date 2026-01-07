@@ -34,7 +34,7 @@ import org.graalvm.word.LocationIdentity;
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BridgeMethodUtils;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;

@@ -37,7 +37,7 @@ import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.calc.Condition;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
 import jdk.graal.compiler.debug.Assertions;

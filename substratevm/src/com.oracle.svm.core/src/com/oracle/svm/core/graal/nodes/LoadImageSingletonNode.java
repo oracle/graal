@@ -27,7 +27,7 @@ package com.oracle.svm.core.graal.nodes;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory.LoadImageSingletonData;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;

@@ -44,7 +44,7 @@ import com.oracle.svm.hosted.pltgot.GOTEntryAllocator;
 import com.oracle.svm.hosted.pltgot.HostedPLTGOTConfiguration;
 import com.oracle.svm.hosted.pltgot.MethodAddressResolutionSupport;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeInputList;

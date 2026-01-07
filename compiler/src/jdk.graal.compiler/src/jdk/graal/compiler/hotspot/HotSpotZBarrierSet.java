@@ -26,7 +26,7 @@ package jdk.graal.compiler.hotspot;
 
 import org.graalvm.word.LocationIdentity;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;

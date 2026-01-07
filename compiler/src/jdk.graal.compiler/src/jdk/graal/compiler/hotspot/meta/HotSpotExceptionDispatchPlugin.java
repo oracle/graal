@@ -33,7 +33,7 @@ import java.util.function.Supplier;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;

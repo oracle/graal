@@ -27,7 +27,7 @@ package jdk.graal.compiler.replacements.aarch64;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.Stride;

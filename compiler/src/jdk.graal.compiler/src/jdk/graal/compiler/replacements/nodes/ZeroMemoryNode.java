@@ -27,7 +27,7 @@ package jdk.graal.compiler.replacements.nodes;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Word;
 

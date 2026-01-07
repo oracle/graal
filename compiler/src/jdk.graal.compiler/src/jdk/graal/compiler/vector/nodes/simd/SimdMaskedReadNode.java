@@ -25,7 +25,7 @@
 package jdk.graal.compiler.vector.nodes.simd;
 
 import jdk.graal.compiler.core.common.LIRKind;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;

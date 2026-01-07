@@ -27,7 +27,7 @@ package jdk.graal.compiler.nodes.extended;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;

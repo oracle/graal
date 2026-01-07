@@ -28,7 +28,6 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_P
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import org.graalvm.word.BarrierType;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -143,7 +142,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             // The load is always issued except the cases of CAS and referent field.
             Object previousObject;
             if (doLoad) {
-                previousObject = field.readObject(0, BarrierType.NONE, LocationIdentity.any());
+                previousObject = field.readObjectNoBarrier(0, LocationIdentity.any());
                 if (trace) {
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), ObjectAccess.objectToTrackedPointer(previousObject).rawValue());
                     verifyOop(previousObject);
@@ -271,7 +270,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
         for (int i = 0; GraalDirectives.injectIterationCount(10, i < length); i++) {
             Word arrElemPtr = start.add(Word.unsigned(i * scale));
-            Object previousObject = arrElemPtr.readObject(0, BarrierType.NONE, LocationIdentity.any());
+            Object previousObject = arrElemPtr.readObjectNoBarrier(0, LocationIdentity.any());
             verifyOop(previousObject);
             if (probability(FREQUENT_PROBABILITY, previousObject != null)) {
                 if (probability(FREQUENT_PROBABILITY, indexValue != 0)) {

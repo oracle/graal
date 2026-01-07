@@ -25,7 +25,7 @@
 package jdk.graal.compiler.core.aarch64;
 
 import jdk.graal.compiler.core.common.LIRKind;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;

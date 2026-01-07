@@ -149,7 +149,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 
 /*
  * Contains the tools needed to emit instructions from Graal nodes into LLVM bitcode,

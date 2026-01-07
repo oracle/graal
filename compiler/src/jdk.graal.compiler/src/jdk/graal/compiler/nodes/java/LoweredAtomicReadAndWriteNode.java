@@ -30,7 +30,7 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import jdk.graal.compiler.core.common.LIRKind;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;

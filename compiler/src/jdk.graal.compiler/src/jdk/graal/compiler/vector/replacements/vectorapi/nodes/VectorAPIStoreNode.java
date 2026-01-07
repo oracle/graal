@@ -37,7 +37,7 @@ import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIBoxingUtils;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIType;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;

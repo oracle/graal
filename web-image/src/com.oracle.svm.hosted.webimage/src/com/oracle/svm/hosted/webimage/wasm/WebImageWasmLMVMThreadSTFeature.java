@@ -49,7 +49,7 @@ import com.oracle.svm.hosted.webimage.wasm.nodes.WebImageWasmVMThreadLocalSTHold
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 import jdk.graal.compiler.core.common.NumUtil;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;

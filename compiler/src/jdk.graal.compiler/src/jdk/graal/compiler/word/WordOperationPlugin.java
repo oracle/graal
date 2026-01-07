@@ -31,7 +31,7 @@ import static org.graalvm.word.LocationIdentity.any;
 import java.util.Arrays;
 import java.util.Locale;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Word;
 import org.graalvm.word.Word.Opcode;

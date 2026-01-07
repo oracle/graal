@@ -26,7 +26,7 @@ package jdk.graal.compiler.lir.gen;
 
 import org.graalvm.word.LocationIdentity;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.vm.ci.meta.Value;

@@ -27,7 +27,7 @@ package jdk.graal.compiler.vector.replacements.vectorapi;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;

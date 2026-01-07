@@ -31,7 +31,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SharedType;
 
 import jdk.graal.compiler.core.common.NumUtil;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.NodeView;

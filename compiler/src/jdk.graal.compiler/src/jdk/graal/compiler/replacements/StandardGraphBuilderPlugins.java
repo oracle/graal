@@ -57,7 +57,7 @@ import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;

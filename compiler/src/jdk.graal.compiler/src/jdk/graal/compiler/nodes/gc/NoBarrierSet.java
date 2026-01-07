@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;

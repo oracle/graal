@@ -26,7 +26,7 @@ package jdk.graal.compiler.hotspot.nodes;
 
 import static jdk.graal.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode.JVMCI_RESERVED_REFERENCE;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;

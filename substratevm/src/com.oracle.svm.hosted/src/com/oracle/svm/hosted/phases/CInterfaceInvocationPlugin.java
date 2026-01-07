@@ -65,7 +65,7 @@ import com.oracle.svm.hosted.code.CEntryPointJavaCallStubMethod;
 import com.oracle.svm.hosted.code.CFunctionPointerCallStubSupport;
 import com.oracle.svm.util.AnnotationUtil;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;

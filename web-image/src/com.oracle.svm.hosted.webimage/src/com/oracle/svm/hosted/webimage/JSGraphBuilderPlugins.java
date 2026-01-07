@@ -30,7 +30,7 @@ import java.util.Arrays;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import org.graalvm.word.Word;
 
 import com.oracle.svm.core.config.ConfigurationValues;

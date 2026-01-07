@@ -47,7 +47,7 @@ import com.oracle.svm.hosted.webimage.wasm.nodes.WasmMemoryCopyNode;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmMemoryFillNode;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmPopcntNode;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool.RoundingMode;
 import jdk.graal.compiler.nodes.ConstantNode;

@@ -50,7 +50,7 @@ import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.Condition;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;

@@ -28,7 +28,7 @@ import static jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.FRO
 import static jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.FROM_POINTER;
 import static jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.IS_NULL;
 
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;

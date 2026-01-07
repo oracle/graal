@@ -39,7 +39,7 @@ import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Snippet;
-import org.graalvm.word.BarrierType;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
