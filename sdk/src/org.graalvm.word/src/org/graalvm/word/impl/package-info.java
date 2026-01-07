@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,19 +38,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-/*
- @ApiInfo(
- group="Word"
- )
- */
+
 /**
- * This package provides restricted word-level operations. These are operations like
- * {@link org.graalvm.word.restricted.ObjectAccess#objectToUntrackedPointer(java.lang.Object)
+ * This package provides implementation support for word types as well as extra operations like
+ * {@linkplain org.graalvm.word.impl.ObjectAccess#objectToUntrackedPointer(java.lang.Object)
  * converting an Object reference to a raw pointer}. Like <em>restricted</em> methods in the Java SE
  * API (e.g. {@link java.lang.foreign.MemorySegment#reinterpret(long)}), extra steps are required to
- * use these operations (i.e., exporting {@code org.graalvm.word.restricted} on the command line
- * with {@code --add-exports}).
- *
- * @since 25.1
+ * use the classes in this package (i.e., exporting {@code org.graalvm.word.impl} on the command
+ * line with {@code --add-exports}).
  */
-package org.graalvm.word.restricted;
+package org.graalvm.word.impl;

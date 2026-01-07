@@ -29,7 +29,7 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 import java.util.function.IntConsumer;
 
 import org.graalvm.word.Pointer;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
@@ -48,7 +48,7 @@ import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.word.restricted.ObjectAccess;
+import org.graalvm.word.impl.ObjectAccess;
 
 public class InteriorObjRefWalker {
     /**

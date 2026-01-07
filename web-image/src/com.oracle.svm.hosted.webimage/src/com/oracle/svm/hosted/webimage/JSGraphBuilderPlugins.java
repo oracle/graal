@@ -31,7 +31,7 @@ import java.util.Arrays;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import jdk.graal.compiler.core.common.memory.BarrierType;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.hosted.webimage.wasm.WasmLMGraphBuilderPlugins;

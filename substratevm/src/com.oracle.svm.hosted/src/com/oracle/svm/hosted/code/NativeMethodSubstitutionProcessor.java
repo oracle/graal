@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.code;
 
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.word.Word.Operation;
+import org.graalvm.word.impl.Word.Operation;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;

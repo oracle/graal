@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import static org.graalvm.word.Word.signed;
+import static org.graalvm.word.impl.Word.signed;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -38,7 +38,7 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
@@ -323,7 +323,7 @@ public final class ImageLayerSectionFeature implements InternalFeature {
 
             /*
              * Currently we place field update patches exclusively in the application layer.
-             * 
+             *
              * See CrossLayerFieldUpdatersFeature#generateUpdatePatchArray for a thorough
              * description of the field update patch info layout.
              */

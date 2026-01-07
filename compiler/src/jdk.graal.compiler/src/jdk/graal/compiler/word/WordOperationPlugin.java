@@ -33,9 +33,9 @@ import java.util.Locale;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Word;
-import org.graalvm.word.Word.Opcode;
-import org.graalvm.word.Word.Operation;
+import org.graalvm.word.impl.Word;
+import org.graalvm.word.impl.Word.Opcode;
+import org.graalvm.word.impl.Word.Operation;
 import org.graalvm.word.impl.WordFactoryOpcode;
 import org.graalvm.word.impl.WordFactoryOperation;
 

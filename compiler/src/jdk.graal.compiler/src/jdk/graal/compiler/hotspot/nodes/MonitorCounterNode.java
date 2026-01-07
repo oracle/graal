@@ -26,7 +26,7 @@ package jdk.graal.compiler.hotspot.nodes;
 
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;

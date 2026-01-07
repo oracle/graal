@@ -27,7 +27,7 @@ package com.oracle.svm.core.code;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CIsolateData;
@@ -43,7 +43,7 @@ import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
-import org.graalvm.word.restricted.ObjectAccess;
+import org.graalvm.word.impl.ObjectAccess;
 import jdk.vm.ci.meta.JavaKind;
 
 /**

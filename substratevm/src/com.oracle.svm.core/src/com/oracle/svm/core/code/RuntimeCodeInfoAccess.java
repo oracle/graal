@@ -48,7 +48,7 @@ import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * This class contains methods that only make sense for runtime compiled code.

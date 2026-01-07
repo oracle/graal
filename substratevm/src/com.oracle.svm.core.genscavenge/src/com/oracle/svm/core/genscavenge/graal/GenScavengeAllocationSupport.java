@@ -43,7 +43,7 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ContinuationSupport;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * This class contains the {@link SubstrateForeignCallTarget}s for the allocation slow path. These

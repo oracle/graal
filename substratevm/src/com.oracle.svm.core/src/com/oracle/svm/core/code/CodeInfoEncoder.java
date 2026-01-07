@@ -109,7 +109,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 public class CodeInfoEncoder {
 

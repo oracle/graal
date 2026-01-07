@@ -50,7 +50,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 final class IsolateAwareConstantReflectionProvider extends SubstrateConstantReflectionProvider {
     private static final IsolatedMemoryAccessProvider ISOLATED_MEMORY_ACCESS_PROVIDER_SINGLETON = new IsolatedMemoryAccessProvider();

@@ -31,7 +31,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.options.Option;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * A libgraal specific garbage collection policy that responds to GC hints and aggressively

@@ -31,7 +31,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.thread.VMOperation;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Manages the global JFR buffers (see {@link JfrBufferType#GLOBAL_MEMORY}). The memory has a very

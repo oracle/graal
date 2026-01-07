@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -56,7 +56,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
-import org.graalvm.word.restricted.ObjectAccess;
+import org.graalvm.word.impl.ObjectAccess;
 
 public final class AlignedChunkRememberedSet {
     private AlignedChunkRememberedSet() {

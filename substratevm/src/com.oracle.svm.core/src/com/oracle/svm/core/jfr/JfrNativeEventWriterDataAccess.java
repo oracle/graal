@@ -27,7 +27,7 @@ package com.oracle.svm.core.jfr;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Helper class that holds methods related to {@link JfrNativeEventWriterData}.

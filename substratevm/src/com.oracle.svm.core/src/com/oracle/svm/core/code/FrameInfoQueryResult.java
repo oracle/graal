@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * During a stack walk, this class holds information about a virtual Java frame. It is usually

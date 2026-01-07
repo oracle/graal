@@ -26,8 +26,8 @@ package com.oracle.svm.graal.isolated;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.Word;
-import org.graalvm.word.restricted.ObjectAccess;
+import org.graalvm.word.impl.Word;
+import org.graalvm.word.impl.ObjectAccess;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;

@@ -40,7 +40,7 @@ import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.nmt.NmtMallocHeader;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Internal API for managing native memory. This class supports native memory tracking (NMT) and is

@@ -35,7 +35,7 @@ import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.util.Collections;
 
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.LibGraalSupport;

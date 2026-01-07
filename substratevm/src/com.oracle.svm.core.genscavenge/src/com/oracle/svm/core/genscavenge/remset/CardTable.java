@@ -30,7 +30,7 @@ import java.lang.ref.Reference;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
@@ -52,7 +52,7 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import org.graalvm.word.restricted.ObjectAccess;
+import org.graalvm.word.impl.ObjectAccess;
 
 /**
  * A card table is a remembered set that summarizes pointer stores into a region. A card is "dirty"

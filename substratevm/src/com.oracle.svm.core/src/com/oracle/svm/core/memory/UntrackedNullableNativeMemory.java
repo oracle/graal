@@ -34,7 +34,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Manages native memory. This class explicitly does <b>NOT</b> support native memory tracking

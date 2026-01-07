@@ -31,7 +31,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Allocates a buffer with a minimal size that only contains the performance data header (see

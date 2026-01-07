@@ -49,7 +49,7 @@ import com.oracle.svm.graal.meta.SubstrateMethod;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
 

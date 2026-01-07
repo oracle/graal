@@ -38,11 +38,11 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.word.restricted.BarrieredAccess;
+import org.graalvm.word.impl.BarrieredAccess;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Provides memory access during runtime compilation.

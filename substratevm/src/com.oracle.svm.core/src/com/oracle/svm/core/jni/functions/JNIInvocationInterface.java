@@ -78,7 +78,7 @@ import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.Utf8;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Implementation of the JNI invocation API for interacting with a Java VM without having an

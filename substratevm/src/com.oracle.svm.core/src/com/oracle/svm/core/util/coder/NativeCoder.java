@@ -28,7 +28,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /** Uses the native, architecture-specific byte order to access {@link ByteStream} data. */
 public class NativeCoder {

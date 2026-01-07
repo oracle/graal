@@ -44,7 +44,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.AssumptionViolatedException;

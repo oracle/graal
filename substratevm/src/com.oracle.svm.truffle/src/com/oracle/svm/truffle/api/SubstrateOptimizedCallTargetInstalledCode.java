@@ -46,7 +46,7 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Represents the compiled code of a {@link SubstrateOptimizedCallTarget}.

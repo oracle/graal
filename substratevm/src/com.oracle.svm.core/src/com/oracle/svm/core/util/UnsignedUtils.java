@@ -27,7 +27,7 @@ package com.oracle.svm.core.util;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Utility methods on Unsigned values.

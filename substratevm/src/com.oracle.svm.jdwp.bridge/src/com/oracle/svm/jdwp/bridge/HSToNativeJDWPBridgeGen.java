@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JByteArray;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JClass;

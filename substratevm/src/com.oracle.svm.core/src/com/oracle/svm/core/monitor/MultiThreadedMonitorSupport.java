@@ -60,7 +60,7 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.word.restricted.BarrieredAccess;
+import org.graalvm.word.impl.BarrieredAccess;
 import jdk.internal.misc.Unsafe;
 
 /**

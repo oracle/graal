@@ -66,7 +66,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaMethod;
 import jdk.vm.ci.meta.UnresolvedJavaType;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Serializers for types included in the interpreter metadata.

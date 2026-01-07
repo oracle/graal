@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.meta;
 
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.nodes.ValueNode;

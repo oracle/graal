@@ -41,7 +41,7 @@ import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.hub.LayoutEncoding;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * {@link PlanningVisitor} decides where objects will be moved and uses the methods of this class to

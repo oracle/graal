@@ -26,7 +26,7 @@ package jdk.graal.compiler.replacements;
 
 import java.util.ArrayList;
 
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.calc.Condition;

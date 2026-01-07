@@ -40,7 +40,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.windows.headers.MemoryAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 public class WindowsGOTHeapSupport extends GOTHeapSupport {
 

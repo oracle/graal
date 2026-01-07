@@ -49,7 +49,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import java.util.Arrays;
 
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.hotspot.nodes.type.KlassPointerStamp;

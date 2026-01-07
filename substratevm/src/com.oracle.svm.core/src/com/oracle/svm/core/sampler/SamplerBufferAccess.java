@@ -36,7 +36,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Used to access the raw memory of a {@link SamplerBuffer}.

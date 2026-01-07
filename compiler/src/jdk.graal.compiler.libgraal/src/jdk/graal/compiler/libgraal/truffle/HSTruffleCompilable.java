@@ -66,7 +66,7 @@ import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
 

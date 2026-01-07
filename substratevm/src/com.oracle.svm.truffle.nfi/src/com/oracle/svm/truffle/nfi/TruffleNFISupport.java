@@ -41,7 +41,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.truffle.nfi.NativeAPI.TruffleContextHandle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 public abstract class TruffleNFISupport {
 

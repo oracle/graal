@@ -40,6 +40,7 @@
  */
 package org.graalvm.word;
 
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.impl.WordFactoryOpcode;
 import org.graalvm.word.impl.WordFactoryOperation;
 

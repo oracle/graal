@@ -56,7 +56,7 @@ import jdk.vm.ci.hotspot.CompilerThreadCanCallJavaScope;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Implementation of {@link LibGraalSupport} that is only loaded by the libgraal class loader when

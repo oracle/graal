@@ -48,7 +48,7 @@ import com.oracle.svm.core.nmt.NmtCategory;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /** Methods related to {@link JvmtiEnv}. */
 public final class JvmtiEnvUtil {

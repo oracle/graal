@@ -86,7 +86,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 //JaCoCo Exclude
 

@@ -26,7 +26,7 @@ package com.oracle.svm.webimage.heap;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 

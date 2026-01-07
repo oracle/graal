@@ -47,8 +47,8 @@ import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.VA
 import static com.oracle.svm.core.posix.linux.ProcFSSupport.findMapping;
 import static com.oracle.svm.core.util.PointerUtils.roundDown;
 import static com.oracle.svm.core.util.UnsignedUtils.roundUp;
-import static org.graalvm.word.Word.signed;
-import static org.graalvm.word.Word.unsigned;
+import static org.graalvm.word.impl.Word.signed;
+import static org.graalvm.word.impl.Word.unsigned;
 
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -61,7 +61,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;

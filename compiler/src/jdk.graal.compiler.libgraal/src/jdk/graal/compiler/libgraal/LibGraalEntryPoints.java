@@ -76,7 +76,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.runtime.JVMCIBackend;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Encapsulates {@link CEntryPoint} implementations.

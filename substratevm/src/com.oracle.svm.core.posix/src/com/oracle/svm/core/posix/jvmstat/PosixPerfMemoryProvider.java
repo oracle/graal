@@ -83,7 +83,7 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.core.common.NumUtil;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * This class uses high-level JDK features at the moment. In the future, we will need to rewrite

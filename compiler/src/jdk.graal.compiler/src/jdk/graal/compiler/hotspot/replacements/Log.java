@@ -31,7 +31,7 @@ import static jdk.graal.compiler.replacements.nodes.CStringConstant.cstring;
 
 import java.io.PrintStream;
 
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;

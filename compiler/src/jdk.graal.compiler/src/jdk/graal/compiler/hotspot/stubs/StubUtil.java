@@ -45,7 +45,7 @@ import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.nodes.StubForeignCallNode;
 import jdk.graal.compiler.hotspot.nodes.VMErrorNode;
 import jdk.graal.compiler.hotspot.replacements.Log;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 //JaCoCo Exclude
 

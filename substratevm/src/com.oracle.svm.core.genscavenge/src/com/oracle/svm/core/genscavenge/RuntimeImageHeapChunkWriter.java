@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.graalvm.word.Pointer;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;

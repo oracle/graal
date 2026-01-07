@@ -77,7 +77,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.OptionKey;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Parses a small subset of the runtime arguments before the image heap is mapped and before the

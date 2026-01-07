@@ -40,7 +40,7 @@ import com.oracle.svm.core.jni.functions.JNIFunctions.Support.JNIEnvEnterPrologu
 import com.oracle.svm.core.jni.functions.JNIFunctions.Support.ReturnNullHandle;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 final class LibJVMEntryPoints {
 

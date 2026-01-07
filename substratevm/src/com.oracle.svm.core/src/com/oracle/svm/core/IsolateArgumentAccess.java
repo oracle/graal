@@ -27,7 +27,7 @@ package com.oracle.svm.core;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 public class IsolateArgumentAccess {
 

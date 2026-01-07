@@ -40,7 +40,7 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Base for holders of native libraries. The implemented methods provide different ways of loading a

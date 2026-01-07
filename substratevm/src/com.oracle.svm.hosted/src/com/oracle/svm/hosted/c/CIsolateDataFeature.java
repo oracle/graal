@@ -37,7 +37,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 @AutomaticallyRegisteredFeature
 public class CIsolateDataFeature implements InternalFeature {

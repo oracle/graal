@@ -41,7 +41,7 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * A Space is a collection of HeapChunks.

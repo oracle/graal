@@ -27,8 +27,8 @@ package jdk.graal.compiler.word;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import org.graalvm.word.Word;
-import org.graalvm.word.restricted.ObjectAccess;
+import org.graalvm.word.impl.Word;
+import org.graalvm.word.impl.ObjectAccess;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;

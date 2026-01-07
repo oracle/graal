@@ -49,7 +49,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.gc.NoBarrierSet;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * This implementation is only used if remembered sets are disabled, so most operations are no-ops.

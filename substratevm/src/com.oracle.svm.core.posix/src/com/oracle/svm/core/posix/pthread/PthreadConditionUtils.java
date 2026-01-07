@@ -39,7 +39,7 @@ import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.util.TimeUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * This class contains helper methods for the clock and time handling for {@link pthread_cond_t

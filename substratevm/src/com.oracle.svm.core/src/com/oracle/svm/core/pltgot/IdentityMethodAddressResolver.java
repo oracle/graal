@@ -31,7 +31,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.config.ConfigurationValues;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 public class IdentityMethodAddressResolver implements MethodAddressResolver {
 

@@ -27,7 +27,7 @@ package jdk.graal.compiler.libgraal.truffle;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import java.io.Closeable;
 import java.nio.ByteBuffer;

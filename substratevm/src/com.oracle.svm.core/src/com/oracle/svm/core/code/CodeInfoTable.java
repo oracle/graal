@@ -55,7 +55,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.code.InstalledCode;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Provides the main entry points to look up metadata for code, either

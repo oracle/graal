@@ -49,7 +49,7 @@ import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * A concrete implementation of {@link SamplerStackTraceSerializer} designed for JFR stack trace

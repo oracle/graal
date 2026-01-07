@@ -37,7 +37,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 @AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
 final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {

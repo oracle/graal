@@ -28,7 +28,7 @@ package com.oracle.svm.core.heap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
 

@@ -32,7 +32,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import java.util.function.Consumer;
 

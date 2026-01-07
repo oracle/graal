@@ -60,7 +60,7 @@ import jdk.graal.compiler.util.Digest;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 public class SubstrateUtil {
 

@@ -45,7 +45,7 @@ import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.pltgot.GOTHeapSupport;
 import com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 public class DarwinGOTHeapSupport extends GOTHeapSupport {
 

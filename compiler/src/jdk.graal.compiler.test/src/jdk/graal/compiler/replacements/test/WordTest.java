@@ -26,7 +26,7 @@ package jdk.graal.compiler.replacements.test;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 import org.junit.Test;
 

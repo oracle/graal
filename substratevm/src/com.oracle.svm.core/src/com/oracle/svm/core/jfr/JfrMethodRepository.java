@@ -34,7 +34,7 @@ import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.utils.JfrVisited;
 import com.oracle.svm.core.jfr.utils.JfrVisitedTable;
 import com.oracle.svm.core.locks.VMMutex;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Repository that collects and writes used methods.

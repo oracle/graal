@@ -47,7 +47,7 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.ProjectHeaderFile;
 import com.oracle.svm.core.debug.SubstrateDebugInfoInstaller;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * This interface is based on the <a href=

@@ -87,7 +87,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Encapsulates resolved methods used under close-world assumptions, compiled and interpretable, but

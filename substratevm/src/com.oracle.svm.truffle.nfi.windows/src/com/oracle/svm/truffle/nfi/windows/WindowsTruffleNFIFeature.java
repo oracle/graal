@@ -42,7 +42,7 @@ import com.oracle.svm.truffle.nfi.TruffleNFIFeature;
 import com.oracle.svm.truffle.nfi.TruffleNFISupport;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 public final class WindowsTruffleNFIFeature implements InternalFeature {
 

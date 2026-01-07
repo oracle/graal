@@ -64,7 +64,7 @@ import org.graalvm.nativeimage.libgraal.LibGraalRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Truffle specific {@link CEntryPoint} implementations.

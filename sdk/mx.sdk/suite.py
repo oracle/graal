@@ -1143,8 +1143,7 @@ suite = {
         "requires" : [],
         "exports" : [
             "org.graalvm.word",
-            "org.graalvm.word.impl to jdk.graal.compiler",
-            """org.graalvm.word.restricted to
+            """org.graalvm.word.impl to 
                    jdk.graal.compiler,
                    org.graalvm.nativeimage.builder""",
         ],

@@ -25,7 +25,7 @@
 package com.oracle.svm.jdwp.bridge.nativebridge;
 
 import org.graalvm.nativeimage.ObjectHandles;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * A support class for mapping objects in the native image isolate to long handles.

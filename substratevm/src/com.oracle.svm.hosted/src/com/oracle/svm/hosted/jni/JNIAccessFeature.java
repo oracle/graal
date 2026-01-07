@@ -115,7 +115,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Prepares classes, methods and fields before and during the analysis so that they are accessible

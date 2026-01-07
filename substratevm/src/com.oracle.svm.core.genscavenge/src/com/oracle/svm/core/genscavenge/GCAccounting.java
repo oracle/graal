@@ -30,7 +30,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Note that this data may be updated up to 3 times during a single VM operation (incremental GC,

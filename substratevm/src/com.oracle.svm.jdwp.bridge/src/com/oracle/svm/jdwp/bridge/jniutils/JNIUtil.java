@@ -42,7 +42,7 @@ import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.VoidPointer;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JArray;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JBooleanArray;

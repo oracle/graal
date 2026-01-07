@@ -34,7 +34,7 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.code.FrameInfoQueryResult;

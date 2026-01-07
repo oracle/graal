@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Holds a sequence of native memory buffers.

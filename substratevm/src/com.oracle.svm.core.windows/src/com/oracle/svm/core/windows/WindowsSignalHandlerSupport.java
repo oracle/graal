@@ -42,7 +42,7 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.WinBase;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 @AutomaticallyRegisteredImageSingleton(SignalHandlerSupport.class)
 public class WindowsSignalHandlerSupport implements SignalHandlerSupport {

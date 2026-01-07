@@ -53,7 +53,7 @@ import com.oracle.svm.truffle.nfi.NativeAPI.NewObjectRefFunction;
 import com.oracle.svm.truffle.nfi.NativeAPI.ReleaseAndReturnFunction;
 import com.oracle.svm.truffle.nfi.NativeAPI.ReleaseClosureRefFunction;
 import com.oracle.svm.truffle.nfi.NativeAPI.ReleaseObjectRefFunction;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Implementation of the TruffleEnv and TruffleContext native API functions.

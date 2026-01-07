@@ -45,7 +45,7 @@ import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 import com.oracle.truffle.compiler.TruffleCompilable;
 
 import jdk.vm.ci.code.InstalledCode;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * A helper to pass information for installing code in the compilation client through a Truffle

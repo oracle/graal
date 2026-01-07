@@ -34,7 +34,7 @@ import org.graalvm.word.SignedWord;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Implementation of local object handles, which are bound to a specific thread and can be created

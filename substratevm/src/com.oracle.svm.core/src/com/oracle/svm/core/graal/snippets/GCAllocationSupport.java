@@ -25,7 +25,7 @@
 package com.oracle.svm.core.graal.snippets;
 
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 

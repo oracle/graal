@@ -35,7 +35,7 @@ import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * This handles the Truffle host environment lookup on HotSpot with Libgraal.

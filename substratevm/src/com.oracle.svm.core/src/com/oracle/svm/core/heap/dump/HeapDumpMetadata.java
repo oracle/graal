@@ -67,7 +67,7 @@ import com.oracle.svm.core.util.coder.ByteStream;
 import com.oracle.svm.core.util.coder.ByteStreamAccess;
 import com.oracle.svm.core.util.coder.NativeCoder;
 import com.oracle.svm.core.util.coder.Pack200Coder;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Provides access to the encoded heap dump metadata that was prepared at image build-time.

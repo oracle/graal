@@ -29,7 +29,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CodeUtil;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 public abstract class CEnumRuntimeData {
     private static final NullPointerException CACHED_NULL_EXCEPTION = new NullPointerException(

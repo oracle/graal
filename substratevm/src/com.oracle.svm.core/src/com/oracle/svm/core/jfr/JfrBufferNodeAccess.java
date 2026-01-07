@@ -36,7 +36,7 @@ import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.thread.NativeSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Used to access the raw memory of a {@link JfrBufferNode}.

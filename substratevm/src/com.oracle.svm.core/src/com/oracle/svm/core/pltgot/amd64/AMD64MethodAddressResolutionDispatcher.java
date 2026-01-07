@@ -34,7 +34,7 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.pltgot.MethodAddressResolutionDispatcher;
 
 import jdk.graal.compiler.nodes.UnreachableNode;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 public final class AMD64MethodAddressResolutionDispatcher extends MethodAddressResolutionDispatcher {
     /**

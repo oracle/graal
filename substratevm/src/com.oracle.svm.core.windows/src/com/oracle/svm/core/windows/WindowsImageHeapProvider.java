@@ -59,7 +59,7 @@ import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * An image heap provider for Windows that creates image heaps that are copy-on-write clones of the

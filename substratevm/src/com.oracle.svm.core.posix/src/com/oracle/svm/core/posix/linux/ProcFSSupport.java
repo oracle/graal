@@ -31,7 +31,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.posix.PosixUtils;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 class ProcFSSupport {
     private static final int ST_ADDR_START = 1;

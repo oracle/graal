@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.word;
 
-import org.graalvm.word.Word;
-import org.graalvm.word.Word.Operation;
+import org.graalvm.word.impl.Word;
+import org.graalvm.word.impl.Word.Operation;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.WordFactoryOperation;
 
@@ -44,8 +44,8 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.word.restricted.BarrieredAccess;
-import org.graalvm.word.restricted.ObjectAccess;
+import org.graalvm.word.impl.BarrieredAccess;
+import org.graalvm.word.impl.ObjectAccess;
 
 /**
  * Encapsulates information for Java types representing raw words (as opposed to Objects).

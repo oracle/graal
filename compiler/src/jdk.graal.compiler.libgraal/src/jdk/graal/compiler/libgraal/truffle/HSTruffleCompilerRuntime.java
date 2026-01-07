@@ -69,7 +69,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 public final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompilerRuntime {
 

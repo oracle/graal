@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -49,7 +49,7 @@ import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
-import org.graalvm.word.restricted.ObjectAccess;
+import org.graalvm.word.impl.ObjectAccess;
 
 abstract class AbstractLog implements Log {
     private static final byte[] NEWLINE = System.lineSeparator().getBytes(StandardCharsets.US_ASCII);

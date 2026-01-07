@@ -55,7 +55,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.reflect.Reflection;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Information about the runtime class initialization state of a {@link DynamicHub class}, and

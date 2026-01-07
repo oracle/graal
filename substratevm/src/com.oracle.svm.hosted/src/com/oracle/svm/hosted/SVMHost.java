@@ -55,7 +55,7 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.word.Word.Operation;
+import org.graalvm.word.impl.Word.Operation;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;

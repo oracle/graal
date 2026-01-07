@@ -45,7 +45,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.PauseNode;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapSupport {
 

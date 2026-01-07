@@ -43,7 +43,7 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Represents the installed code of a runtime compiled method. Note that Truffle uses its own

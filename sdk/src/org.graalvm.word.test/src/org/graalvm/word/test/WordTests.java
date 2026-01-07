@@ -40,14 +40,14 @@
  */
 package org.graalvm.word.test;
 
-import static org.graalvm.word.Word.pointer;
-import static org.graalvm.word.Word.signed;
-import static org.graalvm.word.Word.unsigned;
+import static org.graalvm.word.impl.Word.pointer;
+import static org.graalvm.word.impl.Word.signed;
+import static org.graalvm.word.impl.Word.unsigned;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 import org.junit.Assert;
 import org.junit.Test;
 

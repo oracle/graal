@@ -60,7 +60,7 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
-import org.graalvm.word.Word;
+import org.graalvm.word.impl.Word;
 
 public class AMD64InterpreterStubs {
 
