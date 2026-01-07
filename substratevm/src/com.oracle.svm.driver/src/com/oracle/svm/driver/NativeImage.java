@@ -369,6 +369,10 @@ public class NativeImage {
         protected final Path workDir;
         protected final Path rootDir;
         protected final Path libJvmciDir;
+
+        /**
+         * Command line arguments from {@link NativeImage#main(String[])}.
+         */
         protected final List<String> args;
 
         private HostFlags hostFlags;
@@ -386,7 +390,6 @@ public class NativeImage {
             } else {
                 if (IS_AOT) {
                     Path executablePath = Paths.get(ProcessProperties.getExecutableName());
-                    assert executablePath != null;
                     Path binDir = executablePath.getParent();
                     Path rootDirCandidate = binDir.getParent();
                     if (rootDirCandidate.endsWith(platform)) {
@@ -564,11 +567,10 @@ public class NativeImage {
         }
 
         /**
-         * @return additional arguments for JVM that runs image builder
+         * Adds Java version specific arguments to {@code vmArgs} for the JVM that runs the image
+         * builder.
          */
-        public List<String> getBuilderJavaArgs() {
-            ArrayList<String> builderJavaArgs = new ArrayList<>();
-
+        public void addBuilderJavaArgs(List<String> vmArgs) {
             String javaVersion = String.valueOf(JavaVersionUtil.JAVA_SPEC);
             String[] flagsForVersion = graalCompilerFlags.get(javaVersion);
             if (flagsForVersion == null) {
@@ -583,18 +585,7 @@ public class NativeImage {
                                 System.getProperty("java.vm.name"),
                                 suffix));
             }
-
-            for (String line : flagsForVersion) {
-                builderJavaArgs.add(line);
-            }
-
-            if (getHostFlags().useJVMCINativeLibrary()) {
-                builderJavaArgs.add("-XX:+UseJVMCINativeLibrary");
-            } else if (getHostFlags().hasUseJVMCICompiler()) {
-                builderJavaArgs.add("-XX:-UseJVMCICompiler");
-            }
-
-            return builderJavaArgs;
+            vmArgs.addAll(Arrays.asList(flagsForVersion));
         }
 
         /**
@@ -666,6 +657,8 @@ public class NativeImage {
         }
 
         /**
+         * Gets the command line arguments passed to the {@code native-image} command.
+         *
          * @return native-image (i.e. image build) arguments
          */
         public List<String> getBuildArgs() {
@@ -1121,7 +1114,7 @@ public class NativeImage {
             }
         }
 
-        addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
+        addImageBuilderJavaArgs(customJavaArgs);
 
         List<String> userMemoryFlags = new ArrayList<>();
         for (String arg : imageBuilderJavaArgs) {
@@ -1129,7 +1122,8 @@ public class NativeImage {
                 userMemoryFlags.add(arg);
             }
         }
-        List<String> memoryFlagsToAdd = MemoryUtil.heuristicMemoryFlags(config.getHostFlags(), userMemoryFlags);
+        HostFlags hostFlags = config.getHostFlags();
+        List<String> memoryFlagsToAdd = MemoryUtil.heuristicMemoryFlags(hostFlags, userMemoryFlags);
         for (String memoryFlag : memoryFlagsToAdd.reversed()) {
             imageBuilderJavaArgs.addFirst(memoryFlag);
         }
@@ -1309,7 +1303,12 @@ public class NativeImage {
 
         boolean useColorfulOutput = configureBuildOutput();
 
-        List<String> finalImageBuilderJavaArgs = Stream.concat(config.getBuilderJavaArgs().stream(), imageBuilderJavaArgs.stream()).collect(Collectors.toList());
+        List<String> args = new ArrayList<>();
+        config.addBuilderJavaArgs(args);
+        disableJarGraalJIT(args, hostFlags, imageBuilderJavaArgs);
+        args.addAll(imageBuilderJavaArgs);
+        List<String> finalImageBuilderJavaArgs = Collections.unmodifiableList(args);
+
         try {
             return buildImage(finalImageBuilderJavaArgs, imageBuilderModulePath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
         } finally {
@@ -1317,6 +1316,57 @@ public class NativeImage {
                 performANSIReset();
             }
         }
+    }
+
+    /**
+     * Adds HotSpot VM arguments to {@code vmArgs} that prevents using jargraal as the JIT when
+     * running Native Image. This is an untested (and uninteresting) configuration that's better to
+     * forbid than try to support.
+     *
+     * @param suffixVmArgs VM arguments that will be appended to the Native Image JVM launcher after
+     *            {@code vmArgs}
+     */
+    private static void disableJarGraalJIT(List<String> vmArgs, HostFlags hostFlags, List<String> suffixVmArgs) {
+        Boolean useJVMCINativeLibrary = getXXBoolArg(suffixVmArgs, "UseJVMCINativeLibrary");
+        if (useJVMCINativeLibrary == null) {
+            if (hostFlags.useJVMCINativeLibrary()) {
+                vmArgs.add("-XX:+UseJVMCINativeLibrary");
+                useJVMCINativeLibrary = true;
+            } else {
+                useJVMCINativeLibrary = false;
+            }
+        }
+        if (!useJVMCINativeLibrary) {
+            if (hostFlags.hasUseJVMCICompiler()) {
+                Boolean useJVMCICompiler = getXXBoolArg(suffixVmArgs, "UseJVMCICompiler");
+                if (useJVMCICompiler == Boolean.TRUE) {
+                    throw NativeImage.showError("Using jargraal as JIT (i.e. -XX:+UseJVMCICompiler -XX:-UseJVMCINativeLibrary) is not supported when Native Image is running on HotSpot.");
+                }
+                if (useJVMCICompiler == null) {
+                    vmArgs.add("-XX:-UseJVMCICompiler");
+                }
+            }
+        }
+    }
+
+    /**
+     * Gets the last value specified in {@code args} of the {@code -XX} HotSpot flag whose name is
+     * {@code name}.
+     *
+     * @return the last value specified or null if the named flag is not present in {@code args}
+     */
+    private static Boolean getXXBoolArg(List<String> args, String name) {
+        String positive = "-XX:+" + name;
+        String negative = "-XX:-" + name;
+        for (String arg : args.reversed()) {
+            if (arg.equals(positive)) {
+                return true;
+            }
+            if (arg.equals(negative)) {
+                return false;
+            }
+        }
+        return null;
     }
 
     private static String validateImageName(String imageName) {
