@@ -116,8 +116,7 @@ class FromUsageResolver {
                     }
                     case RAVInstruction.VirtualMove move -> {
                         if (move.location.equals(location) && !move.variableOrConstant.equals(variable)) {
-                            // TODO: change this exception
-                            throw GraalError.shouldNotReachHere("Target register is overwritten without backup.");
+                            throw new TargetLocationOverwrittenException(move, block);
                         }
                     }
                     // For Op, if there is a redefinition, we let the later stages handle that

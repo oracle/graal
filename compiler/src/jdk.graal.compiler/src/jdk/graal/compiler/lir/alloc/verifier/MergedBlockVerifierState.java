@@ -1,6 +1,8 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.LIRKindWithCast;
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.CastValue;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
@@ -13,7 +15,7 @@ public class MergedBlockVerifierState {
     protected PhiResolution phiResolution;
 
     public MergedBlockVerifierState(PhiResolution phiResolution) {
-        this.values =  new MergedAllocationStateMap();
+        this.values = new MergedAllocationStateMap();
         this.phiResolution = phiResolution;
     }
 
@@ -21,7 +23,7 @@ public class MergedBlockVerifierState {
         this.phiResolution = phiResolution;
 
         if (other == null) {
-            this.values =  new MergedAllocationStateMap();
+            this.values = new MergedAllocationStateMap();
             return;
         }
 
@@ -36,25 +38,25 @@ public class MergedBlockVerifierState {
         return this.values.mergeWith(other.getValues());
     }
 
-    protected boolean checkInputs(RAVInstruction.ValueArrayPair values, boolean isJump) {
+    protected void checkInputs(RAVInstruction.ValueArrayPair values, RAVInstruction.Op op, BasicBlock<?> block, RAVInstruction.Op labelOp) {
         // Check that incoming values are not unknown or conflicted - these only matter if used
         for (int idx = 0; idx < values.count; idx++) {
             var orig = values.orig[idx];
             var curr = values.curr[idx];
 
-            if (curr == null && isJump && phiResolution == PhiResolution.FromUsage) {
-                // Whenever PhiResolution = FromUsage, variable is not used and thus no register present.
-                continue;
-            }
-
             assert orig != null;
 
             if (curr == null) {
-                if (isJump) {
-                    throw new RuntimeException(this.getMissingLabelOrJumpErrMsg("JUMP", values));
+                if (op.lirInstruction instanceof StandardOp.JumpOp) {
+                    if (phiResolution == PhiResolution.FromUsage) {
+                        // Variable has no usage, thus no location present.
+                        continue;
+                    }
+
+                    throw new LabelNotResolvedError(block, labelOp, phiResolution);
                 }
 
-                assert false;
+                throw new MissingLocationError(op.lirInstruction, block, orig);
             }
 
             if (orig.equals(curr)) {
@@ -62,14 +64,13 @@ public class MergedBlockVerifierState {
                 continue;
             }
 
-            AllocationState state = this.values.get(curr);
-
             if (!kindsEqual(orig, curr)) {
-                return false;
+                throw new KindsMismatchException(op.lirInstruction, block, orig, curr, true);
             }
 
+            AllocationState state = this.values.get(curr);
             if (state.isConflicted() || state.isUnknown()) {
-                return false;
+                throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
             }
 
             if (state instanceof ValueAllocationState valAllocState) {
@@ -80,16 +81,14 @@ public class MergedBlockVerifierState {
                     }
 
                     // Kind sizes should be checked here as well.
-                    return false;
+                    throw new KindsMismatchException(op.lirInstruction, block, orig, valAllocState.value, false);
                 }
 
                 continue;
             }
 
-            throw new IllegalStateException(); // Should never reach here.
+            throw GraalError.shouldNotReachHere("Invalid state " + state);
         }
-
-        return true;
     }
 
     protected boolean kindsEqual(Value orig, Value curr) {
@@ -111,7 +110,7 @@ public class MergedBlockVerifierState {
         return false;
     }
 
-    protected boolean checkAliveConstraint(RAVInstruction.Op instruction) {
+    protected void checkAliveConstraint(RAVInstruction.Op instruction, BasicBlock<?> block) {
         for (int i = 0; i < instruction.alive.count; i++) {
             Value value = instruction.alive.curr[i];
             if (Value.ILLEGAL.equals(value)) {
@@ -120,31 +119,22 @@ public class MergedBlockVerifierState {
 
             for (int j = 0; j < instruction.temp.count; j++) {
                 if (value.equals(instruction.temp.curr[j])) {
-                    return false;
+                    throw new AliveConstraintViolationException(instruction.lirInstruction, block, value, false);
                 }
             }
 
             for (int j = 0; j < instruction.dests.count; j++) {
                 if (value.equals(instruction.dests.curr[j])) {
-                    return false;
+                    throw new AliveConstraintViolationException(instruction.lirInstruction, block, value, true);
                 }
             }
         }
-
-        return true;
     }
 
-    public boolean check(RAVInstruction.Base instruction) {
+    public void check(RAVInstruction.Base instruction, BasicBlock<?> block, RAVInstruction.Op labelOp) {
         if (instruction instanceof RAVInstruction.Op op) {
-            boolean isJump = op.lirInstruction instanceof StandardOp.JumpOp;
-
-            if (!checkInputs(op.uses, isJump)) {
-                return false;
-            }
-
-            if (!checkInputs(op.alive, isJump)) {
-                return false;
-            }
+            checkInputs(op.uses, op, block, labelOp);
+            checkInputs(op.alive, op, block, labelOp);
 
             for (int i = 0; i < op.temp.count; i++) {
                 var curr = op.temp.curr[i];
@@ -152,111 +142,73 @@ public class MergedBlockVerifierState {
 
                 if (!kindsEqual(orig, curr)) {
                     // Make sure the assigned register has the correct kind for temp.
-                    return false;
+                    throw new KindsMismatchException(instruction.lirInstruction, block, orig, curr, true);
                 }
             }
 
-            if (!this.checkAliveConstraint(op)) {
-                return false;
-            }
+            this.checkAliveConstraint(op, block);
         }
-
-        return true;
     }
 
-    public String getMissingLabelOrJumpErrMsg(String subject, RAVInstruction.ValueArrayPair values) {
-        String errorMsg = "[";
-        for (int j = 0; j < values.count; j++) {
-            errorMsg += values.orig[j].toString();
-            if (values.curr[j] != null) {
-                errorMsg += " -> " + values.curr[j].toString();
-            } else {
-                errorMsg += " -> ?";
-            }
-
-            if (j != values.count - 1) {
-                errorMsg += ", ";
-            }
-        }
-
-        return "Failed to resolve: " + subject + " " + errorMsg + "]";
-    }
-
-    public void update(RAVInstruction.Base instruction) {
+    public void update(RAVInstruction.Base instruction, BasicBlock<?> block) {
         switch (instruction) {
-            case RAVInstruction.Op op -> {
-                for (int i = 0; i < op.dests.count; i++) {
-                    if (Value.ILLEGAL.equals(op.dests.orig[i])) {
-                        continue; // Safe to ignore, when destination is illegal value, not when used.
-                    }
+            case RAVInstruction.Op op -> this.updateWithOp(op, block);
+            case RAVInstruction.Spill spill -> this.values.putClone(spill.to, this.values.get(spill.from));
+            case RAVInstruction.Reload reload -> this.values.putClone(reload.to, this.values.get(reload.from));
+            case RAVInstruction.Move move -> this.values.putClone(move.to, this.values.get(move.from));
+            case RAVInstruction.StackMove move -> this.values.putClone(move.to, this.values.get(move.from));
+            case RAVInstruction.VirtualMove virtMove -> this.updateWithVirtualMove(virtMove);
+            default -> throw GraalError.shouldNotReachHere("Invalid RAV instruction " + instruction);
+        }
+    }
 
-                    if ((phiResolution == PhiResolution.FromPredecessors
-                            || phiResolution == PhiResolution.FromUsage)
-                            && op.dests.curr[i] == null) {
-                        // This can happen for certain instructions - jump or label, and we need to
-                        // resolve appropriate registers for these, if we do not, we throw in check()
-                        continue;
-                    }
-
-                    // Here, FromJump resolution will fail if it was not completed
-                    if (op.dests.curr[i] == null && phiResolution == PhiResolution.FromJump) {
-                        throw new RuntimeException(this.getMissingLabelOrJumpErrMsg("LABEL", op.dests));
-                    }
-
-                    assert op.dests.curr[i] != null;
-                    assert op.dests.orig[i] != null;
-
-                    Value location = op.dests.curr[i];
-                    Value variable = op.dests.orig[i];
-                    this.values.put(location, new ValueAllocationState(variable));
-                }
-
-                for (int i = 0; i < op.temp.count; i++) {
-                    var value = op.temp.curr[i];
-                    if (Value.ILLEGAL.equals(value)) {
-                        continue;
-                    }
-
-                    // We cannot believe the contents of registers used as temp, thus we need to reset.
-                    Value location = op.temp.curr[i];
-                    this.values.put(location, UnknownAllocationState.INSTANCE);
-                }
+    protected void updateWithOp(RAVInstruction.Op op, BasicBlock<?> block) {
+        for (int i = 0; i < op.dests.count; i++) {
+            if (Value.ILLEGAL.equals(op.dests.orig[i])) {
+                continue; // Safe to ignore, when destination is illegal value, not when used.
             }
-            case RAVInstruction.Spill spill ->
-                    this.values.putClone(spill.to, this.values.get(spill.from));
-            case RAVInstruction.Reload reload ->
-                    this.values.putClone(reload.to, this.values.get(reload.from));
-            case RAVInstruction.Move move -> {
-                var value = this.values.get(move.from);
-                if (value.isUnknown()) {
-                    // Hotfix for blockDefinitions, where if we moved a Value we need to make
-                    // sure it's saved in the state, so that value is not propagated further
-                    // causing Circular Exception
-                    // TestCase: ConditionalElimination17
-                    value = new ValueAllocationState(Value.ILLEGAL);
+
+            assert op.dests.orig[i] != null;
+
+            if (op.dests.curr[i] == null) {
+                if (phiResolution == PhiResolution.FromJump) {
+                    throw new LabelNotResolvedError(block, op, phiResolution);
                 }
 
-                this.values.putClone(move.to, value);
+                continue;
             }
-            case RAVInstruction.StackMove move ->
-                    this.values.putClone(move.to, this.values.get(move.from));
-            case RAVInstruction.VirtualMove virtMove -> {
-                if (virtMove.location instanceof RegisterValue) {
-                    this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant));
-                } else if (LIRValueUtil.isVariable(virtMove.location)) {
-                    // v4|QWORD[.] = MOVE input: v3|QWORD[.] moveKind: QWORD
-                    // Move before allocation
-                    // TODO: maybe handle this better than VirtualMove with location as Variable
-                    // TestCase: BoxingTest.boxBoolean
-                    var locations = this.values.getValueLocations(virtMove.variableOrConstant);
-                    for (var location : locations) {
-                        this.values.put(location, new ValueAllocationState(virtMove.location));
-                    }
-                } else {
-                    this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant));
-                }
+
+            Value location = op.dests.curr[i];
+            Value variable = op.dests.orig[i];
+            this.values.put(location, new ValueAllocationState(variable));
+        }
+
+        for (int i = 0; i < op.temp.count; i++) {
+            var value = op.temp.curr[i];
+            if (Value.ILLEGAL.equals(value)) {
+                continue;
             }
-            default -> throw new IllegalStateException();
+
+            // We cannot believe the contents of registers used as temp, thus we need to reset.
+            Value location = op.temp.curr[i];
+            this.values.put(location, UnknownAllocationState.INSTANCE);
+        }
+    }
+
+    protected void updateWithVirtualMove(RAVInstruction.VirtualMove virtMove) {
+        if (virtMove.location instanceof RegisterValue) {
+            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant));
+        } else if (LIRValueUtil.isVariable(virtMove.location)) {
+            // v4|QWORD[.] = MOVE input: v3|QWORD[.] moveKind: QWORD
+            // Move before allocation
+            // TODO: maybe handle this better than VirtualMove with location as Variable
+            // TestCase: BoxingTest.boxBoolean
+            var locations = this.values.getValueLocations(virtMove.variableOrConstant);
+            for (var location : locations) {
+                this.values.put(location, new ValueAllocationState(virtMove.location));
+            }
+        } else {
+            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant));
         }
     }
 }

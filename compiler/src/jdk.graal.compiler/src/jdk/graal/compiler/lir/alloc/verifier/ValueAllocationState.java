@@ -1,5 +1,6 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.VirtualStackSlot;
@@ -21,7 +22,7 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
             // TODO: reconsider handling of StackSlots
             this.value = value;
         } else {
-            throw new IllegalStateException();
+            throw GraalError.shouldNotReachHere("Invalid type of value used " + value);
         }
     }
 

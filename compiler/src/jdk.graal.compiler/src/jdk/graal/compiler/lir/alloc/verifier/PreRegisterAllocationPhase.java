@@ -222,7 +222,7 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
                         continue;
                     }
 
-                    throw new VerErr.UnknownInstructionError(instruction, block);
+                    throw new UnknownInstructionError(instruction, block);
                 }
 
                 var opRAVInstr = (RAVInstruction.Op) rAVInstr;

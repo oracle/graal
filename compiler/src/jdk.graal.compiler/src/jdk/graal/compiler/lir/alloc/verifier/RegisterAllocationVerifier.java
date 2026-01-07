@@ -10,6 +10,7 @@ import jdk.graal.compiler.lir.Variable;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -98,7 +99,7 @@ public final class RegisterAllocationVerifier {
                     case RAVInstruction.Spill spill -> definitions.add(spill.to);
                     case RAVInstruction.StackMove stackMove -> definitions.add(stackMove.to);
                     case RAVInstruction.VirtualMove virtMove -> definitions.add(virtMove.location); // Is this right?
-                    default -> throw new IllegalStateException();
+                    default -> GraalError.shouldNotReachHere("Invalid RAV instruction " + instruction);
                 }
             }
 
@@ -251,23 +252,7 @@ public final class RegisterAllocationVerifier {
                     // for example: B0 defines [v0] in label, B1 is it's successor as well as it's
                     // predecessor, and if it does not overwrite this register, it would change
                     // entry state for B0 to include v0, which is defined by B0.
-
-                    String errorMsg = "[";
-                    var values = labelInstr.dests;
-                    for (int j = 0; j < values.count; j++) {
-                        errorMsg += values.orig[j].toString();
-                        if (values.curr[j] != null) {
-                            errorMsg += " -> " + values.curr[j].toString();
-                        } else {
-                            errorMsg += " -> ?";
-                        }
-
-                        if (j != values.count - 1) {
-                            errorMsg += ", ";
-                        }
-                    }
-
-                    throw new GraalError("Circular definition for variable detected " + curr + " -> " + defBlock + " on LABEL " + errorMsg + "]");
+                    throw new CircularDefinitionError(defBlock, curr, labelInstr, variablesToBePropagated);
                 }
 
                 boolean dominates = succ.dominates(defBlock);
@@ -398,7 +383,7 @@ public final class RegisterAllocationVerifier {
             // Create new entry state for successor blocks out of current block state
             var state = new MergedBlockVerifierState(this.blockEntryStates.get(block), phiResolution);
             for (var instr : instructions) {
-                state.update(instr);
+                state.update(instr, block);
             }
             this.blockStates.put(block, state);
 
@@ -474,7 +459,7 @@ public final class RegisterAllocationVerifier {
             var label = (RAVInstruction.Op) this.blockInstructions.get(pBlock).getFirst();
             if (this.hasMissingRegistersInLabel(label)) {
                 if (!this.doPrecessorsHaveStates(pBlock)) {
-                    throw new RuntimeException("Could not determine label registers for " + pBlock);
+                    throw new LabelNotResolvedError(pBlock, label, phiResolution);
                 }
 
                 currentMissingLabelBlockCount++;
@@ -493,24 +478,44 @@ public final class RegisterAllocationVerifier {
      *
      * @return true, if valid, otherwise false
      */
-    public boolean verifyInstructionInputs() {
+    public void verifyInstructionInputs() {
         for (var blockId : this.lir.getBlocks()) {
             var block = this.lir.getBlockById(blockId);
             var state = this.blockEntryStates.get(block);
             var instructions = this.blockInstructions.get(block);
+            var labelInstr = (RAVInstruction.Op) instructions.getFirst();
 
             for (var instr : instructions) {
-                if (!state.check(instr)) {
-                    return false;
+                state.check(instr, block, labelInstr);
+                state.update(instr, block);
+            }
+        }
+    }
+
+    public void verifyInstructionsAndCollectErrors(String compUnitName) {
+        List<RAVException> exceptions = new ArrayList<>();
+        for (var blockId : this.lir.getBlocks()) {
+            var block = this.lir.getBlockById(blockId);
+            var state = this.blockEntryStates.get(block);
+            var instructions = this.blockInstructions.get(block);
+            var labelInstr = (RAVInstruction.Op) instructions.getFirst();
+
+            for (var instr : instructions) {
+                try {
+                    state.check(instr, block, labelInstr);
+                    state.update(instr, block);
+                } catch (RAVException e) {
+                    exceptions.add(e);
                 }
-                state.update(instr);
             }
         }
 
-        return true;
+        if (!exceptions.isEmpty()) {
+            throw new RAVFailedVerificationException(compUnitName, exceptions);
+        }
     }
 
-    public boolean run() {
+    public void run() {
         if (this.phiResolution == PhiResolution.FromUsage) {
             this.fromUsageResolver.resolvePhiFromUsage();
         }
@@ -523,6 +528,6 @@ public final class RegisterAllocationVerifier {
         }
 
         this.calculateEntryBlocks();
-        return this.verifyInstructionInputs();
+        this.verifyInstructionInputs();
     }
 }
