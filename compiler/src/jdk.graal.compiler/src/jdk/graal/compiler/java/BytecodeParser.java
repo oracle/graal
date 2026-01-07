@@ -293,6 +293,7 @@ import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
+import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -3715,6 +3716,14 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         }
     }
 
+    /**
+     * Hook for subclasses to decorate {@link ExceptionHandler#getCatchType} with an additional
+     * type.
+     */
+    protected JavaType decorateCatchType(JavaType type) {
+        return type;
+    }
+
     @SuppressWarnings("try")
     protected void createExceptionDispatch(ExceptionDispatchBlock block) {
         try (DebugCloseable context = openNodeContext(frameState, BytecodeFrame.AFTER_EXCEPTION_BCI)) {
@@ -3726,7 +3735,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 return;
             }
 
-            JavaType catchType = block.handler.getCatchType();
+            JavaType catchType = decorateCatchType(block.handler.getCatchType());
             if (graphBuilderConfig.eagerResolving()) {
                 catchType = lookupType(block.handler.catchTypeCPI(), INSTANCEOF);
             }
@@ -3754,6 +3763,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                  */
                 BeginNode piNodeAnchor = graph.add(new BeginNode());
                 ObjectStamp checkedStamp = StampFactory.objectNonNull(checkedCatchType);
+                JavaType tt = ((AbstractObjectStamp) exception.stamp(NodeView.DEFAULT)).type();
                 PiNode piNode = graph.addWithoutUnique(new PiNode(exception, checkedStamp));
                 frameState.pop(JavaKind.Object);
                 frameState.push(JavaKind.Object, piNode);
@@ -5106,7 +5116,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             ExceptionDispatchBlock edb = (ExceptionDispatchBlock) currentBlock.exceptionDispatchBlock();
             ExceptionHandler handler = edb.handler;
             if (handler != null) {
-                JavaType catchType = handler.getCatchType();
+                JavaType catchType = decorateCatchType(handler.getCatchType());
                 // catch type can be null for java.lang.Throwable which catches everything
                 inOOMETry = catchType != null && catchType.getName().equals("Ljava/lang/OutOfMemoryError;");
             }

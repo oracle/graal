@@ -32,6 +32,7 @@ import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -102,4 +103,10 @@ public final class RistrettoType extends SubstrateType {
         return RistrettoUtils.toRFields(interpreterType.getInstanceFields(includeSuperclasses));
     }
 
+    @Override
+    public boolean isAssignableFrom(ResolvedJavaType other) {
+        assert other instanceof RistrettoType : Assertions.errorMessage("Must already be wrapped", this, other);
+        RistrettoType rTypeOther = (RistrettoType) other;
+        return this.interpreterType.isAssignableFrom(rTypeOther.interpreterType);
+    }
 }
