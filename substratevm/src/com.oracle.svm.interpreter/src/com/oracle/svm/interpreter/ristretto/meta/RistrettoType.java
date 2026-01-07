@@ -27,10 +27,13 @@ package com.oracle.svm.interpreter.ristretto.meta;
 import java.util.function.Function;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
+import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -88,4 +91,15 @@ public final class RistrettoType extends SubstrateType {
          */
         return true;
     }
+
+    @Override
+    public ResolvedJavaField[] getStaticFields() {
+        return RistrettoUtils.toRFields(interpreterType.getStaticFields());
+    }
+
+    @Override
+    public SubstrateField[] getInstanceFields(boolean includeSuperclasses) {
+        return RistrettoUtils.toRFields(interpreterType.getInstanceFields(includeSuperclasses));
+    }
+
 }
