@@ -54,6 +54,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
@@ -701,12 +702,13 @@ public class NativeImageGenerator {
 
                         verifyAndSealShadowHeap(codeCache, debug, heap);
 
-                        buildNativeImageHeap(heap, codeCache);
+                        ImageHeapLayoutInfo heapLayout = buildNativeImageHeap(heap, codeCache);
+                        BuildPhaseProvider.markHeapLayoutFinished();
 
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, heap, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
 
-                        createAbstractImage(k, hostedEntryPoints, heap, hMetaAccess, codeCache);
+                        createAbstractImage(k, hostedEntryPoints, heap, heapLayout, hMetaAccess, codeCache);
 
                         FeatureImpl.AfterAbstractImageCreationAccessImpl access = new FeatureImpl.AfterAbstractImageCreationAccessImpl(featureHandler, loader, hMetaAccess, debug, image,
                                         runtimeConfiguration.getBackendForNormalMethod());
@@ -796,7 +798,7 @@ public class NativeImageGenerator {
         bb.getUniverse().getHeapScanner().seal();
     }
 
-    protected void buildNativeImageHeap(NativeImageHeap heap, NativeImageCodeCache codeCache) {
+    protected ImageHeapLayoutInfo buildNativeImageHeap(NativeImageHeap heap, NativeImageCodeCache codeCache) {
         // Start building the model of the native image heap.
         heap.addInitialObjects();
         // Then build the model of the code cache, which can
@@ -804,10 +806,19 @@ public class NativeImageGenerator {
         codeCache.addConstantsToHeap();
         // Finish building the model of the native image heap.
         heap.addTrailingObjects();
+
+        ImageHeapLayoutInfo layoutInfo = layoutNativeImageHeap(heap);
+        assert !heap.hasDuplicateObjects() : "heap.getObjects() must not contain any duplicates";
+        return layoutInfo;
     }
 
-    protected void createAbstractImage(NativeImageKind k, List<HostedMethod> hostedEntryPoints, NativeImageHeap heap, HostedMetaAccess hMetaAccess, NativeImageCodeCache codeCache) {
-        this.image = AbstractImage.create(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, loader.getClassLoader());
+    protected ImageHeapLayoutInfo layoutNativeImageHeap(NativeImageHeap heap) {
+        return heap.getLayouter().layout(heap, SubstrateOptions.getPageSize(), ImageHeapLayouter.ImageHeapLayouterCallback.NONE);
+    }
+
+    protected void createAbstractImage(NativeImageKind k, List<HostedMethod> hostedEntryPoints, NativeImageHeap heap, ImageHeapLayoutInfo heapLayout,
+                    HostedMetaAccess hMetaAccess, NativeImageCodeCache codeCache) {
+        this.image = AbstractImage.create(k, hUniverse, hMetaAccess, nativeLibraries, heap, heapLayout, codeCache, hostedEntryPoints, loader.getClassLoader());
     }
 
     protected boolean runPointsToAnalysis(String imageName, OptionValues options, DebugContext debug) {

@@ -248,7 +248,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         long imageHeapEnd = NumUtil.roundUp(getUnalignedReadOnly().getStartOffset() + getUnalignedReadOnly().getSize(), pageSize);
         return new ImageHeapLayoutInfo(startOffset, imageHeapEnd, offsetOfFirstWritableAlignedChunk, writableSize,
                         getAlignedReadOnlyRelocatable().getStartOffset(), getAlignedReadOnlyRelocatable().getSize(),
-                        getAlignedWritablePatched().getStartOffset(), getAlignedWritablePatched().getSize());
+                        getAlignedWritablePatched().getStartOffset(), getAlignedWritablePatched().getSize(), pageSize);
     }
 
     private static Object firstNonNullValue(Object... objects) {

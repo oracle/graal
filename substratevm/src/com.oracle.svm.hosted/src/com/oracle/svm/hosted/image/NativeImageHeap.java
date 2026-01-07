@@ -219,6 +219,12 @@ public final class NativeImageHeap implements ImageHeap {
         return heapLayouter;
     }
 
+    public boolean hasDuplicateObjects() {
+        Set<NativeImageHeap.ObjectInfo> deduplicated = Collections.newSetFromMap(new IdentityHashMap<>());
+        deduplicated.addAll(objects.values());
+        return deduplicated.size() != getObjectCount();
+    }
+
     @Fold
     static boolean useHeapBase() {
         return SubstrateOptions.SpawnIsolates.getValue() && ImageSingletons.lookup(CompressEncoding.class).hasBase();

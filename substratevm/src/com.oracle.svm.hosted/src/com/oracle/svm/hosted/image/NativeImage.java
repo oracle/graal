@@ -38,11 +38,9 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -72,7 +70,6 @@ import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.SectionName;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
-import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
@@ -93,7 +90,6 @@ import com.oracle.svm.core.graal.nodes.TLABObjectHeaderConstant;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayouterCallback;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -158,17 +154,15 @@ public abstract class NativeImage extends AbstractImage {
     private final Set<HostedMethod> uniqueEntryPoints = new HashSet<>(); // noEconomicSet(streaming)
     private final MethodPointerRelocationProvider relocationProvider;
 
-    private ImageHeapLayoutInfo heapLayout;
-
     // The sections of the native image.
     private Section textSection;
     private Section roDataSection;
     private Section rwDataSection;
     private Section heapSection;
 
-    public NativeImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
-        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
+    public NativeImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, ImageHeapLayoutInfo heapLayout,
+                    NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
+        super(k, universe, metaAccess, nativeLibs, heap, heapLayout, codeCache, entryPoints, imageClassLoader);
 
         uniqueEntryPoints.addAll(entryPoints);
         relocationProvider = MethodPointerRelocationProvider.singleton();
@@ -178,6 +172,7 @@ public abstract class NativeImage extends AbstractImage {
         objectFile.setByteOrder(ConfigurationValues.getTarget().arch.getByteOrder());
         wordSize = FrameAccess.wordSize();
         assert objectFile.getWordSizeInBytes() == wordSize;
+        assert objectFile.getPageSize() == heapLayout.getPageSize();
     }
 
     @Override
@@ -439,14 +434,6 @@ public abstract class NativeImage extends AbstractImage {
 
             long roSectionSize = codeCache.getAlignedConstantsSize();
             long rwSectionSize = ConfigurationValues.getObjectLayout().alignUp(cGlobals.getSize());
-            heapLayout = heap.getLayouter().layout(heap, objectFile.getPageSize(), ImageHeapLayouterCallback.NONE);
-            // after this point, the layout is final and must not be changed anymore
-            assert !hasDuplicatedObjects(heap.getObjects()) : "heap.getObjects() must not contain any duplicates";
-
-            BuildPhaseProvider.markHeapLayoutFinished();
-
-            heap.getLayouter().afterLayout(heap);
-
             int pageSize = objectFile.getPageSize();
 
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
@@ -569,12 +556,6 @@ public abstract class NativeImage extends AbstractImage {
             printHeapStatistics(heap.getLayouter().getPartitions());
             heap.dumpMetadata(heapLayout);
         }
-    }
-
-    private boolean hasDuplicatedObjects(Collection<ObjectInfo> objects) {
-        Set<ObjectInfo> deduplicated = Collections.newSetFromMap(new IdentityHashMap<>());
-        deduplicated.addAll(objects);
-        return deduplicated.size() != heap.getObjectCount();
     }
 
     public void markRelocationSitesFromBuffer(RelocatableBuffer buffer, ProgbitsSectionImpl sectionImpl) {

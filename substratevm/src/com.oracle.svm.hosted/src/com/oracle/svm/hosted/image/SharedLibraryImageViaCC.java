@@ -29,6 +29,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.List;
 
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.svm.core.LinkerInvocation;
@@ -41,9 +42,9 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 
 public class SharedLibraryImageViaCC extends NativeImageViaCC {
 
-    public SharedLibraryImageViaCC(HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, ClassLoader imageLoader) {
-        super(NativeImageKind.SHARED_LIBRARY, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageLoader);
+    public SharedLibraryImageViaCC(HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
+                    ImageHeapLayoutInfo heapLayout, NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ClassLoader imageLoader) {
+        super(NativeImageKind.SHARED_LIBRARY, universe, metaAccess, nativeLibs, heap, heapLayout, codeCache, entryPoints, imageLoader);
     }
 
     @Override

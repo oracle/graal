@@ -35,6 +35,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.util.Timer;
@@ -69,9 +70,9 @@ public class WebImage extends AbstractImage {
 
     protected long imageHeapSize = -1;
 
-    public WebImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, ImageClassLoader imageClassLoader, HostedMethod mainEntryPoint) {
-        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader.getClassLoader());
+    public WebImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, ImageHeapLayoutInfo heapLayout,
+                    NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ImageClassLoader imageClassLoader, HostedMethod mainEntryPoint) {
+        super(k, universe, metaAccess, nativeLibs, heap, heapLayout, codeCache, entryPoints, imageClassLoader.getClassLoader());
         this.imageClassLoader = imageClassLoader;
         this.mainEntryPoint = mainEntryPoint;
     }
@@ -101,6 +102,7 @@ public class WebImage extends AbstractImage {
         try (Timer.StopTimer codeGenTimer = TimerCollection.createTimerAndStart(WebImageGenerator.CodegenTimer)) {
             webImageCodeGen = WebImageCodeGen.generateCode(
                             (WebImageCodeCache) codeCache,
+                            heapLayout,
                             entryPoints,
                             mainEntryPoint,
                             webImageProviders,

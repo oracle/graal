@@ -49,11 +49,6 @@ public interface ImageHeapLayouter {
      */
     ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize, ImageHeapLayouterCallback callback);
 
-    /** Hook to run tasks after heap layout is finished. */
-    @SuppressWarnings("unused")
-    default void afterLayout(ImageHeap imageHeap) {
-    }
-
     /**
      * Based on the layout decided during an earlier call to {@link #layout}, fill the image heap in
      * the supplied buffer with additional data structures, if any. At this time, the buffer already

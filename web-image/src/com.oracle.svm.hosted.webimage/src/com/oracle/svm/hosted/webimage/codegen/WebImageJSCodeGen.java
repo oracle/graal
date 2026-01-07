@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSObject;
 
@@ -97,7 +98,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
 
     public WebImageJSCodeGen(WebImageCodeCache codeCache, List<HostedMethod> hostedEntryPoints, HostedMethod mainEntryPoint,
                     WebImageProviders providers, DebugContext debug, WebImageHostedConfiguration config, ImageClassLoader imageClassLoader) {
-        super(codeCache, hostedEntryPoints, mainEntryPoint, providers, debug, config);
+        super(codeCache, null, hostedEntryPoints, mainEntryPoint, providers, debug, config);
 
         this.typeControl = ((WebImageJSProviders) providers).typeControl();
         this.methodGraphs = compilations.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getGraph()));
@@ -142,8 +143,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
 
     @Override
     protected void emitCode() {
-        /* The JS backend doesn't really do any heap layouting, */
-        afterHeapLayout();
+        assert BuildPhaseProvider.isHeapLayoutFinished();
         emitJSCode();
     }
 

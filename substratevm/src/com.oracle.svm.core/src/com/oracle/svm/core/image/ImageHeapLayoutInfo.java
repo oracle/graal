@@ -24,30 +24,30 @@
  */
 package com.oracle.svm.core.image;
 
-import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 import jdk.graal.compiler.debug.Assertions;
 
 /** Layout offsets and sizes. All offsets are relative to the heap base. */
 public class ImageHeapLayoutInfo {
-    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private final long startOffset;
-    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private final long endOffset;
+    private final long startOffset;
+    private final long endOffset;
 
-    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private final long writableOffset;
-    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private final long writableSize;
+    private final long writableOffset;
+    private final long writableSize;
 
-    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private final long readOnlyRelocatableOffset;
-    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private final long readOnlyRelocatableSize;
+    private final long readOnlyRelocatableOffset;
+    private final long readOnlyRelocatableSize;
 
-    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private final long writablePatchedOffset;
-    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private final long writablePatchedSize;
+    private final long writablePatchedOffset;
+    private final long writablePatchedSize;
+
+    private final long pageSize;
 
     @SuppressWarnings("this-escape")
     public ImageHeapLayoutInfo(long startOffset, long endOffset, long writableOffset, long writableSize, long readOnlyRelocatableOffset, long readOnlyRelocatableSize, long writablePatchedOffset,
-                    long writablePatchedSize) {
+                    long writablePatchedSize, long pageSize) {
         this.startOffset = startOffset;
         this.endOffset = endOffset;
         this.writableOffset = writableOffset;
@@ -56,6 +56,7 @@ public class ImageHeapLayoutInfo {
         this.readOnlyRelocatableSize = readOnlyRelocatableSize;
         this.writablePatchedOffset = writablePatchedOffset;
         this.writablePatchedSize = writablePatchedSize;
+        this.pageSize = pageSize;
 
         assert verifyAlignment();
         assert readOnlyRelocatableOffset + readOnlyRelocatableSize <= writablePatchedOffset : Assertions.errorMessage("the writable patched section is placed after the relocations",
@@ -117,5 +118,9 @@ public class ImageHeapLayoutInfo {
 
     public boolean isWritablePatched(long offset) {
         return offset >= writablePatchedOffset && offset < writablePatchedOffset + writablePatchedSize;
+    }
+
+    public long getPageSize() {
+        return pageSize;
     }
 }
