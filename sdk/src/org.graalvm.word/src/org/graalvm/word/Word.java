@@ -295,9 +295,7 @@ public final class Word implements SignedWord, UnsignedWord, Pointer {
 
     @Override
     @Operation(opcode = Word.Opcode.INITIALIZE)
-    public void initializeLong(WordBase offset, long val, LocationIdentity locationIdentity) {
-
-    }
+    public native void initializeLong(WordBase offset, long val, LocationIdentity locationIdentity);
 
     @Override
     @Operation(opcode = Word.Opcode.WRITE_POINTER)
@@ -337,9 +335,7 @@ public final class Word implements SignedWord, UnsignedWord, Pointer {
 
     @Override
     @Operation(opcode = Word.Opcode.INITIALIZE)
-    public void initializeLong(int offset, long val, LocationIdentity locationIdentity) {
-
-    }
+    public native void initializeLong(int offset, long val, LocationIdentity locationIdentity);
 
     @Override
     @Operation(opcode = Word.Opcode.WRITE_POINTER)
@@ -471,27 +467,19 @@ public final class Word implements SignedWord, UnsignedWord, Pointer {
 
     @Override
     @Operation(opcode = Word.Opcode.CAS_POINTER)
-    public boolean logicCompareAndSwapInt(WordBase offset, int expectedValue, int newValue, LocationIdentity locationIdentity) {
-        return false;
-    }
+    public native boolean logicCompareAndSwapInt(WordBase offset, int expectedValue, int newValue, LocationIdentity locationIdentity);
 
     @Override
     @Operation(opcode = Word.Opcode.CAS_POINTER)
-    public boolean logicCompareAndSwapLong(WordBase offset, long expectedValue, long newValue, LocationIdentity locationIdentity) {
-        return false;
-    }
+    public native boolean logicCompareAndSwapLong(WordBase offset, long expectedValue, long newValue, LocationIdentity locationIdentity);
 
     @Override
     @Operation(opcode = Word.Opcode.CAS_POINTER)
-    public boolean logicCompareAndSwapWord(WordBase offset, WordBase expectedValue, WordBase newValue, LocationIdentity locationIdentity) {
-        return false;
-    }
+    public native boolean logicCompareAndSwapWord(WordBase offset, WordBase expectedValue, WordBase newValue, LocationIdentity locationIdentity);
 
     @Override
     @Operation(opcode = Word.Opcode.CAS_POINTER)
-    public boolean logicCompareAndSwapObject(WordBase offset, Object expectedValue, Object newValue, LocationIdentity locationIdentity) {
-        return false;
-    }
+    public native boolean logicCompareAndSwapObject(WordBase offset, Object expectedValue, Object newValue, LocationIdentity locationIdentity);
 
     @Override
     @Operation(opcode = Word.Opcode.WRITE_POINTER)
