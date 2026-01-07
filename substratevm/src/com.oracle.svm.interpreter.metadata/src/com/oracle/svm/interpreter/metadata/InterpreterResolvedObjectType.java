@@ -324,17 +324,88 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
 
     @Override
     public InterpreterResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
-        throw VMError.unimplemented("getInstanceFields: Likely not used until JIT added to runtime loaded classes.");
+        // Collect non-static fields declared in this class
+        int thisClazzFieldCount = 0;
+        for (InterpreterResolvedJavaField f : declaredFields) {
+            if (!f.isStatic()) {
+                thisClazzFieldCount++;
+            }
+        }
+
+        InterpreterResolvedJavaField[] thisClazzFields;
+        if (thisClazzFieldCount == 0) {
+            thisClazzFields = InterpreterResolvedJavaField.EMPTY_ARRAY;
+        } else {
+            thisClazzFields = new InterpreterResolvedJavaField[thisClazzFieldCount];
+            int idx = 0;
+            for (InterpreterResolvedJavaField f : declaredFields) {
+                if (!f.isStatic()) {
+                    thisClazzFields[idx++] = f;
+                }
+            }
+        }
+
+        // If not including superclasses or no superclass, return thisClazzFields
+        if (!includeSuperclasses || superclass == null) {
+            return thisClazzFields;
+        }
+
+        // Merge with superclass instance fields: superclass first, preserving declared order
+        InterpreterResolvedJavaField[] parent = superclass.getInstanceFields(true);
+        if (parent.length == 0) {
+            return thisClazzFields;
+        }
+        if (thisClazzFields.length == 0) {
+            return parent;
+        }
+        InterpreterResolvedJavaField[] result = new InterpreterResolvedJavaField[parent.length + thisClazzFields.length];
+        System.arraycopy(parent, 0, result, 0, parent.length);
+        System.arraycopy(thisClazzFields, 0, result, parent.length, thisClazzFields.length);
+        return result;
     }
 
     @Override
     public InterpreterResolvedJavaField[] getStaticFields() {
-        throw VMError.unimplemented("getStaticFields: Likely not used until JIT added to runtime loaded classes.");
+        InterpreterResolvedJavaField[] declared = this.declaredFields;
+        if (declared == null || declared.length == 0) {
+            return InterpreterResolvedJavaField.EMPTY_ARRAY;
+        }
+        int thisClazzStaticFieldCount = 0;
+        for (InterpreterResolvedJavaField f : declared) {
+            if (f.isStatic()) {
+                thisClazzStaticFieldCount++;
+            }
+        }
+        if (thisClazzStaticFieldCount == 0) {
+            return InterpreterResolvedJavaField.EMPTY_ARRAY;
+        }
+        InterpreterResolvedJavaField[] thisClazzStaticFields = new InterpreterResolvedJavaField[thisClazzStaticFieldCount];
+        int idx = 0;
+        for (InterpreterResolvedJavaField f : declared) {
+            if (f.isStatic()) {
+                thisClazzStaticFields[idx++] = f;
+            }
+        }
+        return thisClazzStaticFields;
     }
 
     @Override
     public InterpreterResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
-        throw VMError.unimplemented("findInstanceFieldWithOffset: Likely not used until JIT added to runtime loaded classes.");
+        if (offset < 0) {
+            return null;
+        }
+        // Search all instance fields including superclasses
+        InterpreterResolvedJavaField[] fields = getInstanceFields(true);
+        for (InterpreterResolvedJavaField f : fields) {
+            // Compare offsets (stored as int at build time but passed as long here)
+            if ((long) f.getOffset() == offset) {
+                // If an expected kind is provided, enforce it
+                if (expectedKind == null || expectedKind == f.getJavaKind()) {
+                    return f;
+                }
+            }
+        }
+        return null;
     }
 
     @Override
