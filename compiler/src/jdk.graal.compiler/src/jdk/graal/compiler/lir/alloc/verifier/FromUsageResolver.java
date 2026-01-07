@@ -207,7 +207,7 @@ class FromUsageResolver {
             return;
         }
 
-        if (location instanceof Variable || location instanceof ConstantValue) {
+        if (LIRValueUtil.isVariable(location) || location instanceof ConstantValue) {
             return;
         }
 

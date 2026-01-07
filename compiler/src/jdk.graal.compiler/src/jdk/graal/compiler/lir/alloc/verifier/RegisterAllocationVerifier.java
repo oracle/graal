@@ -1,5 +1,6 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.GraalError;
@@ -37,13 +38,15 @@ public final class RegisterAllocationVerifier {
 
     public FromUsageResolver fromUsageResolver;
 
-    public RegisterAllocationVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, PhiResolution phiResolution) {
+    protected RegisterAllocationConfig registerAllocationConfig;
+
+    public RegisterAllocationVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, PhiResolution phiResolution, RegisterAllocationConfig registerAllocationConfig) {
         this.lir = lir;
 
         var cfg = lir.getControlFlowGraph();
         this.blockInstructions = blockInstructions;
         this.blockEntryStates = new BlockMap<>(cfg);
-        this.blockEntryStates.put(cfg.getStartBlock(), new MergedBlockVerifierState(phiResolution));
+        this.blockEntryStates.put(cfg.getStartBlock(), new MergedBlockVerifierState(registerAllocationConfig, phiResolution));
         this.blockStates = new BlockMap<>(cfg);
         this.phiResolution = phiResolution;
 
@@ -54,6 +57,7 @@ public final class RegisterAllocationVerifier {
         this.usageAliasMap = new HashMap<>();
 
         this.fromUsageResolver = new FromUsageResolver(lir, blockInstructions);
+        this.registerAllocationConfig = registerAllocationConfig;
     }
 
     private boolean doPrecessorsHaveStates(BasicBlock<?> block) {
@@ -98,7 +102,11 @@ public final class RegisterAllocationVerifier {
                     case RAVInstruction.Reload reload -> definitions.add(reload.to);
                     case RAVInstruction.Spill spill -> definitions.add(spill.to);
                     case RAVInstruction.StackMove stackMove -> definitions.add(stackMove.to);
-                    case RAVInstruction.VirtualMove virtMove -> definitions.add(virtMove.location); // Is this right?
+                    case RAVInstruction.VirtualMove virtMove -> {
+                        if (!LIRValueUtil.isVariable(virtMove.location)) {
+                            definitions.add(virtMove.location);
+                        }
+                    }
                     default -> GraalError.shouldNotReachHere("Invalid RAV instruction " + instruction);
                 }
             }
@@ -381,7 +389,7 @@ public final class RegisterAllocationVerifier {
             }
 
             // Create new entry state for successor blocks out of current block state
-            var state = new MergedBlockVerifierState(this.blockEntryStates.get(block), phiResolution);
+            var state = new MergedBlockVerifierState(this.blockEntryStates.get(block), registerAllocationConfig, phiResolution);
             for (var instr : instructions) {
                 state.update(instr, block);
             }
@@ -400,7 +408,7 @@ public final class RegisterAllocationVerifier {
 
                 MergedBlockVerifierState succState;
                 if (this.blockEntryStates.get(succ) == null) {
-                    succState = new MergedBlockVerifierState(phiResolution);
+                    succState = new MergedBlockVerifierState(registerAllocationConfig, phiResolution);
 
                     // Either there's no state because it was not yet processed first part of the condition
                     // or, we need to reset it because label changed, second part of the condition

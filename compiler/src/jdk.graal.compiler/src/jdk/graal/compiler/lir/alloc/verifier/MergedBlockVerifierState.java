@@ -1,26 +1,31 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.LIRKindWithCast;
+import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.CastValue;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.Value;
 
 public class MergedBlockVerifierState {
     public MergedAllocationStateMap values;
 
     protected PhiResolution phiResolution;
+    protected RegisterAllocationConfig registerAllocationConfig;
 
-    public MergedBlockVerifierState(PhiResolution phiResolution) {
+    public MergedBlockVerifierState(RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution) {
         this.values = new MergedAllocationStateMap();
         this.phiResolution = phiResolution;
+        this.registerAllocationConfig = registerAllocationConfig;
     }
 
-    protected MergedBlockVerifierState(MergedBlockVerifierState other, PhiResolution phiResolution) {
+    protected MergedBlockVerifierState(MergedBlockVerifierState other, RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution) {
         this.phiResolution = phiResolution;
+        this.registerAllocationConfig = registerAllocationConfig;
 
         if (other == null) {
             this.values = new MergedAllocationStateMap();
@@ -154,11 +159,29 @@ public class MergedBlockVerifierState {
         switch (instruction) {
             case RAVInstruction.Op op -> this.updateWithOp(op, block);
             case RAVInstruction.Spill spill -> this.values.putClone(spill.to, this.values.get(spill.from));
-            case RAVInstruction.Reload reload -> this.values.putClone(reload.to, this.values.get(reload.from));
-            case RAVInstruction.Move move -> this.values.putClone(move.to, this.values.get(move.from));
+            case RAVInstruction.Reload reload -> {
+                this.checkRegisterDestinationValidity(reload.to);
+                this.values.putClone(reload.to, this.values.get(reload.from));
+            }
+            case RAVInstruction.Move move -> {
+                this.checkRegisterDestinationValidity(move.to);
+                this.values.putClone(move.to, this.values.get(move.from));
+            }
             case RAVInstruction.StackMove move -> this.values.putClone(move.to, this.values.get(move.from));
             case RAVInstruction.VirtualMove virtMove -> this.updateWithVirtualMove(virtMove);
             default -> throw GraalError.shouldNotReachHere("Invalid RAV instruction " + instruction);
+        }
+    }
+
+    protected void checkRegisterDestinationValidity(Value location) {
+        if (!ValueUtil.isRegister(location)) {
+            return;
+        }
+
+        // Equality check so we know that this change was made by the register allocator.
+        var register = ValueUtil.asRegister(location);
+        if (!this.registerAllocationConfig.getAllocatableRegisters().contains(register)) {
+            throw new InvalidRegisterUsedException(register);
         }
     }
 
@@ -180,6 +203,12 @@ public class MergedBlockVerifierState {
 
             Value location = op.dests.curr[i];
             Value variable = op.dests.orig[i];
+
+            if (!location.equals(variable)) {
+                // Equality check so we know that this change was made by the register allocator.
+                this.checkRegisterDestinationValidity(location);
+            }
+
             this.values.put(location, new ValueAllocationState(variable));
         }
 

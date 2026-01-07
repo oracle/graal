@@ -67,7 +67,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
         assert this.preallocPhaseRAVerifier != null : "Phase before register allocation was not run, cannot verify it.";
 
         var instructions = this.preallocPhaseRAVerifier.getVerifierInstructions(lirGenRes.getLIR());
-        var verifier = new RegisterAllocationVerifier(lirGenRes.getLIR(), instructions, this.phiResolution);
+        var verifier = new RegisterAllocationVerifier(lirGenRes.getLIR(), instructions, this.phiResolution, context.registerAllocationConfig);
 
         try {
             verifier.run();
