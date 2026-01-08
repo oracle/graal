@@ -515,7 +515,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     }
 
     @Override
-    public MethodPointer getRawAddressForRuntimeLoadedMethod() {
+    public MethodPointer getAOTEntrypoint() {
         return Word.nullPointer();
     }
 

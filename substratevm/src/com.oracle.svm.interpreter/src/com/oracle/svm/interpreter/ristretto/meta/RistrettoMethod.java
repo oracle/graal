@@ -26,6 +26,8 @@ package com.oracle.svm.interpreter.ristretto.meta;
 
 import java.util.function.Function;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -294,7 +296,10 @@ public final class RistrettoMethod extends SubstrateMethod {
     }
 
     @Override
-    public MethodPointer getRawAddressForRuntimeLoadedMethod() {
+    public MethodPointer getAOTEntrypoint() {
+        assert !SubstrateUtil.HOSTED;
+        assert SubstrateOptions.useRistretto();
+        assert interpreterMethod.hasNativeEntryPoint();
         return interpreterMethod.getNativeEntryPoint();
     }
 }

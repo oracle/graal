@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.common.option.CommonOptionParser;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
@@ -147,7 +148,8 @@ public class RistrettoUtils {
 
     public static SubstrateInstalledCodeImpl compileAndInstallInCrema(RistrettoMethod method) {
         SubstrateInstalledCodeImpl ic = compileAndInstall(method, () -> new SubstrateInstalledCodeImpl(method));
-        return method.installedCode = ic;
+        method.installedCode = ic;
+        return ic;
     }
 
     public static StructuredGraph parseOnly(SubstrateMethod method) {
@@ -291,11 +293,18 @@ public class RistrettoUtils {
         assert graph.getNodeCount() > 1 : "Must have nodes after parsing";
     }
 
+    /**
+     * DEBUG ONLY facility to log the virtual method table (vtable) of an interpreter type. This
+     * method is highly unsafe, does not check for concurrent updates to any data structures inside
+     * {@code iType} and it is also not {@link Uninterruptible}.
+     * <p>
+     * Use with extreme caution and only from places where it is guaranteed that no concurrent
+     * updates to the data inside {@code iType} happens.
+     */
     public static void logVTable(InterpreterResolvedJavaType iType) {
-        if (!(iType instanceof InterpreterResolvedObjectType)) {
+        if (!(iType instanceof InterpreterResolvedObjectType t)) {
             return;
         }
-        InterpreterResolvedObjectType t = (InterpreterResolvedObjectType) iType;
         Log.log().string("Dumping vtable ").string(t.toClassName()).newline();
         InterpreterResolvedJavaMethod[] table = t.getVtable();
         if (table == null) {
@@ -305,7 +314,7 @@ public class RistrettoUtils {
         for (int i = 0; i < table.length; i++) {
             InterpreterResolvedJavaMethod method = table[i];
             CFunctionPointer jitEntryPoint = Word.nullPointer();
-            RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) method.getRistrettoMethod();
+            RistrettoMethod rMethod = (RistrettoMethod) method.getRistrettoMethod();
             if (rMethod != null && rMethod.installedCode != null && rMethod.installedCode.isValid()) {
                 /*
                  * A JIT compiled version is available, execute this one instead. This could be more

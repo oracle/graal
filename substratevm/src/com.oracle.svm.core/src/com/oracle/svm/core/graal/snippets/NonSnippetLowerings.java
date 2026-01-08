@@ -430,7 +430,8 @@ public abstract class NonSnippetLowerings {
                          */
                         loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
                     } else {
-                        CFunctionPointer rawAdrConstant = targetMethod.getRawAddressForRuntimeLoadedMethod();
+                        CFunctionPointer rawAdrConstant = targetMethod.getAOTEntrypoint();
+                        assert !SubstrateUtil.HOSTED;
                         if (rawAdrConstant == Word.nullPointer()) {
                             /*
                              * In runtime-compiled code, we emit indirect calls via the respective
@@ -456,7 +457,7 @@ public abstract class NonSnippetLowerings {
                              * Directly lower to a call based on the raw address, no offset address
                              * required.
                              */
-                            assert !SubstrateUtil.HOSTED && SubstrateOptions.useRistretto();
+                            assert SubstrateOptions.useRistretto();
                             final long untrackedMethodAdr = rawAdrConstant.rawValue();
                             GraalError.guarantee(untrackedMethodAdr != 0L, "runtime-loaded method has no valid entry point: %s", targetMethod);
                             final ValueNode base = graph.addWithoutUnique(new FloatingWordCastNode(tool.getStampProvider().createMethodStamp(), ConstantNode.forLong(untrackedMethodAdr, graph)));

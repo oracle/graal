@@ -320,8 +320,8 @@ public final class MethodProfile {
         private final long[] counts;
 
         /**
-         * We profile interpreter types but when we export it to the compiler as a type profile we
-         * want to use ristretto types.
+         * We profile interpreter types but when we export the information to the compiler as a type
+         * profile we need to use ristretto types.
          */
         private final Function<InterpreterResolvedJavaType, ResolvedJavaType> ristrettoTypeSupplier;
 

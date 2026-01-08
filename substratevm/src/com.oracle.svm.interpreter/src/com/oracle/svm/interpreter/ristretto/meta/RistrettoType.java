@@ -41,6 +41,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Life cycle: lives until the referencing {@link InterpreterResolvedJavaType} is gc-ed.
  */
 public final class RistrettoType extends SubstrateType {
+    public static final Function<InterpreterResolvedJavaType, ResolvedJavaType> RISTRETTO_TYPE_FUNCTION = RistrettoType::new;
+
     private final InterpreterResolvedJavaType interpreterType;
 
     private RistrettoType(InterpreterResolvedJavaType interpreterType) {
@@ -51,8 +53,6 @@ public final class RistrettoType extends SubstrateType {
     public InterpreterResolvedJavaType getInterpreterType() {
         return interpreterType;
     }
-
-    public static final Function<InterpreterResolvedJavaType, ResolvedJavaType> RISTRETTO_TYPE_FUNCTION = RistrettoType::new;
 
     public static RistrettoType create(InterpreterResolvedJavaType interpreterType) {
         return (RistrettoType) interpreterType.getRistrettoType(RISTRETTO_TYPE_FUNCTION);

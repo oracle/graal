@@ -698,7 +698,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public MethodPointer getRawAddressForRuntimeLoadedMethod() {
+    public MethodPointer getAOTEntrypoint() {
         throw VMError.intentionallyUnimplemented();
     }
 }
