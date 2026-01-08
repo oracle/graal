@@ -150,8 +150,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
     @Override
     public StampPair interceptType(GraphBuilderTool b, JavaType declaredType, boolean nonNull) {
         Stamp wordStamp = null;
-        if (declaredType instanceof ResolvedJavaType) {
-            ResolvedJavaType resolved = (ResolvedJavaType) declaredType;
+        if (declaredType instanceof ResolvedJavaType resolved) {
             if (wordTypes.isWord(resolved)) {
                 wordStamp = wordTypes.getWordStamp(resolved);
             } else if (resolved.isArray() && wordTypes.isWord(resolved.getElementalType())) {
@@ -308,7 +307,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         Opcode opcode = operation.getEnum(Opcode.class, "opcode");
         String name = wordMethod.getName();
         switch (opcode) {
-            case ARITHMETIC:
+            case ARITHMETIC: {
                 assert NumUtil.assertArrayLength(args, 2);
                 ValueNode x = args[0];
                 ValueNode y = name.toLowerCase(Locale.ROOT).contains("shift") ? toUnsigned(b, args[1], JavaKind.Int) : fromSigned(b, args[1]);
@@ -331,8 +330,9 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
 
                 b.addPush(returnKind, binaryNodeInstance);
                 break;
+            }
 
-            case COMPARISON:
+            case COMPARISON: {
                 assert NumUtil.assertArrayLength(args, 2);
                 Condition condition = switch (name) {
                     case "equal" -> Condition.EQ;
@@ -349,21 +349,25 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 };
                 b.push(returnKind, comparisonOp(b, condition, args[0], fromSigned(b, args[1])));
                 break;
+            }
 
-            case IS_NULL:
+            case IS_NULL: {
                 assert NumUtil.assertArrayLength(args, 1);
                 b.push(returnKind, comparisonOp(b, Condition.EQ, args[0], ConstantNode.forIntegerKind(wordKind, 0L)));
                 break;
+            }
 
-            case IS_NON_NULL:
+            case IS_NON_NULL: {
                 assert NumUtil.assertArrayLength(args, 1);
                 b.push(returnKind, comparisonOp(b, Condition.NE, args[0], ConstantNode.forIntegerKind(wordKind, 0L)));
                 break;
+            }
 
-            case NOT:
+            case NOT: {
                 assert NumUtil.assertArrayLength(args, 1);
                 b.addPush(returnKind, new XorNode(args[0], b.add(forIntegerKind(wordKind, -1))));
                 break;
+            }
 
             case READ_POINTER:
             case READ_OBJECT:
@@ -420,35 +424,34 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 break;
             }
 
-            case TO_RAW_VALUE:
+            case TO_RAW_VALUE: {
                 assert NumUtil.assertArrayLength(args, 1);
                 b.push(returnKind, toUnsigned(b, args[0], JavaKind.Long));
                 break;
+            }
 
-            case OBJECT_TO_TRACKED:
+            case OBJECT_TO_TRACKED: {
                 assert NumUtil.assertArrayLength(args, 1);
                 WordCastNode objectToTracked = b.add(WordCastNode.objectToTrackedPointer(args[0], wordKind));
                 b.push(returnKind, objectToTracked);
                 break;
+            }
 
-            case OBJECT_TO_UNTRACKED:
+            case OBJECT_TO_UNTRACKED: {
                 assert NumUtil.assertArrayLength(args, 1);
                 WordCastNode objectToUntracked = b.add(WordCastNode.objectToUntrackedPointer(args[0], wordKind));
                 b.push(returnKind, objectToUntracked);
                 break;
+            }
 
-            case FROM_WORDBASE:
-                assert NumUtil.assertArrayLength(args, 1);
-                b.push(returnKind, args[0]);
-                break;
-
-            case TO_OBJECT:
+            case TO_OBJECT: {
                 assert NumUtil.assertArrayLength(args, 1);
                 WordCastNode wordToObject = b.add(WordCastNode.wordToObject(args[0], wordKind));
                 b.push(returnKind, wordToObject);
                 break;
+            }
 
-            case TO_TYPED_OBJECT:
+            case TO_TYPED_OBJECT: {
                 assert NumUtil.assertArrayLength(args, 3);
                 assert GraphUtil.assertIsConstant(args[1]);
                 assert GraphUtil.assertIsConstant(args[2]);
@@ -459,14 +462,16 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 WordCastNode wordToObjectTyped = b.add(WordCastNode.wordToTypedObject(args[0], stamp));
                 b.push(returnKind, wordToObjectTyped);
                 break;
+            }
 
-            case TO_OBJECT_NON_NULL:
+            case TO_OBJECT_NON_NULL: {
                 assert NumUtil.assertArrayLength(args, 1);
                 WordCastNode wordToObjectNonNull = b.add(WordCastNode.wordToObjectNonNull(args[0], wordKind));
                 b.push(returnKind, wordToObjectNonNull);
                 break;
+            }
 
-            case CAS_POINTER:
+            case CAS_POINTER: {
                 assert NumUtil.assertArrayLength(args, 5);
                 AddressNode address = makeAddress(b, args[0], args[1]);
                 JavaKind valueKind = wordTypes.asKind(wordMethod.getSignature().getParameterType(1, wordMethod.getDeclaringClass()));
@@ -476,8 +481,11 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 JavaType returnType = wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass());
                 b.addPush(returnKind, casOp(valueKind, wordTypes.asKind(returnType), address, location, args[2], args[3]));
                 break;
-            default:
+            }
+
+            default: {
                 throw new GraalError("Unknown opcode: %s", opcode);
+            }
         }
     }
 
@@ -524,8 +532,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
          * above an explicit zero check on its base address or any other test that ensures the read
          * is safe.
          */
-        JavaReadNode read = b.add(new JavaReadNode(readKind, address, location, barrierType, MemoryOrderMode.PLAIN, compressible));
-        return read;
+        return b.add(new JavaReadNode(readKind, address, location, barrierType, MemoryOrderMode.PLAIN, compressible));
     }
 
     protected ValueNode readVolatileOp(GraphBuilderContext b, JavaKind readKind, AddressNode address, LocationIdentity location, Opcode op) {
@@ -537,8 +544,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
          * cannot float above an explicit zero check on its base address or any other test that
          * ensures the read is safe.
          */
-        JavaReadNode read = b.add(new JavaReadNode(readKind, address, location, barrier, MemoryOrderMode.VOLATILE, compressible));
-        return read;
+        return b.add(new JavaReadNode(readKind, address, location, barrier, MemoryOrderMode.VOLATILE, compressible));
     }
 
     protected void writeOp(GraphBuilderContext b, JavaKind writeKind, AddressNode address, LocationIdentity location, ValueNode value, Opcode op) {

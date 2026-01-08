@@ -77,6 +77,7 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.gc.WriteBarrierSnippets;
+import jdk.graal.compiler.word.WordCastNode;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -183,7 +184,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             return;
         }
 
-        Word addr = Word.from(address);
+        Word addr = WordCastNode.castToWord(address);
 
         if (shouldOutline && !eliminated) {
             callPostWriteBarrierStub(POST_WRITE_BARRIER, fixedObject, addr);
@@ -217,7 +218,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             return;
         }
 
-        Word addr = Word.from(address);
+        Word addr = WordCastNode.castToWord(address);
         Word startAddress = WriteBarrierSnippets.getPointerToFirstArrayElement(addr, length, elementStride);
         Word endAddress = WriteBarrierSnippets.getPointerToLastArrayElement(addr, length, elementStride);
 

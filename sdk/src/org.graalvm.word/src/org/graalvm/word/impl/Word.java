@@ -84,14 +84,6 @@ public final class Word implements SignedWord, UnsignedWord, Pointer {
     }
 
     /**
-     * Converts {@code val} to the word type {@code T}.
-     */
-    @Operation(opcode = Opcode.FROM_WORDBASE)
-    public static <T extends WordBase> T from(WordBase val) {
-        return box(val.rawValue());
-    }
-
-    /**
      * Implements {@link WordFactory#nullPointer()}.
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.ZERO)
@@ -1118,7 +1110,6 @@ public final class Word implements SignedWord, UnsignedWord, Pointer {
         WRITE_BARRIERED,
         CAS_POINTER,
         INITIALIZE,
-        FROM_WORDBASE,
         OBJECT_TO_TRACKED,
         OBJECT_TO_UNTRACKED,
         TO_OBJECT,

@@ -42,6 +42,7 @@ import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
+import jdk.graal.compiler.word.WordCastNode;
 
 public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets implements Snippets {
     static class Counters {
@@ -63,7 +64,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
 
     @Snippet
     public void serialPreciseWriteBarrier(Address address, @ConstantParameter Counters counters, @ConstantParameter boolean verifyOnly) {
-        serialWriteBarrier(Word.from(address), counters, verifyOnly);
+        serialWriteBarrier(WordCastNode.castToWord(address), counters, verifyOnly);
     }
 
     @Snippet
@@ -74,7 +75,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
 
         int cardShift = cardTableShift();
         Word cardTableAddress = cardTableAddress();
-        Word addr = Word.from(address);
+        Word addr = WordCastNode.castToWord(address);
         Word start = cardTableAddress.add(getPointerToFirstArrayElement(addr, length, elementStride).unsignedShiftRight(cardShift));
         Word end = cardTableAddress.add(getPointerToLastArrayElement(addr, length, elementStride).unsignedShiftRight(cardShift));
 
