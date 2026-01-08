@@ -1232,9 +1232,13 @@ public final class JniEnv extends NativeEnv {
     // region Get*ArrayRegion
 
     @JniImpl
-    @TruffleBoundary
     public void GetBooleanArrayRegion(@JavaType(boolean[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
         ByteBuffer buf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Byte, nativeMemory, getMeta());
+        getBooleanArrayRegion(array, start, len, buf, language);
+    }
+
+    @TruffleBoundary
+    private void getBooleanArrayRegion(StaticObject array, int start, int len, ByteBuffer buf, EspressoLanguage language) {
         if (array.isEspressoObject()) {
             byte[] contents = array.unwrap(language);
             boundsCheck(start, len, contents.length);
@@ -1249,9 +1253,14 @@ public final class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    @TruffleBoundary
     public void GetCharArrayRegion(@JavaType(char[].class /* or byte[].class */) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        CharBuffer buf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Char, nativeMemory, getMeta()).asCharBuffer();
+        ByteBuffer bbuf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Char, nativeMemory, getMeta());
+        getCharArrayRegion(array, start, len, bbuf, language);
+    }
+
+    @TruffleBoundary
+    private void getCharArrayRegion(StaticObject array, int start, int len, ByteBuffer bbuf, EspressoLanguage language) {
+        CharBuffer buf = bbuf.asCharBuffer();
         if (array.isEspressoObject()) {
             char[] contents = array.unwrap(language);
             boundsCheck(start, len, contents.length);
@@ -1266,9 +1275,13 @@ public final class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    @TruffleBoundary
     public void GetByteArrayRegion(@JavaType(byte[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
         ByteBuffer buf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Byte, nativeMemory, getMeta());
+        getByteArrayRegion(array, start, len, buf, language);
+    }
+
+    @TruffleBoundary
+    private void getByteArrayRegion(StaticObject array, int start, int len, ByteBuffer buf, EspressoLanguage language) {
         if (array.isEspressoObject()) {
             byte[] contents = array.unwrap(language);
             boundsCheck(start, len, contents.length);
@@ -1283,9 +1296,14 @@ public final class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    @TruffleBoundary
     public void GetShortArrayRegion(@JavaType(short[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        ShortBuffer buf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Short, nativeMemory, getMeta()).asShortBuffer();
+        ByteBuffer buf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Short, nativeMemory, getMeta());
+        getShortArrayRegion(array, start, len, buf, language);
+    }
+
+    @TruffleBoundary
+    private void getShortArrayRegion(StaticObject array, int start, int len, ByteBuffer bbuf, EspressoLanguage language) {
+        ShortBuffer buf = bbuf.asShortBuffer();
         if (array.isEspressoObject()) {
             short[] contents = array.unwrap(language);
             boundsCheck(start, len, contents.length);
@@ -1300,9 +1318,14 @@ public final class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    @TruffleBoundary
     public void GetIntArrayRegion(@JavaType(int[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        IntBuffer buf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Int, nativeMemory, getMeta()).asIntBuffer();
+        ByteBuffer bbuf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Int, nativeMemory, getMeta());
+        getIntArrayRegion(array, start, len, bbuf, language);
+    }
+
+    @TruffleBoundary
+    private void getIntArrayRegion(StaticObject array, int start, int len, ByteBuffer bbuf, EspressoLanguage language) {
+        IntBuffer buf = bbuf.asIntBuffer();
         if (array.isEspressoObject()) {
             int[] contents = array.unwrap(language);
             boundsCheck(start, len, contents.length);
@@ -1317,9 +1340,14 @@ public final class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    @TruffleBoundary
     public void GetFloatArrayRegion(@JavaType(float[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        FloatBuffer buf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Float, nativeMemory, getMeta()).asFloatBuffer();
+        ByteBuffer bbuf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Float, nativeMemory, getMeta());
+        getFloatArrayRegion(array, start, len, bbuf, language);
+    }
+
+    @TruffleBoundary
+    private void getFloatArrayRegion(StaticObject array, int start, int len, ByteBuffer bbuf, EspressoLanguage language) {
+        FloatBuffer buf = bbuf.asFloatBuffer();
         if (array.isEspressoObject()) {
             float[] contents = array.unwrap(language);
             boundsCheck(start, len, contents.length);
@@ -1334,9 +1362,14 @@ public final class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    @TruffleBoundary
     public void GetDoubleArrayRegion(@JavaType(double[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        DoubleBuffer buf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Double, nativeMemory, getMeta()).asDoubleBuffer();
+        ByteBuffer bbuf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Double, nativeMemory, getMeta());
+        getDoubleArrayRegion(array, start, len, bbuf, language);
+    }
+
+    @TruffleBoundary
+    private void getDoubleArrayRegion(StaticObject array, int start, int len, ByteBuffer bbuf, EspressoLanguage language) {
+        DoubleBuffer buf = bbuf.asDoubleBuffer();
         if (array.isEspressoObject()) {
             double[] contents = array.unwrap(language);
             boundsCheck(start, len, contents.length);
@@ -1351,9 +1384,14 @@ public final class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    @TruffleBoundary
     public void GetLongArrayRegion(@JavaType(long[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        LongBuffer buf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Long, nativeMemory, getMeta()).asLongBuffer();
+        ByteBuffer bbuf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Long, nativeMemory, getMeta());
+        getLongArrayRegion(array, start, len, bbuf, language);
+    }
+
+    @TruffleBoundary
+    private void getLongArrayRegion(StaticObject array, int start, int len, ByteBuffer bbuf, EspressoLanguage language) {
+        LongBuffer buf = bbuf.asLongBuffer();
         if (array.isEspressoObject()) {
             long[] contents = array.unwrap(language);
             boundsCheck(start, len, contents.length);
@@ -2734,18 +2772,17 @@ public final class JniEnv extends NativeEnv {
         assert componentKind.isPrimitive();
         int length = GetArrayLength(array);
 
-        @Pointer
-        TruffleObject addressPtr = new RawPointer(allocateDirect(length, componentKind).address());
+        MemoryBuffer memoryBuffer = allocateDirect(length, componentKind);
         // @formatter:off
         switch (componentKind) {
-            case Boolean : GetBooleanArrayRegion(array, 0, length, addressPtr, language); break;
-            case Byte    : GetByteArrayRegion(array, 0, length, addressPtr, language);    break;
-            case Short   : GetShortArrayRegion(array, 0, length, addressPtr, language);   break;
-            case Char    : GetCharArrayRegion(array, 0, length, addressPtr, language);    break;
-            case Int     : GetIntArrayRegion(array, 0, length, addressPtr, language);     break;
-            case Float   : GetFloatArrayRegion(array, 0, length, addressPtr, language);   break;
-            case Long    : GetLongArrayRegion(array, 0, length, addressPtr, language);    break;
-            case Double  : GetDoubleArrayRegion(array, 0, length, addressPtr, language);  break;
+            case Boolean : getBooleanArrayRegion(array, 0, length, memoryBuffer.buffer(), language); break;
+            case Byte    : getByteArrayRegion(array, 0, length, memoryBuffer.buffer(), language);    break;
+            case Short   : getShortArrayRegion(array, 0, length, memoryBuffer.buffer(), language);   break;
+            case Char    : getCharArrayRegion(array, 0, length, memoryBuffer.buffer(), language);    break;
+            case Int     : getIntArrayRegion(array, 0, length, memoryBuffer.buffer(), language);     break;
+            case Float   : getFloatArrayRegion(array, 0, length, memoryBuffer.buffer(), language);   break;
+            case Long    : getLongArrayRegion(array, 0, length, memoryBuffer.buffer(), language);    break;
+            case Double  : getDoubleArrayRegion(array, 0, length, memoryBuffer.buffer(), language);  break;
             case Object  : // fall through
             case Void    : // fall through
             case Illegal : // fall through
@@ -2754,8 +2791,7 @@ public final class JniEnv extends NativeEnv {
                 throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
-
-        return addressPtr;
+        return new RawPointer(memoryBuffer.address());
     }
 
     @JniImpl
