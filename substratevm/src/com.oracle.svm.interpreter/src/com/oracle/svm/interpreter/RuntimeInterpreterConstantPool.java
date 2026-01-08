@@ -71,6 +71,10 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
     protected Object resolve(int cpi, InterpreterResolvedObjectType accessingClass) {
         Tag tag = tagAt(cpi);
         return switch (tag) {
+            case INTEGER -> JavaConstant.forInt(this.intAt(cpi));
+            case FLOAT -> JavaConstant.forFloat(this.floatAt(cpi));
+            case LONG -> JavaConstant.forLong(this.longAt(cpi));
+            case DOUBLE -> JavaConstant.forDouble(this.doubleAt(cpi));
             case STRING -> resolveStringConstant(cpi, accessingClass);
             case FIELD_REF -> resolveFieldRefConstant(cpi, accessingClass);
             case INTERFACE_METHOD_REF -> resolveInterfaceMethodRefConstant(cpi, accessingClass);
