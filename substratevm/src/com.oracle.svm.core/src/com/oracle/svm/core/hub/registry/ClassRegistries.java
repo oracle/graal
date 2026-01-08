@@ -196,7 +196,10 @@ public final class ClassRegistries implements ParsingContext {
         while (arrayDimensions < name.length() && name.charAt(arrayDimensions) == '[') {
             arrayDimensions++;
         }
-        if (arrayDimensions == name.length()) {
+        if (arrayDimensions == name.length() || arrayDimensions > 255) {
+            if (loader == null) {
+                return null;
+            }
             throw new ClassNotFoundException(name);
         }
         Class<?> elementalResult;
@@ -264,17 +267,23 @@ public final class ClassRegistries implements ParsingContext {
     }
 
     private static Class<?> getArrayClass(Class<?> elementalResult, int arrayDimensions) {
-        assert elementalResult != void.class;
+        assert elementalResult != void.class : "Must be filtered in the caller";
+        assert arrayDimensions > 0 && arrayDimensions <= 255 : "Must be filtered in the caller";
         DynamicHub hub = SubstrateUtil.cast(elementalResult, DynamicHub.class);
         int remainingDims = arrayDimensions;
-        while (remainingDims > 0) {
-            DynamicHub arrayHub = hub.arrayType();
+        while (remainingDims > 1) {
+            DynamicHub arrayHub = hub.getOrCreateArrayHub();
             if (arrayHub == null) {
+                if (shouldFollowReflectionConfiguration()) {
+                    MissingReflectionRegistrationUtils.reportClassAccess(hub.getTypeName() + "[]");
+                }
                 return null;
             }
             remainingDims--;
             hub = arrayHub;
         }
+        // Perform the MissingRegistrationError check for the final element
+        hub = hub.arrayType();
         return SubstrateUtil.cast(hub, Class.class);
     }
 

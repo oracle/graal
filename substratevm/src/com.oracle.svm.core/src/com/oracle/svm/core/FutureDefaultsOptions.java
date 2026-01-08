@@ -30,14 +30,18 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -45,6 +49,7 @@ import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 
 /**
@@ -81,12 +86,14 @@ public class FutureDefaultsOptions {
     private static final String RUN_TIME_INITIALIZE_SECURITY_PROVIDERS = "run-time-initialize-security-providers";
     private static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS = "run-time-initialize-file-system-providers";
     private static final String RUN_TIME_INITIALIZE_RESOURCE_BUNDLES = "run-time-initialize-resource-bundles";
-    private static final List<String> ALL_FUTURE_DEFAULTS = List.of(RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES);
+    private static final String CLASS_FOR_NAME_RESPECTS_CLASS_LOADER = "class-for-name-respects-class-loader";
+    private static final List<String> ALL_FUTURE_DEFAULTS = List.of(CLASS_FOR_NAME_RESPECTS_CLASS_LOADER, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_SECURITY_PROVIDERS,
+                    RUN_TIME_INITIALIZE_RESOURCE_BUNDLES);
 
     private static final String COMPLETE_REFLECTION_TYPES = "complete-reflection-types";
     private static final List<String> RETIRED_FUTURE_DEFAULTS = List.of(COMPLETE_REFLECTION_TYPES);
 
-    public static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS +
+    public static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + CLASS_FOR_NAME_RESPECTS_CLASS_LOADER +
                     ")";
     public static final String RUN_TIME_INITIALIZE_SECURITY_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_SECURITY_PROVIDERS + ")";
     public static final String RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_RESOURCE_BUNDLES + ")";
@@ -107,7 +114,15 @@ public class FutureDefaultsOptions {
     @APIOption(name = OPTION_NAME, defaultValue = DEFAULT_NAME) //
     @Option(help = "file:doc-files/FutureDefaultsHelp.txt", type = OptionType.User) //
     static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> FutureDefaults = new HostedOptionKey<>(
-                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter()) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, AccumulatingLocatableMultiOptionValue.Strings oldValue, AccumulatingLocatableMultiOptionValue.Strings newValue) {
+            super.onValueUpdate(values, oldValue, newValue);
+            if (computeFutureDefaults(newValue.getValuesWithOrigins()).contains(CLASS_FOR_NAME_RESPECTS_CLASS_LOADER)) {
+                ClassForNameSupport.Options.ClassForNameRespectsClassLoader.update(values, true);
+            }
+        }
+    };
 
     private static String getOptionHelpText() {
         Objects.requireNonNull(FutureDefaultsOptions.FutureDefaults.getDescriptor(), "This must be called after the options are processed.");
@@ -124,7 +139,14 @@ public class FutureDefaultsOptions {
             }
         }
         if (!optionHelpText.contains(futureDefaultsAllValues())) {
-            throw VMError.shouldNotReachHere("Must mention all options in a comma-separated sequence: " + futureDefaultsAllValues());
+            throw VMError.shouldNotReachHere("Must mention all options in a comma-separated in the exact order: " + futureDefaultsAllValues());
+        }
+
+        /* Ensure retired future-defaults are not mentioned in user-facing help text */
+        for (String retired : RETIRED_FUTURE_DEFAULTS) {
+            if (optionHelpText.contains("'" + retired + "'")) {
+                throw VMError.shouldNotReachHere("Must not mention retired options in the help text. Retired option: " + retired);
+            }
         }
     }
 
@@ -133,8 +155,20 @@ public class FutureDefaultsOptions {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void parseAndVerifyOptions() {
         verifyOptionDescription();
-        futureDefaults = new LinkedHashSet<>(getAllValues().size());
         var valuesWithOrigin = FutureDefaults.getValue().getValuesWithOrigins();
+        futureDefaults = computeFutureDefaults(valuesWithOrigin);
+        /* Set build-time properties for user features */
+        for (String futureDefault : getFutureDefaults()) {
+            setSystemProperty(futureDefault);
+        }
+
+        for (String retiredFutureDefault : RETIRED_FUTURE_DEFAULTS) {
+            setSystemProperty(retiredFutureDefault);
+        }
+    }
+
+    private static LinkedHashSet<String> computeFutureDefaults(Stream<LocatableMultiOptionValue.ValueWithOrigin<String>> valuesWithOrigin) {
+        LinkedHashSet<String> result = new LinkedHashSet<>();
         valuesWithOrigin.forEach(valueWithOrigin -> {
             String value = valueWithOrigin.value();
             if (DEFAULT_NAME.equals(value)) {
@@ -169,30 +203,22 @@ public class FutureDefaultsOptions {
                                     SubstrateOptionsParser.commandArgument(FutureDefaults, NONE_NAME),
                                     valueWithOrigin.origin());
                 }
-                futureDefaults.clear();
+                result.clear();
             }
 
             if (value.equals(ALL_NAME)) {
-                futureDefaults.addAll(ALL_FUTURE_DEFAULTS);
+                result.addAll(ALL_FUTURE_DEFAULTS);
             } else if (value.equals(RUN_TIME_INITIALIZE_JDK)) {
-                futureDefaults.addAll(List.of(RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES));
+                result.addAll(List.of(RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES));
             } else {
-                futureDefaults.add(value);
+                result.add(value);
             }
         });
-
-        /* Set build-time properties for user features */
-        for (String futureDefault : getFutureDefaults()) {
-            setSystemProperty(futureDefault, true);
-        }
-
-        for (String retiredFutureDefault : RETIRED_FUTURE_DEFAULTS) {
-            setSystemProperty(retiredFutureDefault, true);
-        }
+        return result;
     }
 
-    private static void setSystemProperty(String futureDefault, boolean value) {
-        System.setProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.toString(value));
+    private static void setSystemProperty(String futureDefault) {
+        System.setProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.toString(true));
     }
 
     public static Set<String> getFutureDefaults() {
