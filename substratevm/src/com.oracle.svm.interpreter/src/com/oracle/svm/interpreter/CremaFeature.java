@@ -26,6 +26,7 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+import static com.oracle.svm.interpreter.InterpreterFeature.assertionsEnabled;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -83,12 +84,6 @@ public class CremaFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(CremaSupport.class, new CremaSupportImpl());
         VMError.guarantee(!RuntimeClassLoading.isSupported() || ClassForNameSupport.respectClassLoader());
-    }
-
-    private static boolean assertionsEnabled() {
-        boolean enabled = false;
-        assert (enabled = true) == true : "Enabling assertions";
-        return enabled;
     }
 
     @Override
