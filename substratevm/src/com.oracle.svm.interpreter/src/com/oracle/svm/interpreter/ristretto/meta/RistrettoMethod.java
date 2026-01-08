@@ -37,12 +37,14 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
 import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
+import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfilingInfo;
 
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
+import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
@@ -118,6 +120,17 @@ public final class RistrettoMethod extends SubstrateMethod {
             initializeProfile();
         }
         return profile;
+    }
+
+    @Override
+    public ProfilingInfo getProfilingInfo() {
+        return new RistrettoProfilingInfo(getProfile());
+    }
+
+    @Override
+    public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
+        // TODO GR-71494 - OSR support
+        return getProfilingInfo();
     }
 
     /**

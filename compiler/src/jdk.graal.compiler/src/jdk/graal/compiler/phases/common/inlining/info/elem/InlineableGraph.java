@@ -31,6 +31,7 @@ import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -202,11 +203,14 @@ public class InlineableGraph implements Inlineable {
             if (!caller.isUnsafeAccessTrackingEnabled()) {
                 newGraph.disableUnsafeAccessTracking();
             }
+            if (caller.getGraphState().isExplicitExceptionsNoDeopt()) {
+                newGraph.getGraphState().configureExplicitExceptionsNoDeopt();
+            }
             PhaseSuite<HighTierContext> graphBuilder = context.getGraphBuilderSuiteForCallee(invoke);
             if (graphBuilder != null) {
                 graphBuilder.apply(newGraph, context);
             }
-            assert newGraph.start().next() != null : "graph needs to be populated by the GraphBuilderSuite " + method + ", " + method.canBeInlined();
+            GraalError.guarantee(newGraph.start().next() != null, "Graph needs to be populated by the GraphBuilderSuite " + method + ", " + method.canBeInlined());
 
             new DeadCodeEliminationPhase(DeadCodeEliminationPhase.Optionality.Optional).apply(newGraph);
 
