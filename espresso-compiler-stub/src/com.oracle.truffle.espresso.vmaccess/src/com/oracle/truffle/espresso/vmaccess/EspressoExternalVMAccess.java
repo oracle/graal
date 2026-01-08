@@ -436,4 +436,8 @@ final class EspressoExternalVMAccess implements VMAccess {
         bytes.readBuffer(0, result, 0, result.length);
         return result;
     }
+
+    public boolean hasAnnotations(Value metaObject) {
+        return invokeJVMCIHelper("hasAnnotations", metaObject).asBoolean();
+    }
 }
