@@ -27,12 +27,11 @@ package com.oracle.svm.hosted.ameta;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.SVMHost;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
@@ -46,15 +45,12 @@ public class HostedDynamicHubFeature implements InternalFeature {
         metaAccess = access.getMetaAccess();
         hostVM = access.getHostVM();
 
-        access.registerObjectReplacer(this::replace);
-    }
-
-    private Object replace(Object source) {
-        if (source instanceof Class) {
-            Class<?> clazz = (Class<?>) source;
-            DynamicHub dynamicHub = hostVM.dynamicHub(metaAccess.lookupJavaType(clazz));
-            return dynamicHub;
-        }
-        return source;
+        // Replace all instances of Class with the corresponding DynamicHub obtained from SVMHost
+        access.registerObjectReplacer(source -> {
+            if (source instanceof Class<?> clazz) {
+                return hostVM.dynamicHub(metaAccess.lookupJavaType(clazz));
+            }
+            return source;
+        });
     }
 }

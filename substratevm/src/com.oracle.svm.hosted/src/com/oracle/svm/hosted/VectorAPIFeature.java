@@ -95,7 +95,7 @@ public class VectorAPIFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(VectorAPIFeature::eagerlyInitializeValueLayout);
+        access.registerObjectReachabilityHandler(VectorAPIFeature::eagerlyInitializeValueLayout, valueLayoutClass);
     }
 
     @Override
@@ -326,12 +326,11 @@ public class VectorAPIFeature implements InternalFeature {
     private static final Class<?> valueLayoutClass = ReflectionUtil.lookupClass("java.lang.foreign.ValueLayout");
     private static final Method valueLayoutVarHandle = ReflectionUtil.lookupMethod(valueLayoutClass, "varHandle");
 
-    private static Object eagerlyInitializeValueLayout(Object valueLayout) {
-        if (valueLayoutClass.isInstance(valueLayout)) {
-            VarHandle varHandle = ReflectionUtil.invokeMethod(valueLayoutVarHandle, valueLayout);
-            VarHandleFeature.eagerlyInitializeVarHandle(varHandle);
-        }
-        return valueLayout;
+    private static void eagerlyInitializeValueLayout(Object valueLayout) {
+        VMError.guarantee(valueLayoutClass.isInstance(valueLayout));
+        VarHandle varHandle = ReflectionUtil.invokeMethod(valueLayoutVarHandle, valueLayout);
+        VarHandleFeature.eagerlyInitializeVarHandle(varHandle);
+
     }
 
     private static Class<?> vectorClass(LaneType laneType, Shape shape) {
