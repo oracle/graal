@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.image;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.image.ImageHeapPartition;
+import com.oracle.svm.hosted.NativeImageOptions;
 import org.graalvm.collections.EconomicSet;
 
 import java.io.File;
@@ -42,7 +43,26 @@ public final class HeapHistogramPrinter {
         this.heap = heap;
     }
 
-    public void print() {
+    public static void print(NativeImageHeap heap, ImageHeapPartition[] partitions) {
+        if (NativeImageOptions.PrintHeapHistogram.getValue()) {
+            new HeapHistogramPrinter(heap, partitions).printHeapHistogram();
+        }
+        if (NativeImageOptions.PrintImageHeapPartitionSizes.getValue()) {
+            printSizes(partitions);
+        }
+    }
+
+    private static void printSizes(ImageHeapPartition[] partitions) {
+        for (ImageHeapPartition partition : partitions) {
+            printSize(partition);
+        }
+    }
+
+    private static void printSize(ImageHeapPartition partition) {
+        System.out.printf("PrintImageHeapPartitionSizes:  partition: %s  size: %d%n", partition.getName(), partition.getSize());
+    }
+
+    private void printHeapHistogram() {
         File file = ReportUtils.reportFile(SubstrateOptions.reportsPath(), "histogram", "txt");
         ReportUtils.report("histogram", file.toPath(), this::printHistogram);
     }

@@ -26,6 +26,8 @@ package com.oracle.svm.hosted.code;
 
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 
+import java.io.File;
+import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,6 +40,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -584,6 +587,11 @@ public class CompileQueue {
     }
 
     private void printMethodHistogram() {
+        File file = ReportUtils.reportFile(SubstrateOptions.reportsPath(), "methodhistogram", "txt");
+        ReportUtils.report("methodhistogram", file.toPath(), this::printMethodHistogramIntl);
+    }
+
+    private void printMethodHistogramIntl(PrintWriter out) {
         long sizeAllMethods = 0;
         long sizeDeoptMethods = 0;
         long sizeDeoptMethodsInNonDeopt = 0;
@@ -594,7 +602,7 @@ public class CompileQueue {
         long totalNumDeoptEntryPoints = 0;
         long totalNumDuringCallEntryPoints = 0;
 
-        System.out.format("Code Size; Nodes Parsing; Nodes Before; Nodes After; Is Trivial;" +
+        out.format("Code Size; Nodes Parsing; Nodes Before; Nodes After; Is Trivial;" +
                         " Deopt Target; Code Size; Nodes Parsing; Nodes Before; Nodes After; Deopt Entries; Deopt During Call;" +
                         " Entry Points; Direct Calls; Virtual Calls; Method%n");
 
@@ -609,7 +617,7 @@ public class CompileQueue {
             if (!method.isDeoptTarget()) {
                 numberOfMethods += 1;
                 sizeAllMethods += result.getTargetCodeSize();
-                System.out.format("%8d; %5d; %5d; %5d; %s;", result.getTargetCodeSize(), ci.numNodesAfterParsing, ci.numNodesBeforeCompilation, ci.numNodesAfterCompilation,
+                out.format("%8d; %5d; %5d; %5d; %s;", result.getTargetCodeSize(), ci.numNodesAfterParsing, ci.numNodesBeforeCompilation, ci.numNodesAfterCompilation,
                                 ci.isTrivialMethod ? "T" : " ");
 
                 int deoptMethodSize = 0;
@@ -624,29 +632,29 @@ public class CompileQueue {
                     totalNumDeoptEntryPoints += dci.numDeoptEntryPoints;
                     totalNumDuringCallEntryPoints += dci.numDuringCallEntryPoints;
 
-                    System.out.format(" D; %6d; %5d; %5d; %5d; %4d; %4d;", deoptMethodSize, dci.numNodesAfterParsing, dci.numNodesBeforeCompilation, dci.numNodesAfterCompilation,
+                    out.format(" D; %6d; %5d; %5d; %5d; %4d; %4d;", deoptMethodSize, dci.numNodesAfterParsing, dci.numNodesBeforeCompilation, dci.numNodesAfterCompilation,
                                     dci.numDeoptEntryPoints,
                                     dci.numDuringCallEntryPoints);
 
                 } else {
                     sizeNonDeoptMethods += result.getTargetCodeSize();
                     numberOfNonDeopt += 1;
-                    System.out.format("  ; %6d; %5d; %5d; %5d; %4d; %4d;", 0, 0, 0, 0, 0, 0);
+                    out.format("  ; %6d; %5d; %5d; %5d; %4d; %4d;", 0, 0, 0, 0, 0, 0);
                 }
 
-                System.out.format(" %4d; %4d; %4d; %s%n", ci.numEntryPointCalls.get(), ci.numDirectCalls.get(), ci.numVirtualCalls.get(), method.format("%H.%n(%p) %r"));
+                out.format(" %4d; %4d; %4d; %s%n", ci.numEntryPointCalls.get(), ci.numDirectCalls.get(), ci.numVirtualCalls.get(), method.format("%H.%n(%p) %r"));
             }
         }
-        System.out.println();
-        System.out.println("Size all methods                           ; " + sizeAllMethods);
-        System.out.println("Size deopt methods                         ; " + sizeDeoptMethods);
-        System.out.println("Size deopt methods in non-deopt mode       ; " + sizeDeoptMethodsInNonDeopt);
-        System.out.println("Size non-deopt method                      ; " + sizeNonDeoptMethods);
-        System.out.println("Number of methods                          ; " + numberOfMethods);
-        System.out.println("Number of non-deopt methods                ; " + numberOfNonDeopt);
-        System.out.println("Number of deopt methods                    ; " + numberOfDeopt);
-        System.out.println("Number of deopt entry points               ; " + totalNumDeoptEntryPoints);
-        System.out.println("Number of deopt during calls entries       ; " + totalNumDuringCallEntryPoints);
+        out.println();
+        out.println("Size all methods                           ; " + sizeAllMethods);
+        out.println("Size deopt methods                         ; " + sizeDeoptMethods);
+        out.println("Size deopt methods in non-deopt mode       ; " + sizeDeoptMethodsInNonDeopt);
+        out.println("Size non-deopt method                      ; " + sizeNonDeoptMethods);
+        out.println("Number of methods                          ; " + numberOfMethods);
+        out.println("Number of non-deopt methods                ; " + numberOfNonDeopt);
+        out.println("Number of deopt methods                    ; " + numberOfDeopt);
+        out.println("Number of deopt entry points               ; " + totalNumDeoptEntryPoints);
+        out.println("Number of deopt during calls entries       ; " + totalNumDuringCallEntryPoints);
     }
 
     public CompletionExecutor getExecutor() {

@@ -90,7 +90,6 @@ import com.oracle.svm.core.graal.nodes.TLABObjectHeaderConstant;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
@@ -553,7 +552,7 @@ public abstract class NativeImage extends AbstractImage {
 
             // We print the heap statistics after the heap was successfully written because this
             // could modify objects that will be part of the image heap.
-            printHeapStatistics(heap.getLayouter().getPartitions());
+            HeapHistogramPrinter.print(heap, heap.getLayouter().getPartitions());
             heap.dumpMetadata(heapLayout);
         }
     }
@@ -867,25 +866,6 @@ public abstract class NativeImage extends AbstractImage {
     public ObjectFile getObjectFile() {
         assert objectFile != null : "objectFile accessed before set";
         return objectFile;
-    }
-
-    private void printHeapStatistics(ImageHeapPartition[] partitions) {
-        if (NativeImageOptions.PrintHeapHistogram.getValue()) {
-            new HeapHistogramPrinter(heap, partitions).print();
-        }
-        if (NativeImageOptions.PrintImageHeapPartitionSizes.getValue()) {
-            printSizes(partitions);
-        }
-    }
-
-    private static void printSizes(ImageHeapPartition[] partitions) {
-        for (ImageHeapPartition partition : partitions) {
-            printSize(partition);
-        }
-    }
-
-    private static void printSize(ImageHeapPartition partition) {
-        System.out.printf("PrintImageHeapPartitionSizes:  partition: %s  size: %d%n", partition.getName(), partition.getSize());
     }
 
     public abstract static class NativeTextSectionImpl extends BasicProgbitsSectionImpl {
