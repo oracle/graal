@@ -430,6 +430,8 @@ public abstract class NonSnippetLowerings {
                          */
                         loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
                     } else {
+                        // This needs to have a static type of CFunctionPointer to workaround
+                        // GR-72464
                         CFunctionPointer rawAdrConstant = targetMethod.getAOTEntrypoint();
                         assert !SubstrateUtil.HOSTED;
                         if (rawAdrConstant == Word.nullPointer()) {

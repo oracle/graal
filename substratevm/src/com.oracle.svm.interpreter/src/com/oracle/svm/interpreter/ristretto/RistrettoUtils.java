@@ -147,6 +147,11 @@ public class RistrettoUtils {
         return doCompile(debug, RuntimeCompilationSupport.getRuntimeConfig(), RuntimeCompilationSupport.getLIRSuites(), method);
     }
 
+    /**
+     * DEBUG ONLY facility to compile the given method and install the resulting code. Normally done
+     * over {@link com.oracle.svm.interpreter.ristretto.profile.RistrettoCompilationManager}. Use
+     * only for testing.
+     */
     public static SubstrateInstalledCodeImpl compileAndInstallInCrema(RistrettoMethod method) {
         SubstrateInstalledCodeImpl ic = compileAndInstall(method, () -> new SubstrateInstalledCodeImpl(method));
         method.installedCode = ic;
