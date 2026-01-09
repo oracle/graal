@@ -436,15 +436,7 @@ public class AutomaticUnsafeTransformationSupport {
             if (classArgument.isNullConstant()) {
                 unsuccessfulReasons.add(() -> "The Class argument of Unsafe.objectFieldOffset(Class, String) is a null constant.");
             } else {
-                /*
-                 * The `classArgument` Constant is from the Host VM universe and thus must be looked
-                 * up via the original constant reflection provider, not the analysis one
-                 * (`bb.getConstantReflectionProvider()`). Since the result will be a Host VM type,
-                 * we need to look it up via the analysis universe to get the desired
-                 * `AnalysisType`.
-                 */
-                var originalTargetFieldHolder = GraalAccess.getOriginalProviders().getConstantReflection().asJavaType(classArgument.asJavaConstant());
-                targetFieldHolder = bb.getUniverse().lookup(originalTargetFieldHolder);
+                targetFieldHolder = GraalAccess.getOriginalProviders().getConstantReflection().asJavaType(classArgument.asJavaConstant());
             }
         } else {
             unsuccessfulReasons.add(() -> "The Class argument of Unsafe.objectFieldOffset(Class, String) is not a constant class.");
@@ -956,9 +948,7 @@ public class AutomaticUnsafeTransformationSupport {
     }
 
     private static AnalysisField toAnalysisField(BigBang bb, ResolvedJavaField targetField) {
-        if (targetField instanceof AnalysisField aField) {
-            return aField;
-        }
+        VMError.guarantee(!(targetField instanceof AnalysisField), "AnalysisField not allowed: %s", targetField);
         return bb.getUniverse().lookup(targetField);
     }
 
