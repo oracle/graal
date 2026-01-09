@@ -211,32 +211,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
 
     @Override
     public JavaType lookupReferencedType(int cpi, int opcode) {
-        int declaringClassCPI = -1;
-        switch (opcode) {
-            case Bytecodes.CHECKCAST:
-            case Bytecodes.INSTANCEOF:
-            case Bytecodes.NEW:
-            case Bytecodes.ANEWARRAY:
-            case Bytecodes.MULTIANEWARRAY:
-            case Bytecodes.LDC:
-            case Bytecodes.LDC_W:
-            case Bytecodes.LDC2_W:
-                declaringClassCPI = cpi;
-                break;
-            case Bytecodes.GETSTATIC:
-            case Bytecodes.PUTSTATIC:
-            case Bytecodes.GETFIELD:
-            case Bytecodes.PUTFIELD:
-            case Bytecodes.INVOKEVIRTUAL:
-            case Bytecodes.INVOKESPECIAL:
-            case Bytecodes.INVOKESTATIC:
-            case Bytecodes.INVOKEINTERFACE:
-                declaringClassCPI = memberClassIndex(cpi);
-                break;
-            default:
-                throw VMError.shouldNotReachHere("Unexpected opcode: " + opcode); // ExcludeFromJacocoGeneratedReport
-        }
-        return (JavaType) resolvedAt(declaringClassCPI, holder);
+        throw VMError.intentionallyUnimplemented();
     }
 
     @Override
