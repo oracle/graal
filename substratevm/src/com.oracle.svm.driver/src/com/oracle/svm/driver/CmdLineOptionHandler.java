@@ -26,11 +26,9 @@ package com.oracle.svm.driver;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
@@ -40,17 +38,12 @@ import jdk.graal.compiler.options.OptionType;
 
 class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
-    private static final String HELP_TEXT = NativeImage.getResource("/Help.txt");
-    private static final String HELP_EXTRA_TEXT = NativeImage.getResource("/HelpExtra.txt");
-
     static final String VERBOSE_OPTION = "--verbose";
     static final String DRY_RUN_OPTION = "--dry-run";
     static final String DEBUG_ATTACH_OPTION = "--debug-attach";
     /* Defunct legacy options that we have to accept to maintain backward compatibility */
     private static final String VERBOSE_SERVER_OPTION = "--verbose-server";
     private static final String SERVER_OPTION_PREFIX = "--server-";
-
-    private static final String LAUNCHER_NAME = "native-image";
 
     boolean useDebugAttach = false;
 
@@ -74,23 +67,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     private boolean consume(ArgumentQueue args, String headArg) {
         switch (headArg) {
-            case "--help":
-                NativeImage.showMessage(HELP_TEXT);
-                NativeImage.showNewline();
-                nativeImage.apiOptionHandler.printOptions(NativeImage::showMessage, false);
-                NativeImage.showNewline();
-                System.exit(ExitStatus.OK.getValue());
-                return true;
-            case "--version":
-                printVersion();
-                System.exit(ExitStatus.OK.getValue());
-                return true;
-            case "--help-extra":
-                NativeImage.showMessage(HELP_EXTRA_TEXT);
-                nativeImage.apiOptionHandler.printOptions(NativeImage::showMessage, true);
-                NativeImage.showNewline();
-                System.exit(ExitStatus.OK.getValue());
-                return true;
             case "--configurations-path":
                 args.poll();
                 String configPath = args.poll();
@@ -195,40 +171,5 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             throw NativeImage.showError(headArg + " was used with an invalid resource regular expression: %s", pse);
         }
         nativeImage.addExcludeConfig(jarPattern, excludeConfigPattern);
-    }
-
-    /**
-     * Prints version output following
-     * "src/java.base/share/classes/java/lang/VersionProps.java.template#print(boolean)".
-     */
-    private static void printVersion() {
-        /* First line: platform version. */
-        String javaVersion = System.getProperty("java.version");
-        String javaVersionDate = System.getProperty("java.version.date");
-        Optional<String> versionOpt = Runtime.version().optional();
-        boolean isLTS = versionOpt.isPresent() && versionOpt.get().startsWith("LTS");
-        System.out.printf("%s %s %s%s%n", LAUNCHER_NAME, javaVersion, javaVersionDate, isLTS ? " LTS" : "");
-
-        /* Second line: runtime version (ie, libraries). */
-        String javaRuntimeVersion = System.getProperty("java.runtime.version");
-
-        String jdkDebugLevel = System.getProperty("jdk.debug", "release");
-        if ("release".equals(jdkDebugLevel)) {
-            /* Do not show debug level "release" builds */
-            jdkDebugLevel = "";
-        } else {
-            jdkDebugLevel = jdkDebugLevel + " ";
-        }
-
-        String javaRuntimeName = System.getProperty("java.runtime.name");
-        String vendorVersion = VM.getVendorVersion();
-        vendorVersion = vendorVersion.isEmpty() ? "" : " " + vendorVersion;
-        System.out.printf("%s%s (%sbuild %s)%n", javaRuntimeName, vendorVersion, jdkDebugLevel, javaRuntimeVersion);
-
-        /* Third line: VM information. */
-        String javaVMName = System.getProperty("java.vm.name");
-        String javaVMVersion = System.getProperty("java.vm.version");
-        String javaVMInfo = System.getProperty("java.vm.info");
-        System.out.printf("%s%s (%sbuild %s, %s)%n", javaVMName, vendorVersion, jdkDebugLevel, javaVMVersion, javaVMInfo);
     }
 }

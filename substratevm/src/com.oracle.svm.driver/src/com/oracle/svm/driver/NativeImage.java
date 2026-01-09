@@ -182,7 +182,9 @@ public class NativeImage {
         return null;
     }
 
-    private static final String usageText = getResource("/Usage.txt");
+    private static final String HELP_TEXT = NativeImage.getResource("/Help.txt");
+    private static final String HELP_EXTRA_TEXT = NativeImage.getResource("/HelpExtra.txt");
+    private static final String USAGE_TEXT = getResource("/Usage.txt");
 
     static class ArgumentQueue {
 
@@ -1946,49 +1948,103 @@ public class NativeImage {
     }
 
     private static void build(BuildConfiguration config, Function<BuildConfiguration, NativeImage> nativeImageProvider) {
-        NativeImage nativeImage = nativeImageProvider.apply(config);
-        if (config.getBuildArgs().isEmpty()) {
-            showMessage(usageText);
-        } else {
-            try {
-                nativeImage.prepareImageBuildArgs();
-            } catch (NativeImageError e) {
-                if (nativeImage.isVerbose()) {
-                    throw showError("Requirements for building native images are not fulfilled", e);
-                } else {
-                    throw showError("Requirements for building native images are not fulfilled [cause: " + e.getMessage() + "]", null);
+        List<String> buildArgs = config.getBuildArgs();
+        if (buildArgs.isEmpty()) {
+            showMessage(USAGE_TEXT);
+            return;
+        }
+        for (String arg : buildArgs) {
+            boolean exit = true;
+            switch (arg) {
+                case "--help" -> {
+                    showMessage(HELP_TEXT);
+                    showNewline();
+                    nativeImageProvider.apply(config).apiOptionHandler.printOptions(NativeImage::showMessage, false);
+                    showNewline();
                 }
+                case "--help-extra" -> {
+                    showMessage(HELP_EXTRA_TEXT);
+                    nativeImageProvider.apply(config).apiOptionHandler.printOptions(NativeImage::showMessage, true);
+                    showNewline();
+                }
+                case "--version" -> printVersion();
+                default -> exit = false;
             }
-
-            try {
-                int exitStatusCode = nativeImage.completeImageBuild();
-                switch (ExitStatus.of(exitStatusCode)) {
-                    case OK:
-                        break;
-                    case BUILDER_ERROR:
-                        /* Exit, builder has handled error reporting. */
-                        throw showError(null, null, exitStatusCode);
-                    case REBUILD_AFTER_ANALYSIS:
-                        build(config, buildConfig -> {
-                            NativeImage rebuildNativeImage = nativeImageProvider.apply(buildConfig);
-                            rebuildNativeImage.addImageBuilderJavaArgs(String.format("-D%s=true", SharedConstants.REBUILD_AFTER_ANALYSIS_MARKER));
-                            return rebuildNativeImage;
-                        });
-                        break;
-                    case OUT_OF_MEMORY, OUT_OF_MEMORY_KILLED:
-                        nativeImage.showOutOfMemoryWarning();
-                        throw showError(null, null, exitStatusCode);
-                    default:
-                        String message = String.format("Image build request for '%s' (pid: %d, path: %s) failed with exit status %d",
-                                        nativeImage.imageName, nativeImage.imageBuilderPid, nativeImage.imagePath, exitStatusCode);
-                        throw showError(message, null, exitStatusCode);
-                }
-            } finally {
-                if (nativeImage.useBundle()) {
-                    nativeImage.bundleSupport.complete();
-                }
+            if (exit) {
+                System.exit(ExitStatus.OK.getValue());
             }
         }
+        NativeImage nativeImage = nativeImageProvider.apply(config);
+        try {
+            nativeImage.prepareImageBuildArgs();
+        } catch (NativeImageError e) {
+            if (nativeImage.isVerbose()) {
+                throw showError("Requirements for building native images are not fulfilled", e);
+            } else {
+                throw showError("Requirements for building native images are not fulfilled [cause: " + e.getMessage() + "]", null);
+            }
+        }
+        try {
+            int exitStatusCode = nativeImage.completeImageBuild();
+            switch (ExitStatus.of(exitStatusCode)) {
+                case OK:
+                    break;
+                case BUILDER_ERROR:
+                    /* Exit, builder has handled error reporting. */
+                    throw showError(null, null, exitStatusCode);
+                case REBUILD_AFTER_ANALYSIS:
+                    build(config, buildConfig -> {
+                        NativeImage rebuildNativeImage = nativeImageProvider.apply(buildConfig);
+                        rebuildNativeImage.addImageBuilderJavaArgs(String.format("-D%s=true", SharedConstants.REBUILD_AFTER_ANALYSIS_MARKER));
+                        return rebuildNativeImage;
+                    });
+                    break;
+                case OUT_OF_MEMORY, OUT_OF_MEMORY_KILLED:
+                    nativeImage.showOutOfMemoryWarning();
+                    throw showError(null, null, exitStatusCode);
+                default:
+                    String message = String.format("Image build request for '%s' (pid: %d, path: %s) failed with exit status %d",
+                                    nativeImage.imageName, nativeImage.imageBuilderPid, nativeImage.imagePath, exitStatusCode);
+                    throw showError(message, null, exitStatusCode);
+            }
+        } finally {
+            if (nativeImage.useBundle()) {
+                nativeImage.bundleSupport.complete();
+            }
+        }
+    }
+
+    /**
+     * Prints version output following
+     * "src/java.base/share/classes/java/lang/VersionProps.java.template#print(boolean)".
+     */
+    public static void printVersion() {
+        /* First line: platform version. */
+        String javaVersion = System.getProperty("java.version");
+        String javaVersionDate = System.getProperty("java.version.date");
+        System.out.printf("native-image %s %s%n", javaVersion, javaVersionDate);
+
+        /* Second line: runtime version (ie, libraries). */
+        String javaRuntimeVersion = System.getProperty("java.runtime.version");
+
+        String jdkDebugLevel = System.getProperty("jdk.debug", "release");
+        if ("release".equals(jdkDebugLevel)) {
+            /* Do not show debug level "release" builds */
+            jdkDebugLevel = "";
+        } else {
+            jdkDebugLevel = jdkDebugLevel + " ";
+        }
+
+        String javaRuntimeName = System.getProperty("java.runtime.name");
+        String vendorVersion = VM.getVendorVersion();
+        vendorVersion = vendorVersion.isEmpty() ? "" : " " + vendorVersion;
+        System.out.printf("%s%s (%sbuild %s)%n", javaRuntimeName, vendorVersion, jdkDebugLevel, javaRuntimeVersion);
+
+        /* Third line: VM information. */
+        String javaVMName = System.getProperty("java.vm.name");
+        String javaVMVersion = System.getProperty("java.vm.version");
+        String javaVMInfo = System.getProperty("java.vm.info");
+        System.out.printf("%s%s (%sbuild %s, %s)%n", javaVMName, vendorVersion, jdkDebugLevel, javaVMVersion, javaVMInfo);
     }
 
     Path canonicalize(Path path) {
