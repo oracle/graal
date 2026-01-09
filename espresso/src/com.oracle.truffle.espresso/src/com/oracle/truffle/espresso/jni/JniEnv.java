@@ -43,6 +43,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.PinnedObject;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
@@ -2762,15 +2765,25 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     public @Pointer TruffleObject GetPrimitiveArrayCritical(@JavaType(Object.class) StaticObject object, @Pointer TruffleObject isCopyPtr, @Inject EspressoLanguage language) {
-        if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = NativeUtils.wrapNativeMemoryOrThrow(isCopyPtr, 1, nativeMemory, getMeta());
-            isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
-        }
         StaticObject array = object;
         StaticObject clazz = GetObjectClass(array);
         JavaKind componentKind = ((ArrayKlass) clazz.getMirrorKlass(getMeta())).getComponentType().getJavaKind();
         assert componentKind.isPrimitive();
         int length = GetArrayLength(array);
+        if (ImageInfo.inImageRuntimeCode() && array.isEspressoObject()) {
+            PinnedObject pinnedObject = PinnedObject.create(array.unwrap(language));
+            if (!getUncached().isNull(isCopyPtr)) {
+                ByteBuffer isCopyBuf = NativeUtils.wrapNativeMemoryOrThrow(isCopyPtr, 1, nativeMemory, getMeta());
+                isCopyBuf.put((byte) 0);
+            }
+            language.getThreadLocalState().pushPinnedObject(pinnedObject);
+            return new RawPointer(pinnedObject.addressOfArrayElement(0).rawValue());
+        }
+
+        if (!getUncached().isNull(isCopyPtr)) {
+            ByteBuffer isCopyBuf = NativeUtils.wrapNativeMemoryOrThrow(isCopyPtr, 1, nativeMemory, getMeta());
+            isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
+        }
 
         MemoryBuffer memoryBuffer = allocateDirect(length, componentKind);
         // @formatter:off
@@ -2796,6 +2809,13 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     public void ReleasePrimitiveArrayCritical(@JavaType(Object.class) StaticObject object, @Pointer TruffleObject carrayPtr, int mode, @Inject EspressoLanguage language) {
+        if (ImageInfo.inImageRuntimeCode()) {
+            PinnedObject pinnedObject = language.getThreadLocalState().popPinnedObject(NativeUtils.interopAsPointer(carrayPtr));
+            if (pinnedObject != null) {
+                pinnedObject.close();
+                return;
+            }
+        }
         if (mode == 0 || mode == JNI_COMMIT) { // Update array contents.
             StaticObject array = object;
             StaticObject clazz = GetObjectClass(array);
