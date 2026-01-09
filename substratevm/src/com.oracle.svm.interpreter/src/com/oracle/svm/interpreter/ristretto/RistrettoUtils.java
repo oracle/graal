@@ -29,9 +29,11 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.common.option.CommonOptionParser;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
@@ -46,6 +48,8 @@ import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPhase;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoNoDeoptPhase;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
@@ -73,6 +77,8 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.word.Word;
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -139,6 +145,17 @@ public class RistrettoUtils {
 
     public static CompilationResult compile(DebugContext debug, final SubstrateMethod method) {
         return doCompile(debug, RuntimeCompilationSupport.getRuntimeConfig(), RuntimeCompilationSupport.getLIRSuites(), method);
+    }
+
+    /**
+     * DEBUG ONLY facility to compile the given method and install the resulting code. Normally done
+     * over {@link com.oracle.svm.interpreter.ristretto.profile.RistrettoCompilationManager}. Use
+     * only for testing.
+     */
+    public static SubstrateInstalledCodeImpl compileAndInstallInCrema(RistrettoMethod method) {
+        SubstrateInstalledCodeImpl ic = compileAndInstall(method, () -> new SubstrateInstalledCodeImpl(method));
+        method.installedCode = ic;
+        return ic;
     }
 
     public static StructuredGraph parseOnly(SubstrateMethod method) {
@@ -280,6 +297,44 @@ public class RistrettoUtils {
         RistrettoGraphBuilderPhase graphBuilderPhase = new RistrettoGraphBuilderPhase(gpc);
         graphBuilderPhase.apply(graph, hc);
         assert graph.getNodeCount() > 1 : "Must have nodes after parsing";
+    }
+
+    /**
+     * DEBUG ONLY facility to log the virtual method table (vtable) of an interpreter type. This
+     * method is highly unsafe, does not check for concurrent updates to any data structures inside
+     * {@code iType} and it is also not {@link Uninterruptible}.
+     * <p>
+     * Use with extreme caution and only from places where it is guaranteed that no concurrent
+     * updates to the data inside {@code iType} happens.
+     */
+    public static void logVTable(InterpreterResolvedJavaType iType) {
+        if (!(iType instanceof InterpreterResolvedObjectType t)) {
+            return;
+        }
+        Log.log().string("Dumping vtable ").string(t.toClassName()).newline();
+        InterpreterResolvedJavaMethod[] table = t.getVtable();
+        if (table == null) {
+            Log.log().string("No vtable found").newline();
+            return;
+        }
+        for (int i = 0; i < table.length; i++) {
+            InterpreterResolvedJavaMethod method = table[i];
+            CFunctionPointer jitEntryPoint = Word.nullPointer();
+            RistrettoMethod rMethod = (RistrettoMethod) method.getRistrettoMethod();
+            if (rMethod == null) {
+                continue;
+            }
+            InstalledCode ic = rMethod.installedCode;
+            if (ic != null && ic.isValid()) {
+                /*
+                 * A JIT compiled version is available, execute this one instead. This could be more
+                 * optimized, see GR-71160.
+                 */
+                jitEntryPoint = Word.pointer(ic.getEntryPoint());
+            }
+            Log.log().string("\tslot=").signed(method.getVTableIndex()).string(" -> ").string(method.getDeclaringClass().toClassName()).string("::").string(method.getName()).string(", AOT addr=")
+                            .hex(method.getNativeEntryPoint()).string(", JIT addr=").hex(jitEntryPoint).newline();
+        }
     }
 
     public static final class TestingBackdoor {

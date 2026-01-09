@@ -26,6 +26,9 @@ package com.oracle.svm.interpreter.ristretto.meta;
 
 import java.util.function.Function;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
@@ -86,6 +89,16 @@ public final class RistrettoMethod extends SubstrateMethod {
         this.interpreterMethod = interpreterMethod;
         this.declaringClass = RistrettoType.create(interpreterMethod.getDeclaringClass());
         this.signature = new RistrettoUnresolvedSignature(interpreterMethod.getSignature());
+        /*
+         * TODO GR-34928 / GR-70938 - Setup indirectCallTarget for miranda and overpass methods.
+         */
+        this.indirectCallTarget = this;
+        this.vTableIndex = interpreterMethod.getVTableIndex();
+    }
+
+    @Override
+    public boolean hasImageCodeOffset() {
+        return RistrettoUtils.wasAOTCompiled(interpreterMethod);
     }
 
     public InterpreterResolvedJavaMethod getInterpreterMethod() {
@@ -111,7 +124,7 @@ public final class RistrettoMethod extends SubstrateMethod {
      */
     private synchronized void initializeProfile() {
         if (profile == null) {
-            MethodProfile newProfile = new MethodProfile(this);
+            MethodProfile newProfile = new MethodProfile(this, RistrettoType.RISTRETTO_TYPE_FUNCTION);
             // ensure everything is allocated and initialized before we signal the barrier
             // for the publishing write
             MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
@@ -281,4 +294,11 @@ public final class RistrettoMethod extends SubstrateMethod {
         return interpreterMethod.isConcrete();
     }
 
+    @Override
+    public MethodPointer getAOTEntrypoint() {
+        assert !SubstrateUtil.HOSTED;
+        assert SubstrateOptions.useRistretto();
+        assert interpreterMethod.hasNativeEntryPoint();
+        return interpreterMethod.getNativeEntryPoint();
+    }
 }
