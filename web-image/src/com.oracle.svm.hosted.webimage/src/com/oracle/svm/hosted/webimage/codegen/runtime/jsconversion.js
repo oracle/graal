@@ -41,6 +41,30 @@
  * annotation) by converting or coercing Java values into appropriate JS values.
  */
 class Conversion {
+    constructor() {
+        /*
+         * Stores the unique proxy instance for each proxied Java object.
+         *
+         * Maps Java objects to their proxies to ensure every Java object has
+         * at most one proxy associated with it.
+         *
+         * The keys (Java objects) of this map are weak references and don't
+         * prevent the Java object from being garbage collected. The values
+         * (proxies) aren't. The proxies themselves hold a strong reference to
+         * the Java object, creating a dependency cycle. However, this does not
+         * cause a memory leak because the standard prevents it.
+         * From the 6th edition of ECMA-262 section 23.3:
+         *
+         *      If an object that is being used as the key of a WeakMap key/value
+         *      pair is only reachable by following a chain of references that
+         *      start within that WeakMap, then that key/value pair is
+         *      inaccessible and is automatically removed from the WeakMap
+         *
+         * See https://262.ecma-international.org/6.0/#sec-weakmap-objects
+         */
+        this.proxies = new WeakMap();
+    }
+
     /**
      * Extracts the underlying Java object from the given proxy.
      *
@@ -59,11 +83,24 @@ class Conversion {
      * Tests whether the given JS object is a proxy over a Java object as
      * created by `toProxy` and returns the underlying Java object.
      * Returns `undefined` if the object is not one of our proxies.
+     *
+     * Can detect if our proxy is wrapped in a 3rd party proxy and in those
+     * cases also returns `undefined`.
      */
     tryUnproxy(jsProxyCandidate) {
         let looksLikeProxy = Object.getOwnPropertyDescriptor(jsProxyCandidate, runtime.symbol.isProxy)?.value === true;
         if (looksLikeProxy) {
-            return jsProxyCandidate[runtime.symbol.javaNative];
+            // Our proxy could be wrapped in one or more 3rd party proxies, which just forward the lookup of the isProxy
+            // property. We additionally have to look up the actual unique proxy object for the underlying Java object
+            // to check if the given object is one of our proxies.
+            let javaObject = jsProxyCandidate[runtime.symbol.javaNative];
+            if (!javaObject) {
+                // Unlikely, but this could be a non-proxy object with the isProxy property.
+                return undefined;
+            }
+            if (this.toProxy(javaObject) === jsProxyCandidate) {
+                return javaObject;
+            }
         }
 
         return undefined;
@@ -442,28 +479,35 @@ class Conversion {
      * @return {*} The proxy around the Java object
      */
     toProxy(obj) {
-        let proxyHandler = this.getOrCreateProxyHandler(this.getHub(obj));
-        // The wrapper is a temporary object that allows having the non-identifier name of the target function.
-        // We declare the property as a function, to ensure that it is constructable, so that the Proxy handler's construct method is callable.
-        let targetWrapper = {
-            ["Java Proxy"]: function (key) {
-                if (key === runtime.symbol.javaNative) {
-                    return obj;
-                }
-                return undefined;
-            },
-        };
+        let proxy = this.proxies.get(obj);
 
-        const proxyFun = targetWrapper["Java Proxy"];
+        if (proxy === undefined) {
+            let proxyHandler = this.getOrCreateProxyHandler(this.getHub(obj));
+            // The wrapper is a temporary object that allows having the non-identifier name of the target function.
+            // We declare the property as a function, to ensure that it is constructable, so that the Proxy handler's construct method is callable.
+            let targetWrapper = {
+                ["Java Proxy"]: function (key) {
+                    if (key === runtime.symbol.javaNative) {
+                        return obj;
+                    }
+                    return undefined;
+                },
+            };
 
-        Object.defineProperty(proxyFun, runtime.symbol.isProxy, {
-            value: true,
-            writable: false,
-            enumerable: false,
-            configurable: false,
-        });
+            const proxyFun = targetWrapper["Java Proxy"];
 
-        return new Proxy(proxyFun, proxyHandler);
+            Object.defineProperty(proxyFun, runtime.symbol.isProxy, {
+                value: true,
+                writable: false,
+                enumerable: false,
+                configurable: false,
+            });
+
+            proxy = new Proxy(proxyFun, proxyHandler);
+            this.proxies.set(obj, proxy);
+        }
+
+        return proxy;
     }
 
     /**
