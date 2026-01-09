@@ -736,7 +736,7 @@ public class NativeImage {
 
         @Override
         public void showVerboseMessage(String message) {
-            NativeImage.this.showVerboseMessage(isVerbose(), message);
+            NativeImage.showVerboseMessage(isVerbose(), message);
         }
 
         @Override
@@ -1948,7 +1948,7 @@ public class NativeImage {
     private static void build(BuildConfiguration config, Function<BuildConfiguration, NativeImage> nativeImageProvider) {
         NativeImage nativeImage = nativeImageProvider.apply(config);
         if (config.getBuildArgs().isEmpty()) {
-            nativeImage.showMessage(usageText);
+            showMessage(usageText);
         } else {
             try {
                 nativeImage.prepareImageBuildArgs();
@@ -2308,25 +2308,25 @@ public class NativeImage {
         this.printFlagsWithExtraHelpOptionQuery = val;
     }
 
-    void showVerboseMessage(boolean show, String message) {
+    static void showVerboseMessage(boolean show, String message) {
         if (show) {
             show(System.out::println, message);
         }
     }
 
-    void showMessage(String message) {
+    static void showMessage(String message) {
         show(System.out::println, message);
     }
 
-    void showMessage(String format, Object... args) {
+    static void showMessage(String format, Object... args) {
         showMessage(String.format(format, args));
     }
 
-    void showNewline() {
+    static void showNewline() {
         System.out.println();
     }
 
-    void showMessagePart(String message) {
+    static void showMessagePart(String message) {
         show(s -> {
             System.out.print(s);
             System.out.flush();

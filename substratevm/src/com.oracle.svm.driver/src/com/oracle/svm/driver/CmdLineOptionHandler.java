@@ -75,10 +75,10 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private boolean consume(ArgumentQueue args, String headArg) {
         switch (headArg) {
             case "--help":
-                nativeImage.showMessage(HELP_TEXT);
-                nativeImage.showNewline();
-                nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, false);
-                nativeImage.showNewline();
+                NativeImage.showMessage(HELP_TEXT);
+                NativeImage.showNewline();
+                nativeImage.apiOptionHandler.printOptions(NativeImage::showMessage, false);
+                NativeImage.showNewline();
                 System.exit(ExitStatus.OK.getValue());
                 return true;
             case "--version":
@@ -86,9 +86,9 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 System.exit(ExitStatus.OK.getValue());
                 return true;
             case "--help-extra":
-                nativeImage.showMessage(HELP_EXTRA_TEXT);
-                nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, true);
-                nativeImage.showNewline();
+                NativeImage.showMessage(HELP_EXTRA_TEXT);
+                nativeImage.apiOptionHandler.printOptions(NativeImage::showMessage, true);
+                NativeImage.showNewline();
                 System.exit(ExitStatus.OK.getValue());
                 return true;
             case "--configurations-path":
