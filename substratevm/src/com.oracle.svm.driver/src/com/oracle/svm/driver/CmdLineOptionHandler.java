@@ -201,13 +201,13 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
      * Prints version output following
      * "src/java.base/share/classes/java/lang/VersionProps.java.template#print(boolean)".
      */
-    private void printVersion() {
+    private static void printVersion() {
         /* First line: platform version. */
         String javaVersion = System.getProperty("java.version");
         String javaVersionDate = System.getProperty("java.version.date");
         Optional<String> versionOpt = Runtime.version().optional();
         boolean isLTS = versionOpt.isPresent() && versionOpt.get().startsWith("LTS");
-        nativeImage.showMessage("%s %s %s", LAUNCHER_NAME, javaVersion, javaVersionDate, isLTS ? " LTS" : "");
+        System.out.printf("%s %s %s%s%n", LAUNCHER_NAME, javaVersion, javaVersionDate, isLTS ? " LTS" : "");
 
         /* Second line: runtime version (ie, libraries). */
         String javaRuntimeVersion = System.getProperty("java.runtime.version");
@@ -223,12 +223,12 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String javaRuntimeName = System.getProperty("java.runtime.name");
         String vendorVersion = VM.getVendorVersion();
         vendorVersion = vendorVersion.isEmpty() ? "" : " " + vendorVersion;
-        nativeImage.showMessage("%s%s (%sbuild %s)", javaRuntimeName, vendorVersion, jdkDebugLevel, javaRuntimeVersion);
+        System.out.printf("%s%s (%sbuild %s)%n", javaRuntimeName, vendorVersion, jdkDebugLevel, javaRuntimeVersion);
 
         /* Third line: VM information. */
         String javaVMName = System.getProperty("java.vm.name");
         String javaVMVersion = System.getProperty("java.vm.version");
         String javaVMInfo = System.getProperty("java.vm.info");
-        nativeImage.showMessage("%s%s (%sbuild %s, %s)", javaVMName, vendorVersion, jdkDebugLevel, javaVMVersion, javaVMInfo);
+        System.out.printf("%s%s (%sbuild %s, %s)%n", javaVMName, vendorVersion, jdkDebugLevel, javaVMVersion, javaVMInfo);
     }
 }
