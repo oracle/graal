@@ -78,6 +78,7 @@ import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.word.Word;
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -315,13 +316,16 @@ public class RistrettoUtils {
             InterpreterResolvedJavaMethod method = table[i];
             CFunctionPointer jitEntryPoint = Word.nullPointer();
             RistrettoMethod rMethod = (RistrettoMethod) method.getRistrettoMethod();
-            if (rMethod != null && rMethod.installedCode != null && rMethod.installedCode.isValid()) {
+            if (rMethod == null) {
+                continue;
+            }
+            InstalledCode ic = rMethod.installedCode;
+            if (ic != null && ic.isValid()) {
                 /*
                  * A JIT compiled version is available, execute this one instead. This could be more
                  * optimized, see GR-71160.
                  */
-
-                jitEntryPoint = Word.pointer(rMethod.installedCode.getEntryPoint());
+                jitEntryPoint = Word.pointer(ic.getEntryPoint());
             }
             Log.log().string("\tslot=").signed(method.getVTableIndex()).string(" -> ").string(method.getDeclaringClass().toClassName()).string("::").string(method.getName()).string(", AOT addr=")
                             .hex(method.getNativeEntryPoint()).string(", JIT addr=").hex(jitEntryPoint).newline();

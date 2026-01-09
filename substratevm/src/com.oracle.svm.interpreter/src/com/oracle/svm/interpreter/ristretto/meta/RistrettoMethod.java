@@ -90,8 +90,7 @@ public final class RistrettoMethod extends SubstrateMethod {
         this.declaringClass = RistrettoType.create(interpreterMethod.getDeclaringClass());
         this.signature = new RistrettoUnresolvedSignature(interpreterMethod.getSignature());
         /*
-         * For ristretto miranda and overpass methods do not require any special handling, so the
-         * indirect call target is always this.
+         * TODO GR-34928 / GR-70938 - Setup indirectCallTarget for miranda and overpass methods.
          */
         this.indirectCallTarget = this;
         this.vTableIndex = interpreterMethod.getVTableIndex();
