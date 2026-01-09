@@ -112,13 +112,13 @@ public class WasmOptions {
     @Option(help = "Enable bulk-memory operations and support for reference types", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
     public static final OptionKey<Boolean> BulkMemoryAndRefTypes = new OptionKey<>(true);
 
-    @Option(help = "Enable support for 64-bit memory addresses (More details at https://github.com/WebAssembly/memory64/blob/main/proposals/memory64/Overview.md)", //
+    @Option(help = "Enable support for 64-bit memory addresses", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> Memory64 = new OptionKey<>(false);
 
     @Option(help = "Enable support for multiple memories within a single module", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
-    public static final OptionKey<Boolean> MultiMemory = new OptionKey<>(false);
+    public static final OptionKey<Boolean> MultiMemory = new OptionKey<>(true);
 
     @Option(help = "Enable support for threads and atomics", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
@@ -126,7 +126,7 @@ public class WasmOptions {
 
     @Option(help = "Enable support for extended const expressions", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
-    public static final OptionKey<Boolean> ExtendedConstExpressions = new OptionKey<>(false);
+    public static final OptionKey<Boolean> ExtendedConstExpressions = new OptionKey<>(true);
 
     @Option(help = "Enable support for the v128 type and vector instructions", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
@@ -134,7 +134,7 @@ public class WasmOptions {
 
     @Option(help = "Enable support for the relaxed vector instructions", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
-    public static final OptionKey<Boolean> RelaxedSIMD = new OptionKey<>(false);
+    public static final OptionKey<Boolean> RelaxedSIMD = new OptionKey<>(true);
 
     @Option(help = "Enable support for exception handling", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> Exceptions = new OptionKey<>(false);
