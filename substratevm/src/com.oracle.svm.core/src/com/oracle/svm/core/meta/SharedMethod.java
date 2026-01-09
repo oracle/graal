@@ -119,8 +119,8 @@ public interface SharedMethod extends ResolvedJavaMethod {
      * should only be used at runtime for just-in-time compiled code calling into the image built
      * method.
      *
-     * @return the direct address of this method or {@code Word.nullPointer()} if direct addressing
-     *         is not supported
+     * @return an AOT compiled entry point of this method or {@code Word.nullPointer()} if no
+     *         compiled entry point is available.
      */
     MethodPointer getAOTEntrypoint();
 }
