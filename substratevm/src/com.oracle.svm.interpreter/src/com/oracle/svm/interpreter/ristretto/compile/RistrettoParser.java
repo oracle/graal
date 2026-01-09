@@ -47,6 +47,9 @@ public class RistrettoParser extends BytecodeParser {
 
     @Override
     protected JavaType decorateCatchType(JavaType type) {
+        if (type == null) {
+            return null;
+        }
         assert type instanceof InterpreterResolvedJavaType : Assertions.errorMessage("Must be an interpreter type ", type);
         return RistrettoType.create((InterpreterResolvedJavaType) type);
     }
