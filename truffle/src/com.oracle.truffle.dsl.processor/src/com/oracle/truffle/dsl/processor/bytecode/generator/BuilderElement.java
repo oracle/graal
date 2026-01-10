@@ -93,6 +93,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.DFABuilder.DFAModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.DFABuilder.RewriteRuleState;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
@@ -2706,7 +2707,7 @@ final class BuilderElement extends AbstractElement {
 
         b.startDeclaration(types.FrameDescriptor_Builder, "frameDescriptorBuilder").startStaticCall(types.FrameDescriptor, "newBuilder").end().end();
 
-        if (model.defaultLocalValueExpression != null) {
+        if (model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
             b.statement("frameDescriptorBuilder.defaultValue(DEFAULT_LOCAL_VALUE)");
         } else {
             b.statement("frameDescriptorBuilder.defaultValueIllegal()");

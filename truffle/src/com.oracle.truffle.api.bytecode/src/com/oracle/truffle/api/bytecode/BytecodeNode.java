@@ -521,6 +521,9 @@ public abstract class BytecodeNode extends Node {
      * method should be used for uncommon scenarios, like when a node needs to read a local directly
      * from the frame. Prefer reading locals directly in the bytecode (via {@code LoadLocal}
      * operations or {@link LocalAccessor}) when possible.
+     * <p>
+     * This accessor does not respect the {@link GenerateBytecode#illegalLocalException()}
+     * attribute; if the attribute is set, this method will return null for cleared locals.
      *
      * @param bytecodeIndex the current bytecode index of the given frame. A valid bytecode index
      *            can be obtained by calling {@link BytecodeLocation#getBytecodeIndex()} or

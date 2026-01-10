@@ -69,6 +69,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-44829: `TruffleString` nodes no longer profile the `expectedEncoding` parameter for interpreter performance reasons. Languages with non-constant string encodings should profile the encoding before passing it to `TruffleString` nodes.
 
 * GR-61161: Bytecode DSL: Added support for basic instruction rewriting. At bytecode build time, the builder can perform peephole optimization to remove redundant loads. This new optimization can be configured using `@GenerateBytecode(enableInstructionRewriting=true|false)`.
+* GR-71765: Bytecode DSL: Added support for specifying an illegal local exception via `@GenerateBytecode(illegalLocalException=SomeException.class)`. This configures the interpreter to throw a custom exception when loading a cleared local, as an alternative to the default behaviour (throwing a `FrameSlotTypeException`). This option is mutually exclusive with the default local value option (`@GenerateBytecode(defaultLocalValue = "someValue")`).
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.

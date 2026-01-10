@@ -99,6 +99,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediateEncoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.generator.DSLExpressionGenerator;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
@@ -242,8 +243,8 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         // Define constants for accessing the frame.
         this.addAll(createFrameLayoutConstants());
 
-        if (model.usesBoxingElimination()) {
-            frameTagsElement = new FrameTagConstantsElement(this);
+        if (model.usesBoxingElimination() || model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
+            frameTagsElement = this.add(new FrameTagConstantsElement(this));
         } else {
             frameTagsElement = null;
         }
@@ -335,10 +336,6 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         descriptor.createInitBuilder().startNew(bytecodeDescriptorElement.asType()).end();
         this.getEnclosedElements().add(0, descriptor);
 
-        if (model.usesBoxingElimination()) {
-            this.add(frameTagsElement);
-        }
-
         this.add(new ExceptionHandlerImplElement(this));
         this.add(new ExceptionHandlerListElement(this));
         this.add(new SourceInformationImplElement(this));
@@ -364,7 +361,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "HANDLER_TAG_EXCEPTIONAL")).createInitBuilder().string(String.valueOf(numHandlerKinds++));
         }
 
-        if (model.defaultLocalValueExpression != null) {
+        if (model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
             CodeVariableElement var = this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(Object.class), "DEFAULT_LOCAL_VALUE"));
             var.createInitBuilder().tree(DSLExpressionGenerator.write(model.defaultLocalValueExpression, null, Map.of()));
         }
@@ -1480,9 +1477,13 @@ public final class BytecodeRootNodeElement extends AbstractElement {
                 case "bytecodes_":
                     b.startGroup();
                     b.string("bytecodes_ != null ? ");
-                    b.startCall("unquickenBytecode");
-                    b.string(var.getSimpleName().toString());
-                    b.end();
+                    if (model.enableQuickening) {
+                        b.startCall("unquickenBytecode");
+                        b.variable(var);
+                        b.end();
+                    } else {
+                        b.variable(var);
+                    }
                     b.string(" : null");
                     b.end();
                     break;

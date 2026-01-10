@@ -853,6 +853,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             } else {
                 after.add(constantOperand);
             }
+            if (typeEqualsAny(type, types.LocalAccessor, types.LocalRangeAccessor, types.MaterializedLocalAccessor)) {
+                parent.localAccessorsUsed.add(type);
+            }
         }
         return new ConstantOperandsModel(before, after);
     }
