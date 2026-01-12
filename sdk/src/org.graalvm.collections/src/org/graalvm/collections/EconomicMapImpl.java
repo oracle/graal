@@ -144,27 +144,20 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
      */
     private final Equivalence strategy;
 
-    /**
-     * Intercept method for debugging purposes.
-     */
-    private static <K, V> EconomicMapImpl<K, V> intercept(EconomicMapImpl<K, V> map) {
-        return map;
-    }
-
     public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy) {
-        return intercept(new EconomicMapImpl<>(strategy));
+        return new EconomicMapImpl<>(strategy);
     }
 
     public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, int initialCapacity) {
-        return intercept(new EconomicMapImpl<>(strategy, initialCapacity));
+        return new EconomicMapImpl<>(strategy, initialCapacity);
     }
 
     public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicMap<K, V> other) {
-        return intercept(new EconomicMapImpl<>(strategy, other));
+        return new EconomicMapImpl<>(strategy, other);
     }
 
     public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicSet<K> other) {
-        return intercept(new EconomicMapImpl<>(strategy, other));
+        return new EconomicMapImpl<>(strategy, other);
     }
 
     private EconomicMapImpl(Equivalence strategy) {
