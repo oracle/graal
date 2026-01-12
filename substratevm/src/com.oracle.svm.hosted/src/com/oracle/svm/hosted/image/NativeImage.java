@@ -189,12 +189,10 @@ public abstract class NativeImage extends AbstractImage {
             throw shouldNotReachHere(ex);
         }
         debugInfoSize = 0;
-        if (!OS.DARWIN.isCurrent()) { // debug info not available on Darwin
-            for (Element e : objectFile.getElements()) {
-                String name = e.getName();
-                if (name.contains(".debug") && !name.startsWith(".rela")) {
-                    debugInfoSize += e.getMemSize(objectFile.getDecisionsByElement());
-                }
+        for (Element e : objectFile.getElements()) {
+            String name = e.getName();
+            if (name.contains(".debug") && !name.startsWith(".rela")) {
+                debugInfoSize += e.getMemSize(objectFile.getDecisionsByElement());
             }
         }
         if (NativeImageOptions.PrintImageElementSizes.getValue()) {

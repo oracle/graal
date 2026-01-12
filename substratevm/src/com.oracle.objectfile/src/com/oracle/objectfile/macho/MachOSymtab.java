@@ -332,12 +332,12 @@ public final class MachOSymtab extends MachOObjectFile.LinkEditElement implement
         LayoutDecision strtabContent = decisions.get(strtab).getDecision(LayoutDecision.Kind.CONTENT);
         deps.add(BuildDependency.createOrGet(ourContent, strtabContent));
         /*
-         * We also depend on the vaddr of any referenced defined symbol. It doesn't matter whether
-         * we're dynamic! Every Mach-O section has a vaddr, even in a relocatable file.
+         * We also depend on the vaddr of any referenced defined symbol, if the section is
+         * referenceable (i.e., has a VADDR decision). Debug sections are not referenceable.
          */
         for (Entry e : entries) {
             Section s = e.getDefinedSection();
-            if (s != null) {
+            if (s != null && s.isReferenceable()) {
                 deps.add(BuildDependency.createOrGet(ourContent, decisions.get(s).getDecision(LayoutDecision.Kind.VADDR)));
             }
         }
@@ -443,9 +443,12 @@ public final class MachOSymtab extends MachOObjectFile.LinkEditElement implement
             /*
              * If we're a defined non-absolute symbol, we need to make this the virtual address
              * (even for relocatable files!), so add the vaddr of the section. Absolute symbols are
-             * denoted by sectionIndex == 0.
+             * denoted by sectionIndex == 0. Debug sections are not referenceable and have no vaddr.
              */
-            int valueToAdd = (sectionIndex == 0) ? 0 : (int) alreadyDecided.get(e.section).getDecidedValue(LayoutDecision.Kind.VADDR);
+            int valueToAdd = 0;
+            if (sectionIndex != 0 && e.section.isReferenceable()) {
+                valueToAdd = (int) alreadyDecided.get(e.section).getDecidedValue(LayoutDecision.Kind.VADDR);
+            }
             s.value = e.value + valueToAdd;
             s.write(oa);
         }
