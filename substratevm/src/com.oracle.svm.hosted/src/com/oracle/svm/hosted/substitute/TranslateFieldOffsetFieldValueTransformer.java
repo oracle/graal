@@ -26,26 +26,23 @@ package com.oracle.svm.hosted.substitute;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.GraalAccess;
 
-import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Implements the field value transformation semantics of {@link Kind#TranslateFieldOffset}.
  */
-public record TranslateFieldOffsetFieldValueTransformer(ResolvedJavaField original, Class<?> targetClass) implements FieldValueTransformerWithAvailability {
+public record TranslateFieldOffsetFieldValueTransformer(ResolvedJavaField original, ResolvedJavaType targetType) implements JVMCIFieldValueTransformerWithAvailability {
 
     @Override
     public boolean isAvailable() {
@@ -53,21 +50,19 @@ public record TranslateFieldOffsetFieldValueTransformer(ResolvedJavaField origin
     }
 
     @Override
-    public Object transform(Object receiver, Object originalValue) {
-        return translateFieldOffset(original, GraalAccess.getOriginalSnippetReflection().forObject(receiver), targetClass);
+    public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
+        return translateFieldOffset(original, receiver, targetType);
     }
 
-    static Object translateFieldOffset(ResolvedJavaField original, JavaConstant receiver, Class<?> tclass) {
+    static JavaConstant translateFieldOffset(ResolvedJavaField original, JavaConstant receiver, ResolvedJavaType tclass) {
         long searchOffset = GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(original, receiver).asLong();
         /* Search the declared fields for a field with a matching offset. */
-        for (Field f : tclass.getDeclaredFields()) {
-            if (!Modifier.isStatic(f.getModifiers())) {
-                long fieldOffset = Unsafe.getUnsafe().objectFieldOffset(f);
-                if (fieldOffset == searchOffset) {
-                    int location = ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset(f, true);
-                    VMError.guarantee(location > 0, "Location is missing for field whose offset is stored: %s.", f);
-                    return Long.valueOf(location);
-                }
+        for (ResolvedJavaField f : tclass.getInstanceFields(false)) {
+            long fieldOffset = f.getOffset();
+            if (fieldOffset == searchOffset) {
+                int location = ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset(f, true);
+                VMError.guarantee(location > 0, "Location is missing for field whose offset is stored: %s.", f);
+                return JavaConstant.forLong(location);
             }
         }
         throw shouldNotReachHere("unknown field offset class: " + tclass + ", offset = " + searchOffset);

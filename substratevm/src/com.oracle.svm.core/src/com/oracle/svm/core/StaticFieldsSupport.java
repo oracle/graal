@@ -28,7 +28,6 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import java.lang.reflect.Field;
 import java.util.Objects;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -69,6 +68,7 @@ import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -103,7 +103,7 @@ public final class StaticFieldsSupport {
             return ImageSingletons.lookup(HostedStaticFieldSupport.class);
         }
 
-        protected abstract Object getStaticFieldBaseTransformation(int layerNum, boolean primitive);
+        protected abstract JavaConstant getStaticFieldBaseTransformation(int layerNum, boolean primitive);
 
         protected abstract FloatingNode getStaticFieldsBaseReplacement(int layerNum, boolean primitive, LoweringTool tool, StructuredGraph graph);
 
@@ -111,7 +111,16 @@ public final class StaticFieldsSupport {
 
         protected abstract int getInstalledLayerNum(ResolvedJavaField field);
 
-        protected abstract ResolvedJavaField toResolvedField(Field field);
+        public abstract ResolvedJavaField toHostedField(ResolvedJavaField field);
+
+        /**
+         * Looks up the {@code field} using the {@code UniverseMetaAccess} instance passed via the
+         * {code metaAccess} parameter. For example, if the {@code metaAccess} comes from the Hosted
+         * Universe, it will return a {@code HostedField}, if it origins from the Analysis Universe,
+         * it will return an {code AnalysisField}. The method throws an error if the provided
+         * {@link MetaAccessProvider} is not a {@code UniverseMetaAccess}.
+         */
+        public abstract ResolvedJavaField toUniverseField(MetaAccessProvider metaAccess, ResolvedJavaField field);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -139,17 +148,17 @@ public final class StaticFieldsSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static Object getStaticFieldBaseTransformation(Field field) {
+    public static JavaConstant getStaticFieldBaseTransformation(ResolvedJavaField field) {
         var hostedSupport = HostedStaticFieldSupport.singleton();
-        return getStaticFieldBaseTransformation(hostedSupport.toResolvedField(field));
+        ResolvedJavaField hField = hostedSupport.toHostedField(field);
+        boolean primitive = hostedSupport.isPrimitive(hField);
+        int layerNum = getInstalledLayerNum(hField);
+        return hostedSupport.getStaticFieldBaseTransformation(layerNum, primitive);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static Object getStaticFieldBaseTransformation(ResolvedJavaField field) {
-        var hostedSupport = HostedStaticFieldSupport.singleton();
-        boolean primitive = hostedSupport.isPrimitive(field);
-        int layerNum = getInstalledLayerNum(field);
-        return hostedSupport.getStaticFieldBaseTransformation(layerNum, primitive);
+    public static ResolvedJavaField toUniverseField(MetaAccessProvider metaAccess, ResolvedJavaField field) {
+        return HostedStaticFieldSupport.singleton().toUniverseField(metaAccess, field);
     }
 
     public static int getInstalledLayerNum(ResolvedJavaField field) {

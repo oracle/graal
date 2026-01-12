@@ -47,6 +47,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithReceiverBasedAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.layered.LayeredFieldValue;
@@ -349,7 +350,7 @@ public final class FieldValueInterceptionSupport {
             return null;
         }
         var transformer = transformation.getFieldValueTransformer();
-        if (!(transformer instanceof FieldValueTransformerWithAvailability transformerWithAvailability)) {
+        if (!(transformer instanceof JVMCIFieldValueTransformerWithAvailability transformerWithAvailability)) {
             return null;
         }
 

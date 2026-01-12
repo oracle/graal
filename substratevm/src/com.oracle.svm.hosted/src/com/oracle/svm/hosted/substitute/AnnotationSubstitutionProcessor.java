@@ -1073,7 +1073,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 if (!Modifier.isStatic(targetField.getModifiers())) {
                     throw UserError.abort("Target field must be static for " + kind + " computation of alias " + annotated.format("%H.%n"));
                 }
-                yield new StaticFieldBaseFieldValueTransformer(OriginalFieldProvider.getJavaField(targetField));
+                yield new StaticFieldBaseFieldValueTransformer(targetField);
             }
             case ArrayBaseOffset ->
                 new ArrayBaseOffsetFieldValueTransformer(targetType, original.getType().getJavaKind());
@@ -1081,8 +1081,8 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 new ArrayIndexScaleFieldValueTransformer(targetType, original.getType().getJavaKind());
             case ArrayIndexShift ->
                 new ArrayIndexShiftFieldValueTransformer(targetType, original.getType().getJavaKind());
-            case AtomicFieldUpdaterOffset -> new AtomicFieldUpdaterOffsetFieldValueTransformer(original, targetClass);
-            case TranslateFieldOffset -> new TranslateFieldOffsetFieldValueTransformer(original, targetClass);
+            case AtomicFieldUpdaterOffset -> new AtomicFieldUpdaterOffsetFieldValueTransformer(original);
+            case TranslateFieldOffset -> new TranslateFieldOffsetFieldValueTransformer(original, targetType);
             case Custom -> {
                 if (JVMCIFieldValueTransformer.class.isAssignableFrom(targetClass)) {
                     yield (JVMCIFieldValueTransformer) ReflectionUtil.newInstance(targetClass);
