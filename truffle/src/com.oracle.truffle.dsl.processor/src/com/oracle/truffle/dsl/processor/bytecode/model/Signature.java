@@ -41,134 +41,215 @@
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
-public final class Signature {
-    public final ProcessorContext context = ProcessorContext.getInstance();
+public record Signature(TypeMirror returnType,
+                List<Operand> operands,
+                List<Operand> dynamicOperands,
+                List<Operand> constantOperands,
+                boolean isVariadic, int variadicOffset) {
 
-    public final TypeMirror returnType;
-    // [constantOperandsBefore*, dynamicOperands*, constantOperandsAfter*]
-    public final List<TypeMirror> operandTypes;
-    public final boolean isVariadic;
-    public final int variadicOffset;
-    public final boolean isVoid;
-    public final int constantOperandsBeforeCount;
-    public final int dynamicOperandCount;
-    public final int constantOperandsAfterCount;
-
-    public Signature(TypeMirror returnType, List<TypeMirror> types) {
-        this(returnType, types, false, 0, 0, 0);
+    public Signature(TypeMirror returnType, List<Operand> operands, boolean isVariadic, int variadicOffset) {
+        this(returnType, operands,
+                        // we materialize these lists for performance reasons
+                        operands.stream().filter(Operand::isDynamic).toList(),
+                        operands.stream().filter(Operand::isConstant).toList(),
+                        isVariadic, variadicOffset);
     }
 
-    public Signature(TypeMirror returnType, List<TypeMirror> types, boolean isVariadic, int variadicOffset, int constantOperandsBeforeCount, int constantOperandsAfterCount) {
-        this.returnType = returnType;
-        this.operandTypes = Collections.unmodifiableList(types);
-        this.isVariadic = isVariadic;
-        this.variadicOffset = variadicOffset;
-        this.isVoid = ElementUtils.isVoid(returnType);
-        this.constantOperandsBeforeCount = constantOperandsBeforeCount;
-        this.dynamicOperandCount = operandTypes.size() - constantOperandsBeforeCount - constantOperandsAfterCount;
-        this.constantOperandsAfterCount = constantOperandsAfterCount;
+    public Signature(TypeMirror returnType, List<Operand> operands) {
+        this(returnType, operands, false, -1);
     }
 
-    private Signature(Signature copy, List<TypeMirror> operandTypes, TypeMirror returnType) {
-        if (operandTypes.size() != copy.operandTypes.size()) {
-            throw new IllegalArgumentException();
+    public static List<Operand> createDefaultOperands(List<TypeMirror> types) {
+        Operand[] operands = new Operand[types.size()];
+        for (int i = 0; i < types.size(); i++) {
+            operands[i] = new Operand(types.get(i), "arg" + i, i, i, null);
         }
-        this.returnType = returnType;
-        this.operandTypes = operandTypes;
-        this.isVariadic = copy.isVariadic;
-        this.variadicOffset = copy.variadicOffset;
-        this.isVoid = copy.isVoid;
-        this.constantOperandsBeforeCount = copy.constantOperandsBeforeCount;
-        this.dynamicOperandCount = copy.dynamicOperandCount;
-        this.constantOperandsAfterCount = copy.constantOperandsAfterCount;
+        return List.of(operands);
     }
 
-    public List<TypeMirror> getConstantOperandsBeforeTypes() {
-        return operandTypes.subList(0, constantOperandsBeforeCount);
+    private Signature(Signature copy, List<TypeMirror> operandTypes, List<String> operandNames, TypeMirror returnType) {
+        this(returnType, copy.updateOperands(operandTypes, operandNames), copy.isVariadic, copy.variadicOffset);
     }
 
-    public List<TypeMirror> getDynamicOperandTypes() {
-        return operandTypes.subList(constantOperandsBeforeCount, constantOperandsBeforeCount + dynamicOperandCount);
-    }
-
-    public List<TypeMirror> getConstantOperandsAfterTypes() {
-        return operandTypes.subList(constantOperandsBeforeCount + dynamicOperandCount, operandTypes.size());
-    }
-
-    public Signature specializeReturnType(TypeMirror newReturnType) {
-        return new Signature(this, operandTypes, newReturnType);
-    }
-
-    public Signature specializeDynamicOperandType(int dynamicOperandIndex, TypeMirror newType) {
-        if (dynamicOperandIndex < 0 || dynamicOperandIndex >= dynamicOperandCount) {
-            throw new IllegalArgumentException("Invalid operand index " + dynamicOperandIndex);
+    private List<Operand> updateOperands(List<TypeMirror> types, List<String> names) {
+        if (types == null && types == null) {
+            // no update needed
+            return this.operands;
         }
-        int operandIndex = constantOperandsBeforeCount + dynamicOperandIndex;
-        TypeMirror type = operandTypes.get(operandIndex);
-        if (ElementUtils.typeEquals(type, newType)) {
-            return this;
+
+        if (types != null && types.size() != this.operands.size()) {
+            throw new IllegalArgumentException("Provided types list size does not match operands size.");
         }
-        List<TypeMirror> newOperandTypes = new ArrayList<>(operandTypes);
-        newOperandTypes.set(operandIndex, newType);
-        return new Signature(this, newOperandTypes, this.returnType);
+        if (names != null && names.size() != this.operands.size()) {
+            throw new IllegalArgumentException("Provided names list size does not match operands size.");
+        }
+
+        List<Operand> newOperands = new ArrayList<>(this.operands.size());
+        for (int i = 0; i < this.operands.size(); i++) {
+            Operand current = this.operands.get(i);
+            if (types != null) {
+                current = current.withType(types.get(i));
+            }
+            if (names != null) {
+                current = current.withName(names.get(i));
+            }
+            newOperands.add(current);
+        }
+        return newOperands;
+
+    }
+
+    public Signature withOperandTypes(List<TypeMirror> types) {
+        if (operandTypes().size() != this.operands.size()) {
+            throw new IllegalArgumentException("Invalid argument names");
+        }
+        Objects.requireNonNull(types);
+        return new Signature(this, types, null, this.returnType());
+    }
+
+    public Signature withDynamicOperandTypes(Class<?>... dynamicTypes) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        return withDynamicOperandTypes(List.of(dynamicTypes).stream().map((c) -> context.getType(c)).toList());
+    }
+
+    public Signature withDynamicOperandType(int dynamicIndex, TypeMirror type) {
+        List<TypeMirror> types = new ArrayList<>(dynamicOperandTypes());
+        types.set(dynamicIndex, type);
+        return withDynamicOperandTypes(types);
+    }
+
+    public Signature withDynamicOperandTypes(List<TypeMirror> dynamicTypes) {
+        List<TypeMirror> operandTypes = new ArrayList<>();
+        for (Operand operand : operands()) {
+            if (operand.isDynamic()) {
+                operandTypes.add(dynamicTypes.get(operand.dynamicIndex()));
+            } else {
+                operandTypes.add(operand.type());
+            }
+        }
+        return new Signature(this, operandTypes, null, this.returnType());
+    }
+
+    public Signature withReturnType(TypeMirror type) {
+        Objects.requireNonNull(type);
+        return new Signature(this, null, null, type);
+    }
+
+    public Signature withOperandNames(List<String> names) {
+        Objects.requireNonNull(names);
+        return new Signature(this, null, names, this.returnType());
+    }
+
+    public List<TypeMirror> dynamicOperandTypes() {
+        return dynamicOperands().stream().map(Operand::type).toList();
     }
 
     public TypeMirror getDynamicOperandType(int dynamicOperandIndex) {
-        if (dynamicOperandIndex < 0 && dynamicOperandIndex >= dynamicOperandCount) {
+        if (dynamicOperandIndex < 0 && dynamicOperandIndex >= dynamicOperandCount()) {
             throw new IllegalArgumentException("Invalid operand index " + dynamicOperandIndex);
         }
-        TypeMirror type = operandTypes.get(constantOperandsBeforeCount + dynamicOperandIndex);
-        if (isVariadicParameter(dynamicOperandIndex) && !ElementUtils.typeEquals(type, context.getType(Object[].class))) {
+        Operand operand = dynamicOperands().get(dynamicOperandIndex);
+        if (isVariadicOperand(operand) && !ElementUtils.typeEquals(operand.type(), ProcessorContext.getInstance().getType(Object[].class))) {
             throw new AssertionError("Invalid varargs type.");
         }
-        return type;
+        return operand.type();
     }
 
-    public boolean isVariadicParameter(int i) {
-        return isVariadic && i == dynamicOperandCount - 1;
+    public boolean isVariadicOperand(Operand operand) {
+        return isVariadic() && operand.dynamicIndex() == dynamicOperandCount() - 1;
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-
-        sb.append(ElementUtils.getSimpleName(returnType)).append(" ");
+        sb.append(ElementUtils.getSimpleName(returnType())).append(" ");
         sb.append("(");
-
-        for (int i = 0; i < constantOperandsBeforeCount; i++) {
-            sb.append(ElementUtils.getSimpleName(operandTypes.get(i)));
-            sb.append(", ");
-        }
-
-        int offset = constantOperandsBeforeCount;
-        for (int i = 0; i < dynamicOperandCount; i++) {
-            sb.append(ElementUtils.getSimpleName(operandTypes.get(offset + i)));
-            if (isVariadic && i == dynamicOperandCount - 1) {
+        String sep = "";
+        for (Operand operand : operands) {
+            sb.append(sep);
+            sb.append(ElementUtils.getSimpleName(operand.type()));
+            sb.append(" ");
+            if (isVariadic() && operand.isDynamic() && operand.dynamicIndex() == dynamicOperandCount() - 1) {
                 sb.append("...");
             }
-            sb.append(", ");
+            sb.append(operand.name());
+            sep = ", ";
         }
-
-        offset += dynamicOperandCount;
-        for (int i = 0; i < constantOperandsAfterCount; i++) {
-            sb.append(ElementUtils.getSimpleName(operandTypes.get(offset + i)));
-            sb.append(", ");
-        }
-
-        if (sb.charAt(sb.length() - 1) == ' ') {
-            sb.delete(sb.length() - 2, sb.length());
-        }
-
         sb.append(')');
-
         return sb.toString();
+    }
+
+    public int dynamicOperandCount() {
+        return (int) operands.stream().filter(Operand::isDynamic).count();
+    }
+
+    public boolean isVoid() {
+        return ElementUtils.isVoid(returnType);
+    }
+
+    public List<TypeMirror> operandTypes() {
+        return operands().stream().map(Operand::type).toList();
+    }
+
+    public List<String> dynamicOperandNames() {
+        return operands().stream().filter(Operand::isDynamic).map(Operand::name).toList();
+    }
+
+    public static record Operand(TypeMirror type, String name, int index, int dynamicIndex, ConstantOperandModel constant) {
+
+        public Operand(TypeMirror type, String name, int index, int dynamicIndex, ConstantOperandModel constant) {
+            this.type = type;
+            this.name = name;
+            this.index = index;
+            this.dynamicIndex = dynamicIndex;
+            this.constant = constant;
+        }
+
+        public Operand(int operandIndex, ConstantOperandModel constant, String name) {
+            this(constant.type(), name, operandIndex, -1, constant);
+        }
+
+        public Operand withType(TypeMirror newType) {
+            if (ElementUtils.typeEquals(this.type(), newType)) {
+                return this;
+            }
+            return new Operand(newType, name, index, dynamicIndex, constant);
+        }
+
+        public Operand withName(String newName) {
+            return new Operand(type, newName, index, dynamicIndex, constant);
+        }
+
+        public boolean isConstant() {
+            return constant != null;
+        }
+
+        public boolean isDynamic() {
+            return constant == null;
+        }
+
+        @Override
+        public int dynamicIndex() {
+            if (!isDynamic()) {
+                throw new UnsupportedOperationException();
+            }
+            return dynamicIndex;
+        }
+
+        /**
+         * Returns a conflict free local name.
+         */
+        public String localName() {
+            return name + "_";
+        }
+
     }
 }

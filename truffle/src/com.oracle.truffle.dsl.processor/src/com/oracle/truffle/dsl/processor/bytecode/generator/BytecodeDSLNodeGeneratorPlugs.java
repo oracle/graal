@@ -55,10 +55,11 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
-import com.oracle.truffle.dsl.processor.bytecode.model.CombinedSignature;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
+import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
+import com.oracle.truffle.dsl.processor.bytecode.model.Signature.Operand;
 import com.oracle.truffle.dsl.processor.bytecode.parser.BytecodeDSLParser;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.generator.BitSet;
@@ -225,9 +226,9 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                         .toList();
 
         for (InstructionModel quickening : relevantQuickenings) {
-            for (int index = 0; index < quickening.signature.dynamicOperandCount; index++) {
-                if (model.isBoxingEliminated(quickening.signature.getDynamicOperandType(index))) {
-                    boxingEliminated.add(index);
+            for (Operand operand : quickening.signature.dynamicOperands()) {
+                if (model.isBoxingEliminated(operand.type())) {
+                    boxingEliminated.add(operand.dynamicIndex());
                 }
             }
         }
@@ -275,14 +276,15 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             b.tree(activeCheck);
             String sep = activeCheck.isEmpty() ? "" : " && ";
 
-            CombinedSignature specializationSignature = quickening.getCustomSpecializationSignature();
-            List<TypeMirror> dynamicOperandTypes = specializationSignature.signature().getDynamicOperandTypes();
+            Signature specializationSignature = quickening.getCustomSpecializationSignature();
+            for (int dynamicValueIndex : boxingEliminated) {
+                Operand quickeningOperand = quickening.signature.dynamicOperands().get(dynamicValueIndex);
+                Operand specializationOperand = specializationSignature.dynamicOperands().get(dynamicValueIndex);
+                CodeTree check = factory.createIsImplicitTypeStateCheck(frameState,
+                                quickeningOperand.type(),
+                                specializationOperand.type(),
+                                quickeningOperand.index());
 
-            for (int valueIndex : boxingEliminated) {
-                TypeMirror specializedType = quickening.signature.getDynamicOperandType(valueIndex);
-                TypeMirror specializationTargetType = dynamicOperandTypes.get(valueIndex);
-                CodeTree check = factory.createIsImplicitTypeStateCheck(frameState, specializedType, specializationTargetType,
-                                valueIndex + specializationSignature.signature().constantOperandsBeforeCount);
                 if (check == null) {
                     continue;
                 }
@@ -320,7 +322,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 elseIf = false;
                 for (InstructionModel returnTypeQuickening : returnTypeQuickenings) {
                     elseIf = b.startIf(elseIf);
-                    b.startCall(BytecodeRootNodeElement.createIsQuickeningName(returnTypeQuickening.signature.returnType)).tree(BytecodeRootNodeElement.readInstruction("$bc", "$bci")).end();
+                    b.startCall(BytecodeRootNodeElement.createIsQuickeningName(returnTypeQuickening.signature.returnType())).tree(BytecodeRootNodeElement.readInstruction("$bc", "$bci")).end();
                     b.end().startBlock();
                     b.startStatement();
                     b.string("newInstruction = ").tree(rootNode.createInstructionConstant(returnTypeQuickening));
@@ -353,7 +355,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             elseIf = false;
             for (InstructionModel returnTypeQuickening : returnTypeQuickenings) {
                 elseIf = b.startIf(elseIf);
-                b.startCall(BytecodeRootNodeElement.createIsQuickeningName(returnTypeQuickening.signature.returnType)).tree(BytecodeRootNodeElement.readInstruction("$bc", "$bci")).end();
+                b.startCall(BytecodeRootNodeElement.createIsQuickeningName(returnTypeQuickening.signature.returnType())).tree(BytecodeRootNodeElement.readInstruction("$bc", "$bci")).end();
                 b.end().startBlock();
                 b.startStatement();
                 b.string("newInstruction = ").tree(rootNode.createInstructionConstant(returnTypeQuickening));

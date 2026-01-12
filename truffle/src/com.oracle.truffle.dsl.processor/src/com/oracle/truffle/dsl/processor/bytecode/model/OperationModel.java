@@ -219,16 +219,15 @@ public class OperationModel implements PrettyPrintable {
         this.instrumentationIndex = instrumentationIndex;
     }
 
-    public CombinedSignature getSpecializationSignature(SpecializationData specialization) {
+    public Signature getSpecializationSignature(SpecializationData specialization) {
         return getSpecializationSignature(List.of(specialization));
     }
 
-    public CombinedSignature getSpecializationSignature(List<SpecializationData> specializations) {
+    public Signature getSpecializationSignature(List<SpecializationData> specializations) {
         List<ExecutableElement> methods = specializations.stream().map(s -> s.getMethod()).toList();
-        CombinedSignature includedSpecializationSignatures = CustomOperationParser.parseSignatures(methods,
+        return CustomOperationParser.parseSpecializationSignatures(methods,
                         specializations.get(0).getNode(),
                         constantOperands).get(0);
-        return includedSpecializationSignatures;
     }
 
     public OperationModel setTransparent(boolean isTransparent) {

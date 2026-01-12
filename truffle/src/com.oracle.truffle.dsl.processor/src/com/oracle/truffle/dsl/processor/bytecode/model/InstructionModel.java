@@ -50,6 +50,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.Signature.Operand;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
@@ -337,8 +338,7 @@ public final class InstructionModel implements PrettyPrintable {
      */
     public final List<InstructionModel> shortCircuitInstructions = new ArrayList<>();
 
-    private CombinedSignature customSpecializationSignature;
-    private CombinedSignature customSignature;
+    private Signature customSpecializationSignature;
     private boolean finalized;
 
     /*
@@ -381,7 +381,6 @@ public final class InstructionModel implements PrettyPrintable {
     public void finalizeModel() {
         if (nodeData != null) {
             this.customSpecializationSignature = operation.getSpecializationSignature(getSpecializations());
-            this.customSignature = new CombinedSignature(signature, customSpecializationSignature.operandNames(), operation.constantOperands);
         }
         this.finalized = true;
     }
@@ -439,18 +438,11 @@ public final class InstructionModel implements PrettyPrintable {
         return getFilteredSpecializations() == null ? nodeData.getReachableSpecializations() : getFilteredSpecializations();
     }
 
-    public CombinedSignature getCustomSpecializationSignature() {
-        if (!kind.isCustom()) {
+    public Signature getCustomSpecializationSignature() {
+        if (customSpecializationSignature == null) {
             throw new UnsupportedOperationException("Specialization signature only exists for custom operations atm.");
         }
         return customSpecializationSignature;
-    }
-
-    public CombinedSignature getCustomSignature() {
-        if (!kind.isCustom()) {
-            throw new UnsupportedOperationException("Combined signature only exists for custom operations atm.");
-        }
-        return customSignature;
     }
 
     public boolean isEpilogExceptional() {
@@ -788,18 +780,21 @@ public final class InstructionModel implements PrettyPrintable {
      * Whether the instruction or any of its quickenings needs a child bci immediate in order to
      * perform boxing elimination of the given operand.
      */
-    public boolean needsChildBciForBoxingElimination(BytecodeDSLModel model, int valueIndex) {
+    public boolean needsChildBciForBoxingElimination(BytecodeDSLModel model, Operand signatureOperand) {
+        if (!signatureOperand.isDynamic()) {
+            return false;
+        }
         if (!model.usesBoxingElimination()) {
             return false;
         }
-        if (signature.isVariadicParameter(valueIndex)) {
+        if (signature.isVariadicOperand(signatureOperand)) {
             return false;
         }
-        if (model.isBoxingEliminated(signature.getDynamicOperandType(valueIndex))) {
+        if (model.isBoxingEliminated(signatureOperand.type())) {
             return true;
         }
         for (InstructionModel quickenedInstruction : quickenedInstructions) {
-            if (quickenedInstruction.needsChildBciForBoxingElimination(model, valueIndex)) {
+            if (quickenedInstruction.needsChildBciForBoxingElimination(model, quickenedInstruction.signature.operands().get(signatureOperand.index()))) {
                 return true;
             }
         }
@@ -882,7 +877,7 @@ public final class InstructionModel implements PrettyPrintable {
     public int getStackEffect() {
         return switch (kind) {
             case LOAD_VARIADIC, CREATE_VARIADIC -> throw new IllegalArgumentException("Variadic instruction " + this + " does not have a fixed stack effect.");
-            default -> (signature.isVoid ? 0 : 1) - signature.dynamicOperandCount;
+            default -> (signature.isVoid() ? 0 : 1) - signature.dynamicOperandCount();
         };
     }
 

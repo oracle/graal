@@ -68,6 +68,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Immediat
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.QuickeningKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.Signature.Operand;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.generator.BitSet;
 import com.oracle.truffle.dsl.processor.generator.NodeState;
@@ -288,12 +289,24 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return providedTagsSet.contains(ElementUtils.getUniqueIdentifier(tagClass));
     }
 
-    public Signature signature(Class<?> returnType, Class<?>... argumentTypes) {
-        TypeMirror[] arguments = new TypeMirror[argumentTypes.length];
-        for (int i = 0; i < arguments.length; i++) {
-            arguments[i] = context.getType(argumentTypes[i]);
+    public Signature signature(Class<?> returnType) {
+        return signature(returnType, List.of());
+    }
+
+    public Signature signature(Class<?> returnType, String name, Class<?> type) {
+        return signature(returnType, List.of(name), type);
+    }
+
+    public Signature signature(Class<?> returnType, String name1, Class<?> type1, String name2, Class<?> type2) {
+        return signature(returnType, List.of(name1, name2), type1, type2);
+    }
+
+    public Signature signature(Class<?> returnType, List<String> names, Class<?>... argumentTypes) {
+        Operand[] operands = new Operand[argumentTypes.length];
+        for (int i = 0; i < operands.length; i++) {
+            operands[i] = new Operand(context.getType(argumentTypes[i]), names.get(i), i, i, null);
         }
-        return new Signature(context.getType(returnType), List.of(arguments));
+        return new Signature(context.getType(returnType), List.of(operands));
     }
 
     public TypeMirror findProvidedTag(TypeMirror searchTag) {
@@ -499,14 +512,17 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
          * ensures that each path branching to the "end" leaves a single value on the stack.
          */
         Class<?>[] argumentTypes;
+        List<String> names;
         if (shortCircuitModel.producesBoolean()) {
             // Consume the boolean value.
             argumentTypes = new Class<?>[]{boolean.class};
+            names = List.of("value");
         } else {
             // Consume the boolean value and pop the DUP'd original value.
             argumentTypes = new Class<?>[]{Object.class, boolean.class};
+            names = List.of("value", "condition");
         }
-        Signature signature = signature(void.class, argumentTypes);
+        Signature signature = signature(void.class, names, argumentTypes);
         InstructionModel instr = instruction(InstructionKind.CUSTOM_SHORT_CIRCUIT, name, signature);
         instr.shortCircuitModel = shortCircuitModel;
 

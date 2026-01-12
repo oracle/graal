@@ -706,7 +706,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
      */
     private static boolean needsExecute(InstructionModel quickening) {
         if (quickening.isReturnTypeQuickening()) {
-            return quickening.hasBoxingOverloadForType(quickening.signature.returnType);
+            return quickening.hasBoxingOverloadForType(quickening.signature.returnType());
         }
         return true;
     }
@@ -1003,7 +1003,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
                 continue;
             }
 
-            if (ElementUtils.typeEquals(instruction.signature.returnType, type)) {
+            if (ElementUtils.typeEquals(instruction.signature.returnType(), type)) {
                 b.startCase().tree(createInstructionConstant(instruction.quickeningBase)).end();
                 b.startCase().tree(createInstructionConstant(instruction)).end();
                 b.startCaseBlock();
@@ -1027,7 +1027,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
         CodeTreeBuilder b = executable.createBuilder();
         List<InstructionModel> returnQuickenings = model.getInstructions().stream().//
-                        filter((i) -> i.isReturnTypeQuickening() && ElementUtils.typeEquals(i.signature.returnType, type)).toList();
+                        filter((i) -> i.isReturnTypeQuickening() && ElementUtils.typeEquals(i.signature.returnType(), type)).toList();
 
         if (returnQuickenings.isEmpty()) {
             b.returnFalse();
@@ -1899,7 +1899,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         }
 
         boolean needsFrame = needsFrame(instruction, tier);
-        TypeMirror returnType = instruction.signature.returnType;
+        TypeMirror returnType = instruction.signature.returnType();
         CodeExecutableElement executable = new CodeExecutableElement(Set.of(PRIVATE),
                         returnType, executeMethodName(instruction, tier));
 
@@ -1911,7 +1911,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             executable.addParameter(new CodeVariableElement(types.AbstractTruffleException, "ex"));
         } else {
             int index = 0;
-            for (TypeMirror type : instruction.signature.operandTypes) {
+            for (TypeMirror type : instruction.signature.operandTypes()) {
                 executable.addParameter(new CodeVariableElement(type, "arg" + index));
                 index++;
             }
@@ -1919,7 +1919,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
         if (hasUnexpectedExecuteValue(instruction)) {
             executable.getThrownTypes().add(types.UnexpectedResultException);
-            lookupExpectMethod(instruction.getQuickeningRoot().signature.returnType, returnType);
+            lookupExpectMethod(instruction.getQuickeningRoot().signature.returnType(), returnType);
         }
 
         CodeExecutableElement element;
@@ -2186,7 +2186,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     }
 
     static boolean hasUnexpectedExecuteValue(InstructionModel instr) {
-        return ElementUtils.needsCastTo(instr.getQuickeningRoot().signature.returnType, instr.signature.returnType);
+        return ElementUtils.needsCastTo(instr.getQuickeningRoot().signature.returnType(), instr.signature.returnType());
     }
 
     public static <T, K> Collector<T, ?, Map<K, List<T>>> deterministicGroupingBy(Function<? super T, ? extends K> classifier) {

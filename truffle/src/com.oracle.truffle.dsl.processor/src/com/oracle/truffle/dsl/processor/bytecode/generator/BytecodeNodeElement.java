@@ -74,8 +74,6 @@ import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.InstructionGroup;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
-import com.oracle.truffle.dsl.processor.bytecode.model.CombinedOperand;
-import com.oracle.truffle.dsl.processor.bytecode.model.CombinedSignature;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
@@ -86,6 +84,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionMo
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
+import com.oracle.truffle.dsl.processor.bytecode.model.Signature.Operand;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -1938,7 +1937,7 @@ final class BytecodeNodeElement extends AbstractElement {
                     }
                     emitBeforeReturnProfilingHandler(b);
                     emitCustomHandler(b, instr, emitDefaultReturn);
-                    String returnSp = (instr.signature.dynamicOperandCount == 0) ? "sp" : "sp - " + instr.signature.dynamicOperandCount;
+                    String returnSp = (instr.signature.dynamicOperandCount() == 0) ? "sp" : "sp - " + instr.signature.dynamicOperandCount();
                     if (parent.model.overridesBytecodeDebugListenerMethod("afterRootExecute")) {
                         b.startStatement();
                         b.startCall("getRoot().afterRootExecute");
@@ -2167,7 +2166,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.startSwitch().string("readValidBytecode(bc, node.returnBci)").end().startBlock();
                 for (var entry : parent.model.getInstructions().stream().filter((i) -> i.kind == InstructionKind.TAG_LEAVE).collect(BytecodeRootNodeElement.deterministicGroupingBy((i) -> {
                     if (i.isReturnTypeQuickening()) {
-                        return i.signature.returnType;
+                        return i.signature.returnType();
                     } else {
                         return type(Object.class);
                     }
@@ -2663,7 +2662,7 @@ final class BytecodeNodeElement extends AbstractElement {
         }
         if (instr.isQuickening() || tier.isUncached() || !parent.model.usesBoxingElimination()) {
             final TypeMirror inputType = instr.signature.getDynamicOperandType(1);
-            final TypeMirror returnType = instr.signature.returnType;
+            final TypeMirror returnType = instr.signature.returnType();
 
             if (tier.isCached() && parent.model.usesBoxingElimination()) {
                 b.declaration(inputType, "value");
@@ -3172,7 +3171,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.startTryBlock();
             }
 
-            final TypeMirror inputType = instr.signature.returnType;
+            final TypeMirror inputType = instr.signature.returnType();
             final TypeMirror slotType = instr.specializedType != null ? instr.specializedType : type(Object.class);
             b.startStatement();
             BytecodeRootNodeElement.startSetFrame(b, inputType).string("frame");
@@ -3466,7 +3465,7 @@ final class BytecodeNodeElement extends AbstractElement {
     }
 
     private void emitLoadConstantHandler(InstructionModel instr, CodeTreeBuilder b) {
-        TypeMirror returnType = instr.signature.returnType;
+        TypeMirror returnType = instr.signature.returnType();
         if (tier.isUncached() || (parent.model.usesBoxingElimination() && !ElementUtils.isObject(returnType))) {
             b.startStatement();
             BytecodeRootNodeElement.startSetFrame(b, returnType).string("frame").string("sp");
@@ -3485,7 +3484,7 @@ final class BytecodeNodeElement extends AbstractElement {
 
     private void emitLoadArgumentHandler(InstructionModel instr, CodeTreeBuilder b) {
         if (instr.isReturnTypeQuickening()) {
-            TypeMirror returnType = instr.signature.returnType;
+            TypeMirror returnType = instr.signature.returnType();
             b.startTryBlock();
             b.startStatement();
             BytecodeRootNodeElement.startSetFrame(b, returnType).string("frame").string("sp");
@@ -3580,7 +3579,7 @@ final class BytecodeNodeElement extends AbstractElement {
 
     private void emitTagLeaveHandler(InstructionModel instr, CodeTreeBuilder b) {
         TypeMirror inputType = instr.specializedType == null ? instr.signature.getDynamicOperandType(0) : instr.specializedType;
-        TypeMirror returnType = instr.signature.returnType;
+        TypeMirror returnType = instr.signature.returnType();
         boolean isSpecialized = instr.specializedType != null;
 
         b.declaration(inputType, "returnValue");
@@ -4089,7 +4088,7 @@ final class BytecodeNodeElement extends AbstractElement {
          * The yield result will be stored at sp + stackEffect - 1 = sp + (1 - n) - 1 = sp - n (for
          * n dynamic operands). We need to copy operands lower on the stack for resumption.
          */
-        String yieldResultIndex = (instr.signature.dynamicOperandCount == 0) ? "sp" : "sp - " + instr.signature.dynamicOperandCount;
+        String yieldResultIndex = (instr.signature.dynamicOperandCount() == 0) ? "sp" : "sp - " + instr.signature.dynamicOperandCount();
         b.lineCommentf("The yield result will be stored at %s. The operands below it need to be preserved for resumption.", yieldResultIndex);
         b.lineCommentf("These operands belong to the interval [maxLocals, %s).", yieldResultIndex);
         b.startIf().string("maxLocals < " + yieldResultIndex).end().startBlock();
@@ -4318,7 +4317,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 parent.emitQuickening(b, "this", "bc", "bci", null, parent.createInstructionConstant(generic));
             }
 
-            if (!instr.signature.isVoid) {
+            if (!instr.signature.isVoid()) {
                 b.startStatement();
                 BytecodeRootNodeElement.startSetFrame(b, type(Object.class));
                 b.string("frame");
@@ -4386,21 +4385,24 @@ final class BytecodeNodeElement extends AbstractElement {
         }
         TypeMirror targetType = type(Object.class);
         if (instr.isReturnTypeQuickening()) {
-            targetType = instr.signature.returnType;
+            targetType = instr.signature.returnType();
         }
         emitCustomExecute(b, instr, targetType, evaluatedArg, false);
         emitPushResult(b, instr, false);
     }
 
+    private void emitDynamicOperands(CodeTreeBuilder b, InstructionModel instruction, List<TypeMirror> specializedOperands, BiConsumer<CodeTreeBuilder, String> slowPathGenerator) {
+    }
+
     private void emitCustomDynamicOperands(CodeTreeBuilder b, InstructionModel instruction, BiConsumer<CodeTreeBuilder, String> slowPathGenerator) {
-        CombinedSignature customSignature = instruction.getCustomSignature();
+        Signature customSignature = instruction.signature;
         BytecodeDSLModel model = parent.model;
         boolean slowPath = slowPathGenerator == null;
 
         // we compute this ahead of time to find out whether we need to wrap in try-catch
         boolean hasUnexpected = !slowPath && customSignature.operands().stream().anyMatch((operand) -> hasUnexpectedValue(instruction, operand));
         if (hasUnexpected) {
-            for (CombinedOperand operand : customSignature.operands()) {
+            for (Operand operand : customSignature.operands()) {
                 if (operand.isDynamic()) {
                     b.declaration(operand.type(), operand.localName());
                 }
@@ -4408,7 +4410,7 @@ final class BytecodeNodeElement extends AbstractElement {
             b.startTryBlock();
         }
 
-        for (CombinedOperand operand : customSignature.operands()) {
+        for (Operand operand : customSignature.operands()) {
             if (operand.isDynamic()) {
 
                 if (hasUnexpected) {
@@ -4434,7 +4436,7 @@ final class BytecodeNodeElement extends AbstractElement {
                     b.cast(operand.type());
                 }
 
-                String stackIndex = "sp - " + (instruction.signature.dynamicOperandCount - operand.dynamicIndex());
+                String stackIndex = "sp - " + (instruction.signature.dynamicOperandCount() - operand.dynamicIndex());
                 if (!expectOtherTypes) {
                     // FRAMES.uncheckedGetObject
                     b.string(BytecodeRootNodeElement.uncheckedGetFrameObject(stackIndex));
@@ -4466,12 +4468,12 @@ final class BytecodeNodeElement extends AbstractElement {
         }
     }
 
-    private boolean hasUnexpectedValue(InstructionModel instruction, CombinedOperand operand) {
-        return operand.isDynamic() && tier.isCached() && instruction.getQuickeningRoot().needsChildBciForBoxingElimination(parent.model, operand.dynamicIndex());
+    private boolean hasUnexpectedValue(InstructionModel instruction, Operand operand) {
+        return operand.isDynamic() && tier.isCached() && instruction.getQuickeningRoot().needsChildBciForBoxingElimination(parent.model, operand);
     }
 
     private void emitCustomExecute(CodeTreeBuilder b, InstructionModel instr, TypeMirror targetType, String evaluatedArg, boolean slowPath) {
-        for (CombinedOperand operand : instr.getCustomSignature().operands()) {
+        for (Operand operand : instr.signature.operands()) {
             if (operand.isConstant()) {
                 emitReadConstantOperand(instr, b, operand);
             }
@@ -4489,7 +4491,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.declaration(cachedType, "node", readNode);
             }
         }
-        if (instr.signature.isVoid) {
+        if (instr.signature.isVoid()) {
             b.startStatement();
         } else {
             b.startDeclaration(targetType, "result");
@@ -4511,7 +4513,7 @@ final class BytecodeNodeElement extends AbstractElement {
         if (evaluatedArg != null) {
             b.string(evaluatedArg);
         } else {
-            for (String name : instr.getCustomSignature().operands().stream().map(s -> s.localName()).toList()) {
+            for (String name : instr.signature.operands().stream().map(s -> s.localName()).toList()) {
                 b.string(name);
             }
         }
@@ -4529,7 +4531,7 @@ final class BytecodeNodeElement extends AbstractElement {
     private void emitCustomSlowPath(CodeTreeBuilder parentBuilder, InstructionModel instr, String exception, boolean emitDefaultReturn) {
         String methodName = "handle" + firstLetterUpperCase(instr.getInternalName()) + "slow";
         CodeExecutableElement method = add(createInstructionHandler(parentBuilder.findMethod().getReturnType(), methodName));
-        if (instr.signature.dynamicOperandCount == 1) {
+        if (instr.signature.dynamicOperandCount() == 1) {
             method.addParameter(new CodeVariableElement(types.UnexpectedResultException, "ex"));
         }
         parentBuilder.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
@@ -4548,11 +4550,11 @@ final class BytecodeNodeElement extends AbstractElement {
         parentBuilder.end();
 
         InstructionModel genericInstruction = instr.getQuickeningRoot();
-        CombinedSignature signature = genericInstruction.getCustomSignature();
+        Signature signature = genericInstruction.signature;
         CodeTreeBuilder b = method.createBuilder();
-        if (instr.signature.dynamicOperandCount == 1) {
+        if (instr.signature.dynamicOperandCount() == 1) {
             // for single operand operations we always know which
-            CombinedOperand operand = signature.operands().stream().filter(o -> o.isDynamic()).findAny().get();
+            Operand operand = signature.operands().stream().filter(o -> o.isDynamic()).findAny().get();
             b.startDeclaration(operand.type(), operand.localName());
             if (!ElementUtils.isObject(operand.type())) {
                 b.cast(operand.type());
@@ -4573,14 +4575,14 @@ final class BytecodeNodeElement extends AbstractElement {
         }
     }
 
-    private void emitReadConstantOperand(InstructionModel instr, CodeTreeBuilder b, CombinedOperand operand) {
+    private void emitReadConstantOperand(InstructionModel instr, CodeTreeBuilder b, Operand operand) {
         b.startDeclaration(operand.type(), operand.localName());
         b.tree(parent.readConstantImmediate("bc", "bci", "this", instr.constantOperandImmediates.get(operand.constant()), operand.type()));
         b.end();
     }
 
     private void emitPushResult(CodeTreeBuilder b, InstructionModel instr, boolean slowPath) {
-        if (instr.signature.isVoid) {
+        if (instr.signature.isVoid()) {
             return;
         }
 
@@ -4595,10 +4597,10 @@ final class BytecodeNodeElement extends AbstractElement {
         // Update the stack.
         if (instr.isReturnTypeQuickening()) {
             if (slowPath) {
-                b.startIf().string("result instanceof ").type(ElementUtils.boxType(instr.signature.returnType)).string(" r").end().startBlock();
+                b.startIf().string("result instanceof ").type(ElementUtils.boxType(instr.signature.returnType())).string(" r").end().startBlock();
 
                 b.startStatement();
-                BytecodeRootNodeElement.startSetFrame(b, instr.signature.returnType);
+                BytecodeRootNodeElement.startSetFrame(b, instr.signature.returnType());
                 b.string("frame");
                 b.string(stackIndex);
                 b.string("r");
@@ -4618,7 +4620,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.end(); // else block
             } else {
                 b.startStatement();
-                BytecodeRootNodeElement.startSetFrame(b, instr.signature.returnType);
+                BytecodeRootNodeElement.startSetFrame(b, instr.signature.returnType());
                 b.string("frame");
                 b.string(stackIndex);
                 b.string("result");

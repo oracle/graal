@@ -59,10 +59,10 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.SuppressFBWarnings;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
-import com.oracle.truffle.dsl.processor.bytecode.model.CombinedSignature;
 import com.oracle.truffle.dsl.processor.bytecode.model.ConstantOperandModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.ConstantOperandsModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
+import com.oracle.truffle.dsl.processor.bytecode.model.Signature.Operand;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
@@ -78,7 +78,7 @@ public class SpecializationSignatureParser {
     }
 
     @SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED", justification = "Calls to params poll() as expected. FindBugs false positive.")
-    public CombinedSignature parse(ExecutableElement specialization, MessageContainer errorTarget, ConstantOperandsModel constantOperands) {
+    public Signature parse(ExecutableElement specialization, MessageContainer errorTarget, ConstantOperandsModel constantOperands) {
         boolean isValid = true;
         boolean isFallback = ElementUtils.findAnnotationMirror(specialization, types.Fallback) != null;
 
@@ -183,13 +183,29 @@ public class SpecializationSignatureParser {
             return null;
         }
 
-        List<TypeMirror> operandTypes = operands.stream().map(v -> v.asType()).toList();
         TypeMirror returnType = specialization.getReturnType();
         if (ElementUtils.canThrowTypeExact(specialization.getThrownTypes(), CustomOperationParser.types().UnexpectedResultException)) {
             returnType = context.getDeclaredType(Object.class);
         }
-        Signature signature = new Signature(returnType, operandTypes, hasVariadic, variadicOffset, constantOperands.before().size(), constantOperands.after().size());
-        return new CombinedSignature(signature, operandNames, constantOperands);
+
+        List<Signature.Operand> signatureOperands = new ArrayList<>();
+        int operandIndex = 0;
+        for (ConstantOperandModel operand : constantOperands.before()) {
+            signatureOperands.add(new Signature.Operand(operandIndex, operand, operandNames.get(operandIndex)));
+            operandIndex++;
+        }
+
+        for (int dynamicIndex = 0; dynamicIndex < operands.size() - numConstantOperands; dynamicIndex++) {
+            signatureOperands.add(new Signature.Operand(operands.get(operandIndex).asType(), operandNames.get(operandIndex), operandIndex, dynamicIndex, null));
+            operandIndex++;
+        }
+
+        for (ConstantOperandModel operand : constantOperands.after()) {
+            signatureOperands.add(new Signature.Operand(operandIndex, operand, operandNames.get(operandIndex)));
+            operandIndex++;
+        }
+
+        return new Signature(returnType, signatureOperands, hasVariadic, variadicOffset);
     }
 
     private boolean isVariadic(VariableElement param) {
@@ -241,15 +257,15 @@ public class SpecializationSignatureParser {
      * Also accumulates individual signatures into the {@code signatures} parameter, so they can be
      * inspected individually.
      */
-    public static Signature createPolymorphicSignature(List<CombinedSignature> signatures, List<ExecutableElement> specializations, MessageContainer customOperation) {
+    public static Signature createPolymorphicSignature(List<Signature> signatures, List<ExecutableElement> specializations, MessageContainer customOperation) {
         if (signatures.isEmpty()) {
             throw new IllegalArgumentException("Cannot create a polymorphic signature for an empty list of signatures.");
         } else if (signatures.size() != specializations.size()) {
             throw new IllegalArgumentException("Number of signatures (%d) should match number of specializations (%d).".formatted(signatures.size(), specializations.size()));
         }
-        Signature polymorphicSignature = signatures.get(0).signature();
+        Signature polymorphicSignature = signatures.get(0);
         for (int i = 1; i < signatures.size(); i++) {
-            polymorphicSignature = mergeSignatures(signatures.get(i).signature(), polymorphicSignature, specializations.get(i), customOperation);
+            polymorphicSignature = mergeSignatures(signatures.get(i), polymorphicSignature, specializations.get(i), customOperation);
             if (polymorphicSignature == null) {
                 break;
             }
@@ -258,37 +274,38 @@ public class SpecializationSignatureParser {
     }
 
     private static Signature mergeSignatures(Signature a, Signature b, Element el, MessageContainer errorTarget) {
-        if (a.isVariadic != b.isVariadic) {
+        if (a.isVariadic() != b.isVariadic()) {
             if (errorTarget != null) {
                 errorTarget.addError(el, "Error calculating operation signature: either all or none of the specializations must be variadic (i.e., have a @%s annotated parameter)",
                                 getSimpleName(CustomOperationParser.types().Variadic));
             }
             return null;
         }
-        if (a.isVoid != b.isVoid) {
+        if (a.isVoid() != b.isVoid()) {
             if (errorTarget != null) {
                 errorTarget.addError(el, "Error calculating operation signature: either all or none of the specializations must be declared void.");
             }
             return null;
         }
-        if (a.constantOperandsBeforeCount != b.constantOperandsBeforeCount) {
-            throw new AssertionError("Constant operand before count differs between merged signatures (%d and %d).".formatted(a.constantOperandsBeforeCount, b.constantOperandsBeforeCount));
-        } else if (a.constantOperandsAfterCount != b.constantOperandsAfterCount) {
-            throw new AssertionError("Constant operand counts should match between merged signatures (%d and %d).".formatted(a.constantOperandsAfterCount, b.constantOperandsAfterCount));
+
+        if (a.constantOperands().size() != b.constantOperands().size()) {
+            throw new AssertionError("Constant operand counts should match between merged signatures (%d and %d).".formatted(a.constantOperands(), b.constantOperands()));
         }
-        if (a.dynamicOperandCount != b.dynamicOperandCount) {
+        if (a.dynamicOperandCount() != b.dynamicOperandCount()) {
             if (errorTarget != null) {
                 errorTarget.addError(el, "Error calculating operation signature: all specializations must have the same number of operands.");
             }
             return null;
         }
-
-        TypeMirror newReturnType = mergeIfPrimitiveType(a.context, a.returnType, b.returnType);
-        List<TypeMirror> mergedTypes = new ArrayList<>(a.operandTypes.size());
-        for (int i = 0; i < a.operandTypes.size(); i++) {
-            mergedTypes.add(mergeIfPrimitiveType(a.context, a.operandTypes.get(i), b.operandTypes.get(i)));
+        ProcessorContext context = ProcessorContext.getInstance();
+        TypeMirror newReturnType = mergeIfPrimitiveType(context, a.returnType(), b.returnType());
+        List<Operand> mergedOperands = new ArrayList<>(a.operands().size());
+        for (int i = 0; i < a.operands().size(); i++) {
+            Operand aOperand = a.operands().get(i);
+            Operand bOperand = b.operands().get(i);
+            mergedOperands.add(aOperand.withType(mergeIfPrimitiveType(context, aOperand.type(), bOperand.type())));
         }
-        return new Signature(newReturnType, mergedTypes, a.isVariadic, a.variadicOffset, a.constantOperandsBeforeCount, a.constantOperandsAfterCount);
+        return new Signature(newReturnType, mergedOperands, a.isVariadic(), a.variadicOffset());
     }
 
     private static TypeMirror mergeIfPrimitiveType(ProcessorContext context, TypeMirror a, TypeMirror b) {
