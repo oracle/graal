@@ -258,7 +258,11 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
             return false;
         }
 
-        if (installedCode != INVALID_CODE && getInvalidationReason() == ((HotSpotTruffleRuntime) runtime()).getColdMethodInvalidationReason()) {
+        if (rootCompilation && installedCode != INVALID_CODE && getInvalidationReason() == ((HotSpotTruffleRuntime) runtime()).getColdMethodInvalidationReason()) {
+            /*
+             * We only reset the compilation profile of the current compilation root, resetting for
+             * inlined call targets could interfere with the compilation queue weighting mechanism.
+             */
             resetCompilationProfile();
             installedCode = INVALID_CODE;
             runtime().getListener().onProfileReset(this);
