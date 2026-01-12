@@ -87,8 +87,4 @@ public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
         return null;
     }
 
-    @Override
-    protected String getEngineLabel() {
-        return "TRegex cg";
-    }
 }

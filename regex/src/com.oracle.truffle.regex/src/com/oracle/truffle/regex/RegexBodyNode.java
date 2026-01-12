@@ -77,9 +77,9 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
     }
 
     public RegexSource getSource() {
-        RegexSource source1 = getRegexRootNode().getSource();
-        CompilerAsserts.partialEvaluationConstant(source1);
-        return source1;
+        RegexSource src = getRegexRootNode().getSource();
+        CompilerAsserts.partialEvaluationConstant(src);
+        return src;
     }
 
     public RegexLanguage getRegexLanguage() {
@@ -128,11 +128,6 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
     @TruffleBoundary
     @Override
     public final String toString() {
-        String src = getSource().toStringEscaped();
-        return "tregex " + getSource().getSource().getName() + " " + getEngineLabel() + ": " + (src.length() > 30 ? src.substring(0, 30) + "..." : src);
-    }
-
-    protected String getEngineLabel() {
-        return "no_engine_label";
+        return getSource().toNodeName();
     }
 }
