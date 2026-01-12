@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,7 @@ package com.oracle.svm.hosted.webimage;
 
 import static com.oracle.svm.hosted.webimage.metrickeys.ImageBreakdownMetricKeys.ENTIRE_IMAGE_SIZE;
 
-import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.Reader;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -167,7 +165,7 @@ public class JSCodeBuffer extends CodeBuffer {
     }
 
     @Override
-    public void emitEscapedStringLiteral(Reader r) throws IOException {
+    public void emitEscapedStringLiteral(String str) {
         // these characters need to be escaped
         final int newlineChar = '\n';
         final int backslashChar = '\\';
@@ -187,24 +185,16 @@ public class JSCodeBuffer extends CodeBuffer {
         byte[] noEscape = new byte[1];
 
         emitCode(quote);
-        for (;;) {
-            int c = r.read();
+        str.chars().forEach(c -> {
             switch (c) {
-                case -1:
-                    emitCode(quote);
-                    return;
-                case newlineChar:
+                case newlineChar -> {
                     emitCode(newlineEscape);
                     emitNewLine();
                     emitCode(quote);
-                    break;
-                case backslashChar:
-                    emitCode(backslashEscape);
-                    break;
-                case quoteChar:
-                    emitCode(quoteEscape);
-                    break;
-                default:
+                }
+                case backslashChar -> emitCode(backslashEscape);
+                case quoteChar -> emitCode(quoteEscape);
+                default -> {
                     if (c >= minAsciiNonControl && c <= maxAsciiNonControl) {
                         noEscape[0] = (byte) c;
                         emitCode(noEscape);
@@ -219,8 +209,10 @@ public class JSCodeBuffer extends CodeBuffer {
                         uEscape[5] = hexDigit(c);
                         emitCode(uEscape);
                     }
+                }
             }
-        }
+        });
+        emitCode(quote);
     }
 
     private static byte hexDigit(int value) {

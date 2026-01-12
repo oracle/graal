@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,9 @@
 
 package com.oracle.svm.hosted.webimage.codegen;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
@@ -38,15 +36,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.BuildPhaseProvider;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSObject;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -106,15 +105,15 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
         this.imageClassLoader = imageClassLoader;
     }
 
-    private static void lowerJavaScriptCode(CodeBuffer codeBuffer, String titleComment, InputStream is) {
+    private static void lowerJavaScriptCode(CodeBuffer codeBuffer, String titleComment, String content) {
         codeBuffer.emitText(titleComment);
         codeBuffer.emitNewLine();
 
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-        reader.lines().forEach(line -> {
+        content.lines().forEach(line -> {
             codeBuffer.emitText(line);
             codeBuffer.emitNewLine();
         });
+
         codeBuffer.emitNewLine();
     }
 
@@ -278,16 +277,21 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
                 includedPaths.add(path);
 
                 String titleComment = "// Source file: " + include.value().replace("\n", "").replace("\r", "");
-                InputStream is = type.getJavaClass().getResourceAsStream(path);
-                if (is == null) {
-                    throw new RuntimeException("Resource not found: " + path);
+                byte[] bytes = JVMCIReflectionUtil.getResource(type, path);
+                if (bytes == null) {
+                    throw UserError.abort("Resource at '%s' not found for inclusion using @JS.Code.Include on %s", path, type);
                 }
-                lowerJavaScriptCode(codeBuffer, titleComment, is);
+                try {
+                    String content = StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes)).toString();
+                    lowerJavaScriptCode(codeBuffer, titleComment, content);
+                } catch (CharacterCodingException e) {
+                    throw UserError.abort(e, "Resource at '%s' for inclusion using @JS.Code.Include on %s has invalid encoding", path, type);
+                }
             }
             var code = AnnotationUtil.getAnnotation(type, JS.Code.class);
             if (code != null) {
                 String titleComment = "// Class file: " + type.getJavaClass().getName();
-                lowerJavaScriptCode(codeBuffer, titleComment, new ByteArrayInputStream(code.value().getBytes(StandardCharsets.UTF_8)));
+                lowerJavaScriptCode(codeBuffer, titleComment, code.value());
             }
         }
         codeBuffer.emitText(";;");

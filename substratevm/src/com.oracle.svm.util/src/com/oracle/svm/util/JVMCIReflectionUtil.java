@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.util;
 
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.Arrays;
@@ -34,9 +35,12 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
 import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
+import jdk.graal.compiler.vmaccess.VMAccess;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -464,5 +468,35 @@ public final class JVMCIReflectionUtil {
      */
     public static JavaConstant newArrayInstance(ResolvedJavaType componentType, int length) {
         return JVMCIReflectionUtilFallback.newArrayInstance(componentType, length);
+    }
+
+    /**
+     * Implements {@link Class#getResourceAsStream(String)} followed by
+     * {@link InputStream#readAllBytes()} using JVMCI reflection.
+     *
+     * @return The resource contents as a byte array; {@code null} if
+     *         {@link Class#getResourceAsStream(String)} returned {@code null}.
+     */
+    public static byte[] getResource(ResolvedJavaType type, String name) {
+        Providers providers = GraalAccess.getOriginalProviders();
+        ConstantReflectionProvider constantReflection = providers.getConstantReflection();
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        VMAccess vmAccess = GraalAccess.getVMAccess();
+
+        JavaConstant classConstant = constantReflection.asJavaClass(OriginalClassProvider.getOriginalType(type));
+        JavaConstant nameConstant = constantReflection.forString(name);
+
+        ResolvedJavaMethod getResourceAsStreamMethod = getUniqueDeclaredMethod(metaAccess, Class.class, "getResourceAsStream", String.class);
+        ResolvedJavaMethod readAllBytesMethod = getUniqueDeclaredMethod(metaAccess, InputStream.class, "readAllBytes");
+
+        JavaConstant streamConstant = vmAccess.invoke(getResourceAsStreamMethod, classConstant, nameConstant);
+
+        if (streamConstant.isNull()) {
+            return null;
+        }
+
+        JavaConstant bytesConstant = vmAccess.invoke(readAllBytesMethod, streamConstant);
+
+        return GraalAccess.getOriginalSnippetReflection().asObject(byte[].class, bytesConstant);
     }
 }
