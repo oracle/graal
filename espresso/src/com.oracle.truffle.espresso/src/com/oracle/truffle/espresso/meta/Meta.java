@@ -265,6 +265,9 @@ public final class Meta extends ContextAccessImpl
         if (getJavaVersion().java9OrLater()) {
             java_lang_String_coder = java_lang_String.requireDeclaredField(Names.coder, Types._byte);
             java_lang_String_COMPACT_STRINGS = java_lang_String.requireDeclaredField(Names.COMPACT_STRINGS, Types._boolean);
+            int guestUTF16 = getIntConstant(java_lang_String, Names.UTF16, false, Types._byte);
+            int guestLATIN1 = getIntConstant(java_lang_String, Names.LATIN1, false, Types._byte);
+            StringConversion.checkConstants(guestUTF16, guestLATIN1);
         } else {
             java_lang_String_coder = null;
             java_lang_String_COMPACT_STRINGS = null;
@@ -3012,10 +3015,18 @@ public final class Meta extends ContextAccessImpl
 
     /**
      * Works as specified by {@link Meta#getIntConstant(ObjectKlass, Symbol, boolean)} with
-     * allowClassInit set to true.
+     * {@code allowClassInit} set to true.
      */
     public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant) {
         return getIntConstant(klass, constant, true);
+    }
+
+    /**
+     * Works as specified by {@link Meta#getIntConstant(ObjectKlass, Symbol, boolean, Symbol)} with
+     * {@code fieldType} set to int.
+     */
+    public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant, boolean allowClassInit) {
+        return getIntConstant(klass, constant, allowClassInit, Types._int);
     }
 
     /**
@@ -3029,10 +3040,12 @@ public final class Meta extends ContextAccessImpl
      * @param klass the guest class which has the constant as a field.
      * @param constant the symbol of the int constant to retrieve.
      * @param allowClassInit whether to allow class initialization
+     * @param fieldType the expected field type. It should have int as a stack kind.
      * @return the int constant
      */
-    public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant, boolean allowClassInit) {
-        Field f = klass.lookupDeclaredField(constant, Types._int);
+    public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant, boolean allowClassInit, Symbol<Type> fieldType) {
+        assert TypeSymbols.getJavaKind(fieldType).getStackKind() == JavaKind.Int;
+        Field f = klass.lookupDeclaredField(constant, fieldType);
         if (f == null || !f.isStatic() || !f.isFinalFlagSet()) {
             throw EspressoError.fatal("Cannot find " + constant + " int constant in class " + klass.getName());
         }

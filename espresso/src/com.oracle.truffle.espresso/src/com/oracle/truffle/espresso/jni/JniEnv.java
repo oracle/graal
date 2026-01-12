@@ -80,6 +80,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.meta.StringConversion;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.ArrayLength;
 import com.oracle.truffle.espresso.nodes.bytecodes.ArrayLengthFactory;
@@ -1617,8 +1618,19 @@ public final class JniEnv extends NativeEnv {
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetStringCritical(@JavaType(String.class) StaticObject str, @Pointer TruffleObject isCopyPtr, @Inject EspressoLanguage language, @Inject Meta meta) {
+        if (ImageInfo.inImageRuntimeCode() && str.isEspressoObject() && StringConversion.isUTF16(meta, str)) {
+            StaticObject array = meta.java_lang_String_value.getObject(str);
+            assert array.isEspressoObject();
+            PinnedObject pinnedObject = PinnedObject.create(array.unwrap(language));
+            if (!getUncached().isNull(isCopyPtr)) {
+                ByteBuffer isCopyBuf = NativeUtils.wrapNativeMemoryOrThrow(isCopyPtr, 1, nativeMemory, meta);
+                isCopyBuf.put((byte) 0);
+            }
+            language.getThreadLocalState().pushPinnedObject(pinnedObject);
+            return new RawPointer(pinnedObject.addressOfArrayElement(0).rawValue());
+        }
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = NativeUtils.wrapNativeMemoryOrThrow(isCopyPtr, 1, nativeMemory, getMeta());
+            ByteBuffer isCopyBuf = NativeUtils.wrapNativeMemoryOrThrow(isCopyPtr, 1, nativeMemory, meta);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
         StaticObject stringChars;
@@ -1716,7 +1728,14 @@ public final class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public void ReleaseStringCritical(@SuppressWarnings("unused") @JavaType(String.class) StaticObject str, @Pointer TruffleObject criticalRegionPtr) {
+    public void ReleaseStringCritical(@SuppressWarnings("unused") @JavaType(String.class) StaticObject str, @Pointer TruffleObject criticalRegionPtr, @Inject EspressoLanguage language) {
+        if (ImageInfo.inImageRuntimeCode()) {
+            PinnedObject pinnedObject = language.getThreadLocalState().popPinnedObject(NativeUtils.interopAsPointer(criticalRegionPtr));
+            if (pinnedObject != null) {
+                pinnedObject.close();
+                return;
+            }
+        }
         releasePtr(criticalRegionPtr);
     }
 

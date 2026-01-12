@@ -647,6 +647,8 @@ public class EspressoSymbols {
         public static final Symbol<Name> coder = SYMBOLS.putName("coder");
         public static final Symbol<Name> COMPACT_STRINGS = SYMBOLS.putName("COMPACT_STRINGS");
         public static final Symbol<Name> indexOf = SYMBOLS.putName("indexOf");
+        public static final Symbol<Name> LATIN1 = SYMBOLS.putName("LATIN1");
+        public static final Symbol<Name> UTF16 = SYMBOLS.putName("UTF16");
         // j.l.Throwable
         public static final Symbol<Name> backtrace = SYMBOLS.putName("backtrace");
         public static final Symbol<Name> stackTrace = SYMBOLS.putName("stackTrace");
