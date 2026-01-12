@@ -57,6 +57,10 @@ public final class RistrettoField extends SubstrateField {
         return (RistrettoField) interpreterField.getRistrettoField(RISTRETTO_FIELD_FUNCTION);
     }
 
+    public InterpreterResolvedJavaField getInterpreterField() {
+        return interpreterField;
+    }
+
     @Override
     public int getLocation() {
         // can re-use the offset from the interpreter field, it's derived from the dynamic hub
