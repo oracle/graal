@@ -27,6 +27,8 @@ import java.util.Objects;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceType;
+import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaField;
+import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaMethod;
 import com.oracle.truffle.espresso.jvmci.meta.ConstantReflectionProviderWithStaticsBase;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedJavaType;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedObjectType;
@@ -251,6 +253,20 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
             return new EspressoExternalResolvedArrayType(getNonArrayType(elemental, access), dimensions, access);
         }
         return getNonArrayType(value, access);
+    }
+
+    static AbstractEspressoResolvedJavaMethod methodAsJavaResolvedMethod(Value value, EspressoExternalVMAccess access) {
+        Value type = value.invokeMember("getDeclaringClass");
+        EspressoExternalResolvedInstanceType holder = (EspressoExternalResolvedInstanceType) getNonArrayType(type, access);
+        Value vmMethod = access.invokeJVMCIHelper("getVMMethod", value);
+        return new EspressoExternalResolvedJavaMethod(holder, vmMethod);
+    }
+
+    static AbstractEspressoResolvedJavaField fieldAsJavaResolvedField(Value value, EspressoExternalVMAccess access) {
+        Value type = value.invokeMember("getDeclaringClass");
+        EspressoExternalResolvedInstanceType holder = (EspressoExternalResolvedInstanceType) getNonArrayType(type, access);
+        Value vmField = access.invokeJVMCIHelper("getVMField", value);
+        return new EspressoExternalResolvedJavaField(holder, vmField);
     }
 
     private static EspressoResolvedJavaType getNonArrayType(Value value, EspressoExternalVMAccess access) {

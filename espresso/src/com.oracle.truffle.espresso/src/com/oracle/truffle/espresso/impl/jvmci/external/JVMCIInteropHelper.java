@@ -109,6 +109,8 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.HAS_ANNOTATIONS,
                         InvokeMember.GET_DECLARED_TYPES,
                         InvokeMember.COPY_BYTE_ARRAY,
+                        InvokeMember.GET_VM_FIELD,
+                        InvokeMember.GET_VM_METHOD
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -158,6 +160,8 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String HAS_ANNOTATIONS = "hasAnnotations";
         static final String GET_DECLARED_TYPES = "getDeclaredTypes";
         static final String COPY_BYTE_ARRAY = "copyByteArray";
+        static final String GET_VM_FIELD = "getVMField";
+        static final String GET_VM_METHOD = "getVMMethod";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -391,6 +395,32 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                 return StaticObject.NULL;
             }
             return new KeysArray<>(methods);
+        }
+
+        /**
+         * Gets the {@link Field} value for the {@link java.lang.reflect.Field} guest value in
+         * {@code arguments[0]}.
+         */
+        @Specialization(guards = "GET_VM_FIELD.equals(member)")
+        static Object getVMField(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            return getSingleFieldArgument(arguments, node, typeError, arityError);
+        }
+
+        /**
+         * Gets the {@link Method} value for the {@link java.lang.reflect.Executable} guest value in
+         * {@code arguments[0]}.
+         */
+        @Specialization(guards = "GET_VM_METHOD.equals(member)")
+        static Object getVMMethod(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            return getSingleMethodArgument(arguments, node, typeError, arityError);
         }
 
         // This would be less awkward if we could return Klass as non-statics JVMCI object like
@@ -814,6 +844,50 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                 throw UnsupportedTypeException.create(arguments, "Expected an instance type");
             }
             return klass;
+        }
+
+        private static Field getSingleFieldArgument(Object[] arguments, Node node, InlinedBranchProfile typeError, InlinedBranchProfile arityError)
+                        throws ArityException, UnsupportedTypeException {
+            assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
+            if (arguments.length != 1) {
+                arityError.enter(node);
+                throw ArityException.create(1, 1, arguments.length);
+            }
+            if (!(arguments[0] instanceof StaticObject reflectField)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an Espresso guest object");
+            }
+            EspressoContext context = EspressoContext.get(node);
+            Meta meta = context.getMeta();
+            if (!meta.java_lang_reflect_Field.isAssignableFrom(reflectField.getKlass())) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected a java.lang.reflect.Field object");
+            }
+            return Field.getReflectiveFieldRoot(reflectField, meta);
+        }
+
+        private static Method getSingleMethodArgument(Object[] arguments, Node node, InlinedBranchProfile typeError, InlinedBranchProfile arityError)
+                        throws ArityException, UnsupportedTypeException {
+            assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
+            if (arguments.length != 1) {
+                arityError.enter(node);
+                throw ArityException.create(1, 1, arguments.length);
+            }
+            if (!(arguments[0] instanceof StaticObject reflectExecutable)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an Espresso guest object");
+            }
+            EspressoContext context = EspressoContext.get(node);
+            Meta meta = context.getMeta();
+            Klass reflectExecutableKlass = reflectExecutable.getKlass();
+            if (meta.java_lang_reflect_Method.isAssignableFrom(reflectExecutableKlass)) {
+                return Method.getHostReflectiveMethodRoot(reflectExecutable, meta);
+            }
+            if (meta.java_lang_reflect_Constructor.isAssignableFrom(reflectExecutableKlass)) {
+                return Method.getHostReflectiveConstructorRoot(reflectExecutable, meta);
+            }
+            typeError.enter(node);
+            throw UnsupportedTypeException.create(arguments, "Expected a java.lang.reflect.Executable object");
         }
     }
 

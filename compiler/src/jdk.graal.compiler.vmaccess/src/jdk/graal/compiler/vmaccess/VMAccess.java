@@ -24,10 +24,14 @@
  */
 package jdk.graal.compiler.vmaccess;
 
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
 import java.util.List;
 
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -81,6 +85,19 @@ public interface VMAccess {
      *             {@code componentType}
      */
     JavaConstant asArrayConstant(ResolvedJavaType componentType, JavaConstant... elements);
+
+    /**
+     * Returns the {@link ResolvedJavaMethod} for an {@link Executable} object encapsulated in
+     * {@code constant}. Returns {@code null} if the constant does not encapsulate an
+     * {@link Executable}.
+     */
+    ResolvedJavaMethod asResolvedJavaMethod(Constant constant);
+
+    /**
+     * Returns the {@link ResolvedJavaField} for a {@link Field} object encapsulated in
+     * {@code constant}. Returns {@code null} if the constant does not encapsulate a {@link Field}.
+     */
+    ResolvedJavaField asResolvedJavaField(Constant constant);
 
     /**
      * Lookup a type by name in the {@linkplain ClassLoader#getSystemClassLoader() system/app} class
