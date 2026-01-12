@@ -38,6 +38,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
+import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
@@ -54,16 +55,21 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPhase;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoNoDeoptPhase;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoConstantFieldProvider;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoField;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoMetaAccess;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileProvider;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationWatchDog;
 import jdk.graal.compiler.core.CompilationWrapper;
+import jdk.graal.compiler.core.GraalCompiler;
+import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -267,7 +273,30 @@ public class RistrettoUtils {
                         graphBuilderSuite = null;
                     }
                     graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After parsing ");
-                    return SubstrateGraalUtils.compileGraph(runtimeConfig, graphBuilderSuite, suites, lirSuites, method, graph);
+                    OptimisticOptimizations optimisticOpts = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseLoopLimitChecks);
+                    final Backend backend = runtimeConfig.lookupBackend(method);
+                    SubstrateCompilationResult result = new SubstrateCompilationResult(graph.compilationId(), method.format("%H.%n(%p)"));
+                    Providers providers = backend.getProviders();
+
+                    // use our ristretto meta access
+                    providers = providers.copyWith(new RistrettoMetaAccess(providers.getMetaAccess()));
+
+                    // and the ristretto field provider
+                    providers = providers.copyWith(new RistrettoConstantFieldProvider(providers.getMetaAccess(), providers.getSnippetReflection()));
+
+                    GraalCompiler.compile(new GraalCompiler.Request<>(graph,
+                                    method,
+                                    providers,
+                                    backend,
+                                    graphBuilderSuite,
+                                    optimisticOpts,
+                                    null,
+                                    suites,
+                                    lirSuites,
+                                    result,
+                                    CompilationResultBuilderFactory.Default,
+                                    false));
+                    return result;
                 }
             }
 
