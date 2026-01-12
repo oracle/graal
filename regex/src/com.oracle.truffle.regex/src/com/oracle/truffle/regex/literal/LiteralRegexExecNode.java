@@ -69,11 +69,6 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         this.implNode = insert(implNode);
     }
 
-    @Override
-    protected final String getEngineLabel() {
-        return "literal:" + implNode.getImplName();
-    }
-
     @TruffleBoundary
     @Override
     public JsonValue toJson() {

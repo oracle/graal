@@ -62,8 +62,4 @@ public final class DeadRegexExecNode extends RegexExecNode {
         return RegexResult.getNoMatchInstance();
     }
 
-    @Override
-    protected String getEngineLabel() {
-        return "dead";
-    }
 }

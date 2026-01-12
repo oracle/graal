@@ -72,8 +72,4 @@ public class TRegexTraceFinderRootNode extends RegexBodyNode {
         return result[0];
     }
 
-    @Override
-    public String getEngineLabel() {
-        return "DFA traceFinder";
-    }
 }
