@@ -434,7 +434,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         totalEntries++;
 
         if (hasHashArray()) {
-            // Rehash on collision if hash table is more than three quarters full.
+            // Rehash on collision if hash table is more than two thirds full.
             boolean rehashOnCollision = (getHashTableSize() < (size() + (size() >> 1)));
             putHashEntry(key, nextEntryIndex, rehashOnCollision);
         } else if (totalEntries > getHashThreshold()) {
