@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.image;
 
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -64,7 +63,7 @@ import com.oracle.svm.core.debug.SubstrateDebugTypeEntrySupport;
 import com.oracle.svm.core.debug.gdb.GdbJitInterface;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -73,6 +72,7 @@ import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
 import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -80,6 +80,8 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
@@ -97,10 +99,10 @@ class NativeImageDebugInfoFeature implements InternalFeature {
      * A set of fields accessed during run-time debug info generation that are not seen as written
      * during analysis, but still reachable through the SubstrateDebugTypeEntrySupport singleton.
      */
-    public static final Set<Field> foreignTypeEntryFields = Set.of(
-                    ReflectionUtil.lookupField(TypeEntry.class, "typeName"),
-                    ReflectionUtil.lookupField(TypeEntry.class, "typeSignature"),
-                    ReflectionUtil.lookupField(ForeignStructTypeEntry.class, "typedefName"));
+    public static final Set<ResolvedJavaField> foreignTypeEntryFields = Set.of(
+                    JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(TypeEntry.class), "typeName"),
+                    JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(TypeEntry.class), "typeSignature"),
+                    JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(ForeignStructTypeEntry.class), "typedefName"));
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -165,10 +167,11 @@ class NativeImageDebugInfoFeature implements InternalFeature {
         for (Class<?> foreignTypeEntryClass : foreignTypeEntryClasses) {
             accessImpl.registerAsInHeap(foreignTypeEntryClass);
         }
-        for (Field foreignTypeEntryField : foreignTypeEntryFields) {
-            access.registerFieldValueTransformer(foreignTypeEntryField, new FieldValueTransformerWithAvailability() {
+        for (ResolvedJavaField foreignTypeEntryField : foreignTypeEntryFields) {
+            accessImpl.registerFieldValueTransformer(foreignTypeEntryField, new JVMCIFieldValueTransformerWithAvailability() {
+
                 @Override
-                public Object transform(Object receiver, Object originalValue) {
+                public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
                     return originalValue;
                 }
 
