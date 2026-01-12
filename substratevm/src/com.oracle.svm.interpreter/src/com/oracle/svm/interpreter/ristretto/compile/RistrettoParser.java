@@ -24,17 +24,44 @@
  */
 package com.oracle.svm.interpreter.ristretto.compile;
 
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoMetaAccess;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoType;
+
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class RistrettoParser extends BytecodeParser {
+    private MetaAccessProvider cachedMetaAccess;
 
     public RistrettoParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                     IntrinsicContext intrinsicContext) {
         super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
     }
 
+    @Override
+    protected JavaType decorateCatchType(JavaType type) {
+        if (type == null) {
+            return null;
+        }
+        assert type instanceof InterpreterResolvedJavaType : Assertions.errorMessage("Must be an interpreter type ", type);
+        return RistrettoType.create((InterpreterResolvedJavaType) type);
+    }
+
+    @Override
+    public MetaAccessProvider getMetaAccess() {
+        if (cachedMetaAccess != null) {
+            return cachedMetaAccess;
+        }
+        MetaAccessProvider original = super.getMetaAccess();
+        assert original != null;
+        cachedMetaAccess = new RistrettoMetaAccess(original);
+        return cachedMetaAccess;
+    }
 }
