@@ -24,13 +24,15 @@ package com.oracle.truffle.espresso.libs.libjava.impl;
 
 import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivial;
 
+import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Substitution;
+import com.oracle.truffle.espresso.substitutions.VersionFilter;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_util_concurrent_atomic_AtomicLong {
-    @Substitution(flags = {IsTrivial}, methodName = "VMSupportsCS8")
+    @Substitution(flags = {IsTrivial}, methodName = "VMSupportsCS8", languageFilter = VersionFilter.Java21.class)
     public static boolean vmSupportsCS8() {
         return VM.JVM_SupportsCX8();
     }

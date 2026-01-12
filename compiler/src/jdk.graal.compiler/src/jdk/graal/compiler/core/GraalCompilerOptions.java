@@ -41,6 +41,10 @@ public class GraalCompilerOptions {
     @Option(help = "Print an informational line to the console for each completed compilation.", type = OptionType.Debug, stability = OptionStability.STABLE)
     public static final OptionKey<Boolean> PrintCompilation = new OptionKey<>(false);
     @Option(help = """
+                   Print statistics for each completed compilation to a CSV file specified by the given filename pattern.
+                   The isolate ID is appended to the filename and %p is replaced with the execution ID.""", type = OptionType.Debug)
+    public static final OptionKey<String> PrintCompilationCSV = new OptionKey<>(null);
+    @Option(help = """
                    Pattern for method(s) that will trigger an exception when compiled.
                    This option exists to test handling compilation crashes gracefully.
                    See the MethodFilter option for the pattern syntax. A ':Bailout'

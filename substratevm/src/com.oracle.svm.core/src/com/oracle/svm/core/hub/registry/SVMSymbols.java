@@ -47,6 +47,7 @@ public final class SVMSymbols {
 
     public static final class SVMTypes {
         public static final Symbol<Type> com_oracle_svm_core_hub_Hybrid = SYMBOLS.putType("Lcom/oracle/svm/core/hub/Hybrid;");
+        public static final Symbol<Type> java_lang_Throwable = SYMBOLS.putType("Ljava/lang/Throwable;");
 
         private SVMTypes() {
         }

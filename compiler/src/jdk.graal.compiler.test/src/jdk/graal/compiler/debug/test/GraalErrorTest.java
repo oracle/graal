@@ -100,7 +100,7 @@ public class GraalErrorTest extends GraalCompilerTest {
 
     // run with -Dtest.GraalErrorTest.stdout=true to inspect how error messages are formatted
     @Test
-    public void testErrorExampels() {
+    public void testErrorExamples() {
         StructuredGraph g = parseEager("foo", StructuredGraph.AllowAssumptions.NO);
 
         FixedNode loopBeginNode = g.getNodes(LoopBeginNode.TYPE).first();

@@ -60,7 +60,7 @@ public class ClassRegistryFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        access.registerSubtypeReachabilityHandler((unused, cls) -> onTypeReachable(cls), Object.class);
+        access.registerSubtypeReachabilityHandler((_, cls) -> onTypeReachable(cls), Object.class);
     }
 
     private static void onTypeReachable(Class<?> cls) {

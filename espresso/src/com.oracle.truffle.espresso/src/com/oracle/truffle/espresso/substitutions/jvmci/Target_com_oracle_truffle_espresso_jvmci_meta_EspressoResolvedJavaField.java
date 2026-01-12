@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.espresso.substitutions.jvmci;
 
-import static com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
-import static com.oracle.truffle.espresso.jvmci.JVMCIUtils.LOGGER;
-import static com.oracle.truffle.espresso.jvmci.JVMCIUtils.findType;
+import static com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils.LOGGER;
+import static com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils.findType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIType;
+import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType.getRawAnnotationBytes;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_jdk_vm_ci_runtime_JVMCI.checkJVMCIAvailable;
 
 import com.oracle.truffle.api.dsl.Bind;
@@ -142,10 +142,16 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaFi
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean hasAnnotations(StaticObject self, @Inject EspressoContext context) {
-        assert context.getLanguage().isInternalJVMCIEnabled();
-        Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(self);
-        return field.getAttribute(Names.RuntimeVisibleAnnotations) != null;
+    abstract static class GetRawAnnotationBytes extends SubstitutionNode {
+        abstract @JavaType(byte[].class) StaticObject execute(StaticObject self, int category);
+
+        @Specialization
+        static StaticObject doDefault(StaticObject self, int category,
+                        @Bind("getContext()") EspressoContext context) {
+            assert context.getLanguage().isInternalJVMCIEnabled();
+            Meta meta = context.getMeta();
+            Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(self);
+            return getRawAnnotationBytes(field, category, meta);
+        }
     }
 }

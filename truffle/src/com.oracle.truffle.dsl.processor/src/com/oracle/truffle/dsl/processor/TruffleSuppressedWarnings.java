@@ -73,8 +73,9 @@ public final class TruffleSuppressedWarnings {
     public static final String DEPRECATION = "deprecation";
     public static final String INTERPRETED_PERFORMANCE = "truffle-interpreted-performance";
     public static final String FORCE_CACHED = "truffle-force-cached";
+    public static final String HIDE_BUILTIN = "truffle-hide-builtin";
     public static final List<String> ALL_KEYS = List.of(ALL, TRUFFLE, STATIC_METHOD, UNEXPECTED_RESULT_REWRITE, LIMIT, UNUSED, NEVERDEFAULT, INLINING_RECOMMENDATION, SHARING_RECOMMENDATION,
-                    ABSTRACT_LIBRARY_EXPORT, DEPRECATION, INTERPRETED_PERFORMANCE, FORCE_CACHED);
+                    ABSTRACT_LIBRARY_EXPORT, DEPRECATION, INTERPRETED_PERFORMANCE, FORCE_CACHED, HIDE_BUILTIN);
 
     public static Set<String> getWarnings(Element element) {
         AnnotationMirror currentWarnings = ElementUtils.findAnnotationMirror(element, SuppressWarnings.class);

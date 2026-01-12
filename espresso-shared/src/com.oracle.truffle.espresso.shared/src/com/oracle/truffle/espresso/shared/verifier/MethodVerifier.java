@@ -267,6 +267,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Validation;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
+import com.oracle.truffle.espresso.shared.lookup.LookupSuccessInvocationFailure;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
 import com.oracle.truffle.espresso.shared.meta.KnownTypes;
 import com.oracle.truffle.espresso.shared.meta.MemberAccess;
@@ -2188,7 +2189,6 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     // Helper methods
-
     private void checkProtectedMember(Operand<R, C, M, F> stackOp, Symbol<Type> holderType, int memberIndex, boolean method) {
         /*
          * 4.10.1.8.
@@ -2214,7 +2214,12 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                     /* Non-failing method lookup. */
                     Symbol<Name> name = pool.methodName(memberIndex);
                     Symbol<Signature> methodSignature = pool.methodSignature(memberIndex);
-                    member = holderOp.getKlass(this).lookupMethod(name, methodSignature);
+                    try {
+                        member = holderOp.getKlass(this).lookupMethod(name, methodSignature);
+                    } catch (LookupSuccessInvocationFailure e) {
+                        // We are not planning to invoke, so we can safely ignore that hint.
+                        member = e.<M> getResult();
+                    }
                 } else {
                     /* Non-failing field lookup. */
                     Symbol<Name> fieldName = pool.fieldName(memberIndex);

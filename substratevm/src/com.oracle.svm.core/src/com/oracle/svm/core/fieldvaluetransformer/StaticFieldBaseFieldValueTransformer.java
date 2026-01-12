@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.fieldvaluetransformer;
 
-import java.lang.reflect.Field;
-import java.util.function.Function;
-
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -39,7 +36,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 /**
  * Implements the field value transformation semantics of {@link Kind#StaticFieldBase}.
  */
-public record StaticFieldBaseFieldValueTransformer(Field targetField) implements ObjectToConstantFieldValueTransformer {
+public record StaticFieldBaseFieldValueTransformer(ResolvedJavaField targetField) implements FieldValueTransformerWithAvailability {
 
     @Override
     public boolean isAvailable() {
@@ -47,12 +44,13 @@ public record StaticFieldBaseFieldValueTransformer(Field targetField) implements
     }
 
     @Override
-    public JavaConstant transformToConstant(ResolvedJavaField field, Object receiver, Object originalValue, Function<Object, JavaConstant> toConstant) {
-        return StaticFieldsSupport.getStaticFieldsConstant(field, toConstant);
+    public Object transform(Object receiver, Object originalValue) {
+        return new JavaConstantWrapper(StaticFieldsSupport.getStaticFieldBaseTransformation(targetField));
     }
 
     @Override
     public ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
-        return StaticFieldsSupport.createStaticFieldBaseNode(providers.getMetaAccess().lookupJavaField(targetField));
+        ResolvedJavaField resolvedJavaField = StaticFieldsSupport.toUniverseField(providers.getMetaAccess(), targetField);
+        return StaticFieldsSupport.createStaticFieldBaseNode(resolvedJavaField);
     }
 }

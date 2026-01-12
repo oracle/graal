@@ -47,20 +47,8 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.AnyMatchNodeGen;
-import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfAnyRangeNodeGen;
-import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfAnyValueNodeGen;
-import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfBitSetNodeGen;
-import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfRangesNodeGen;
-import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfStringNodeGen;
-import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfTableNodeGen;
-import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.NoMatchNodeGen;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 final class IndexOfCodePointSet {
@@ -72,8 +60,9 @@ final class IndexOfCodePointSet {
     private static final int[] ALL_WITHOUT_SURROGATES = {0x0000, 0xd7ff, 0xe000, 0x10ffff};
     private static final int[] ALL = {0x0000, 0x10ffff};
     private static final int TABLE_SIZE = 16;
+    static final int MAX_NUMBER_OF_OPS = 5;
 
-    static IndexOfNode[] fromRanges(int[] ranges, Encoding encoding) {
+    static IndexOfOp[] fromRanges(int[] ranges, Encoding encoding) {
         checkRangesArray(ranges, encoding);
         return extractIndexOfNodes(ranges, encoding);
     }
@@ -102,55 +91,52 @@ final class IndexOfCodePointSet {
         }
     }
 
-    private static IndexOfNode[] extractIndexOfNodes(int[] ranges, Encoding encoding) {
+    private static IndexOfOp[] extractIndexOfNodes(int[] ranges, Encoding encoding) {
         if (encoding == Encoding.US_ASCII || encoding == Encoding.ISO_8859_1 || encoding == Encoding.BYTES || getMax(ranges) <= 0x7f) {
-            return extractIndexOfNodes1ByteEncoding(ranges);
+            return extractIndexOfNodes1ByteEncoding(ranges, encoding);
         } else if (encoding == Encoding.UTF_8) {
             if (isSingleValue(ranges)) {
                 int codepoint = getMin(ranges);
                 byte[] encoded = Encodings.utf8Encode(codepoint);
-                int codeRange = Encodings.isUTF16Surrogate(codepoint) ? TSCodeRange.getBrokenMultiByte() : TSCodeRange.getValidMultiByte();
-                int codepointLength = Encodings.isUTF16Surrogate(codepoint) ? encoded.length : 1;
-                return new IndexOfNode[]{IndexOfStringNodeGen.create(TSCodeRange.getBrokenMultiByte(),
-                                TruffleString.createFromByteArray(encoded, encoded.length, 0, Encoding.UTF_8, codepointLength, codeRange))};
+                return new IndexOfOp[]{new IndexOfStringOp(TSCodeRange.getBrokenMultiByte(), encoded, 0)};
             } else {
-                IndexOfNode ascii = extractIndexOfNodeFixedWidth(TSCodeRange.get7Bit(), ranges, ASCII_RANGE);
-                IndexOfRangesNode nonAscii = IndexOfRangesNodeGen.create(TSCodeRange.getBrokenMultiByte(), ranges);
-                return ascii.codeEquals(nonAscii) ? new IndexOfNode[]{nonAscii} : new IndexOfNode[]{ascii, nonAscii};
+                IndexOfOp ascii = extractIndexOfNodeFixedWidth(TSCodeRange.get7Bit(), ranges, ASCII_RANGE, encoding);
+                IndexOfRangesOp nonAscii = new IndexOfRangesOp(TSCodeRange.getBrokenMultiByte(), ranges);
+                return ascii.codeEquals(nonAscii) ? new IndexOfOp[]{nonAscii} : new IndexOfOp[]{ascii, nonAscii};
             }
         } else {
-            ArrayList<IndexOfNode> nodes = new ArrayList<>();
-            nodes.add(extractIndexOfNodeFixedWidth(TSCodeRange.get7Bit(), ranges, ASCII_RANGE));
-            addOrReplaceLast(nodes, extractIndexOfNodeFixedWidth(TSCodeRange.get8Bit(), ranges, LATIN_RANGE));
-            addOrReplaceLast(nodes, extractIndexOfNodeFixedWidth(TSCodeRange.get16Bit(), ranges, BMP_WITHOUT_SURROGATES));
-            if (encoding == Encoding.UTF_16) {
+            ArrayList<IndexOfOp> nodes = new ArrayList<>();
+            nodes.add(extractIndexOfNodeFixedWidth(TSCodeRange.get7Bit(), ranges, ASCII_RANGE, encoding));
+            addOrReplaceLast(nodes, extractIndexOfNodeFixedWidth(TSCodeRange.get8Bit(), ranges, LATIN_RANGE, encoding));
+            addOrReplaceLast(nodes, extractIndexOfNodeFixedWidth(TSCodeRange.get16Bit(), ranges, BMP_WITHOUT_SURROGATES, encoding));
+            if (encoding == Encoding.UTF_16 || encoding == Encoding.UTF_16_FOREIGN_ENDIAN) {
                 if (!Arrays.equals(intersect(ranges, BMP_WITHOUT_SURROGATES), ranges)) {
                     if (isSingleValue(ranges)) {
                         int codepoint = getMin(ranges);
                         if (Encodings.isUTF16Surrogate(codepoint)) {
-                            addOrReplaceLast(nodes, IndexOfAnyValueNodeGen.create(TSCodeRange.getBrokenMultiByte(), new int[]{codepoint}));
+                            addOrReplaceLast(nodes, new IndexOfAnyValueOp(TSCodeRange.getBrokenMultiByte(),
+                                            new int[]{encoding == Encoding.UTF_16_FOREIGN_ENDIAN ? Character.reverseBytes((char) codepoint) : codepoint}));
                         } else {
                             assert codepoint > 0xffff;
-                            byte[] encoded = Encodings.utf16Encode(codepoint);
-                            addOrReplaceLast(nodes, IndexOfStringNodeGen.create(TSCodeRange.getBrokenMultiByte(),
-                                            TruffleString.createFromByteArray(encoded, encoded.length >> 1, 1, Encoding.UTF_16, 1, TSCodeRange.getValidMultiByte())));
+                            byte[] encoded = encoding == Encoding.UTF_16_FOREIGN_ENDIAN ? Encodings.utf16FEEncode(codepoint) : Encodings.utf16Encode(codepoint);
+                            addOrReplaceLast(nodes, new IndexOfStringOp(TSCodeRange.getBrokenMultiByte(), encoded, 1));
                         }
                     } else {
-                        addOrReplaceLast(nodes, IndexOfRangesNodeGen.create(TSCodeRange.getBrokenMultiByte(), ranges));
+                        addOrReplaceLast(nodes, new IndexOfRangesOp(TSCodeRange.getBrokenMultiByte(), ranges));
                     }
                 }
 
-            } else if (encoding == Encoding.UTF_32) {
-                addOrReplaceLast(nodes, extractIndexOfNodeFixedWidth(TSCodeRange.getValidFixedWidth(), ranges, ALL_WITHOUT_SURROGATES));
-                addOrReplaceLast(nodes, extractIndexOfNodeFixedWidth(TSCodeRange.getBrokenFixedWidth(), ranges, ALL));
+            } else if (encoding == Encoding.UTF_32 || encoding == Encoding.UTF_32_FOREIGN_ENDIAN) {
+                addOrReplaceLast(nodes, extractIndexOfNodeFixedWidth(TSCodeRange.getValidFixedWidth(), ranges, ALL_WITHOUT_SURROGATES, encoding));
+                addOrReplaceLast(nodes, extractIndexOfNodeFixedWidth(TSCodeRange.getBrokenFixedWidth(), ranges, ALL, encoding));
             } else {
                 throw new UnsupportedOperationException();
             }
-            return nodes.toArray(IndexOfNode[]::new);
+            return nodes.toArray(IndexOfOp[]::new);
         }
     }
 
-    private static void addOrReplaceLast(ArrayList<IndexOfNode> nodes, IndexOfNode node) {
+    private static void addOrReplaceLast(ArrayList<IndexOfOp> nodes, IndexOfOp node) {
         if (nodes.get(nodes.size() - 1).codeEquals(node)) {
             assert TSCodeRange.isMoreRestrictiveThan(nodes.get(nodes.size() - 1).maxCodeRange, node.maxCodeRange);
             nodes.remove(nodes.size() - 1);
@@ -164,10 +150,10 @@ final class IndexOfCodePointSet {
         }
     }
 
-    private static IndexOfNode[] extractIndexOfNodes1ByteEncoding(int[] ranges) {
-        IndexOfNode ascii = extractIndexOfNodeFixedWidth(TSCodeRange.get7Bit(), ranges, ASCII_RANGE);
-        IndexOfNode latin = extractIndexOfNodeFixedWidth(TSCodeRange.get8Bit(), ranges, LATIN_RANGE);
-        return ascii.codeEquals(latin) ? new IndexOfNode[]{latin} : new IndexOfNode[]{ascii, latin};
+    private static IndexOfOp[] extractIndexOfNodes1ByteEncoding(int[] ranges, Encoding encoding) {
+        IndexOfOp ascii = extractIndexOfNodeFixedWidth(TSCodeRange.get7Bit(), ranges, ASCII_RANGE, encoding);
+        IndexOfOp latin = extractIndexOfNodeFixedWidth(TSCodeRange.get8Bit(), ranges, LATIN_RANGE, encoding);
+        return ascii.codeEquals(latin) ? new IndexOfOp[]{latin} : new IndexOfOp[]{ascii, latin};
     }
 
     private static int[] intersect(int[] rangesA, int[] rangesB) {
@@ -239,28 +225,40 @@ final class IndexOfCodePointSet {
         return intersection;
     }
 
-    private static IndexOfNode extractIndexOfNodeFixedWidth(int maxCodeRange, int[] ranges, int[] bounds) {
+    private static IndexOfOp extractIndexOfNodeFixedWidth(int maxCodeRange, int[] ranges, int[] bounds, Encoding encoding) {
         int[] intersection = intersect(ranges, bounds);
         if (intersection.length == 0) {
-            return NoMatchNodeGen.create(maxCodeRange);
+            return new NoMatch(maxCodeRange);
         }
         if (Arrays.equals(intersection, bounds)) {
-            return AnyMatchNodeGen.create(maxCodeRange);
+            return new AnyMatch(maxCodeRange);
         }
         int valueCount = valueCount(intersection);
         if (valueCount <= 4) {
-            return IndexOfAnyValueNodeGen.create(maxCodeRange, toValues(intersection, valueCount));
+            return new IndexOfAnyValueOp(maxCodeRange, toValues(intersection, valueCount, encoding));
         } else if (size(intersection) <= 2) {
-            return IndexOfAnyRangeNodeGen.create(maxCodeRange, intersection);
+            if (encoding == Encoding.UTF_16_FOREIGN_ENDIAN) {
+                return new IndexOfAnyRangeOpUTF16FE(maxCodeRange, intersection);
+            } else if (encoding == Encoding.UTF_32_FOREIGN_ENDIAN) {
+                return new IndexOfAnyRangeOpUTF32FE(maxCodeRange, intersection);
+            } else {
+                return new IndexOfAnyRangeOp(maxCodeRange, intersection);
+            }
         } else if (getMax(intersection) <= 0xff) {
             byte[] tables = generateTable(intersection);
             if (tables != null) {
-                return IndexOfTableNodeGen.create(maxCodeRange, tables);
+                if (encoding == Encoding.UTF_16_FOREIGN_ENDIAN) {
+                    return new IndexOfTableOpUTF16FE(maxCodeRange, tables);
+                } else if (encoding == Encoding.UTF_32_FOREIGN_ENDIAN) {
+                    return new IndexOfTableOpUTF32FE(maxCodeRange, tables);
+                } else {
+                    return new IndexOfTableOp(maxCodeRange, tables);
+                }
             } else {
-                return IndexOfBitSetNode.fromRanges(maxCodeRange, intersection);
+                return IndexOfBitSetOp.fromRanges(maxCodeRange, intersection);
             }
         }
-        return IndexOfRangesNodeGen.create(maxCodeRange, intersection);
+        return new IndexOfRangesOp(maxCodeRange, intersection);
     }
 
     private static boolean isEmpty(int[] ranges) {
@@ -337,68 +335,52 @@ final class IndexOfCodePointSet {
      * Converts the given list of ranges to an array of values, e.g.
      * {@code [1-3, 5-6] -> [1, 2, 3, 5, 6]}.
      */
-    private static int[] toValues(int[] ranges, int valueCount) {
+    private static int[] toValues(int[] ranges, int valueCount, Encoding encoding) {
         int[] values = new int[valueCount];
         int index = 0;
         for (int i = 0; i < ranges.length; i += 2) {
             for (int j = ranges[i]; j <= ranges[i + 1]; j++) {
-                values[index++] = j;
+                if (encoding == Encoding.UTF_16_FOREIGN_ENDIAN) {
+                    assert j <= 0xffff;
+                    values[index++] = Character.reverseBytes((char) j);
+                } else if (encoding == Encoding.UTF_32_FOREIGN_ENDIAN) {
+                    values[index++] = Integer.reverseBytes(j);
+                } else {
+                    values[index++] = j;
+                }
             }
         }
         return values;
     }
 
-    abstract static class IndexOfNode extends Node {
+    abstract static class IndexOfOp {
 
         final byte maxCodeRange;
 
-        IndexOfNode(int maxCodeRange) {
+        IndexOfOp(int maxCodeRange) {
             assert TSCodeRange.isCodeRange(maxCodeRange);
             this.maxCodeRange = (byte) maxCodeRange;
         }
 
-        abstract int execute(Node location, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding);
-
-        @Specialization
-        int doWithConditionProfile(Node location, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding,
-                        @Cached InlinedBranchProfile branchProfile) {
-            branchProfile.enter(this);
-            return runSearch(location, arrayA, offsetA, lengthA, strideA, codeRangeA, fromIndex, toIndex, encoding);
-        }
+        abstract int runSearch(Node location, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding);
 
         @SuppressWarnings("unused")
-        int runSearch(Node location, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
-            throw CompilerDirectives.shouldNotReachHere();
-        }
-
-        @SuppressWarnings("unused")
-        boolean codeEquals(IndexOfNode other) {
-            throw CompilerDirectives.shouldNotReachHere();
-        }
-
-        @SuppressWarnings("unused")
-        IndexOfNode shallowCopy() {
-            throw CompilerDirectives.shouldNotReachHere();
-        }
-
-        final byte getMaxCodeRange() {
-            return maxCodeRange;
-        }
+        abstract boolean codeEquals(IndexOfOp other);
 
         final boolean isFast() {
-            return this instanceof OptimizedIndexOfNode;
+            return this instanceof OptimizedIndexOfOp;
         }
     }
 
-    abstract static class OptimizedIndexOfNode extends IndexOfNode {
-        OptimizedIndexOfNode(int maxCodeRange) {
+    abstract static class OptimizedIndexOfOp extends IndexOfOp {
+        OptimizedIndexOfOp(int maxCodeRange) {
             super(maxCodeRange);
         }
     }
 
-    abstract static class ScalarIndexOfNode extends IndexOfNode {
+    abstract static class ScalarIndexOfOp extends IndexOfOp {
 
-        ScalarIndexOfNode(int maxCodeRange) {
+        ScalarIndexOfOp(int maxCodeRange) {
             super(maxCodeRange);
         }
 
@@ -410,7 +392,19 @@ final class IndexOfCodePointSet {
             // iterate codepoints
             for (int i = fromIndex; i < toIndex; i += codepointLength) {
                 final int codepoint;
-                if (encoding == Encoding.US_ASCII || encoding == Encoding.ISO_8859_1 || encoding == Encoding.BYTES || TSCodeRange.isFixedWidth(codeRangeA)) {
+                if (encoding == Encoding.UTF_16_FOREIGN_ENDIAN) {
+                    assert strideA == 1;
+                    if (TSCodeRange.isValid(codeRangeA)) {
+                        codepointLength = Encodings.isUTF16HighSurrogate(Character.reverseBytes(TStringOps.readS1(arrayA, offsetA, lengthA, i))) ? 2 : 1;
+                        codepoint = Encodings.utf16FEDecodeValid(arrayA, offsetA, lengthA, i);
+                    } else {
+                        codepointLength = Encodings.utf16FEBrokenGetCodePointByteLength(arrayA, offsetA, lengthA, i, TruffleString.ErrorHandling.BEST_EFFORT) >> 1;
+                        codepoint = Encodings.utf16FEDecodeBroken(arrayA, offsetA, lengthA, i, TruffleString.ErrorHandling.BEST_EFFORT);
+                    }
+                } else if (encoding == Encoding.UTF_32_FOREIGN_ENDIAN) {
+                    assert strideA == 2;
+                    codepoint = Integer.reverseBytes(TStringOps.readS2(arrayA, offsetA, lengthA, i));
+                } else if (encoding == Encoding.US_ASCII || encoding == Encoding.ISO_8859_1 || encoding == Encoding.BYTES || TSCodeRange.isFixedWidth(codeRangeA)) {
                     // fixed-width encoding: just read the next array element
                     codepoint = TStringOps.readValue(arrayA, offsetA, lengthA, strideA, i);
                 } else if (encoding == Encoding.UTF_8) {
@@ -442,16 +436,13 @@ final class IndexOfCodePointSet {
             return -1;
         }
 
-        @SuppressWarnings("unused")
-        boolean match(int codepoint) {
-            throw CompilerDirectives.shouldNotReachHere();
-        }
+        abstract boolean match(int codepoint);
     }
 
     /**
      * No match possible.
      */
-    abstract static class NoMatch extends OptimizedIndexOfNode {
+    static final class NoMatch extends OptimizedIndexOfOp {
 
         NoMatch(int maxCodeRange) {
             super(maxCodeRange);
@@ -463,20 +454,16 @@ final class IndexOfCodePointSet {
         }
 
         @Override
-        boolean codeEquals(IndexOfNode other) {
+        boolean codeEquals(IndexOfOp other) {
             return other instanceof NoMatch;
         }
 
-        @Override
-        IndexOfNode shallowCopy() {
-            return NoMatchNodeGen.create(maxCodeRange);
-        }
     }
 
     /**
      * Will always match immediately.
      */
-    abstract static class AnyMatch extends OptimizedIndexOfNode {
+    static final class AnyMatch extends OptimizedIndexOfOp {
 
         AnyMatch(int maxCodeRange) {
             super(maxCodeRange);
@@ -488,24 +475,20 @@ final class IndexOfCodePointSet {
         }
 
         @Override
-        boolean codeEquals(IndexOfNode other) {
+        boolean codeEquals(IndexOfOp other) {
             return other instanceof AnyMatch;
         }
 
-        @Override
-        IndexOfNode shallowCopy() {
-            return AnyMatchNodeGen.create(maxCodeRange);
-        }
     }
 
     /**
      * Match any of up to four values, without decoding.
      */
-    abstract static class IndexOfAnyValueNode extends OptimizedIndexOfNode {
+    static final class IndexOfAnyValueOp extends OptimizedIndexOfOp {
 
         @CompilationFinal(dimensions = 1) final int[] values;
 
-        IndexOfAnyValueNode(int maxCodeRange, int[] values) {
+        IndexOfAnyValueOp(int maxCodeRange, int[] values) {
             super(maxCodeRange);
             this.values = values;
         }
@@ -516,52 +499,97 @@ final class IndexOfCodePointSet {
         }
 
         @Override
-        boolean codeEquals(IndexOfNode other) {
-            return other instanceof IndexOfAnyValueNode && Arrays.equals(values, ((IndexOfAnyValueNode) other).values);
+        boolean codeEquals(IndexOfOp other) {
+            return other instanceof IndexOfAnyValueOp && Arrays.equals(values, ((IndexOfAnyValueOp) other).values);
         }
 
-        @Override
-        IndexOfNode shallowCopy() {
-            return IndexOfAnyValueNodeGen.create(maxCodeRange, values);
-        }
     }
 
     /**
      * Match any of up to two ranges, without decoding.
      */
-    abstract static class IndexOfAnyRangeNode extends OptimizedIndexOfNode {
+    static final class IndexOfAnyRangeOp extends OptimizedIndexOfOp {
 
         @CompilationFinal(dimensions = 1) final int[] ranges;
 
-        IndexOfAnyRangeNode(int maxCodeRange, int[] ranges) {
+        IndexOfAnyRangeOp(int maxCodeRange, int[] ranges) {
             super(maxCodeRange);
             this.ranges = ranges;
         }
 
         @Override
         int runSearch(Node location, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+            assert encoding != Encoding.UTF_16_FOREIGN_ENDIAN;
+            assert encoding != Encoding.UTF_32_FOREIGN_ENDIAN;
             return TStringOps.indexOfAnyIntRange(location, arrayA, offsetA, strideA, fromIndex, toIndex, ranges);
         }
 
         @Override
-        boolean codeEquals(IndexOfNode other) {
-            return other instanceof IndexOfAnyRangeNode && Arrays.equals(ranges, ((IndexOfAnyRangeNode) other).ranges);
+        boolean codeEquals(IndexOfOp other) {
+            return other instanceof IndexOfAnyRangeOp && Arrays.equals(ranges, ((IndexOfAnyRangeOp) other).ranges);
+        }
+    }
+
+    /**
+     * Match any of up to two ranges, without decoding, variant for
+     * {@link Encoding#UTF_16_FOREIGN_ENDIAN}.
+     */
+    static final class IndexOfAnyRangeOpUTF16FE extends OptimizedIndexOfOp {
+
+        @CompilationFinal(dimensions = 1) final int[] ranges;
+
+        IndexOfAnyRangeOpUTF16FE(int maxCodeRange, int[] ranges) {
+            super(maxCodeRange);
+            this.ranges = ranges;
         }
 
         @Override
-        IndexOfNode shallowCopy() {
-            return IndexOfAnyRangeNodeGen.create(maxCodeRange, ranges);
+        int runSearch(Node location, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+            assert encoding == Encoding.UTF_16_FOREIGN_ENDIAN;
+            assert strideA == 1;
+            return TStringOps.indexOfAnyIntRangeForeignEndian(location, arrayA, offsetA, 1, fromIndex, toIndex, ranges);
+        }
+
+        @Override
+        boolean codeEquals(IndexOfOp other) {
+            return other instanceof IndexOfAnyRangeOpUTF16FE && Arrays.equals(ranges, ((IndexOfAnyRangeOpUTF16FE) other).ranges);
+        }
+    }
+
+    /**
+     * Match any of up to two ranges, without decoding, variant for
+     * {@link Encoding#UTF_32_FOREIGN_ENDIAN}.
+     */
+    static final class IndexOfAnyRangeOpUTF32FE extends OptimizedIndexOfOp {
+
+        @CompilationFinal(dimensions = 1) final int[] ranges;
+
+        IndexOfAnyRangeOpUTF32FE(int maxCodeRange, int[] ranges) {
+            super(maxCodeRange);
+            this.ranges = ranges;
+        }
+
+        @Override
+        int runSearch(Node location, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+            assert encoding == Encoding.UTF_32_FOREIGN_ENDIAN;
+            assert strideA == 2;
+            return TStringOps.indexOfAnyIntRangeForeignEndian(location, arrayA, offsetA, 2, fromIndex, toIndex, ranges);
+        }
+
+        @Override
+        boolean codeEquals(IndexOfOp other) {
+            return other instanceof IndexOfAnyRangeOpUTF32FE && Arrays.equals(ranges, ((IndexOfAnyRangeOpUTF32FE) other).ranges);
         }
     }
 
     /**
      * Optimized search for bit set.
      */
-    abstract static class IndexOfTableNode extends OptimizedIndexOfNode {
+    static final class IndexOfTableOp extends OptimizedIndexOfOp {
 
         @CompilationFinal(dimensions = 1) final byte[] tables;
 
-        IndexOfTableNode(int maxCodeRange, byte[] tables) {
+        IndexOfTableOp(int maxCodeRange, byte[] tables) {
             super(maxCodeRange);
             assert tables.length == TABLE_SIZE * 2;
             this.tables = tables;
@@ -569,52 +597,98 @@ final class IndexOfCodePointSet {
 
         @Override
         int runSearch(Node location, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+            assert encoding != Encoding.UTF_16_FOREIGN_ENDIAN;
+            assert encoding != Encoding.UTF_32_FOREIGN_ENDIAN;
             return TStringOps.indexOfTable(location, arrayA, offsetA, strideA, fromIndex, toIndex, tables);
         }
 
         @Override
-        boolean codeEquals(IndexOfNode other) {
-            return other instanceof IndexOfTableNode && Arrays.equals(tables, ((IndexOfTableNode) other).tables);
-        }
-
-        @Override
-        IndexOfNode shallowCopy() {
-            return IndexOfTableNodeGen.create(maxCodeRange, tables);
+        boolean codeEquals(IndexOfOp other) {
+            return other instanceof IndexOfTableOp && Arrays.equals(tables, ((IndexOfTableOp) other).tables);
         }
     }
 
-    abstract static class IndexOfStringNode extends OptimizedIndexOfNode {
+    /**
+     * Optimized search for bit set, variant for {@link Encoding#UTF_16_FOREIGN_ENDIAN}.
+     */
+    static final class IndexOfTableOpUTF16FE extends OptimizedIndexOfOp {
 
-        final TruffleString str;
+        @CompilationFinal(dimensions = 1) final byte[] tables;
 
-        IndexOfStringNode(int maxCodeRange, TruffleString string) {
+        IndexOfTableOpUTF16FE(int maxCodeRange, byte[] tables) {
             super(maxCodeRange);
-            this.str = string;
+            assert tables.length == TABLE_SIZE * 2;
+            this.tables = tables;
         }
 
         @Override
         int runSearch(Node location, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
-            assert str.isManaged() && str.isMaterialized() && str.offset() == 0;
-            return TStringOps.indexOfStringWithOrMaskWithStride(location, arrayA, offsetA, lengthA, strideA,
-                            (byte[]) str.data(), byteArrayBaseOffset(), str.length(), str.stride(), fromIndex, toIndex, null);
+            assert encoding == Encoding.UTF_16_FOREIGN_ENDIAN;
+            assert strideA == 1;
+            return TStringOps.indexOfTableForeignEndian(location, arrayA, offsetA, 1, fromIndex, toIndex, tables);
         }
 
         @Override
-        boolean codeEquals(IndexOfNode other) {
-            return other instanceof IndexOfStringNode && str.equals(((IndexOfStringNode) other).str);
-        }
-
-        @Override
-        IndexOfNode shallowCopy() {
-            return IndexOfStringNodeGen.create(maxCodeRange, str);
+        boolean codeEquals(IndexOfOp other) {
+            return other instanceof IndexOfTableOpUTF16FE && Arrays.equals(tables, ((IndexOfTableOpUTF16FE) other).tables);
         }
     }
 
-    abstract static class IndexOfBitSetNode extends ScalarIndexOfNode {
+    /**
+     * Optimized search for bit set, variant for {@link Encoding#UTF_32_FOREIGN_ENDIAN}.
+     */
+    static final class IndexOfTableOpUTF32FE extends OptimizedIndexOfOp {
+
+        @CompilationFinal(dimensions = 1) final byte[] tables;
+
+        IndexOfTableOpUTF32FE(int maxCodeRange, byte[] tables) {
+            super(maxCodeRange);
+            assert tables.length == TABLE_SIZE * 2;
+            this.tables = tables;
+        }
+
+        @Override
+        int runSearch(Node location, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+            assert encoding == Encoding.UTF_32_FOREIGN_ENDIAN;
+            assert strideA == 2;
+            return TStringOps.indexOfTableForeignEndian(location, arrayA, offsetA, 2, fromIndex, toIndex, tables);
+        }
+
+        @Override
+        boolean codeEquals(IndexOfOp other) {
+            return other instanceof IndexOfTableOpUTF32FE && Arrays.equals(tables, ((IndexOfTableOpUTF32FE) other).tables);
+        }
+    }
+
+    static final class IndexOfStringOp extends OptimizedIndexOfOp {
+
+        final byte[] str;
+        final byte stride;
+
+        IndexOfStringOp(int maxCodeRange, byte[] string, int stride) {
+            super(maxCodeRange);
+            this.str = string;
+            this.stride = (byte) stride;
+        }
+
+        @Override
+        int runSearch(Node location, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+            return TStringOps.indexOfStringWithOrMaskWithStride(location, arrayA, offsetA, lengthA, strideA,
+                            str, byteArrayBaseOffset(), str.length >> stride, stride, fromIndex, toIndex, null);
+        }
+
+        @Override
+        boolean codeEquals(IndexOfOp other) {
+            return other instanceof IndexOfStringOp && Arrays.equals(str, ((IndexOfStringOp) other).str) && stride == ((IndexOfStringOp) other).stride;
+        }
+
+    }
+
+    static final class IndexOfBitSetOp extends ScalarIndexOfOp {
 
         @CompilationFinal(dimensions = 1) final long[] bitSet;
 
-        IndexOfBitSetNode(int maxCodeRange, long[] bitSet) {
+        IndexOfBitSetOp(int maxCodeRange, long[] bitSet) {
             super(maxCodeRange);
             this.bitSet = bitSet;
         }
@@ -626,22 +700,17 @@ final class IndexOfCodePointSet {
         }
 
         @Override
-        boolean codeEquals(IndexOfNode other) {
-            return other instanceof IndexOfBitSetNode && Arrays.equals(bitSet, ((IndexOfBitSetNode) other).bitSet);
+        boolean codeEquals(IndexOfOp other) {
+            return other instanceof IndexOfBitSetOp && Arrays.equals(bitSet, ((IndexOfBitSetOp) other).bitSet);
         }
 
-        @Override
-        IndexOfNode shallowCopy() {
-            return IndexOfBitSetNodeGen.create(maxCodeRange, bitSet);
-        }
-
-        static IndexOfBitSetNode fromRanges(int maxCodeRange, int[] ranges) {
+        static IndexOfBitSetOp fromRanges(int maxCodeRange, int[] ranges) {
             assert getMax(ranges) <= 0xff;
             long[] bitSet = new long[4];
             for (int i = 0; i < ranges.length; i += 2) {
                 setRange(bitSet, ranges[i], ranges[i + 1]);
             }
-            return IndexOfBitSetNodeGen.create(maxCodeRange, bitSet);
+            return new IndexOfBitSetOp(maxCodeRange, bitSet);
         }
 
         /**
@@ -665,11 +734,11 @@ final class IndexOfCodePointSet {
         }
     }
 
-    abstract static class IndexOfRangesNode extends ScalarIndexOfNode {
+    static final class IndexOfRangesOp extends ScalarIndexOfOp {
 
         @CompilationFinal(dimensions = 1) final int[] ranges;
 
-        IndexOfRangesNode(int maxCodeRange, int[] ranges) {
+        IndexOfRangesOp(int maxCodeRange, int[] ranges) {
             super(maxCodeRange);
             this.ranges = ranges;
         }
@@ -696,18 +765,14 @@ final class IndexOfCodePointSet {
         }
 
         @Override
-        boolean codeEquals(IndexOfNode other) {
-            return other instanceof IndexOfRangesNode && Arrays.equals(ranges, ((IndexOfRangesNode) other).ranges);
+        boolean codeEquals(IndexOfOp other) {
+            return other instanceof IndexOfRangesOp && Arrays.equals(ranges, ((IndexOfRangesOp) other).ranges);
         }
 
-        @Override
-        IndexOfNode shallowCopy() {
-            return IndexOfRangesNodeGen.create(maxCodeRange, ranges);
-        }
     }
 
     /**
-     * Converts a given list of ranges to a lookup table suitable for {@link IndexOfTableNode}.
+     * Converts a given list of ranges to a lookup table suitable for {@link IndexOfTableOp}.
      *
      * @return the lookup table, or {@code null} if no suitable lookup table could be generated.
      */

@@ -99,7 +99,7 @@ public final class SafepointSnippets extends SubstrateTemplates implements Snipp
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
                 if (((SharedMethod) node.graph().method()).isUninterruptible()) {
                     /* Basic sanity check to catch errors during safepoint insertion. */
-                    throw GraalError.shouldNotReachHere("Must not insert safepoints in Uninterruptible code: " + node.stateBefore().toString(Verbosity.Debugger)); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHere("Must not insert safepoints in Uninterruptible code: " + node.stateBefore().toString(Verbosity.All)); // ExcludeFromJacocoGeneratedReport
                 }
                 Arguments args = new Arguments(safepoint, node.graph(), tool.getLoweringStage());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);

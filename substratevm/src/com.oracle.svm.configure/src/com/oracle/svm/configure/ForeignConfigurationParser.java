@@ -146,13 +146,13 @@ public abstract class ForeignConfigurationParser<FD, LO> extends ConditionalConf
     /** Parses the options allowed for upcalls. */
     protected abstract LO createUpcallOptions(EconomicMap<String, Object> map, FD desc);
 
-    protected abstract void registerDowncall(UnresolvedConfigurationCondition configurationCondition, FD descriptor, LO options);
+    protected abstract void registerDowncall(UnresolvedAccessCondition condition, FD descriptor, LO options);
 
-    protected abstract void registerUpcall(UnresolvedConfigurationCondition configurationCondition, FD descriptor, LO options);
+    protected abstract void registerUpcall(UnresolvedAccessCondition condition, FD descriptor, LO options);
 
-    protected abstract void registerDirectUpcallWithoutDescriptor(UnresolvedConfigurationCondition configurationCondition, String className, String methodName, EconomicMap<String, Object> optionsMap);
+    protected abstract void registerDirectUpcallWithoutDescriptor(UnresolvedAccessCondition condition, String className, String methodName, EconomicMap<String, Object> optionsMap);
 
-    protected abstract void registerDirectUpcallWithDescriptor(UnresolvedConfigurationCondition configurationCondition, String className, String methodName, FD descriptor, LO options);
+    protected abstract void registerDirectUpcallWithDescriptor(UnresolvedAccessCondition condition, String className, String methodName, FD descriptor, LO options);
 
     protected abstract void handleRegistrationError(Exception e, EconomicMap<String, Object> map);
 }

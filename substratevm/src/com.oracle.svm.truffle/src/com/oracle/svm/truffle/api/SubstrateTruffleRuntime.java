@@ -183,20 +183,23 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("deprecation")
     public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
-        return super.getPartialEvaluationMethodInfo(method);
+        throw new UnsupportedOperationException();
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     @Platforms(Platform.HOSTED_ONLY.class)
     public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
-        return super.getHostMethodInfo(method);
+        throw new UnsupportedOperationException();
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     @Platforms(Platform.HOSTED_ONLY.class)
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        return super.getConstantFieldInfo(field);
+        throw new UnsupportedOperationException();
     }
 
     private void teardownCompilerIsolate() {

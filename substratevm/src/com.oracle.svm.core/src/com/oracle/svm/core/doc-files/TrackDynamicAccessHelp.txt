@@ -9,11 +9,12 @@ The flag can be used in following ways:
 1. -H:TrackDynamicAccess=all reports all dynamic access calls made across the entire project
 2. -H:TrackDynamicAccess=path=<cp-entry> reports all dynamic access calls made from the specified class-path entry
 3. -H:TrackDynamicAccess=module=<module> reports all dynamic access calls made from the specified module
-4. -H:TrackDynamicAccess=package=<package> reports all dynamic access calls made from the specified package
-5. -H:TrackDynamicAccess=none disables all previous selections for dynamic access detection
-6. -H:TrackDynamicAccess=to-console outputs all detected dynamic access calls to the console
-7. -H:TrackDynamicAccess=no-dump disables the serialization of detected dynamic access calls
-8. A comma-separated list of the previous cases. For example, -H:TrackDynamicAccess=path=<cp-entry>,module=<module>,package=<package>
+4. -H:TrackDynamicAccess=module=ALL-UNNAMED reports all dynamic access calls made from all class-path entries
+5. -H:TrackDynamicAccess=package=<package> reports all dynamic access calls made from the specified package
+6. -H:TrackDynamicAccess=none disables all previous selections for dynamic access detection
+7. -H:TrackDynamicAccess=to-console outputs all detected dynamic access calls to the console
+8. -H:TrackDynamicAccess=no-dump disables the serialization of detected dynamic access calls
+9. A comma-separated list of the previous cases. For example, -H:TrackDynamicAccess=path=<cp-entry>,module=<module>,package=<package>
 
 Example of the option usage:
 

@@ -41,6 +41,7 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -56,6 +57,7 @@ import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.VirtualStackSlot;
+import jdk.graal.compiler.lir.amd64.vector.AMD64VectorMove;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -179,8 +181,23 @@ public class AMD64Move {
         }
     }
 
+    /**
+     * Represents a LIR operation that moves data from one stack location to another, using a
+     * scratch register and a backup stack location to temporarily store the contents of the scratch
+     * register.
+     */
+    public interface StackMoveOp extends StandardOp.ValueMoveOp {
+
+        Register getScratchRegister();
+
+        /**
+         * The backup slot must be distinct from both the input and output stack slots.
+         */
+        AllocatableValue getBackupSlot();
+    }
+
     @Opcode("STACKMOVE")
-    public static final class AMD64StackMove extends AMD64LIRInstruction implements StandardOp.ValueMoveOp {
+    public static final class AMD64StackMove extends AMD64LIRInstruction implements StackMoveOp {
         public static final LIRInstructionClass<AMD64StackMove> TYPE = LIRInstructionClass.create(AMD64StackMove.class);
 
         @Def({STACK}) protected AllocatableValue result;
@@ -188,13 +205,19 @@ public class AMD64Move {
         @Alive({STACK, UNINITIALIZED}) private AllocatableValue backupSlot;
 
         private Register scratch;
+        private final boolean isScratchAlwaysZero;
 
         public AMD64StackMove(AllocatableValue result, AllocatableValue input, Register scratch, AllocatableValue backupSlot) {
+            this(result, input, scratch, backupSlot, false);
+        }
+
+        public AMD64StackMove(AllocatableValue result, AllocatableValue input, Register scratch, AllocatableValue backupSlot, boolean isScratchAlwaysZero) {
             super(TYPE);
             this.result = result;
             this.input = input;
             this.backupSlot = backupSlot;
             this.scratch = scratch;
+            this.isScratchAlwaysZero = isScratchAlwaysZero;
             assert result.getPlatformKind().getSizeInBytes() <= input.getPlatformKind().getSizeInBytes() : "cannot move " + input + " into a larger Value " + result;
         }
 
@@ -208,10 +231,12 @@ public class AMD64Move {
             return result;
         }
 
+        @Override
         public Register getScratchRegister() {
             return scratch;
         }
 
+        @Override
         public AllocatableValue getBackupSlot() {
             return backupSlot;
         }
@@ -219,19 +244,43 @@ public class AMD64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             AMD64Kind backupKind = (AMD64Kind) backupSlot.getPlatformKind();
-            if (backupKind.isXMM()) {
-                // graal doesn't use vector values, so it's safe to backup using DOUBLE
-                backupKind = AMD64Kind.DOUBLE;
-            }
+            // In SVM CEntryPoint stubs, each callee-saved register from the native calling
+            // convention is backed up to a separate interval, which is then spilled before the Java
+            // method invocation, since the Java calling convention treats all caller-saved
+            // registers as volatile. On Windows, some xmm registers are callee-saved in the native
+            // convention. As a result, we may insert StackMove operations for xmm register values
+            // larger than 64 bits prior to the Java invocation. These StackMoves are removed by
+            // LinearScanEliminateSpillMovePhase.
 
-            // backup scratch register
-            reg2stack(backupKind, crb, masm, backupSlot, scratch);
+            // back up scratch register
+            if (isScratchAlwaysZero) {
+                // no need to back up
+            } else {
+                reg2stack(backupKind, crb, masm, backupSlot, scratch);
+            }
             // move stack slot
-            stack2reg((AMD64Kind) getInput().getPlatformKind(), crb, masm, scratch, getInput());
-            reg2stack((AMD64Kind) getResult().getPlatformKind(), crb, masm, getResult(), scratch);
+            stack2reg(getCompatibleKind((AMD64Kind) getInput().getPlatformKind(), backupKind), crb, masm, scratch, getInput());
+            reg2stack(getCompatibleKind((AMD64Kind) getResult().getPlatformKind(), backupKind), crb, masm, getResult(), scratch);
             // restore scratch register
-            stack2reg(backupKind, crb, masm, scratch, backupSlot);
+            if (isScratchAlwaysZero) {
+                masm.xorl(scratch, scratch);
+            } else {
+                stack2reg(backupKind, crb, masm, scratch, backupSlot);
+            }
         }
+    }
+
+    private static AMD64Kind getCompatibleKind(AMD64Kind resultType, AMD64Kind backupKind) {
+        if (backupKind.isInteger() && resultType.isXMM()) {
+            return switch (resultType.getSizeInBytes()) {
+                case 1 -> AMD64Kind.BYTE;
+                case 2 -> AMD64Kind.WORD;
+                case 4 -> AMD64Kind.DWORD;
+                case 8 -> AMD64Kind.QWORD;
+                default -> throw GraalError.shouldNotReachHere(resultType + " cannot fit in " + backupKind);
+            };
+        }
+        return resultType;
     }
 
     @Opcode("MULTISTACKMOVE")
@@ -244,26 +293,25 @@ public class AMD64Move {
         @Alive({STACK, UNINITIALIZED}) private AllocatableValue backupSlot;
 
         private Register scratch;
+        private AMD64SIMDInstructionEncoding encoding;
 
-        public AMD64MultiStackMove(AllocatableValue[] results, Value[] inputs, Value[] tmps, Register scratch, AllocatableValue backupSlot) {
+        public AMD64MultiStackMove(AllocatableValue[] results, Value[] inputs, Value[] tmps, Register scratch,
+                        AllocatableValue backupSlot, AMD64SIMDInstructionEncoding encoding) {
             super(TYPE);
             this.results = results;
             this.inputs = inputs;
             this.tmps = tmps;
             this.backupSlot = backupSlot;
             this.scratch = scratch;
+            this.encoding = encoding;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             AMD64Kind backupKind = (AMD64Kind) backupSlot.getPlatformKind();
-            if (backupKind.isXMM()) {
-                // graal doesn't use vector values, so it's safe to backup using DOUBLE
-                backupKind = AMD64Kind.DOUBLE;
-            }
-
             // backup scratch register
-            move(backupKind, crb, masm, backupSlot, scratch.asValue(backupSlot.getValueKind()));
+            AMD64SIMDInstructionEncoding backupEnc = encoding != null ? AMD64VectorMove.maybeOverrideEvex(masm, encoding, backupSlot) : null;
+            move(backupKind, crb, masm, backupSlot, scratch.asValue(backupSlot.getValueKind()), backupEnc);
             for (int i = 0; i < results.length; i++) {
                 Value input = inputs[i];
                 if (Value.ILLEGAL.equals(input)) {
@@ -274,11 +322,22 @@ public class AMD64Move {
                 }
                 AllocatableValue result = results[i];
                 // move stack slot
-                move((AMD64Kind) input.getPlatformKind(), crb, masm, scratch.asValue(input.getValueKind()), input);
-                move((AMD64Kind) result.getPlatformKind(), crb, masm, result, scratch.asValue(result.getValueKind()));
+                AMD64Kind inputKind = getCompatibleKind((AMD64Kind) input.getPlatformKind(), backupKind);
+                move(inputKind, crb, masm, scratch.asValue(LIRKind.value(inputKind)), input, encoding);
+                AMD64Kind resultKind = getCompatibleKind((AMD64Kind) result.getPlatformKind(), backupKind);
+                move(resultKind, crb, masm, result, scratch.asValue(LIRKind.value(resultKind)), encoding);
             }
             // restore scratch register
-            move(backupKind, crb, masm, scratch.asValue(backupSlot.getValueKind()), backupSlot);
+            move(backupKind, crb, masm, scratch.asValue(backupSlot.getValueKind()), backupSlot, backupEnc);
+        }
+
+        private static void move(AMD64Kind moveKind, CompilationResultBuilder crb, AMD64MacroAssembler masm,
+                        AllocatableValue result, Value input, AMD64SIMDInstructionEncoding encoding) {
+            if (encoding != null && moveKind.getVectorLength() > 1) {
+                AMD64VectorMove.move(crb, masm, result, input, encoding);
+            } else {
+                AMD64Move.move(moveKind, crb, masm, result, input);
+            }
         }
     }
 

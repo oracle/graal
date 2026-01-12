@@ -53,7 +53,9 @@ public interface LoweringProvider {
     ValueNode reconstructArrayIndex(JavaKind elementKind, AddressNode address);
 
     /**
-     * Indicates the smallest width for comparing an integer value on the target platform.
+     * Indicates the smallest width for comparing an integer value on the target platform. Returns
+     * {@code null} when this information is not available. This can be the case when this lowering
+     * provider is being used in a platform independent context (e.g., canonicalization).
      */
     Integer smallestCompareWidth();
 

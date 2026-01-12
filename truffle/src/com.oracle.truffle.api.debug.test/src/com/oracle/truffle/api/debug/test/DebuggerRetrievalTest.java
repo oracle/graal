@@ -109,14 +109,14 @@ public class DebuggerRetrievalTest {
 
             @ExportMessage
             @SuppressWarnings("static-method")
-            boolean hasLanguage() {
+            boolean hasLanguageId() {
                 return true;
             }
 
             @ExportMessage
             @SuppressWarnings("static-method")
-            Class<? extends TruffleLanguage<?>> getLanguage() {
-                return LanguageThatNeedsDebugger.class;
+            String getLanguageId() {
+                return LanguageThatNeedsDebugger.ID;
             }
 
             @ExportMessage

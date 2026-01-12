@@ -55,6 +55,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.lookup.LookupMode;
 import com.oracle.truffle.espresso.threads.ThreadState;
 import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.VM;
@@ -440,7 +441,7 @@ public class PolyglotTypeMappings {
 
         public BuiltinExceptionTypeConverter(ObjectKlass klass) {
             this.exceptionKlass = klass;
-            this.messageConstructor = klass.lookupDeclaredMethod(Names._init_, Signatures._void_String, Klass.LookupMode.INSTANCE_ONLY);
+            this.messageConstructor = klass.lookupDeclaredMethod(Names._init_, Signatures._void_String, LookupMode.INSTANCE_ONLY);
         }
 
         @Override

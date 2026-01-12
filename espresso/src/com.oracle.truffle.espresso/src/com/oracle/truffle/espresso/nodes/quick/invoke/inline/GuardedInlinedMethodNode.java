@@ -24,17 +24,16 @@ package com.oracle.truffle.espresso.nodes.quick.invoke.inline;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 
 public final class GuardedInlinedMethodNode extends InlinedMethodNode {
     private final InlinedMethodPredicate guard;
 
-    public GuardedInlinedMethodNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, BodyNode body, InlinedMethodPredicate guard) {
-        this(inlinedMethod.getMethodVersion(), top, opcode, callerBCI, statementIndex, body, guard);
-    }
-
-    public GuardedInlinedMethodNode(Method.MethodVersion inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, BodyNode body, InlinedMethodPredicate guard) {
-        super(inlinedMethod, top, opcode, callerBCI, statementIndex, body);
+    public GuardedInlinedMethodNode(ResolvedCall<Klass, Method, Field> inlinedCall, int top, int opcode, int callerBCI, int statementIndex, BodyNode body, InlinedMethodPredicate guard) {
+        super(inlinedCall, top, opcode, callerBCI, statementIndex, body);
         this.guard = guard;
     }
 

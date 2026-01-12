@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.SubstrateOptions;
@@ -39,7 +40,6 @@ import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
 import com.oracle.svm.hosted.phases.DynamicAccessDetectionPhase;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -51,10 +51,8 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.Set;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.stream.Collectors;
@@ -73,16 +71,16 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
 
     // We use a ConcurrentSkipListMap, as opposed to a ConcurrentHashMap, to maintain
     // order of methods by access kind.
-    public record MethodsByAccessKind(Map<DynamicAccessDetectionPhase.DynamicAccessKind, CallLocationsByMethod> methodsByAccessKind) {
+    public record MethodsByAccessKind(Map<DynamicAccessDetectionSupport.DynamicAccessKind, CallLocationsByMethod> methodsByAccessKind) {
         MethodsByAccessKind() {
             this(new ConcurrentSkipListMap<>());
         }
 
-        public Set<DynamicAccessDetectionPhase.DynamicAccessKind> getAccessKinds() {
+        public Set<DynamicAccessDetectionSupport.DynamicAccessKind> getAccessKinds() {
             return methodsByAccessKind.keySet();
         }
 
-        public CallLocationsByMethod getCallLocationsByMethod(DynamicAccessDetectionPhase.DynamicAccessKind accessKind) {
+        public CallLocationsByMethod getCallLocationsByMethod(DynamicAccessDetectionSupport.DynamicAccessKind accessKind) {
             return methodsByAccessKind.getOrDefault(accessKind, new CallLocationsByMethod());
         }
     }
@@ -103,15 +101,6 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         }
     }
 
-    private static final Set<String> neverInlineTrivialMethods = Set.of(
-                    "java.lang.invoke.MethodHandles$Lookup.unreflectGetter",
-                    "java.lang.invoke.MethodHandles$Lookup.unreflectSetter",
-                    "java.io.ObjectInputStream.readObject",
-                    "java.io.ObjectStreamClass.lookup",
-                    "java.lang.reflect.Array.newInstance",
-                    "java.lang.ClassLoader.loadClass",
-                    "java.lang.foreign.Linker.nativeLinker");
-
     public static final String TRACK_ALL = "all";
 
     private static final String OUTPUT_DIR_NAME = "dynamic-access";
@@ -122,7 +111,6 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     private EconomicSet<String> sourceEntries; // Class path entries and module or
     // package names
     private final Map<String, MethodsByAccessKind> callsBySourceEntry;
-    private final Set<FoldEntry> foldEntries = ConcurrentHashMap.newKeySet();
     private final BuildArtifacts buildArtifacts = BuildArtifacts.singleton();
     private final OptionValues hostedOptionValues = HostedOptionValues.singleton();
 
@@ -137,15 +125,15 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         return ImageSingletons.lookup(DynamicAccessDetectionFeature.class);
     }
 
-    public void addCall(String entry, DynamicAccessDetectionPhase.DynamicAccessKind accessKind, String call, String callLocation) {
-        MethodsByAccessKind entryContent = callsBySourceEntry.computeIfAbsent(entry, k -> new MethodsByAccessKind());
-        CallLocationsByMethod methodCallLocations = entryContent.methodsByAccessKind().computeIfAbsent(accessKind, k -> new CallLocationsByMethod());
-        ConcurrentSkipListSet<String> callLocations = methodCallLocations.callLocationsByMethod().computeIfAbsent(call, k -> new ConcurrentSkipListSet<>());
+    public void addCall(String entry, DynamicAccessDetectionSupport.DynamicAccessKind accessKind, String call, String callLocation) {
+        MethodsByAccessKind entryContent = callsBySourceEntry.computeIfAbsent(entry, _ -> new MethodsByAccessKind());
+        CallLocationsByMethod methodCallLocations = entryContent.methodsByAccessKind().computeIfAbsent(accessKind, _ -> new CallLocationsByMethod());
+        ConcurrentSkipListSet<String> callLocations = methodCallLocations.callLocationsByMethod().computeIfAbsent(call, _ -> new ConcurrentSkipListSet<>());
         callLocations.add(callLocation);
     }
 
     public MethodsByAccessKind getMethodsByAccessKind(String entry) {
-        return callsBySourceEntry.computeIfAbsent(entry, k -> new MethodsByAccessKind());
+        return callsBySourceEntry.computeIfAbsent(entry, _ -> new MethodsByAccessKind());
     }
 
     public EconomicSet<String> getSourceEntries() {
@@ -163,7 +151,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     private void printReportForEntry(String entry) {
         System.out.println("Dynamic method usage detected in " + entry + ":");
         MethodsByAccessKind methodsByAccessKind = getMethodsByAccessKind(entry);
-        for (DynamicAccessDetectionPhase.DynamicAccessKind accessKind : methodsByAccessKind.getAccessKinds()) {
+        for (DynamicAccessDetectionSupport.DynamicAccessKind accessKind : methodsByAccessKind.getAccessKinds()) {
             System.out.println("    " + accessKind + " calls detected:");
             CallLocationsByMethod methodCallLocations = methodsByAccessKind.getCallLocationsByMethod(accessKind);
             for (String call : methodCallLocations.getMethods()) {
@@ -196,7 +184,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
             MethodsByAccessKind methodsByAccessKind = getMethodsByAccessKind(entry);
             Path reportDirectory = NativeImageGenerator.generatedFiles(hostedOptionValues)
                             .resolve(OUTPUT_DIR_NAME);
-            for (DynamicAccessDetectionPhase.DynamicAccessKind accessKind : methodsByAccessKind.getAccessKinds()) {
+            for (DynamicAccessDetectionSupport.DynamicAccessKind accessKind : methodsByAccessKind.getAccessKinds()) {
                 Path entryDirectory = getOrCreateDirectory(reportDirectory.resolve(getEntryName(entry)));
                 Path targetPath = entryDirectory.resolve(accessKind.fileName);
                 ReportUtils.report("Dynamic Access Detection Report", targetPath,
@@ -209,7 +197,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         }
     }
 
-    private static void generateDynamicAccessReport(PrintWriter writer, DynamicAccessDetectionPhase.DynamicAccessKind accessKind, MethodsByAccessKind methodsByAccessKind) {
+    private static void generateDynamicAccessReport(PrintWriter writer, DynamicAccessDetectionSupport.DynamicAccessKind accessKind, MethodsByAccessKind methodsByAccessKind) {
         writer.println("{");
         String methodsJson = methodsByAccessKind.getCallLocationsByMethod(accessKind).getMethods().stream()
                         .map(methodName -> toMethodJson(accessKind, methodName, methodsByAccessKind))
@@ -218,7 +206,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         writer.println("}");
     }
 
-    private static String toMethodJson(DynamicAccessDetectionPhase.DynamicAccessKind accessKind, String methodName, MethodsByAccessKind methodsByAccessKind) {
+    private static String toMethodJson(DynamicAccessDetectionSupport.DynamicAccessKind accessKind, String methodName, MethodsByAccessKind methodsByAccessKind) {
         String locationsJson = methodsByAccessKind.getCallLocationsByMethod(accessKind)
                         .getMethodCallLocations(methodName).stream()
                         .map(location -> "    \"" + location + "\"")
@@ -239,54 +227,6 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
                 }
             }
         }
-    }
-
-    /**
-     * Support data structure used to keep track of calls which don't require metadata, but can't be
-     * folded.
-     */
-    public static class FoldEntry {
-        private final int bci;
-        private final ResolvedJavaMethod method;
-
-        public FoldEntry(int bci, ResolvedJavaMethod method) {
-            this.bci = bci;
-            this.method = method;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null || getClass() != obj.getClass()) {
-                return false;
-            }
-            FoldEntry other = (FoldEntry) obj;
-            return bci == other.bci && Objects.equals(method, other.method);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(bci, method);
-        }
-    }
-
-    /**
-     * We only add fold entries for methods registered by
-     * {@link com.oracle.svm.hosted.snippets.ReflectionPlugins#registerBulkInvocationPlugin}, as
-     * these represent methods that cannot be folded but also do not require metadata.
-     */
-    public void addFoldEntry(int bci, ResolvedJavaMethod method) {
-        foldEntries.add(new FoldEntry(bci, method));
-    }
-
-    /**
-     * If a fold entry exists for the given method, the method should be ignored by the analysis
-     * phase.
-     */
-    public boolean containsFoldEntry(int bci, ResolvedJavaMethod method) {
-        return foldEntries.contains(new FoldEntry(bci, method));
     }
 
     @Override
@@ -322,10 +262,16 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     }
 
     @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        AnalysisMetaAccess metaAccess = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getMetaAccess();
+        DynamicAccessDetectionSupport dynamicAccessDetectionSupport = new DynamicAccessDetectionSupport(metaAccess);
+        ImageSingletons.add(DynamicAccessDetectionSupport.class, dynamicAccessDetectionSupport);
+    }
+
+    @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         DynamicAccessDetectionFeature.instance().reportDynamicAccess();
-        DynamicAccessDetectionPhase.clearMethodSignatures();
-        foldEntries.clear();
+        DynamicAccessDetectionSupport.instance().clear();
     }
 
     @Override
@@ -366,10 +312,5 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
                 }
             }
         });
-        if (!classLoaderSupport.dynamicAccessSelectorsEmpty()) {
-            for (String method : neverInlineTrivialMethods) {
-                SubstrateOptions.NeverInlineTrivial.update(hostedValues, method);
-            }
-        }
     }
 }

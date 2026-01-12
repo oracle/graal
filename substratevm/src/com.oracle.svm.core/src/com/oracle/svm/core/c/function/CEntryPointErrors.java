@@ -176,6 +176,9 @@ public final class CEntryPointErrors {
     @Description("The isolate could not be created because only a single isolate is supported.") //
     public static final int SINGLE_ISOLATE_ALREADY_CREATED = 33;
 
+    @Description("An invalid isolate was passed as an argument.") //
+    public static final int INVALID_ISOLATE_ARGUMENT = 34;
+
     public static String getDescription(int code) {
         String result = null;
         if (code >= 0 && code < DESCRIPTIONS.length) {

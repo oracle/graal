@@ -1,8 +1,8 @@
 [[rule]]
 files = "ResourcesFeature.java ClassLoaderSupportImpl.java"
 all = [
-    "david.nestorovic@oracle.com",
-    "ivan.ristovic@oracle.com"
+    "vojin.jovanovic@oracle.com",
+    "christian.wirth@oracle.com"
 ]
 any = [
 ]
@@ -10,8 +10,8 @@ any = [
 [[rule]]
 files = "ModuleLayerFeature.java"
 all = [
-    "ivan.ristovic@oracle.com",
-    "paul.woegerer@oracle.com"
+    "paul.woegerer@oracle.com",
+    "christian.wirth@oracle.com"
 ]
 any = [
 ]

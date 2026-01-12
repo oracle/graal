@@ -45,6 +45,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 final class DynamicObjectSupport {
@@ -53,7 +54,8 @@ final class DynamicObjectSupport {
     }
 
     static void setShapeWithStoreFence(DynamicObject object, Shape shape) {
-        if (shape.isShared()) {
+        // unconditional fence in the interpreter to avoid an extra shared shape branch
+        if (CompilerDirectives.inInterpreter() || shape.isShared()) {
             VarHandle.storeStoreFence();
         }
         object.setShape(shape);
@@ -77,6 +79,7 @@ final class DynamicObjectSupport {
     }
 
     private static void growObjectStore(DynamicObject object, Shape thisShape, int sourceCapacity, int targetCapacity) {
+        assert targetCapacity != 0;
         Object[] newObjectStore = new Object[targetCapacity];
         if (sourceCapacity != 0) {
             int sourceSize = thisShape.getObjectArraySize();
@@ -87,6 +90,7 @@ final class DynamicObjectSupport {
     }
 
     private static void growPrimitiveStore(DynamicObject object, Shape thisShape, int sourceCapacity, int targetCapacity) {
+        assert targetCapacity != 0;
         int[] newPrimitiveArray = new int[targetCapacity];
         if (sourceCapacity != 0) {
             int sourceSize = thisShape.getPrimitiveArraySize();
@@ -108,98 +112,102 @@ final class DynamicObjectSupport {
 
     private static void resizeObjectStore(DynamicObject object, Shape oldShape, Shape newShape) {
         int destinationCapacity = newShape.getObjectArrayCapacity();
+        int sourceCapacity = oldShape.getObjectArrayCapacity();
+        if (sourceCapacity == destinationCapacity) {
+            return;
+        }
+        Object[] newObjectStore;
         if (destinationCapacity == 0) {
-            object.setObjectStore(null);
+            newObjectStore = DynamicObject.EMPTY_OBJECT_ARRAY;
         } else {
-            int sourceCapacity = oldShape.getObjectArrayCapacity();
-            if (sourceCapacity != destinationCapacity) {
-                int sourceSize = oldShape.getObjectArraySize();
-                Object[] newObjectStore = new Object[destinationCapacity];
-                if (sourceSize != 0) {
-                    Object[] oldObjectStore = object.getObjectStore();
-                    int destinationSize = newShape.getObjectArraySize();
-                    int length = Math.min(sourceSize, destinationSize);
-                    UnsafeAccess.arrayCopy(oldObjectStore, newObjectStore, length);
-                }
-                object.setObjectStore(newObjectStore);
+            int sourceSize = oldShape.getObjectArraySize();
+            newObjectStore = new Object[destinationCapacity];
+            if (sourceSize != 0) {
+                Object[] oldObjectStore = object.getObjectStore();
+                int destinationSize = newShape.getObjectArraySize();
+                int length = Math.min(sourceSize, destinationSize);
+                UnsafeAccess.arrayCopy(oldObjectStore, newObjectStore, length);
             }
         }
+        object.setObjectStore(newObjectStore);
     }
 
     private static void resizePrimitiveStore(DynamicObject object, Shape oldShape, Shape newShape) {
         assert newShape.hasPrimitiveArray();
         int destinationCapacity = newShape.getPrimitiveArrayCapacity();
+        int sourceCapacity = oldShape.getPrimitiveArrayCapacity();
+        if (sourceCapacity == destinationCapacity) {
+            return;
+        }
+        int[] newPrimitiveArray;
         if (destinationCapacity == 0) {
-            object.setPrimitiveStore(null);
+            newPrimitiveArray = DynamicObject.EMPTY_INT_ARRAY;
         } else {
-            int sourceCapacity = oldShape.getPrimitiveArrayCapacity();
-            if (sourceCapacity != destinationCapacity) {
-                int sourceSize = oldShape.getPrimitiveArraySize();
-                int[] newPrimitiveArray = new int[destinationCapacity];
-                if (sourceSize != 0) {
-                    int[] oldPrimitiveArray = object.getPrimitiveStore();
-                    int destinationSize = newShape.getPrimitiveArraySize();
-                    int length = Math.min(sourceSize, destinationSize);
-                    UnsafeAccess.arrayCopy(oldPrimitiveArray, newPrimitiveArray, length);
-                }
-                object.setPrimitiveStore(newPrimitiveArray);
+            int sourceSize = oldShape.getPrimitiveArraySize();
+            newPrimitiveArray = new int[destinationCapacity];
+            if (sourceSize != 0) {
+                int[] oldPrimitiveArray = object.getPrimitiveStore();
+                int destinationSize = newShape.getPrimitiveArraySize();
+                int length = Math.min(sourceSize, destinationSize);
+                UnsafeAccess.arrayCopy(oldPrimitiveArray, newPrimitiveArray, length);
             }
         }
+        object.setPrimitiveStore(newPrimitiveArray);
     }
 
     private static void trimObjectStore(DynamicObject object, Shape thisShape, Shape newShape) {
         Object[] oldObjectStore = object.getObjectStore();
         int destinationCapacity = newShape.getObjectArrayCapacity();
-        if (destinationCapacity == 0) {
-            if (oldObjectStore != null) {
-                object.setObjectStore(null);
-            }
-            // else nothing to do
-        } else {
-            int sourceCapacity = thisShape.getObjectArrayCapacity();
-            if (sourceCapacity > destinationCapacity) {
-                Object[] newObjectStore = new Object[destinationCapacity];
-                int destinationSize = newShape.getObjectArraySize();
-                UnsafeAccess.arrayCopy(oldObjectStore, newObjectStore, destinationSize);
-                object.setObjectStore(newObjectStore);
-            }
+        int sourceCapacity = thisShape.getObjectArrayCapacity();
+        if (sourceCapacity <= destinationCapacity) {
+            return;
         }
+        Object[] newObjectStore;
+        if (destinationCapacity == 0) {
+            newObjectStore = DynamicObject.EMPTY_OBJECT_ARRAY;
+        } else {
+            newObjectStore = new Object[destinationCapacity];
+            int destinationSize = newShape.getObjectArraySize();
+            UnsafeAccess.arrayCopy(oldObjectStore, newObjectStore, destinationSize);
+        }
+        object.setObjectStore(newObjectStore);
     }
 
     private static void trimPrimitiveStore(DynamicObject object, Shape thisShape, Shape newShape) {
         int[] oldPrimitiveStore = object.getPrimitiveStore();
         int destinationCapacity = newShape.getPrimitiveArrayCapacity();
-        if (destinationCapacity == 0) {
-            if (oldPrimitiveStore != null) {
-                object.setPrimitiveStore(null);
-            }
-            // else nothing to do
-        } else {
-            int sourceCapacity = thisShape.getPrimitiveArrayCapacity();
-            if (sourceCapacity > destinationCapacity) {
-                int[] newPrimitiveStore = new int[destinationCapacity];
-                int destinationSize = newShape.getPrimitiveArraySize();
-                UnsafeAccess.arrayCopy(oldPrimitiveStore, newPrimitiveStore, destinationSize);
-                object.setPrimitiveStore(newPrimitiveStore);
-            }
+        int sourceCapacity = thisShape.getPrimitiveArrayCapacity();
+        if (sourceCapacity <= destinationCapacity) {
+            return;
         }
+        int[] newPrimitiveStore;
+        if (destinationCapacity == 0) {
+            newPrimitiveStore = DynamicObject.EMPTY_INT_ARRAY;
+        } else {
+            newPrimitiveStore = new int[destinationCapacity];
+            int destinationSize = newShape.getPrimitiveArraySize();
+            UnsafeAccess.arrayCopy(oldPrimitiveStore, newPrimitiveStore, destinationSize);
+        }
+        object.setPrimitiveStore(newPrimitiveStore);
     }
 
+    @SuppressWarnings("deprecation")
     static Map<Object, Object> archive(DynamicObject object) {
         Map<Object, Object> archive = new HashMap<>();
         Property[] properties = (object.getShape()).getPropertyArray();
         for (Property property : properties) {
-            archive.put(property.getKey(), DynamicObjectLibrary.getUncached().getOrDefault(object, property.getKey(), null));
+            archive.put(property.getKey(), property.getLocation().get(object, false));
         }
         return archive;
     }
 
+    @SuppressWarnings("deprecation")
     static boolean verifyValues(DynamicObject object, Map<Object, Object> archive) {
         Property[] properties = (object.getShape()).getPropertyArray();
         for (Property property : properties) {
             Object key = property.getKey();
             Object before = archive.get(key);
-            Object after = DynamicObjectLibrary.getUncached().getOrDefault(object, key, null);
+            Object after = property.getLocation().get(object, false);
             assert Objects.equals(after, before) : "before != after for key: " + key;
         }
         return true;

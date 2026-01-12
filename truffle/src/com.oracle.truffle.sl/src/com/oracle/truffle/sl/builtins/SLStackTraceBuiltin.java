@@ -112,7 +112,7 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
                         Object value = values[i];
                         if (value != null) {
                             str.appendStringUncached(SEPARATOR);
-                            str.appendStringUncached(slotName == null ? UNKNOWN : slotName);
+                            str.appendStringUncached(slotName);
                             str.appendStringUncached(EQUALS);
                             str.appendStringUncached(SLStrings.fromObject(value));
                         }

@@ -413,4 +413,11 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
         return OptimizedTruffleRuntime.createTerminatingThreadLocal(initialValue, onThreadTermination);
     }
+
+    @Override
+    public void setInitializedTimestamp(CallTarget target, long timestamp) {
+        if (target instanceof OptimizedCallTarget optimizedCallTarget) {
+            optimizedCallTarget.setInitializedTimestamp(timestamp);
+        }
+    }
 }

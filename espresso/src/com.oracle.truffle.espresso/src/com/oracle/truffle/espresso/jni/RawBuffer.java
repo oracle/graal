@@ -33,7 +33,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
+import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.memory.MemoryBuffer;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAllocationException;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -41,21 +44,22 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class RawBuffer implements AutoCloseable {
     private ByteBuffer buffer;
-    private TruffleObject pointer;
+    private final MemoryBuffer memoryBuffer;
 
-    public RawBuffer(ByteBuffer buffer, TruffleObject pointer) {
+    public RawBuffer(ByteBuffer buffer, MemoryBuffer memoryBuffer) {
         this.buffer = buffer;
-        this.pointer = pointer;
+        this.memoryBuffer = memoryBuffer;
     }
 
-    public static RawBuffer getNativeString(ByteSequence seq) {
-        ByteBuffer bb = NativeUtils.allocateDirect(seq.length() + 1);
+    public static RawBuffer getNativeString(ByteSequence seq, NativeMemory nativeMemory) throws MemoryAllocationException {
+        MemoryBuffer allocateMemoryBuffer = nativeMemory.allocateMemoryBuffer(seq.length() + 1);
+        ByteBuffer bb = allocateMemoryBuffer.buffer();
         seq.writeTo(bb);
         bb.put((byte) 0);
-        return new RawBuffer(bb, NativeUtils.byteBufferPointer(bb));
+        return new RawBuffer(bb, allocateMemoryBuffer);
     }
 
-    public static RawBuffer getNativeString(String name) {
+    public static RawBuffer getNativeString(String name, NativeMemory nativeMemory) throws MemoryAllocationException {
         CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
         int length = ((int) (name.length() * encoder.averageBytesPerChar())) + 1;
         for (;;) {
@@ -63,7 +67,9 @@ public final class RawBuffer implements AutoCloseable {
                 throw EspressoError.shouldNotReachHere();
             }
             // Be super safe with the size of the buffer.
-            ByteBuffer bb = NativeUtils.allocateDirect(length);
+            MemoryBuffer memoryBuffer = nativeMemory.allocateMemoryBuffer(length);
+
+            ByteBuffer bb = memoryBuffer.buffer();
             encoder.reset();
             CoderResult result = encoder.encode(CharBuffer.wrap(name), bb, true);
 
@@ -75,7 +81,7 @@ public final class RawBuffer implements AutoCloseable {
                 if (result.isUnderflow() && (bb.position() < bb.capacity())) {
                     // Encoder encoded entire string, and we have one byte of leeway.
                     bb.put((byte) 0);
-                    return new RawBuffer(bb, NativeUtils.byteBufferPointer(bb));
+                    return new RawBuffer(bb, memoryBuffer);
                 }
                 if (result.isOverflow() || result.isUnderflow()) {
                     length += 1;
@@ -89,14 +95,16 @@ public final class RawBuffer implements AutoCloseable {
     }
 
     public TruffleObject pointer() {
-        return pointer;
+        return new RawPointer(memoryBuffer.address());
     }
 
     @TruffleBoundary
-    public static RawBuffer getNativeHeapPointer(StaticObject obj, EspressoContext ctx) {
+    public static RawBuffer getNativeHeapPointer(StaticObject obj, EspressoContext ctx) throws MemoryAllocationException {
         assert obj.getKlass().isArray();
         JavaKind componentKind = ((ArrayKlass) obj.getKlass()).getComponentType().getJavaKind();
-        ByteBuffer bb = NativeUtils.allocateDirect(obj.length(ctx.getLanguage()) * componentKind.getByteCount());
+        int bbSize = obj.length(ctx.getLanguage()) * componentKind.getByteCount();
+        MemoryBuffer allocateMemoryBuffer = ctx.getNativeAccess().nativeMemory().allocateMemoryBuffer(bbSize);
+        ByteBuffer bb = allocateMemoryBuffer.buffer();
         switch (componentKind) {
             case Boolean -> {
                 boolean[] array = obj.unwrap(ctx.getLanguage());
@@ -148,7 +156,7 @@ public final class RawBuffer implements AutoCloseable {
             }
             default -> throw ctx.getMeta().throwExceptionWithMessage(ctx.getMeta().java_lang_IllegalArgumentException, "Unsupported java heap access in downcall stub: " + obj.getKlass());
         }
-        return new RawBuffer(bb, NativeUtils.byteBufferPointer(bb));
+        return new RawBuffer(bb, allocateMemoryBuffer);
     }
 
     @TruffleBoundary
@@ -212,6 +220,7 @@ public final class RawBuffer implements AutoCloseable {
     @Override
     public void close() {
         buffer.clear();
+        memoryBuffer.close();
         this.buffer = null;
     }
 

@@ -30,8 +30,6 @@ import java.util.HashSet;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -46,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -92,13 +91,6 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
     @Override
     protected OptionDescriptors getOptionDescriptors() {
         return new MemoryUsageInstrumentOptionDescriptors();
-    }
-
-    @TruffleBoundary
-    public long getContextHeapSize() {
-        TruffleContext context = currentEnv.getEnteredContext();
-        AtomicBoolean b = new AtomicBoolean();
-        return currentEnv.calculateContextHeapSize(context, Long.MAX_VALUE, b);
     }
 
     @Override
@@ -202,14 +194,18 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
                 }
 
                 tracking.previousProperties = null;
-                tracking.task = new ContextHeapSizeThreadLocalTask(tracking);
+                tracking.task = new ContextHeapSizeThreadLocalTask(tracking, 1);
                 // force update on start
                 tracking.task.computeUpdate(true);
-                tracking.timer = new Timer();
-                tracking.timer.schedule(tracking.task, 0L, 1L);
+                startWorkerThread(tracking);
 
                 return NullValue.NULL;
             }
+        }
+
+        private void startWorkerThread(MemoryTracking tracking) {
+            tracking.workerThread = currentEnv.createSystemThread(tracking.task);
+            tracking.workerThread.start();
         }
     }
 
@@ -223,12 +219,11 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
                 if (tracking.previousProperties != null) {
                     return tracking.previousProperties;
                 }
-                if (tracking.timer == null) {
+                if (tracking.task == null) {
                     return NullValue.NULL;
                 }
-                tracking.task.cancel();
-                tracking.timer.cancel();
-                tracking.timer = null;
+
+                stopWorkerThread(node, tracking);
 
                 Map<String, Object> properties = new HashMap<>();
 
@@ -243,11 +238,19 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
 
                 // stop running actions for other threads
                 tracking.previousProperties = new ReadOnlyProperties(properties);
-                tracking.task.cancelled.set(true);
                 tracking.task = null;
 
             }
             return tracking.previousProperties;
+        }
+
+        private void stopWorkerThread(Node node, MemoryTracking tracking) {
+            // Disable the loop condition so the worker will exit.
+            tracking.task.stop();
+            // Wake the thread in case it's sleeping.
+            tracking.workerThread.interrupt();
+            // Wait until the thread has terminated.
+            TruffleSafepoint.setBlockedThreadInterruptible(node, Thread::join, tracking.workerThread);
         }
     }
 
@@ -257,14 +260,14 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
 
         volatile ContextHeapSizeThreadLocalTask task;
         ReadOnlyProperties previousProperties;
-        Timer timer;
+        Thread workerThread;
 
         MemoryTracking(TruffleContext context) {
             this.context = context;
         }
     }
 
-    final class ContextHeapSizeThreadLocalTask extends TimerTask {
+    final class ContextHeapSizeThreadLocalTask implements Runnable {
 
         final LongSummaryStatistics statistics = new LongSummaryStatistics();
         final AtomicBoolean cancelled = new AtomicBoolean();
@@ -276,14 +279,27 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
 
         long totalAllocatedMemory;
         final MemoryTracking tracking;
+        final long intervalMillis;
 
-        ContextHeapSizeThreadLocalTask(MemoryTracking tracking) {
+        ContextHeapSizeThreadLocalTask(MemoryTracking tracking, long intervalMillis) {
             this.tracking = tracking;
+            this.intervalMillis = intervalMillis;
         }
 
         @Override
         public void run() {
-            computeUpdate(false);
+            while (!cancelled.get()) {
+                try {
+                    computeUpdate(false);
+                    Thread.sleep(intervalMillis);
+                } catch (InterruptedException e) {
+                    break; // exit the loop if interrupted
+                }
+            }
+        }
+
+        public void stop() {
+            cancelled.set(true);
         }
 
         void computeUpdate(boolean force) {

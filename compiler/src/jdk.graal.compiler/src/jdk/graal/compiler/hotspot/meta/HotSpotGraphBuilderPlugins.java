@@ -72,7 +72,6 @@ import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.Vector
 import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin.T_LONG;
 import static jdk.vm.ci.meta.DeoptimizationReason.TypeCheckedInliningViolated;
 
-import java.lang.annotation.Annotation;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
 import java.lang.invoke.VolatileCallSite;
@@ -85,6 +84,7 @@ import java.util.zip.CRC32;
 
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.LibGraalSupport;
@@ -289,7 +289,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerMathPlugins(invocationPlugins, target.arch);
                 registerContinuationPlugins(invocationPlugins, config);
                 registerCallSitePlugins(invocationPlugins);
-                registerReflectionPlugins(invocationPlugins);
+                registerReflectionPlugins(invocationPlugins, config);
                 registerAESPlugins(invocationPlugins, config);
                 registerAdler32Plugins(invocationPlugins, config);
                 registerCRC32Plugins(invocationPlugins, config);
@@ -508,12 +508,26 @@ public class HotSpotGraphBuilderPlugins {
         plugins.register(VolatileCallSite.class, plugin);
     }
 
-    private static void registerReflectionPlugins(InvocationPlugins plugins) {
+    private static void registerReflectionPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
         Registration r = new Registration(plugins, "jdk.internal.reflect.Reflection");
         r.register(new InlineOnlyInvocationPlugin("getCallerClass") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Object, new HotSpotReflectionGetCallerClassNode(MacroParams.of(b, targetMethod)));
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("getClassAccessFlags", Class.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    ValueNode klass = helper.readKlassFromClass(b.nullCheckedValue(arg));
+                    // Primitive Class case
+                    ValueNode klassNonNull = helper.emitNullReturnGuard(klass, ConstantNode.forInt(Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC), GraalDirectives.UNLIKELY_PROBABILITY);
+                    // Return (Klass::_access_flags & jvmAccWrittenFlags)
+                    ValueNode accessFlags = helper.readKlassAccessFlags(klassNonNull);
+                    helper.emitFinalReturn(JavaKind.Int, accessFlags);
+                }
                 return true;
             }
         });
@@ -684,9 +698,10 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
+    @LibGraalSupport.HostedOnly
     private static boolean isAnnotatedByChangesCurrentThread(ResolvedJavaMethod method) {
-        for (Annotation annotation : method.getAnnotations()) {
-            if ("jdk.internal.vm.annotation.ChangesCurrentThread".equals(annotation.annotationType().getName())) {
+        for (ResolvedJavaType annotationType : AnnotationValueSupport.getDeclaredAnnotationValues(method).keySet()) {
+            if ("jdk.internal.vm.annotation.ChangesCurrentThread".equals(annotationType.toClassName())) {
                 return true;
             }
         }
@@ -790,7 +805,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/8e4485699235caff0074c4d25ee78539e57da63a/src/hotspot/share/opto/library_call.cpp#L3029-L3083",
+    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/b8aa130bab715f187476181acc5021b27958833f/src/hotspot/share/opto/library_call.cpp#L2986-L3040",
               sha1 = "353e0d45b0f63ac58af86dcab5b19777950da7e2")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
@@ -839,7 +854,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/8e4485699235caff0074c4d25ee78539e57da63a/src/hotspot/share/opto/library_call.cpp#L3848-L3932",
+    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/b8aa130bab715f187476181acc5021b27958833f/src/hotspot/share/opto/library_call.cpp#L3805-L3889",
               sha1 = "3e9cfba4d9554f7cd9ab392f0826a31ae6396193")
     // @formatter:on
     private static class ContinuationPinningPlugin extends InvocationPlugin {
@@ -1791,18 +1806,6 @@ public class HotSpotGraphBuilderPlugins {
                 return Options.ForceExplicitReachabilityFence.getValue(b.getOptions());
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("get0", Receiver.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
-                AddressNode address = b.add(new OffsetAddressNode(receiver.get(true), offset));
-                FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
-                JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.REFERENCE_GET, MemoryOrderMode.PLAIN, true));
-                b.add(new MembarNode(MembarNode.FenceKind.NONE, locationIdentity));
-                b.addPush(JavaKind.Object, read);
-                return true;
-            }
-        });
         r.register(new InlineOnlyInvocationPlugin("refersTo0", Receiver.class, Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
@@ -1810,7 +1813,6 @@ public class HotSpotGraphBuilderPlugins {
                 AddressNode address = b.add(new OffsetAddressNode(receiver.get(true), offset));
                 FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
                 JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.WEAK_REFERS_TO, MemoryOrderMode.PLAIN, true));
-                b.add(new MembarNode(MembarNode.FenceKind.NONE, locationIdentity));
                 LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
                 b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
                 return true;

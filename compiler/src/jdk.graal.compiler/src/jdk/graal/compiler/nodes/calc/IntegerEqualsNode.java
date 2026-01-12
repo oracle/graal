@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -86,6 +86,20 @@ public final class IntegerEqualsNode extends CompareNode implements Canonicaliza
         ValueNode value = OP.canonical(tool.getConstantReflection(), tool.getMetaAccess(), tool.getOptions(), tool.smallestCompareWidth(), CanonicalCondition.EQ, false, forX, forY, view);
         if (value != null) {
             return value;
+        }
+        if (forX instanceof MinMaxNode<?> minMax && (minMax.getX() == forY || minMax.getY() == forY)) {
+            // patterns like min(x, y) == y --> x >= y, see doc for conditionForEqualsUsage
+            LogicNode equivalentCondition = minMax.conditionForEqualsUsage(forY, tool);
+            if (equivalentCondition != null) {
+                return equivalentCondition;
+            }
+        }
+        if (forY instanceof MinMaxNode<?> minMax && (minMax.getX() == forX || minMax.getY() == forX)) {
+            // patterns like x == min(x, y) --> x <= y, see doc for conditionForEqualsUsage
+            LogicNode equivalentCondition = minMax.conditionForEqualsUsage(forX, tool);
+            if (equivalentCondition != null) {
+                return equivalentCondition;
+            }
         }
         return super.canonical(tool, forX, forY);
     }
@@ -217,6 +231,22 @@ public final class IntegerEqualsNode extends CompareNode implements Canonicaliza
             if (forY instanceof NotNode notX && forX == notX.getValue()) {
                 // x == ~x => false
                 return LogicConstantNode.contradiction();
+            }
+
+            if (forX instanceof MinMaxNode<?> minMax && minMax.getY().isJavaConstant() && forY.isJavaConstant() && !minMax.getY().asJavaConstant().equals(forY.asJavaConstant())) {
+                Constant comparedConstants = minMax.getArithmeticOp().foldConstant(minMax.getY().asJavaConstant(), forY.asJavaConstant());
+                if (comparedConstants.equals(forY.asJavaConstant())) {
+                    /*
+                     * We have a case like min(x, C1) == C2 where min(C1, C2) == C2; for example,
+                     * min(x, 8) == 7. Or max(x, C1) == C2 where max(C1, C2) == C2; for example,
+                     * max(x, 7) == 8. The constants are not equal.
+                     *
+                     * If the min/max returns a value != x, it will return C1; since C1 != C2, the
+                     * comparison will be false. So the comparison can only be true if the min/max
+                     * returns x, and the returned value equals C2. So simplify to x == C2 directly.
+                     */
+                    return IntegerEqualsNode.create(minMax.getX(), forY, view);
+                }
             }
 
             return super.canonical(constantReflection, metaAccess, options, smallestCompareWidth, condition, unorderedIsTrue, forX, forY, view);

@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.hotspot.replaycomp;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Path;
 import java.util.function.Predicate;
 
@@ -34,6 +37,7 @@ import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.PathUtilities;
 import jdk.graal.compiler.debug.TTY;
@@ -45,7 +49,6 @@ import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.printer.CanonicalStringGraphPrinter;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -105,16 +108,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public final class ReplayCompilationSupport {
     /**
-     * Libgraal build-time system property name for enabling the replay compilation launcher.
-     */
-    public static final String ENABLE_REPLAY_LAUNCHER_PROP = "debug.jdk.graal.enableReplayLauncher";
-
-    /**
-     * Whether the replay compilation launcher is enabled in libgraal.
-     */
-    public static final boolean ENABLE_REPLAY_LAUNCHER = Boolean.parseBoolean(GraalServices.getSavedProperty(ENABLE_REPLAY_LAUNCHER_PROP));
-
-    /**
      * Checks whether the given method's compilation should be recorded according to the given
      * options.
      *
@@ -147,9 +140,9 @@ public final class ReplayCompilationSupport {
     private RecordedForeignCallLinkages recordedForeignCallLinkages;
 
     /**
-     * The compilation artifacts of the current compiler thread.
+     * The product of the last compilation task.
      */
-    private final ThreadLocal<CompilationArtifacts> compilationArtifacts = ThreadLocal.withInitial(() -> null);
+    private final ThreadLocal<CompilationTaskProduct> compilationProduct = ThreadLocal.withInitial(() -> null);
 
     /**
      * The compiler's configuration name.
@@ -286,10 +279,9 @@ public final class ReplayCompilationSupport {
             RecordedOperationPersistence persistence = new RecordedOperationPersistence(proxies.getDeclarations(), Platform.ofCurrentHost(),
                             HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget());
             RecordingCompilationProxies recordingCompilationProxies = (RecordingCompilationProxies) proxies;
-            CompilationArtifacts artifacts = clearCompilationArtifacts();
-            String finalCanonicalGraph = (artifacts == null) ? null : artifacts.finalCanonicalGraph();
+            CompilationTaskProduct product = clearCompilationTaskProduct();
             RecordedOperationPersistence.RecordedCompilationUnit compilationUnit = new RecordedOperationPersistence.RecordedCompilationUnit(originalRequest, compilerConfigurationName,
-                            LibGraalSupport.inLibGraalRuntime(), recordingCompilationProxies.targetPlatform(), linkages, finalCanonicalGraph,
+                            LibGraalSupport.inLibGraalRuntime(), recordingCompilationProxies.targetPlatform(), GraalServices.getSavedProperties(), linkages, product,
                             recordingCompilationProxies.collectOperationsForSerialization());
             try (JsonWriter jsonWriter = new JsonWriter(path)) {
                 persistence.dump(compilationUnit, jsonWriter);
@@ -389,41 +381,39 @@ public final class ReplayCompilationSupport {
     }
 
     /**
-     * The artifacts produced by a compilation.
+     * Records the exception thrown by the last compilation task of the current compiler thread.
      *
-     * @param graph the final graph
-     * @param result the compilation result
+     * @param e the thrown exception
      */
-    public record CompilationArtifacts(StructuredGraph graph, CompilationResult result) {
-        /**
-         * Returns the canonical graph string for the final graph.
-         */
-        public String finalCanonicalGraph() {
-            return CanonicalStringGraphPrinter.getCanonicalGraphString(graph, false, true);
+    public void recordCompilationTaskException(Throwable e) {
+        try (StringWriter stringWriter = new StringWriter(); PrintWriter out = new PrintWriter(stringWriter)) {
+            e.printStackTrace(out);
+            compilationProduct.set(new CompilationTaskProduct.CompilationTaskException(e.getClass().getName(), stringWriter.toString()));
+        } catch (IOException ex) {
+            throw new GraalError(ex);
         }
     }
 
     /**
-     * Records the artifacts produced by the last compilation of the current compiler thread.
+     * Records the artifacts produced by a successful compilation task of the current compiler
+     * thread.
      *
      * @param graph the final graph
      * @param result the compilation result
      */
-    public void recordCompilationArtifacts(StructuredGraph graph, CompilationResult result) {
-        compilationArtifacts.set(new CompilationArtifacts(graph, result));
+    public void recordCompilationTaskArtifacts(StructuredGraph graph, CompilationResult result) {
+        compilationProduct.set(new CompilationTaskProduct.CompilationTaskArtifacts(graph, result));
     }
 
     /**
-     * Clears and returns the artifacts produced by the last successfully completed compilation of
-     * the current compiler thread. May return {@code null} if the last compilation did not complete
-     * successfully.
+     * Clears and returns the product of the last compilation task of the current compiler thread.
      *
-     * @return the cleared compilation artifacts or {@code null}
+     * @return the cleared product of the last compilation task
      */
-    public CompilationArtifacts clearCompilationArtifacts() {
-        CompilationArtifacts result = compilationArtifacts.get();
-        compilationArtifacts.remove();
-        return result;
+    public CompilationTaskProduct clearCompilationTaskProduct() {
+        CompilationTaskProduct product = compilationProduct.get();
+        compilationProduct.remove();
+        return product;
     }
 
     /**

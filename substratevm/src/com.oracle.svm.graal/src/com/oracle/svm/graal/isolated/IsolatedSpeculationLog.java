@@ -33,6 +33,10 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog.SubstrateSpeculation;
+import com.oracle.svm.core.graal.isolated.ClientHandle;
+import com.oracle.svm.core.graal.isolated.ClientIsolateThread;
+import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
+import com.oracle.svm.core.graal.isolated.IsolatedCompileContext;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.util.VMError;
 

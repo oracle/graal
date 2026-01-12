@@ -139,10 +139,6 @@ public class AArch64LibCHelper {
         @AllowNarrowingCast
         @CField
         boolean fASIMDHP();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fSB();
     }
     // Checkstyle: resume
 }

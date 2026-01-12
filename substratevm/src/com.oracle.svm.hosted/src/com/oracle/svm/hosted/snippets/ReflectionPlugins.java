@@ -30,7 +30,6 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -38,7 +37,6 @@ import java.lang.reflect.Modifier;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -47,18 +45,14 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.TrackDynamicAccessEnabled;
-import com.oracle.svm.hosted.DynamicAccessDetectionFeature;
-import com.oracle.svm.hosted.NativeImageSystemClassLoader;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
@@ -66,15 +60,17 @@ import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
-import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.ReachabilityRegistrationNode;
+import com.oracle.svm.hosted.NativeImageSystemClassLoader;
+import com.oracle.svm.hosted.ReachabilityCallbackNode;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.dynamicaccessinference.DynamicAccessInferenceLog;
 import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
-import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.TypeResult;
 
@@ -91,7 +87,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -124,32 +119,28 @@ public final class ReflectionPlugins {
     private final ClassInitializationPlugin classInitializationPlugin;
     private final AnalysisUniverse aUniverse;
     private final ParsingReason reason;
-    private final FallbackFeature fallbackFeature;
     private final ClassInitializationSupport classInitializationSupport;
-    private final boolean trackDynamicAccess;
-    private final DynamicAccessDetectionFeature dynamicAccessDetectionFeature;
     private final DynamicAccessInferenceLog inferenceLog;
+    private final SubstitutionReflectivityFilter reflectivityFilter;
 
     private ReflectionPlugins(ImageClassLoader imageClassLoader, AnnotationSubstitutionProcessor annotationSubstitutions,
-                    ClassInitializationPlugin classInitializationPlugin, AnalysisUniverse aUniverse, ParsingReason reason, FallbackFeature fallbackFeature) {
+                    ClassInitializationPlugin classInitializationPlugin, AnalysisUniverse aUniverse, ParsingReason reason) {
         this.imageClassLoader = imageClassLoader;
         this.annotationSubstitutions = annotationSubstitutions;
         this.classInitializationPlugin = classInitializationPlugin;
         this.aUniverse = aUniverse;
         this.reason = reason;
-        this.fallbackFeature = fallbackFeature;
-
-        trackDynamicAccess = TrackDynamicAccessEnabled.isTrackDynamicAccessEnabled();
-        dynamicAccessDetectionFeature = trackDynamicAccess ? DynamicAccessDetectionFeature.instance() : null;
 
         this.classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
 
         this.inferenceLog = DynamicAccessInferenceLog.singletonOrNull();
+
+        this.reflectivityFilter = SubstitutionReflectivityFilter.singleton();
     }
 
     public static void registerInvocationPlugins(ImageClassLoader imageClassLoader, AnnotationSubstitutionProcessor annotationSubstitutions,
-                    ClassInitializationPlugin classInitializationPlugin, InvocationPlugins plugins, AnalysisUniverse aUniverse, ParsingReason reason, FallbackFeature fallbackFeature) {
-        ReflectionPlugins rp = new ReflectionPlugins(imageClassLoader, annotationSubstitutions, classInitializationPlugin, aUniverse, reason, fallbackFeature);
+                    ClassInitializationPlugin classInitializationPlugin, InvocationPlugins plugins, AnalysisUniverse aUniverse, ParsingReason reason) {
+        ReflectionPlugins rp = new ReflectionPlugins(imageClassLoader, annotationSubstitutions, classInitializationPlugin, aUniverse, reason);
         rp.registerMethodHandlesPlugins(plugins);
         rp.registerClassPlugins(plugins);
     }
@@ -490,8 +481,19 @@ public final class ReflectionPlugins {
             return false;
         }
 
-        // GR-57649 generalize code if needed in more places
-        ClassLoader loader = clazz.getClassLoader();
+        ClassLoader loader;
+        if (reason == ParsingReason.AutomaticUnsafeTransformation || reason == ParsingReason.EarlyClassInitializerAnalysis) {
+            /*
+             * We are getting called before analysis, DynamicHubs are not available at this point.
+             * This is acceptable because those graphs will not be used by the analysis later.
+             */
+            // GR-57649 generalize code if needed in more places
+            loader = clazz.getClassLoader();
+        } else {
+            /* Get loader from DynamicHub. The one from the hosted clazz can be different. */
+            loader = ((SVMHost) aUniverse.hostVM()).dynamicHub(clazz).getClassLoader();
+        }
+
         JavaConstant result;
         if (loader == null) {
             result = JavaConstant.NULL_POINTER;
@@ -514,7 +516,7 @@ public final class ReflectionPlugins {
      * yet available in JDK 8 (like VarHandle methods) are silently ignored.
      */
     private void registerFoldInvocationPlugins(InvocationPlugins plugins, boolean subjectToStrictDynamicAccessInference, Class<?> declaringClass, String... methodNames) {
-        Set<String> methodNamesSet = new HashSet<>(Arrays.asList(methodNames));
+        EconomicSet<String> methodNamesSet = EconomicSet.create(Arrays.asList(methodNames));
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ReflectionPlugins.class, declaringClass);
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (methodNamesSet.contains(method.getName()) && !method.isSynthetic()) {
@@ -523,7 +525,7 @@ public final class ReflectionPlugins {
         }
     }
 
-    private static final Predicate<Object[]> alwaysAllowConstantFolding = args -> true;
+    private static final Predicate<Object[]> alwaysAllowConstantFolding = _ -> true;
 
     private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod, boolean subjectToStrictDynamicAccessInference) {
         registerFoldInvocationPlugin(plugins, reflectionMethod, alwaysAllowConstantFolding, subjectToStrictDynamicAccessInference);
@@ -636,21 +638,13 @@ public final class ReflectionPlugins {
             return false;
         }
 
-        b.add(ReachabilityRegistrationNode.create(() -> {
-            registerForRuntimeReflection((T) receiverValue, registrationCallback);
-            if (trackDynamicAccess) {
-                dynamicAccessDetectionFeature.addFoldEntry(b.bci(), b.getMethod());
-            }
-        }, reason));
+        b.add(ReachabilityCallbackNode.create(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback), reason));
         return true;
     }
 
-    private <T> void registerForRuntimeReflection(T receiver, Consumer<T> registrationCallback) {
+    private static <T> void registerForRuntimeReflection(T receiver, Consumer<T> registrationCallback) {
         try {
             registrationCallback.accept(receiver);
-            if (fallbackFeature != null) {
-                fallbackFeature.ignoreReflectionFallback = true;
-            }
         } catch (LinkageError e) {
             // Ignore, the call should be registered manually
         }
@@ -737,12 +731,12 @@ public final class ReflectionPlugins {
      * compilation, not a lossy copy of it.
      */
     @SuppressWarnings("unchecked")
-    private <T> T getIntrinsic(GraphBuilderContext context, T element) {
+    private <T> T getIntrinsic(T element) {
         if (reason == ParsingReason.AutomaticUnsafeTransformation || reason == ParsingReason.EarlyClassInitializerAnalysis) {
             /* We are analyzing the static initializers and should always intrinsify. */
             return element;
         }
-        if (isDeleted(element, context.getMetaAccess())) {
+        if (element instanceof AnnotatedElement annotatedElement && reflectivityFilter.shouldExcludeElement(annotatedElement)) {
             /*
              * Should not intrinsify. Will fail during the reflective lookup at runtime. @Delete-ed
              * elements are ignored by the reflection plugins regardless of the value of
@@ -761,7 +755,7 @@ public final class ReflectionPlugins {
             /* We are analyzing the static initializers and should always intrinsify. */
             return context.getSnippetReflection().forObject(element);
         }
-        if (isDeleted(element, context.getMetaAccess())) {
+        if (element instanceof AnnotatedElement annotatedElement && reflectivityFilter.shouldExcludeElement(annotatedElement)) {
             /*
              * Should not intrinsify. Will fail during the reflective lookup at runtime. @Delete-ed
              * elements are ignored by the reflection plugins regardless of the value of
@@ -772,31 +766,9 @@ public final class ReflectionPlugins {
         return aUniverse.replaceObjectWithConstant(element, context.getSnippetReflection()::forObject);
     }
 
-    private static <T> boolean isDeleted(T element, MetaAccessProvider metaAccess) {
-        AnnotatedElement annotated = null;
-        try {
-            if (element instanceof Executable) {
-                annotated = metaAccess.lookupJavaMethod((Executable) element);
-            } else if (element instanceof Field) {
-                annotated = metaAccess.lookupJavaField((Field) element);
-            }
-        } catch (DeletedElementException ex) {
-            /*
-             * If ReportUnsupportedElementsAtRuntime is *not* set looking up a @Delete-ed element
-             * will result in a DeletedElementException.
-             */
-            return true;
-        }
-        /*
-         * If ReportUnsupportedElementsAtRuntime is set looking up a @Delete-ed element will return
-         * a substitution method that has the @Delete annotation.
-         */
-        return annotated != null && annotated.isAnnotationPresent(Delete.class);
-    }
-
     private JavaConstant pushConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, JavaKind returnKind, Object returnValue,
                     boolean allowNullReturnValue, boolean subjectToStrictDynamicAccessInference) {
-        Object intrinsicValue = getIntrinsic(b, returnValue == null && allowNullReturnValue ? NULL_MARKER : returnValue);
+        Object intrinsicValue = getIntrinsic(returnValue == null && allowNullReturnValue ? NULL_MARKER : returnValue);
         if (intrinsicValue == null) {
             return null;
         }
@@ -822,7 +794,7 @@ public final class ReflectionPlugins {
         if (exceptionMethod == null) {
             return false;
         }
-        Method intrinsic = getIntrinsic(b, exceptionMethod);
+        Method intrinsic = getIntrinsic(exceptionMethod);
         if (intrinsic == null) {
             return false;
         }

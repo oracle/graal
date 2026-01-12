@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
@@ -65,13 +66,13 @@ public class VMFeature implements InternalFeature {
         return getSelectedGCName();
     }
 
-    protected static final String getSelectedGCName() {
-        if (SubstrateOptions.useSerialGC()) {
-            return "serial gc";
-        } else if (SubstrateOptions.useEpsilonGC()) {
-            return "epsilon gc";
+    protected static String getSelectedGCName() {
+        List<String> values = SubstrateOptions.SupportedGCs.getValue().values();
+        if (values.isEmpty()) {
+            return "no gc";
         } else {
-            return "unknown gc";
+            assert values.size() == 1;
+            return values.getFirst().toLowerCase(Locale.ROOT) + " gc";
         }
     }
 

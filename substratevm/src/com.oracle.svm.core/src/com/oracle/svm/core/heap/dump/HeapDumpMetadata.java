@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.heap.dump;
 
-import java.util.EnumSet;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -40,6 +38,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.Heap;
@@ -47,17 +46,20 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.TypeIDs;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.coder.ByteStream;
 import com.oracle.svm.core.util.coder.ByteStreamAccess;
 import com.oracle.svm.core.util.coder.NativeCoder;
@@ -122,6 +124,20 @@ public class HeapDumpMetadata {
 
     public static HeapDumpMetadata singleton() {
         return ImageSingletons.lookup(HeapDumpMetadata.class);
+    }
+
+    /**
+     * When using layered images we must ensure that metadata has been encoded for all layers.
+     */
+    public static boolean isLayeredMetadataAvailable() {
+        SubstrateUtil.guaranteeRuntimeOnly();
+        VMError.guarantee(ImageLayerBuildingSupport.buildingImageLayer());
+        for (var encodedData : HeapDumpEncodedData.layeredSingletons()) {
+            if (encodedData.data == null) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public boolean initialize() {
@@ -238,13 +254,10 @@ public class HeapDumpMetadata {
         Heap.getHeap().walkImageHeapObjects(computeHubDataVisitor);
         Metaspace.singleton().walkObjects(computeHubDataVisitor);
 
-        /*
-         * Classes that are loaded at runtime don't have any declared fields at the moment. This
-         * needs to be changed once GR-60069 is merged.
-         */
         for (int i = TypeIDs.singleton().getFirstRuntimeTypeId(); i < classInfoCount; i++) {
             ClassInfo classInfo = getClassInfo(i);
             if (ClassInfoAccess.isValid(classInfo)) {
+                /* GR-69330 */
                 classInfo.setStaticFieldCount(0);
                 classInfo.setInstanceFieldCount(0);
             }
@@ -493,13 +506,9 @@ public class HeapDumpMetadata {
         }
     }
 
-    public static class HeapDumpEncodedData implements MultiLayeredImageSingleton, UnsavedSingleton {
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
+    public static class HeapDumpEncodedData {
         @UnknownObjectField(availability = AfterCompilation.class) private byte[] data;
-
-        @Override
-        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-            return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
-        }
 
         private static HeapDumpEncodedData currentLayer() {
             return LayeredImageSingletonSupport.singleton().lookup(HeapDumpEncodedData.class, false, true);

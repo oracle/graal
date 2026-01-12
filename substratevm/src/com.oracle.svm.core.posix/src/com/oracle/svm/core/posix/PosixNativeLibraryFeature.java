@@ -65,6 +65,7 @@ class PosixNativeLibraryFeature implements InternalFeature {
 }
 
 final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
+    public static final String PLM_PROPERTY_NAME = "jdk.lang.Process.launchMechanism";
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private PosixNativeLibrarySupport() {
@@ -98,12 +99,17 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
             try {
                 loadJavaLibrary();
                 loadNetLibrary();
-                /*
-                 * The JDK uses posix_spawn on the Mac to launch executables. This requires a
-                 * separate process "jspawnhelper" which we don't want to have to rely on. Force the
-                 * use of FORK on Linux and Mac.
-                 */
-                System.setProperty("jdk.lang.Process.launchMechanism", "FORK");
+
+                String launchMechanism = System.getProperty(PLM_PROPERTY_NAME);
+
+                if (launchMechanism == null) {
+                    /*
+                     * The JDK uses posix_spawn on the Mac to launch executables. This requires a
+                     * separate process "jspawnhelper" which we don't want to have to rely on. Force
+                     * the use of FORK on Linux and Mac.
+                     */
+                    System.setProperty(PLM_PROPERTY_NAME, "FORK");
+                }
 
                 /*
                  * Work around a bug in fork() on Darwin by eagerly calling localtime_r to make sure

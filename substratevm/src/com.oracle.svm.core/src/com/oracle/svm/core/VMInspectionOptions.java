@@ -27,11 +27,11 @@ package com.oracle.svm.core;
 import static com.oracle.svm.core.jvmstat.PerfManager.Options.PerfDataMemoryMappedFile;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform.WINDOWS_BASE;
@@ -41,9 +41,11 @@ import com.oracle.svm.core.jdk.management.ManagementAgentModule;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LayerVerifiedOption;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -66,8 +68,9 @@ public final class VMInspectionOptions {
 
     private static final Set<String> MONITORING_ALL_VALUES = Set.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME,
                     MONITORING_THREADDUMP_NAME, MONITORING_NMT_NAME, MONITORING_JCMD_NAME, MONITORING_ALL_NAME, MONITORING_DEFAULT_NAME);
-    private static final List<String> NOT_SUPPORTED_ON_WINDOWS = List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME,
-                    MONITORING_JCMD_NAME);
+    private static final EconomicSet<String> NOT_SUPPORTED_ON_WINDOWS = EconomicSet
+                    .create(List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME,
+                                    MONITORING_JCMD_NAME));
 
     private static final String MONITORING_ALLOWED_VALUES_TEXT = "" +
                     "'" + MONITORING_HEAPDUMP_NAME + "'" +
@@ -81,6 +84,7 @@ public final class VMInspectionOptions {
                     ", or '" + MONITORING_ALL_NAME + "' (deprecated behavior: defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
 
     @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_DEFAULT_NAME)//
+    @LayerVerifiedOption(kind = LayerVerifiedOption.Kind.Changed, severity = LayerVerifiedOption.Severity.Error)//
     @Option(help = "Enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain " + MONITORING_ALLOWED_VALUES_TEXT + ". " +
                     "For example: '--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JFR_NAME + "'.", type = OptionType.User)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(
@@ -107,7 +111,7 @@ public final class VMInspectionOptions {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void validateEnableMonitoringFeatures(@SuppressWarnings("unused") OptionKey<?> optionKey) {
-        Set<String> enabledFeatures = getEnabledMonitoringFeatures();
+        EconomicSet<String> enabledFeatures = getEnabledMonitoringFeatures();
         if (enabledFeatures.contains(MONITORING_DEFAULT_NAME)) {
             LogUtils.warning(
                             "'%s' without an argument is deprecated. Please always explicitly specify the list of monitoring features to be enabled (for example, '%s').",
@@ -122,13 +126,12 @@ public final class VMInspectionOptions {
         }
 
         if (Platform.includedIn(WINDOWS_BASE.class)) {
-            Set<String> notSupported = getEnabledMonitoringFeatures();
+            EconomicSet<String> notSupported = getEnabledMonitoringFeatures();
             notSupported.retainAll(NOT_SUPPORTED_ON_WINDOWS);
             if (!PerfDataMemoryMappedFile.getValue()) {
                 /* Only not supported on Windows, if a memory-mapped file is needed. */
                 notSupported.remove(MONITORING_JVMSTAT_NAME);
             }
-
             if (!notSupported.isEmpty()) {
                 String msg = String.format("the option '%s' contains value(s) that are not supported on Windows: %s. Those values will be ignored.", getDefaultMonitoringCommandArgument(),
                                 String.join(", ", notSupported));
@@ -154,12 +157,14 @@ public final class VMInspectionOptions {
                         SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, MONITORING_JFR_NAME) + "'.";
     }
 
-    private static Set<String> getEnabledMonitoringFeatures() {
-        return new HashSet<>(EnableMonitoringFeatures.getValue().values());
+    private static EconomicSet<String> getEnabledMonitoringFeatures() {
+        EconomicSet<String> set = EconomicSet.create();
+        set.addAll(EnableMonitoringFeatures.getValue().values());
+        return set;
     }
 
     private static boolean hasAllOrKeywordMonitoringSupport(String keyword) {
-        Set<String> enabledFeatures = getEnabledMonitoringFeatures();
+        EconomicSet<String> enabledFeatures = getEnabledMonitoringFeatures();
         return enabledFeatures.contains(MONITORING_ALL_NAME) || enabledFeatures.contains(MONITORING_DEFAULT_NAME) || enabledFeatures.contains(keyword);
     }
 
@@ -168,9 +173,19 @@ public final class VMInspectionOptions {
         return hasAllOrKeywordMonitoringSupport(MONITORING_HEAPDUMP_NAME) && !Platform.includedIn(WINDOWS_BASE.class);
     }
 
+    /**
+     * This needs to be an explicit method so that in layered builds compilation can be deferred to
+     * the app layer. Otherwise {@link SubstrateOptions#Name} will refer to the initial layer's
+     * name.
+     */
+    @LayeredCompilationBehavior(LayeredCompilationBehavior.Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER)
+    static String determineHeapDumpPath() {
+        return HeapDumping.getHeapDumpPath(SubstrateOptions.Name.getValue() + ".hprof");
+    }
+
     public static boolean dumpImageHeap() {
         if (hasHeapDumpSupport()) {
-            String absoluteHeapDumpPath = HeapDumping.getHeapDumpPath(SubstrateOptions.Name.getValue() + ".hprof");
+            String absoluteHeapDumpPath = determineHeapDumpPath();
             try {
                 HeapDumping.singleton().dumpHeap(absoluteHeapDumpPath, true);
             } catch (IOException e) {

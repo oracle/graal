@@ -95,7 +95,7 @@ public abstract class AbstractLookupNode extends EspressoNode {
     private static boolean matchMethod(Method m, Symbol<Name> methodName, Symbol<Signature> signature, boolean isStatic, boolean publicOnly) {
         return (!publicOnly || m.isPublic()) &&
                         m.isStatic() == isStatic &&
-                        !m.isSignaturePolymorphicDeclared() &&
+                        !m.isDeclaredSignaturePolymorphic() &&
                         methodName == m.getName() &&
                         // If signature is specified, do the check.
                         (signature == null || signature == m.getRawSignature());

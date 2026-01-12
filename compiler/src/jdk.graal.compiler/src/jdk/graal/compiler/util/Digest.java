@@ -102,8 +102,10 @@ public final class Digest {
      * new byte array.
      */
     public static byte[] digestAsByteArray(byte[] bytes, int offset, int length) {
-        LongLong hash = MurmurHash3_x64_128(bytes, offset, length, HASH_SEED);
+        return longLongToByteArray(MurmurHash3_x64_128(bytes, offset, length, HASH_SEED));
+    }
 
+    private static byte[] longLongToByteArray(LongLong hash) {
         byte[] array = new byte[DIGEST_SIZE];
         encodeBase62(hash.l1, array, 0);
         encodeBase62(hash.l2, array, BASE62_DIGITS_PER_LONG);
@@ -280,5 +282,21 @@ public final class Digest {
         k ^= k >>> 33;
 
         return k;
+    }
+
+    public static final class DigestBuilder {
+        private LongLong digest;
+
+        public DigestBuilder() {
+            digest = new LongLong(0L, 0L);
+        }
+
+        public void update(byte[] input) {
+            digest = MurmurHash3_x64_128(input, 0, input.length, digest.l1 ^ digest.l2);
+        }
+
+        public byte[] digest() {
+            return longLongToByteArray(digest);
+        }
     }
 }

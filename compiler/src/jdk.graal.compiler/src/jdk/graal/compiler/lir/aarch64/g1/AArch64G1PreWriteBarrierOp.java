@@ -49,9 +49,8 @@ import jdk.vm.ci.meta.Value;
  * {@link AArch64G1BarrierSetLIRTool}.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/5860a48c71e324f77a7ecc613c063cbb81580011/src/hotspot/cpu/aarch64/gc/g1/g1BarrierSetAssembler_aarch64.cpp#L98-L183",
-          ignore = "GR-58685",
-          sha1 = "9b21f261fba89d49673568e85193159286db3ef5")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/aarch64/gc/g1/g1BarrierSetAssembler_aarch64.cpp#L113-L200",
+          sha1 = "2c70c01c6aa612715fb5dc87ef1bfd4d4bfefef7")
 // @formatter:on
 public class AArch64G1PreWriteBarrierOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64G1PreWriteBarrierOp> TYPE = LIRInstructionClass.create(AArch64G1PreWriteBarrierOp.class);
@@ -147,7 +146,7 @@ public class AArch64G1PreWriteBarrierOp extends AArch64LIRInstruction {
                 CallingConvention cc = callTarget.getOutgoingCallingConvention();
                 AArch64Address cArg0 = (AArch64Address) crb.asAddress(cc.getArgument(0));
                 masm.str(64, previousValue, cArg0);
-                AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget) ? null : scratch1, null);
+                AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget, crb.getCodeCache()) ? null : scratch1, null);
                 masm.jmp(done);
             }
         });

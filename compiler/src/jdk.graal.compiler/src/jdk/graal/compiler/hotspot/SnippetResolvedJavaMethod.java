@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.Objects;
+import java.util.function.Function;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -38,6 +38,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 /**
  * A minimal implementation of {@link ResolvedJavaMethod} for use by libgraal.
@@ -161,11 +162,6 @@ public final class SnippetResolvedJavaMethod implements ResolvedJavaMethod {
     }
 
     @Override
-    public Annotation[][] getParameterAnnotations() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public Type[] getGenericParameterTypes() {
         throw new UnsupportedOperationException();
     }
@@ -211,17 +207,22 @@ public final class SnippetResolvedJavaMethod implements ResolvedJavaMethod {
     }
 
     @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+    public <T> T getDeclaredAnnotationInfo(Function<AnnotationsInfo, T> parser) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public Annotation[] getAnnotations() {
+    public AnnotationsInfo getTypeAnnotationInfo() {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public Annotation[] getDeclaredAnnotations() {
+    public AnnotationsInfo getAnnotationDefaultInfo() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public AnnotationsInfo getParameterAnnotationInfo() {
         throw new UnsupportedOperationException();
     }
 

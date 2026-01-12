@@ -43,24 +43,25 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.interpreter.classfile.ClassFile;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.pltgot.GOTEntryAllocator;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
+import com.oracle.svm.interpreter.classfile.ClassFile;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -168,17 +169,23 @@ public final class BuildTimeInterpreterUniverse {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static InterpreterResolvedJavaField createResolvedJavaField(ResolvedJavaField resolvedJavaField) {
-        ResolvedJavaField originalField = resolvedJavaField;
+    public static InterpreterResolvedJavaField createResolvedJavaField(AnalysisField analysisField) {
         BuildTimeInterpreterUniverse universe = BuildTimeInterpreterUniverse.singleton();
-        String name = universe.dedup(resolvedJavaField.getName());
-        int modifiers = resolvedJavaField.getModifiers();
-        JavaType fieldType = originalField.getType();
+        InterpreterResolvedObjectType declaringClass = universe.referenceType(analysisField.getDeclaringClass());
+        return InterpreterResolvedJavaField.createAtBuildTime(analysisField, declaringClass);
+    }
 
-        InterpreterResolvedJavaType type = universe.getOrCreateType((ResolvedJavaType) fieldType);
-        InterpreterResolvedObjectType declaringClass = universe.referenceType(originalField.getDeclaringClass());
-
-        return InterpreterResolvedJavaField.create(originalField, name, modifiers, type, declaringClass, 0, null);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void initializeJavaFieldFromHosted(HostedField hostedField, InterpreterResolvedJavaField resolvedJavaField) {
+        resolvedJavaField.setOffset(hostedField.getOffset());
+        if (hostedField.hasInstalledLayerNum()) {
+            resolvedJavaField.setInstalledLayerNum(hostedField.getInstalledLayerNum());
+        }
+        InterpreterResolvedJavaType fType = getType(hostedField.getType().getWrapped());
+        if (fType != null) {
+            // If the resolvedType is included, we can prepare it for the interpreter field.
+            resolvedJavaField.setResolvedType(fType);
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -194,9 +201,11 @@ public final class BuildTimeInterpreterUniverse {
         InterpreterUnresolvedSignature signature = universe.unresolvedSignature(originalMethod.getSignature());
         byte[] interpretedCode = originalMethod.getCode() == null ? null : originalMethod.getCode().clone();
 
+        boolean isSubstitutedNative = false;
         AnalysisMethod analysisMethod = (AnalysisMethod) originalMethod;
         if (analysisMethod.wrapped instanceof SubstitutionMethod substitutionMethod) {
             modifiers = substitutionMethod.getOriginal().getModifiers();
+            isSubstitutedNative = Modifier.isNative(modifiers);
             if (substitutionMethod.hasBytecodes()) {
                 /*
                  * GR-53710: Keep bytecodes for substitutions, but only when there's no compiled
@@ -209,7 +218,7 @@ public final class BuildTimeInterpreterUniverse {
         }
 
         LineNumberTable lineNumberTable = originalMethod.getLineNumberTable();
-        return InterpreterResolvedJavaMethod.create(
+        return InterpreterResolvedJavaMethod.createAtBuildTime(
                         originalMethod,
                         name,
                         maxLocals,
@@ -217,6 +226,7 @@ public final class BuildTimeInterpreterUniverse {
                         modifiers,
                         declaringClass,
                         signature,
+                        isSubstitutedNative,
                         interpretedCode,
                         null,
                         lineNumberTable,
@@ -332,7 +342,7 @@ public final class BuildTimeInterpreterUniverse {
                 } else if (constant.getJavaKind() == JavaKind.Illegal) {
                     // Materialized field without location e.g. DynamicHub#vtable.
                     thiz.setUnmaterializedConstant(buildTimeInterpreterUniverse.constant(JavaConstant.ILLEGAL));
-                } else if (thiz.getType().isWordType()) {
+                } else if (thiz.isWordStorage()) {
                     // Can be a WordType with a primitive constant value.
                     thiz.setUnmaterializedConstant(buildTimeInterpreterUniverse.constant(constant));
                 } else if (constant instanceof ImageHeapConstant imageHeapConstant) {
@@ -347,7 +357,7 @@ public final class BuildTimeInterpreterUniverse {
                 throw VMError.shouldNotReachHere("Invalid field kind: " + thiz.getJavaKind());
         }
         if (!thiz.isUndefined()) {
-            if (thiz.getType().isWordType()) {
+            if (thiz.isWordStorage()) {
                 VMError.guarantee(thiz.getUnmaterializedConstant().getJavaKind() == InterpreterToVM.wordJavaKind());
             } else {
                 VMError.guarantee(thiz.getUnmaterializedConstant().getJavaKind() == thiz.getJavaKind());
@@ -500,22 +510,29 @@ public final class BuildTimeInterpreterUniverse {
         return result;
     }
 
-    public InterpreterResolvedJavaField getOrCreateField(ResolvedJavaField resolvedJavaField) {
-        assert resolvedJavaField instanceof AnalysisField;
-        InterpreterResolvedJavaField result = fields.get(resolvedJavaField);
+    public InterpreterResolvedJavaField getField(ResolvedJavaField resolvedJavaField) {
+        ResolvedJavaField wrapped = resolvedJavaField;
+        if (wrapped instanceof HostedField hostedField) {
+            wrapped = hostedField.getWrapped();
+        }
+        return fields.get(wrapped);
+    }
+
+    public InterpreterResolvedJavaField getOrCreateField(AnalysisField analysisField) {
+        InterpreterResolvedJavaField result = fields.get(analysisField);
 
         if (result != null) {
             return result;
         }
 
-        result = createResolvedJavaField(resolvedJavaField);
+        result = createResolvedJavaField(analysisField);
 
-        InterpreterResolvedJavaField previous = fields.putIfAbsent(resolvedJavaField, result);
+        InterpreterResolvedJavaField previous = fields.putIfAbsent(analysisField, result);
         if (previous != null) {
             return previous;
         }
 
-        InterpreterUtil.log("[universe] Adding field '%s'", resolvedJavaField);
+        InterpreterUtil.log("[universe] Adding field '%s'", analysisField);
         return result;
     }
 
@@ -562,26 +579,26 @@ public final class BuildTimeInterpreterUniverse {
         if (imageHeapConstant.isBackedByHostedObject()) {
             Object value = snippetReflectionProvider.asObject(Object.class, imageHeapConstant.getHostedObject());
             if (value != null) {
-                return objectConstants.computeIfAbsent(imageHeapConstant, (key) -> ReferenceConstant.createFromNonNullReference(value));
+                return objectConstants.computeIfAbsent(imageHeapConstant, _ -> ReferenceConstant.createFromNonNullReference(value));
             }
         }
-        return objectConstants.computeIfAbsent(imageHeapConstant, (key) -> ReferenceConstant.createFromImageHeapConstant(imageHeapConstant));
+        return objectConstants.computeIfAbsent(imageHeapConstant, _ -> ReferenceConstant.createFromImageHeapConstant(imageHeapConstant));
     }
 
     public PrimitiveConstant primitiveConstant(int value) {
-        return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forInt(value));
+        return primitiveConstants.computeIfAbsent(value, _ -> JavaConstant.forInt(value));
     }
 
     public PrimitiveConstant primitiveConstant(long value) {
-        return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forLong(value));
+        return primitiveConstants.computeIfAbsent(value, _ -> JavaConstant.forLong(value));
     }
 
     public PrimitiveConstant primitiveConstant(float value) {
-        return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forFloat(value));
+        return primitiveConstants.computeIfAbsent(value, _ -> JavaConstant.forFloat(value));
     }
 
     public PrimitiveConstant primitiveConstant(double value) {
-        return primitiveConstants.computeIfAbsent(value, (key) -> JavaConstant.forDouble(value));
+        return primitiveConstants.computeIfAbsent(value, _ -> JavaConstant.forDouble(value));
     }
 
     public String stringConstant(String value) {
@@ -617,7 +634,7 @@ public final class BuildTimeInterpreterUniverse {
     }
 
     public InterpreterUnresolvedSignature unresolvedSignature(Signature signature) {
-        return signatures.computeIfAbsent(MetadataUtil.toUniqueString(signature), key -> createUnresolvedSignature(signature));
+        return signatures.computeIfAbsent(MetadataUtil.toUniqueString(signature), _ -> createUnresolvedSignature(signature));
     }
 
     public JavaType typeOrUnresolved(JavaType type) {
@@ -649,7 +666,7 @@ public final class BuildTimeInterpreterUniverse {
             // declaring type.
             JavaType holder = primitiveOrUnresolvedType(field.getDeclaringClass());
             JavaType type = primitiveOrUnresolvedType(field.getType());
-            result = unresolvedFields.computeIfAbsent(MetadataUtil.toUniqueString(field), key -> new UnresolvedJavaField(holder, dedup(field.getName()), type));
+            result = unresolvedFields.computeIfAbsent(MetadataUtil.toUniqueString(field), _ -> new UnresolvedJavaField(holder, dedup(field.getName()), type));
         }
         return result;
     }
@@ -662,7 +679,7 @@ public final class BuildTimeInterpreterUniverse {
             // Do not trust incoming unresolved method, it may have resolved holder.
             JavaType holder = primitiveOrUnresolvedType(method.getDeclaringClass());
             Signature signature = unresolvedSignature(method.getSignature());
-            result = unresolvedMethods.computeIfAbsent(MetadataUtil.toUniqueString(method), key -> new UnresolvedJavaMethod(dedup(method.getName()), signature, holder));
+            result = unresolvedMethods.computeIfAbsent(MetadataUtil.toUniqueString(method), _ -> new UnresolvedJavaMethod(dedup(method.getName()), signature, holder));
         }
         return result;
     }
@@ -730,10 +747,10 @@ public final class BuildTimeInterpreterUniverse {
     }
 
     static boolean isReachable(InterpreterResolvedJavaField field) {
-        AnalysisField originalField = (AnalysisField) field.getOriginalField();
+        AnalysisField originalField = field.getOriginalField();
         // Artificial reachability ensures that the interpreter keeps the field metadata around,
         // but reachability still depends on the reachability of the declaring class and field type.
-        return field.isArtificiallyReachable() || (originalField.isReachable() && originalField.getDeclaringClass().isReachable());
+        return field.isArtificiallyReachable() || (originalField.isReachable() && originalField.getDeclaringClass().isReachable() && originalField.getType().isReachable());
     }
 
     static boolean isReachable(InterpreterResolvedJavaMethod method) {
@@ -790,9 +807,9 @@ public final class BuildTimeInterpreterUniverse {
         }
         Iterator<Map.Entry<ResolvedJavaField, InterpreterResolvedJavaField>> iteratorFields = fields.entrySet().iterator();
         while (iteratorFields.hasNext()) {
-            Map.Entry<ResolvedJavaField, InterpreterResolvedJavaField> next = iteratorFields.next();
-            if (!isReachable(next.getValue()) || !isReachable(next.getValue().getDeclaringClass()) || !isReachable(next.getValue().getType())) {
-                InterpreterUtil.log("[purge] remove field '%s'", next.getValue());
+            InterpreterResolvedJavaField next = iteratorFields.next().getValue();
+            if (!isReachable(next)) {
+                InterpreterUtil.log("[purge] remove field '%s'", next);
                 iteratorFields.remove();
             }
         }
@@ -915,7 +932,7 @@ public final class BuildTimeInterpreterUniverse {
 
         InterpreterResolvedJavaMethod[] iVTable;
         if (hostedDispatchTable.length == 0) {
-            iVTable = InterpreterResolvedJavaType.NO_METHODS;
+            iVTable = InterpreterResolvedJavaMethod.EMPTY_ARRAY;
         } else {
             iVTable = new InterpreterResolvedJavaMethod[hostedDispatchTable.length];
 

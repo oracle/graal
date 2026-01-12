@@ -485,7 +485,7 @@ public abstract class Launcher {
      * @return {@code true}
      * @since 20.0
      */
-    @Deprecated(since = "26.0")
+    @Deprecated(since = "25.1")
     protected boolean canPolyglot() {
         return true;
     }

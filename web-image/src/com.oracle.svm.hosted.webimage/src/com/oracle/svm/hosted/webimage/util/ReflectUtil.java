@@ -37,8 +37,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.webimage.api.JS;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -72,8 +72,15 @@ public class ReflectUtil {
             return Optional.empty();
         }
 
+        Method[] methods;
+        try {
+            methods = javaInterface.getMethods();
+        } catch (NoClassDefFoundError e) {
+            return Optional.empty();
+        }
+
         Method sam = null;
-        for (final Method method : javaInterface.getMethods()) {
+        for (final Method method : methods) {
             if (OBJECT_METHODS.contains(method)) {
                 // Skip the methods from the Object class.
                 continue;

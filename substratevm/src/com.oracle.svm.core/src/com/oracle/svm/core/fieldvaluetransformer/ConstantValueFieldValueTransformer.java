@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.fieldvaluetransformer;
 
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
@@ -37,25 +37,25 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * When that value is the {@link #defaultValueForField default value for the field}, this
  * transformer implements the field value transformation semantics of {@link Kind#Reset}.
  */
-public record ConstantValueFieldValueTransformer(Object value) implements FieldValueTransformer {
+public record ConstantValueFieldValueTransformer(JavaConstant value) implements JVMCIFieldValueTransformer {
 
-    public static FieldValueTransformer defaultValueForField(ResolvedJavaField field) {
+    public static JVMCIFieldValueTransformer defaultValueForField(ResolvedJavaField field) {
         return new ConstantValueFieldValueTransformer(switch (field.getType().getJavaKind()) {
-            case Byte -> Byte.valueOf((byte) 0);
-            case Boolean -> Boolean.valueOf(false);
-            case Short -> Short.valueOf((short) 0);
-            case Char -> Character.valueOf((char) 0);
-            case Int -> Integer.valueOf(0);
-            case Long -> Long.valueOf(0);
-            case Float -> Float.valueOf(0);
-            case Double -> Double.valueOf(0);
-            case Object -> null;
+            case Byte -> JavaConstant.forByte((byte) 0);
+            case Boolean -> JavaConstant.FALSE;
+            case Short -> JavaConstant.forShort((short) 0);
+            case Char -> JavaConstant.forChar((char) 0);
+            case Int -> JavaConstant.INT_0;
+            case Long -> JavaConstant.LONG_0;
+            case Float -> JavaConstant.FLOAT_0;
+            case Double -> JavaConstant.DOUBLE_0;
+            case Object -> JavaConstant.NULL_POINTER;
             default -> throw VMError.shouldNotReachHere(String.valueOf(field));
         });
     }
 
     @Override
-    public Object transform(Object receiver, Object originalValue) {
+    public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
         return value;
     }
 }

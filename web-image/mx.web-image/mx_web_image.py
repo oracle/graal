@@ -49,7 +49,7 @@ from mx_unittest import unittest
 
 _suite = mx.suite("web-image")
 
-_web_image_js_engine_name = os.getenv("NODE_EXE", "node")
+_web_image_js_engine_name = [os.getenv("NODE_EXE", "node"), "--experimental-wasm-exnref"]
 
 # Name of GraalVm component defining the web-image macro
 web_image_component = "web-image"
@@ -63,7 +63,7 @@ web_image_builder_jars = [
     "web-image:WEBIMAGE_CLOSURE_SUPPORT",
     "web-image:WEBIMAGE_GOOGLE_CLOSURE",
 ]
-# Hosted options defined in the web-image-enterprise suite
+# Hosted options defined in the web-image suite
 # This list has to be kept in sync with the code (the 'webimageoptions' gate tag checks this)
 # See also WebImageConfiguration.hosted_options
 web_image_hosted_options = [
@@ -92,6 +92,7 @@ web_image_hosted_options = [
     "GrowthTriggerThreshold=",
     "HeapGrowthFactor=",
     "ImageHeapObjectsPerFunction=",
+    "LegacyExceptions",
     "JSComments=",
     "JSRuntime=",
     "LogFilter=",
@@ -489,7 +490,7 @@ class WebImageUnittestConfig(mx_unittest.MxUnittestConfig):
     def apply(self, config):
         vm_args, main_class, main_class_args = config
 
-        vm_args += ["-Dwebimage.test.js=" + _web_image_js_engine_name]
+        vm_args += ["-Dwebimage.test.js=" + ",".join(_web_image_js_engine_name)]
         vm_args += ["-Dwebimage.test.launcher=" + vm_web_image_path()]
         vm_args += ["-Dwebimage.test.flags=" + ",".join(get_launcher_flags(WebImageConfiguration.test_cases))]
         # If any of the arguments contains spaces and double quotes, on Windows it will add its own quotes around
@@ -515,6 +516,12 @@ class WebImageUnittestConfig(mx_unittest.MxUnittestConfig):
                     main_class_args[idx] = str(max_test_time)
                     mx.log(f"{self.name}: increased -JUnitMaxTestTime from {limit} to {max_test_time}")
             previous_entry = entry
+
+        # Export JVMCI packages to vmaccess
+        main_class_args += [
+            "-JUnitOpenPackages",
+            "jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess",
+        ]
 
         return vm_args, main_class, main_class_args
 

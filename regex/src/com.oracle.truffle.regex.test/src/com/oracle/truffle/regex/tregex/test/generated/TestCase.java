@@ -41,9 +41,9 @@
 package com.oracle.truffle.regex.tregex.test.generated;
 
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
-public record TestCase(String pattern, String flags, Encodings.Encoding encoding, SyntaxErrorOrInputs syntaxErrorOrInputs) {
+public record TestCase(String pattern, String flags, Encoding encoding, SyntaxErrorOrInputs syntaxErrorOrInputs) {
 
     public abstract static sealed class SyntaxErrorOrInputs permits SyntaxError, Inputs {
     }
@@ -80,11 +80,11 @@ public record TestCase(String pattern, String flags, Encodings.Encoding encoding
     public record Input(String input, int fromIndex, int[] captureGroupBoundsAndLastGroup) {
     }
 
-    public static TestCase testCase(String pattern, String flags, Encodings.Encoding encoding, SyntaxError syntaxError) {
+    public static TestCase testCase(String pattern, String flags, Encoding encoding, SyntaxError syntaxError) {
         return new TestCase(pattern, flags, encoding, syntaxError);
     }
 
-    public static TestCase testCase(String pattern, String flags, Encodings.Encoding encoding, Input... inputs) {
+    public static TestCase testCase(String pattern, String flags, Encoding encoding, Input... inputs) {
         return new TestCase(pattern, flags, encoding, new Inputs(inputs));
     }
 

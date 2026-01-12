@@ -23,19 +23,23 @@
 
   (start $main)
   (func $main
-    (try
-      (do (call $throwB))
-      (catch $tag0
-        (drop (call $checkException))
-      )
+    (block $catchBlock (result (ref $A))
+        (try_table
+          (catch $tag0 $catchBlock)
+          (call $throwB)
+          (unreachable)
+        )
     )
+    (drop (call $checkException))
 
-    (try
-      (do (call $throwC))
-      (catch $tag0
-        (drop (call $checkException))
-      )
+    (block $catchBlock (result (ref $A))
+        (try_table
+          (catch $tag0 $catchBlock)
+          (call $throwC)
+          (unreachable)
+        )
     )
+    (drop (call $checkException))
   )
 
   (func $checkException (param $p0 (ref $A)) (result (ref null $A))

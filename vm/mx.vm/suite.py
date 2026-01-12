@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
-    "version" : "26.0.0",
-    "mxversion": "7.55.2",
+    "version" : "25.1.0",
+    "mxversion": "7.67.0",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -17,6 +17,7 @@ suite = {
       "read" : "https://github.com/oracle/graal.git",
       "write" : "git@github.com:oracle/graal.git",
     },
+    "capture_suite_commit_info": False,
     "defaultLicense" : "GPLv2-CPE",
     "imports": {
         "suites": [
@@ -33,7 +34,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "7df11ab399392eb547d4d12dac040751324c7088",
+                "version": "1641f5fd84d7753cf10b991570352a9394d62e98",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
@@ -42,17 +43,9 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "7df11ab399392eb547d4d12dac040751324c7088",
+                "version": "1641f5fd84d7753cf10b991570352a9394d62e98",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
-                ]
-            },
-            {
-                "name": "truffleruby",
-                "version": "fb47be57831602db9f6e2bc2ef15e2bab4fcf0c1",
-                "dynamic": True,
-                "urls": [
-                    {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
                 ]
             },
             {
@@ -65,7 +58,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "38995b3f7f0b6de3cf522e3e815aa886d7c4a999",
+                "version": "6a416095d8d3f56caebac70866f2bc56cc354124",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -73,7 +66,7 @@ suite = {
             },
             {
                 "name": "polybenchmarks",
-                "version": "f7c8e4d31ba21a353494adef2ef0b7da66114143",
+                "version": "a04259d72ab94b6245d3ce775833c8e8a3af42fa",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/polybenchmarks.git", "kind": "git"},

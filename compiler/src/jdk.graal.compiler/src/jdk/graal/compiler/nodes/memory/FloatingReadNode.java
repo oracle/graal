@@ -36,9 +36,11 @@ import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.DebugCloseable;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GuardedValueNode;
 import jdk.graal.compiler.nodes.NodeView;
@@ -80,26 +82,41 @@ public class FloatingReadNode extends FloatingAccessNode implements Canonicaliza
      */
     private final boolean noAntiDependency;
 
-    public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryKill lastLocationAccess, Stamp stamp) {
-        this(address, location, lastLocationAccess, stamp, null, BarrierType.NONE);
+    /**
+     * Creates a FlaotingReadNode and checks that the current {@link GraphState} permits their
+     * creation. This is used when a {@link FloatingReadNode} must be created. If a read is needed
+     * but it can be either fixed or floating then
+     * {@link #createRead(StructuredGraph, AddressNode, LocationIdentity, Stamp, GuardingNode, BarrierType, FixedWithNextNode)}
+     * can be used instead. This API is temporary and no new code should be written to use it.
+     */
+    public static FloatingReadNode create(StructuredGraph graph, AddressNode address, LocationIdentity location, MemoryKill lastLocationAccess, Stamp stamp, GuardingNode guard,
+                    BarrierType barrierType) {
+        GraalError.guarantee(graph.getGraphState().allowsFloatingReads() ||
+                        graph.getGraphState().requiresFutureStage(GraphState.StageFlag.VECTOR_LOWERING), "must allow floating reads: %s", graph.getGraphState());
+        return graph.addOrUniqueWithInputs(new FloatingReadNode(address, location, lastLocationAccess, stamp, guard, barrierType, null, false, false));
     }
 
-    public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryKill lastLocationAccess, Stamp stamp, GuardingNode guard) {
-        this(address, location, lastLocationAccess, stamp, guard, BarrierType.NONE);
+    /**
+     * Create a {@link FloatingReadNode} or {@link ReadNode} depending on the value of
+     * {@link GraphState#allowsFloatingReads()}. This API is temporary and no new code should be
+     * written to use it.
+     */
+    public static ValueNode createRead(StructuredGraph graph, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType,
+                    FixedWithNextNode insertAfter) {
+        GraalError.guarantee(location.isImmutable(), "Only immutable locations can be directly created: %s", location);
+        if (graph.getGraphState().allowsFloatingReads()) {
+            return graph.addOrUniqueWithInputs(new FloatingReadNode(address, location, null, stamp, guard, barrierType, null, false, false));
+        } else {
+            ReadNode memoryRead = graph.addOrUniqueWithInputs(new ReadNode(address, location, null, stamp, guard, barrierType));
+            graph.addAfterFixed(insertAfter, memoryRead);
+            GraalError.guarantee(memoryRead.canFloat(), "this path is only usable for floatable reads: %s", memoryRead);
+            return memoryRead;
+        }
     }
 
-    public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryKill lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
-        this(TYPE, address, location, lastLocationAccess, stamp, guard, barrierType, null, false, false);
-    }
-
-    public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryKill lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType, ResolvedJavaField field,
-                    boolean trustInjected) {
-        this(TYPE, address, location, lastLocationAccess, stamp, guard, barrierType, field, trustInjected, false);
-    }
-
-    protected FloatingReadNode(NodeClass<? extends FloatingAccessNode> c, AddressNode address, LocationIdentity location, MemoryKill lastLocationAccess, Stamp stamp, GuardingNode guard,
+    protected FloatingReadNode(AddressNode address, LocationIdentity location, MemoryKill lastLocationAccess, Stamp stamp, GuardingNode guard,
                     BarrierType barrierType, ResolvedJavaField field, boolean trustInjected, boolean noAntiDependency) {
-        super(c, address, location, stamp, guard, barrierType);
+        super(TYPE, address, location, stamp, guard, barrierType);
         this.lastLocationAccess = lastLocationAccess;
         this.field = field;
         this.trustInjected = trustInjected;
@@ -206,7 +223,7 @@ public class FloatingReadNode extends FloatingAccessNode implements Canonicaliza
             // Setting noAntiDependency to true is a must, otherwise we can introduce incorrect
             // anti-dependencies with nodes between the old memory input and newMemory, leading to
             // an unschedulable graph
-            FloatingReadNode res = new FloatingReadNode(TYPE, getAddress(), getLocationIdentity(), newMemory, stamp, getGuard(), getBarrierType(), field, trustInjected, true);
+            FloatingReadNode res = new FloatingReadNode(getAddress(), getLocationIdentity(), newMemory, stamp, getGuard(), getBarrierType(), field, trustInjected, true);
             return res;
         }
 

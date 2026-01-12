@@ -24,35 +24,36 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import java.lang.reflect.AnnotatedElement;
-
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
+import com.oracle.svm.util.AnnotatedWrapper;
+import com.oracle.svm.util.OriginalFieldProvider;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
-public class SubstitutionField implements ResolvedJavaField, OriginalFieldProvider, AnnotationWrapper {
+public class SubstitutionField implements ResolvedJavaField, OriginalFieldProvider, AnnotationWrapper, AnnotatedWrapper {
 
     private final ResolvedJavaField original;
     private final ResolvedJavaField annotated;
 
     /**
      * This field is used in the {@link com.oracle.svm.hosted.SubstitutionReportFeature} class to
-     * determine {@link SubstitutionMethod} objects which correspond to annotated substitutions.
+     * determine {@link SubstitutionMethod} objects are user-defined substitutions (from the
+     * classpath).
      */
-    private final boolean isUserSubstitution;
+    private final boolean userSubstitution;
 
-    public SubstitutionField(ResolvedJavaField original, ResolvedJavaField annotated, boolean isUserSubstitution) {
+    public SubstitutionField(ResolvedJavaField original, ResolvedJavaField annotated, boolean userSubstitution) {
         this.original = original;
         this.annotated = annotated;
-        this.isUserSubstitution = isUserSubstitution;
+        this.userSubstitution = userSubstitution;
     }
 
     public boolean isUserSubstitution() {
-        return isUserSubstitution;
+        return userSubstitution;
     }
 
     public ResolvedJavaField getOriginal() {
@@ -99,7 +100,7 @@ public class SubstitutionField implements ResolvedJavaField, OriginalFieldProvid
     }
 
     @Override
-    public AnnotatedElement getAnnotationRoot() {
+    public Annotated getWrappedAnnotated() {
         return annotated;
     }
 

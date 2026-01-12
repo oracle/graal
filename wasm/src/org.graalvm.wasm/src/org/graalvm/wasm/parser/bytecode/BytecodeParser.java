@@ -56,7 +56,8 @@ import org.graalvm.wasm.Linker;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmStore;
-import org.graalvm.wasm.collection.ByteArrayList;
+import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
@@ -223,14 +224,32 @@ public abstract class BytecodeParser {
      */
     public static void resetTableState(WasmStore store, WasmModule module, WasmInstance instance) {
         final byte[] bytecode = module.bytecode();
+        for (int tableIndex = 0; tableIndex < module.tableCount(); tableIndex++) {
+            if (module.tableInitialValue(tableIndex) != null) {
+                Linker.initializeTable(instance, tableIndex, module.tableInitialValue(tableIndex));
+            } else if (module.tableInitializerBytecode(tableIndex) != null) {
+                Linker.initializeTable(instance, tableIndex, Linker.evalConstantExpression(instance, module.tableInitializerBytecode(tableIndex)));
+            }
+        }
         for (int i = 0; i < module.elemInstanceCount(); i++) {
             final int elemOffset = module.elemInstanceOffset(i);
             final int flags = bytecode[elemOffset];
-            final int typeAndMode = bytecode[elemOffset + 1];
+            final int typeLengthAndMode = bytecode[elemOffset + 1];
             int effectiveOffset = elemOffset + 2;
 
-            final int elemMode = typeAndMode & BytecodeBitEncoding.ELEM_SEG_MODE_VALUE;
+            final int elemMode = typeLengthAndMode & BytecodeBitEncoding.ELEM_SEG_MODE_VALUE;
 
+            switch (typeLengthAndMode & BytecodeBitEncoding.ELEM_SEG_TYPE_MASK) {
+                case BytecodeBitEncoding.ELEM_SEG_TYPE_I8:
+                    effectiveOffset++;
+                    break;
+                case BytecodeBitEncoding.ELEM_SEG_TYPE_I16:
+                    effectiveOffset += 2;
+                    break;
+                case BytecodeBitEncoding.ELEM_SEG_TYPE_I32:
+                    effectiveOffset += 4;
+                    break;
+            }
             final int elemCount;
             switch (flags & BytecodeBitEncoding.ELEM_SEG_COUNT_MASK) {
                 case BytecodeBitEncoding.ELEM_SEG_COUNT_U8:
@@ -346,6 +365,9 @@ public abstract class BytecodeParser {
         final int flags = bytecode[codeEntryOffset];
         int effectiveOffset = codeEntryOffset + 1;
 
+        // the exception table offset is encoded in the 4 bytes before the code entry
+        final int exceptionTableOffset = BinaryStreamParser.rawPeekI32(bytecode, codeEntryOffset - 4);
+
         final int functionIndex;
         switch (flags & BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_MASK) {
             case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_ZERO:
@@ -403,30 +425,38 @@ public abstract class BytecodeParser {
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
-        final byte[] locals;
+        final int[] locals;
         if ((flags & BytecodeBitEncoding.CODE_ENTRY_LOCALS_FLAG) != 0) {
-            ByteArrayList localsList = new ByteArrayList();
-            for (; bytecode[effectiveOffset] != 0; effectiveOffset++) {
-                localsList.add(bytecode[effectiveOffset]);
+            IntArrayList localsList = new IntArrayList();
+            for (; bytecode[effectiveOffset] != 0; effectiveOffset += 4) {
+                localsList.add(BinaryStreamParser.peek4(bytecode, effectiveOffset));
             }
             effectiveOffset++;
             locals = localsList.toArray();
         } else {
-            locals = Bytecode.EMPTY_BYTES;
+            locals = WasmType.VOID_TYPE_ARRAY;
         }
-        final byte[] results;
+        final int[] results;
         if ((flags & BytecodeBitEncoding.CODE_ENTRY_RESULT_FLAG) != 0) {
-            ByteArrayList resultsList = new ByteArrayList();
-            for (; bytecode[effectiveOffset] != 0; effectiveOffset++) {
-                resultsList.add(bytecode[effectiveOffset]);
+            IntArrayList resultsList = new IntArrayList();
+            for (; bytecode[effectiveOffset] != 0; effectiveOffset += 4) {
+                resultsList.add(BinaryStreamParser.peek4(bytecode, effectiveOffset));
             }
             results = resultsList.toArray();
         } else {
-            results = Bytecode.EMPTY_BYTES;
+            results = WasmType.VOID_TYPE_ARRAY;
         }
-        List<CallNode> callNodes = readCallNodes(bytecode, codeEntryOffset - length, codeEntryOffset);
+        final int endOffset;
+        if (exceptionTableOffset == BytecodeBitEncoding.INVALID_EXCEPTION_TABLE_OFFSET) {
+            // no exception table
+            endOffset = (codeEntryOffset - 4);
+        } else {
+            endOffset = exceptionTableOffset;
+        }
+        final int startOffset = endOffset - length;
+        List<CallNode> callNodes = readCallNodes(bytecode, startOffset, endOffset);
         boolean usesMemoryZero = module.memoryCount() != 0;
-        return new CodeEntry(functionIndex, maxStackSize, locals, results, callNodes, codeEntryOffset - length, codeEntryOffset, usesMemoryZero);
+        return new CodeEntry(functionIndex, maxStackSize, locals, results, callNodes, startOffset, endOffset, usesMemoryZero, exceptionTableOffset);
     }
 
     /**
@@ -453,12 +483,14 @@ public abstract class BytecodeParser {
                     offset += 8;
                     break;
                 }
-                case Bytecode.CALL_INDIRECT_U8: {
+                case Bytecode.CALL_INDIRECT_U8:
+                case Bytecode.CALL_REF_U8: {
                     callNodes.add(new CallNode(originalOffset));
                     offset += 3;
                     break;
                 }
-                case Bytecode.CALL_INDIRECT_I32: {
+                case Bytecode.CALL_INDIRECT_I32:
+                case Bytecode.CALL_REF_I32: {
                     callNodes.add(new CallNode(originalOffset));
                     offset += 12;
                     break;
@@ -692,9 +724,7 @@ public abstract class BytecodeParser {
                 case Bytecode.I64_STORE_32_I32:
                 case Bytecode.I32_CONST_I32:
                 case Bytecode.F32_CONST:
-                case Bytecode.REF_FUNC:
-                case Bytecode.TABLE_GET:
-                case Bytecode.TABLE_SET: {
+                case Bytecode.REF_FUNC: {
                     offset += 4;
                     break;
                 }
@@ -774,7 +804,13 @@ public abstract class BytecodeParser {
                         case Bytecode.I64_TRUNC_SAT_F32_S:
                         case Bytecode.I64_TRUNC_SAT_F32_U:
                         case Bytecode.I64_TRUNC_SAT_F64_S:
-                        case Bytecode.I64_TRUNC_SAT_F64_U: {
+                        case Bytecode.I64_TRUNC_SAT_F64_U:
+                        case Bytecode.THROW_REF: {
+                            break;
+                        }
+                        case Bytecode.BR_ON_NULL_U8:
+                        case Bytecode.BR_ON_NON_NULL_U8: {
+                            offset += 3;
                             break;
                         }
                         case Bytecode.MEMORY_FILL:
@@ -782,12 +818,19 @@ public abstract class BytecodeParser {
                         case Bytecode.MEMORY64_SIZE:
                         case Bytecode.MEMORY64_GROW:
                         case Bytecode.DATA_DROP:
-                        case Bytecode.DATA_DROP_UNSAFE:
                         case Bytecode.ELEM_DROP:
                         case Bytecode.TABLE_GROW:
                         case Bytecode.TABLE_SIZE:
-                        case Bytecode.TABLE_FILL: {
+                        case Bytecode.TABLE_FILL:
+                        case Bytecode.THROW:
+                        case Bytecode.TABLE_GET:
+                        case Bytecode.TABLE_SET: {
                             offset += 4;
+                            break;
+                        }
+                        case Bytecode.BR_ON_NULL_I32:
+                        case Bytecode.BR_ON_NON_NULL_I32: {
+                            offset += 6;
                             break;
                         }
                         case Bytecode.MEMORY_INIT:

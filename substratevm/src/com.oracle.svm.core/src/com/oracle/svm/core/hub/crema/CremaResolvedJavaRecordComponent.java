@@ -24,23 +24,9 @@
  */
 package com.oracle.svm.core.hub.crema;
 
-import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 
-public interface CremaResolvedJavaRecordComponent {
-
-    /**
-     * Gets the name of the record component.
-     *
-     * @return the name
-     */
-    String getName();
-
-    /**
-     * Gets the type of the record component.
-     *
-     * @return the type
-     */
-    JavaType getType();
+public interface CremaResolvedJavaRecordComponent extends ResolvedJavaRecordComponent {
 
     /**
      * Gets the generic signature of the record component.

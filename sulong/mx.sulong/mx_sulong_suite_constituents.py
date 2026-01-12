@@ -413,6 +413,9 @@ class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many
         srcDir = mx_subst.path_substitutions.substitute(srcDir)
         super(AbstractSulongNativeProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
 
+    def isJDKDependent(self):
+        return False
+
 
 class VariantCMakeNinjaBuildTask(mx_cmake.CMakeNinjaBuildTask):
     def __init__(self, args, project, target_arch=mx.get_arch(), ninja_targets=None, variant=None):

@@ -27,8 +27,6 @@ package jdk.graal.compiler.hotspot.replaycomp.proxy;
 import jdk.graal.compiler.core.common.CompilerProfiler;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-//JaCoCo Exclude
-
 public final class CompilerProfilerProxy extends CompilationProxyBase implements CompilerProfiler {
     CompilerProfilerProxy(InvocationHandler handler) {
         super(handler);

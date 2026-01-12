@@ -42,6 +42,7 @@ package com.oracle.truffle.dsl.processor.bytecode.generator;
 
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.generic;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.mergeSuppressWarnings;
+import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
@@ -82,17 +83,24 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
     private final DeclaredType languageClass;
     private final BuilderElement builder;
     private final DeclaredType builderType;
+    private final BytecodeDescriptorElement bytecodeDescriptorElement;
     private final TypeMirror parserType;
+    private final TypeMirror abstractBuilderType;
 
-    BytecodeRootNodeErrorElement(BytecodeDSLModel model) {
+    BytecodeRootNodeErrorElement(BytecodeDSLModel model, TypeMirror abstractBuilderType) {
         super(Set.of(PUBLIC, FINAL), ElementKind.CLASS, ElementUtils.findPackageElement(model.getTemplateType()), model.getName());
         this.model = model;
         this.languageClass = model.languageClass == null ? generic(types.TruffleLanguage) : model.languageClass;
+        this.abstractBuilderType = abstractBuilderType;
         this.setSuperClass(model.templateType.asType());
         GeneratorUtils.addGeneratedBy(context, this, model.templateType);
         this.builder = this.add(new BuilderElement());
         this.builderType = new GeneratedTypeMirror("", builder.getSimpleName().toString(), builder.asType());
         this.parserType = generic(types.BytecodeParser, builderType);
+        this.bytecodeDescriptorElement = this.add(new BytecodeDescriptorElement());
+        CodeVariableElement descriptor = new CodeVariableElement(Set.of(PUBLIC, STATIC, FINAL), bytecodeDescriptorElement.asType(), "BYTECODE");
+        descriptor.createInitBuilder().string("null").end();
+        this.getEnclosedElements().add(0, descriptor);
 
         this.add(createExecute());
         this.add(createConstructor());
@@ -178,6 +186,19 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
 
     TypeMirror type(Class<?> c) {
         return context.getType(c);
+    }
+
+    final class BytecodeDescriptorElement extends CodeTypeElement {
+        BytecodeDescriptorElement() {
+            super(Set.of(PUBLIC, STATIC, ABSTRACT), ElementKind.CLASS, null, "Bytecode");
+
+            TypeMirror superType = abstractBuilderType == null ? null : BytecodeDSLCodeGenerator.findBytecodeVariantType(abstractBuilderType);
+            if (superType == null) {
+                // regular case
+                superType = generic(types.BytecodeDescriptor, model.getTemplateType().asType(), model.languageClass, builder.asType());
+            }
+            setSuperClass(superType);
+        }
     }
 
     private final class BuilderElement extends CodeTypeElement {

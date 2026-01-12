@@ -43,9 +43,7 @@
           for f in _fields
         ],
         mxgate_name:: outer.task_name,
-        # we use the "gate-" prefix also for tiered jobs to avoid changing existing job names
-        local name_prefix = if std.startsWith(outer.target, "tier") then "gate" else outer.target,
-        name: std.join("-", [name_prefix, suite_short, self.mxgate_name] + config + [outer.jdk_name] + target_arch_suffix + [outer.os, outer.arch]) + batch_suffix,
+        name: std.join("-", [suite_short, self.mxgate_name] + config + [outer.jdk_name] + target_arch_suffix + [outer.os, outer.arch]) + batch_suffix,
         run+: [["mx", "--kill-with-sigquit", "--strict-compliance"] + dynamic_imports + ["gate", "--strict-mode", "--tags", std.join(",", outer.mxgate_tags)] + outer.mxgate_extra_args],
       }
     })),
@@ -118,7 +116,7 @@
 
   use_llvm:: task_spec({
       mxgate_config+::["llvm"],
-      mxgate_extra_args+: ["--extra-image-builder-arguments=-H:+UnlockExperimentalVMOptions -H:CompilerBackend=llvm -H:-UnlockExperimentalVMOptions"],
+      mxgate_extra_args+: ["--extra-image-builder-arguments=-H:+UnlockExperimentalVMOptions --tool:llvm-backend -H:-UnlockExperimentalVMOptions"],
   }),
 
   use_ecj:: task_spec({

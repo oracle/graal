@@ -99,7 +99,9 @@ public interface SharedMethod extends ResolvedJavaMethod {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int getImageCodeDeoptOffset();
 
-    /** Always call this method indirectly, even if it is normally called directly. */
+    /**
+     * Always call this method indirectly, even if it is normally called directly.
+     */
     boolean forceIndirectCall();
 
     /**
@@ -108,4 +110,17 @@ public interface SharedMethod extends ResolvedJavaMethod {
      */
     @Override
     boolean isDeclared();
+
+    /**
+     * Returns a function pointer to the method if it can be called directly without any dispatch.
+     * <p>
+     * This method should be overridden in implementations to provide raw access to the direct
+     * address of this method. This is solely reserved for types present during image building and
+     * should only be used at runtime for just-in-time compiled code calling into the image built
+     * method.
+     *
+     * @return an AOT compiled entry point of this method or {@code Word.nullPointer()} if no
+     *         compiled entry point is available.
+     */
+    MethodPointer getAOTEntrypoint();
 }

@@ -78,24 +78,6 @@ class JSConversion extends Conversion {
         return jlstring.toJSString();
     }
 
-    /**
-     * Converts a Java array to a JavaScript array that contains JavaScript values
-     * that correspond to the Java values of the input array.
-     *
-     * @param jarray A Java array
-     * @returns {*} The resulting JavaScript array
-     */
-    extractJavaScriptArray(jarray) {
-        const length = $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["lengthOf"](jarray);
-        const jsarray = new Array(length);
-        for (let i = 0; i < length; i++) {
-            jsarray[i] = $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["javaToJavaScript"](
-                jarray[i]
-            );
-        }
-        return jsarray;
-    }
-
     // JavaScript-to-Java conversions (standard Java classes)
 
     /**
@@ -270,11 +252,31 @@ class JSConversion extends Conversion {
         return isA(true, obj, hub);
     }
 
-    getOrCreateProxyHandler(constructor) {
-        if (!constructor.hasOwnProperty(runtime.symbol.javaProxyHandler)) {
-            constructor[runtime.symbol.javaProxyHandler] = new JSProxyHandler(constructor);
+    isSupertype(supertype, subtype) {
+        return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["isSupertype"](supertype, subtype);
+    }
+
+    getHub(obj) {
+        return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["getClass"](obj);
+    }
+
+    getSupertype(hub) {
+        return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["getSuperclass"](hub);
+    }
+
+    getComponentHub(hub) {
+        return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["getComponentType"](hub);
+    }
+
+    getTypeNameAsJavaString(hub) {
+        return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["getClassName"](hub);
+    }
+
+    getOrCreateProxyHandler(hub) {
+        if (!hub.hasOwnProperty(runtime.symbol.javaProxyHandler)) {
+            hub[runtime.symbol.javaProxyHandler] = new JSProxyHandler(hub);
         }
-        return constructor[runtime.symbol.javaProxyHandler];
+        return hub[runtime.symbol.javaProxyHandler];
     }
 
     _getProxyHandlerArg(obj) {
@@ -322,46 +324,12 @@ class JSConversion extends Conversion {
                 return BigInt(bs);
             case "string":
                 return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["coerceToJavaScriptString"](o);
-            case "object":
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["coerceToJavaScriptObject"](o);
             case "function":
                 const sam = proxyHandler._getSingleAbstractMethod(proxy);
                 if (sam !== undefined) {
                     return (...args) => proxyHandler._applyWithObject(proxy, args);
                 }
                 this.throwClassCastException(o, tpe);
-            case Uint8Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["coerceToJavaScriptUint8Array"](
-                    o
-                );
-            case Int8Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["coerceToJavaScriptInt8Array"](
-                    o
-                );
-            case Uint16Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m[
-                    "coerceToJavaScriptUint16Array"
-                ](o);
-            case Int16Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["coerceToJavaScriptInt16Array"](
-                    o
-                );
-            case Int32Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["coerceToJavaScriptInt32Array"](
-                    o
-                );
-            case Float32Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m[
-                    "coerceToJavaScriptFloat32Array"
-                ](o);
-            case BigInt64Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m[
-                    "coerceToJavaScriptBigInt64Array"
-                ](o);
-            case Float64Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m[
-                    "coerceToJavaScriptFloat64Array"
-                ](o);
             default:
                 this.throwClassCastException(o, tpe);
         }
@@ -378,7 +346,7 @@ class JSConversion extends Conversion {
             typeHub = runtime.hubs[type];
         } else if (typeof type === "object") {
             const javaType = type[runtime.symbol.javaNative];
-            if (javaType !== undefined && javaType.constructor === runtime.classHub) {
+            if (javaType !== undefined && this.isJavaLangClass(javaType)) {
                 typeHub = javaType;
             }
         }
@@ -390,8 +358,8 @@ class JSConversion extends Conversion {
         // Check if the current object is a Java Proxy, in which case no coercion is possible.
         let javaValue = javaScriptValue[runtime.symbol.javaNative];
         if (javaValue !== undefined) {
-            const valueHub = runtime.hubOf(javaValue);
-            if (runtime.isSupertype(typeHub, valueHub)) {
+            const valueHub = this.getHub(javaValue);
+            if (this.isSupertype(typeHub, valueHub)) {
                 return javaValue;
             } else {
                 throw new Error("Cannot coerce Java Proxy of type '" + valueHub + "' to the type '" + typeHub + "'");
@@ -401,6 +369,82 @@ class JSConversion extends Conversion {
         javaValue = this.javaScriptToJava(javaScriptValue);
         return this.javaToJavaScript(javaValue.$t["org.graalvm.webimage.api.JSValue"].$m["as"](javaValue, typeHub));
     }
+
+    getArrayLength(javaArray) {
+        return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["lengthOf"](javaArray);
+    }
+
+    loadBooleanArrayElement(javaArray, idx) {
+        return !!javaArray[idx];
+    }
+
+    loadByteArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    loadShortArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    loadCharArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    loadIntArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    loadFloatArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    loadLongArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    loadDoubleArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    loadObjectArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    storeBooleanArrayElement(javaArray, idx, jsBoolean) {
+        javaArray[idx] = jsBoolean ? 1 : 0;
+    }
+
+    storeByteArrayElement(javaArray, idx, jsNumber) {
+        javaArray[idx] = jsNumber;
+    }
+
+    storeShortArrayElement(javaArray, idx, jsNumber) {
+        javaArray[idx] = jsNumber;
+    }
+
+    storeCharArrayElement(javaArray, idx, jsNumber) {
+        javaArray[idx] = jsNumber;
+    }
+
+    storeIntArrayElement(javaArray, idx, jsNumber) {
+        javaArray[idx] = jsNumber;
+    }
+
+    storeFloatArrayElement(javaArray, idx, jsNumber) {
+        javaArray[idx] = jsNumber;
+    }
+
+    storeLongArrayElement(javaArray, idx, jsBigInt) {
+        javaArray[idx] = jsBigInt;
+    }
+
+    storeDoubleArrayElement(javaArray, idx, jsNumber) {
+        javaArray[idx] = jsNumber;
+    }
+
+    storeObjectArrayElement(javaArray, idx, javaObjectValue) {
+        javaArray[idx] = javaObjectValue;
+    }
 }
 
 // Java Proxies
@@ -409,30 +453,8 @@ class JSConversion extends Conversion {
  * Handler for JavaScript Proxies that wrap Java objects.
  */
 class JSProxyHandler extends ProxyHandler {
-    constructor(javaScriptConstructor) {
-        super();
-        this.javaScriptConstructor = javaScriptConstructor;
-    }
-
     _getClassMetadata() {
-        return this.javaScriptConstructor[runtime.symbol.classMeta];
-    }
-
-    _getClassName() {
-        return this.javaScriptConstructor.name;
-    }
-
-    _linkMethodPrototype() {
-        if (this.javaScriptConstructor !== $t["java.lang.Object"]) {
-            const parentConstructor = Object.getPrototypeOf(this.javaScriptConstructor);
-            const parentProxyHandler = conversion.getOrCreateProxyHandler(parentConstructor);
-            Object.setPrototypeOf(this._getMethods(), parentProxyHandler._getMethods());
-        }
-    }
-
-    _getSingleAbstractMethod(javaScriptJavaProxy) {
-        const javaThis = javaScriptJavaProxy[runtime.symbol.javaNative];
-        return javaThis.constructor[runtime.symbol.classMeta].singleAbstractMethod;
+        return this.javaHub[runtime.symbol.jsClass]?.[runtime.symbol.classMeta];
     }
 
     _createInstance(hub) {
@@ -442,11 +464,5 @@ class JSProxyHandler extends ProxyHandler {
 }
 
 const conversion = new JSConversion();
-
-runtime.classHub = $t["java.lang.Class"];
-
-runtime.hubOf = $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["hubOf"];
-
-runtime.isSupertype = $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["isSupertype"];
 
 vm.as = (...args) => conversion.coerceJavaScriptToJavaType(...args);

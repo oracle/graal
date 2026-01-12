@@ -30,9 +30,12 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.espresso.io.Checks;
 import com.oracle.truffle.espresso.io.FDAccess;
+import com.oracle.truffle.espresso.io.Throw;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
@@ -41,7 +44,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(value = FileInputStream.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_io_FileInputStream {
 
     private static final EnumSet<StandardOpenOption> READ_ONLY_OPTION_SET = EnumSet.of(StandardOpenOption.READ);
@@ -55,16 +58,29 @@ public final class Target_java_io_FileInputStream {
     @Throws(FileNotFoundException.class)
     public static void open0(@JavaType(FileInputStream.class) StaticObject self,
                     @JavaType(String.class) StaticObject name,
-                    @Inject Meta meta, @Inject TruffleIO io) {
+                    @Inject Meta meta, @Inject TruffleIO io, @Inject EspressoContext context) {
         Checks.nullCheck(name, meta);
-        io.open(self, FDAccess.forFileInputStream(), meta.toHostString(name), READ_ONLY_OPTION_SET);
+        String hostName = meta.toHostString(name);
+        try {
+            io.open(self, FDAccess.forFileInputStream(), hostName, READ_ONLY_OPTION_SET);
+        } catch (EspressoException e) {
+            // Guest code only ever expects FileNotFoundException.
+            throw Throw.throwFileNotFoundException(hostName, context);
+        }
     }
 
     @Substitution(hasReceiver = true)
     @Throws(IOException.class)
     public static int read0(@JavaType(FileInputStream.class) StaticObject self,
                     @Inject TruffleIO io) {
-        return io.readSingle(self, FDAccess.forFileInputStream());
+        int n = io.readSingle(self, FDAccess.forFileInputStream());
+        /*
+         * According to the documentation, we should only return the byte read or EOF and no other
+         * error code. Since the underlying channel is in blocking mode, we should never get the
+         * unavailable error code, which is the only possible alternative.
+         */
+        assert n >= 0 || n == io.ioStatusSync.EOF;
+        return n;
     }
 
     @Substitution(hasReceiver = true)

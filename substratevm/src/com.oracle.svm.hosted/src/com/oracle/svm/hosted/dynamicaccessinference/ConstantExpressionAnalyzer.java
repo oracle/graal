@@ -39,8 +39,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.svm.core.hub.ClassForNameSupport;
@@ -137,7 +137,7 @@ final class ConstantExpressionAnalyzer extends AbstractInterpreter<ConstantExpre
         mergedStates.transform(v -> v instanceof FailedArrayMergeValue, v -> {
             var failedArrayMerge = (FailedArrayMergeValue) v;
             for (CompileTimeArrayConstant<?> constantArray : failedArrayMerge.arraysToMerge()) {
-                mergedStates.transform(arr -> arr.equals(constantArray), arr -> defaultValue());
+                mergedStates.transform(arr -> arr.equals(constantArray), _ -> defaultValue());
             }
             return defaultValue();
         });
@@ -229,7 +229,7 @@ final class ConstantExpressionAnalyzer extends AbstractInterpreter<ConstantExpre
              * Due to this rule, the only arrays we consider constant are the ones where their
              * initialization is directly used.
              */
-            context.state().transform(v -> v.equals(constantArray), v -> defaultValue());
+            context.state().transform(v -> v.equals(constantArray), _ -> defaultValue());
         }
         return defaultValue();
     }
@@ -242,12 +242,12 @@ final class ConstantExpressionAnalyzer extends AbstractInterpreter<ConstantExpre
                 try {
                     int realIndex = ((Number) constantIndex.getValue()).intValue();
                     newConstantArray.setElement(realIndex, constantValue.getValue());
-                    context.state().transform(v -> v.equals(constantArray), v -> newConstantArray);
+                    context.state().transform(v -> v.equals(constantArray), _ -> newConstantArray);
                 } catch (Exception e) {
-                    context.state().transform(v -> v.equals(constantArray), v -> defaultValue());
+                    context.state().transform(v -> v.equals(constantArray), _ -> defaultValue());
                 }
             } else {
-                context.state().transform(v -> v.equals(constantArray), v -> defaultValue());
+                context.state().transform(v -> v.equals(constantArray), _ -> defaultValue());
             }
         }
     }
@@ -301,7 +301,7 @@ final class ConstantExpressionAnalyzer extends AbstractInterpreter<ConstantExpre
          * accessed in other methods through those).
          */
         if (value instanceof CompileTimeArrayConstant<?> constantArray) {
-            context.state().transform(v -> v.equals(constantArray), v -> defaultValue());
+            context.state().transform(v -> v.equals(constantArray), _ -> defaultValue());
         }
     }
 

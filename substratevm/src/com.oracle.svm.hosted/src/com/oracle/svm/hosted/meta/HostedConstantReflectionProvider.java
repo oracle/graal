@@ -53,7 +53,7 @@ public class HostedConstantReflectionProvider extends AnalysisConstantReflection
         super(hUniverse.getBigBang().getUniverse(), hUniverse.getBigBang().getMetaAccess(), classInitializationSupport);
         this.hUniverse = hUniverse;
         this.hMetaAccess = hMetaAccess;
-        this.hMemoryAccess = new HostedMemoryAccessProvider(hMetaAccess, this);
+        this.hMemoryAccess = new HostedMemoryAccessProvider(hUniverse, hMetaAccess, this);
     }
 
     @Override

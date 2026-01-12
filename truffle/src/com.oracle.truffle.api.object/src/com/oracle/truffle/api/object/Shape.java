@@ -74,6 +74,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NonIdempotent;
+import com.oracle.truffle.api.impl.AbstractAssumption;
 
 /**
  * A Shape is an immutable descriptor of the current object "shape" of a DynamicObject, i.e., object
@@ -130,8 +131,8 @@ public final class Shape {
     private final int depth;
     private final int propertyCount;
 
-    private final Assumption validAssumption;
-    @CompilationFinal private volatile Assumption leafAssumption;
+    private final AbstractAssumption validAssumption;
+    @CompilationFinal private volatile AbstractAssumption leafAssumption;
 
     /**
      * Shape transition map; lazily initialized. One of:
@@ -164,7 +165,8 @@ public final class Shape {
     private volatile Object predecessorShape;
 
     private static final AtomicReferenceFieldUpdater<Shape, Object> TRANSITION_MAP_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Shape.class, Object.class, "transitionMap");
-    private static final AtomicReferenceFieldUpdater<Shape, Assumption> LEAF_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Shape.class, Assumption.class, "leafAssumption");
+    private static final AtomicReferenceFieldUpdater<Shape, AbstractAssumption> LEAF_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Shape.class, AbstractAssumption.class,
+                    "leafAssumption");
     private static final AtomicReferenceFieldUpdater<Shape, PropertyAssumptions> PROPERTY_ASSUMPTIONS_UPDATER = //
                     AtomicReferenceFieldUpdater.newUpdater(Shape.class, PropertyAssumptions.class, "sharedPropertyAssumptions");
 
@@ -551,8 +553,8 @@ public final class Shape {
                 flags = shapeFlags | FLAG_ALLOW_PROPERTY_ASSUMPTIONS;
             }
 
-            int implicitCastFlags = (allowImplicitCastIntToDouble ? Layout.INT_TO_DOUBLE_FLAG : 0) | (allowImplicitCastIntToLong ? Layout.INT_TO_LONG_FLAG : 0);
-            Shape shape = Layout.getFactory().createShape(
+            int implicitCastFlags = (allowImplicitCastIntToDouble ? LayoutImpl.INT_TO_DOUBLE_FLAG : 0) | (allowImplicitCastIntToLong ? LayoutImpl.INT_TO_LONG_FLAG : 0);
+            Shape shape = LayoutImpl.createShape(
                             layoutClass,
                             implicitCastFlags,
                             dynamicType,
@@ -696,6 +698,12 @@ public final class Shape {
         return propertyMap.get(key);
     }
 
+    @TruffleBoundary
+    Location getLocation(Object key) {
+        Property property = propertyMap.get(key);
+        return property == null ? null : property.getLocation();
+    }
+
     /**
      * Add a new property in the map, yielding a new or cached Shape object.
      *
@@ -705,7 +713,7 @@ public final class Shape {
      */
     @TruffleBoundary
     protected Shape addProperty(Property property) {
-        return getLayoutStrategy().addProperty(this, property);
+        return ObsolescenceStrategy.addProperty(this, property, true);
     }
 
     /**
@@ -719,7 +727,7 @@ public final class Shape {
     @Deprecated(since = "22.2")
     @TruffleBoundary
     public Shape defineProperty(Object key, Object value, int propertyFlags) {
-        return getLayoutStrategy().defineProperty(this, key, value, propertyFlags);
+        return ObsolescenceStrategy.defineProperty(this, key, value, propertyFlags);
     }
 
     /**
@@ -730,7 +738,12 @@ public final class Shape {
      */
     @TruffleBoundary
     protected Shape defineProperty(Object key, Object value, int propertyFlags, int putFlags) {
-        return getLayoutStrategy().defineProperty(this, key, value, propertyFlags, putFlags);
+        return ObsolescenceStrategy.defineProperty(this, key, value, propertyFlags, putFlags);
+    }
+
+    @TruffleBoundary
+    Shape defineProperty(Object key, Object value, int propertyFlags, int putFlags, Property existing) {
+        return ObsolescenceStrategy.defineProperty(this, key, value, propertyFlags, existing, putFlags);
     }
 
     /**
@@ -843,6 +856,11 @@ public final class Shape {
         return validAssumption;
     }
 
+    @Idempotent
+    AbstractAssumption getValidAbstractAssumption() {
+        return validAssumption;
+    }
+
     /**
      * Check whether this shape is valid.
      *
@@ -850,7 +868,7 @@ public final class Shape {
      */
     @NonIdempotent
     public boolean isValid() {
-        return getValidAssumption().isValid();
+        return validAssumption.isValid();
     }
 
     /**
@@ -860,20 +878,20 @@ public final class Shape {
      */
     @NonIdempotent
     public Assumption getLeafAssumption() {
-        Assumption assumption = leafAssumption;
+        AbstractAssumption assumption = leafAssumption;
         if (assumption != null) {
             return assumption;
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            Assumption prev;
-            Assumption next;
+            AbstractAssumption prev;
+            AbstractAssumption next;
             do {
                 prev = LEAF_ASSUMPTION_UPDATER.get(this);
                 if (prev != null) {
                     return prev;
                 } else {
                     boolean isLeafShape = transitionMap == null;
-                    next = isLeafShape ? createLeafAssumption() : Assumption.NEVER_VALID;
+                    next = isLeafShape ? createLeafAssumption() : (AbstractAssumption) Assumption.NEVER_VALID;
                 }
             } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, next));
             return next;
@@ -888,7 +906,7 @@ public final class Shape {
     @NonIdempotent
     @TruffleBoundary
     public boolean isLeaf() {
-        Assumption assumption = leafAssumption;
+        AbstractAssumption assumption = leafAssumption;
         return assumption == null || assumption.isValid();
     }
 
@@ -908,7 +926,7 @@ public final class Shape {
      */
     @TruffleBoundary
     protected Shape removeProperty(Property property) {
-        return getLayoutStrategy().removeProperty(this, property);
+        return ObsolescenceStrategy.removeProperty(this, property);
     }
 
     /**
@@ -918,16 +936,35 @@ public final class Shape {
      */
     protected Shape replaceProperty(Property oldProperty, Property newProperty) {
         assert oldProperty.getKey().equals(newProperty.getKey());
-        return getLayoutStrategy().replaceProperty(this, oldProperty, newProperty);
+        return ObsolescenceStrategy.replaceProperty(this, oldProperty, newProperty);
+    }
+
+    @TruffleBoundary
+    Shape setPropertyFlags(Property oldProperty, int newFlags) {
+        if (oldProperty.getFlags() == newFlags) {
+            return this;
+        }
+        return replaceProperty(oldProperty, oldProperty.copyWithFlags(newFlags));
     }
 
     /**
-     * Get the last property.
+     * Gets the last property.
      *
+     * @return the last property in the shape or {@code null} if empty
      * @since 0.8 or earlier
      */
     public Property getLastProperty() {
         return propertyMap.getLastProperty();
+    }
+
+    /**
+     * Gets the first property.
+     *
+     * @return the first property in the shape or {@code null} if empty
+     * @since 25.1
+     */
+    public Property getFirstProperty() {
+        return propertyMap.getFirstProperty();
     }
 
     /**
@@ -1030,7 +1067,7 @@ public final class Shape {
      * @since 0.8 or earlier
      */
     public Shape getRoot() {
-        return UnsafeAccess.unsafeCast(root, Shape.class, true, true);
+        return UnsafeAccess.unsafeCast(root, Shape.class, true, true, false);
     }
 
     /**
@@ -1259,7 +1296,7 @@ public final class Shape {
         assert parent == null || this.sharedData == parent.sharedData;
 
         this.sharedPropertyAssumptions = parent == null && (flags & FLAG_ALLOW_PROPERTY_ASSUMPTIONS) != 0 && singleContextAssumption != null
-                        ? new PropertyAssumptions(singleContextAssumption)
+                        ? new PropertyAssumptions()
                         : null;
 
         shapeCount.inc();
@@ -1564,7 +1601,7 @@ public final class Shape {
         PropertyMap newPropertyMap = parent.propertyMap.putCopy(addend);
 
         Shape newShape = parent.createShape(parent.objectType, parent.sharedData, newPropertyMap, addTransition, allocator, parent.flags);
-        assert newShape.hasPrimitiveArray() || ((LocationImpl) addend.getLocation()).primitiveArrayCount() == 0;
+        assert newShape.hasPrimitiveArray() || addend.getLocation().primitiveArrayCount() == 0;
         assert newShape.depth == allocator.depth;
         return newShape;
     }
@@ -1582,21 +1619,21 @@ public final class Shape {
         return this.getRoot() == other.getRoot();
     }
 
-    private static Assumption createValidAssumption() {
-        return Truffle.getRuntime().createAssumption("valid shape");
+    private static AbstractAssumption createValidAssumption() {
+        return (AbstractAssumption) Truffle.getRuntime().createAssumption("valid shape");
     }
 
     void invalidateValidAssumption() {
-        getValidAssumption().invalidate();
+        validAssumption.invalidate();
     }
 
-    private static Assumption createLeafAssumption() {
-        return Truffle.getRuntime().createAssumption("leaf shape");
+    private static AbstractAssumption createLeafAssumption() {
+        return (AbstractAssumption) Truffle.getRuntime().createAssumption("leaf shape");
     }
 
     @TruffleBoundary
     void invalidateLeafAssumption() {
-        Assumption prev;
+        AbstractAssumption prev;
         do {
             prev = LEAF_ASSUMPTION_UPDATER.get(this);
             if (prev == Assumption.NEVER_VALID) {
@@ -1605,13 +1642,13 @@ public final class Shape {
             if (prev != null) {
                 prev.invalidate();
             }
-        } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, Assumption.NEVER_VALID));
+        } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, (AbstractAssumption) Assumption.NEVER_VALID));
     }
 
     /**
      * {@return a string representation of the object}
-     * 
-     * @since 26.0
+     *
+     * @since 25.1
      */
     @Override
     public String toString() {
@@ -1659,12 +1696,11 @@ public final class Shape {
     }
 
     BaseAllocator allocator() {
-        return getLayoutStrategy().createAllocator(this);
+        return ObsolescenceStrategy.createAllocator(this);
     }
 
     /**
      * Find lowest common ancestor of two related shapes.
-     *
      */
     static Shape findCommonAncestor(Shape left, Shape right) {
         if (!left.isRelated(right)) {
@@ -1710,14 +1746,6 @@ public final class Shape {
         return layout;
     }
 
-    LayoutStrategy getLayoutStrategy() {
-        return getLayout().getStrategy();
-    }
-
-    Object getSharedDataInternal() {
-        return sharedData;
-    }
-
     boolean allowPropertyAssumptions() {
         return (flags & FLAG_ALLOW_PROPERTY_ASSUMPTIONS) != 0;
     }
@@ -1727,7 +1755,7 @@ public final class Shape {
         assert allowPropertyAssumptions();
         PropertyAssumptions ass = root.sharedPropertyAssumptions;
         if (ass == null) {
-            ass = new PropertyAssumptions(null);
+            ass = new PropertyAssumptions();
             if (!PROPERTY_ASSUMPTIONS_UPDATER.compareAndSet(root, null, ass)) {
                 ass = getPropertyAssumptions();
             }
@@ -1749,14 +1777,6 @@ public final class Shape {
         if (propertyAssumptions != null) {
             propertyAssumptions.invalidateAllPropertyAssumptions();
         }
-    }
-
-    Assumption getSingleContextAssumption() {
-        PropertyAssumptions propertyAssumptions = getPropertyAssumptions();
-        if (propertyAssumptions != null) {
-            return propertyAssumptions.getSingleContextAssumption();
-        }
-        return null;
     }
 
     Object getMutex() {
@@ -1812,10 +1832,8 @@ public final class Shape {
 
 final class PropertyAssumptions {
     private final EconomicMap<Object, Assumption> stablePropertyAssumptions;
-    private final Assumption singleContextAssumption;
 
-    PropertyAssumptions(Assumption singleContextAssumption) {
-        this.singleContextAssumption = singleContextAssumption;
+    PropertyAssumptions() {
         this.stablePropertyAssumptions = EconomicMap.create();
     }
 
@@ -1869,7 +1887,4 @@ final class PropertyAssumptions {
         stablePropertyAssumptions.clear();
     }
 
-    Assumption getSingleContextAssumption() {
-        return singleContextAssumption;
-    }
 }

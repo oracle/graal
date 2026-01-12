@@ -30,11 +30,6 @@ import java.util.Collections;
 
 import org.graalvm.collections.EconomicMap;
 
-import jdk.graal.compiler.vector.architecture.VectorArchitecture;
-import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
-import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
-import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIOperations;
-
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
@@ -56,6 +51,10 @@ import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
+import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIOperations;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
@@ -96,7 +95,7 @@ public class VectorAPIBroadcastIntNode extends VectorAPIMacroNode implements Can
 
     protected VectorAPIBroadcastIntNode(MacroParams macroParams, SimdStamp vectorStamp, ArithmeticOpTable.ShiftOp<?> op, SimdConstant constantValue, FrameState stateAfter) {
         super(TYPE, macroParams, constantValue);
-        this.vectorStamp = vectorStamp;
+        this.vectorStamp = maybeConstantVectorStamp(vectorStamp, constantValue);
         this.op = op;
         this.stateAfter = stateAfter;
     }

@@ -58,7 +58,7 @@ import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 public final class JavaRegexParser implements RegexParser {
 
@@ -265,7 +265,7 @@ public final class JavaRegexParser implements RegexParser {
     // only.
     private void buildWordBoundaryAssertion(CodePointSet wordChars) {
         CodePointSet nsm = lexer.unicode.getProperty("Mn", false);
-        CodePointSet notWordNorNsm = wordChars.union(nsm).createInverse(Encodings.UTF_16);
+        CodePointSet notWordNorNsm = wordChars.union(nsm).createInverse(Encoding.UTF_16);
         pushGroup();
 
         // Case 1: not word -> word
@@ -383,7 +383,7 @@ public final class JavaRegexParser implements RegexParser {
                 addCharClass(CodePointSet.create('\r'));
                 popGroup();
                 pushLookAheadAssertion();
-                addCharClass(CodePointSet.createInverse(CodePointSet.create('\n'), Encodings.UTF_8));
+                addCharClass(CodePointSet.createInverse(CodePointSet.create('\n'), Encoding.UTF_8));
                 popGroup();
             }
             popGroup();

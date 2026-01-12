@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 
@@ -56,7 +57,6 @@ import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.word.Word;
 
@@ -527,7 +527,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         getFileSupport().writeByte(fd, (byte) (v >>> 7)); // 56-63, last byte as is.
     }
 
-    @Fold
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static RawFileOperationSupport getFileSupport() {
         return RawFileOperationSupport.bigEndian();
     }

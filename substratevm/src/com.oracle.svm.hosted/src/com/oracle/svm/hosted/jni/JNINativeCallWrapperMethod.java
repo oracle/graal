@@ -30,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -112,7 +114,9 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
             Function<String, CGlobalDataInfo> createSymbol = symbolName -> CGlobalDataFeature.singleton().registerAsAccessedOrGet(CGlobalDataFactory.forSymbol(symbolName));
             CGlobalDataInfo builtinAddress = linkage.getOrCreateBuiltInAddress(createSymbol);
             callAddress = kit.unique(new CGlobalDataLoadAddressNode(builtinAddress));
-            method.getUniverse().getHeapScanner().rescanField(linkage, linkageBuiltInAddressField);
+
+            ScanReason reason = new ObjectScanner.OtherReason("Manual rescan triggered for " + method.getQualifiedName());
+            method.getUniverse().getHeapScanner().rescanField(linkage, linkageBuiltInAddressField, reason);
         } else {
             callAddress = kit.invokeNativeCallAddress(kit.createObject(linkage));
         }

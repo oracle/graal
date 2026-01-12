@@ -111,6 +111,13 @@ public class PointstoOptions {
     @Option(help = "The maximum number of types recorded in a type flow. -1 indicates no limitation.")//
     public static final OptionKey<Integer> TypeFlowSaturationCutoff = new OptionKey<>(20);
 
+    @Option(help = "The maximum number of types that will be represented as an array before switching to bitsets. By default 20 to align with TypeFlowSaturationCutoff. " +
+                    "Note that we can also disable the array-based handling completely by setting the threshold to zero.")//
+    public static final OptionKey<Integer> MultiTypeStateArrayBitSetThreshold = new OptionKey<>(20);
+
+    @Option(help = "The maximum number of types on which the analysis should speculate that the result will be small enough to be array-based.")//
+    public static final OptionKey<Integer> MultiTypeStateArrayBitSetIntersectionSpeculationThreshold = new OptionKey<>(32);
+
     @Option(help = "Enable the type flow saturation analysis performance optimization.")//
     public static final OptionKey<Boolean> RemoveSaturatedTypeFlows = new OptionKey<>(true) {
         @Override

@@ -42,7 +42,7 @@ public final class GuardedConditionalInlinedMethodNode extends InlinedMethodNode
     public GuardedConditionalInlinedMethodNode(ResolvedCall<Klass, Method, Field> resolvedCall, int top, int opcode, int callerBCI, int statementIndex,
                     ConditionalInlinedMethodNode.Recipes recipes,
                     InlinedMethodPredicate condition, InlinedMethodPredicate guard) {
-        super(resolvedCall.getResolvedMethod().getMethodVersion(), top, opcode, callerBCI, statementIndex, null);
+        super(resolvedCall, top, opcode, callerBCI, statementIndex, null);
         this.fallbackNode = insert(getFallback(resolvedCall, top, callerBCI));
         this.condition = condition;
         this.guard = guard;
@@ -55,7 +55,7 @@ public final class GuardedConditionalInlinedMethodNode extends InlinedMethodNode
         if (guard.isValid(getContext(), method, frame, this)) {
             if (condition.isValid(getContext(), method, frame, this)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                InlinedMethodNode replacement = getDefinitiveNode(recipes, guard, inlinedMethod(), top, opcode, getCallerBCI(), statementIndex);
+                InlinedMethodNode replacement = getDefinitiveNode(recipes, guard, getResolvedCall(), top, opcode, getCallerBCI(), statementIndex);
                 return getBytecodeNode().replaceQuickAt(frame, opcode, getCallerBCI(), this,
                                 replacement);
             } else {
@@ -68,14 +68,14 @@ public final class GuardedConditionalInlinedMethodNode extends InlinedMethodNode
     }
 
     public static InlinedMethodNode getDefinitiveNode(ConditionalInlinedMethodNode.Recipes recipes, InlinedMethodPredicate oldGuard,
-                    Method.MethodVersion method, int top, int opcode, int callerBci, int statementIndex) {
+                    ResolvedCall<Klass, Method, Field> inlinedCall, int top, int opcode, int callerBci, int statementIndex) {
         BodyNode newBody = recipes.cookBody();
         InlinedMethodPredicate cookedGuard = recipes.cookGuard();
         InlinedMethodPredicate newGuard = cookedGuard == null
                         ? oldGuard
                         : (ctx, m, f, node) -> cookedGuard.isValid(ctx, m, f, node) && oldGuard.isValid(ctx, m, f, node);
         InlinedMethodNode replacement;
-        replacement = new GuardedInlinedMethodNode(method, top, opcode, callerBci, statementIndex, newBody, newGuard);
+        replacement = new GuardedInlinedMethodNode(inlinedCall, top, opcode, callerBci, statementIndex, newBody, newGuard);
         return replacement;
     }
 }

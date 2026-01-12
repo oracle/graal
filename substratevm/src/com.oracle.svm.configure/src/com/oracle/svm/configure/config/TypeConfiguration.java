@@ -37,8 +37,8 @@ import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.ReflectionConfigurationParser;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 
 import jdk.graal.compiler.util.json.JsonPrinter;
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -95,7 +95,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
         types.entrySet().removeIf(entry -> predicate.testIncludedType(entry.getKey(), entry.getValue()));
     }
 
-    public ConfigurationType get(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
+    public ConfigurationType get(UnresolvedAccessCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
         return types.get(new ConditionalElement<>(condition, typeDescriptor));
     }
 
@@ -117,12 +117,12 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
         });
     }
 
-    public ConfigurationType getOrCreateType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
+    public ConfigurationType getOrCreateType(UnresolvedAccessCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
         return types.computeIfAbsent(new ConditionalElement<>(condition, typeDescriptor), p -> new ConfigurationType(p.condition(), p.element(), true));
     }
 
     @Override
-    public void mergeConditional(UnresolvedConfigurationCondition condition, TypeConfiguration other) {
+    public void mergeConditional(UnresolvedAccessCondition condition, TypeConfiguration other) {
         other.types.forEach((key, value) -> {
             addOrMerge(new ConfigurationType(value, condition));
         });
@@ -135,7 +135,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
 
     @Override
     public ConfigurationParser createParser(boolean combinedFileSchema, EnumSet<ConfigurationParserOption> parserOptions) {
-        return ReflectionConfigurationParser.create(combinedFileSchema, ConfigurationConditionResolver.identityResolver(), new ParserConfigurationAdapter(this), parserOptions);
+        return ReflectionConfigurationParser.create(combinedFileSchema, AccessConditionResolver.identityResolver(), new ParserConfigurationAdapter(this), parserOptions);
     }
 
     @Override

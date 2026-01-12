@@ -52,7 +52,7 @@ import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
 import com.oracle.truffle.regex.tregex.automaton.TransitionOp;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 /**
  * Used for pre-calculating and finding the result of tree-like regular expressions. A regular

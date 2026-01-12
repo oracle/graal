@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.truffle.nfi.windows;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -43,6 +42,8 @@ import com.oracle.svm.truffle.nfi.TruffleNFIFeature;
 import com.oracle.svm.truffle.nfi.TruffleNFISupport;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+
+import jdk.graal.compiler.word.Word;
 
 public final class WindowsTruffleNFIFeature implements InternalFeature {
 
@@ -75,8 +76,8 @@ final class WindowsTruffleNFISupport extends TruffleNFISupport {
     protected long loadLibraryImpl(long nativeContext, String name, int flags) {
         String dllPath = name;
         HMODULE dlhandle;
-        try (CTypeConversion.CCharPointerHolder dllpathPin = CTypeConversion.toCString(dllPath)) {
-            dlhandle = LibLoaderAPI.LoadLibraryExA(dllpathPin.get(), Word.nullPointer(), flags);
+        try (WindowsUtils.WCharPointerHolder dllpathPin = WindowsUtils.toWideCString(dllPath)) {
+            dlhandle = LibLoaderAPI.LoadLibraryExW(dllpathPin.get(), Word.nullPointer(), flags);
         }
         if (dlhandle.isNull()) {
             CompilerDirectives.transferToInterpreter();

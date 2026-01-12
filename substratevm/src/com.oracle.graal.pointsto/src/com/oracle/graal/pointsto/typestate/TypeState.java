@@ -72,8 +72,23 @@ public abstract sealed class TypeState permits EmptyTypeState, NullTypeState, Pr
         return StreamSupport.stream(types(bb).spliterator(), false);
     }
 
+    /**
+     * A convenience method that allows to iterate over type ids without having to look up the
+     * corresponding {@link AnalysisType} instances as in some cases, the type ids are enough to
+     * implement the given operation.
+     */
+    public abstract Iterator<Integer> typeIdsIterator();
+
     /** Returns true if this type state contains the type, otherwise it returns false. */
     public abstract boolean containsType(AnalysisType exactType);
+
+    /**
+     * A convenience method using {@code typeId} which avoids the lookup of the corresponding
+     * {@link AnalysisType} in case when it is not needed otherwise.
+     *
+     * @see #containsType(AnalysisType)
+     */
+    public abstract boolean containsType(int typeId);
 
     /* Objects accessing methods. */
 
@@ -317,6 +332,11 @@ final class EmptyTypeState extends TypeState {
     }
 
     @Override
+    public Iterator<Integer> typeIdsIterator() {
+        return Collections.emptyIterator();
+    }
+
+    @Override
     protected Iterator<AnalysisObject> objectsIterator(BigBang bb) {
         return Collections.emptyIterator();
     }
@@ -328,6 +348,11 @@ final class EmptyTypeState extends TypeState {
 
     @Override
     public boolean containsType(AnalysisType exactType) {
+        return false;
+    }
+
+    @Override
+    public boolean containsType(int typeId) {
         return false;
     }
 
@@ -380,6 +405,11 @@ final class NullTypeState extends TypeState {
     }
 
     @Override
+    public Iterator<Integer> typeIdsIterator() {
+        return Collections.emptyIterator();
+    }
+
+    @Override
     protected Iterator<AnalysisObject> objectsIterator(BigBang bb) {
         return Collections.emptyIterator();
     }
@@ -391,6 +421,11 @@ final class NullTypeState extends TypeState {
 
     @Override
     public boolean containsType(AnalysisType exactType) {
+        return false;
+    }
+
+    @Override
+    public boolean containsType(int typeId) {
         return false;
     }
 

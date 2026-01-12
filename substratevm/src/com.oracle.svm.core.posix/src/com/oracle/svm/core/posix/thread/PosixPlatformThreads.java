@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.thread;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -67,11 +66,16 @@ import com.oracle.svm.core.thread.Parker;
 import com.oracle.svm.core.thread.Parker.ParkerFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
 
 @AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
@@ -354,7 +358,7 @@ final class PosixParker extends Parker {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/os/posix/os_posix.cpp#L1830-L1906")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/posix/os_posix.cpp#L1662-L1738")
     private void park0(boolean isAbsolute, long time) {
         int status = Pthread.pthread_mutex_trylock_no_transition(mutex);
         if (status == Errno.EBUSY()) {
@@ -393,7 +397,7 @@ final class PosixParker extends Parker {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/os/posix/os_posix.cpp#L1908-L1931")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/posix/os_posix.cpp#L1740-L1763")
     protected void unpark() {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
@@ -442,6 +446,7 @@ final class PosixParker extends Parker {
     }
 }
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 @AutomaticallyRegisteredImageSingleton(ParkerFactory.class)
 class PosixParkerFactory implements Parker.ParkerFactory {
     @Override

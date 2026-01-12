@@ -39,7 +39,6 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -50,6 +49,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.vm.annotation.Stable;
@@ -140,8 +140,8 @@ public class VarHandleFeature implements InternalFeature {
          */
         access.registerObjectReplacer(VarHandleFeature::eagerlyInitializeVarHandle);
 
-        access.registerObjectReachableCallback(VarHandle.class, (a1, obj, reason) -> registerReachableHandle(obj, reason));
-        access.registerObjectReachableCallback(access.findClassByName("java.lang.invoke.DirectMethodHandle"), (a1, obj, reason) -> registerReachableHandle(obj, reason));
+        access.registerObjectReachableCallback(VarHandle.class, (_, obj, reason) -> registerReachableHandle(obj, reason));
+        access.registerObjectReachableCallback(access.findClassByName("java.lang.invoke.DirectMethodHandle"), (_, obj, reason) -> registerReachableHandle(obj, reason));
     }
 
     /**
@@ -150,7 +150,7 @@ public class VarHandleFeature implements InternalFeature {
      * {@link #eagerlyInitializeVarForm(Object)}. Folding the registered {@link Stable} fields is
      * important for our intrinsification of {@link VarHandle}s to work properly. See the items
      * below for more details:
-     * 
+     *
      * @see VarHandleFeature
      * @see #duringSetup
      * @see #eagerlyInitializeVarHandle(VarHandle)
@@ -186,7 +186,8 @@ public class VarHandleFeature implements InternalFeature {
 
     private static final Field varHandleVFormField = ReflectionUtil.lookupField(VarHandle.class, "vform");
     private static final Class<?> varFormClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.VarForm");
-    private static final Method varFormInitMethod = ReflectionUtil.lookupMethod(varFormClass, "getMethodType_V", int.class);
+    private static final Method varFormGetMethodTypeMethod = ReflectionUtil.lookupMethod(varFormClass, "getMethodType_V", int.class);
+    private static final Method varFormGetMemberNameOrNullMethod = ReflectionUtil.lookupMethod(varFormClass, "getMemberNameOrNull", int.class);
     private static final Method varHandleGetMethodHandleMethod = ReflectionUtil.lookupMethod(VarHandle.class, "getMethodHandle", int.class);
 
     public static void eagerlyInitializeVarHandle(VarHandle varHandle) {
@@ -228,7 +229,18 @@ public class VarHandleFeature implements InternalFeature {
              * initialization has happened. We force initialization by invoking the method
              * VarHandle.vform.getMethodType_V(0).
              */
-            varFormInitMethod.invoke(varForm, 0);
+            varFormGetMethodTypeMethod.invoke(varForm, 0);
+            try {
+                for (VarHandle.AccessMode accessMode : VarHandle.AccessMode.values()) {
+                    /* Make sure VarForm.memberName_table is initialized. */
+                    varFormGetMemberNameOrNullMethod.invoke(varForm, accessMode.ordinal());
+                }
+            } catch (IllegalArgumentException _) {
+                /*
+                 * VarForm.memberName_table can be null for VarForms used by IndirectVarHandles,
+                 * which leads to IllegalArgumentException.
+                 */
+            }
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -248,7 +260,7 @@ public class VarHandleFeature implements InternalFeature {
                         "References", JavaKind.Object).entrySet()) {
             String typeName = type.getKey();
             JavaKind kind = type.getValue();
-            Function<Object, JavaKind> kindGetter = o -> kind;
+            Function<Object, JavaKind> kindGetter = _ -> kind;
             buildInfo(infos, false, kindGetter,
                             ReflectionUtil.lookupClass(false, "java.lang.invoke.VarHandle" + typeName + "$FieldInstanceReadOnly"),
                             ReflectionUtil.lookupClass(false, "java.lang.invoke.VarHandle" + typeName + "$FieldInstanceReadWrite"));

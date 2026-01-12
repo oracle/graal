@@ -29,8 +29,6 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-//JaCoCo Exclude
-
 public final class HotSpotResolvedObjectTypeProxy extends HotSpotResolvedJavaTypeProxy implements HotSpotResolvedObjectType {
     HotSpotResolvedObjectTypeProxy(InvocationHandler handler) {
         super(handler);
@@ -103,14 +101,6 @@ public final class HotSpotResolvedObjectTypeProxy extends HotSpotResolvedJavaTyp
     @Override
     public int superCheckOffset() {
         return (int) handle(superCheckOffsetMethod, superCheckOffsetInvokable);
-    }
-
-    private static final SymbolicMethod prototypeMarkWordMethod = method("prototypeMarkWord");
-    private static final InvokableMethod prototypeMarkWordInvokable = (receiver, args) -> ((HotSpotResolvedObjectType) receiver).prototypeMarkWord();
-
-    @Override
-    public long prototypeMarkWord() {
-        return (long) handle(prototypeMarkWordMethod, prototypeMarkWordInvokable);
     }
 
     private static final SymbolicMethod layoutHelperMethod = method("layoutHelper");

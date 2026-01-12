@@ -2,7 +2,7 @@
 
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
-## GraalVM for JDK 26 (Internal Version 26.0.0)
+## GraalVM 25.1 (Internal Version 25.1.0)
 * (GR-69280): Allow use of the `graal.` prefix for Graal compiler options without issuing a warning.
 * (GR-58163): Added support for recording and replaying JIT compilations. The `-Djdk.graal.RecordForReplay=*` option
   serializes all compilations matching the pattern to JSON files, which contain the results of JVMCI calls. The

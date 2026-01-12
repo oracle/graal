@@ -272,7 +272,7 @@ public final class Target_java_lang_Thread {
 
     @Substitution
     public static void clearInterruptEvent(@Inject EspressoContext context) {
-        context.getThreadAccess().clearInterruptEvent();
+        context.getThreadAccess().clearInterruptEvent(context.getCurrentPlatformThread());
     }
 
     @TruffleBoundary

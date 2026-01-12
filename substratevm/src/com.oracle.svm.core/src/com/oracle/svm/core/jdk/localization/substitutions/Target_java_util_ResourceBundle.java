@@ -171,5 +171,20 @@ final class Target_java_util_ResourceBundle {
     private static native ClassLoader getLoader(Module module);
 
     @Alias
-    private static native ResourceBundle getBundleImpl(Module callerModule, Module module, String baseName, Locale locale, ResourceBundle.Control control);
+    static native ResourceBundle getBundleImpl(Module callerModule, Module module, String baseName, Locale locale, ResourceBundle.Control control);
+
+    @Alias
+    static native Control getDefaultControl(Module targetModule, String baseName);
+}
+
+@TargetClass(className = "java.util.ResourceBundle$1")
+final class Target_java_util_ResourceBundle_1 {
+    @Substitute
+    @SuppressWarnings("static-method")
+    public ResourceBundle getBundle(String baseName, Locale locale, Module module) {
+        // use the given module as the caller to bypass the access check
+        return MissingRegistrationUtils.runIgnoringMissingRegistrations(() -> Target_java_util_ResourceBundle.getBundleImpl(module, module,
+                        baseName, locale,
+                        Target_java_util_ResourceBundle.getDefaultControl(module, baseName)));
+    }
 }

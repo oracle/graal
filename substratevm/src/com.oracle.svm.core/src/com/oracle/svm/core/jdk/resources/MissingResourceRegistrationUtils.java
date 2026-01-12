@@ -34,7 +34,7 @@ import java.util.ResourceBundle;
 import java.util.Set;
 
 import com.oracle.svm.configure.ConditionalElement;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.util.VMError;
@@ -48,7 +48,7 @@ public final class MissingResourceRegistrationUtils extends MissingRegistrationU
         String moduleMessage = module == null ? "" : " from module " + quote(module.getName());
         String moduleOrNull = module == null ? null : module.getName();
         ConditionalElement<ResourceConfiguration.ResourceEntry> entry = new ConditionalElement<>(
-                        UnresolvedConfigurationCondition.alwaysTrue(),
+                        UnresolvedAccessCondition.unconditional(),
                         new ResourceConfiguration.ResourceEntry(resourcePath, moduleOrNull));
         StringWriter json = new StringWriter();
         try {
@@ -64,7 +64,7 @@ public final class MissingResourceRegistrationUtils extends MissingRegistrationU
 
     public static void reportResourceBundleAccess(Module module, String baseName) {
         Objects.requireNonNull(module);
-        var bundleConfig = new ResourceConfiguration.BundleConfiguration(UnresolvedConfigurationCondition.alwaysTrue(), module.getName(), baseName);
+        var bundleConfig = new ResourceConfiguration.BundleConfiguration(UnresolvedAccessCondition.unconditional(), module.getName(), baseName);
         StringWriter json = new StringWriter();
         try {
             ResourceConfiguration.printResourceBundle(bundleConfig, getJSONWriter(json), true);

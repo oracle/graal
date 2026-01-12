@@ -29,6 +29,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.junit.Assert;
+import org.junit.Test;
+
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -37,8 +42,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import org.junit.Assert;
-import org.junit.Test;
 
 /**
  * Tests for {@link GraalDirectives#opaque}.
@@ -136,9 +139,9 @@ public class OpaqueDirectiveTest extends GraalCompilerTest {
 
     @Override
     protected void checkLowTierGraph(StructuredGraph graph) {
-        OpaqueSnippet snippet = graph.method().getAnnotation(OpaqueSnippet.class);
+        AnnotationValue snippet = AnnotationValueSupport.getAnnotationValue(graph.method(), OpaqueSnippet.class);
         for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
-            Assert.assertEquals(snippet.expectedReturnNode(), returnNode.result().getClass());
+            Assert.assertEquals(snippet.getType("expectedReturnNode"), getMetaAccess().lookupJavaType(returnNode.result().getClass()));
         }
     }
 }

@@ -29,6 +29,8 @@ import java.nio.ByteBuffer;
 
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_FILE_HEADER;
 
+import jdk.graal.compiler.serviceprovider.GraalServices;
+
 public class PECoffHeaderStruct {
     private final ByteBuffer header;
 
@@ -36,7 +38,7 @@ public class PECoffHeaderStruct {
         header = PECoffByteBuffer.allocate(IMAGE_FILE_HEADER.totalsize);
 
         header.putChar(IMAGE_FILE_HEADER.Machine.off, IMAGE_FILE_HEADER.IMAGE_FILE_MACHINE_AMD64);
-        header.putInt(IMAGE_FILE_HEADER.TimeDateStamp.off, (int) (System.currentTimeMillis() / 1000));
+        header.putInt(IMAGE_FILE_HEADER.TimeDateStamp.off, (int) (GraalServices.milliTimeStamp() / 1000));
         header.putInt(IMAGE_FILE_HEADER.PointerToSymbolTable.off, 0);
         header.putInt(IMAGE_FILE_HEADER.NumberOfSymbols.off, 0);
         header.putChar(IMAGE_FILE_HEADER.SizeOfOptionalHeader.off, (char) 0);

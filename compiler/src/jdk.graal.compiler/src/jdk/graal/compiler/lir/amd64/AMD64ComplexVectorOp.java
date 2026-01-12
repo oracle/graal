@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,13 @@ package jdk.graal.compiler.lir.amd64;
 
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Less;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRROp.KTESTQ;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPTESTMB;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static jdk.vm.ci.amd64.AMD64.rcx;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.nio.ByteOrder;
 import java.util.Arrays;
@@ -54,6 +57,7 @@ import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
@@ -519,6 +523,27 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         };
     }
 
+    /**
+     * Creates a vector mask to be used with {@code pshufb} to reverse the byte order of all
+     * elements in a vector.
+     */
+    protected byte[] getReverseBytesMask(Stride stride) {
+        byte[] mask = new byte[vectorSize.getBytes()];
+        for (int i = 0; i < XMM.getBytes(); i += stride.value) {
+            for (int j = 0; j < stride.value; j++) {
+                mask[i + j] = (byte) (i + (stride.value - (1 + j)));
+            }
+        }
+        // on AVX2, PSHUFB doesn't shuffle an entire YMM vector, instead it behaves like two
+        // adjacent XMM PSHUFB operations
+        if (mask.length > XMM.getBytes()) {
+            for (int i = XMM.getBytes(); i < mask.length; i += XMM.getBytes()) {
+                System.arraycopy(mask, 0, mask, i, XMM.getBytes());
+            }
+        }
+        return mask;
+    }
+
     protected static DataSection.Data writeToDataSection(CompilationResultBuilder crb, byte[] array) {
         int align = crb.dataBuilder.ensureValidDataAlignment(array.length);
         ArrayDataPointerConstant arrayConstant = new ArrayDataPointerConstant(array, align);
@@ -551,6 +576,25 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
                 array[i + 2] = (byte) (value >> 8);
                 array[i + 3] = (byte) value;
             }
+        }
+    }
+
+    /**
+     * Emits a {@code PTEST} operation. On AVX512 this is a pseudo-op that emits {@code EVPTEST} to
+     * a mask register {@code tempMask} and then tests that, setting condition flags. On AVX512 the
+     * {@code tempMask} should be a mask register. On SEE and AVX1/AVX2 this emits a
+     * {@code PTEST}/{@code VPTEST} that sets condition flags directly. In this case,
+     * {@code tempMask} should be an illegal value.
+     */
+    protected static void emitPtest(AMD64MacroAssembler asm, AVXSize size, Value tempMask, Register vector1, Register vector2) {
+        if (asm.getAvxEncoding() == AMD64Assembler.AMD64SIMDInstructionEncoding.EVEX) {
+            EVPTESTMB.emit(asm, size, asRegister(tempMask), vector1, vector2);
+            KTESTQ.emit(asm, AVXSize.XMM, asRegister(tempMask), asRegister(tempMask));
+        } else {
+            if (!asm.supportsFullAVX512()) {
+                GraalError.guarantee(ValueUtil.isIllegal(tempMask), "no tempMask should be used on SSE/AVX1/AVX2");
+            }
+            asm.ptest(size, vector1, vector2);
         }
     }
 }

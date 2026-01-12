@@ -54,7 +54,7 @@ import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 /**
  * An implementation of the Python regex flavor. Supports both string regexes ('str' patterns) and
@@ -94,10 +94,10 @@ public final class PythonFlavor extends RegexFlavor {
 
     @Override
     public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
-        if (ast.getOptions().getEncoding() == Encodings.UTF_32) {
+        if (ast.getOptions().getEncoding() == Encoding.UTF_32) {
             return (codePointA, codePointB, altMode) -> UCharacter.toLowerCase(codePointA) == UCharacter.toLowerCase(codePointB);
         } else {
-            assert ast.getOptions().getEncoding() == Encodings.LATIN_1;
+            assert ast.getOptions().getEncoding() == Encoding.LATIN_1;
             return (a, b, altMode) -> CaseFoldData.CaseFoldUnfoldAlgorithm.Ascii.getEqualsPredicate().test(a, b);
         }
     }

@@ -492,6 +492,10 @@ public class UninterruptibleUtils {
             return (int) v;
         }
 
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static int roundUp(int number, int mod) {
+            return ((number + mod - 1) / mod) * mod;
+        }
     }
 
     public static class Byte {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,17 +49,18 @@ public class JVMCIVersionCheckOpenJDKTest extends GraalCompilerTest {
     public static Collection<Object[]> data() {
         return List.of(
                         /*
-                         * If comparing a LabsJDK version against an OpenJDK version, ignore the
-                         * JVMCI build number.
+                         * Comparing a LabsJDK version against an OpenJDK version always fails
+                         * unless the OpenJDK version is higher than the LabsJDK version (and thus
+                         * might have required JVMCI changes).
                          */
                         expectFail("99+99-jvmci-b02", "99+98"),
-                        expectPass("99+99-jvmci-b02", "99+99"),
+                        expectFail("99+99-jvmci-b02", "99+99"),
                         expectPass("99+99-jvmci-b02", "99+100"),
                         /*
                          * Also if comparing against an OpenJDK early access version.
                          */
                         expectFail("99+99-jvmci-b02", "99-ea+98"),
-                        expectPass("99+99-jvmci-b02", "99-ea+99"),
+                        expectFail("99+99-jvmci-b02", "99-ea+99"),
                         expectPass("99+99-jvmci-b02", "99-ea+100"),
                         /*
                          * OpenJDK version with unknown $PRE value are ignored.
@@ -88,9 +89,12 @@ public class JVMCIVersionCheckOpenJDKTest extends GraalCompilerTest {
                         expectPass("99+99", "99+99"),
                         expectPass("99+99", "99+100"),
 
-                        /* Comparing an OpenJDK version against a LabsJDK version. */
+                        /*
+                         * Comparing an OpenJDK version against a LabsJDK version fails because they
+                         * are not comparable.
+                         */
                         expectFail("99+99", "99+98-jvmci-b01"),
-                        expectPass("99+99", "99+99-jvmci-b01"),
+                        expectFail("99+99", "99+99-jvmci-b01"),
                         expectPass("99+99", "99+100-jvmci-b01"));
     }
 
@@ -135,7 +139,7 @@ public class JVMCIVersionCheckOpenJDKTest extends GraalCompilerTest {
             // get the version string without the option part
             String versionWithoutOptional = version.toString().split("-" + optional, 2)[0];
             return CollectionsUtil.mapOf(Integer.toString(version.feature()), CollectionsUtil.mapOf(
-                            DEFAULT_VENDOR_ENTRY, JVMCIVersionCheck.createLabsJDKVersion(versionWithoutOptional, jvmciBuild)));
+                            DEFAULT_VENDOR_ENTRY, JVMCIVersionCheck.createLabsJDKVersionUntilGraalVmForJDK25(versionWithoutOptional, jvmciBuild)));
         }
     }
 

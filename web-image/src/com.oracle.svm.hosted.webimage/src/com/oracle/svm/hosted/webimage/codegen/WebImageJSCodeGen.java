@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSObject;
 
@@ -67,10 +68,10 @@ import com.oracle.svm.hosted.webimage.metrickeys.UniverseMetricKeys;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.snippets.JSSnippetWithEmitterSupport;
 import com.oracle.svm.hosted.webimage.snippets.JSSnippets;
-import com.oracle.svm.hosted.webimage.util.AnnotationUtil;
 import com.oracle.svm.hosted.webimage.util.TypeControlGraphPrinter;
 import com.oracle.svm.hosted.webimage.util.metrics.CodeSizeCollector;
 import com.oracle.svm.hosted.webimage.util.metrics.ImageMetricsCollector;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
 import com.oracle.svm.webimage.hightiercodegen.Emitter;
@@ -97,7 +98,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
 
     public WebImageJSCodeGen(WebImageCodeCache codeCache, List<HostedMethod> hostedEntryPoints, HostedMethod mainEntryPoint,
                     WebImageProviders providers, DebugContext debug, WebImageHostedConfiguration config, ImageClassLoader imageClassLoader) {
-        super(codeCache, hostedEntryPoints, mainEntryPoint, providers, debug, config);
+        super(codeCache, null, hostedEntryPoints, mainEntryPoint, providers, debug, config);
 
         this.typeControl = ((WebImageJSProviders) providers).typeControl();
         this.methodGraphs = compilations.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getGraph()));
@@ -142,8 +143,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
 
     @Override
     protected void emitCode() {
-        /* The JS backend doesn't really do any heap layouting, */
-        afterHeapLayout();
+        assert BuildPhaseProvider.isHeapLayoutFinished();
         emitJSCode();
     }
 
@@ -268,7 +268,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
         HashSet<String> includedPaths = new HashSet<>();
         codeBuffer.emitNewLine();
         for (HostedType type : getProviders().typeControl().emittedTypes()) {
-            var includes = AnnotationUtil.getDeclaredAnnotationsByType(type, JS.Code.Include.class, JS.Code.Include.Group.class, JS.Code.Include.Group::value);
+            var includes = AnnotationUtil.getAnnotationsByType(type, JS.Code.Include.class, JS.Code.Include.Group.class, JS.Code.Include.Group::value);
             for (JS.Code.Include include : includes) {
                 String path = include.value();
                 if (includedPaths.contains(path)) {
@@ -283,7 +283,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
                 }
                 lowerJavaScriptCode(codeBuffer, titleComment, is);
             }
-            var code = type.getDeclaredAnnotation(JS.Code.class);
+            var code = AnnotationUtil.getAnnotation(type, JS.Code.class);
             if (code != null) {
                 String titleComment = "// Class file: " + type.getJavaClass().getName();
                 lowerJavaScriptCode(codeBuffer, titleComment, new ByteArrayInputStream(code.value().getBytes(StandardCharsets.UTF_8)));
@@ -334,7 +334,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
 
     private void requestJSObjectSubclasses(HostedType type) {
         // Only explicitly exported classes must be emitted.
-        if (type.getJavaClass().equals(JSObject.class) || type.getAnnotation(JS.Export.class) != null) {
+        if (type.getJavaClass().equals(JSObject.class) || AnnotationUtil.getAnnotation(type, JS.Export.class) != null) {
             typeControl.requestTypeName(type);
         }
         for (HostedType subtype : type.getSubTypes()) {

@@ -279,7 +279,7 @@ public class JSBootImageHeapLowerer {
                 JVMCIError.shouldNotReachHere("All value types should have already been resolved");
             }
 
-            int hashCode = providers.getIdentityHashCodeProvider().identityHashCode(node.getDefinition().getConstant());
+            int hashCode = providers.getConstantReflection().identityHashCode(node.getDefinition().getConstant());
 
             if (def instanceof ObjectType) {
                 try (CodeSizeCollector collector = CodeSizeCollector.trackObjectSize(jsLTools::getCodeSize)) {

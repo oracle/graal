@@ -34,6 +34,8 @@ import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.hub.RuntimeClassLoading.WithRuntimeClassLoading;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
@@ -46,7 +48,16 @@ public final class Target_java_lang_invoke_MemberName {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public MethodHandleIntrinsic intrinsic;
 
+    /**
+     * This is used by crema to store metadata for the resolved field or method.
+     */
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @TargetElement(onlyWith = WithRuntimeClassLoading.class)//
+    public ResolvedMember resolved;
+
+    @Alias public Class<?> clazz;
     @Alias public String name;
+    @Alias public Object type;
     @Alias public int flags;
     @Alias public Object resolution;
 

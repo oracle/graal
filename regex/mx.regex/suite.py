@@ -39,11 +39,11 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.58.0",
+  "mxversion": "7.65.0",
 
   "name" : "regex",
 
-  "version" : "26.0.0",
+  "version" : "25.1.0",
   "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
@@ -67,7 +67,7 @@ suite = {
       },
     ]
   },
-  "ignore_suite_commit_info": True,
+  "capture_suite_commit_info": False,
   "licenses" : {
     "upl" : {
       "name" : "Universal Permissive License, Version 1.0",

@@ -52,9 +52,9 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
-import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
@@ -69,22 +69,22 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 @RunWith(Parameterized.class)
 public class ShortCircuitTest {
+
     @Parameters(name = "{0}")
-    public static List<Class<? extends BytecodeNodeWithShortCircuit>> getInterpreterClasses() {
-        return List.of(BytecodeNodeWithShortCircuitBase.class, BytecodeNodeWithShortCircuitWithBE.class);
+    public static List<BytecodeNodeWithShortCircuitBuilder.BytecodeVariant> getVariants() {
+        return BytecodeNodeWithShortCircuitBuilder.variants();
     }
 
-    @Parameter(0) public Class<? extends BytecodeNodeWithShortCircuit> interpreterClass;
+    @Parameter(0) public BytecodeNodeWithShortCircuitBuilder.BytecodeVariant variant;
 
-    public static <T extends BytecodeNodeWithShortCircuitBuilder> BytecodeNodeWithShortCircuit parseNode(Class<? extends BytecodeNodeWithShortCircuit> interpreterClass,
-                    BytecodeParser<T> builder) {
-        BytecodeRootNodes<BytecodeNodeWithShortCircuit> nodes = BytecodeNodeWithShortCircuitBuilder.invokeCreate((Class<? extends BytecodeNodeWithShortCircuit>) interpreterClass,
-                        null, BytecodeConfig.DEFAULT, builder);
+    public static BytecodeNodeWithShortCircuit parseNode(BytecodeNodeWithShortCircuitBuilder.BytecodeVariant variant,
+                    BytecodeParser<BytecodeNodeWithShortCircuitBuilder> builder) {
+        BytecodeRootNodes<BytecodeNodeWithShortCircuit> nodes = variant.create(null, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 
-    public <T extends BytecodeNodeWithShortCircuitBuilder> BytecodeNodeWithShortCircuit parseNode(BytecodeParser<T> builder) {
-        return parseNode(interpreterClass, builder);
+    public BytecodeNodeWithShortCircuit parseNode(BytecodeParser<BytecodeNodeWithShortCircuitBuilder> builder) {
+        return parseNode(variant, builder);
     }
 
     @Test

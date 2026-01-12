@@ -54,7 +54,7 @@ For the demo application, you will use the `jwebserver` tool, and package it as 
 
 There are two possible ways to extract the compressed SBOM contents into a human-readable format:
 - using [Syft](https://github.com/anchore/syft)
-- using the [Native Image Inspect Tool](../InspectTool.md)
+- using the [Native Image Utils Tool](#native-image-utils-tool)
 
 ### Syft
 
@@ -68,14 +68,14 @@ syft jwebserver
 ```
 It lists all of the Java libraries included in it.
 
-### Native Image Inspect Tool
+### Native Image Utils Tool
 
-GraalVM Native Image provides the [Inspect Tool](../InspectTool.md) to retrieve an SBOM embedded in a native executable.
-The Inspect Tool is a viable alternative if you prefer not to install `syft`.
+GraalVM Native Image provides the `native-image-utils` tool to retrieve an SBOM embedded in a native executable.
+The Utils Tool is a viable alternative if you prefer not to install `syft`.
 
-Run the following command to read the SBOM contents using the Inspect Tool:
+Run the following command to read the SBOM contents using the Utils Tool:
 ```bash
-native-image-inspect --sbom jwebserver
+$JAVA_HOME/bin/native-image-utils extract-sbom --image-path=<path_to_binary>
 ```
 
 To take it further, you can submit the SBOM to any available vulnerability scanner, and check if the recorded libraries have known security vulnerabilities.

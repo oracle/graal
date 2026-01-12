@@ -44,6 +44,7 @@ import java.util.Set;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
+import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -84,11 +85,15 @@ public final class ObjectTreePrinter extends ObjectScanner {
 
         private static String format(Object srcObj) {
             return switch (srcObj) {
-                case AnalysisField field -> ReportUtils.loaderName(field.getDeclaringClass()) + ':' + field.format("%H.%n:%T");
-                case AnalysisMethod method -> ReportUtils.loaderName(method.getDeclaringClass()) + ':' + method.format("%H.%n(%p)");
+                case AnalysisField field -> loaderName(field.getDeclaringClass()) + ':' + field.format("%H.%n:%T");
+                case AnalysisMethod method -> loaderName(method.getDeclaringClass()) + ':' + method.format("%H.%n(%p)");
                 case BytecodePosition bcp -> "%s [bci: %d]".formatted(format(bcp.getMethod()), bcp.getBCI());
                 default -> throw JVMCIError.shouldNotReachHere("unknown srcObj");
             };
+        }
+
+        private static String loaderName(AnalysisType type) {
+            return type.getUniverse().hostVM().loaderName(type);
         }
     }
 
@@ -400,7 +405,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
         Object object = constantAsObject(bb, constant);
         String loaderPrefix = "";
         if (object != null) {
-            loaderPrefix = ReportUtils.loaderName(object.getClass().getClassLoader()) + ':';
+            loaderPrefix = HostVM.loaderName(object.getClass().getClassLoader()) + ':';
         }
         if (object instanceof String) {
             String str = (String) object;

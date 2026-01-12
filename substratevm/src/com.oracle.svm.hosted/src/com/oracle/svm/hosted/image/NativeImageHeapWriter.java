@@ -64,6 +64,7 @@ import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistryFeature;
+import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredImageHooks;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
@@ -94,22 +95,24 @@ public final class NativeImageHeapWriter {
     private final ImageHeapLayoutInfo heapLayout;
     private final boolean imageLayer = ImageLayerBuildingSupport.buildingImageLayer();
     private final LayeredImageHooks layerHooks = imageLayer ? LayeredImageHooks.singleton() : null;
+    private final LayeredFieldValueTransformerSupport layeredFieldSupport = imageLayer ? LayeredFieldValueTransformerSupport.singleton() : null;
     private final CrossLayerConstantRegistryFeature layerConstantRegistry = imageLayer ? CrossLayerConstantRegistryFeature.singleton() : null;
+    private final ImageHeapReasonSupport reasonSupport;
     private final JavaKind wordKind = ConfigurationValues.getWordKind();
     private long sectionOffsetOfARelocatablePointer = -1;
 
     public NativeImageHeapWriter(NativeImageHeap heap, ImageHeapLayoutInfo heapLayout) {
         this.heap = heap;
         this.heapLayout = heapLayout;
+        this.reasonSupport = heap.reasonSupport;
     }
 
     /**
      * Write the model of the native image heap to the RelocatableBuffers that represent the native
      * image.
      */
-    @SuppressWarnings("try")
     public long writeHeap(DebugContext debug, RelocatableBuffer buffer) {
-        try (Indent perHeapIndent = debug.logAndIndent("NativeImageHeap.writeHeap:")) {
+        try (Indent _ = debug.logAndIndent("NativeImageHeap.writeHeap:")) {
             DeadlockWatchdog watchdog = DeadlockWatchdog.singleton();
             for (ObjectInfo info : heap.getObjects()) {
                 assert !heap.isBlacklisted(info.getObject()) : "Backlisted object: " + info.getObject();
@@ -147,7 +150,7 @@ public final class NativeImageHeapWriter {
         ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticObjectFields());
         for (HostedField field : heap.hUniverse.getFields()) {
             if (field.getWrapped().installableInLayer() && Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.isRead()) {
-                assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
+                assert field.isWritten() || !field.isValueAvailable(null) || MaterializedConstantFields.singleton().contains(field.wrapped);
                 ObjectInfo fields = (field.getStorageKind() == JavaKind.Object) ? objectFields : primitiveFields;
                 writeField(buffer, fields, field, null, null);
             }
@@ -164,22 +167,23 @@ public final class NativeImageHeapWriter {
         assert (index % heap.objectLayout.getReferenceSize() == 0) : "index " + index + " must be reference-aligned.";
     }
 
-    private static void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
+    private void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
         if (targetInfo == null) {
-            throw NativeImageHeap.reportIllegalType(target, reason, "Inconsistent image heap.");
+            throw heap.reportIllegalType(target, reason, "Inconsistent image heap.");
         }
     }
 
     private void writeField(RelocatableBuffer buffer, ObjectInfo fields, HostedField field, JavaConstant receiver, ObjectInfo info) {
         int index = getIndexInBuffer(fields, field.getLocation());
+        Object infoReason = (info != null) ? reasonSupport.reasonForInfo(info) : null;
         JavaConstant value;
         try {
             value = heap.hConstantReflection.readConstantField(field, receiver);
         } catch (AnalysisError.TypeNotFoundError ex) {
-            throw NativeImageHeap.reportIllegalType(ex.getType(), info);
+            throw heap.reportIllegalType(ex.getType(), infoReason);
         }
 
-        Object reason = (info != null) ? info : field;
+        Object reason = (infoReason == null) ? field : infoReason;
         writeConstant(buffer, index, value.getJavaKind(), value, info, reason);
     }
 
@@ -230,7 +234,7 @@ public final class NativeImageHeapWriter {
         try {
             return (WordBase) heap.aUniverse.replaceObject(word);
         } catch (AnalysisError.TypeNotFoundError ex) {
-            throw NativeImageHeap.reportIllegalType(ex.getType(), info);
+            throw heap.reportIllegalType(ex.getType(), reasonSupport.reasonForInfo(info));
         }
     }
 
@@ -242,6 +246,7 @@ public final class NativeImageHeapWriter {
         int offsetInHeap = NumUtil.safeToInt(index + heapLayout.getStartOffset());
 
         if (constant instanceof ImageHeapRelocatableConstant ihrc) {
+            VMError.guarantee(heapLayout.isWritablePatched(offsetInHeap), "ImageHeapRelocatableConstants must always be placed in the writable patched partition: %s", ihrc);
             layerConstantRegistry.markFutureHeapConstantPatchSite(ihrc, offsetInHeap);
             fillReferenceWithGarbage(buffer, index);
             return;
@@ -469,6 +474,9 @@ public final class NativeImageHeapWriter {
                                 (field.getLocation() < instanceClazz.getAfterFieldsOffset()) : Assertions.errorMessage(field,
                                                 instanceClazz.getFirstInstanceFieldOffset(), instanceClazz.getAfterFieldsOffset());
                 writeField(buffer, info, field, con, info);
+                if (layeredFieldSupport != null) {
+                    layeredFieldSupport.recordWrittenField(field, info, heapLayout);
+                }
             });
 
             /* Write the identity hashcode */

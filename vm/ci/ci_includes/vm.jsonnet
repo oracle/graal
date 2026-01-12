@@ -55,8 +55,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       'daily-deploy-vm-standalones-java-latest-linux-amd64',
       'daily-deploy-vm-base-java-latest-linux-aarch64',
       'daily-deploy-vm-standalones-java-latest-linux-aarch64',
-      'daily-deploy-vm-base-java-latest-darwin-amd64',
-      'daily-deploy-vm-standalones-java-latest-darwin-amd64',
       'daily-deploy-vm-base-java-latest-darwin-aarch64',
       'daily-deploy-vm-standalones-java-latest-darwin-aarch64',
       'daily-deploy-vm-base-java-latest-windows-amd64',
@@ -112,17 +110,10 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       timelimit: '1:00:00',
       notify_groups:: ['deploy'],
     },
-    # Darwin/AMD64
-    vm_common.graalvm_complete_build_deps('ce', 'darwin', 'amd64', java_version='latest') + vm_common.darwin_deploy + vm_common.vm_base('darwin', 'amd64', 'daily', deploy=true, jdk_hint='Latest') + vm_common.maven_deploy_base_functions.base_object('darwin', 'amd64', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
-      name: 'daily-deploy-vm-maven-darwin-amd64',
-      capabilities+: ['darwin_bigsur'],
-      timelimit: '1:00:00',
-      notify_groups:: ['deploy'],
-    },
     # Darwin/AARCH64
     vm_common.graalvm_complete_build_deps('ce', 'darwin', 'aarch64', java_version='latest') + vm_common.darwin_deploy + vm_common.vm_base('darwin', 'aarch64', 'daily', deploy=true) + vm_common.maven_deploy_base_functions.base_object('darwin', 'aarch64', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
       name: 'daily-deploy-vm-maven-darwin-aarch64',
-      capabilities+: ['darwin_bigsur'],
+      capabilities+: ['darwin_ventura'],
       timelimit: '1:00:00',
       notify_groups:: ['deploy'],
     },
@@ -156,14 +147,15 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     vm_common.deploy_vm_standalones_javaLatest_linux_amd64,
     # Linux/AARCH64
     vm_common.deploy_vm_standalones_javaLatest_linux_aarch64,
-    # Darwin/AMD64
-    vm_common.deploy_vm_standalones_javaLatest_darwin_amd64,
     # Darwin/AARCH64
     vm_common.deploy_vm_standalones_javaLatest_darwin_aarch64,
     # Windows/AMD64
     vm_common.deploy_vm_standalones_javaLatest_windows_amd64,
     # Trigger the releaser service and notify the indexer
     self.vm_notifier_daily,
+
+    # Pipelined builds
+    vm_common.build_graalvm("ce", "linux", "amd64"),
   ],
 
   builds: [vm_common.verify_name(b) for b in vm_common.builds + vm_common_runspec.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + utils.add_defined_in(builds, std.thisFile)],

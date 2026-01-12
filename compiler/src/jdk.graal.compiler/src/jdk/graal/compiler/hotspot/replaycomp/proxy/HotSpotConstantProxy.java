@@ -27,8 +27,6 @@ package jdk.graal.compiler.hotspot.replaycomp.proxy;
 import jdk.vm.ci.hotspot.HotSpotConstant;
 import jdk.vm.ci.meta.Constant;
 
-//JaCoCo Exclude
-
 public sealed class HotSpotConstantProxy extends CompilationProxyBase implements HotSpotConstant permits HotSpotMetaspaceConstantProxy, HotSpotObjectConstantProxy {
     HotSpotConstantProxy(InvocationHandler handler) {
         super(handler);

@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.option;
 
+import java.util.function.Consumer;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.heap.Heap;
-
-import java.util.function.Consumer;
 
 /**
  * Notifies the {@link Heap} implementation after the value of the option has changed.

@@ -202,6 +202,18 @@ public interface VersionFilter extends LanguageFilter {
         }
     }
 
+    final class Java23OrEarlier implements VersionFilter {
+        public static final Java23OrEarlier INSTANCE = new Java23OrEarlier();
+
+        private Java23OrEarlier() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java23OrEarlier();
+        }
+    }
+
     final class Java24OrEarlier implements VersionFilter {
         public static final Java24OrEarlier INSTANCE = new Java24OrEarlier();
 
@@ -226,27 +238,15 @@ public interface VersionFilter extends LanguageFilter {
         }
     }
 
-    final class Java25OrEarlier implements VersionFilter {
-        public static final Java25OrEarlier INSTANCE = new Java25OrEarlier();
+    final class Java9To21 implements VersionFilter {
+        public static final Java9To21 INSTANCE = new Java9To21();
 
-        private Java25OrEarlier() {
+        private Java9To21() {
         }
 
         @Override
         public boolean isValidFor(JavaVersion version) {
-            return version.java25OrEarlier();
-        }
-    }
-
-    final class Java26OrLater implements VersionFilter {
-        public static final Java26OrLater INSTANCE = new Java26OrLater();
-
-        private Java26OrLater() {
-        }
-
-        @Override
-        public boolean isValidFor(JavaVersion version) {
-            return version.java26OrLater();
+            return version.java21OrEarlier() && version.java9OrLater();
         }
     }
 }

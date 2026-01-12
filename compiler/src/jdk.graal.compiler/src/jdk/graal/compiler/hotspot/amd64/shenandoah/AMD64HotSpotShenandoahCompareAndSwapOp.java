@@ -96,7 +96,7 @@ public class AMD64HotSpotShenandoahCompareAndSwapOp extends AMD64LIRInstruction 
 
     @Override
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/a2743bab4fd203b0791cf47e617c1a95b05ab3cc/src/hotspot/cpu/x86/gc/shenandoah/shenandoahBarrierSetAssembler_x86.cpp#L596-L737",
+    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/b8aa130bab715f187476181acc5021b27958833f/src/hotspot/cpu/x86/gc/shenandoah/shenandoahBarrierSetAssembler_x86.cpp#L634-L775",
               sha1 = "c236c9ca8ccf7e45757d6ac04d16a230df9475a0")
     // @formatter:on
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {

@@ -39,22 +39,10 @@ import jdk.graal.compiler.lir.alloc.lsra.Interval.SpillState;
 import jdk.graal.compiler.lir.alloc.lsra.LinearScan.IntervalPredicate;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
-import jdk.graal.compiler.lir.phases.LIRPhase;
-import jdk.graal.compiler.options.NestedBooleanOptionKey;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionType;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 
 public class LinearScanEliminateSpillMovePhase extends LinearScanAllocationPhase {
-
-    public static class Options {
-        // @formatter:off
-        @Option(help = "Enable spill move elimination.", type = OptionType.Debug)
-        public static final OptionKey<Boolean> LIROptLSRAEliminateSpillMoves = new NestedBooleanOptionKey(LIRPhase.Options.LIROptimization, true);
-        // @formatter:on
-    }
 
     private static final IntervalPredicate mustStoreAtDefinition = new LinearScan.IntervalPredicate() {
 
@@ -115,11 +103,11 @@ public class LinearScanEliminateSpillMovePhase extends LinearScanAllocationPhase
                         if (opId == -1) {
                             StandardOp.MoveOp move = StandardOp.MoveOp.asMoveOp(op);
                             /*
-                             * Remove move from register to stack if the stack slot is guaranteed to
-                             * be correct. Only moves that have been inserted by LinearScan can be
-                             * removed.
+                             * Remove move from register/stack to stack if the stack slot is
+                             * guaranteed to be correct. Only moves that have been inserted by
+                             * LinearScan can be removed.
                              */
-                            if (Options.LIROptLSRAEliminateSpillMoves.getValue(allocator.getOptions()) && canEliminateSpillMove(block, move)) {
+                            if (canEliminateSpillMove(block, move)) {
                                 /*
                                  * Move target is a stack slot that is always correct, so eliminate
                                  * instruction.

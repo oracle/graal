@@ -206,15 +206,23 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         }
     }
 
-    private void checkParameterOrReturnType(String headerMessage, TypeMirror typeMirror, Element element) {
+    private void checkParameterOrReturnType(String headerMessage, TypeMirror typeMirror, Element element, boolean allowPointerType) {
         if (typeMirror.getKind().isPrimitive()) {
             if (getAnnotation(typeMirror, javaType) != null) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
                                 headerMessage + " (primitive type) cannot be annotated with @JavaType", element);
             }
         } else if (typeMirror.getKind() != TypeKind.VOID) {
-            // Reference type.
-            if (!processingEnv.getTypeUtils().isSameType(typeMirror, staticObject.asType())) {
+            boolean isStaticObject = processingEnv.getTypeUtils().isSameType(typeMirror, staticObject.asType());
+            if (allowPointerType) {
+                // used in EspressoLibs where @Pointer TruffleObjects are allowed.
+                boolean isPointer = processingEnv.getTypeUtils().isSameType(typeMirror, truffleObject.asType());
+                if (!(isStaticObject || isPointer)) {
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                                    headerMessage + " is not of type StaticObject or TruffleObject", element);
+                }
+            } else if (!isStaticObject) {
+                // only StaticObject is allowed when typec checks are not relaxed
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
                                 headerMessage + " is not of type StaticObject", element);
             }
@@ -230,18 +238,18 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         }
     }
 
-    private void checkTargetMethod(ExecutableElement targetElement) {
+    private void checkTargetMethod(ExecutableElement targetElement, boolean allowPointerType) {
         for (VariableElement param : targetElement.getParameters()) {
             if (isActualParameter(param)) {
-                checkParameterOrReturnType("Substitution parameter", param.asType(), param);
+                checkParameterOrReturnType("Substitution parameter", param.asType(), param, allowPointerType);
             } else {
                 checkInjectedParameter("Substitution parameter", param.asType(), param);
             }
         }
-        checkParameterOrReturnType("Substitution return type", targetElement.getReturnType(), targetElement);
+        checkParameterOrReturnType("Substitution return type", targetElement.getReturnType(), targetElement, allowPointerType);
     }
 
-    private void checkSubstitutionElement(Element element) {
+    private void checkSubstitutionElement(Element element, boolean allowPointerType) {
         if (element.getKind() == ElementKind.METHOD) {
             ExecutableElement methodElement = (ExecutableElement) element;
             Set<Modifier> modifiers = methodElement.getModifiers();
@@ -251,7 +259,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             if (!modifiers.contains(Modifier.STATIC)) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Substitution method must be static", element);
             }
-            checkTargetMethod(methodElement);
+            checkTargetMethod(methodElement, allowPointerType);
         }
         if (element.getKind() == ElementKind.CLASS) {
             TypeElement typeElement = (TypeElement) element;
@@ -261,7 +269,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             }
             ExecutableElement targetMethod = findNodeExecute(typeElement);
             if (targetMethod != null) {
-                checkTargetMethod(targetMethod);
+                checkTargetMethod(targetMethod, allowPointerType);
             }
         }
     }
@@ -313,9 +321,12 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         // Find the methods annotated with @Substitution.
         AnnotationMirror subst = getAnnotation(element, substitutionAnnotation);
         if (subst != null) {
-
-            // Sanity check.
-            checkSubstitutionElement(element);
+            List<Byte> flagsList = getAnnotationValueList(subst, "flags", Byte.class);
+            byte flags = 0;
+            for (Byte flag : flagsList) {
+                flags |= flag;
+            }
+            checkSubstitutionElement(element, isFlag(flags, SubstitutionFlag.allowPointerType));
 
             // Obtain the name of the element to be substituted in.
             String targetMethodName = getSubstutitutedMethodName(element);
@@ -346,12 +357,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             nameProvider = nameProvider == null ? defaultNameProvider : nameProvider;
 
             TypeMirror languageFilter = getLanguageFilter(subst);
-
-            List<Byte> flagsList = getAnnotationValueList(subst, "flags", Byte.class);
-            byte flags = 0;
-            for (Byte flag : flagsList) {
-                flags |= flag;
-            }
 
             TypeMirror encodedInlineGuard = getInlineValue(classWideInline, element);
             boolean inlineInBytecode = encodedInlineGuard != null ||
@@ -474,7 +479,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     /**
      * @param annotation @JavaType annotation
      * @param element element containing the @JavaType annotation for error reporting
-     *
+     * 
      * @return the fully qualified internal name of the guest class.
      */
     private String getClassFromJavaType(AnnotationMirror annotation, Element element) {
@@ -625,6 +630,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         }
         if (parameterTypeName.contains("StaticObject") || h.returnType.equals("V")) {
             expectedImports.add(IMPORT_STATIC_OBJECT);
+        }
+        if (parameterTypeName.contains("TruffleObject")) {
+            expectedImports.add(IMPORT_TRUFFLE_OBJECT);
         }
         if (helper.isNodeTarget()) {
             expectedImports.add(helper.getNodeTarget().getQualifiedName().toString());

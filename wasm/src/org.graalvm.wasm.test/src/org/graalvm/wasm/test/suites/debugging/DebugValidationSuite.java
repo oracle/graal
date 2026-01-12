@@ -59,7 +59,7 @@ import com.oracle.truffle.api.debug.DebuggerSession;
 public class DebugValidationSuite extends AbstractBinarySuite {
 
     private static AbstractBinarySuite.BinaryBuilder getDefaultDebugBuilder() {
-        return newBuilder().addType(EMPTY_BYTES, EMPTY_BYTES).addFunction((byte) 0, EMPTY_BYTES, "0B").addFunctionExport((byte) 0, "_main");
+        return newBuilder().addType(EMPTY_INTS, EMPTY_INTS).addFunction(0, EMPTY_INTS, "0B").addFunctionExport(0, "_main");
     }
 
     @Test

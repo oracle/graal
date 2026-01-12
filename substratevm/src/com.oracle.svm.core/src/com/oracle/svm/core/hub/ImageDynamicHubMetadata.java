@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.core.hub;
 
+import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
 
 final class ImageDynamicHubMetadata implements DynamicHubMetadata {
     @UnknownPrimitiveField(availability = BuildPhaseProvider.CompileQueueFinished.class) //
@@ -135,4 +136,5 @@ final class ImageDynamicHubMetadata implements DynamicHubMetadata {
         }
         return permittedSubclasses;
     }
+
 }

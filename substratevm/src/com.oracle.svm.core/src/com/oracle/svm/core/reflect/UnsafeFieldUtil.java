@@ -41,7 +41,7 @@ public class UnsafeFieldUtil {
             traceFieldAccess(SubstrateUtil.cast(field, Field.class));
         }
         int offset = field.root == null ? field.offset : field.root.offset;
-        boolean conditionsSatisfied = SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).conditions.satisfied();
+        boolean conditionsSatisfied = SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata.satisfied();
         if (offset <= 0 || !conditionsSatisfied) {
             throw MissingReflectionRegistrationUtils.reportAccessedField(SubstrateUtil.cast(field, Field.class));
         }

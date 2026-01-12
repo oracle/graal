@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.debug;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -142,14 +141,14 @@ public abstract class LLVMDebuggerValue implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    public final boolean hasLanguage() {
+    public final boolean hasLanguageId() {
         return true;
     }
 
     @ExportMessage
     @SuppressWarnings({"static-method"})
-    public final Class<? extends TruffleLanguage<?>> getLanguage() {
-        return LLVMLanguage.class;
+    public final String getLanguageId() {
+        return LLVMLanguage.ID;
     }
 
     @ExportMessage

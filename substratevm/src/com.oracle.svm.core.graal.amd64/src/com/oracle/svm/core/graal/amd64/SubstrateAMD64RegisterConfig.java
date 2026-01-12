@@ -69,10 +69,9 @@ import static jdk.vm.ci.amd64.AMD64Kind.V128_QWORD;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
@@ -379,7 +378,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             }
         } else {
             final int baseStackOffset = currentStackOffset;
-            Set<Register> usedRegisters = new HashSet<>();
+            EconomicSet<Register> usedRegisters = EconomicSet.create();
             VMError.guarantee(parameterTypes.length == type.fixedParameterAssignment.length, "Parameters/assignments size mismatch.");
 
             for (int i = firstActualArgument; i < locations.length; i++) {

@@ -112,6 +112,7 @@ import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.calc.FloatConvertCategory;
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
@@ -144,7 +145,6 @@ import jdk.graal.compiler.lir.amd64.AMD64MathLogOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathPowOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathSignumOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathSinOp;
-import jdk.graal.compiler.lir.amd64.AMD64MathSinhOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathTanOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathTanhOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move;
@@ -201,6 +201,26 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
     private final AllocatableValue nullRegisterValue;
     protected AMD64SIMDInstructionEncoding simdEncoding;
+
+    protected Value emitIntegerMinMax(LIRKind cmpKind, Value a, Value b, AMD64MathMinMaxFloatOp minMaxOp, NumUtil.Signedness signedness) {
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+        GraalError.guarantee(kind.isInteger(), "unexpected value in superclass: %s", a);
+        Condition condition;
+        if (minMaxOp == AMD64MathMinMaxFloatOp.Min) {
+            if (signedness == NumUtil.Signedness.SIGNED) {
+                condition = Condition.LE;
+            } else {
+                condition = Condition.BE;
+            }
+        } else {
+            if (signedness == NumUtil.Signedness.SIGNED) {
+                condition = Condition.GE;
+            } else {
+                condition = Condition.AE;
+            }
+        }
+        return getLIRGen().emitConditionalMove(cmpKind.getPlatformKind(), a, b, condition, false, a, b);
+    }
 
     @Override
     public Variable emitNegate(Value inputVal, boolean setFlags) {
@@ -1309,11 +1329,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    public Value emitMathSinh(Value input) {
-        return new AMD64MathSinhOp().emitLIRWrapper(getLIRGen(), input);
-    }
-
-    @Override
     public Value emitMathTan(Value input) {
         return new AMD64MathTanOp().emitLIRWrapper(getLIRGen(), input);
     }
@@ -1678,13 +1693,29 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    public Value emitMathMax(Value x, Value y) {
-        return emitMathMinMax(x, y, AMD64MathMinMaxFloatOp.Max);
+    public Value emitMathMax(LIRKind cmpKind, Value x, Value y) {
+        if (((AMD64Kind) cmpKind.getPlatformKind()).isInteger()) {
+            return emitIntegerMinMax(cmpKind, x, y, AMD64MathMinMaxFloatOp.Max, NumUtil.Signedness.SIGNED);
+        }
+        return emitMathMinMax(cmpKind, x, y, AMD64MathMinMaxFloatOp.Max);
     }
 
     @Override
-    public Value emitMathMin(Value x, Value y) {
-        return emitMathMinMax(x, y, AMD64MathMinMaxFloatOp.Min);
+    public Value emitMathMin(LIRKind cmpKind, Value x, Value y) {
+        if (((AMD64Kind) cmpKind.getPlatformKind()).isInteger()) {
+            return emitIntegerMinMax(cmpKind, x, y, AMD64MathMinMaxFloatOp.Min, NumUtil.Signedness.SIGNED);
+        }
+        return emitMathMinMax(cmpKind, x, y, AMD64MathMinMaxFloatOp.Min);
+    }
+
+    @Override
+    public Value emitMathUnsignedMax(LIRKind cmpKind, Value x, Value y) {
+        return emitIntegerMinMax(cmpKind, x, y, AMD64MathMinMaxFloatOp.Max, NumUtil.Signedness.UNSIGNED);
+    }
+
+    @Override
+    public Value emitMathUnsignedMin(LIRKind cmpKind, Value x, Value y) {
+        return emitIntegerMinMax(cmpKind, x, y, AMD64MathMinMaxFloatOp.Min, NumUtil.Signedness.UNSIGNED);
     }
 
     protected enum AMD64MathMinMaxFloatOp {
@@ -1746,7 +1777,8 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
      * @see Math#min(double, double)
      * @see Math#min(float, float)
      */
-    protected Value emitMathMinMax(Value a, Value b, AMD64MathMinMaxFloatOp minmaxop) {
+    @SuppressWarnings("unused")
+    protected Value emitMathMinMax(LIRKind cmpKind, Value a, Value b, AMD64MathMinMaxFloatOp minmaxop) {
         assert supportAVX();
         AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
 

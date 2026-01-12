@@ -68,6 +68,17 @@ public final class CollectionsUtil {
     }
 
     /**
+     * Creates an unmodifiable empty map.
+     *
+     * @param <K> the key type
+     * @param <V> the value type
+     * @return an unmodifiable empty map
+     */
+    public static <K, V> Map<K, V> mapOf() {
+        return Collections.emptyMap();
+    }
+
+    /**
      * Creates an unmodifiable map with a single entry.
      *
      * @param <K> the key type

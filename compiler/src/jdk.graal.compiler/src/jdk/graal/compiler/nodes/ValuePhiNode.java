@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package jdk.graal.compiler.nodes;
 
 import java.util.Map;
 
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.Assertions;
@@ -35,9 +36,11 @@ import jdk.graal.compiler.graph.NodeFlood;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.spi.LimitedValueProxy;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.vm.ci.code.CodeUtil;
 
 /**
  * Value {@link PhiNode}s merge data flow values at control flow merges.
@@ -91,6 +94,7 @@ public class ValuePhiNode extends PhiNode {
             valuesStamp = stamp;
         }
         valuesStamp = tryInferLoopPhiStamp(valuesStamp);
+        valuesStamp = tryImproveIntegerBits(valuesStamp);
         if (stamp.isCompatible(valuesStamp)) {
             valuesStamp = stamp.join(valuesStamp);
         }
@@ -174,6 +178,54 @@ public class ValuePhiNode extends PhiNode {
             }
         }
         return valuesStamp;
+    }
+
+    /**
+     * Tries to strengthen an integer-typed loop phi's bitmasks. This is meant for phis like the
+     * counter in the following loop:
+     *
+     * <pre>
+     *     for (int i = 0; i < limit; i += 8) ...
+     * </pre>
+     *
+     * In this loop, {@code i} will always be divisible by 8, even on overflow. We can derive this
+     * from the may-be-set masks of the inputs: Any low bits that are clear in both the initial
+     * value and the increment must also be clear in the phi's stamp.
+     *
+     * @param valuesStamp a stamp derived from this phi's direct inputs
+     * @return a stronger stamp than {@code valuesStamp} if lower bits could be cleared;
+     *         {@code valuesStamp} otherwise
+     */
+    private Stamp tryImproveIntegerBits(Stamp valuesStamp) {
+        if (isAlive() && isLoopPhi() && valuesStamp instanceof IntegerStamp integerStamp && singleBackValueOrThis() instanceof AddNode add && add.getX() == this) {
+            long valuesMask = integerStamp.mayBeSet();
+            long initMask = ((IntegerStamp) valueAt(0).stamp(NodeView.DEFAULT)).mayBeSet();
+            long incrementMask = ((IntegerStamp) add.getY().stamp(NodeView.DEFAULT)).mayBeSet();
+            int clearLowBits = Long.numberOfTrailingZeros(initMask | incrementMask);
+            if (Long.numberOfTrailingZeros(valuesMask) < clearLowBits) {
+                long improvedValuesMask = valuesMask & ~CodeUtil.mask(clearLowBits);
+                IntegerStamp improvedMaskStamp = IntegerStamp.stampForMask(integerStamp.getBits(), 0, improvedValuesMask);
+                return valuesStamp.improveWith(improvedMaskStamp);
+            }
+        }
+        return valuesStamp;
+    }
+
+    /**
+     * Update this phi's stamp by {@linkplain Stamp#tryImproveWith improving it with} the new
+     * information in the given stamp. This is necessary for cases where we have some high-level
+     * knowledge about this phi's value that's not expressed in the graph. It's illegal to call
+     * {@link #setStamp} on value phis because we override {@link #inferStamp()}}.
+     *
+     * @return {@code true} if the stamp was updated, {@code false} otherwise
+     */
+    public boolean refineStampWith(Stamp newInformation) {
+        Stamp improved = stamp.tryImproveWith(newInformation);
+        if (improved == null) {
+            return false;
+        } else {
+            return updateStamp(improved);
+        }
     }
 
     private static Node stripProxies(Node n) {

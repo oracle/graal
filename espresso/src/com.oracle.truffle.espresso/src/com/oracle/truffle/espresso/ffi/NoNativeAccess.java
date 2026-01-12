@@ -23,6 +23,9 @@
 package com.oracle.truffle.espresso.ffi;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -32,11 +35,22 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
+import com.oracle.truffle.espresso.ffi.memory.TruffleByteArrayChunkedMemoryImpl;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.substitutions.Collect;
 
 public class NoNativeAccess implements NativeAccess {
+
     private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, NoNativeAccess.class);
+
+    private final NativeMemory nativeMemory;
+
+    public NoNativeAccess(NativeMemory nativeMemory) {
+        this.nativeMemory = nativeMemory;
+    }
 
     @Override
     public @Pointer TruffleObject loadLibrary(Path libraryPath) {
@@ -101,30 +115,20 @@ public class NoNativeAccess implements NativeAccess {
     }
 
     @Override
-    public @Buffer TruffleObject allocateMemory(long size) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.fatal("AllocateMemory not supported without native access.");
-    }
-
-    @Override
-    public @Buffer TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.fatal("AllocateMemory not supported without native access.");
-    }
-
-    @Override
-    public void freeMemory(@Pointer TruffleObject buffer) {
-        getLogger().warning(() -> "Attempting to free memory without native access.");
-    }
-
-    @Override
     public @Pointer TruffleObject createNativeClosure(TruffleObject executable, NativeSignature nativeSignature) {
-        getLogger().warning(() -> "Attempting to create native closure without native access.");
-        return null;
+        if (EspressoContext.get(null).isInitialized()) {
+            getLogger().warning(() -> "Attempting to create native closure without native access.");
+        }
+        return RawPointer.nullInstance();
     }
 
     @Override
     public void prepareThread() {
+    }
+
+    @Override
+    public NativeMemory nativeMemory() {
+        return nativeMemory;
     }
 
     private static TruffleLogger getLogger() {
@@ -143,7 +147,31 @@ public class NoNativeAccess implements NativeAccess {
 
         @Override
         public NativeAccess create(TruffleLanguage.Env env) {
-            return new NoNativeAccess();
+            NativeMemory nativeMemory = createNativeMemory(env);
+            return new NoNativeAccess(nativeMemory);
+        }
+
+        private static NativeMemory createNativeMemory(TruffleLanguage.Env env) {
+            String name = env.getOptions().get(EspressoOptions.NativeMemory);
+            if (name == null || name.isEmpty()) {
+                // default NativeMemory
+                return new TruffleByteArrayChunkedMemoryImpl();
+            }
+            // try to find the user nativeMemory
+            List<String> available = new ArrayList<>();
+            ServiceLoader<NativeMemory.Provider> loader = ServiceLoader.load(NativeMemory.Provider.class);
+            boolean isNativeAccessAllowed = env.isNativeAccessAllowed();
+            for (NativeMemory.Provider provider : loader) {
+                available.add(provider.id());
+                if (provider.id().equals(name)) {
+                    // Security check
+                    if (!isNativeAccessAllowed && provider.needsNativeAccess()) {
+                        throw EspressoError.fatal("Native access is disabled, but the selected NativeMemory requires it. Please choose a different NativeMemory or allow native access");
+                    }
+                    return provider.create();
+                }
+            }
+            throw EspressoError.fatal("Cannot find native backend: '" + name + "'. Available backends: " + available);
         }
     }
 }

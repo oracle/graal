@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.hotspot.replaycomp.proxy;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.BitSet;
 import java.util.Formattable;
@@ -42,8 +41,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
-
-//JaCoCo Exclude
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 public final class HotSpotResolvedJavaMethodProxy extends CompilationProxyBase.CompilationProxyAnnotatedBase implements HotSpotResolvedJavaMethod, Formattable {
     HotSpotResolvedJavaMethodProxy(InvocationHandler handler) {
@@ -134,7 +132,7 @@ public final class HotSpotResolvedJavaMethodProxy extends CompilationProxyBase.C
         return (boolean) handle(isVarArgsMethod, isVarArgsInvokable);
     }
 
-    private static final SymbolicMethod isBridgeMethod = method("isBridge");
+    public static final SymbolicMethod isBridgeMethod = method("isBridge");
     private static final InvokableMethod isBridgeInvokable = (receiver, args) -> ((HotSpotResolvedJavaMethod) receiver).isBridge();
 
     @Override
@@ -223,14 +221,6 @@ public final class HotSpotResolvedJavaMethodProxy extends CompilationProxyBase.C
     @Override
     public Parameter[] getParameters() {
         return (Parameter[]) handle(getParametersMethod, getParametersInvokable);
-    }
-
-    public static final SymbolicMethod getParameterAnnotationsMethod = method("getParameterAnnotations");
-    private static final InvokableMethod getParameterAnnotationsInvokable = (receiver, args) -> ((HotSpotResolvedJavaMethod) receiver).getParameterAnnotations();
-
-    @Override
-    public Annotation[][] getParameterAnnotations() {
-        return (Annotation[][]) handle(getParameterAnnotationsMethod, getParameterAnnotationsInvokable);
     }
 
     public static final SymbolicMethod getGenericParameterTypesMethod = method("getGenericParameterTypes");
@@ -445,5 +435,21 @@ public final class HotSpotResolvedJavaMethodProxy extends CompilationProxyBase.C
     @Override
     public void formatTo(Formatter formatter, int flags, int width, int precision) {
         handle(formatToMethod, formatToInvokable, formatter, flags, width, precision);
+    }
+
+    private static final SymbolicMethod getAnnotationDefaultInfoMethod = new SymbolicMethod(ResolvedJavaMethod.class, "getAnnotationDefaultInfo");
+    private static final InvokableMethod getAnnotationDefaultInfoInvokable = (receiver, args) -> ((ResolvedJavaMethod) receiver).getAnnotationDefaultInfo();
+
+    @Override
+    public AnnotationsInfo getAnnotationDefaultInfo() {
+        return (AnnotationsInfo) handle(getAnnotationDefaultInfoMethod, getAnnotationDefaultInfoInvokable);
+    }
+
+    private static final SymbolicMethod getParameterAnnotationInfoMethod = new SymbolicMethod(ResolvedJavaMethod.class, "getParameterAnnotationInfo");
+    private static final InvokableMethod getParameterAnnotationInfoInvokable = (receiver, args) -> ((ResolvedJavaMethod) receiver).getParameterAnnotationInfo();
+
+    @Override
+    public AnnotationsInfo getParameterAnnotationInfo() {
+        return (AnnotationsInfo) handle(getParameterAnnotationInfoMethod, getParameterAnnotationInfoInvokable);
     }
 }

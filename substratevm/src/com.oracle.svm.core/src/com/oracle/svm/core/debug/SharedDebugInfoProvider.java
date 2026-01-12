@@ -294,8 +294,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      */
     private final ClassEntry foreignMethodListClassEntry = new ClassEntry(FOREIGN_METHOD_LIST_TYPE, -1, -1, -1, -1, -1, null, null, NULL_LOADER_ENTRY);
 
-    public SharedDebugInfoProvider(DebugContext debug, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess) {
-        this.runtimeConfiguration = runtimeConfiguration;
+    public SharedDebugInfoProvider(DebugContext debug, RuntimeConfiguration runtimeConfig, MetaAccessProvider metaAccess) {
+        this.runtimeConfiguration = runtimeConfig;
         this.metaAccess = metaAccess;
 
         /*
@@ -450,14 +450,13 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * parallel.
      */
     @Override
-    @SuppressWarnings("try")
     public final void installDebugInfo() {
         // we can only meaningfully provide logging if debug info is produced sequentially
         Stream<SharedType> typeStream = debug.isLogEnabledForMethod() ? typeInfo() : typeInfo().parallel();
         Stream<Pair<SharedMethod, CompilationResult>> codeStream = debug.isLogEnabledForMethod() ? codeInfo() : codeInfo().parallel();
         Stream<Object> dataStream = debug.isLogEnabledForMethod() ? dataInfo() : dataInfo().parallel();
 
-        try (DebugContext.Scope s = debug.scope("DebugInfoProvider")) {
+        try (DebugContext.Scope _ = debug.scope("DebugInfoProvider")) {
             // Create and index an empty dir with index 0 for null paths.
             lookupDirEntry(EMPTY_PATH);
 
@@ -528,10 +527,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param compilation The {@code CompilationResult} to process
      */
     private void handleCodeInfo(SharedMethod method, CompilationResult compilation) {
-        // First make sure the underlying MethodEntry exists.
-        MethodEntry methodEntry = lookupMethodEntry(method);
-        // Then process the compilation.
-        lookupCompiledMethodEntry(methodEntry, method, compilation);
+        // Process the compilation.
+        lookupCompiledMethodEntry(method, compilation);
     }
 
     @Fold
@@ -608,8 +605,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         // A call nodes in the frame tree will be stored as call ranges and leaf nodes as
         // leaf ranges
         final CompilationResultFrameTree.CallNode root = new CompilationResultFrameTree.Builder(debug, compilation.getTargetCodeSize(), maxDepth, useSourceMappings,
-                        true)
-                        .build(compilation);
+                        true).build(compilation);
         if (root == null) {
             return;
         }
@@ -638,9 +634,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param compilation the given {@code CompilationResult}
      * @return the fully processed {@code CompiledMethodEntry} for the compilation.
      */
-    @SuppressWarnings("try")
     private CompiledMethodEntry installCompilationInfo(MethodEntry methodEntry, SharedMethod method, CompilationResult compilation) {
-        try (DebugContext.Scope s = debug.scope("DebugInfoCompilation")) {
+        try (DebugContext.Scope _ = debug.scope("DebugInfoCompilation")) {
             if (debug.isLogEnabled()) {
                 debug.log(DebugContext.INFO_LEVEL, "Register compilation %s ", compilation.getName());
             }
@@ -701,7 +696,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param method the {@code SharedMethod} to process
      * @return the corresponding {@code MethodEntry}
      */
-    @SuppressWarnings("try")
     private MethodEntry createMethodEntry(SharedMethod method) {
         FileEntry fileEntry = lookupFileEntry(method);
 
@@ -746,7 +740,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param method the given method
      * @param methodEntry the {@code MethodEntry} to process
      */
-    @SuppressWarnings("try")
     private void processMethodEntry(SharedMethod method, MethodEntry methodEntry) {
         methodEntry.getOwnerType().addMethod(methodEntry);
         // look for locals in the methods local variable table
@@ -759,9 +752,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param method the {@code SharedMethod} to process
      * @return the corresponding {@code MethodEntry}
      */
-    @SuppressWarnings("try")
     private MethodEntry installMethodEntry(SharedMethod method) {
-        try (DebugContext.Scope s = debug.scope("DebugInfoMethod")) {
+        try (DebugContext.Scope _ = debug.scope("DebugInfoMethod")) {
             if (debug.isLogEnabled()) {
                 debug.log(DebugContext.INFO_LEVEL, "Register method %s of class %s", getMethodName(method), method.getDeclaringClass().getName());
             }
@@ -790,9 +782,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param type the {@code SharedType} to process
      * @return a fully processed {@code TypeEntry}
      */
-    @SuppressWarnings("try")
     private TypeEntry installTypeEntry(SharedType type) {
-        try (DebugContext.Scope s = debug.scope("DebugInfoType")) {
+        try (DebugContext.Scope _ = debug.scope("DebugInfoType")) {
             if (debug.isLogEnabled()) {
                 debug.log(DebugContext.INFO_LEVEL, "Register type %s ", type.getName());
             }
@@ -1060,15 +1051,17 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * Lookup a {@code CompiledMethodEntry} for a {@code CompilationResult}. If the
      * {@code CompiledMethodEntry} does not exist yet, it is installed.
      *
-     * @param methodEntry the {@code MethodEntry} of the method param
      * @param method the {@code SharedMethod} of this compilation
      * @param compilation the given {@code CompilationResult}
      * @return the corresponding {@code CompiledMethodEntry}
      */
-    protected CompiledMethodEntry lookupCompiledMethodEntry(MethodEntry methodEntry, SharedMethod method, CompilationResult compilation) {
+    public CompiledMethodEntry lookupCompiledMethodEntry(SharedMethod method, CompilationResult compilation) {
         if (method == null) {
             return null;
         }
+        // First make sure the underlying MethodEntry exists.
+        MethodEntry methodEntry = lookupMethodEntry(method);
+
         CompiledMethodEntry compiledMethodEntry = synchronizedGet(compiledMethodIndex, compilation.getCompilationId());
         if (compiledMethodEntry == null) {
             compiledMethodEntry = installCompilationInfo(methodEntry, method, compilation);
@@ -1179,7 +1172,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         DirEntry dirEntry = lookupDirEntry(dirPath);
 
         /* Reuse any existing entry if available. */
-        FileEntry fileEntry = synchronizedComputeIfAbsent(fileIndex, fullFilePath, path -> new FileEntry(fileName.toString(), dirEntry));
+        FileEntry fileEntry = synchronizedComputeIfAbsent(fileIndex, fullFilePath, _ -> new FileEntry(fileName.toString(), dirEntry));
         assert dirPath == null || fileEntry.dirEntry() != null && fileEntry.dirEntry().path().equals(dirPath);
         return fileEntry;
     }
@@ -1820,7 +1813,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      */
     private static boolean hasChildren(CompilationResultFrameTree.CallNode callNode) {
         Object[] result = new Object[]{false};
-        callNode.visitChildren((node, args) -> args[0] = true, result);
+        callNode.visitChildren((_, args) -> args[0] = true, result);
         return (boolean) result[0];
     }
 

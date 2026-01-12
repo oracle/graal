@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import static org.graalvm.wasm.Assert.assertByteEqual;
 import static org.graalvm.wasm.Assert.assertIntEqual;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
@@ -51,13 +50,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmRuntimeException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryFactory;
 
@@ -76,6 +78,7 @@ public abstract class SymbolTable {
     private static final int INITIAL_DATA_SIZE = 512;
     private static final int INITIAL_TYPE_SIZE = 128;
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
+    private static final int INITIAL_TAG_TYPE_SIZE = 1;
     private static final byte GLOBAL_MUTABLE_BIT = 0x01;
     private static final byte GLOBAL_EXPORTED_BIT = 0x02;
     private static final byte GLOBAL_INITIALIZED_BIT = 0x04;
@@ -83,51 +86,348 @@ public abstract class SymbolTable {
     private static final byte GLOBAL_FUNCTION_INITIALIZER_BIT = 0x20;
 
     public static final int UNINITIALIZED_ADDRESS = Integer.MIN_VALUE;
-    private static final int NO_EQUIVALENCE_CLASS = 0;
-    static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
+    public static final int NO_EQUIVALENCE_CLASS = 0;
+    public static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
 
-    public static final class FunctionType {
-        @CompilationFinal(dimensions = 1) private final byte[] paramTypes;
-        @CompilationFinal(dimensions = 1) private final byte[] resultTypes;
-        private final int hashCode;
-
-        FunctionType(byte[] paramTypes, byte[] resultTypes) {
-            this.paramTypes = paramTypes;
-            this.resultTypes = resultTypes;
-            this.hashCode = Arrays.hashCode(paramTypes) ^ Arrays.hashCode(resultTypes);
+    /**
+     * Represents a WebAssembly value type in its closed form, with all type indices replaced with
+     * their definitions. You can query the subtyping relation on types using the predicates
+     * {@link #isSupertypeOf(ClosedValueType)} and {@link #isSubtypeOf(ClosedValueType)}, both of
+     * which are written to be PE-friendly provided the receiver type is a PE constant.
+     * <p>
+     * If you need to check whether two types are equivalent, instead of checking
+     * {@code A.isSupertypeOf(B) && A.isSubtypeOf(B)}, you can use {@code A.equals(B)}, since, in
+     * the WebAssembly type system, type equivalence corresponds to structural equality.
+     * </p>
+     */
+    public abstract static sealed class ClosedValueType {
+        // This is a workaround until we can use pattern matching in JDK 21+.
+        public enum Kind {
+            Number,
+            Vector,
+            Reference
         }
 
-        public byte[] paramTypes() {
-            return paramTypes;
+        public abstract boolean isSupertypeOf(ClosedValueType valueSubType);
+
+        public abstract boolean isSubtypeOf(ClosedValueType valueSuperType);
+
+        public abstract boolean matchesValue(Object value);
+
+        public abstract Kind kind();
+    }
+
+    public abstract static sealed class ClosedHeapType {
+        // This is a workaround until we can use pattern matching in JDK 21+.
+        public enum Kind {
+            Abstract,
+            Function
         }
 
-        public byte[] resultTypes() {
-            return resultTypes;
+        public abstract boolean isSupertypeOf(ClosedHeapType heapSubType);
+
+        public abstract boolean isSubtypeOf(ClosedHeapType heapSuperType);
+
+        public abstract boolean matchesValue(Object value);
+
+        public abstract Kind kind();
+    }
+
+    public static final class NumberType extends ClosedValueType {
+        public static final NumberType I32 = new NumberType(WasmType.I32_TYPE);
+        public static final NumberType I64 = new NumberType(WasmType.I64_TYPE);
+        public static final NumberType F32 = new NumberType(WasmType.F32_TYPE);
+        public static final NumberType F64 = new NumberType(WasmType.F64_TYPE);
+
+        private final int value;
+
+        private NumberType(int value) {
+            this.value = value;
+        }
+
+        public int value() {
+            return value;
+        }
+
+        @Override
+        public boolean isSupertypeOf(ClosedValueType valueSubType) {
+            return valueSubType == this;
+        }
+
+        @Override
+        public boolean isSubtypeOf(ClosedValueType valueSuperType) {
+            return valueSuperType == this;
+        }
+
+        @Override
+        public boolean matchesValue(Object val) {
+            return switch (value()) {
+                case WasmType.I32_TYPE -> val instanceof Integer;
+                case WasmType.I64_TYPE -> val instanceof Long;
+                case WasmType.F32_TYPE -> val instanceof Float;
+                case WasmType.F64_TYPE -> val instanceof Double;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+
+        @Override
+        public Kind kind() {
+            return Kind.Number;
+        }
+
+        @Override
+        public boolean equals(Object that) {
+            return this == that;
         }
 
         @Override
         public int hashCode() {
-            return hashCode;
+            return value;
         }
 
         @Override
-        public boolean equals(Object object) {
-            if (!(object instanceof FunctionType that)) {
+        public String toString() {
+            return switch (value()) {
+                case WasmType.I32_TYPE -> "i32";
+                case WasmType.I64_TYPE -> "i64";
+                case WasmType.F32_TYPE -> "f32";
+                case WasmType.F64_TYPE -> "f64";
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+    }
+
+    public static final class VectorType extends ClosedValueType {
+        public static final VectorType V128 = new VectorType(WasmType.V128_TYPE);
+
+        private final int value;
+
+        private VectorType(int value) {
+            this.value = value;
+        }
+
+        public int value() {
+            return value;
+        }
+
+        @Override
+        public boolean isSupertypeOf(ClosedValueType valueSubType) {
+            return valueSubType == V128;
+        }
+
+        @Override
+        public boolean isSubtypeOf(ClosedValueType valueSuperType) {
+            return valueSuperType == V128;
+        }
+
+        @Override
+        public boolean matchesValue(Object val) {
+            return val instanceof Vector128;
+        }
+
+        @Override
+        public Kind kind() {
+            return Kind.Vector;
+        }
+
+        @Override
+        public boolean equals(Object that) {
+            return this == that;
+        }
+
+        @Override
+        public int hashCode() {
+            return value;
+        }
+
+        @Override
+        public String toString() {
+            return "v128";
+        }
+    }
+
+    public static final class ClosedReferenceType extends ClosedValueType {
+        public static final ClosedReferenceType FUNCREF = new ClosedReferenceType(true, AbstractHeapType.FUNC);
+        public static final ClosedReferenceType NONNULL_FUNCREF = new ClosedReferenceType(false, AbstractHeapType.FUNC);
+        public static final ClosedReferenceType EXTERNREF = new ClosedReferenceType(true, AbstractHeapType.EXTERN);
+        public static final ClosedReferenceType NONNULL_EXTERNREF = new ClosedReferenceType(false, AbstractHeapType.EXTERN);
+        public static final ClosedReferenceType EXNREF = new ClosedReferenceType(true, AbstractHeapType.EXN);
+        public static final ClosedReferenceType NONNULL_EXNREF = new ClosedReferenceType(false, AbstractHeapType.EXN);
+
+        private final boolean nullable;
+        private final ClosedHeapType closedHeapType;
+
+        public ClosedReferenceType(boolean nullable, ClosedHeapType closedHeapType) {
+            this.nullable = nullable;
+            this.closedHeapType = closedHeapType;
+        }
+
+        public boolean nullable() {
+            return nullable;
+        }
+
+        public ClosedHeapType heapType() {
+            return closedHeapType;
+        }
+
+        @Override
+        public boolean isSupertypeOf(ClosedValueType valueSubType) {
+            return valueSubType instanceof ClosedReferenceType referenceSubType && (!referenceSubType.nullable || this.nullable) &&
+                            this.closedHeapType.isSupertypeOf(referenceSubType.closedHeapType);
+        }
+
+        @Override
+        public boolean isSubtypeOf(ClosedValueType valueSuperType) {
+            return valueSuperType instanceof ClosedReferenceType referencedSuperType && (!this.nullable || referencedSuperType.nullable) &&
+                            this.closedHeapType.isSubtypeOf(referencedSuperType.closedHeapType);
+        }
+
+        @Override
+        public boolean matchesValue(Object value) {
+            return nullable() && value == WasmConstant.NULL || heapType().matchesValue(value);
+        }
+
+        @Override
+        public Kind kind() {
+            return Kind.Reference;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof ClosedReferenceType that && this.nullable == that.nullable && this.closedHeapType.equals(that.closedHeapType);
+        }
+
+        @Override
+        public int hashCode() {
+            return Boolean.hashCode(nullable) ^ closedHeapType.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            CompilerAsserts.neverPartOfCompilation();
+            if (this == FUNCREF) {
+                return "funcref";
+            } else if (this == EXTERNREF) {
+                return "externref";
+            } else if (this == EXNREF) {
+                return "exnref";
+            } else {
+                StringBuilder buf = new StringBuilder();
+                buf.append("(ref ");
+                if (nullable) {
+                    buf.append("null ");
+                }
+                buf.append(closedHeapType.toString());
+                buf.append(")");
+                return buf.toString();
+            }
+        }
+    }
+
+    public static final class AbstractHeapType extends ClosedHeapType {
+        public static final AbstractHeapType FUNC = new AbstractHeapType(WasmType.FUNC_HEAPTYPE);
+        public static final AbstractHeapType EXTERN = new AbstractHeapType(WasmType.EXTERN_HEAPTYPE);
+        public static final AbstractHeapType EXN = new AbstractHeapType(WasmType.EXN_HEAPTYPE);
+
+        private final int value;
+
+        private AbstractHeapType(int value) {
+            this.value = value;
+        }
+
+        public int value() {
+            return value;
+        }
+
+        @Override
+        public boolean isSupertypeOf(ClosedHeapType heapSubType) {
+            return switch (this.value) {
+                case WasmType.FUNC_HEAPTYPE -> heapSubType == FUNC || heapSubType instanceof ClosedFunctionType;
+                case WasmType.EXTERN_HEAPTYPE -> heapSubType == EXTERN;
+                case WasmType.EXN_HEAPTYPE -> heapSubType == EXN;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+
+        @Override
+        public boolean isSubtypeOf(ClosedHeapType heapSuperType) {
+            return heapSuperType == this;
+        }
+
+        @Override
+        public boolean matchesValue(Object val) {
+            return switch (this.value) {
+                case WasmType.FUNC_HEAPTYPE -> val instanceof WasmFunctionInstance;
+                case WasmType.EXTERN_HEAPTYPE -> true;
+                case WasmType.EXN_HEAPTYPE -> val instanceof WasmRuntimeException;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+
+        @Override
+        public Kind kind() {
+            return Kind.Abstract;
+        }
+
+        @Override
+        public boolean equals(Object that) {
+            return this == that;
+        }
+
+        @Override
+        public int hashCode() {
+            return value;
+        }
+
+        @Override
+        public String toString() {
+            return switch (this.value) {
+                case WasmType.FUNC_HEAPTYPE -> "func";
+                case WasmType.EXTERN_HEAPTYPE -> "extern";
+                case WasmType.EXN_HEAPTYPE -> "exn";
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+    }
+
+    public static final class ClosedFunctionType extends ClosedHeapType {
+        @CompilationFinal(dimensions = 1) private final ClosedValueType[] paramTypes;
+        @CompilationFinal(dimensions = 1) private final ClosedValueType[] resultTypes;
+
+        public ClosedFunctionType(ClosedValueType[] paramTypes, ClosedValueType[] resultTypes) {
+            this.paramTypes = paramTypes;
+            this.resultTypes = resultTypes;
+        }
+
+        public ClosedValueType[] paramTypes() {
+            return paramTypes;
+        }
+
+        public ClosedValueType[] resultTypes() {
+            return resultTypes;
+        }
+
+        @Override
+        @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+        public boolean isSupertypeOf(ClosedHeapType heapSubType) {
+            if (!(heapSubType instanceof ClosedFunctionType functionSubType)) {
                 return false;
             }
-            if (this.paramTypes.length != that.paramTypes.length) {
+            if (this.paramTypes.length != functionSubType.paramTypes.length) {
                 return false;
             }
             for (int i = 0; i < this.paramTypes.length; i++) {
-                if (this.paramTypes[i] != that.paramTypes[i]) {
+                CompilerAsserts.partialEvaluationConstant(this.paramTypes[i]);
+                if (!this.paramTypes[i].isSubtypeOf(functionSubType.paramTypes[i])) {
                     return false;
                 }
             }
-            if (this.resultTypes.length != that.resultTypes.length) {
+            if (this.resultTypes.length != functionSubType.resultTypes.length) {
                 return false;
             }
             for (int i = 0; i < this.resultTypes.length; i++) {
-                if (this.resultTypes[i] != that.resultTypes[i]) {
+                CompilerAsserts.partialEvaluationConstant(this.resultTypes[i]);
+                if (!this.resultTypes[i].isSupertypeOf(functionSubType.resultTypes[i])) {
                     return false;
                 }
             }
@@ -135,15 +435,65 @@ public abstract class SymbolTable {
         }
 
         @Override
+        @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+        public boolean isSubtypeOf(ClosedHeapType heapSuperType) {
+            if (heapSuperType == AbstractHeapType.FUNC) {
+                return true;
+            }
+            if (!(heapSuperType instanceof ClosedFunctionType functionSuperType)) {
+                return false;
+            }
+            if (this.paramTypes.length != functionSuperType.paramTypes.length) {
+                return false;
+            }
+            for (int i = 0; i < this.paramTypes.length; i++) {
+                CompilerAsserts.partialEvaluationConstant(this.paramTypes[i]);
+                if (!this.paramTypes[i].isSupertypeOf(functionSuperType.paramTypes[i])) {
+                    return false;
+                }
+            }
+            if (this.resultTypes.length != functionSuperType.resultTypes.length) {
+                return false;
+            }
+            for (int i = 0; i < this.resultTypes.length; i++) {
+                CompilerAsserts.partialEvaluationConstant(this.resultTypes[i]);
+                if (!this.resultTypes[i].isSubtypeOf(functionSuperType.resultTypes[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public boolean matchesValue(Object value) {
+            return value instanceof WasmFunctionInstance instance && isSupertypeOf(instance.function().closedType());
+        }
+
+        @Override
+        public Kind kind() {
+            return Kind.Function;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof ClosedFunctionType that && Arrays.equals(this.paramTypes, that.paramTypes) && Arrays.equals(this.resultTypes, that.resultTypes);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(paramTypes) ^ Arrays.hashCode(resultTypes);
+        }
+
+        @Override
         public String toString() {
             CompilerAsserts.neverPartOfCompilation();
             String[] paramNames = new String[paramTypes.length];
             for (int i = 0; i < paramTypes.length; i++) {
-                paramNames[i] = WasmType.toString(paramTypes[i]);
+                paramNames[i] = paramTypes[i].toString();
             }
             String[] resultNames = new String[resultTypes.length];
             for (int i = 0; i < resultTypes.length; i++) {
-                resultNames[i] = WasmType.toString(resultTypes[i]);
+                resultNames[i] = resultTypes[i].toString();
             }
             return "(" + String.join(" ", paramNames) + ")->(" + String.join(" ", resultNames) + ")";
         }
@@ -156,8 +506,12 @@ public abstract class SymbolTable {
      *            <em>Note:</em> this is the upper bound defined by the module. A table instance
      *            might have a lower internal max allowed size in practice.
      * @param elemType The element type of the table.
+     * @param initValue The initial value of the table's elements, can be {@code null} if no
+     *            initializer present
+     * @param initBytecode The bytecode of the table's initializer expression, can be {@code null}
+     *            if no initializer present
      */
-    public record TableInfo(int initialSize, int maximumSize, byte elemType) {
+    public record TableInfo(int initialSize, int maximumSize, int elemType, Object initValue, byte[] initBytecode) {
     }
 
     /**
@@ -170,6 +524,13 @@ public abstract class SymbolTable {
      * @param shared Whether the memory is shared (modifications are visible to other threads).
      */
     public record MemoryInfo(long initialSize, long maximumSize, boolean indexType64, boolean shared) {
+    }
+
+    /**
+     * @param attribute Attribute of the tag.
+     * @param typeIndex The type index of the tag.
+     */
+    public record TagInfo(byte attribute, int typeIndex) {
     }
 
     /**
@@ -201,6 +562,13 @@ public abstract class SymbolTable {
      * this array should only access the locations in the array that have already been populated.
      */
     @CompilationFinal(dimensions = 1) private int[] typeOffsets;
+
+    /**
+     * Stores the closed forms of all the types defined in this module. Closed forms replace type
+     * indices with the definitions of the referenced types, resulting in a tree-like data
+     * structure.
+     */
+    @CompilationFinal(dimensions = 1) private ClosedHeapType[] closedTypes;
 
     /**
      * Stores the type equivalence class.
@@ -257,14 +625,18 @@ public abstract class SymbolTable {
     @CompilationFinal private int startFunctionIndex;
 
     /**
-     * A global type is the value type of the global, followed by its mutability. This is encoded as
-     * two bytes -- the lowest (0th) byte is the value type. The 1st byte is organized like this:
+     * Value types of globals.
+     */
+    @CompilationFinal(dimensions = 1) private int[] globalTypes;
+
+    /**
+     * Mutability flags of globals. These are encoded like this:
      * <p>
      * <code>
      * | . | . | . | functionOrIndex flag | reference flag | initialized flag | exported flag | mutable flag |
      * </code>
      */
-    @CompilationFinal(dimensions = 1) private byte[] globalTypes;
+    @CompilationFinal(dimensions = 1) private byte[] globalFlags;
 
     /**
      * The values or indices used for initializing globals.
@@ -320,7 +692,7 @@ public abstract class SymbolTable {
     @CompilationFinal private int numGlobalInitializersBytecode;
 
     /**
-     * The descriptor of the table of this module.
+     * The descriptor of the tables of this module.
      * <p>
      * In the current WebAssembly specification, a module can use at most one table. The value
      * {@code null} denotes that this module uses no table.
@@ -340,21 +712,38 @@ public abstract class SymbolTable {
     @CompilationFinal private final EconomicMap<String, Integer> exportedTables;
 
     /**
-     * The descriptors of the memory of this module.
+     * The descriptors of the memories of this module.
      */
     @CompilationFinal(dimensions = 1) private MemoryInfo[] memories;
 
     @CompilationFinal private int memoryCount;
 
     /**
-     * The memory used in this module.
+     * The memories used in this module.
      */
     @CompilationFinal private final EconomicMap<Integer, ImportDescriptor> importedMemories;
 
     /**
-     * The name(s) of the exported memory of this module, if any.
+     * The name(s) of the exported memories of this module, if any.
      */
     @CompilationFinal private final EconomicMap<String, Integer> exportedMemories;
+
+    /**
+     * The descriptors of the tags of this module.
+     */
+    @CompilationFinal(dimensions = 1) private TagInfo[] tags;
+
+    @CompilationFinal private int tagCount;
+
+    /**
+     * The tags used in this module.
+     */
+    @CompilationFinal private final EconomicMap<Integer, ImportDescriptor> importedTags;
+
+    /**
+     * The name(s) of the exported tags of this module, if any.
+     */
+    @CompilationFinal private final EconomicMap<String, Integer> exportedTags;
 
     /**
      * List of all custom sections.
@@ -388,7 +777,7 @@ public abstract class SymbolTable {
     @CompilationFinal private int codeEntryCount;
 
     /**
-     * All function indices that can be references via
+     * All function indices that can be referenced via
      * {@link org.graalvm.wasm.constants.Instructions#REF_FUNC}.
      */
     @CompilationFinal private EconomicSet<Integer> functionReferences;
@@ -397,6 +786,7 @@ public abstract class SymbolTable {
         CompilerAsserts.neverPartOfCompilation();
         this.typeData = new int[INITIAL_DATA_SIZE];
         this.typeOffsets = new int[INITIAL_TYPE_SIZE];
+        this.closedTypes = new ClosedHeapType[INITIAL_TYPE_SIZE];
         this.typeEquivalenceClasses = new int[INITIAL_TYPE_SIZE];
         this.typeDataSize = 0;
         this.typeCount = 0;
@@ -409,7 +799,8 @@ public abstract class SymbolTable {
         this.exportedFunctions = EconomicMap.create();
         this.exportedFunctionsByIndex = EconomicMap.create();
         this.startFunctionIndex = -1;
-        this.globalTypes = new byte[2 * INITIAL_GLOBALS_SIZE];
+        this.globalTypes = new int[INITIAL_GLOBALS_SIZE];
+        this.globalFlags = new byte[INITIAL_GLOBALS_SIZE];
         this.globalInitializers = new Object[INITIAL_GLOBALS_SIZE];
         this.globalInitializersBytecode = new byte[INITIAL_GLOBALS_BYTECODE_SIZE][];
         this.importedGlobals = EconomicMap.create();
@@ -423,6 +814,9 @@ public abstract class SymbolTable {
         this.memoryCount = 0;
         this.importedMemories = EconomicMap.create();
         this.exportedMemories = EconomicMap.create();
+        this.tags = new TagInfo[INITIAL_TAG_TYPE_SIZE];
+        this.importedTags = EconomicMap.create();
+        this.exportedTags = EconomicMap.create();
         this.customSections = new ArrayList<>();
         this.elemSegmentCount = 0;
         this.dataCountExists = false;
@@ -441,25 +835,13 @@ public abstract class SymbolTable {
 
     private void checkUniqueExport(String name) {
         CompilerAsserts.neverPartOfCompilation();
-        if (exportedFunctions.containsKey(name) || exportedGlobals.containsKey(name) || exportedMemories.containsKey(name) || exportedTables.containsKey(name)) {
+        if (exportedFunctions.containsKey(name) || exportedGlobals.containsKey(name) || exportedMemories.containsKey(name) || exportedTables.containsKey(name) || exportedTags.containsKey(name)) {
             throw WasmException.create(Failure.DUPLICATE_EXPORT, "All export names must be different, but '" + name + "' is exported twice.");
         }
     }
 
     public void checkFunctionIndex(int funcIndex) {
         assertUnsignedIntLess(funcIndex, numFunctions, Failure.UNKNOWN_FUNCTION);
-    }
-
-    private static int[] reallocate(int[] array, int currentSize, int newLength) {
-        int[] newArray = new int[newLength];
-        System.arraycopy(array, 0, newArray, 0, currentSize);
-        return newArray;
-    }
-
-    private static WasmFunction[] reallocate(WasmFunction[] array, int currentSize, int newLength) {
-        WasmFunction[] newArray = new WasmFunction[newLength];
-        System.arraycopy(array, 0, newArray, 0, currentSize);
-        return newArray;
     }
 
     /**
@@ -472,7 +854,7 @@ public abstract class SymbolTable {
     private void ensureTypeDataCapacity(int index) {
         if (typeData.length <= index) {
             int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * typeData.length);
-            typeData = reallocate(typeData, typeDataSize, newLength);
+            typeData = Arrays.copyOf(typeData, newLength);
         }
     }
 
@@ -487,8 +869,9 @@ public abstract class SymbolTable {
     private void ensureTypeCapacity(int index) {
         if (typeOffsets.length <= index) {
             int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * typeOffsets.length);
-            typeOffsets = reallocate(typeOffsets, typeCount, newLength);
-            typeEquivalenceClasses = reallocate(typeEquivalenceClasses, typeCount, newLength);
+            typeOffsets = Arrays.copyOf(typeOffsets, newLength);
+            closedTypes = Arrays.copyOf(closedTypes, newLength);
+            typeEquivalenceClasses = Arrays.copyOf(typeEquivalenceClasses, newLength);
         }
     }
 
@@ -510,7 +893,7 @@ public abstract class SymbolTable {
         return typeIdx;
     }
 
-    public int allocateFunctionType(byte[] paramTypes, byte[] resultTypes, boolean isMultiValue) {
+    public int allocateFunctionType(int[] paramTypes, int[] resultTypes, boolean isMultiValue) {
         checkNotParsed();
         final int typeIdx = allocateFunctionType(paramTypes.length, resultTypes.length, isMultiValue);
         for (int i = 0; i < paramTypes.length; i++) {
@@ -519,19 +902,32 @@ public abstract class SymbolTable {
         for (int i = 0; i < resultTypes.length; i++) {
             registerFunctionTypeResultType(typeIdx, i, resultTypes[i]);
         }
+        finishFunctionType(typeIdx);
         return typeIdx;
     }
 
-    void registerFunctionTypeParameterType(int funcTypeIdx, int paramIdx, byte type) {
+    void registerFunctionTypeParameterType(int funcTypeIdx, int paramIdx, int type) {
         checkNotParsed();
         int idx = 2 + typeOffsets[funcTypeIdx] + paramIdx;
         typeData[idx] = type;
     }
 
-    void registerFunctionTypeResultType(int funcTypeIdx, int resultIdx, byte type) {
+    void registerFunctionTypeResultType(int funcTypeIdx, int resultIdx, int type) {
         checkNotParsed();
         int idx = 2 + typeOffsets[funcTypeIdx] + typeData[typeOffsets[funcTypeIdx]] + resultIdx;
         typeData[idx] = type;
+    }
+
+    void finishFunctionType(int funcTypeIdx) {
+        ClosedValueType[] paramTypes = new ClosedValueType[functionTypeParamCount(funcTypeIdx)];
+        for (int i = 0; i < paramTypes.length; i++) {
+            paramTypes[i] = closedTypeOf(functionTypeParamTypeAt(funcTypeIdx, i));
+        }
+        ClosedValueType[] resultTypes = new ClosedValueType[functionTypeResultCount(funcTypeIdx)];
+        for (int i = 0; i < resultTypes.length; i++) {
+            resultTypes[i] = closedTypeOf(functionTypeResultTypeAt(funcTypeIdx, i));
+        }
+        closedTypes[funcTypeIdx] = new ClosedFunctionType(paramTypes, resultTypes);
     }
 
     public int equivalenceClass(int typeIndex) {
@@ -549,7 +945,7 @@ public abstract class SymbolTable {
     private void ensureFunctionsCapacity(int index) {
         if (functions.length <= index) {
             int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * functions.length);
-            functions = reallocate(functions, numFunctions, newLength);
+            functions = Arrays.copyOf(functions, newLength);
         }
     }
 
@@ -623,29 +1019,29 @@ public abstract class SymbolTable {
 
     protected abstract WasmModule module();
 
-    public byte functionTypeParamTypeAt(int typeIndex, int i) {
+    public int functionTypeParamTypeAt(int typeIndex, int paramIndex) {
         int typeOffset = typeOffsets[typeIndex];
-        return (byte) typeData[typeOffset + 2 + i];
+        return typeData[typeOffset + 2 + paramIndex];
     }
 
-    public byte functionTypeResultTypeAt(int typeIndex, int resultIndex) {
+    public int functionTypeResultTypeAt(int typeIndex, int resultIndex) {
         int typeOffset = typeOffsets[typeIndex];
         int paramCount = typeData[typeOffset];
-        return (byte) typeData[typeOffset + 2 + paramCount + resultIndex];
+        return typeData[typeOffset + 2 + paramCount + resultIndex];
     }
 
-    private byte[] functionTypeParamTypesAsArray(int typeIndex) {
+    public int[] functionTypeParamTypesAsArray(int typeIndex) {
         int paramCount = functionTypeParamCount(typeIndex);
-        byte[] paramTypes = new byte[paramCount];
+        int[] paramTypes = new int[paramCount];
         for (int i = 0; i < paramCount; ++i) {
             paramTypes[i] = functionTypeParamTypeAt(typeIndex, i);
         }
         return paramTypes;
     }
 
-    private byte[] functionTypeResultTypesAsArray(int typeIndex) {
+    public int[] functionTypeResultTypesAsArray(int typeIndex) {
         int resultTypeCount = functionTypeResultCount(typeIndex);
-        byte[] resultTypes = new byte[resultTypeCount];
+        int[] resultTypes = new int[resultTypeCount];
         for (int i = 0; i < resultTypeCount; i++) {
             resultTypes[i] = functionTypeResultTypeAt(typeIndex, i);
         }
@@ -656,8 +1052,96 @@ public abstract class SymbolTable {
         return typeCount;
     }
 
-    public FunctionType typeAt(int index) {
-        return new FunctionType(functionTypeParamTypesAsArray(index), functionTypeResultTypesAsArray(index));
+    /**
+     * Convenience function for calling {@link #closedTypeAt(int)} when the defined type at index
+     * {@code typeIndex} is known to be a function type.
+     * 
+     * @see #closedTypeAt(int)
+     */
+    public ClosedFunctionType closedFunctionTypeAt(int typeIndex) {
+        return (ClosedFunctionType) closedTypeAt(typeIndex);
+    }
+
+    /**
+     * Fetches the closed form of a type defined in this module at index {@code typeIndex}.
+     * 
+     * @param typeIndex index of a type defined in this module
+     */
+    public ClosedHeapType closedTypeAt(int typeIndex) {
+        return closedTypes[typeIndex];
+    }
+
+    /**
+     * A convenient way of calling {@link #closedTypeOf(int, SymbolTable)} when a
+     * {@link SymbolTable} is present.
+     * 
+     * @see #closedTypeOf(int, SymbolTable)
+     */
+    public ClosedValueType closedTypeOf(int type) {
+        return SymbolTable.closedTypeOf(type, this);
+    }
+
+    /**
+     * Maps a type encoded as an {@code int} (as per {@link WasmType}) into its closed form,
+     * represented as a {@link ClosedValueType}. Any type indices in the type are resolved using the
+     * provided symbol table.
+     * <p>
+     * It is legal to call this function with a null {@code symbolTable}. This is used in cases
+     * where we need to map a predefined value type to the closed type data representation (i.e. we
+     * know the type is already closed anyway and so it does not contain any type indices).
+     * </p>
+     *
+     * @param type the {@code int}-encoded Wasm type to be expanded
+     * @param symbolTable used for lookup of type definitions when expanding type indices
+     */
+    public static ClosedValueType closedTypeOf(int type, SymbolTable symbolTable) {
+        return switch (type) {
+            case WasmType.I32_TYPE -> NumberType.I32;
+            case WasmType.I64_TYPE -> NumberType.I64;
+            case WasmType.F32_TYPE -> NumberType.F32;
+            case WasmType.F64_TYPE -> NumberType.F64;
+            case WasmType.V128_TYPE -> VectorType.V128;
+            default -> {
+                assert WasmType.isReferenceType(type);
+                boolean nullable = WasmType.isNullable(type);
+                yield switch (WasmType.getAbstractHeapType(type)) {
+                    case WasmType.FUNC_HEAPTYPE -> nullable ? ClosedReferenceType.FUNCREF : ClosedReferenceType.NONNULL_FUNCREF;
+                    case WasmType.EXTERN_HEAPTYPE -> nullable ? ClosedReferenceType.EXTERNREF : ClosedReferenceType.NONNULL_EXTERNREF;
+                    case WasmType.EXN_HEAPTYPE -> nullable ? ClosedReferenceType.EXNREF : ClosedReferenceType.NONNULL_EXNREF;
+                    default -> {
+                        assert WasmType.isConcreteReferenceType(type);
+                        assert symbolTable != null;
+                        int typeIndex = WasmType.getTypeIndex(type);
+                        ClosedHeapType heapType = symbolTable.closedTypeAt(typeIndex);
+                        yield new ClosedReferenceType(nullable, heapType);
+                    }
+                };
+            }
+        };
+    }
+
+    /**
+     * Checks whether the type {@code actualType} matches the type {@code expectedType}. This is the
+     * case when {@code actualType} is a subtype of {@code expectedType}.
+     */
+    public boolean matchesType(int expectedType, int actualType) {
+        switch (expectedType) {
+            case WasmType.BOT -> {
+                return false;
+            }
+            case WasmType.TOP -> {
+                return true;
+            }
+        }
+        switch (actualType) {
+            case WasmType.BOT -> {
+                return true;
+            }
+            case WasmType.TOP -> {
+                return false;
+            }
+        }
+        return closedTypeOf(expectedType).isSupertypeOf(closedTypeOf(actualType));
     }
 
     public void importSymbol(ImportDescriptor descriptor) {
@@ -726,11 +1210,14 @@ public abstract class SymbolTable {
 
     private void ensureGlobalsCapacity(int index) {
         while (index >= globalInitializers.length) {
-            final byte[] nGlobalTypes = new byte[globalTypes.length * 2];
+            final int[] nGlobalTypes = new int[globalTypes.length * 2];
+            final byte[] nGlobalFlags = new byte[globalFlags.length * 2];
             final Object[] nGlobalInitializers = new Object[globalInitializers.length * 2];
             System.arraycopy(globalTypes, 0, nGlobalTypes, 0, globalTypes.length);
+            System.arraycopy(globalFlags, 0, nGlobalFlags, 0, globalFlags.length);
             System.arraycopy(globalInitializers, 0, nGlobalInitializers, 0, globalInitializers.length);
             globalTypes = nGlobalTypes;
+            globalFlags = nGlobalFlags;
             globalInitializers = nGlobalInitializers;
         }
     }
@@ -747,8 +1234,7 @@ public abstract class SymbolTable {
      * Allocates a global index in the symbol table, for a global variable that was already
      * allocated.
      */
-    void allocateGlobal(int index, byte valueType, byte mutability, boolean initialized, boolean imported, byte[] initBytecode, Object initialValue) {
-        assert (valueType & 0xff) == valueType;
+    void allocateGlobal(int index, int valueType, byte mutability, boolean initialized, boolean imported, byte[] initBytecode, Object initialValue) {
         checkNotParsed();
         ensureGlobalsCapacity(index);
         numGlobals = maxUnsigned(index + 1, numGlobals);
@@ -776,8 +1262,8 @@ public abstract class SymbolTable {
             globalInitializersBytecode[initBytecodeIndex] = initBytecode;
             globalInitializers[index] = initBytecodeIndex;
         }
-        globalTypes[2 * index] = valueType;
-        globalTypes[2 * index + 1] = flags;
+        globalTypes[index] = valueType;
+        globalFlags[index] = flags;
     }
 
     /**
@@ -785,7 +1271,7 @@ public abstract class SymbolTable {
      * default, but may be exported using {@link #exportGlobal}. Imported globals are declared using
      * {@link #importGlobal} instead. This method may only be called during parsing, before linking.
      */
-    void declareGlobal(int index, byte valueType, byte mutability, boolean initialized, byte[] initBytecode, Object initialValue) {
+    void declareGlobal(int index, int valueType, byte mutability, boolean initialized, byte[] initBytecode, Object initialValue) {
         assert initialized == (initBytecode == null) : index;
         allocateGlobal(index, valueType, mutability, initialized, false, initBytecode, initialValue);
         module().addLinkAction((context, store, instance, imports) -> {
@@ -796,7 +1282,7 @@ public abstract class SymbolTable {
     /**
      * Declares an imported global. May be re-exported.
      */
-    void importGlobal(String moduleName, String globalName, int index, byte valueType, byte mutability) {
+    void importGlobal(String moduleName, String globalName, int index, int valueType, byte mutability) {
         final ImportDescriptor descriptor = new ImportDescriptor(moduleName, globalName, ImportIdentifier.GLOBAL, index, numImportedSymbols());
         importedGlobals.put(index, descriptor);
         importSymbol(descriptor);
@@ -847,12 +1333,12 @@ public abstract class SymbolTable {
         return globalMutability(index) == GlobalModifier.MUTABLE;
     }
 
-    public byte globalValueType(int index) {
-        return globalTypes[2 * index];
+    public int globalValueType(int index) {
+        return globalTypes[index];
     }
 
     private byte globalFlags(int index) {
-        return globalTypes[2 * index + 1];
+        return globalFlags[index];
     }
 
     public boolean globalInitialized(int index) {
@@ -897,14 +1383,14 @@ public abstract class SymbolTable {
         if (!globalExternal(index)) {
             numExternalGlobals++;
         }
-        globalTypes[2 * index + 1] |= GLOBAL_EXPORTED_BIT;
+        globalFlags[index] |= GLOBAL_EXPORTED_BIT;
         exportedGlobals.put(name, index);
         module().addLinkAction((context, store, instance, imports) -> {
             store.linker().resolveGlobalExport(instance.module(), name, index);
         });
     }
 
-    public void declareExportedGlobalWithValue(String name, int index, byte valueType, byte mutability, Object value) {
+    public void declareExportedGlobalWithValue(String name, int index, int valueType, byte mutability, Object value) {
         checkNotParsed();
         declareGlobal(index, valueType, mutability, true, null, value);
         exportGlobal(name, index);
@@ -918,43 +1404,44 @@ public abstract class SymbolTable {
         }
     }
 
-    public void allocateTable(int index, int declaredMinSize, int declaredMaxSize, byte elemType, boolean referenceTypes) {
+    public void declareTable(int index, int declaredMinSize, int declaredMaxSize, int elemType, byte[] initBytecode, Object initValue, boolean referenceTypes) {
         checkNotParsed();
-        addTable(index, declaredMinSize, declaredMaxSize, elemType, referenceTypes);
+        addTable(index, declaredMinSize, declaredMaxSize, elemType, initValue, initBytecode, referenceTypes);
         module().addLinkAction((context, store, instance, imports) -> {
             final int maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().tableInstanceSizeLimit());
             module().limits().checkTableInstanceSize(declaredMinSize);
             final WasmTable wasmTable;
             if (context.getContextOptions().memoryOverheadMode()) {
                 // Initialize an empty table in memory overhead mode.
-                wasmTable = new WasmTable(0, 0, 0, elemType);
+                wasmTable = new WasmTable(0, 0, 0, elemType, this);
             } else {
-                wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize, elemType);
+                wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize, elemType, this);
             }
-            final int address = store.tables().register(wasmTable);
-            instance.setTableAddress(index, address);
+            instance.setTable(index, wasmTable);
+
+            store.linker().resolveTableInitialization(instance, index, initBytecode, initValue);
         });
     }
 
-    void importTable(String moduleName, String tableName, int index, int initSize, int maxSize, byte elemType, boolean referenceTypes) {
+    void importTable(String moduleName, String tableName, int index, int initSize, int maxSize, int elemType, boolean referenceTypes) {
         checkNotParsed();
-        addTable(index, initSize, maxSize, elemType, referenceTypes);
+        addTable(index, initSize, maxSize, elemType, null, null, referenceTypes);
         final ImportDescriptor importedTable = new ImportDescriptor(moduleName, tableName, ImportIdentifier.TABLE, index, numImportedSymbols());
         importedTables.put(index, importedTable);
         importSymbol(importedTable);
         module().addLinkAction((context, store, instance, imports) -> {
-            instance.setTableAddress(index, UNINITIALIZED_ADDRESS);
+            instance.setTable(index, null);
             store.linker().resolveTableImport(store, instance, importedTable, index, initSize, maxSize, elemType, imports);
         });
     }
 
-    void addTable(int index, int minSize, int maxSize, byte elemType, boolean referenceTypes) {
+    void addTable(int index, int minSize, int maxSize, int elemType, Object initValue, byte[] initBytecode, boolean referenceTypes) {
         if (!referenceTypes) {
             assertTrue(importedTables.isEmpty(), "A table has already been imported in the module.", Failure.MULTIPLE_TABLES);
             assertTrue(tableCount == 0, "A table has already been declared in the module.", Failure.MULTIPLE_TABLES);
         }
         ensureTableCapacity(index);
-        final TableInfo table = new TableInfo(minSize, maxSize, elemType);
+        final TableInfo table = new TableInfo(minSize, maxSize, elemType, initValue, initBytecode);
         tables[index] = table;
         tableCount++;
     }
@@ -1008,10 +1495,22 @@ public abstract class SymbolTable {
         return table.maximumSize;
     }
 
-    public byte tableElementType(int index) {
+    public int tableElementType(int index) {
         final TableInfo table = tables[index];
         assert table != null;
         return table.elemType;
+    }
+
+    public Object tableInitialValue(int index) {
+        final TableInfo table = tables[index];
+        assert table != null;
+        return table.initValue;
+    }
+
+    public byte[] tableInitializerBytecode(int index) {
+        final TableInfo table = tables[index];
+        assert table != null;
+        return table.initBytecode;
     }
 
     private void ensureMemoryCapacity(int index) {
@@ -1035,9 +1534,7 @@ public abstract class SymbolTable {
             } else {
                 wasmMemory = WasmMemoryFactory.createMemory(declaredMinSize, declaredMaxSize, indexType64, shared, useUnsafeMemory, directByteBufferMemoryAccess, context);
             }
-            final int memoryAddress = store.memories().register(wasmMemory);
-            final WasmMemory allocatedMemory = store.memories().memory(memoryAddress);
-            instance.setMemory(index, allocatedMemory);
+            instance.setMemory(index, wasmMemory);
         });
     }
 
@@ -1120,6 +1617,94 @@ public abstract class SymbolTable {
         return memory.shared;
     }
 
+    private void ensureTagCapacity(int index) {
+        if (index >= tags.length) {
+            final TagInfo[] nTags = new TagInfo[Math.max(Integer.highestOneBit(index) << 1, 2 * tags.length)];
+            System.arraycopy(tags, 0, nTags, 0, tags.length);
+            tags = nTags;
+        }
+    }
+
+    public void allocateTag(int index, byte attribute, int typeIndex) {
+        checkNotParsed();
+        addTag(index, attribute, typeIndex);
+        module().addLinkAction((context, store, instance, imports) -> {
+            final WasmTag tag = new WasmTag(closedFunctionTypeAt(typeIndex));
+            instance.setTag(index, tag);
+        });
+    }
+
+    public void importTag(String moduleName, String tagName, int index, byte attribute, int typeIndex) {
+        checkNotParsed();
+        addTag(index, attribute, typeIndex);
+        final ImportDescriptor importedTag = new ImportDescriptor(moduleName, tagName, ImportIdentifier.TAG, index, numImportedSymbols());
+        final ClosedFunctionType type = closedFunctionTypeAt(typeIndex);
+        importedTags.put(index, importedTag);
+        importSymbol(importedTag);
+        module().addLinkAction((context, store, instance, imports) -> {
+            store.linker().resolveTagImport(store, instance, importedTag, index, type, imports);
+        });
+    }
+
+    void addTag(int index, byte attribute, int typeIndex) {
+        assertIntEqual(functionTypeResultCount(typeIndex), 0, Failure.NON_EMPTY_TAG_RESULT_TYPE);
+        ensureTagCapacity(index);
+        final TagInfo tag = new TagInfo(attribute, typeIndex);
+        tags[index] = tag;
+        tagCount++;
+    }
+
+    public void checkTagIndex(int tagIndex) {
+        assertUnsignedIntLess(tagIndex, tagCount, Failure.UNKNOWN_TAG);
+    }
+
+    public void exportTag(int tagIndex, String name) {
+        checkNotParsed();
+        exportSymbol(name);
+        if (!checkExistingTagIndex(tagIndex)) {
+            throw WasmException.create(Failure.UNKNOWN_TAG, "No tag with the specified index has been declared or imported, so it cannot be exported.");
+        }
+        exportedTags.put(name, tagIndex);
+        module().addLinkAction((context, store, instance, imports) -> {
+            store.linker().resolveTagExport(instance, tagIndex, name);
+        });
+    }
+
+    public int tagCount() {
+        return tagCount;
+    }
+
+    public ImportDescriptor importedTag(int index) {
+        return importedTags.get(index);
+    }
+
+    public EconomicMap<ImportDescriptor, Integer> importTagDescriptors() {
+        final EconomicMap<ImportDescriptor, Integer> reverseMap = EconomicMap.create();
+        final MapCursor<Integer, ImportDescriptor> cursor = importedTags.getEntries();
+        while (cursor.advance()) {
+            reverseMap.put(cursor.getValue(), cursor.getKey());
+        }
+        return reverseMap;
+    }
+
+    public EconomicMap<String, Integer> exportedTags() {
+        return exportedTags;
+    }
+
+    private boolean checkExistingTagIndex(int index) {
+        return Integer.compareUnsigned(index, tagCount) < 0;
+    }
+
+    public int tagTypeIndex(int index) {
+        assert index < tags.length;
+        return tags[index].typeIndex();
+    }
+
+    public byte tagAttribute(int index) {
+        assert index < tags.length;
+        return tags[index].attribute();
+    }
+
     void allocateCustomSection(String name, int offset, int length) {
         customSections.add(new WasmCustomSection(name, offset, length));
     }
@@ -1194,8 +1779,8 @@ public abstract class SymbolTable {
         assertUnsignedIntLess(elemIndex, elemSegmentCount, Failure.UNKNOWN_ELEM_SEGMENT);
     }
 
-    public void checkElemType(int elemIndex, byte expectedType) {
-        assertByteEqual(expectedType, (byte) elemInstances[elemIndex], Failure.TYPE_MISMATCH);
+    public void checkElemType(int elemIndex, int expectedType) {
+        Assert.assertTrue(matchesType(expectedType, (int) elemInstances[elemIndex]), Failure.TYPE_MISMATCH);
     }
 
     private void ensureElemInstanceCapacity(int index) {
@@ -1208,9 +1793,9 @@ public abstract class SymbolTable {
         }
     }
 
-    void setElemInstance(int index, int offset, byte elemType) {
+    void setElemInstance(int index, int offset, int elemType) {
         ensureElemInstanceCapacity(index);
-        elemInstances[index] = (long) offset << 32 | (elemType & 0xFF);
+        elemInstances[index] = (long) offset << 32 | (elemType & 0xFFFF_FFFFL);
         elemSegmentCount++;
     }
 

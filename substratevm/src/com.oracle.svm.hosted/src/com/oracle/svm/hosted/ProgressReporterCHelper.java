@@ -29,7 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.LogUtils;
 
 public final class ProgressReporterCHelper {
     private static final int DEFAULT_CHARACTERS_PER_LINE = 80;
@@ -45,10 +45,14 @@ public final class ProgressReporterCHelper {
         String libName = System.mapLibraryName("reporterchelper");
         Path libRSSHelperPath = javaHome.resolve(Paths.get("lib", "svm", "builder", "lib", libName));
         if (Files.exists(libRSSHelperPath)) {
-            System.load(libRSSHelperPath.toString());
-        } else {
-            throw VMError.shouldNotReachHere("Helper library for ProgressReporterCHelper not available");
+            try {
+                System.load(libRSSHelperPath.toString());
+                return;
+            } catch (UnsatisfiedLinkError e) {
+                /* ignore, fall through to warning below */
+            }
         }
+        LogUtils.warning("Helper library libreporterchelper not available for host platform. Terminal width and peak RSS will be incorrect.");
     }
 
     private ProgressReporterCHelper() {
@@ -65,7 +69,7 @@ public final class ProgressReporterCHelper {
         try {
             return getTerminalWindowColumns0();
         } catch (UnsatisfiedLinkError e) {
-            throw VMError.shouldNotReachHere("ProgressReporterCHelper.getTerminalWindowColumns0 native method not available");
+            return DEFAULT_CHARACTERS_PER_LINE;
         }
     }
 
@@ -76,7 +80,7 @@ public final class ProgressReporterCHelper {
         try {
             return getPeakRSS0();
         } catch (UnsatisfiedLinkError e) {
-            throw VMError.shouldNotReachHere("ProgressReporterCHelper.getPeakRSS0 native method not available");
+            return -1;
         }
     }
 

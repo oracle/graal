@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-import static com.oracle.svm.core.hub.DynamicHubTypeCheckUtil.HASHING_INTERFACE_MASK;
-import static com.oracle.svm.core.hub.DynamicHubTypeCheckUtil.HASHING_ITABLE_SHIFT;
-import static com.oracle.svm.core.hub.DynamicHubTypeCheckUtil.HASHING_SHIFT_OFFSET;
+import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_INTERFACE_MASK;
+import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_ITABLE_SHIFT;
+import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_SHIFT_OFFSET;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
 
@@ -40,7 +40,7 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 
@@ -119,9 +119,8 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
      * If {@link SubstrateOptions#useInterfaceHashing()} is enabled, interfaceIDs and itable
      * starting offsets are stored in a hash table (see TypeCheckBuilder for a general
      * documentation). This snippet handles the lookup in the hash table and returns the itable
-     * starting offset for the given interfaceID. See
-     * {@link DynamicHubTypeCheckUtil#hashParam(int[])} for details on the hashing function and
-     * hashing parameter.
+     * starting offset for the given interfaceID. See {@link DynamicHubUtils#hashParam(int[])} for
+     * details on the hashing function and hashing parameter.
      */
     private static int determineITableStartingOffsetHashed(
                     DynamicHub checkedHub,
@@ -149,7 +148,7 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
     public static long determineITableStartingOffset(
                     DynamicHub checkedHub,
                     int interfaceID) {
-        if (SubstrateOptions.useInterfaceHashing()) {
+        if (SubstrateOptions.useInterfaceHashing() && interfaceID <= SubstrateOptions.interfaceHashingMaxId()) {
             // Use the non-snippet version which contains no snippet asserts.
             return determineITableStartingOffsetHashedNonSnippet(checkedHub, interfaceID);
         } else {

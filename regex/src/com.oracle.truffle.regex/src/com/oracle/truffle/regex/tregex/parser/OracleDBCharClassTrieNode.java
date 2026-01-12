@@ -46,7 +46,7 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.ImmutableSortedListOfRanges;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 /**
  * This class implements an intermediate Prefix-Tree used to simulate the behavior of OracleDB on
@@ -199,7 +199,7 @@ public final class OracleDBCharClassTrieNode {
                     astBuilder.nextSequence();
                 }
             }
-            acc.invert(Encodings.UTF_8);
+            acc.invert(Encoding.UTF_8);
             astBuilder.addCharClass(acc.toCodePointSet());
         } else {
             for (int i = 0; i < children.size(); i++) {

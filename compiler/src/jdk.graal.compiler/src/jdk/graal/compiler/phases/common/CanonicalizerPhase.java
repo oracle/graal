@@ -38,6 +38,7 @@ import java.util.Optional;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 
+import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
@@ -77,6 +78,7 @@ import jdk.graal.compiler.nodes.WithExceptionNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.extended.GuardedNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
@@ -615,11 +617,16 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         if (tryCanonicalize(node, nodeClass, tool)) {
             return true;
         }
-        if (node instanceof ValueNode) {
-            ValueNode valueNode = (ValueNode) node;
+        if (node instanceof ValueNode valueNode) {
             boolean improvedStamp = tryInferStamp(valueNode, tool);
             Constant constant = valueNode.stamp(NodeView.DEFAULT).asConstant();
-            if (constant != null && !(node instanceof ConstantNode)) {
+            if (constant != null && !(node instanceof ConstantNode) && !isAnchoredNullConstant(valueNode)) {
+                /*
+                 * Do not fold always-null Pis to null constants. Doing so could lead to dependent
+                 * reads floating above safety checks, potentially causing runtime segfaults. By
+                 * contrast, folding integer constants that could cause out-of-bounds reads is safe
+                 * as JVMCI detects these and fails gracefully.
+                 */
                 ConstantNode stampConstant = ConstantNode.forConstant(valueNode.stamp(NodeView.DEFAULT), constant, tool.context.getMetaAccess(), graph);
                 valueNode.replaceAtUsages(stampConstant, InputType.Value);
                 GraphUtil.tryKillUnused(valueNode);
@@ -636,6 +643,16 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         // Perform GVN after possibly inferring the stamp since a stale stamp will inhibit GVN.
         if (features.contains(GVN) && tryGlobalValueNumbering(node, nodeClass)) {
             return true;
+        }
+        return false;
+    }
+
+    /**
+     * Tests if {@code node} is an always-null value that is anchored.
+     */
+    private static boolean isAnchoredNullConstant(ValueNode node) {
+        if (node instanceof GuardedNode guarded && guarded.getGuard() != null) {
+            return node.stamp(NodeView.DEFAULT).isObjectStamp() && ((AbstractObjectStamp) node.stamp(NodeView.DEFAULT)).alwaysNull();
         }
         return false;
     }

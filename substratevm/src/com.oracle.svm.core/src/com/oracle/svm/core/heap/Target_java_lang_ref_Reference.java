@@ -123,12 +123,6 @@ public final class Target_java_lang_ref_Reference<T> {
     @KeepOriginal
     native T get();
 
-    @Substitute
-    @SuppressWarnings("unchecked")
-    private T get0() {
-        return (T) ReferenceInternals.getReferent(SubstrateUtil.cast(this, Reference.class));
-    }
-
     @KeepOriginal
     native void clear();
 
@@ -153,9 +147,6 @@ public final class Target_java_lang_ref_Reference<T> {
 
     @KeepOriginal
     native boolean enqueue();
-
-    @KeepOriginal
-    native void enqueueFromPending();
 
     @KeepOriginal
     native boolean isEnqueued();

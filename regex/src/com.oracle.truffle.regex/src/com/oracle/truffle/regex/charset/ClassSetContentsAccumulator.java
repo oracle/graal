@@ -42,7 +42,7 @@ package com.oracle.truffle.regex.charset;
 
 import org.graalvm.collections.EconomicSet;
 
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 public class ClassSetContentsAccumulator {
 

@@ -33,8 +33,13 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 @Platforms(Platform.HOSTED_ONLY.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class EmbeddedResourcesInfo {
 
     record SourceAndOrigin(String source, Object origin) {
@@ -68,7 +73,7 @@ public class EmbeddedResourcesInfo {
             registeredResources.remove(key);
         }
 
-        registeredResources.compute(key, (k, v) -> {
+        registeredResources.compute(key, (_, v) -> {
             if (v == null) {
                 ArrayList<SourceAndOrigin> newValue = new ArrayList<>();
                 newValue.add(new SourceAndOrigin(source, origin));

@@ -24,14 +24,10 @@
  */
 package jdk.graal.compiler.hotspot.amd64;
 
-import static jdk.graal.compiler.core.common.GraalOptions.InlineGraalStubs;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
-
 import jdk.graal.compiler.core.amd64.AMD64LoweringProviderMixin;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
@@ -39,21 +35,14 @@ import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
 import jdk.graal.compiler.hotspot.replacements.HotSpotAllocationSnippets;
 import jdk.graal.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider implements AMD64LoweringProviderMixin {
-
-    private AMD64X87MathSnippets.Templates mathSnippets;
 
     public AMD64HotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
                     HotSpotConstantReflectionProvider constantReflection, PlatformConfigurationProvider platformConfig, MetaAccessExtensionProvider metaAccessExtensionProvider,
@@ -65,49 +54,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
     public void initialize(OptionValues options, Iterable<DebugDumpHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
                     HotSpotArraycopySnippets.Templates arraycopySnippetTemplates,
                     HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
-        mathSnippets = new AMD64X87MathSnippets.Templates(options, providers);
         super.initialize(options, factories, providers, config, arraycopySnippetTemplates, allocationSnippetTemplates);
     }
 
-    @Override
-    public void lower(Node n, LoweringTool tool) {
-        if (n instanceof UnaryMathIntrinsicNode) {
-            lowerUnaryMath((UnaryMathIntrinsicNode) n, tool);
-        } else {
-            super.lower(n, tool);
-        }
-    }
-
-    private void lowerUnaryMath(UnaryMathIntrinsicNode math, LoweringTool tool) {
-        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
-            return;
-        }
-        StructuredGraph graph = math.graph();
-        ResolvedJavaMethod method = graph.method();
-        if ((method != null && getReplacements().isSnippet(method)) || InlineGraalStubs.getValue(graph.getOptions())) {
-            // In the context of SnippetStub, i.e., Graal-generated stubs, use the LIR
-            // lowering to emit the stub assembly code instead of the Node lowering.
-            return;
-        }
-        if (!GraalArithmeticStubs.getValue(graph.getOptions())) {
-            switch (math.getOperation()) {
-                case SIN:
-                case COS:
-                case TAN:
-                    // Math.sin(), .cos() and .tan() guarantee a value within 1 ULP of the exact
-                    // result, but x87 trigonometric FPU instructions are only that accurate within
-                    // [-pi/4, pi/4]. The snippets fall back to a foreign call to HotSpot stubs
-                    // should the inputs outside of that interval.
-                    mathSnippets.lower(math, tool);
-                    return;
-                case LOG:
-                    math.replaceAtUsages(graph.addOrUnique(new AMD64X87MathIntrinsicNode(math.getValue(), UnaryOperation.LOG)));
-                    return;
-                case LOG10:
-                    math.replaceAtUsages(graph.addOrUnique(new AMD64X87MathIntrinsicNode(math.getValue(), UnaryOperation.LOG10)));
-                    return;
-            }
-        }
-        lowerUnaryMathToForeignCall(math, tool);
-    }
 }

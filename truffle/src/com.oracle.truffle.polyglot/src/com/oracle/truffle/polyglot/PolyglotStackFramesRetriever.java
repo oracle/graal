@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -65,13 +66,17 @@ final class PolyglotStackFramesRetriever {
                 future = context.threadLocalActions.submit(null, PolyglotEngineImpl.ENGINE_ID, new ThreadLocalAction(false, false) {
                     @Override
                     protected void perform(Access access) {
+                        List<Object> threadHeapRoots = new ArrayList<>();
                         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                             @Override
                             public Object visitFrame(FrameInstance frameInstance) {
-                                populateHeapRootsFromFrame(context, frameInstance, heapRoots);
+                                populateHeapRootsFromFrame(context, frameInstance, threadHeapRoots);
                                 return null;
                             }
                         });
+                        synchronized (heapRoots) {
+                            heapRoots.addAll(threadHeapRoots);
+                        }
                     }
                 }, false);
             } else {

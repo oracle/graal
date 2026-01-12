@@ -72,7 +72,7 @@ public final class ObjectRefFixupVisitor implements UninterruptibleObjectReferen
                             || holderObject == null // references from CodeInfo, invalidated or weak
                             || holderObject instanceof Reference<?>; // cleared referent
 
-            Object obj = newLocation.toObjectNonNull();
+            Object obj = newLocation.toObject();
             ReferenceAccess.singleton().writeObjectAt(objRef, obj, compressed);
         }
         // Note that image heap cards have already been cleaned and re-marked during the scan

@@ -150,7 +150,7 @@ public final class AccessAdvisor {
     /*
      * Exclude selection of packages distributed with GraalVM which are not unconditionally exported
      * by their module and should not be accessible from application code. Generate all with:
-     * native-image-configure generate-filters --exclude-unexported-packages-from-modules [--reduce]
+     * native-image-utils generate-filters --exclude-unexported-packages-from-modules [--reduce]
      */
     private static void excludeInaccessiblePackages(HierarchyFilterNode rootNode) {
         rootNode.addOrGetChildren("com.oracle.graal.**", ConfigurationFilter.Inclusion.Exclude);

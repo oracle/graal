@@ -55,6 +55,7 @@ import java.util.function.BiConsumer;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.Stride;
@@ -68,8 +69,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/4994bd594299e91e804438692e068b1c5dd5cc02/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L1402-L1659",
-          sha1 = "0379fbc520f6d8669adeff57befc1d77a8314aca")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L1402-L1659",
+          sha1 = "8ecf69d0a86887ff160a279ea8d71e8a41713f96")
 // @formatter:on
 public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruction {
 
@@ -136,6 +137,8 @@ public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruct
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        AMD64Assembler.AMD64SIMDInstructionEncoding oldEncoding = masm.setTemporaryAvxEncoding(AMD64Assembler.AMD64SIMDInstructionEncoding.VEX);
+
         GraalError.guarantee(fromValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid fromValue kind: %s", fromValue);
         GraalError.guarantee(toValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid toValue kind: %s", toValue);
         GraalError.guarantee(keyValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid keyValue kind: %s", keyValue);
@@ -365,6 +368,8 @@ public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruct
         // final value of r stored in rvec of CipherBlockChaining object
         masm.movdqu(new AMD64Address(rvec, 0), xmmPrevBlockCipher);
         masm.movl(asRegister(resultValue), asRegister(lenValue));
+
+        masm.resetAvxEncoding(oldEncoding);
     }
 
     private static void doFour(BiConsumer<Register, Register> op, Register src) {

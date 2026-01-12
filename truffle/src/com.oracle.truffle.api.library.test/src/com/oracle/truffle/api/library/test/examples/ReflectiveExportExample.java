@@ -74,7 +74,7 @@ public class ReflectiveExportExample {
     @ExportLibrary(ReflectionLibrary.class)
     static final class ReflectiveExport {
 
-        private static final Message MESSAGE = Message.resolve(ReflectiveExportTestLibrary.class, "message0", false);
+        private static final Message MESSAGE = Message.resolveExact(ReflectiveExportTestLibrary.class, "message0", false, Object.class);
 
         @SuppressWarnings("static-method")
         @ExportMessage

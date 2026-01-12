@@ -304,14 +304,14 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final boolean hasAnnotationList() {
         return !_pointerFieldIsNull(9);
       }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder> getAnnotationList() {
-        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.listFactory, 9, null, 0);
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Builder> getAnnotationList() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.listFactory, 9, null, 0);
       }
-      public final void setAnnotationList(com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader> value) {
-        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.listFactory, 9, value);
+      public final void setAnnotationList(com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader> value) {
+        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.listFactory, 9, value);
       }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder> initAnnotationList(int size) {
-        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.listFactory, 9, size);
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Builder> initAnnotationList(int size) {
+        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.listFactory, 9, size);
       }
       public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ClassInitializationInfo.Builder getClassInitializationInfo() {
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ClassInitializationInfo.factory, 10, null, 0);
@@ -363,6 +363,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _clearPointerField(12);
         _clearPointerField(13);
   return new PersistedAnalysisType.WrappedType.Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+
+      public final boolean getIsRecord() {
+        return _getBooleanField(109);
+      }
+      public final void setIsRecord(boolean value) {
+        _setBooleanField(109, value);
       }
 
     }
@@ -502,8 +509,8 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final boolean hasAnnotationList() {
         return !_pointerFieldIsNull(9);
       }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader> getAnnotationList() {
-        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.listFactory, 9, null, 0);
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader> getAnnotationList() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.listFactory, 9, null, 0);
       }
 
       public boolean hasClassInitializationInfo() {
@@ -534,6 +541,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
       public WrappedType.Reader getWrappedType() {
         return new PersistedAnalysisType.WrappedType.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+      }
+
+      public final boolean getIsRecord() {
+        return _getBooleanField(109);
       }
 
     }
@@ -1171,14 +1182,14 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final boolean hasAnnotationList() {
         return !_pointerFieldIsNull(7);
       }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder> getAnnotationList() {
-        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.listFactory, 7, null, 0);
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Builder> getAnnotationList() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.listFactory, 7, null, 0);
       }
-      public final void setAnnotationList(com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader> value) {
-        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.listFactory, 7, value);
+      public final void setAnnotationList(com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader> value) {
+        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.listFactory, 7, value);
       }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder> initAnnotationList(int size) {
-        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.listFactory, 7, size);
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Builder> initAnnotationList(int size) {
+        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.listFactory, 7, size);
       }
       public final boolean getIsVarArgs() {
         return _getBooleanField(168);
@@ -1377,8 +1388,8 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final boolean hasAnnotationList() {
         return !_pointerFieldIsNull(7);
       }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader> getAnnotationList() {
-        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.listFactory, 7, null, 0);
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader> getAnnotationList() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.listFactory, 7, null, 0);
       }
 
       public final boolean getIsVarArgs() {
@@ -2062,7 +2073,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class PersistedAnalysisField {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)4);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)5);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -2205,14 +2216,14 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final boolean hasAnnotationList() {
         return !_pointerFieldIsNull(1);
       }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder> getAnnotationList() {
-        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.listFactory, 1, null, 0);
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Builder> getAnnotationList() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.listFactory, 1, null, 0);
       }
-      public final void setAnnotationList(com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader> value) {
-        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.listFactory, 1, value);
+      public final void setAnnotationList(com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader> value) {
+        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.listFactory, 1, value);
       }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder> initAnnotationList(int size) {
-        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.listFactory, 1, size);
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Builder> initAnnotationList(int size) {
+        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.listFactory, 1, size);
       }
       public final boolean hasName() {
         return !_pointerFieldIsNull(2);
@@ -2251,6 +2262,18 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Builder initSimulatedFieldValue() {
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.factory,3, 0);
+      }
+      public final boolean hasUpdatableReceivers() {
+        return !_pointerFieldIsNull(4);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Builder getUpdatableReceivers() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 4, null, 0);
+      }
+      public final void setUpdatableReceivers(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Reader value) {
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 4, value);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Builder initUpdatableReceivers(int size) {
+        return _initPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 4, size);
       }
     }
 
@@ -2325,8 +2348,8 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final boolean hasAnnotationList() {
         return !_pointerFieldIsNull(1);
       }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader> getAnnotationList() {
-        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.listFactory, 1, null, 0);
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader> getAnnotationList() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.listFactory, 1, null, 0);
       }
 
       public boolean hasName() {
@@ -2349,6 +2372,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Reader getSimulatedFieldValue() {
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.factory,3,null, 0);
+      }
+
+      public final boolean hasUpdatableReceivers() {
+        return !_pointerFieldIsNull(4);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Reader getUpdatableReceivers() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 4, null, 0);
       }
 
     }
@@ -4124,7 +4154,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class ImageSingletonObject {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)1,(short)3);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)1,(short)2);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -4180,35 +4210,20 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setIntField(1, value);
       }
 
-      public final boolean hasRecreateClass() {
+      public final boolean hasSingletonInstantiatorClass() {
         return !_pointerFieldIsNull(1);
       }
-      public final com.oracle.svm.shaded.org.capnproto.Text.Builder getRecreateClass() {
+      public final com.oracle.svm.shaded.org.capnproto.Text.Builder getSingletonInstantiatorClass() {
         return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, null, 0, 0);
       }
-      public final void setRecreateClass(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
+      public final void setSingletonInstantiatorClass(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
         _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, value);
       }
-      public final void setRecreateClass(String value) {
+      public final void setSingletonInstantiatorClass(String value) {
         _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
       }
-      public final com.oracle.svm.shaded.org.capnproto.Text.Builder initRecreateClass(int size) {
+      public final com.oracle.svm.shaded.org.capnproto.Text.Builder initSingletonInstantiatorClass(int size) {
         return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, size);
-      }
-      public final boolean hasRecreateMethod() {
-        return !_pointerFieldIsNull(2);
-      }
-      public final com.oracle.svm.shaded.org.capnproto.Text.Builder getRecreateMethod() {
-        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, null, 0, 0);
-      }
-      public final void setRecreateMethod(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
-        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, value);
-      }
-      public final void setRecreateMethod(String value) {
-        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
-      }
-      public final com.oracle.svm.shaded.org.capnproto.Text.Builder initRecreateMethod(int size) {
-        return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, size);
       }
     }
 
@@ -4232,18 +4247,11 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getIntField(1);
       }
 
-      public boolean hasRecreateClass() {
+      public boolean hasSingletonInstantiatorClass() {
         return !_pointerFieldIsNull(1);
       }
-      public com.oracle.svm.shaded.org.capnproto.Text.Reader getRecreateClass() {
+      public com.oracle.svm.shaded.org.capnproto.Text.Reader getSingletonInstantiatorClass() {
         return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, null, 0, 0);
-      }
-
-      public boolean hasRecreateMethod() {
-        return !_pointerFieldIsNull(2);
-      }
-      public com.oracle.svm.shaded.org.capnproto.Text.Reader getRecreateMethod() {
-        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, null, 0, 0);
       }
 
     }
@@ -4321,7 +4329,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
   }
 
 
-  public static class Annotation {
+  public static class PersistedAnnotation {
     public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)0,(short)2);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
@@ -4333,7 +4341,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return new Builder(segment, data, pointers, dataSize, pointerCount);
       }
       public final com.oracle.svm.shaded.org.capnproto.StructSize structSize() {
-        return Annotation.STRUCT_SIZE;
+        return PersistedAnnotation.STRUCT_SIZE;
       }
       public final Reader asReader(Builder builder) {
         return builder.asReader();
@@ -4367,14 +4375,14 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final boolean hasValues() {
         return !_pointerFieldIsNull(1);
       }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.Builder> getValues() {
-        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.listFactory, 1, null, 0);
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.Builder> getValues() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.listFactory, 1, null, 0);
       }
-      public final void setValues(com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.Reader> value) {
-        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.listFactory, 1, value);
+      public final void setValues(com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.Reader> value) {
+        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.listFactory, 1, value);
       }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.Builder> initValues(int size) {
-        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.listFactory, 1, size);
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.Builder> initValues(int size) {
+        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.listFactory, 1, size);
       }
     }
 
@@ -4393,8 +4401,8 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final boolean hasValues() {
         return !_pointerFieldIsNull(1);
       }
-      public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.Reader> getValues() {
-        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.listFactory, 1, null, 0);
+      public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.Reader> getValues() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.listFactory, 1, null, 0);
       }
 
     }
@@ -4402,7 +4410,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
   }
 
 
-  public static class AnnotationValue {
+  public static class PersistedAnnotationElement {
     public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)1,(short)3);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
@@ -4414,7 +4422,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return new Builder(segment, data, pointers, dataSize, pointerCount);
       }
       public final com.oracle.svm.shaded.org.capnproto.StructSize structSize() {
-        return AnnotationValue.STRUCT_SIZE;
+        return PersistedAnnotationElement.STRUCT_SIZE;
       }
       public final Reader asReader(Builder builder) {
         return builder.asReader();
@@ -4458,121 +4466,121 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 0, size);
       }
       public final boolean isString() {
-        return which() == AnnotationValue.Which.STRING;
+        return which() == PersistedAnnotationElement.Which.STRING;
       }
       public final boolean hasString() {
-        if (which() != AnnotationValue.Which.STRING) return false;
+        if (which() != PersistedAnnotationElement.Which.STRING) return false;
         return !_pointerFieldIsNull(1);
       }
       public final com.oracle.svm.shaded.org.capnproto.Text.Builder getString() {
         return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, null, 0, 0);
       }
       public final void setString(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
-        _setShortField(0, (short)AnnotationValue.Which.STRING.ordinal());
+        _setShortField(0, (short)PersistedAnnotationElement.Which.STRING.ordinal());
         _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, value);
       }
       public final void setString(String value) {
-        _setShortField(0, (short)AnnotationValue.Which.STRING.ordinal());
+        _setShortField(0, (short)PersistedAnnotationElement.Which.STRING.ordinal());
         _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
       }
       public final com.oracle.svm.shaded.org.capnproto.Text.Builder initString(int size) {
-        _setShortField(0, (short)AnnotationValue.Which.STRING.ordinal());
+        _setShortField(0, (short)PersistedAnnotationElement.Which.STRING.ordinal());
         return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, size);
       }
       public final boolean isPrimitive() {
-        return which() == AnnotationValue.Which.PRIMITIVE;
+        return which() == PersistedAnnotationElement.Which.PRIMITIVE;
       }
       public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.Builder getPrimitive() {
-        assert which() == AnnotationValue.Which.PRIMITIVE:
+        assert which() == PersistedAnnotationElement.Which.PRIMITIVE:
                     "Must check which() before get()ing a union member.";
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.factory, 1, null, 0);
       }
       public final void setPrimitive(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.Reader value) {
-        _setShortField(0, (short)AnnotationValue.Which.PRIMITIVE.ordinal());
+        _setShortField(0, (short)PersistedAnnotationElement.Which.PRIMITIVE.ordinal());
         _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.factory,1, value);
       }
       public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.Builder initPrimitive() {
-        _setShortField(0, (short)AnnotationValue.Which.PRIMITIVE.ordinal());
+        _setShortField(0, (short)PersistedAnnotationElement.Which.PRIMITIVE.ordinal());
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.factory,1, 0);
       }
       public final boolean isPrimitiveArray() {
-        return which() == AnnotationValue.Which.PRIMITIVE_ARRAY;
+        return which() == PersistedAnnotationElement.Which.PRIMITIVE_ARRAY;
       }
       public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.Builder getPrimitiveArray() {
-        assert which() == AnnotationValue.Which.PRIMITIVE_ARRAY:
+        assert which() == PersistedAnnotationElement.Which.PRIMITIVE_ARRAY:
                     "Must check which() before get()ing a union member.";
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.factory, 1, null, 0);
       }
       public final void setPrimitiveArray(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.Reader value) {
-        _setShortField(0, (short)AnnotationValue.Which.PRIMITIVE_ARRAY.ordinal());
+        _setShortField(0, (short)PersistedAnnotationElement.Which.PRIMITIVE_ARRAY.ordinal());
         _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.factory,1, value);
       }
       public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.Builder initPrimitiveArray() {
-        _setShortField(0, (short)AnnotationValue.Which.PRIMITIVE_ARRAY.ordinal());
+        _setShortField(0, (short)PersistedAnnotationElement.Which.PRIMITIVE_ARRAY.ordinal());
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.factory,1, 0);
       }
       public final boolean isEnum() {
-        return which() == AnnotationValue.Which.ENUM;
+        return which() == PersistedAnnotationElement.Which.ENUM;
       }
       public final Enum.Builder getEnum() {
-        return new AnnotationValue.Enum.Builder(segment, data, pointers, dataSize, pointerCount);
+        return new PersistedAnnotationElement.Enum.Builder(segment, data, pointers, dataSize, pointerCount);
       }
       public final Enum.Builder initEnum() {
-        _setShortField(0, (short)AnnotationValue.Which.ENUM.ordinal());
+        _setShortField(0, (short)PersistedAnnotationElement.Which.ENUM.ordinal());
         _clearPointerField(1);
         _clearPointerField(2);
-  return new AnnotationValue.Enum.Builder(segment, data, pointers, dataSize, pointerCount);
+  return new PersistedAnnotationElement.Enum.Builder(segment, data, pointers, dataSize, pointerCount);
       }
 
       public final boolean isClassName() {
-        return which() == AnnotationValue.Which.CLASS_NAME;
+        return which() == PersistedAnnotationElement.Which.CLASS_NAME;
       }
       public final boolean hasClassName() {
-        if (which() != AnnotationValue.Which.CLASS_NAME) return false;
+        if (which() != PersistedAnnotationElement.Which.CLASS_NAME) return false;
         return !_pointerFieldIsNull(1);
       }
       public final com.oracle.svm.shaded.org.capnproto.Text.Builder getClassName() {
         return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, null, 0, 0);
       }
       public final void setClassName(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
-        _setShortField(0, (short)AnnotationValue.Which.CLASS_NAME.ordinal());
+        _setShortField(0, (short)PersistedAnnotationElement.Which.CLASS_NAME.ordinal());
         _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, value);
       }
       public final void setClassName(String value) {
-        _setShortField(0, (short)AnnotationValue.Which.CLASS_NAME.ordinal());
+        _setShortField(0, (short)PersistedAnnotationElement.Which.CLASS_NAME.ordinal());
         _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
       }
       public final com.oracle.svm.shaded.org.capnproto.Text.Builder initClassName(int size) {
-        _setShortField(0, (short)AnnotationValue.Which.CLASS_NAME.ordinal());
+        _setShortField(0, (short)PersistedAnnotationElement.Which.CLASS_NAME.ordinal());
         return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, size);
       }
       public final boolean isAnnotation() {
-        return which() == AnnotationValue.Which.ANNOTATION;
+        return which() == PersistedAnnotationElement.Which.ANNOTATION;
       }
-      public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder getAnnotation() {
-        assert which() == AnnotationValue.Which.ANNOTATION:
+      public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Builder getAnnotation() {
+        assert which() == PersistedAnnotationElement.Which.ANNOTATION:
                     "Must check which() before get()ing a union member.";
-        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.factory, 1, null, 0);
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.factory, 1, null, 0);
       }
-      public final void setAnnotation(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader value) {
-        _setShortField(0, (short)AnnotationValue.Which.ANNOTATION.ordinal());
-        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.factory,1, value);
+      public final void setAnnotation(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader value) {
+        _setShortField(0, (short)PersistedAnnotationElement.Which.ANNOTATION.ordinal());
+        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.factory,1, value);
       }
-      public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder initAnnotation() {
-        _setShortField(0, (short)AnnotationValue.Which.ANNOTATION.ordinal());
-        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.factory,1, 0);
+      public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Builder initAnnotation() {
+        _setShortField(0, (short)PersistedAnnotationElement.Which.ANNOTATION.ordinal());
+        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.factory,1, 0);
       }
       public final boolean isMembers() {
-        return which() == AnnotationValue.Which.MEMBERS;
+        return which() == PersistedAnnotationElement.Which.MEMBERS;
       }
       public final Members.Builder getMembers() {
-        return new AnnotationValue.Members.Builder(segment, data, pointers, dataSize, pointerCount);
+        return new PersistedAnnotationElement.Members.Builder(segment, data, pointers, dataSize, pointerCount);
       }
       public final Members.Builder initMembers() {
-        _setShortField(0, (short)AnnotationValue.Which.MEMBERS.ordinal());
+        _setShortField(0, (short)PersistedAnnotationElement.Which.MEMBERS.ordinal());
         _clearPointerField(1);
         _clearPointerField(2);
-  return new AnnotationValue.Members.Builder(segment, data, pointers, dataSize, pointerCount);
+  return new PersistedAnnotationElement.Members.Builder(segment, data, pointers, dataSize, pointerCount);
       }
 
     }
@@ -4602,10 +4610,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
 
       public final boolean isString() {
-        return which() == AnnotationValue.Which.STRING;
+        return which() == PersistedAnnotationElement.Which.STRING;
       }
       public boolean hasString() {
-        if (which() != AnnotationValue.Which.STRING) return false;
+        if (which() != PersistedAnnotationElement.Which.STRING) return false;
         return !_pointerFieldIsNull(1);
       }
       public com.oracle.svm.shaded.org.capnproto.Text.Reader getString() {
@@ -4613,41 +4621,41 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
 
       public final boolean isPrimitive() {
-        return which() == AnnotationValue.Which.PRIMITIVE;
+        return which() == PersistedAnnotationElement.Which.PRIMITIVE;
       }
       public boolean hasPrimitive() {
         return !_pointerFieldIsNull(1);
       }
       public com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.Reader getPrimitive() {
-        assert which() == AnnotationValue.Which.PRIMITIVE:
+        assert which() == PersistedAnnotationElement.Which.PRIMITIVE:
                     "Must check which() before get()ing a union member.";
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.factory,1,null, 0);
       }
 
       public final boolean isPrimitiveArray() {
-        return which() == AnnotationValue.Which.PRIMITIVE_ARRAY;
+        return which() == PersistedAnnotationElement.Which.PRIMITIVE_ARRAY;
       }
       public boolean hasPrimitiveArray() {
         return !_pointerFieldIsNull(1);
       }
       public com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.Reader getPrimitiveArray() {
-        assert which() == AnnotationValue.Which.PRIMITIVE_ARRAY:
+        assert which() == PersistedAnnotationElement.Which.PRIMITIVE_ARRAY:
                     "Must check which() before get()ing a union member.";
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.factory,1,null, 0);
       }
 
       public final boolean isEnum() {
-        return which() == AnnotationValue.Which.ENUM;
+        return which() == PersistedAnnotationElement.Which.ENUM;
       }
       public Enum.Reader getEnum() {
-        return new AnnotationValue.Enum.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+        return new PersistedAnnotationElement.Enum.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
       }
 
       public final boolean isClassName() {
-        return which() == AnnotationValue.Which.CLASS_NAME;
+        return which() == PersistedAnnotationElement.Which.CLASS_NAME;
       }
       public boolean hasClassName() {
-        if (which() != AnnotationValue.Which.CLASS_NAME) return false;
+        if (which() != PersistedAnnotationElement.Which.CLASS_NAME) return false;
         return !_pointerFieldIsNull(1);
       }
       public com.oracle.svm.shaded.org.capnproto.Text.Reader getClassName() {
@@ -4655,22 +4663,22 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
 
       public final boolean isAnnotation() {
-        return which() == AnnotationValue.Which.ANNOTATION;
+        return which() == PersistedAnnotationElement.Which.ANNOTATION;
       }
       public boolean hasAnnotation() {
         return !_pointerFieldIsNull(1);
       }
-      public com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader getAnnotation() {
-        assert which() == AnnotationValue.Which.ANNOTATION:
+      public com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader getAnnotation() {
+        assert which() == PersistedAnnotationElement.Which.ANNOTATION:
                     "Must check which() before get()ing a union member.";
-        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.factory,1,null, 0);
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.factory,1,null, 0);
       }
 
       public final boolean isMembers() {
-        return which() == AnnotationValue.Which.MEMBERS;
+        return which() == PersistedAnnotationElement.Which.MEMBERS;
       }
       public Members.Reader getMembers() {
-        return new AnnotationValue.Members.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+        return new PersistedAnnotationElement.Members.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
       }
 
     }
@@ -4697,7 +4705,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           return new Builder(segment, data, pointers, dataSize, pointerCount);
         }
         public final com.oracle.svm.shaded.org.capnproto.StructSize structSize() {
-          return AnnotationValue.Enum.STRUCT_SIZE;
+          return PersistedAnnotationElement.Enum.STRUCT_SIZE;
         }
         public final Reader asReader(Builder builder) {
           return builder.asReader();
@@ -4781,7 +4789,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           return new Builder(segment, data, pointers, dataSize, pointerCount);
         }
         public final com.oracle.svm.shaded.org.capnproto.StructSize structSize() {
-          return AnnotationValue.Members.STRUCT_SIZE;
+          return PersistedAnnotationElement.Members.STRUCT_SIZE;
         }
         public final Reader asReader(Builder builder) {
           return builder.asReader();
@@ -4815,14 +4823,14 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         public final boolean hasMemberValues() {
           return !_pointerFieldIsNull(2);
         }
-        public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.Builder> getMemberValues() {
-          return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.listFactory, 2, null, 0);
+        public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.Builder> getMemberValues() {
+          return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.listFactory, 2, null, 0);
         }
-        public final void setMemberValues(com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.Reader> value) {
-          _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.listFactory, 2, value);
+        public final void setMemberValues(com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.Reader> value) {
+          _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.listFactory, 2, value);
         }
-        public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.Builder> initMemberValues(int size) {
-          return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.listFactory, 2, size);
+        public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.Builder> initMemberValues(int size) {
+          return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.listFactory, 2, size);
         }
       }
 
@@ -4841,8 +4849,8 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         public final boolean hasMemberValues() {
           return !_pointerFieldIsNull(2);
         }
-        public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.Reader> getMemberValues() {
-          return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.listFactory, 2, null, 0);
+        public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.Reader> getMemberValues() {
+          return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement.listFactory, 2, null, 0);
         }
 
       }

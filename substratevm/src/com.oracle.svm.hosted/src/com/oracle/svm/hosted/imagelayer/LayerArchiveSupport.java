@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -55,13 +54,12 @@ public class LayerArchiveSupport {
     private static final String ENV_VARIABLES_FILE_NAME = "env-variables.txt";
     private static final String SNAPSHOT_FILE_NAME = "layer-snapshot.lsb";
     private static final String SNAPSHOT_GRAPHS_FILE_NAME = "layer-snapshot-graphs.big";
+    private static final String BUILD_PATH_DIGESTS_FILE_NAME = "build-path-digests.txt";
     private static final String LAYER_INFO_MESSAGE_PREFIX = "Native Image Layers";
     protected static final String LAYER_TEMP_DIR_PREFIX = "layerRoot_";
     protected static final String SHARED_LIB_NAME_PREFIX = "lib";
 
     public static final String LAYER_FILE_EXTENSION = ".nil";
-
-    protected final List<String> builderArguments;
 
     protected final LayerProperties layerProperties;
     protected final Path layerFile;
@@ -69,9 +67,10 @@ public class LayerArchiveSupport {
 
     /** The temp directory where the layer files reside in expanded form. */
     protected final Path layerDir;
+    private final boolean enableLogging;
 
     @SuppressWarnings("this-escape")
-    public LayerArchiveSupport(String layerName, Path layerFile, Path layerDir, ArchiveSupport archiveSupport) {
+    public LayerArchiveSupport(String layerName, Path layerFile, Path layerDir, ArchiveSupport archiveSupport, boolean enableLogging) {
         this.archiveSupport = archiveSupport;
 
         this.layerFile = layerFile;
@@ -85,7 +84,7 @@ public class LayerArchiveSupport {
         }
 
         this.layerProperties = new LayerArchiveSupport.LayerProperties(layerName);
-        this.builderArguments = new ArrayList<>();
+        this.enableLogging = enableLogging;
     }
 
     protected void validateLayerFile() {
@@ -127,6 +126,10 @@ public class LayerArchiveSupport {
 
     protected Path getEnvVariablesFilePath() {
         return layerDir.resolve(ENV_VARIABLES_FILE_NAME);
+    }
+
+    protected Path getBuildPathDigestsFilePath() {
+        return layerDir.resolve(BUILD_PATH_DIGESTS_FILE_NAME);
     }
 
     protected List<EnvironmentVariable> parseEnvVariables() {
@@ -266,7 +269,9 @@ public class LayerArchiveSupport {
         return (val.getOS() + "-" + val.getArchitecture()).toLowerCase(Locale.ROOT);
     }
 
-    protected static void info(String format, Object... args) {
-        LogUtils.prefixInfo(LAYER_INFO_MESSAGE_PREFIX, format, args);
+    protected void info(String format, Object... args) {
+        if (enableLogging) {
+            LogUtils.prefixInfo(LAYER_INFO_MESSAGE_PREFIX, format, args);
+        }
     }
 }

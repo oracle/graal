@@ -26,24 +26,26 @@ package jdk.graal.compiler.nodes.memory;
 
 import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.FixedAccessNodeInterface;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.ImplicitNullCheckNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.word.LocationIdentity;
 
 /**
  * Accesses a value at a memory address specified by an {@linkplain #address address}. The access
  * does not include a null check on the object.
  */
 @NodeInfo
-public abstract class FixedAccessNode extends ImplicitNullCheckNode implements AddressableMemoryAccess, GuardedMemoryAccess, OnHeapMemoryAccess, IterableNodeType {
+public abstract class FixedAccessNode extends ImplicitNullCheckNode implements AddressableMemoryAccess, GuardedMemoryAccess, OnHeapMemoryAccess, IterableNodeType, FixedAccessNodeInterface {
     public static final NodeClass<FixedAccessNode> TYPE = NodeClass.create(FixedAccessNode.class);
 
     @OptionalInput(InputType.Guard) protected GuardingNode guard;
@@ -131,5 +133,10 @@ public abstract class FixedAccessNode extends ImplicitNullCheckNode implements A
     @Override
     public BarrierType getBarrierType() {
         return barrierType;
+    }
+
+    @Override
+    public FixedAccessNode asFixedAccessNode() {
+        return this;
     }
 }

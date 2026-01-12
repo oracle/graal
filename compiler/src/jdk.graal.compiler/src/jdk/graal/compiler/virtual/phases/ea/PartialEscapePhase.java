@@ -146,13 +146,17 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
     @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
-        if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue(graph.getOptions()))) {
+        if (matchGraph(graph)) {
             if (readElimination || graph.hasVirtualizableAllocation()) {
                 try (DebugCloseable ignored = graph.getOptimizationLog().enterPartialEscapeAnalysis()) {
                     runAnalysis(graph, context);
                 }
             }
         }
+    }
+
+    protected boolean matchGraph(StructuredGraph graph) {
+        return VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue(graph.getOptions()));
     }
 
     @Override

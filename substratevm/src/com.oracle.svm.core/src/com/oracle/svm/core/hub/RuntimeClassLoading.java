@@ -27,8 +27,11 @@ package com.oracle.svm.core.hub;
 import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
 import java.security.ProtectionDomain;
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.crema.CremaSupport;
@@ -162,17 +165,9 @@ public class RuntimeClassLoading {
     public static RuntimeException throwNoBytecodeClasses(String className) {
         assert !PredefinedClassesSupport.hasBytecodeClasses() && !RuntimeClassLoading.isSupported();
         throw VMError.unsupportedFeature(
-                        "Classes cannot be defined at runtime by default when using ahead-of-time Native Image compilation. Tried to define class '" + className + "'" + System.lineSeparator() +
+                        "Classes cannot be defined at runtime by default when using ahead-of-time Native Image compilation. Tried to define class:" + System.lineSeparator() + System.lineSeparator() +
+                                        "    " + className + System.lineSeparator() + System.lineSeparator() +
                                         DEFINITION_NOT_SUPPORTED_MESSAGE);
-    }
-
-    public static DynamicHub getOrCreateArrayHub(DynamicHub hub) {
-        if (hub.getArrayHub() == null) {
-            VMError.guarantee(RuntimeClassLoading.isSupported());
-            // GR-63452
-            throw VMError.unimplemented("array hub creation");
-        }
-        return hub.getArrayHub();
     }
 
     public static final class ClassDefinitionInfo {
@@ -267,5 +262,21 @@ public class RuntimeClassLoading {
             return;
         }
         // GR-59739 runtime linking
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static final class NoRuntimeClassLoading implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return !isSupported();
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static final class WithRuntimeClassLoading implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return isSupported();
+        }
     }
 }

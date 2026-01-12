@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,24 +36,25 @@ import jdk.graal.compiler.util.CollectionsUtil;
  */
 public class JVMCIVersionCheckMaxValueTest extends GraalCompilerTest {
 
-    public static final String EXPECTED_MSG = "Cannot read JVMCI version from java.vm.version property";
+    public static final String EXPECTED_MSG_CANNOT_READ = "Cannot read JVMCI version from java.vm.version property";
+    public static final String EXPECTED_MSG_INCOMPARABLE = "Graal expected a JVMCI release version";
 
     @Test
-    public void testLegacyVersion() {
-        for (String version : new String[]{"20.0-b" + Long.MAX_VALUE, "20." + Long.MAX_VALUE + "-b1", Long.MAX_VALUE + ".0-b1"}) {
-            testVersion(String.format("prefix-jvmci-%s-suffix", version));
+    public void testCurrentVersion() {
+        for (String version : new String[]{"20.0-b" + Long.MAX_VALUE, "20." + Long.MAX_VALUE + "-b1", Long.MAX_VALUE + ".0-b1", "myrelease"}) {
+            testVersion(String.format("99.0.1-jvmci-%s-suffix", version));
         }
     }
 
     @Test
-    public void testNewVersion() {
+    public void testVersionUntilGraalVmForJDK25() {
         // We only want to test jvmciBuild, not Runtime.Version, so we use a fixed jdkVersion string
         testVersion(String.format("99.0.1-jvmci-b%s-suffix", Long.MAX_VALUE));
     }
 
     private static void testVersion(String javaVmVersion) {
         try {
-            JVMCIVersionCheck.Version minVersion = JVMCIVersionCheck.createLegacyVersion(20, 0, 1);
+            JVMCIVersionCheck.Version minVersion = JVMCIVersionCheck.createLabsJDKVersion("99.0.1", "20.0", 1);
             // Use a javaSpecVersion that will likely not fail in the near future
             String javaSpecVersion = "99";
             var props = JVMCIVersionCheckTest.createTestProperties(javaSpecVersion, javaVmVersion, null);
@@ -65,8 +66,8 @@ public class JVMCIVersionCheckMaxValueTest extends GraalCompilerTest {
                 Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion);
             }
         } catch (InternalError e) {
-            if (!e.getMessage().contains(EXPECTED_MSG)) {
-                throw new AssertionError("Unexpected exception message. Expected: " + EXPECTED_MSG, e);
+            if (!e.getMessage().contains(EXPECTED_MSG_INCOMPARABLE) && !e.getMessage().contains(EXPECTED_MSG_CANNOT_READ)) {
+                throw new AssertionError("Unexpected exception message. Expected: " + EXPECTED_MSG_INCOMPARABLE + " or " + EXPECTED_MSG_CANNOT_READ, e);
             }
         }
     }

@@ -57,9 +57,11 @@ import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
 import com.oracle.truffle.nfi.backend.spi.NFIState;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
-@TruffleLanguage.Registration(id = "internal/nfi-native", name = "nfi-native", version = "0.1", characterMimeTypes = LibFFILanguage.MIME_TYPE, internal = true, //
+@TruffleLanguage.Registration(id = LibFFILanguage.ID, name = "nfi-native", version = "0.1", characterMimeTypes = LibFFILanguage.MIME_TYPE, internal = true, //
                 services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED, internalResources = LibNFIResource.class)
 public class LibFFILanguage extends TruffleLanguage<LibFFIContext> {
+
+    static final String ID = "internal/nfi-native";
 
     public static final String MIME_TYPE = "trufflenfi/native";
 

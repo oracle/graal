@@ -77,7 +77,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * reference-writes and dirty cards. Similar to their counterparts in Serial and Parallel GC.</li>
  * </ul>
  */
-public class ShenandoahBarrierSet implements BarrierSet {
+public class ShenandoahBarrierSet extends BarrierSet {
 
     private final ResolvedJavaType objectArrayType;
     private final ResolvedJavaField referentField;
@@ -87,6 +87,7 @@ public class ShenandoahBarrierSet implements BarrierSet {
     protected boolean useCardBarrier;
 
     public ShenandoahBarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField) {
+        super(GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION, false);
         this.referentField = referentField;
         this.objectArrayType = objectArrayType;
         this.useLoadRefBarrier = true;
@@ -150,16 +151,6 @@ public class ShenandoahBarrierSet implements BarrierSet {
     }
 
     @Override
-    public BarrierType fieldWriteBarrierType(ResolvedJavaField field, JavaKind storageKind) {
-        return storageKind == JavaKind.Object ? BarrierType.FIELD : BarrierType.NONE;
-    }
-
-    @Override
-    public BarrierType arrayWriteBarrierType(JavaKind storageKind) {
-        return storageKind == JavaKind.Object ? BarrierType.ARRAY : BarrierType.NONE;
-    }
-
-    @Override
     public BarrierType readWriteBarrier(ValueNode object, ValueNode value) {
         if (value.stamp(NodeView.DEFAULT).isObjectStamp()) {
             ResolvedJavaType type = StampTool.typeOrNull(object);
@@ -172,16 +163,6 @@ public class ShenandoahBarrierSet implements BarrierSet {
             }
         }
         return BarrierType.NONE;
-    }
-
-    @Override
-    public boolean hasWriteBarrier() {
-        return true;
-    }
-
-    @Override
-    public boolean hasReadBarrier() {
-        return true;
     }
 
     @Override
@@ -306,11 +287,6 @@ public class ShenandoahBarrierSet implements BarrierSet {
     }
 
     @Override
-    public boolean mayNeedPreWriteBarrier(JavaKind storageKind) {
-        return false;
-    }
-
-    @Override
     public void verifyBarriers(StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
             if (node instanceof WriteNode write) {
@@ -362,10 +338,5 @@ public class ShenandoahBarrierSet implements BarrierSet {
             return BarrierType.READ;
         }
         return null;
-    }
-
-    @Override
-    public boolean shouldAddBarriersInStage(GraphState.StageFlag stage) {
-        return stage == GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION;
     }
 }

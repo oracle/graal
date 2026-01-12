@@ -52,16 +52,16 @@ public final class JSUndefined extends JSValue {
         return INSTANCE;
     }
 
-    JSUndefined() {
+    private JSUndefined() {
+    }
+
+    @Override
+    public boolean isUndefined() {
+        return true;
     }
 
     @Override
     public String typeof() {
-        return "undefined";
-    }
-
-    @Override
-    protected String stringValue() {
         return "undefined";
     }
 }

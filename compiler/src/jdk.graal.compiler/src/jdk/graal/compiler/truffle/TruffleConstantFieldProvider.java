@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.truffle;
 
-import com.oracle.truffle.compiler.ConstantFieldInfo;
-
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.vm.ci.meta.JavaConstant;
@@ -34,8 +32,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Constant field provider used for Truffle partial evaluation.
- *
- * @see TruffleCachingConstantFieldProvider
  */
 final class TruffleConstantFieldProvider implements ConstantFieldProvider {
 

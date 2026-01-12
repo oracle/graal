@@ -44,7 +44,9 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
+import com.oracle.truffle.espresso.substitutions.Throws;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions
 public final class Target_java_lang_reflect_Array {
@@ -757,6 +759,12 @@ public final class Target_java_lang_reflect_Array {
         } else {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
+    }
+
+    @Substitution
+    @Throws(IllegalArgumentException.class)
+    public static int getLength(@JavaType(Object.class) StaticObject array, @Inject VM vm, @Inject EspressoLanguage language, @Inject SubstitutionProfiler profiler) {
+        return vm.JVM_GetArrayLength(array, language, profiler);
     }
 
     private static int getForeignArrayLength(StaticObject array, EspressoLanguage language, Meta meta) {

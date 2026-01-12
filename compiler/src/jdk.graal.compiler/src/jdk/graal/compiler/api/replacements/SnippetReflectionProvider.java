@@ -118,6 +118,7 @@ public interface SnippetReflectionProvider {
      * @return the original Java method corresponding to {@code method} or {@code null} if this
      *         object cannot map {@link ResolvedJavaMethod} instances to {@link Executable}
      *         instances
+     * @throws IllegalArgumentException if the type of method is not supported by this provider
      */
     Executable originalMethod(ResolvedJavaMethod method);
 

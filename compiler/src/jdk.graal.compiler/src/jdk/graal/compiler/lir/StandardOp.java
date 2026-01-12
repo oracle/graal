@@ -184,19 +184,32 @@ public class StandardOp {
         @Alive({OperandFlag.REG, OperandFlag.STACK, OperandFlag.CONST, OperandFlag.OUTGOING}) private Value[] outgoingValues;
 
         private final LabelRef destination;
+        private final boolean isThreadedJump;
 
         public JumpOp(LabelRef destination) {
-            this(TYPE, destination);
+            this(TYPE, destination, false);
         }
 
-        protected JumpOp(LIRInstructionClass<? extends JumpOp> c, LabelRef destination) {
+        public JumpOp(LabelRef destination, boolean isThreadedJump) {
+            this(TYPE, destination, isThreadedJump);
+        }
+
+        protected JumpOp(LIRInstructionClass<? extends JumpOp> c, LabelRef destination, boolean isThreadedJump) {
             super(c);
             this.destination = destination;
             this.outgoingValues = Value.NO_VALUES;
+            this.isThreadedJump = isThreadedJump;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb) {
+            if (isThreadedJump) {
+                if (destination.label().isBound()) {
+                    if (crb.asm.replayCodeSnippetAt(crb, destination.label().position())) {
+                        return;
+                    }
+                }
+            }
             if (!crb.isSuccessorEdge(destination)) {
                 crb.asm.jmp(destination.label());
             }
@@ -495,4 +508,16 @@ public class StandardOp {
         }
     }
 
+    public static final class StartRecordingThreadedSwitchOp extends LIRInstruction {
+        public static final LIRInstructionClass<StartRecordingThreadedSwitchOp> TYPE = LIRInstructionClass.create(StartRecordingThreadedSwitchOp.class);
+
+        public StartRecordingThreadedSwitchOp() {
+            super(TYPE);
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb) {
+            crb.asm.startRecordingCodeSnippet(crb);
+        }
+    }
 }

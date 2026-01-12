@@ -53,6 +53,14 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
         this.bciToLineEntries = entries;
     }
 
+    /**
+     * Get the raw data organized in a similar way to the class file format (see JVMS 4.7.12). There
+     * are 2 consecutive chars per entries: the start PC followed by the line number.
+     */
+    public char[] getRawData() {
+        return bciToLineEntries;
+    }
+
     @Override
     public List<Entry> getEntries() {
         return new ListWrapper();

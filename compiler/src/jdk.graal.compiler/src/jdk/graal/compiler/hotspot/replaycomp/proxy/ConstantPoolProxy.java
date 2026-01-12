@@ -34,8 +34,6 @@ import jdk.vm.ci.meta.Signature;
 
 import java.util.List;
 
-//JaCoCo Exclude
-
 public final class ConstantPoolProxy extends CompilationProxyBase implements ConstantPool {
     ConstantPoolProxy(InvocationHandler handler) {
         super(handler);

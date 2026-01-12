@@ -106,6 +106,12 @@ public class ModifiableOptionValues extends OptionValues {
                 }
             }
         } while (!v.compareAndSet(expect, newMap));
+
+        UnmodifiableMapCursor<OptionKey<?>, Object> cursor = values.getEntries();
+        while (cursor.advance()) {
+            OptionKey<?> key = cursor.getKey();
+            key.afterValueUpdate();
+        }
     }
 
     @Override

@@ -31,6 +31,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @InternalVMMethod
 abstract class AbstractCremaAccessor {
+    static final Object[] NO_ARGS = new Object[0];
 
     protected final ResolvedJavaMethod targetMethod;
     private final Class<?> declaringClass;

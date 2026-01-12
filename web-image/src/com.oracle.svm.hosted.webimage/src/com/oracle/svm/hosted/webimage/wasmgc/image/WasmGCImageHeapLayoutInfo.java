@@ -48,7 +48,7 @@ public class WasmGCImageHeapLayoutInfo extends ImageHeapLayoutInfo {
      *            known before the binary is assembled).
      */
     public WasmGCImageHeapLayoutInfo(long serializedSize, long theoreticalSize) {
-        super(0, theoreticalSize, 0, theoreticalSize, 0L, 0L, 0L, 0L);
+        super(0, theoreticalSize, 0, theoreticalSize, 0L, 0L, 0L, 0L, 0L);
 
         this.serializedSize = serializedSize;
     }

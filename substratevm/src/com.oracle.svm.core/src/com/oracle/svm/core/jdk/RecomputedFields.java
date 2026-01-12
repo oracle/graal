@@ -35,6 +35,10 @@ import java.lang.reflect.Modifier;
 import java.nio.charset.CharsetDecoder;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -104,9 +108,6 @@ final class Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_Atomi
         if (!Modifier.isVolatile(modifiers))
             throw new IllegalArgumentException("Must be volatile type");
 
-        if (Modifier.isStatic(modifiers))
-            throw new IllegalArgumentException("Must not be a static field");
-
         // access checks are disabled
         this.cclass = tclass;
         this.tclass = tclass;
@@ -145,9 +146,6 @@ final class Target_java_util_concurrent_atomic_AtomicIntegerFieldUpdater_AtomicI
         if (!Modifier.isVolatile(modifiers))
             throw new IllegalArgumentException("Must be volatile type");
 
-        if (Modifier.isStatic(modifiers))
-            throw new IllegalArgumentException("Must not be a static field");
-
         // access checks are disabled
         this.cclass = tclass;
         this.tclass = tclass;
@@ -185,9 +183,6 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater
         if (!Modifier.isVolatile(modifiers))
             throw new IllegalArgumentException("Must be volatile type");
 
-        if (Modifier.isStatic(modifiers))
-            throw new IllegalArgumentException("Must not be a static field");
-
         // access checks are disabled
         this.cclass = tclass;
         this.tclass = tclass;
@@ -198,6 +193,7 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater
 
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 class InnocuousForkJoinWorkerThreadFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {

@@ -652,6 +652,40 @@ public class CustomYieldTest {
         });
     }
 
+    @Test
+    public void testYieldQuickeningRegressionTest() {
+        /*
+         * Regression test for a quickening bug. The yield's childBci calculation did not account
+         * for tag.resume instructions, and under the right circumstances, the parent operation
+         * would "quicken" an instruction operand, leading to unexpected results.
+         */
+        runInstrumentationTest((context, instrumenter) -> {
+            BytecodeRootNodes<ComplexCustomYieldTestRootNode> nodes = ComplexCustomYieldTestRootNodeGen.create(BytecodeDSLTestLanguage.REF.get(null), BytecodeConfig.DEFAULT, b -> {
+                b.beginRoot();
+                b.emitLoadConstant(42);
+                b.beginReturn();
+                b.beginAddConstantsYield(1);
+                b.emitLoadArgument(0);
+                b.endAddConstantsYield(1);
+                b.endReturn();
+                b.endRoot();
+            });
+            ComplexCustomYieldTestRootNode root = nodes.getNode(0);
+            root.getBytecodeNode().setUncachedThreshold(0);
+            List<Object> yieldValues = new ArrayList<>();
+            AtomicInteger resumeCount = new AtomicInteger();
+            instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build(), createFactory(yieldValues, resumeCount));
+
+            ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(0);
+            assertEquals(2, cont.getResult());
+            assertEquals(123, cont.continueWith(123));
+
+            cont = (ContinuationResult) root.getCallTarget().call(0);
+            assertEquals(2, cont.getResult());
+            assertEquals(123, cont.continueWith(123));
+        });
+    }
+
     private static void runInstrumentationTest(BiConsumer<Context, Instrumenter> test) {
         Context context = Context.create(BytecodeDSLTestLanguage.ID);
         try {

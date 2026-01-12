@@ -57,11 +57,9 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
-import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
-import jdk.graal.compiler.replacements.nodes.ResolvedMethodHandleCallTargetNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
@@ -269,10 +267,6 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         return super.processNextNode(methodScope, loopScope);
     }
 
-    protected MethodCallTargetNode createCallTargetNode(ResolvedMethodHandleCallTargetNode t) {
-        return new MethodCallTargetNode(t.invokeKind(), t.targetMethod(), t.arguments().toArray(ValueNode.EMPTY_ARRAY), t.returnStamp(), t.getTypeProfile());
-    }
-
     @Override
     protected LoopScope handleMethodHandle(MethodScope s, LoopScope loopScope, InvokableData<MethodHandleWithExceptionNode> invokableData) {
         MethodHandleWithExceptionNode node = invokableData.invoke;
@@ -288,13 +282,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
                         invokableData.nextOrderId, invokableData.exceptionOrderId, invokableData.exceptionStateOrderId, invokableData.exceptionNextOrderId);
 
         CallTargetNode callTarget;
-        if (invoke.callTarget() instanceof ResolvedMethodHandleCallTargetNode t) {
-            // This special CallTargetNode lowers itself back to the original target (e.g. linkTo*)
-            // if the invocation hasn't been inlined, which we don't want for Native Image.
-            callTarget = createCallTargetNode(t);
-        } else {
-            callTarget = (CallTargetNode) invoke.callTarget().copyWithInputs(false);
-        }
+        callTarget = (CallTargetNode) invoke.callTarget().copyWithInputs(false);
         // handleInvoke() expects that CallTargetNode is not eagerly added to the graph
         invoke.callTarget().replaceAtUsagesAndDelete(null);
         invokeData.callTarget = callTarget;

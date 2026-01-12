@@ -32,8 +32,6 @@ import java.security.ProtectionDomain;
 import java.security.cert.Certificate;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -42,6 +40,8 @@ import org.graalvm.nativeimage.ProcessProperties;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.LazyFinalReference;
 
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 import sun.security.util.SecurityConstants;
 
 /**
@@ -69,9 +69,20 @@ public final class ProtectionDomainSupport {
     }
 
     private final LazyFinalReference<ProtectionDomain> allPermDomain = new LazyFinalReference<>(this::createAllPermDomain);
+    private final LazyFinalReference<ProtectionDomain> bootAllPermDomain = new LazyFinalReference<>(ProtectionDomainSupport::createBootAllPermDomain);
 
     /** Remains null as long as the reachability handler has not triggered. */
     Supplier<URL> executableURLSupplier;
+
+    public static ProtectionDomain bootAllPermDomain() {
+        return ImageSingletons.lookup(ProtectionDomainSupport.class).bootAllPermDomain.get();
+    }
+
+    private static ProtectionDomain createBootAllPermDomain() {
+        java.security.Permissions perms = new java.security.Permissions();
+        perms.add(SecurityConstants.ALL_PERMISSION);
+        return new java.security.ProtectionDomain(null, perms);
+    }
 
     public static ProtectionDomain allPermDomain() {
         return ImageSingletons.lookup(ProtectionDomainSupport.class).allPermDomain.get();

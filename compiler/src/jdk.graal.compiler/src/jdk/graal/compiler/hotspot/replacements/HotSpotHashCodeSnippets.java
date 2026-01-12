@@ -34,6 +34,8 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.ma
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markWordLockMaskInPlace;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.monitorValue;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.uninitializedIdentityHashCodeValue;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.unlockedValue;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useLightweightLocking;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useObjectMonitorTable;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
@@ -43,7 +45,7 @@ import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
 import jdk.graal.compiler.word.Word;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/8e4485699235caff0074c4d25ee78539e57da63a/src/hotspot/share/opto/library_call.cpp#L4723-L4857",
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/b8aa130bab715f187476181acc5021b27958833f/src/hotspot/share/opto/library_call.cpp#L4689-L4823",
           sha1 = "c212d1dbff26d02d4d749e085263d4104895f1ba")
 // @formatter:on
 public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
@@ -73,7 +75,9 @@ public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
         //
         // See src/hotspot/share/oops/markWord.hpp for more details.
         final Word lockBits = mark.and(Word.unsigned(markWordLockMaskInPlace(INJECTED_VMCONFIG)));
-        if (useObjectMonitorTable(INJECTED_VMCONFIG) || probability(FAST_PATH_PROBABILITY, lockBits.notEqual(Word.unsigned(monitorValue(INJECTED_VMCONFIG))))) {
+        if (useObjectMonitorTable(INJECTED_VMCONFIG) || probability(FAST_PATH_PROBABILITY,
+                        useLightweightLocking(INJECTED_VMCONFIG) ? lockBits.notEqual(Word.unsigned(monitorValue(INJECTED_VMCONFIG)))
+                                        : lockBits.equal(Word.unsigned(unlockedValue(INJECTED_VMCONFIG))))) {
             // `& markWord::hash_mask' is essential with -XX:+UseCompactObjectHeaders, because bit
             // 42 might be set.
             int hash = (int) mark.unsignedShiftRight(markWordHashCodeShift(INJECTED_VMCONFIG)).and((int) markWordHashMark(INJECTED_VMCONFIG)).rawValue();

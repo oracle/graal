@@ -28,9 +28,7 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import java.util.EnumSet;
 import java.util.Objects;
-import java.util.function.Function;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -42,15 +40,15 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
@@ -70,6 +68,7 @@ import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -98,19 +97,30 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class StaticFieldsSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public interface HostedStaticFieldSupport {
+    public abstract static class HostedStaticFieldSupport {
 
         static HostedStaticFieldSupport singleton() {
             return ImageSingletons.lookup(HostedStaticFieldSupport.class);
         }
 
-        JavaConstant getStaticFieldsBaseConstant(int layerNum, boolean primitive, Function<Object, JavaConstant> toConstant);
+        protected abstract JavaConstant getStaticFieldBaseTransformation(int layerNum, boolean primitive);
 
-        FloatingNode getStaticFieldsBaseReplacement(int layerNum, boolean primitive, LoweringTool tool, StructuredGraph graph);
+        protected abstract FloatingNode getStaticFieldsBaseReplacement(int layerNum, boolean primitive, LoweringTool tool, StructuredGraph graph);
 
-        boolean isPrimitive(ResolvedJavaField field);
+        protected abstract boolean isPrimitive(ResolvedJavaField field);
 
-        int getInstalledLayerNum(ResolvedJavaField field);
+        protected abstract int getInstalledLayerNum(ResolvedJavaField field);
+
+        public abstract ResolvedJavaField toHostedField(ResolvedJavaField field);
+
+        /**
+         * Looks up the {@code field} using the {@code UniverseMetaAccess} instance passed via the
+         * {code metaAccess} parameter. For example, if the {@code metaAccess} comes from the Hosted
+         * Universe, it will return a {@code HostedField}, if it origins from the Analysis Universe,
+         * it will return an {code AnalysisField}. The method throws an error if the provided
+         * {@link MetaAccessProvider} is not a {@code UniverseMetaAccess}.
+         */
+        public abstract ResolvedJavaField toUniverseField(MetaAccessProvider metaAccess, ResolvedJavaField field);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -138,11 +148,17 @@ public final class StaticFieldsSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static JavaConstant getStaticFieldsConstant(ResolvedJavaField field, Function<Object, JavaConstant> toConstant) {
+    public static JavaConstant getStaticFieldBaseTransformation(ResolvedJavaField field) {
         var hostedSupport = HostedStaticFieldSupport.singleton();
-        boolean primitive = hostedSupport.isPrimitive(field);
-        int layerNum = getInstalledLayerNum(field);
-        return hostedSupport.getStaticFieldsBaseConstant(layerNum, primitive, toConstant);
+        ResolvedJavaField hField = hostedSupport.toHostedField(field);
+        boolean primitive = hostedSupport.isPrimitive(hField);
+        int layerNum = getInstalledLayerNum(hField);
+        return hostedSupport.getStaticFieldBaseTransformation(layerNum, primitive);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static ResolvedJavaField toUniverseField(MetaAccessProvider metaAccess, ResolvedJavaField field) {
+        return HostedStaticFieldSupport.singleton().toUniverseField(metaAccess, field);
     }
 
     public static int getInstalledLayerNum(ResolvedJavaField field) {
@@ -168,6 +184,7 @@ public final class StaticFieldsSupport {
 
     public static FloatingNode createStaticFieldBaseNode(ResolvedJavaField field) {
         if (field instanceof SharedField sField) {
+            assert sField.getStaticFieldBaseForRuntimeLoadedClass() == null : "Static field support with static field base should be handled in lowering providers";
             boolean primitive = sField.getStorageKind().isPrimitive();
             return new StaticFieldResolvedBaseNode(primitive, sField.getInstalledLayerNum());
         } else {
@@ -196,7 +213,7 @@ public final class StaticFieldsSupport {
          */
         protected StaticFieldBaseProxyNode(ValueNode staticFieldsArray) {
             super(TYPE, StampFactory.objectNonNull());
-            assert ImageLayerBuildingSupport.buildingImageLayer();
+            assert ImageLayerBuildingSupport.buildingImageLayer() || SubstrateOptions.useRistretto();
             this.staticFieldsArray = staticFieldsArray;
         }
 
@@ -295,7 +312,8 @@ public final class StaticFieldsSupport {
 }
 
 @AutomaticallyRegisteredImageSingleton
-class MultiLayeredStaticFieldsBase implements MultiLayeredImageSingleton, UnsavedSingleton {
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
+class MultiLayeredStaticFieldsBase {
 
     @UnknownObjectField(availability = BuildPhaseProvider.AfterHostedUniverse.class) private Object[] staticObjectFields = null;
 
@@ -326,12 +344,6 @@ class MultiLayeredStaticFieldsBase implements MultiLayeredImageSingleton, Unsave
         this.staticObjectFields = Objects.requireNonNull(objectFields);
         this.staticPrimitiveFields = Objects.requireNonNull(primitiveFields);
     }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
-    }
-
 }
 
 /**

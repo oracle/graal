@@ -77,7 +77,7 @@ public class GraalDebugHandlersFactory implements DebugDumpHandlersFactory {
                 if (object instanceof Node) {
                     Node node = (Node) object;
                     String location = GraphUtil.approxSourceLocation(node);
-                    String nodeName = node.toString(Verbosity.Debugger);
+                    String nodeName = node.toString(Verbosity.All);
                     if (location != null) {
                         debug.log("Context obj %s (approx. location: %s)", nodeName, location);
                     } else {

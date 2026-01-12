@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -111,7 +112,7 @@ public class AnalysisToHostedGraphTransplanter {
         }
         StructuredGraph graph = aGraph.copy(hMethod, inlinedHMethods, compileOptions, debug, trackNodeSourcePosition);
 
-        transplantEscapeAnalysisState(graph);
+        patchEscapeAnalysisState(graph, universe, aType -> universe.lookup(aType).getInstanceFields(true));
 
         IdentityHashMap<Object, Object> replacements = new IdentityHashMap<>();
         for (Node node : graph.getNodes()) {
@@ -147,7 +148,7 @@ public class AnalysisToHostedGraphTransplanter {
      * i.e., the field order, is only decided after static analysis. Therefore, we need to fix up
      * all the nodes that implicitly use the field index.
      */
-    protected void transplantEscapeAnalysisState(StructuredGraph graph) {
+    public static void patchEscapeAnalysisState(StructuredGraph graph, HostedUniverse universe, Function<AnalysisType, ResolvedJavaField[]> fieldsProvider) {
         for (CommitAllocationNode node : graph.getNodes().filter(CommitAllocationNode.class)) {
             List<ValueNode> values = node.getValues();
             List<ValueNode> aValues = new ArrayList<>(values);
@@ -155,7 +156,7 @@ public class AnalysisToHostedGraphTransplanter {
 
             int aObjectStartIndex = 0;
             for (VirtualObjectNode virtualObject : node.getVirtualObjects()) {
-                transplantVirtualObjectState(virtualObject, aValues, values, aObjectStartIndex);
+                patchVirtualObjectState(virtualObject, aValues, values, aObjectStartIndex, universe);
                 aObjectStartIndex += virtualObject.entryCount();
             }
             assert aValues.size() == aObjectStartIndex;
@@ -166,14 +167,14 @@ public class AnalysisToHostedGraphTransplanter {
             List<ValueNode> aValues = new ArrayList<>(values);
             values.clear();
 
-            transplantVirtualObjectState(node.object(), aValues, values, 0);
+            patchVirtualObjectState(node.object(), aValues, values, 0, universe);
         }
 
         for (VirtualInstanceNode node : graph.getNodes(VirtualInstanceNode.TYPE)) {
             AnalysisType aType = (AnalysisType) node.type();
             ResolvedJavaField[] aFields = node.getFields();
             assert Arrays.equals(aFields, aType.getInstanceFields(true));
-            HostedField[] hFields = universe.lookup(aType).getInstanceFields(true);
+            ResolvedJavaField[] newFields = fieldsProvider.apply(aType);
             /*
              * We cannot directly write the final field `VirtualInstanceNode.fields`. So we rely on
              * the NodeClass mechanism, which is also used to transplant all other fields.
@@ -181,18 +182,27 @@ public class AnalysisToHostedGraphTransplanter {
             Fields nodeClassDataFields = node.getNodeClass().getData();
             for (int i = 0; i < nodeClassDataFields.getCount(); i++) {
                 if (nodeClassDataFields.get(node, i) == aFields) {
-                    nodeClassDataFields.putObjectChecked(node, i, hFields);
+                    nodeClassDataFields.putObjectChecked(node, i, newFields);
                 }
             }
         }
     }
 
-    private void transplantVirtualObjectState(VirtualObjectNode virtualObject, List<ValueNode> aValues, List<ValueNode> hValues, int aObjectStartIndex) {
+    /**
+     * Takes a list of field values in the order of the analysis universe and reorders these values
+     * in the order of the hosted universe.
+     *
+     * @param aOrderedFieldValues the list of field values in the order of the analysis universe
+     * @param hOrderedFieldValues the list which will be filled with the field values in the order
+     *            of the hosted universe
+     */
+    private static void patchVirtualObjectState(VirtualObjectNode virtualObject, List<ValueNode> aOrderedFieldValues, List<ValueNode> hOrderedFieldValues, int aObjectStartIndex,
+                    HostedUniverse universe) {
         AnalysisType aType = (AnalysisType) virtualObject.type();
         if (aType.isArray()) {
             /* For arrays, there is no change between analysis and hosted elements. */
             for (int i = 0; i < virtualObject.entryCount(); i++) {
-                hValues.add(aValues.get(aObjectStartIndex + i));
+                hOrderedFieldValues.add(aOrderedFieldValues.get(aObjectStartIndex + i));
             }
         } else {
             /*
@@ -205,7 +215,7 @@ public class AnalysisToHostedGraphTransplanter {
             for (HostedField hField : hFields) {
                 int aPosition = hField.wrapped.getPosition();
                 assert hField.wrapped.equals(aType.getInstanceFields(true)[aPosition]);
-                hValues.add(aValues.get(aObjectStartIndex + aPosition));
+                hOrderedFieldValues.add(aOrderedFieldValues.get(aObjectStartIndex + aPosition));
             }
         }
     }

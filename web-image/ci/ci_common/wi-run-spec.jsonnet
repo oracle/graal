@@ -50,7 +50,6 @@ local os_arch_jdk_mixin(mapping) = r.task_spec(r.evaluate_late({
       },
     },
     'darwin'+: {
-      'amd64'+: ci_common.darwin_amd64,
       'aarch64'+: ci_common.darwin_aarch64,
     },
   },

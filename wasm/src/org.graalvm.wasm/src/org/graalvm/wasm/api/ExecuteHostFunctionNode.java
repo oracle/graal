@@ -40,7 +40,7 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
@@ -64,6 +64,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
 /**
@@ -108,7 +109,7 @@ public final class ExecuteHostFunctionNode extends RootNode {
             if (resultCount == 0) {
                 return WasmConstant.VOID;
             } else if (resultCount == 1) {
-                byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, 0);
+                int resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, 0);
                 return convertResult(result, resultType);
             } else {
                 pushMultiValueResult(result, resultCount);
@@ -125,16 +126,22 @@ public final class ExecuteHostFunctionNode extends RootNode {
      * of the correct boxed type because they're already converted on the JS side, so we only need
      * to unbox and can forego InteropLibrary.
      */
-    private Object convertResult(Object result, byte resultType) throws UnsupportedMessageException {
+    private Object convertResult(Object result, int resultType) throws UnsupportedMessageException {
         CompilerAsserts.partialEvaluationConstant(resultType);
+        SymbolTable.ClosedValueType closedResultType = module.closedTypeOf(resultType);
+        CompilerAsserts.partialEvaluationConstant(closedResultType);
         return switch (resultType) {
             case WasmType.I32_TYPE -> asInt(result);
             case WasmType.I64_TYPE -> asLong(result);
             case WasmType.F32_TYPE -> asFloat(result);
             case WasmType.F64_TYPE -> asDouble(result);
-            case WasmType.V128_TYPE, WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> result;
             default -> {
-                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
+                assert WasmType.isVectorType(resultType) || WasmType.isReferenceType(resultType);
+                if (!closedResultType.matchesValue(result)) {
+                    errorBranch.enter();
+                    throw WasmException.create(Failure.TYPE_MISMATCH);
+                }
+                yield result;
             }
         };
     }
@@ -157,25 +164,23 @@ public final class ExecuteHostFunctionNode extends RootNode {
             final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
             final Object[] objectMultiValueStack = multiValueStack.objectStack();
             for (int i = 0; i < resultCount; i++) {
-                byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
+                int resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
                 CompilerAsserts.partialEvaluationConstant(resultType);
+                SymbolTable.ClosedValueType closedResultType = module.closedTypeOf(resultType);
+                CompilerAsserts.partialEvaluationConstant(closedResultType);
                 Object value = arrayInterop.readArrayElement(result, i);
                 switch (resultType) {
                     case WasmType.I32_TYPE -> primitiveMultiValueStack[i] = asInt(value);
                     case WasmType.I64_TYPE -> primitiveMultiValueStack[i] = asLong(value);
                     case WasmType.F32_TYPE -> primitiveMultiValueStack[i] = Float.floatToRawIntBits(asFloat(value));
                     case WasmType.F64_TYPE -> primitiveMultiValueStack[i] = Double.doubleToRawLongBits(asDouble(value));
-                    case WasmType.V128_TYPE -> {
-                        if (!(value instanceof Vector128)) {
+                    default -> {
+                        assert WasmType.isVectorType(resultType) || WasmType.isReferenceType(resultType);
+                        if (!closedResultType.matchesValue(value)) {
                             errorBranch.enter();
                             throw WasmException.create(Failure.INVALID_TYPE_IN_MULTI_VALUE);
                         }
                         objectMultiValueStack[i] = value;
-                    }
-                    case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> objectMultiValueStack[i] = value;
-                    default -> {
-                        errorBranch.enter();
-                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
                     }
                 }
             }

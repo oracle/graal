@@ -186,11 +186,24 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
 
     private final HotSpotVMConfigAccess vmConfigAccess;
 
+    /**
+     * This constant is used to detect when a method was invalidated by HotSpot because the code
+     * cache heuristic considered it cold.
+     */
+    private final int coldMethodInvalidationReason;
+
+    /**
+     * This constant is used when Truffle invalidates an installed code.
+     */
+    private final int jvmciReplacedMethodInvalidationReason;
+
     public HotSpotTruffleRuntime(TruffleCompilationSupport compilationSupport) {
         super(compilationSupport, Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class, HotSpotThreadLocalHandshake.class, HotSpotTruffleRuntime.class));
         installCallBoundaryMethods(null);
 
         this.vmConfigAccess = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
+        this.jvmciReplacedMethodInvalidationReason = vmConfigAccess.getConstant("nmethod::InvalidationReason::JVMCI_REPLACED_WITH_NEW_CODE", Integer.class, -1);
+        this.coldMethodInvalidationReason = vmConfigAccess.getConstant("nmethod::InvalidationReason::UNLOADING_COLD", Integer.class, -1);
 
         int jvmciReservedReference0Offset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved_oop0", Integer.class, "oop", -1);
         if (jvmciReservedReference0Offset == -1) {
@@ -493,16 +506,16 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
     }
 
     private void installCallBoundaryMethods(HotSpotTruffleCompiler compiler) {
-        ResolvedJavaType target = getMetaAccess().lookupJavaType(OptimizedCallTarget.class);
-        for (ResolvedJavaMethod method : target.getDeclaredMethods(false)) {
+        for (Method method : OptimizedCallTarget.class.getDeclaredMethods()) {
             if (method.getName().equals("callBoundary")) {
                 assert method.getAnnotation(TruffleCallBoundary.class) != null;
+                ResolvedJavaMethod resolvedJavaMethod = getMetaAccess().lookupJavaMethod(method);
                 if (compiler != null) {
                     OptimizedCallTarget initCallTarget = initializeCallTarget;
                     Objects.requireNonNull(initCallTarget);
-                    compiler.installTruffleCallBoundaryMethod(method, initCallTarget);
+                    compiler.installTruffleCallBoundaryMethod(resolvedJavaMethod, initCallTarget);
                 } else {
-                    setNotInlinableOrCompilable(method);
+                    setNotInlinableOrCompilable(resolvedJavaMethod);
                 }
                 break;
             }
@@ -654,6 +667,14 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
     @Override
     protected int getObjectAlignment() {
         return getVMOptionValue("ObjectAlignmentInBytes", Integer.class);
+    }
+
+    public int getJVMCIReplacedMethodInvalidationReason() {
+        return this.jvmciReplacedMethodInvalidationReason;
+    }
+
+    public int getColdMethodInvalidationReason() {
+        return this.coldMethodInvalidationReason;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import org.graalvm.wasm.test.suites.bytecode.BytecodeSuite;
 import org.graalvm.wasm.test.suites.bytecode.MultiInstantiationSuite;
 import org.graalvm.wasm.test.suites.control.BlockWithLocalsSuite;
 import org.graalvm.wasm.test.suites.control.BranchBlockSuite;
+import org.graalvm.wasm.test.suites.control.ExceptionSuite;
 import org.graalvm.wasm.test.suites.control.IfThenElseSuite;
 import org.graalvm.wasm.test.suites.control.LoopBlockSuite;
 import org.graalvm.wasm.test.suites.control.MultiValueSuite;
@@ -62,9 +63,9 @@ import org.graalvm.wasm.test.suites.memory.Memory64Suite;
 import org.graalvm.wasm.test.suites.memory.MemorySuite;
 import org.graalvm.wasm.test.suites.memory.MultiMemorySuite;
 import org.graalvm.wasm.test.suites.memory.ThreadsSuite;
-import org.graalvm.wasm.test.suites.validation.ReferenceTypesValidationSuite;
 import org.graalvm.wasm.test.suites.table.TableSuite;
 import org.graalvm.wasm.test.suites.validation.MultiValueValidationSuite;
+import org.graalvm.wasm.test.suites.validation.ReferenceTypesValidationSuite;
 import org.graalvm.wasm.test.suites.validation.ValidationSuite;
 import org.graalvm.wasm.test.suites.wasi.WasiSuite;
 import org.graalvm.wasm.test.suites.webassembly.EmscriptenSuite;
@@ -105,6 +106,7 @@ import org.junit.runners.Suite;
                 MultiInstantiationSuite.class,
                 MultiMemorySuite.class,
                 ThreadsSuite.class,
+                ExceptionSuite.class,
                 DebugValidationSuite.class,
                 DebugObjectFactorySuite.class
 })

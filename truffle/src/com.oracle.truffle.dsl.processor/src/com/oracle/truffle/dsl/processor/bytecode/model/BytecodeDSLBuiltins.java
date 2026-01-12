@@ -53,6 +53,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument.Encoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 
 /**
@@ -65,7 +66,7 @@ public class BytecodeDSLBuiltins {
 
     public static void addBuiltins(BytecodeDSLModel m, TruffleTypes types, ProcessorContext context) {
         m.popInstruction = m.instruction(InstructionKind.POP, "pop", m.signature(void.class, Object.class));
-        m.dupInstruction = m.instruction(InstructionKind.DUP, "dup", m.signature(void.class));
+        m.dupInstruction = m.instruction(InstructionKind.DUP, "dup", m.signature(Object.class));
         m.returnInstruction = m.instruction(InstructionKind.RETURN, "return", m.signature(void.class, Object.class));
         m.branchInstruction = m.instruction(InstructionKind.BRANCH, "branch", m.signature(void.class)) //
                         .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
@@ -208,20 +209,21 @@ public class BytecodeDSLBuiltins {
         m.loadConstantOperation = m.operation(OperationKind.LOAD_CONSTANT, "LoadConstant", """
                         LoadConstant produces {@code constant}. The constant should be immutable, since it may be shared across multiple LoadConstant operations.
                         """) //
-                        .setOperationBeginArguments(new OperationArgument(context.getType(Object.class), Encoding.OBJECT, "constant", "the constant value to load")) //
+                        .setOperationBeginArguments(new OperationArgument(context.getType(Object.class), Encoding.CONSTANT, "constant", "the constant value to load")) //
                         .setInstruction(m.loadConstantInstruction);
 
         m.loadNullOperation = m.operation(OperationKind.LOAD_NULL, "LoadNull", """
                         LoadNull produces a {@code null} value.
                         """) //
                         .setInstruction(m.loadNullInstruction);
+        m.loadArgumentInstruction = m.instruction(InstructionKind.LOAD_ARGUMENT, "load.argument", m.signature(Object.class))//
+                        .addImmediate(ImmediateKind.SHORT, "index");
         m.operation(OperationKind.LOAD_ARGUMENT, "LoadArgument", """
                         LoadArgument reads the argument at {@code index} from the frame.
                         Throws {@link IndexOutOfBoundsException} if the index is out of bounds.
                         """) //
                         .setOperationBeginArguments(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index", "the index of the argument to load (must fit into a short)")) //
-                        .setInstruction(m.instruction(InstructionKind.LOAD_ARGUMENT, "load.argument", m.signature(Object.class))//
-                                        .addImmediate(ImmediateKind.SHORT, "index"));
+                        .setInstruction(m.loadArgumentInstruction);
         m.operation(OperationKind.LOAD_EXCEPTION, "LoadException", """
                         LoadException reads the current exception from the frame.
                         This operation is only permitted inside the {@code catch} operation of TryCatch and TryCatchOtherwise operations.
@@ -232,7 +234,7 @@ public class BytecodeDSLBuiltins {
                         String.format("""
                                         LoadLocal reads {@code local} from the current frame.
                                         If a value has not been written to the local, LoadLocal %s.
-                                        """, loadLocalUndefinedBehaviour(m))) //
+                                        """, loadIllegalLocalBehaviour(m))) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to load")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_LOCAL, "load.local", m.signature(Object.class)) //
                                         .addImmediate(ImmediateKind.FRAME_INDEX, "frame_index"));
@@ -245,6 +247,8 @@ public class BytecodeDSLBuiltins {
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to store to")) //
                         .setDynamicOperands(child("value")) //
                         .setInstruction(m.storeLocalInstruction);
+        m.clearLocalInstruction = m.instruction(InstructionKind.CLEAR_LOCAL, "clear.local", m.signature(void.class))//
+                        .addImmediate(ImmediateKind.FRAME_INDEX, "frame_index");
         if (m.enableMaterializedLocalAccesses) {
             m.loadLocalMaterializedOperation = m.operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized",
                             String.format("""
@@ -290,7 +294,7 @@ public class BytecodeDSLBuiltins {
                         """) //
                         .setTransparent(true) //
                         .setVariadic(true, 0) //
-                        .setOperationBeginArguments(new OperationArgument(types.Source, Encoding.OBJECT, "source", "the source object to associate with the enclosed operations")) //
+                        .setOperationBeginArguments(new OperationArgument(types.Source, Encoding.CONSTANT, "source", "the source object to associate with the enclosed operations")) //
                         .setDynamicOperands(transparentOperationChild());
 
         String sourceDoc = """
@@ -326,7 +330,7 @@ public class BytecodeDSLBuiltins {
             m.tagEnterInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
             m.tagLeaveValueInstruction = m.instruction(InstructionKind.TAG_LEAVE, "tag.leave", m.signature(Object.class, Object.class));
             m.tagLeaveValueInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
-            m.tagLeaveVoidInstruction = m.instruction(InstructionKind.TAG_LEAVE_VOID, "tag.leaveVoid", m.signature(Object.class));
+            m.tagLeaveVoidInstruction = m.instruction(InstructionKind.TAG_LEAVE_VOID, "tag.leaveVoid", m.signature(void.class));
             m.tagLeaveVoidInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
             m.tagOperation = m.operation(OperationKind.TAG, "Tag",
                             """
@@ -346,17 +350,16 @@ public class BytecodeDSLBuiltins {
 
         }
 
-        m.clearLocalInstruction = m.instruction(InstructionKind.CLEAR_LOCAL, "clear.local", m.signature(void.class));
-        m.clearLocalInstruction.addImmediate(ImmediateKind.FRAME_INDEX, "frame_index");
-
         m.sortInstructionsByKind();
     }
 
     /*
      * Invoked when instructions are being finalized. Allows to conditionally add builtin
-     * instructions depending on the almost final model.
+     * instructions/operations depending on the almost final model.
      */
-    public static void addBuiltinsOnFinalize(BytecodeDSLModel m) {
+    public static void addBuiltinsOnFinalize(BytecodeDSLModel m, TruffleTypes types) {
+        addBackwardCompatibleOperations(m, types);
+
         if (m.hasCustomVariadic) {
             m.loadVariadicInstruction = m.instruction(InstructionKind.LOAD_VARIADIC, "load.variadic", m.signature(void.class, Object.class));
             m.createVariadicInstruction = m.instruction(InstructionKind.CREATE_VARIADIC, "create.variadic", m.signature(Object.class, Object.class));
@@ -396,6 +399,11 @@ public class BytecodeDSLBuiltins {
             m.tagResumeInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
         }
 
+        if (m.enableInstructionTracing) {
+            m.traceInstruction = m.instruction(InstructionKind.TRACE_INSTRUCTION, "trace.instruction", m.signature(void.class));
+            m.traceInstructionInstrumentationIndex = m.getInstrumentations().size();
+        }
+
         // invalidate instructions should be the last instructions to add as it they depend on the
         // length of all other instructions
         if (m.isBytecodeUpdatable()) {
@@ -413,6 +421,23 @@ public class BytecodeDSLBuiltins {
                 }
                 m.invalidateInstructions[i] = model;
             }
+        }
+    }
+
+    /**
+     * Built-in operations introduced after the initial release of the Bytecode DSL can potentially
+     * conflict with existing user-defined operations. We add such operations after parsing the
+     * specification only if an operation with the same name is not already defined.
+     */
+    private static void addBackwardCompatibleOperations(BytecodeDSLModel m, TruffleTypes types) {
+        OperationModel clearLocalOperation = m.operation(OperationKind.CLEAR_LOCAL, "ClearLocal", String.format("""
+                        ClearLocal clears {@code local} in the current frame.
+                        Until a value is written to the local, a subsequent LoadLocal %s.
+                        """, loadIllegalLocalBehaviour(m)), "ClearLocal", true);
+        if (clearLocalOperation != null) {
+            clearLocalOperation.setVoid(true)//
+                            .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to clear"))//
+                            .setInstruction(m.clearLocalInstruction);
         }
     }
 
@@ -445,12 +470,12 @@ public class BytecodeDSLBuiltins {
                         rootClass, rootClass, innerRootBehaviour);
     }
 
-    private static String loadLocalUndefinedBehaviour(BytecodeDSLModel m) {
-        if (m.defaultLocalValue == null || m.defaultLocalValue.isEmpty()) {
-            return "throws a {@link com.oracle.truffle.api.frame.FrameSlotTypeException}";
-        } else {
-            return String.format("produces the default local value (%s)", m.defaultLocalValue);
-        }
+    private static String loadIllegalLocalBehaviour(BytecodeDSLModel m) {
+        return switch (m.loadIllegalLocalStrategy) {
+            case FRAME_SLOT_TYPE_EXCEPTION -> "throws a {@link com.oracle.truffle.api.frame.FrameSlotTypeException}";
+            case DEFAULT_VALUE -> String.format("produces the default local value (%s)", m.defaultLocalValue);
+            case CUSTOM_EXCEPTION -> String.format("throws a {@code %s}", ElementUtils.getSimpleName(m.illegalLocalException));
+        };
     }
 
     private static DynamicOperandModel child(String name) {

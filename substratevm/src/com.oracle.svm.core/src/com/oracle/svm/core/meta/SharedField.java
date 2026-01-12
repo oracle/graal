@@ -67,4 +67,17 @@ public interface SharedField extends ResolvedJavaField {
      * {@link MultiLayeredImageSingleton#UNUSED_LAYER_NUMBER}.
      */
     int getInstalledLayerNum();
+
+    /**
+     * Returns the static storage object for this static field if it can be accessed directly. This
+     * is the default case for runtime loaded classes. This method should be overridden in
+     * implementations to provide access to the static field storage, typically an array or
+     * container holding static field values for the field's declaring class and layer.
+     *
+     * @return the static storage object or {@code null} iff the current field does not support
+     *         direct access to the underlying storage strategy (typically true for fields of types
+     *         already available during native image generation)
+     */
+    Object getStaticFieldBaseForRuntimeLoadedClass();
+
 }

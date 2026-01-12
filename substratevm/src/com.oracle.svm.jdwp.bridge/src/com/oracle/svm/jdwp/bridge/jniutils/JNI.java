@@ -1096,7 +1096,7 @@ public final class JNI {
             try {
                 for (int i = 0; i < INCLUDES.length; i++) {
                     String include = INCLUDES[i];
-                    Optional<Path> includeFile = Files.find(includeFolder, 2, (p, attrs) -> include.equals(p.getFileName().toString())).findFirst();
+                    Optional<Path> includeFile = Files.find(includeFolder, 2, (p, _) -> include.equals(p.getFileName().toString())).findFirst();
                     if (!includeFile.isPresent()) {
                         throw new IllegalStateException("Include: " + res[i] + " does not exist.");
                     }

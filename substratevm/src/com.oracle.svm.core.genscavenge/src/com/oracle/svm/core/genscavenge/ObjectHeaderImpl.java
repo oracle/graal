@@ -337,7 +337,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         if (partition.isWritable() && HeapImpl.usesImageHeapCardMarking()) {
             header |= REMSET_OR_MARKED1_BIT.rawValue();
         }
-        if (partition.usesUnalignedObjects()) {
+        if (partition.usesUnalignedChunks()) {
             header |= UNALIGNED_BIT.rawValue();
         }
         if (isIdentityHashFieldOptional()) {

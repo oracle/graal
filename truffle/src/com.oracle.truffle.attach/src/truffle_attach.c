@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,11 @@
         return;                                                                                                                                      \
     }
 
+#define EXCEPTION_CHECK_OBJECT(env)                                                                                                                  \
+    if ((*env)->ExceptionCheck(env)) {                                                                                                               \
+        return NULL;                                                                                                                                 \
+    }
+
 #define CHECK_NONZERO(cond)                                                                                                                          \
     if (!(cond)) {                                                                                                                                   \
         fprintf(stderr, "[engine::attach] ERROR in " #cond ", was unexpectedly 0\n");                                                                \
@@ -62,6 +67,32 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_polyglot_JDKSupport_addExports0(J
 static jobject virtualThreadHooksClass;
 static jmethodID mountMethod;
 static jmethodID unmountMethod;
+static jclass supplierClassGlobal;
+static jmethodID supplierGetMethod;
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    JNIEnv *env;
+    if ((*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_21) != JNI_OK) {
+        return JNI_ERR;
+    }
+
+    jclass supplierClass = (*env)->FindClass(env, "java/util/function/Supplier");
+    if (supplierClass == NULL) {
+        return JNI_ERR;
+    }
+
+    supplierClassGlobal = (*env)->NewGlobalRef(env, supplierClass);
+    if (supplierClassGlobal == NULL) {
+        return JNI_ERR;
+    }
+
+    supplierGetMethod = (*env)->GetMethodID(env, supplierClassGlobal, "get", "()Ljava/lang/Object;");
+    if (supplierGetMethod == NULL) {
+        return JNI_ERR;
+    }
+
+    return JNI_VERSION_21;
+}
 
 // Parameters: (jvmtiEnv *jvmti, JNIEnv* env, jthread vthread)
 static void JNICALL mount_callback(jvmtiEnv *jvmti, ...) {
@@ -141,4 +172,8 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_api_impl_Accessor_00024JavaLangSu
 
     CHECK_ERROR((*jvmti)->SetExtensionEventCallback(jvmti, unmount_event_index, unmount_callback));
     CHECK_ERROR((*jvmti)->SetEventNotificationMode(jvmti, JVMTI_ENABLE, unmount_event_index, NULL));
+}
+
+JNIEXPORT jobject JNICALL Java_com_oracle_truffle_api_impl_Accessor_00024JavaLangSupport_runPinned0(JNIEnv *env, jclass clz, jobject action) {
+    return (*env)->CallObjectMethod(env, action, supplierGetMethod);
 }

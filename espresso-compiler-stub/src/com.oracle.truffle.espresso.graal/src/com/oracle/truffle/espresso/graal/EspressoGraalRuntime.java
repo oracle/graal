@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.graal;
 
+import com.oracle.truffle.espresso.jvmci.meta.EspressoConstantReflectionProvider;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.runtime.GraalRuntime;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
@@ -30,7 +32,6 @@ import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.loop.LoopsDataProviderImpl;
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
@@ -42,7 +43,6 @@ import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;
-import com.oracle.truffle.espresso.jvmci.meta.EspressoConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.runtime.JVMCIBackend;
 import jdk.vm.ci.runtime.JVMCIRuntime;
@@ -69,9 +69,8 @@ public final class EspressoGraalRuntime implements GraalRuntime, RuntimeProvider
         SnippetReflectionProvider snippetReflection = new EspressoSnippetReflectionProvider(constantReflection);
         WordTypes wordTypes = new WordTypes(metaAccess, target.wordJavaKind);
         LoopsDataProvider loopsDataProvider = new LoopsDataProviderImpl();
-        IdentityHashCodeProvider identityHashCodeProvider = new EspressoIdentityHashCodeProvider(snippetReflection);
         Providers providers = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, platformConfigurationProvider,
-                        metaAccessExtensionProvider, snippetReflection, wordTypes, loopsDataProvider, identityHashCodeProvider);
+                        metaAccessExtensionProvider, snippetReflection, wordTypes, loopsDataProvider);
 
         Replacements replacements = new DummyReplacements(providers);
         return (Providers) replacements.getProviders();

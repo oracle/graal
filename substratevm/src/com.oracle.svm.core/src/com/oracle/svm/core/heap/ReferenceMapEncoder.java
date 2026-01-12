@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
-import java.util.Set;
 
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -40,6 +39,7 @@ import com.oracle.svm.core.util.ByteArrayReader;
 
 import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
+import org.graalvm.collections.EconomicSet;
 
 public abstract class ReferenceMapEncoder {
     public interface OffsetIterator extends PrimitiveIterator.OfInt {
@@ -59,7 +59,7 @@ public abstract class ReferenceMapEncoder {
 
         boolean isNextDerived();
 
-        Set<Integer> getDerivedOffsets(int baseOffset);
+        EconomicSet<Integer> getDerivedOffsets(int baseOffset);
     }
 
     public interface Input {

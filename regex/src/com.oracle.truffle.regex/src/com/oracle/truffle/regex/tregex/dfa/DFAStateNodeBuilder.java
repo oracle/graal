@@ -54,7 +54,7 @@ import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupLazyTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAStateNode;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -175,7 +175,7 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
         indicesBuf.ensureCapacity(getSuccessors().length);
         int[] indices = indicesBuf.getBuffer();
         Arrays.fill(indices, 0, getSuccessors().length, 0);
-        int nextLo = compilationBuffer.getEncoding().getMinValue();
+        int nextLo = Encoding.getMinValue();
         while (true) {
             int i = findNextLo(indices, nextLo);
             if (i < 0) {

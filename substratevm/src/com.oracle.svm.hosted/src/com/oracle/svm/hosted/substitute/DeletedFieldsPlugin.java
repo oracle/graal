@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.hosted.substitute;
 
+import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.util.AnnotationUtil;
+
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeadEndNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
-
-import com.oracle.svm.core.annotate.Delete;
-
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -59,7 +59,7 @@ public final class DeletedFieldsPlugin implements NodePlugin {
     }
 
     private static boolean handleField(GraphBuilderContext b, ResolvedJavaField field, @SuppressWarnings("unused") boolean isLoad) {
-        Delete deleteAnnotation = field.getAnnotation(Delete.class);
+        Delete deleteAnnotation = AnnotationUtil.getAnnotation(field, Delete.class);
         if (deleteAnnotation == null) {
             return false;
         }

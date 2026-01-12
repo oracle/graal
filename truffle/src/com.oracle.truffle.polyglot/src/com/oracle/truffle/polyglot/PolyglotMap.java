@@ -538,7 +538,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                             @Cached(inline = true) ToGuestValueNode toGuest) {
                 Object key = args[ARGUMENT_OFFSET];
                 if (interop.hasHashEntries(receiver)) {
-                    return interop.isHashEntryReadable(receiver, toGuest.execute(node, languageContext, key));
+                    return interop.isHashEntryReadable(receiver, toGuest.execute(node, key));
                 }
                 if (cache.memberKey && interop.hasMembers(receiver)) {
                     if (isObjectKey(key)) {
@@ -634,7 +634,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                 Object result;
                 try {
                     if (interop.hasHashEntries(receiver)) {
-                        result = interop.readHashValue(receiver, toGuest.execute(node, languageContext, key));
+                        result = interop.readHashValue(receiver, toGuest.execute(node, key));
                     } else if (cache.memberKey && interop.hasMembers(receiver)) {
                         if (isObjectKey(key)) {
                             result = interop.readMember(receiver, ((String) key));
@@ -677,11 +677,11 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                             @Cached(inline = true) ToGuestValueNode toGuest,
                             @Cached InlinedBranchProfile error) {
                 Object key = args[ARGUMENT_OFFSET];
-                Object guestValue = toGuest.execute(node, languageContext, args[ARGUMENT_OFFSET + 1]);
+                Object guestValue = toGuest.execute(node, args[ARGUMENT_OFFSET + 1]);
                 try {
                     boolean supported = false;
                     if (interop.hasHashEntries(receiver)) {
-                        interop.writeHashEntry(receiver, toGuest.execute(node, languageContext, key), guestValue);
+                        interop.writeHashEntry(receiver, toGuest.execute(node, key), guestValue);
                         return null;
                     } else if (cache.memberKey && interop.hasMembers(receiver)) {
                         supported = true;
@@ -744,7 +744,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                 try {
                     boolean supported = false;
                     if (interop.hasHashEntries(receiver)) {
-                        interop.removeHashEntry(receiver, toGuest.execute(node, languageContext, key));
+                        interop.removeHashEntry(receiver, toGuest.execute(node, key));
                         return null;
                     } else if (cache.memberKey && interop.hasMembers(receiver)) {
                         supported = true;
@@ -800,8 +800,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                 try {
                     boolean supported = false;
                     if (interop.hasHashEntries(receiver)) {
-                        Object guestKey = toGuest.execute(this, languageContext, key);
-                        Object guestExcpectedValue = toGuest.execute(node, languageContext, expectedValue);
+                        Object guestKey = toGuest.execute(this, key);
+                        Object guestExcpectedValue = toGuest.execute(node, expectedValue);
                         Object readValue = interop.readHashValue(receiver, guestKey);
                         if (!equalsBoundary(guestExcpectedValue, readValue)) {
                             return false;
@@ -813,7 +813,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                         if (isObjectKey(key)) {
                             String member = (String) key;
                             Object readValue = interop.readMember(receiver, member);
-                            Object guestExpectedValue = toGuest.execute(node, languageContext, expectedValue);
+                            Object guestExpectedValue = toGuest.execute(node, expectedValue);
                             if (!equalsBoundary(guestExpectedValue, readValue)) {
                                 return false;
                             }
@@ -825,7 +825,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                         if (isArrayKey(key)) {
                             int index = intValue(key);
                             Object readValue = interop.readArrayElement(receiver, index);
-                            Object guestExpectedValue = toGuest.execute(node, languageContext, expectedValue);
+                            Object guestExpectedValue = toGuest.execute(node, expectedValue);
                             if (!equalsBoundary(guestExpectedValue, readValue)) {
                                 return false;
                             }

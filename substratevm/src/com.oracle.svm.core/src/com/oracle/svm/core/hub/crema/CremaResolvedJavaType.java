@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub.crema;
 
+import java.util.List;
+
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -51,6 +53,7 @@ public interface CremaResolvedJavaType extends ResolvedJavaType {
      * @return An array of {@code CremaResolvedJavaMethod} objects representing all the declared
      *         constructors of this type
      */
+    @Override
     CremaResolvedJavaMethod[] getDeclaredConstructors();
 
     /**
@@ -61,7 +64,8 @@ public interface CremaResolvedJavaType extends ResolvedJavaType {
      * @return An array of {@code RecordComponent} objects representing all the record components of
      *         this record class, or {@code null} if this type does not represent a record class
      */
-    CremaResolvedJavaRecordComponent[] getRecordComponents();
+    @Override
+    List<? extends CremaResolvedJavaRecordComponent> getRecordComponents();
 
     /**
      * Retrieves the raw annotation bytes for this field.
@@ -76,16 +80,6 @@ public interface CremaResolvedJavaType extends ResolvedJavaType {
      * @return the raw type annotations as a byte array
      */
     byte[] getRawTypeAnnotations();
-
-    /**
-     * If this object represents a local or anonymous class within a method, returns a
-     * {@link CremaEnclosingMethodInfo} object representing the immediately enclosing method of the
-     * underlying class. Returns {@code null} otherwise.
-     *
-     * @return the immediately enclosing method of the underlying class, if that class is a local or
-     *         anonymous class; otherwise {@code null}.
-     */
-    CremaEnclosingMethodInfo getEnclosingMethod();
 
     /**
      * Returns an array of {@code JavaType} objects reflecting all the classes and interfaces
@@ -124,7 +118,4 @@ public interface CremaResolvedJavaType extends ResolvedJavaType {
      * @return a JavaType representing the nest host
      */
     ResolvedJavaType getNestHost();
-
-    record CremaEnclosingMethodInfo(JavaType enclosingType, String name, String description) {
-    }
 }

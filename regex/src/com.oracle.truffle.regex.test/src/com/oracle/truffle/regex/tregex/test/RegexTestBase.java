@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.test;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -62,8 +63,9 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.regex.test.dummylang.TRegexTestDummyLanguage;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.tregex.test.generated.TestCase;
+import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 public abstract class RegexTestBase {
 
@@ -75,9 +77,9 @@ public abstract class RegexTestBase {
     private static final boolean ASSERTS = true;
     private static final boolean TEST_REGION_FROM_TO = true;
     private static final boolean TABLE_OMIT_FROM_INDEX = false;
+    private static final ArrayList<String[]> tableOutput = new ArrayList<>();
 
     static Context context;
-    private static boolean printTableHeader = true;
 
     @BeforeClass
     public static void setUp() {
@@ -93,6 +95,26 @@ public abstract class RegexTestBase {
             context.close();
             context = null;
         }
+        if (!tableOutput.isEmpty()) {
+            int[] widths = new int[tableOutput.get(0).length];
+            for (String[] line : tableOutput) {
+                for (int i = 0; i < widths.length; i++) {
+                    widths[i] = Math.max(widths[i], (int) line[i].codePoints().count());
+                }
+            }
+            StringBuilder sbFormat = new StringBuilder();
+            for (int width : widths) {
+                sbFormat.append("%-").append(width + 2).append('s');
+            }
+            String format = sbFormat.toString();
+            String header = String.format(format, (Object[]) tableOutput.get(0));
+            System.out.println();
+            System.out.println(header);
+            System.out.println("-".repeat(header.length()));
+            for (int i = 1; i < tableOutput.size(); i++) {
+                System.out.println(String.format(format, (Object[]) tableOutput.get(i)));
+            }
+        }
     }
 
     static Context createContext() {
@@ -101,7 +123,7 @@ public abstract class RegexTestBase {
 
     abstract Map<String, String> getEngineOptions();
 
-    abstract Encodings.Encoding getTRegexEncoding();
+    abstract Encoding getTRegexEncoding();
 
     Map<String, String> options() {
         return options(Collections.emptyMap());
@@ -115,20 +137,19 @@ public abstract class RegexTestBase {
         return mergedOptions;
     }
 
-    static Source.Builder sourceBuilder(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding) {
-        return Source.newBuilder("regexDummyLang", '/' + pattern + '/' + flags, "test").options(options).option("regexDummyLang.Encoding",
-                        encoding == Encodings.BYTES ? "BYTES" : encoding.getName());
+    static Source.Builder sourceBuilder(String pattern, String flags, Map<String, String> options, Encoding encoding) {
+        return Source.newBuilder("regexDummyLang", '/' + pattern + '/' + flags, "test").options(options).option("regexDummyLang.Encoding", encoding.getName());
     }
 
     Value compileRegex(String pattern, String flags) {
         return compileRegex(context, pattern, flags, options(), getTRegexEncoding());
     }
 
-    static Value compileRegex(Context ctx, String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding) {
+    static Value compileRegex(Context ctx, String pattern, String flags, Map<String, String> options, Encoding encoding) {
         return compileRegex(ctx, sourceBuilder(pattern, flags, options, encoding));
     }
 
-    static Value compileRegexBoolean(Context ctx, String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding) {
+    static Value compileRegexBoolean(Context ctx, String pattern, String flags, Map<String, String> options, Encoding encoding) {
         return compileRegex(ctx, sourceBuilder(pattern, flags, options, encoding).option("regexDummyLang.BooleanMatch", "true"));
     }
 
@@ -140,19 +161,19 @@ public abstract class RegexTestBase {
         }
     }
 
-    static Value execRegex(Value compiledRegex, Encodings.Encoding encoding, String input, int fromIndex) {
+    static Value execRegex(Value compiledRegex, Encoding encoding, String input, int fromIndex) {
         TruffleString converted = toTruffleString(input, encoding);
         int length = converted.byteLength(encoding.getTStringEncoding()) >> encoding.getStride();
         return compiledRegex.invokeMember("exec", converted, fromIndex, length, 0, length);
     }
 
-    static Value execRegexBoolean(Value compiledRegex, Encodings.Encoding encoding, String input, int fromIndex) {
+    static Value execRegexBoolean(Value compiledRegex, Encoding encoding, String input, int fromIndex) {
         TruffleString converted = toTruffleString(input, encoding);
         int length = converted.byteLength(encoding.getTStringEncoding()) >> encoding.getStride();
         return compiledRegex.invokeMember("execBoolean", converted, fromIndex, length, 0, length);
     }
 
-    private static TruffleString toTruffleString(String input, Encodings.Encoding encoding) {
+    private static TruffleString toTruffleString(String input, Encoding encoding) {
         TruffleString tStringUTF16 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_16);
         return tStringUTF16.switchEncodingUncached(encoding.getTStringEncoding(), TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8);
     }
@@ -161,7 +182,7 @@ public abstract class RegexTestBase {
         testBoolean(context, pattern, flags, options(options), getTRegexEncoding(), input, fromIndex, isMatch);
     }
 
-    static void testBoolean(Context ctx, String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch) {
+    static void testBoolean(Context ctx, String pattern, String flags, Map<String, String> options, Encoding encoding, String input, int fromIndex, boolean isMatch) {
         String expectedResult = isMatch ? "Match" : "NoMatch";
         try {
             testBoolean(compileRegexBoolean(ctx, pattern, flags, options, encoding), pattern, flags, options, encoding, input, fromIndex, isMatch);
@@ -174,7 +195,7 @@ public abstract class RegexTestBase {
         }
     }
 
-    static void testBoolean(Value compiledRegex, String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch) {
+    static void testBoolean(Value compiledRegex, String pattern, String flags, Map<String, String> options, Encoding encoding, String input, int fromIndex, boolean isMatch) {
         String expectedResult = isMatch ? "Match" : "NoMatch";
         Value result = execRegexBoolean(compiledRegex, encoding, input, fromIndex);
         if (result.asBoolean() != isMatch) {
@@ -194,11 +215,11 @@ public abstract class RegexTestBase {
         test(context, pattern, flags, options(options), getTRegexEncoding(), input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
     }
 
-    void test(String pattern, String flags, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+    void test(String pattern, String flags, Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
         test(context, pattern, flags, options(), encoding, input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
     }
 
-    static void test(Context ctx, String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch,
+    static void test(Context ctx, String pattern, String flags, Map<String, String> options, Encoding encoding, String input, int fromIndex, boolean isMatch,
                     int... captureGroupBoundsAndLastGroup) {
         try {
             Value compiledRegex = compileRegex(ctx, pattern, flags, options, encoding);
@@ -213,7 +234,7 @@ public abstract class RegexTestBase {
         testBoolean(ctx, pattern, flags, options, encoding, input, fromIndex, isMatch);
     }
 
-    static void test(Value compiledRegex, String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch,
+    static void test(Value compiledRegex, String pattern, String flags, Map<String, String> options, Encoding encoding, String input, int fromIndex, boolean isMatch,
                     int... captureGroupBoundsAndLastGroup) {
         Value result = execRegex(compiledRegex, encoding, input, fromIndex);
         int groupCount = compiledRegex.getMember("groupCount").asInt();
@@ -239,7 +260,7 @@ public abstract class RegexTestBase {
         }
     }
 
-    private static void validateResult(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, String input, int fromIndex, Value result, int groupCount,
+    private static void validateResult(String pattern, String flags, Map<String, String> options, Encoding encoding, String input, int fromIndex, Value result, int groupCount,
                     boolean isMatch, int... captureGroupBoundsAndLastGroup) {
         if (isMatch != result.getMember("isMatch").asBoolean()) {
             fail(pattern, flags, options, encoding, input, fromIndex, result, groupCount, captureGroupBoundsAndLastGroup);
@@ -285,7 +306,7 @@ public abstract class RegexTestBase {
     public static void runGeneratedTest(Context ctx, Map<String, String> options, TestCase tc) {
         String pattern = tc.pattern();
         String flags = tc.flags();
-        Encodings.Encoding encoding = tc.encoding();
+        Encoding encoding = tc.encoding();
         if (tc.syntaxErrorOrInputs() instanceof TestCase.SyntaxError syntaxError) {
             if (syntaxError instanceof TestCase.SyntaxErrorCode errorCode) {
                 expectSyntaxError(ctx, pattern, flags, options, encoding, errorCode.errorCode.name(), Integer.MIN_VALUE);
@@ -340,11 +361,11 @@ public abstract class RegexTestBase {
         expectSyntaxError(context, pattern, flags, options(), getTRegexEncoding(), expectedMessage, expectedPosition);
     }
 
-    void expectSyntaxError(String pattern, String flags, Encodings.Encoding encoding, String expectedMessage, int expectedPosition) {
+    void expectSyntaxError(String pattern, String flags, Encoding encoding, String expectedMessage, int expectedPosition) {
         expectSyntaxError(context, pattern, flags, options(), encoding, expectedMessage, expectedPosition);
     }
 
-    static void expectSyntaxError(Context ctx, String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, String expectedMessage, int expectedPosition) {
+    static void expectSyntaxError(Context ctx, String pattern, String flags, Map<String, String> options, Encoding encoding, String expectedMessage, int expectedPosition) {
         try {
             compileRegex(ctx, pattern, flags, options, encoding);
         } catch (PolyglotException e) {
@@ -383,7 +404,7 @@ public abstract class RegexTestBase {
         return sb.append('^').toString();
     }
 
-    private static void fail(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, String input, int fromIndex, Value result, int groupCount,
+    private static void fail(String pattern, String flags, Map<String, String> options, Encoding encoding, String input, int fromIndex, Value result, int groupCount,
                     int... captureGroupBoundsAndLastGroup) {
         String expectedResult = expectedResultToString(captureGroupBoundsAndLastGroup);
         String actualResult = actualResultToString(result, groupCount, captureGroupBoundsAndLastGroup.length % 2 == 1);
@@ -393,30 +414,24 @@ public abstract class RegexTestBase {
         }
     }
 
-    private static void print(String pattern, String flags, Encodings.Encoding encoding, String input, int fromIndex, Value result, int groupCount, int... captureGroupBoundsAndLastGroup) {
+    private static void print(String pattern, String flags, Encoding encoding, String input, int fromIndex, Value result, int groupCount, int... captureGroupBoundsAndLastGroup) {
         String actualResult = actualResultToString(result, groupCount, captureGroupBoundsAndLastGroup.length % 2 == 1);
         printTable(pattern, flags, encoding, input, fromIndex, actualResult, "");
     }
 
-    private static void printTable(String pattern, String flags, Encodings.Encoding encoding, String input, int fromIndex, String expectedResult, String actualResult) {
+    private static void printTable(String pattern, String flags, Encoding encoding, String input, int fromIndex, String expectedResult, String actualResult) {
         if (TABLE_OMIT_FROM_INDEX) {
-            String format = "%-20s%-12s%-20s%-30s%s%n";
-            printTableHeader(format, "Pattern", "Encoding", "Input", "Expected result", "TRegex result");
-            System.out.printf(format, regexSlashes(pattern, flags), encoding, quote(input), expectedResult, actualResult);
+            printTableHeader("Pattern", "Flags", "Encoding", "Input", "LXR result", "TRegex result");
+            tableOutput.add(new String[]{DebugUtil.javaStringEscape(pattern), flags, encoding.getName(), quote(DebugUtil.javaStringEscape(input)), expectedResult, actualResult});
         } else {
-            String format = "%-16s%-16s%-10s%-20s%s%n";
-            printTableHeader(format, "Pattern", "Encoding", "Input", "Offset", "Expected result", "TRegex result");
-            System.out.printf(format, regexSlashes(pattern, flags), encoding, quote(input), fromIndex, expectedResult, actualResult);
+            printTableHeader("Pattern", "Encoding", "Input", "Offset", "Expected result", "TRegex result");
+            tableOutput.add(new String[]{regexSlashes(pattern, flags), encoding.getName(), quote(input), String.valueOf(fromIndex), expectedResult, actualResult});
         }
     }
 
-    private static void printTableHeader(String format, Object... names) {
-        if (printTableHeader) {
-            String header = String.format(format, names);
-            System.out.println();
-            System.out.print(header);
-            System.out.println("-".repeat(header.length() - 1));
-            printTableHeader = false;
+    private static void printTableHeader(String... names) {
+        if (tableOutput.isEmpty()) {
+            tableOutput.add(names);
         }
     }
 

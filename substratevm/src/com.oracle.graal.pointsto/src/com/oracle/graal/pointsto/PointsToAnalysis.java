@@ -25,11 +25,9 @@
 package com.oracle.graal.pointsto;
 
 import static com.oracle.graal.pointsto.meta.AnalysisUniverse.ESTIMATED_NUMBER_OF_TYPES;
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import java.io.PrintWriter;
 import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -42,14 +40,11 @@ import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
-import org.graalvm.nativeimage.AnnotationAccess;
-
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.flow.AlwaysEnabledPredicateFlow;
 import com.oracle.graal.pointsto.flow.AnyPrimitiveSourceTypeFlow;
-import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
@@ -77,7 +72,9 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -91,7 +88,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
-    /** The type of {@link java.lang.Object}. */
+    /** The type of {@link Object}. */
     private final AnalysisType objectType;
     /**
      * Enables propagating primitive values interproceduraly using the typeflow graph. Only simple
@@ -103,7 +100,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
      * Unsafe loads and stores are NOT modeled, because it would lead to merging of primitive and
      * objects states (all unsafe fields are merged into a single flow). Instead, all unsafe
      * accessed primitive fields are assigned the PrimitiveTypeState state and any unsafe read is
-     * immediately represented as {@link com.oracle.graal.pointsto.flow.AnyPrimitiveSourceTypeFlow}.
+     * immediately represented as {@link AnyPrimitiveSourceTypeFlow}.
      */
     private final boolean trackPrimitiveValues;
     private final AnalysisType longType;
@@ -166,7 +163,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
      * this type cannot be extended outside the observable universe.</li>
      * <li>In <b>closed type world</b> all types are considered closed.</li>
      * </ul>
-     * 
+     *
      * This method is conservative, it returns false in cases where we are not sure, and further
      * refining when a type is closed will improve analysis. For example GR-59311 will also define
      * when a sealed type can be treated as a closed type.
@@ -176,8 +173,35 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             /* In a closed type world all subtypes known. */
             return true;
         }
-        /* Array and leaf types are by definition closed. */
-        return type.isArray() || type.isLeaf();
+        /*
+         * Array and leaf types are by definition closed. Core types are considered as closed to
+         * allow optimizations to be applied on them.
+         */
+        return type.isArray() || type.isLeaf() || hostVM.isCoreType(type);
+    }
+
+    /**
+     * Determine if the field is by default closed in an open-world analysis. A field is considered
+     * closed if it cannot be written *directly* from the open world. This applies for example to
+     * core VM fields whose writes should only come from code included in the base image.
+     * <p>
+     * Note that flows of closed fields can still contain values coming from the open world. For
+     * example the field could be the target of a field-store that is reached directly from a
+     * parameter of an entry point method. Similarly, the field could be unsafe accessed.
+     */
+    public boolean isClosed(ResolvedJavaField field) {
+        if (hostVM.isClosedTypeWorld()) {
+            /* In a closed type world all fields are closed. */
+            return true;
+        }
+        if (hostVM.isAlwaysClosedField(field)) {
+            return true;
+        }
+        if (hostVM.isCoreType(field.getDeclaringClass())) {
+            /* All the other svm.core fields are by default closed. */
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -264,27 +288,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     @Override
-    public void registerAsJNIAccessed(AnalysisField f, boolean writable) {
-        PointsToAnalysisField field = (PointsToAnalysisField) f;
-        // Same as addRootField() and addRootStaticField():
-        // create type flows for any subtype of the field's declared type
-        TypeFlow<?> declaredTypeFlow = field.getType().getTypeFlow(this, true);
-        if (isSupportedJavaKind(field.getStorageKind())) {
-            if (field.isStatic()) {
-                if (field.getStorageKind().isObject()) {
-                    declaredTypeFlow.addUse(this, field.getStaticFieldFlow());
-                } else {
-                    field.saturatePrimitiveField();
-                }
-            } else {
-                FieldTypeFlow instanceFieldFlow = field.getDeclaringClass().getContextInsensitiveAnalysisObject().getInstanceFieldFlow(this, field, writable);
-                if (field.getStorageKind().isObject()) {
-                    declaredTypeFlow.addUse(this, instanceFieldFlow);
-                } else {
-                    field.saturatePrimitiveField();
-                }
-            }
-        }
+    public void registerAsJNIAccessed(AnalysisField field, boolean writable) {
+        field.injectDeclaredType();
     }
 
     /**
@@ -394,7 +399,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
         validateRootMethodRegistration(aMethod, invokeSpecial);
         AnalysisError.guarantee(aMethod.isOriginalMethod());
-        AnalysisError.guarantee(!AnnotationAccess.isAnnotationPresent(aMethod, Fold.class), "@Fold annotated method cannot be a root method.");
+        AnalysisError.guarantee(!AnnotationUtil.isAnnotationPresent(aMethod, Fold.class), "@Fold annotated method cannot be a root method.");
         boolean isStatic = aMethod.isStatic();
         int paramCount = aMethod.getSignature().getParameterCount(!isStatic);
         PointsToAnalysisMethod originalPTAMethod = assertPointsToAnalysisMethod(aMethod);
@@ -513,11 +518,11 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
         type.registerAsReachable("root class");
         for (ResolvedJavaField javaField : type.getInstanceFields(false)) {
-            AnalysisField field = (AnalysisField) javaField;
+            var field = (PointsToAnalysisField) javaField;
             if (addFields) {
                 field.registerAsAccessed("field of root class");
             }
-            processRootField(type, field);
+            field.injectDeclaredType();
         }
         if (type.getSuperclass() != null) {
             addRootClass(type.getSuperclass(), addFields, addArrayClass);
@@ -529,75 +534,16 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     @Override
-    @SuppressWarnings("try")
     public AnalysisType addRootField(Class<?> clazz, String fieldName) {
-        AnalysisType type = addRootClass(clazz, false, false);
-        for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
-            AnalysisField field = (AnalysisField) javaField;
-            if (field.getName().equals(fieldName)) {
-                return addRootField(type, field);
-            }
-        }
-        throw shouldNotReachHere("field not found: " + fieldName);
+        AnalysisType type = metaAccess.lookupJavaType(clazz);
+        addRootClass(type, false, false);
+        return addRootField((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(type, fieldName));
     }
 
     @Override
     public AnalysisType addRootField(AnalysisField field) {
-        if (field.isStatic()) {
-            return addRootStaticField(field);
-        } else {
-            return addRootField(field.getDeclaringClass(), field);
-        }
-    }
-
-    private AnalysisType addRootField(AnalysisType type, AnalysisField field) {
-        field.registerAsAccessed("root field");
-        processRootField(type, field);
-        return field.getType();
-    }
-
-    private void processRootField(AnalysisType type, AnalysisField field) {
-        JavaKind storageKind = field.getStorageKind();
-        if (isSupportedJavaKind(storageKind)) {
-            var fieldFlow = type.getContextInsensitiveAnalysisObject().getInstanceFieldFlow(this, field, true);
-            if (storageKind.isObject()) {
-                /*
-                 * For system classes any instantiated (sub)type of the declared field type can be
-                 * written to the field flow.
-                 */
-                TypeFlow<?> fieldDeclaredTypeFlow = field.getType().getTypeFlow(this, true);
-                fieldDeclaredTypeFlow.addUse(this, fieldFlow);
-            } else {
-                fieldFlow.addState(this, TypeState.anyPrimitiveState());
-            }
-        }
-    }
-
-    @SuppressWarnings({"try", "unused"})
-    public AnalysisType addRootStaticField(Class<?> clazz, String fieldName) {
-        addRootClass(clazz, false, false);
-        Field reflectField;
-        try {
-            reflectField = clazz.getField(fieldName);
-            AnalysisField field = metaAccess.lookupJavaField(reflectField);
-            return addRootStaticField(field);
-
-        } catch (NoSuchFieldException e) {
-            throw shouldNotReachHere("field not found: " + fieldName);
-        }
-    }
-
-    private AnalysisType addRootStaticField(AnalysisField field) {
-        field.registerAsAccessed("static root field");
-        JavaKind storageKind = field.getStorageKind();
-        if (isSupportedJavaKind(storageKind)) {
-            if (storageKind.isObject()) {
-                TypeFlow<?> fieldFlow = field.getType().getTypeFlow(this, true);
-                fieldFlow.addUse(this, field.getStaticFieldFlow());
-            } else {
-                field.getStaticFieldFlow().addState(this, TypeState.anyPrimitiveState());
-            }
-        }
+        field.registerAsAccessed((field.isStatic() ? "static" : "instance") + " root field");
+        field.injectDeclaredType();
         return field.getType();
     }
 
@@ -605,8 +551,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     public void checkUserLimitations() {
     }
 
+    @Override
     public boolean isSupportedJavaKind(JavaKind javaKind) {
-        return javaKind == JavaKind.Object || (trackPrimitiveValues && javaKind.isNumericInteger());
+        return javaKind == JavaKind.Object || (trackPrimitiveValues && javaKind.isPrimitive() && !javaKind.isNumericFloat());
     }
 
     @Override
@@ -661,6 +608,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @SuppressWarnings("try")
     @Override
     public boolean finish() throws InterruptedException {
+        assert isInitialized();
         try (Indent indent = debug.logAndIndent("starting analysis in BigBang.finish")) {
             boolean didSomeWork = false;
             do {
@@ -722,6 +670,53 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             t.instantiatedTypes.addState(this, typeState);
             t.instantiatedTypesNonNull.addState(this, typeStateNonNull);
         });
+    }
+
+    /**
+     * Inject custom types in the analysis field type state. This utility is used for:
+     * <ul>
+     * <li>root fields - whose state is forced to be that of the declared type</li>
+     * <li>unsafe accessed fields - whose state is conservatively also the declared type</li>
+     * <li>lazily computed fields - for which writes are not visible during analysis</li>
+     * <ul/>
+     */
+    @Override
+    public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
+        assert aField.getStorageKind().isObject();
+        var ptaField = (PointsToAnalysisField) aField;
+
+        /* Link the field with all declared types. */
+        for (AnalysisType type : customTypes) {
+            if (type.isPrimitive() || type.isWordType()) {
+                continue;
+            }
+            type.getTypeFlow(this, canBeNull).addUse(this, ptaField.getInitialFlow());
+
+            if (type.isArray()) {
+                AnalysisType fieldComponentType = type.getComponentType();
+                ptaField.getInitialFlow().addUse(this, ptaField.getSinkFlow());
+                if (!(fieldComponentType.isPrimitive() || fieldComponentType.isWordType())) {
+                    /*
+                     * Write the component type abstract object into the field array elements type
+                     * flow, i.e., the array elements type flow of the abstract object of the field
+                     * declared type.
+                     *
+                     * This is required so that the index loads from this array return all the
+                     * possible objects that can be stored in the array.
+                     */
+                    TypeFlow<?> elementsFlow = type.getContextInsensitiveAnalysisObject().getArrayElementsFlow(this, true);
+                    fieldComponentType.getTypeFlow(this, false).addUse(this, elementsFlow);
+
+                    /*
+                     * In the current implementation it is not necessary to do it recursively for
+                     * multidimensional arrays since we don't model individual array elements, so
+                     * from the point of view of the static analysis the field's array elements
+                     * value is non-null (in the case of an n-dimensional array that value is
+                     * another array, n-1 dimensional).
+                     */
+                }
+            }
+        }
     }
 
     public static class ConstantObjectsProfiler {

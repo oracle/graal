@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.libs;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
@@ -40,9 +41,11 @@ public final class Libs {
 
     private final EconomicMap<String, Lib.Factory> knownLibs = EconomicMap.create();
 
-    public Libs() {
+    public Libs(EspressoLanguage lang) {
         for (Lib.Factory lib : LibsCollector.getInstances(Lib.Factory.class)) {
-            knownLibs.put(lib.name(), lib);
+            if (lib.isValidfor(lang)) {
+                knownLibs.put(lib.name(), lib);
+            }
         }
     }
 

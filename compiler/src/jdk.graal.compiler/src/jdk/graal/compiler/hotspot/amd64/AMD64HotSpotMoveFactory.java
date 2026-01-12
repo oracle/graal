@@ -27,7 +27,8 @@ package jdk.graal.compiler.hotspot.amd64;
 import jdk.graal.compiler.core.amd64.AMD64MoveFactory;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
-
+import jdk.graal.compiler.lir.amd64.AMD64Move;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotConstant;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
@@ -38,8 +39,11 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public class AMD64HotSpotMoveFactory extends AMD64MoveFactory {
 
-    public AMD64HotSpotMoveFactory(BackupSlotProvider backupSlotProvider) {
+    private final Register zeroValueRegister;
+
+    public AMD64HotSpotMoveFactory(BackupSlotProvider backupSlotProvider, Register zeroValueRegister) {
         super(backupSlotProvider);
+        this.zeroValueRegister = zeroValueRegister;
     }
 
     @Override
@@ -89,5 +93,18 @@ public class AMD64HotSpotMoveFactory extends AMD64MoveFactory {
         } else {
             return super.createStackLoad(dst, src);
         }
+    }
+
+    @Override
+    public AMD64LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input, Register scratchRegister, AllocatableValue backupSlot) {
+        if (scratchRegister.equals(zeroValueRegister)) {
+            return new AMD64Move.AMD64StackMove(result, input, scratchRegister, backupSlot, true);
+        }
+        return super.createStackMove(result, input, scratchRegister, backupSlot);
+    }
+
+    @Override
+    public Register getPreferredGeneralPurposeScratchRegister() {
+        return zeroValueRegister;
     }
 }

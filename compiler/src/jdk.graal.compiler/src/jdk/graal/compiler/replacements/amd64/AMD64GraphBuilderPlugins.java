@@ -31,7 +31,6 @@ import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.Unary
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
-import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SINH;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TANH;
 
@@ -200,7 +199,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         registerUnaryMath(r, "exp", EXP);
         registerBinaryMath(r, "pow", BinaryMathIntrinsicNode.BinaryOperation.POW);
         registerUnaryMath(r, "sin", SIN);
-        registerUnaryMath(r, "sinh", SINH);
         registerUnaryMath(r, "cos", COS);
         registerUnaryMath(r, "tan", TAN);
         registerUnaryMath(r, "tanh", TANH);
@@ -287,7 +285,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     }
 
     private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {
-        r.register(new InvocationPlugin(name, double.class) {
+        r.register(new InvocationPlugin.InlineOnlyInvocationPlugin(name, double.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Double, b.append(UnaryMathIntrinsicNode.create(value, operation)));
@@ -297,7 +295,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     }
 
     private static void registerBinaryMath(Registration r, String name, BinaryMathIntrinsicNode.BinaryOperation operation) {
-        r.register(new InvocationPlugin(name, double.class, double.class) {
+        r.register(new InvocationPlugin.InlineOnlyInvocationPlugin(name, double.class, double.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                 b.push(JavaKind.Double, b.append(BinaryMathIntrinsicNode.create(x, y, operation)));
@@ -318,7 +316,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
                 @Override
                 public boolean isApplicable(Architecture arch) {
-                    return MaxNode.isSupported(arch);
+                    return MaxNode.floatingPointSupportAvailable(arch);
                 }
             });
             r.register(new ConditionalInvocationPlugin("min", kind.toJavaClass(), kind.toJavaClass()) {
@@ -330,7 +328,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
                 @Override
                 public boolean isApplicable(Architecture arch) {
-                    return MinNode.isSupported(arch);
+                    return MinNode.floatingPointSupportAvailable(arch);
                 }
             });
         }

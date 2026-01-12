@@ -153,6 +153,7 @@ public final class BlockingSupport<T> {
      */
     public void guestInterrupt(Thread t, T guest) {
         guestInterrupter.guestInterrupt(t, guest);
+
         if (t != null) { // Make sure thread is initialized
             t.interrupt(); // Host interrupt to wake up the thread.
         }

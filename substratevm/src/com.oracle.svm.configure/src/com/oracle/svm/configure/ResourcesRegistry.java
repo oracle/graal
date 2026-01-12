@@ -28,13 +28,13 @@ import java.util.Collection;
 import java.util.Locale;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
 
     @SuppressWarnings("unchecked")
-    static ResourcesRegistry<ConfigurationCondition> singleton() {
+    static ResourcesRegistry<AccessCondition> singleton() {
         return ImageSingletons.lookup(ResourcesRegistry.class);
     }
 
@@ -54,7 +54,7 @@ public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
     void ignoreResources(C condition, String pattern, Object origin);
 
     @Override
-    void addResourceBundles(C condition, String name);
+    void addResourceBundles(C condition, boolean preserved, String name);
 
     @Override
     void addResourceBundles(C condition, String basename, Collection<Locale> locales);

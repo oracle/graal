@@ -23,6 +23,8 @@
 package com.oracle.truffle.espresso.io;
 
 import java.io.IOException;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
@@ -56,23 +58,41 @@ public final class Throw {
         throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_io_FileNotFoundException, message);
     }
 
+    public static EspressoException throwIllegalArgumentException(String message, EspressoContext context) {
+        throw context.getMeta().throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, message);
+    }
+
     public static EspressoException throwIOException(String message, EspressoContext context) {
         throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_io_IOException, message);
     }
 
+    public static EspressoException throwSocketException(String message, EspressoContext context) {
+        throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_net_SocketException, message);
+    }
+
+    public static EspressoException throwSocketException(SocketException e, EspressoContext context) {
+        throw throwSocketException(getMessageBoundary(e), context);
+    }
+
+    /**
+     * Exactly translates the host IOException and throws the corresponding guest exception.
+     * 
+     * @param e The host IOException to be translated and thrown.
+     * @return The corresponding guest exception.
+     */
     public static EspressoException throwIOException(IOException e, EspressoContext context) {
         Class<?> exceptionClass = e.getClass();
         String message = getMessageBoundary(e);
         if (exceptionClass == ClosedByInterruptException.class) {
-            throw throwClosedByInterruptException(message, context);
+            throw throwClosedByInterruptException(context);
         }
 
         if (exceptionClass == AsynchronousCloseException.class) {
-            throw throwAsynchronousCloseException(message, context);
+            throw throwAsynchronousCloseException(context);
         }
 
         if (exceptionClass == ClosedChannelException.class) {
-            throw throwClosedChannelException(message, context);
+            throw throwClosedChannelException(context);
         }
 
         if (exceptionClass == FileAlreadyExistsException.class) {
@@ -103,22 +123,38 @@ public final class Throw {
             throw throwNotDirectoryException(message, context);
         }
 
+        if (exceptionClass == UnknownHostException.class) {
+            throw throwUnknownHostException(message, context);
+        }
+
+        if (exceptionClass == SocketException.class) {
+            throw throwSocketException(message, context);
+        }
+
+        if (isConnectionResetException(e)) {
+            throw throwConnectionResetException(message, context);
+        }
+
         if (exceptionClass != IOException.class) {
             context.getLogger().warning(() -> "Not exact translation of IOException: " + exceptionClass);
         }
         throw throwIOException(message, context);
     }
 
-    public static EspressoException throwClosedByInterruptException(String message, EspressoContext context) {
-        throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_nio_channels_ClosedByInterruptException, message);
+    public static EspressoException throwClosedByInterruptException(EspressoContext context) {
+        throw context.getMeta().throwException(context.getTruffleIO().java_nio_channels_ClosedByInterruptException);
     }
 
-    public static EspressoException throwAsynchronousCloseException(String message, EspressoContext context) {
-        throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_nio_channels_AsynchronousCloseException, message);
+    public static EspressoException throwAsynchronousCloseException(EspressoContext context) {
+        throw context.getMeta().throwException(context.getTruffleIO().java_nio_channels_AsynchronousCloseException);
     }
 
-    public static EspressoException throwClosedChannelException(String message, EspressoContext context) {
-        throw context.getMeta().throwExceptionWithMessage(context.getTruffleIO().java_nio_channels_ClosedChannelException, message);
+    public static EspressoException throwClosedChannelException(EspressoContext context) {
+        throw context.getMeta().throwException(context.getTruffleIO().java_nio_channels_ClosedChannelException);
+    }
+
+    private static boolean isConnectionResetException(IOException e) {
+        return e.getClass() == SocketException.class && (getMessageBoundary(e).equals("Connection reset"));
     }
 
     public static EspressoException throwNonReadable(EspressoContext context) {
@@ -185,5 +221,15 @@ public final class Throw {
     public static EspressoException throwNotLinkException(String message, EspressoContext context) {
         Meta meta = context.getMeta();
         throw meta.throwExceptionWithMessage(meta.java_nio_file_NotLinkException, message);
+    }
+
+    public static EspressoException throwConnectionResetException(String message, EspressoContext context) {
+        Meta meta = context.getMeta();
+        return meta.throwExceptionWithMessage(context.getTruffleIO().sun_net_ConnectionResetException, message);
+    }
+
+    public static EspressoException throwUnknownHostException(String message, EspressoContext context) {
+        Meta meta = context.getMeta();
+        return meta.throwExceptionWithMessage(context.getTruffleIO().java_net_UnknownHostException, message);
     }
 }

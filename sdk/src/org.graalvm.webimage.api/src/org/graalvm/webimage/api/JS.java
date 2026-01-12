@@ -157,14 +157,6 @@ public @interface JS {
      * <li>Any functional-interface object (whose class implements exactly one single abstract
      * method as defined by the {@link java.lang.FunctionalInterface} annotation) is converted to a
      * JavaScript {@code Function}.</li>
-     * <li>A primitive array is converted to corresponding JavaScript typed arrays. Concretely, an
-     * array of type {@code boolean[]} is converted to a JavaScript {@code Uint8Array}, a
-     * {@code byte[]} array to a JavaScript {@code Int8Array}, a {@code short[]} array to a
-     * JavaScript {@code Int16Array}, a {@code char[]} array to a JavaScript {@code Uint16Array}, a
-     * {@code int[]} array to a JavaScript {@code Int32Array}, a {@code float[]} array to a
-     * JavaScript {@code Float32Array}, a {@code long[]} array to a JavaScript
-     * {@code BigInt64Array}, and a {@code double[]} array to a JavaScript {@code Float64Array}.
-     * </li>
      * <li>All other values are not coerced -- subtypes of the Java {@link JSValue} class are
      * converted to corresponding JavaScript values, and other objects are converted to JavaScript
      * proxies.</li>
@@ -196,16 +188,7 @@ public @interface JS {
      * {@link java.lang.Double}), {@link java.math.BigInteger} and
      * {@link java.math.BigDecimal}.</li>
      * <li>JavaScript {@code String} can be coerced to a Java {@link java.lang.String}.</li>
-     * <li>JavaScript typed array can be coerced to a corresponding Java primitive array, if there
-     * is one. Concretely, a JavaScript {@code UInt8Array} can be coerced to a {@code boolean[]}. A
-     * JavaScript {@code Int8Array} can be coerced to a {@code byte[]} array. A JavaScript
-     * {@code Int16Array} can be coerced to a {@code short[]}, a {@code Uint16Array} can be coerced
-     * to a {@code char[]}, a {@code Int32Array} can be coerced to a {@code int[]}, a
-     * {@code Float32Array} can be coerced to a {@code float[]}, a {@code BigInt64Array} can be
-     * coerced to a {@code long[]}, and a {@code Float64Array} can be coerced to a
-     * {@code double[]}.</li>
-     * <li>JavaScript {@code Object} can be coerced to any Java class that is a subclass of
-     * {@link JSObject} if that class <i>conforms</i> to that JavaScript object.</li>
+     * <li>JavaScript {@code Object} can be coerced to {@link JSObject} or any of its subtypes.</li>
      * <li>All other values are not coerced -- they are converted to the corresponding Java
      * {@link JSValue} class, with the exception of JavaScript {@code Proxy} objects that wrap Java
      * objects (those are converted back to the original Java objects). A mismatch with the

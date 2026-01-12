@@ -83,6 +83,7 @@ public class BinarySource implements DataSource {
         this.channel = channel;
         this.bufferOffset = baseOffset = offset;
         try {
+            // Parfait_ALLOW weak-hash
             this.digest = MessageDigest.getInstance("SHA-1"); // NOI18N
         } catch (NoSuchAlgorithmException e) {
             // ignore

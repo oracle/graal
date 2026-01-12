@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,7 +72,7 @@ public final class StackValue {
      * <pre>
      * ComplexValue numberOnStack = StackValue.get(ComplexValue.class);
      * numberOnStack.realPart(3.0);
-     * numberOnStack.imagineryPart(4.0);
+     * numberOnStack.imaginaryPart(4.0);
      * double absoluteValue = absoluteValue(numberOnStack);
      * assert 5.0 == absoluteValue;
      * </pre>

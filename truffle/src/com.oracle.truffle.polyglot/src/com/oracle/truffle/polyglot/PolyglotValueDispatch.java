@@ -59,6 +59,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
@@ -92,6 +93,7 @@ import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToHostValueNode;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.AsClassLiteralNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.AsDateNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.AsDurationNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.AsHostObjectNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.AsInstantNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.AsNativePointerNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.AsTimeNodeGen;
@@ -118,6 +120,7 @@ import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFact
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMemberNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMetaQualifiedNameNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMetaSimpleNameNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetStaticScopeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasArrayElementsNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasBufferElementsNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasHashEntriesNodeGen;
@@ -126,12 +129,14 @@ import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFact
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasIteratorNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasMemberNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasMembersNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasStaticScopeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.InvokeNoArgsNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.InvokeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsBufferWritableNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsDateNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsDurationNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsExceptionNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsHostObjectNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsMetaInstanceNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsMetaObjectNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsNativePointerNodeGen;
@@ -583,6 +588,24 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     @TruffleBoundary
     static RuntimeException removeMemberUnsupported(PolyglotLanguageContext context, Object receiver) {
         throw unsupported(context, receiver, "removeMember(String, Object)", null);
+    }
+
+    @Override
+    public Object getStaticScope(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            return getStaticScopeUnsupported(context, receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static Object getStaticScopeUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getStaticScope(Object)", "hasStaticScope");
     }
 
     @Override
@@ -2293,9 +2316,13 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         final CallTarget getHashEntriesIterator;
         final CallTarget getHashKeysIterator;
         final CallTarget getHashValuesIterator;
-
+        final CallTarget isHostObject;
+        final CallTarget asHostObject;
         final CallTarget asClassLiteral;
         final CallTarget asTypeLiteral;
+        final CallTarget hasStaticScope;
+        final CallTarget getStaticScope;
+
         final Class<?> receiverType;
 
         InteropValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Object receiverObject, Class<?> receiverType) {
@@ -2375,7 +2402,10 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             this.getHashEntriesIterator = createTarget(GetHashEntriesIteratorNodeGen.create(this));
             this.getHashKeysIterator = createTarget(GetHashKeysIteratorNodeGen.create(this));
             this.getHashValuesIterator = createTarget(GetHashValuesIteratorNodeGen.create(this));
-
+            this.isHostObject = createTarget(IsHostObjectNodeGen.create(this));
+            this.asHostObject = createTarget(AsHostObjectNodeGen.create(this));
+            this.hasStaticScope = createTarget(HasStaticScopeNodeGen.create(this));
+            this.getStaticScope = createTarget(GetStaticScopeNodeGen.create(this));
         }
 
         @SuppressWarnings("unchecked")
@@ -2541,6 +2571,16 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         }
 
         @Override
+        public boolean hasStaticScope(Object languageContext, Object receiver) {
+            return (boolean) RUNTIME.callProfiled(this.hasStaticScope, languageContext, receiver);
+        }
+
+        @Override
+        public Object getStaticScope(Object languageContext, Object receiver) {
+            return RUNTIME.callProfiled(this.getStaticScope, languageContext, receiver);
+        }
+
+        @Override
         public long asNativePointer(Object languageContext, Object receiver) {
             return (long) RUNTIME.callProfiled(this.asNativePointer, languageContext, receiver);
         }
@@ -2592,15 +2632,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
         @Override
         public boolean isHostObject(Object languageContext, Object receiver) {
-            PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
-            Object prev = hostEnter(context);
-            try {
-                return getEngine().host.isHostObject(receiver);
-            } catch (Throwable e) {
-                throw guestToHostException(context, e, true);
-            } finally {
-                hostLeave(context, prev);
-            }
+            return (boolean) RUNTIME.callProfiled(this.isHostObject, languageContext, receiver);
         }
 
         private PolyglotEngineImpl getEngine() {
@@ -2631,11 +2663,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
         @Override
         public Object asHostObject(Object languageContext, Object receiver) {
-            if (isHostObject(languageContext, receiver)) {
-                return getEngine().host.unboxHostObject(receiver);
-            } else {
-                return super.asHostObject(languageContext, receiver);
-            }
+            return RUNTIME.callProfiled(this.asHostObject, languageContext, receiver);
         }
 
         @Override
@@ -3658,7 +3686,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached InlinedBranchProfile invalidIndex,
                             @Cached InlinedBranchProfile invalidValue) {
                 long index = (long) args[ARGUMENT_OFFSET];
-                Object value = toGuestValue.execute(node, context, args[ARGUMENT_OFFSET + 1]);
+                Object value = toGuestValue.execute(node, args[ARGUMENT_OFFSET + 1]);
                 try {
                     arrays.writeArrayElement(receiver, index, value);
                 } catch (UnsupportedMessageException e) {
@@ -4420,7 +4448,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached InlinedBranchProfile unknown) {
                 String key = (String) args[ARGUMENT_OFFSET];
                 Object originalValue = args[ARGUMENT_OFFSET + 1];
-                Object value = toGuestValue.execute(node, context, originalValue);
+                Object value = toGuestValue.execute(node, originalValue);
                 assert key != null;
                 try {
                     objects.writeMember(receiver, key, value);
@@ -4650,7 +4678,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached InlinedBranchProfile invalidArgument,
                             @Cached InlinedBranchProfile arity,
                             @Cached InlinedBranchProfile unsupported) {
-                Object[] guestArguments = toGuestValues.execute(node, context, args);
+                Object[] guestArguments = toGuestValues.execute(node, args);
                 try {
                     return executables.execute(receiver, guestArguments);
                 } catch (UnsupportedTypeException e) {
@@ -4788,7 +4816,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached InlinedBranchProfile arity,
                             @Cached InlinedBranchProfile invalidArgument,
                             @Cached InlinedBranchProfile unsupported) {
-                Object[] instantiateArguments = toGuestValues.execute(node, context, (Object[]) args[ARGUMENT_OFFSET]);
+                Object[] instantiateArguments = toGuestValues.execute(node, (Object[]) args[ARGUMENT_OFFSET]);
                 try {
                     return toHostValue.execute(node, context, instantiables.instantiate(receiver, instantiateArguments));
                 } catch (UnsupportedTypeException e) {
@@ -4865,7 +4893,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached SharedInvokeNode sharedInvoke,
                             @Cached ToGuestValuesNode toGuestValues) {
                 String key = (String) args[ARGUMENT_OFFSET];
-                Object[] guestArguments = toGuestValues.execute(this, context, (Object[]) args[ARGUMENT_OFFSET + 1]);
+                Object[] guestArguments = toGuestValues.execute(this, (Object[]) args[ARGUMENT_OFFSET + 1]);
                 return sharedInvoke.executeShared(this, context, receiver, key, guestArguments);
             }
 
@@ -5054,7 +5082,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached(inline = true) ToGuestValueNode toGuest,
                             @Cached InlinedBranchProfile unsupported) {
                 try {
-                    return objects.isMetaInstance(receiver, toGuest.execute(node, context, args[ARGUMENT_OFFSET]));
+                    return objects.isMetaInstance(receiver, toGuest.execute(node, args[ARGUMENT_OFFSET]));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter(node);
                     throw unsupported(context, receiver, "isMetaInstance()", "isMetaObject()");
@@ -5329,7 +5357,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @CachedLibrary("receiver") InteropLibrary hashes,
                             @Cached(inline = true) ToGuestValueNode toGuestKey) {
                 Object hostKey = args[ARGUMENT_OFFSET];
-                Object key = toGuestKey.execute(node, context, hostKey);
+                Object key = toGuestKey.execute(node, hostKey);
                 return hashes.isHashEntryExisting(receiver, key);
             }
         }
@@ -5359,7 +5387,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached InlinedBranchProfile unsupported,
                             @Cached InlinedBranchProfile invalidKey) {
                 Object hostKey = args[ARGUMENT_OFFSET];
-                Object key = toGuestKey.execute(node, context, hostKey);
+                Object key = toGuestKey.execute(node, hostKey);
                 try {
                     return toHost.execute(node, context, hashes.readHashValue(receiver, key));
                 } catch (UnsupportedMessageException e) {
@@ -5402,8 +5430,8 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached InlinedBranchProfile invalidKey) {
                 Object hostKey = args[ARGUMENT_OFFSET];
                 Object hostDefaultValue = args[ARGUMENT_OFFSET + 1];
-                Object key = toGuestKey.execute(node, context, hostKey);
-                Object defaultValue = toGuestDefaultValue.execute(node, context, hostDefaultValue);
+                Object key = toGuestKey.execute(node, hostKey);
+                Object defaultValue = toGuestDefaultValue.execute(node, hostDefaultValue);
                 try {
                     return toHost.execute(node, context, hashes.readHashValueOrDefault(receiver, key, hostDefaultValue));
                 } catch (UnsupportedMessageException e) {
@@ -5439,8 +5467,8 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached InlinedBranchProfile invalidValue) {
                 Object hostKey = args[ARGUMENT_OFFSET];
                 Object hostValue = args[ARGUMENT_OFFSET + 1];
-                Object key = toGuestKey.execute(node, context, hostKey);
-                Object value = toGuestValue.execute(node, context, hostValue);
+                Object key = toGuestKey.execute(node, hostKey);
+                Object value = toGuestValue.execute(node, hostValue);
                 try {
                     hashes.writeHashEntry(receiver, key, value);
                 } catch (UnsupportedMessageException | UnknownKeyException e) {
@@ -5477,7 +5505,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached InlinedBranchProfile unsupported,
                             @Cached InlinedBranchProfile invalidKey) {
                 Object hostKey = args[ARGUMENT_OFFSET];
-                Object key = toGuestKey.execute(node, context, hostKey);
+                Object key = toGuestKey.execute(node, hostKey);
                 Boolean result;
                 try {
                     hashes.removeHashEntry(receiver, key);
@@ -5587,6 +5615,120 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
         }
 
-    }
+        abstract static class IsHostObjectNode extends InteropNode {
 
+            protected IsHostObjectNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isHostObject";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node,
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.isHostObject(receiver);
+            }
+        }
+
+        abstract static class AsHostObjectNode extends InteropNode {
+
+            protected AsHostObjectNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "asHostObject";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached InlinedBranchProfile unsupported,
+                            @Cached InlinedBranchProfile isolatedHeap) {
+                try {
+                    return objects.asHostObject(receiver);
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter(node);
+                    return asHostObjectUnsupported(context, receiver);
+                } catch (HeapIsolationException e) {
+                    isolatedHeap.enter(node);
+                    throw asHostObjectIsolatedHeap(context, receiver);
+                }
+            }
+
+            @TruffleBoundary
+            static RuntimeException asHostObjectIsolatedHeap(PolyglotLanguageContext context, Object receiver) {
+                String polyglotMessage = String.format("Unsupported operation Value.asHostObject() for %s. The referenced host object resides in an isolated heap.", getValueInfo(context, receiver));
+                return PolyglotEngineException.unsupported(polyglotMessage);
+            }
+        }
+
+        abstract static class HasStaticScopeNode extends InteropNode {
+
+            protected HasStaticScopeNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "hasStaticScope";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.hasStaticScope(receiver);
+            }
+        }
+
+        abstract static class GetStaticScopeNode extends InteropNode {
+
+            protected GetStaticScopeNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getStaticScope";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @Bind Node node,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached ToHostValueNode toHost,
+                            @Cached InlinedBranchProfile unsupported) {
+                try {
+                    return toHost.execute(node, context, objects.getStaticScope(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter(node);
+                    return getStaticScopeUnsupported(context, receiver);
+                }
+            }
+        }
+    }
 }

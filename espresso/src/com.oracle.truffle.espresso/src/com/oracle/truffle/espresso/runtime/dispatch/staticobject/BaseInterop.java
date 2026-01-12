@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -224,14 +223,14 @@ public class BaseInterop {
     // region ### Language/DisplayString
     @SuppressWarnings("unused")
     @ExportMessage
-    public static boolean hasLanguage(StaticObject object) {
+    public static boolean hasLanguageId(StaticObject object) {
         return true;
     }
 
     @SuppressWarnings("unused")
     @ExportMessage
-    public static Class<? extends TruffleLanguage<?>> getLanguage(StaticObject object) {
-        return EspressoLanguage.class;
+    public static String getLanguageId(StaticObject object) {
+        return EspressoLanguage.ID;
     }
 
     @ExportMessage

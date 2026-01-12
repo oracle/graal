@@ -28,6 +28,7 @@ import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 
 import java.lang.reflect.Field;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.nodes.ClusterNode;
@@ -41,11 +42,14 @@ import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.misc.ScopedMemoryAccess;
 
@@ -55,7 +59,7 @@ import jdk.internal.misc.ScopedMemoryAccess;
  * Mark the beginning of a {@link ScopedMemoryAccess} checking the validity of a memory session.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN)
-public class MemoryArenaValidInScopeNode extends FixedWithNextNode implements MemoryAccess, ControlFlowAnchored {
+public class MemoryArenaValidInScopeNode extends FixedWithNextNode implements MemoryAccess, ControlFlowAnchored, Simplifiable {
     public static final Field STATE_FIELD = ReflectionUtil.lookupField(MemorySessionImpl.class, "state");
 
     public static final NodeClass<MemoryArenaValidInScopeNode> TYPE = NodeClass.create(MemoryArenaValidInScopeNode.class);
@@ -103,4 +107,60 @@ public class MemoryArenaValidInScopeNode extends FixedWithNextNode implements Me
         return fieldLocation;
     }
 
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (tool.allUsagesAvailable() && graph() != null) {
+            final ValueNode session = value;
+            if (session.isNullConstant()) {
+                FixedNode predecessor = (FixedNode) this.predecessor();
+
+                EconomicSet<ScopedMethodNode> scopeNodes = EconomicSet.create();
+                // also cleanup any other nodes that check for inlined callees
+                // this is a best effort
+                FixedNode cur = predecessor;
+                while (cur != null) {
+                    if (cur instanceof ScopedMethodNode scopeNode) {
+                        // scope nodes are always balanced, find the next start, that must be ours,
+                        // if we find an end we do not delete our pair
+                        if (scopeNode.getType() == ScopedMethodNode.Type.START) {
+                            scopeNodes.add(scopeNode);
+                            for (Node usage : scopeNode.usages()) {
+                                if (usage instanceof ScopedMethodNode scopeUsage && scopeUsage.getType() == ScopedMethodNode.Type.END && scopeUsage.getStart() == scopeNode) {
+                                    scopeNodes.add(scopeUsage);
+                                }
+                            }
+                            // we collected the usages, check that we found all of them
+                            for (Node usage : scopeNode.usages()) {
+                                if (!(usage instanceof ScopedMethodNode sm && scopeNodes.contains(sm))) {
+                                    return;
+                                }
+                            }
+                            break;
+                        } else {
+                            return;
+                        }
+                    }
+                    cur = (FixedNode) cur.predecessor();
+                }
+
+                if (scopeNodes.isEmpty()) {
+                    /*
+                     * Collect and delete all scope nodes in a single batch to ensure they are
+                     * optimized together. If we don't do this, the current node might be optimized
+                     * away before the scope nodes are inlined, resulting in incomplete
+                     * optimization. We wait until both are present in the graph before optimizing.
+                     */
+                    return;
+                }
+
+                // delete and replace the scope node first
+                this.delete(0);
+
+                // clear all the scope nodes
+                for (ScopedMethodNode scopeNode : scopeNodes) {
+                    scopeNode.delete();
+                }
+            }
+        }
+    }
 }

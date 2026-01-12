@@ -64,7 +64,7 @@ import org.graalvm.shadowed.com.ibm.icu.lang.UCharacter;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Range;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 public final class PythonLocaleData {
 
@@ -164,7 +164,7 @@ public final class PythonLocaleData {
             }
         }
         this.wordChars = wordCharsAccum.toCodePointSet();
-        this.nonWordChars = wordChars.createInverse(Encodings.LATIN_1);
+        this.nonWordChars = wordChars.createInverse(Encoding.LATIN_1);
 
         EconomicMap<Integer, Byte> invCodePoints = EconomicMap.create(256);
         for (int b = 0; b <= 255; b++) {

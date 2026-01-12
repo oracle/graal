@@ -28,8 +28,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
-//JaCoCo Exclude
-
 public final class SignatureProxy extends CompilationProxyBase implements Signature {
     SignatureProxy(InvocationHandler handler) {
         super(handler);

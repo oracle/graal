@@ -69,16 +69,20 @@ import jdk.vm.ci.meta.PlatformKind;
 public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
 
     /**
+     * The set of features we consider necessary for "full" AVX-512 support. In general, we want to
+     * emit only EVEX-encoded AVX-512 instructions if all of these features are present. If any of
+     * these features are missing, we prefer emitting VEX-encoded AVX1/AVX2 instructions.
+     */
+    public static final EnumSet<CPUFeature> FULL_AVX512_FEATURES = EnumSet.of(CPUFeature.AVX512F, CPUFeature.AVX512BW, CPUFeature.AVX512VL, CPUFeature.AVX512DQ);
+
+    /**
      * If this check is false, AVX512 support is absent or incomplete, and it makes little sense to
      * try to use AVX512 over SSE/AVX instructions.
      *
      * @param features feature set to check compatibility against
      */
     public static boolean supportsFullAVX512(EnumSet<CPUFeature> features) {
-        return features.contains(CPUFeature.AVX512F) &&
-                        features.contains(CPUFeature.AVX512BW) &&
-                        features.contains(CPUFeature.AVX512VL) &&
-                        features.contains(CPUFeature.AVX512DQ);
+        return features.containsAll(FULL_AVX512_FEATURES);
     }
 
     public boolean supportsFullAVX512() {
@@ -667,7 +671,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
                             int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
-                                assert isByte(disp) && !overriddenForce4Byte : disp;
+                                assert isByte(disp) : disp;
                             }
                         } else {
                             overriddenForce4Byte = true;
@@ -703,7 +707,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
                             int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
-                                assert isByte(disp) && !overriddenForce4Byte : disp;
+                                assert isByte(disp) : disp;
                             }
                         } else {
                             overriddenForce4Byte = true;
@@ -737,7 +741,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
                             int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
-                                assert isByte(disp) && !overriddenForce4Byte : disp;
+                                assert isByte(disp) : disp;
                             }
                         } else {
                             overriddenForce4Byte = true;

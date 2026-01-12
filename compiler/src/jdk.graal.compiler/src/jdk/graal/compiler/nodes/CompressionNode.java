@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -82,18 +83,26 @@ public abstract class CompressionNode extends UnaryNode implements ConvertNode, 
 
     @Override
     public Constant convert(Constant c, ConstantReflectionProvider constantReflection) {
-        return switch (op) {
-            case Compress -> compress(c);
-            case Uncompress -> uncompress(c);
-        };
+        switch (op) {
+            case Compress:
+                return compress(c);
+            case Uncompress:
+                return uncompress(c);
+            default:
+                throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
+        }
     }
 
     @Override
     public Constant reverse(Constant c, ConstantReflectionProvider constantReflection) {
-        return switch (op) {
-            case Compress -> uncompress(c);
-            case Uncompress -> compress(c);
-        };
+        switch (op) {
+            case Compress:
+                return uncompress(c);
+            case Uncompress:
+                return compress(c);
+            default:
+                throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
+        }
     }
 
     /**
@@ -129,12 +138,14 @@ public abstract class CompressionNode extends UnaryNode implements ConvertNode, 
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        if (forValue instanceof ConstantNode constant) {
+        if (forValue.isConstant()) {
+            ConstantNode constant = (ConstantNode) forValue;
             if (isCompressible(constant.getValue())) {
                 return ConstantNode.forConstant(stamp(NodeView.DEFAULT), convert(constant.getValue(), tool.getConstantReflection()), constant.getStableDimension(),
                                 constant.isDefaultStable(), tool.getMetaAccess());
             }
-        } else if (forValue instanceof CompressionNode other) {
+        } else if (forValue instanceof CompressionNode) {
+            CompressionNode other = (CompressionNode) forValue;
             if (op != other.op && encoding.equals(other.encoding)) {
                 return other.getValue();
             }
@@ -153,10 +164,17 @@ public abstract class CompressionNode extends UnaryNode implements ConvertNode, 
         }
 
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
-        Value result = switch (op) {
-            case Compress -> tool.emitCompress(gen.operand(value), encoding, nonNull);
-            case Uncompress -> tool.emitUncompress(gen.operand(value), encoding, nonNull);
-        };
+        Value result;
+        switch (op) {
+            case Compress:
+                result = tool.emitCompress(gen.operand(value), encoding, nonNull);
+                break;
+            case Uncompress:
+                result = tool.emitUncompress(gen.operand(value), encoding, nonNull);
+                break;
+            default:
+                throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
+        }
 
         gen.setResult(this, result);
     }

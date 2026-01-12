@@ -6,7 +6,7 @@ Run "mx polybench --help" for more details.
 
 The launcher repeatedly executes the source file specified by its path.
 The number of hot and warmup iterations can be specified
-either explicitly or determined via interop from the evaluated source value 
+either explicitly or determined via interop from the evaluated source value
 by reading or executing members "iterations" and "warmupIterations".
 
 The launcher generates structured output containing information
@@ -58,6 +58,36 @@ following options:
        run specific argument is:
 
  <arg_name>.<run>=<value>
+
+Staging the launcher to a target language
+
+This launcher allows transpiling of the main harness loop into a target language,
+facilitating comparisons with other language implementations. The staged program contains:
+* The main harness loop.
+* All methods and classes needed for the execution of the main harness loop (e.g. requested
+  Metric class, required Summary class).
+* The benchmark source code (copied from the benchmark source file).
+This feature is provided on a best-effort basis - not all Truffle languages are supported,
+and not all metrics are supported for supported languages. The staging can be configured
+using the following options:
+
+ --stage-to-language <LANGUAGE>
+       The language into which to stage the main harness loop. If provided staging is enabled
+       and a staged harness loop will be produced in the target language instead of harness
+       execution (the default behaviour). Currently supported values are: python.
+
+ --stage-to-file <PATH>
+       Path to file into which to write the staged program. Must be provided if staging
+       is enabled.
+
+ --log-staged-program <BOOL>
+       Whether to dump the staged program into stdout. Defaults to: FALSE.
+
+ --run-staged-program-with <LAUNCHER>
+       Execute the staged program after transpiling using the provided launcher. If this option
+       is not set then the staged program will not be executed. This option allows the entire
+       pipeline (transpiling and execution) in the same command. You can always execute the staged
+       program on your own afterwards.
  
  
 Examples:
@@ -87,5 +117,13 @@ Examples:
  
   Reporting the source evaluation time only for 10 runs
      polybench --path bench.so --multi-context-runs=10 --eval-source-only=true
+
+  Staging the main harness loop into Python:
+     polybench --path bench.py --stage-to-language python --stage-to-file staged-bench.py
+
+  Staging the main harness loop into Python, with the staged program logged to stdout
+  and immediate execution:
+     polybench --path bench.py --stage-to-language python --stage-to-file staged-bench.py
+               --log-staged-program True --run-staged-program-with python3
  
  

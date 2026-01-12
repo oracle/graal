@@ -28,6 +28,7 @@ import static com.oracle.svm.core.posix.headers.darwin.DarwinTime.NoTransitions.
 import static com.oracle.svm.core.posix.headers.darwin.DarwinTime.NoTransitions.mach_timebase_info;
 
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -42,6 +43,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.darwin.DarwinTime;
 import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
 
@@ -122,7 +124,7 @@ final class DarwinTimeUtil {
  * Native functions don't exist on Darwin because this whole class is used, and should exist, only
  * on Linux. See <code>java.util.prefs.Preferences#factory</code>.
  */
-@TargetClass(className = "java.util.prefs.FileSystemPreferences")
+@TargetClass(className = "java.util.prefs.FileSystemPreferences", onlyWith = IsJavaUtilPrefsPresent.class)
 final class Target_java_util_prefs_FileSystemPreferences {
     @Delete
     private static native int[] lockFile0(String fileName, int permission, boolean shared);
@@ -132,6 +134,14 @@ final class Target_java_util_prefs_FileSystemPreferences {
 
     @Delete
     private static native int chmod(String fileName, int permission);
+}
+
+final class IsJavaUtilPrefsPresent implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        var prefsMod = JVMCIReflectionUtil.bootModuleLayer().findModule("java.prefs");
+        return prefsMod.isPresent();
+    }
 }
 
 /**

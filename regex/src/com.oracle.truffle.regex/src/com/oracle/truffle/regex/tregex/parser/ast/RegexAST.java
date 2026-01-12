@@ -69,7 +69,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTDebugDumpVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.AddToSetVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
 import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -717,7 +717,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
                 maxPrefixSize = -1;
             }
         }
-        return new InnerLiteral(literal.materialize(), hasMask ? mask.materialize() : null, maxPrefixSize);
+        return new InnerLiteral(literal, hasMask ? mask : null, maxPrefixSize);
     }
 
     public boolean canTransformToDFA() {

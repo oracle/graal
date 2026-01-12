@@ -31,8 +31,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-//JaCoCo Exclude
-
 public final class HotSpotObjectConstantProxy extends HotSpotConstantProxy implements HotSpotObjectConstant {
     HotSpotObjectConstantProxy(InvocationHandler handler) {
         super(handler);
@@ -56,6 +54,14 @@ public final class HotSpotObjectConstantProxy extends HotSpotConstantProxy imple
     @Override
     public int getIdentityHashCode() {
         return (int) handle(getIdentityHashCodeMethod, getIdentityHashCodeInvokable);
+    }
+
+    private static final SymbolicMethod makeIdentityHashCodeMethod = method("makeIdentityHashCode", int.class);
+    private static final InvokableMethod makeIdentityHashCodeInvokable = (receiver, args) -> ((HotSpotObjectConstant) receiver).makeIdentityHashCode((int) args[0]);
+
+    @Override
+    public int makeIdentityHashCode(int requestedValue) {
+        return (int) handle(makeIdentityHashCodeMethod, makeIdentityHashCodeInvokable, requestedValue);
     }
 
     private static final SymbolicMethod getCallSiteTargetMethod = method("getCallSiteTarget");

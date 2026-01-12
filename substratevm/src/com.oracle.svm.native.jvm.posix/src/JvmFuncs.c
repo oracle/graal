@@ -79,6 +79,13 @@ JNIEXPORT int JNICALL JVM_GetInterfaceVersion() {
     return JVM_INTERFACE_VERSION;
 }
 
+/* Declare JVM_FindClassFromBootLoader as weak symbol and provide fallback implementation */
+JNIEXPORT void JNICALL JVM_FindClassFromBootLoader(JNIEnv *env, char *fqn) __attribute__((weak));
+
+void JVM_FindClassFromBootLoader(JNIEnv *env, char *fqn) {
+    (*env)->FatalError(env, "JVM_FindClassFromBootLoader called: Unimplemented");
+}
+
 #ifdef __linux__
 /*
   Support for cpusets on Linux (JDK-6515172).
@@ -360,6 +367,16 @@ JNIEXPORT jstring JNICALL JVM_GetTemporaryDirectory(JNIEnv *env) {
 #endif /* __APPLE__ */
 
 JNIEXPORT jobject JNICALL Java_sun_nio_ch_sctp_SctpChannelImpl_initIDs(JNIEnv *env) {
+    (*env)->FatalError(env, "Currently SCTP not supported for native-images");
+    return NULL;
+}
+
+JNIEXPORT jobject JNICALL Java_sun_nio_ch_sctp_SctpChannelImpl_receive0(JNIEnv *env) {
+    (*env)->FatalError(env, "Currently SCTP not supported for native-images");
+    return NULL;
+}
+
+JNIEXPORT jobject JNICALL Java_sun_nio_ch_sctp_SctpChannelImpl_send0(JNIEnv *env) {
     (*env)->FatalError(env, "Currently SCTP not supported for native-images");
     return NULL;
 }

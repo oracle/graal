@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.test.generated;
 
-import static com.oracle.truffle.regex.tregex.string.Encodings.UTF_8;
+import static com.oracle.truffle.regex.tregex.string.Encoding.UTF_8;
 import static com.oracle.truffle.regex.tregex.test.generated.TestCase.match;
 import static com.oracle.truffle.regex.tregex.test.generated.TestCase.noMatch;
 import static com.oracle.truffle.regex.tregex.test.generated.TestCase.syntaxError;

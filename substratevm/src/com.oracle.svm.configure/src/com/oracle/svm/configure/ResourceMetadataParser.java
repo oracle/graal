@@ -30,10 +30,10 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 
 final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
-    ResourceMetadataParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, EnumSet<ConfigurationParserOption> parserOptions) {
+    ResourceMetadataParser(AccessConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, EnumSet<ConfigurationParserOption> parserOptions) {
         super(conditionResolver, registry, parserOptions);
     }
 
@@ -58,7 +58,7 @@ final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
     }
 
     @Override
-    protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> condition) {
+    protected UnresolvedAccessCondition parseCondition(EconomicMap<String, Object> condition) {
         return parseCondition(condition, true);
     }
 }

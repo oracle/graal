@@ -29,13 +29,13 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.ObjectFile.ProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile.RelocatableSectionImpl;
 import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.Section;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * This represents the core of a progbits/regular section, in any object file format. By default it
@@ -66,7 +66,7 @@ public class BasicProgbitsSectionImpl extends BasicElementImpl implements Progbi
     }
 
     @Override
-    public Set<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
+    public EconomicSet<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
         // we can get away with minimal dependencies, because we have no
         // content-> size dependency by default
         return ObjectFile.minimalDependencies(decisions, getElement());

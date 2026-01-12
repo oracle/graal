@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.interpreter.InterpreterUtil.traceInterpreter;
 
 import java.io.IOException;
@@ -46,6 +47,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.heap.UnknownObjectField;
@@ -162,6 +164,11 @@ public class DebuggerSupport {
     // GR-55023: should be in InterpreterSupport
     public InterpreterUniverse getUniverse() {
         return universe.get();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public InterpreterUniverse getUniverseOrNull() {
+        return universe.getOrNull();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

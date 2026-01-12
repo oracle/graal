@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.polybench;
 
 import org.graalvm.polyglot.Value;
 
+import java.io.InvalidObjectException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,12 +45,18 @@ public class Config {
     int iterations;
     Metric metric;
     boolean evalSourceOnlyDefault;
+    Summary summary;
+    String[] dependencies;
+    Language stagingLanguage;
+    String stagingFilePath;
+    boolean logStagedProgram;
+    String stagedProgramLauncher;
 
     final List<String> unrecognizedArguments = new ArrayList<>();
 
     private static final int UNINITIALIZED_ITERATIONS = -1;
-    private static final int DEFAULT_WARMUP = 20;
-    private static final int DEFAULT_ITERATIONS = 30;
+    public static final int DEFAULT_WARMUP = 20;
+    public static final int DEFAULT_ITERATIONS = 30;
 
     /**
      * Multi-context runs related configuration.
@@ -79,7 +86,7 @@ public class Config {
         return multiEngine;
     }
 
-    public void parseBenchSpecificDefaults(Value benchmark) {
+    public void parseBenchSpecificDefaults(Value benchmark) throws InvalidObjectException {
         if (warmupIterations == UNINITIALIZED_ITERATIONS) {
             if (benchmark.hasMember("warmupIterations")) {
                 Value warmupIterationsMember = benchmark.getMember("warmupIterations");
@@ -96,6 +103,71 @@ public class Config {
                 iterations = DEFAULT_ITERATIONS;
             }
         }
+        parseBenchSpecificSummary(benchmark);
+        parseBenchSpecificDependencies(benchmark);
+    }
+
+    private void parseBenchSpecificDependencies(Value benchmark) throws InvalidObjectException {
+        if (!benchmark.hasMember("dependencies")) {
+            // No 'dependencies' member provided in the benchmark
+            dependencies = new String[0];
+            return;
+        }
+        Value dependenciesMember = benchmark.getMember("dependencies");
+        if (dependenciesMember.canExecute()) {
+            dependenciesMember = dependenciesMember.execute();
+        }
+        if (!dependenciesMember.hasArrayElements()) {
+            throw new InvalidObjectException("Failed at parsing the 'dependencies' benchmark member due to it not being an array!");
+        }
+        int arraySize = (int) dependenciesMember.getArraySize();
+        dependencies = new String[arraySize];
+        for (int i = 0; i < arraySize; i++) {
+            dependencies[i] = dependenciesMember.getArrayElement(i).asString();
+        }
+    }
+
+    private void parseBenchSpecificSummary(Value benchmark) throws InvalidObjectException {
+        if (!benchmark.hasMember("summary")) {
+            // No 'summary' member provided in the benchmark
+            summary = parseFallbackBenchSpecificSummary(benchmark);
+            return;
+        }
+        Value summaryMember = benchmark.getMember("summary");
+        if (summaryMember.canExecute()) {
+            summaryMember = summaryMember.execute();
+        }
+        if (!summaryMember.hasMember("get")) {
+            throw new InvalidObjectException("Failed at parsing the 'summary' benchmark member due to it missing a 'get' member!");
+        }
+        Value summaryGetMethod = summaryMember.getMember("get");
+        String summaryClassName = summaryGetMethod.execute("name").asString();
+        if (OutlierRemovalAverageSummary.class.getSimpleName().equals(summaryClassName)) {
+            Value lowerThresholdValue = summaryGetMethod.execute("lower-threshold");
+            Value upperThresholdValue = summaryGetMethod.execute("upper-threshold");
+            if (!lowerThresholdValue.fitsInDouble() || !upperThresholdValue.fitsInDouble()) {
+                String msg = "Failed at parsing 'summary' benchmark member with name of '" + summaryClassName + "'";
+                msg += " because 'lower-threshold' or 'upper-threshold' is not present, or does not fit into a double!";
+                throw new InvalidObjectException(msg);
+            }
+            summary = new OutlierRemovalAverageSummary(lowerThresholdValue.asDouble(), upperThresholdValue.asDouble());
+        } else if (AverageSummary.class.getSimpleName().equals(summaryClassName)) {
+            summary = new AverageSummary();
+        } else {
+            throw new InvalidObjectException("Failed at parsing the 'summary' benchmark member due to unrecognized name of '" + summaryClassName + "'!");
+        }
+    }
+
+    private static Summary parseFallbackBenchSpecificSummary(Value benchmark) {
+        if (benchmark.hasMember(OutlierRemovalAverageSummary.class.getSimpleName())) {
+            double lowerThreshold = benchmark.getMember(OutlierRemovalAverageSummary.class.getSimpleName() + "LowerThreshold").execute().asDouble();
+            double upperThreshold = benchmark.getMember(OutlierRemovalAverageSummary.class.getSimpleName() + "UpperThreshold").execute().asDouble();
+            return new OutlierRemovalAverageSummary(lowerThreshold, upperThreshold);
+        } else if (benchmark.hasMember(AverageSummary.class.getSimpleName())) {
+            return new AverageSummary();
+        }
+        // defaulting to averaging if the aggregation strategy is not specified
+        return new AverageSummary();
     }
 
     @Override
@@ -107,7 +179,10 @@ public class Config {
                         "iterations:        " + (iterations == UNINITIALIZED_ITERATIONS ? "default" : iterations + "\n");
         if (multiEngine != null) {
             config += "runs:              " + multiEngine.numberOfRuns + "\n" +
-                            "shared engine:     " + multiEngine.sharedEngine;
+                            "shared engine:     " + multiEngine.sharedEngine + "\n";
+        }
+        if (summary != null) {
+            config += "summary:           " + summary + "\n";
         }
         return config;
     }

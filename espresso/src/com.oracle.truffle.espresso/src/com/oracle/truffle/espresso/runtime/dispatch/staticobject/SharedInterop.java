@@ -34,7 +34,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -2108,36 +2107,35 @@ public class SharedInterop {
     }
 
     @ExportMessage
-    public static boolean hasLanguage(StaticObject receiver,
+    public static boolean hasLanguageId(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Cached CallSharedInteropMessage sharedCallNode) {
         int dispatchId = receiver.getKlass().getDispatchId();
-        InteropMessage.Message message = InteropMessage.Message.HasLanguage;
+        InteropMessage.Message message = InteropMessage.Message.HasLanguageId;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
             return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
-        CallTarget target = getTarget(receiver, InteropMessage.Message.HasLanguage);
+        CallTarget target = getTarget(receiver, InteropMessage.Message.HasLanguageId);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
         return false;
     }
 
-    @SuppressWarnings("unchecked")
     @ExportMessage
-    public static Class<? extends TruffleLanguage<?>> getLanguage(StaticObject receiver,
+    public static String getLanguageId(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Cached CallSharedInteropMessage sharedCallNode) throws UnsupportedMessageException {
         int dispatchId = receiver.getKlass().getDispatchId();
-        InteropMessage.Message message = InteropMessage.Message.GetLanguage;
+        InteropMessage.Message message = InteropMessage.Message.GetLanguageId;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (Class<? extends TruffleLanguage<?>>) sharedCallNode.call(dispatchId, message, receiver);
+            return (String) sharedCallNode.call(dispatchId, message, receiver);
         }
-        CallTarget target = getTarget(receiver, InteropMessage.Message.GetLanguage);
+        CallTarget target = getTarget(receiver, InteropMessage.Message.GetLanguageId);
         if (target != null) {
-            return (Class<? extends TruffleLanguage<?>>) callNode.call(target, receiver);
+            return (String) callNode.call(target, receiver);
         }
         throw unsupported();
     }

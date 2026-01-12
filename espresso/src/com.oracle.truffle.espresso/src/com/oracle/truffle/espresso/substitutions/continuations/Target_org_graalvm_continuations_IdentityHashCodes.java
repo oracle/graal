@@ -34,7 +34,7 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
 @EspressoSubstitutions
 public final class Target_org_graalvm_continuations_IdentityHashCodes {
     public static int getIHashCode(@JavaType(Object.class) StaticObject o, Meta meta, EspressoLanguage lang) {
-        assert lang.isContinuumEnabled();
+        assert lang.canSetCustomIdentityHashCode();
         if (StaticObject.isNull(o)) {
             return 0;
         }
@@ -79,7 +79,8 @@ public final class Target_org_graalvm_continuations_IdentityHashCodes {
         return setHashCode(o, hashcode, meta, lang) == hashcode;
     }
 
-    private static int setHashCode(StaticObject o, int hashcode, Meta meta, EspressoLanguage language) {
+    public static int setHashCode(StaticObject o, int hashcode, Meta meta, EspressoLanguage language) {
+        assert language.canSetCustomIdentityHashCode();
         assert !StaticObject.isNull(o) && hashcode > 0;
         if (o.isArray()) {
             language.getArrayHashCodeProperty().compareAndExchangeInt(o, 0, hashcode);

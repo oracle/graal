@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,14 @@
  */
 package com.oracle.graal.pointsto.typestate;
 
+import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Iterator;
 import java.util.Objects;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractStaticInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
@@ -44,10 +47,10 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
@@ -56,14 +59,49 @@ import com.oracle.graal.pointsto.typestore.UnifiedFieldTypeStore;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MultiMethod;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 
+/**
+ * This class implements the default, context-insensitive, static analysis policy.
+ * <p>
+ * For {@link MultiTypeState}, the class is aware of the two implementations
+ * ({@link MultiTypeStateWithBitSet} and {@link MultiTypeStateWithArray}) including their underlying
+ * data structures ({@link BitSet} vs {@code int[]}) and tries to choose the most effective
+ * implementation of the given operation. We try to proactively (and sometimes optimistically)
+ * compute the result into {@link MultiTypeStateWithArray} whenever the inputs suggest it is
+ * guaranteed or at least likely that the cardinality of the result will satisfy the
+ * {@link PointstoOptions#MultiTypeStateArrayBitSetThreshold}. Most methods implement fast paths
+ * specialized for {@link MultiTypeStateWithArray}, with fallbacks to the bit-set based
+ * implementations for larger sets.
+ */
 public class DefaultAnalysisPolicy extends AnalysisPolicy {
+
+    /**
+     * This field holds pre-allocated int arrays used by the fast paths for
+     * {@link MultiTypeStateWithArray}. We do this to avoid needless allocation of the array in
+     * speculative cases such as {@link #maybeMergeArrayBasedTypeStates}, where we sometimes have to
+     * fall back to bitset-based handling. Furthermore, the final length is not always known
+     * beforehand, for example in {@link #subtractIntoArrayBased}. Therefore, we compute the result
+     * in the thread-local array first and then only do one appropriately-sized allocation at the
+     * end of the operation to create a subarray based on the thread-local array. Since the next
+     * operation will again start filling the thread-local array from the beginning, it is not even
+     * necessary to clear it between operations. However, it is important to not let the
+     * thread-local array escape and become a part of any {@link MultiTypeStateWithArray} as that
+     * would cause hard-to-debug errors. We check this via assertion in
+     * {@link #multiTypeState(PointsToAnalysis,boolean,int[])}.
+     * <p>
+     * This field is intentionally not static, because the size of the thread-local array depends on
+     * {@link PointstoOptions#MultiTypeStateArrayBitSetIntersectionSpeculationThreshold}. Note,
+     * however, that this class is a singleton, so the field is effectively still static.
+     */
+    private final ThreadLocal<int[]> threadLocalTypeIdArray;
 
     public DefaultAnalysisPolicy(OptionValues options) {
         super(options);
+        threadLocalTypeIdArray = ThreadLocal.withInitial(() -> new int[multiTypeStateArrayBitSetIntersectionSpeculationThreshold]);
     }
 
     @Override
@@ -161,14 +199,14 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public FieldTypeStore createFieldTypeStore(PointsToAnalysis bb, AnalysisObject object, AnalysisField field, AnalysisUniverse universe) {
-        assert object.isContextInsensitiveObject() : object;
+    public FieldTypeStore createFieldTypeStore(PointsToAnalysis bb, AnalysisObject object, PointsToAnalysisField field, AnalysisUniverse universe) {
+        assert object.isContextInsensitiveObject() : "Object should be context insensitive: " + object;
         return new UnifiedFieldTypeStore(field, object, new FieldTypeFlow(field, field.getType(), object));
     }
 
     @Override
     public ArrayElementsTypeStore createArrayElementsTypeStore(AnalysisObject object, AnalysisUniverse universe) {
-        assert object.isContextInsensitiveObject() : object;
+        assert object.isContextInsensitiveObject() : "Object should be context insensitive: " + object;
         if (object.type().isArray()) {
             if (aliasArrayTypeFlows) {
                 /* Alias all array type flows using the elements type flow model of Object type. */
@@ -184,26 +222,26 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
+    public AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod, TypeFlow<?>[] actualParameters,
+                    ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
         return new DefaultVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     @Override
-    public AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
+    public AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod, TypeFlow<?>[] actualParameters,
+                    ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
         return new DefaultSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     @Override
-    public AbstractStaticInvokeTypeFlow createStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
+    public AbstractStaticInvokeTypeFlow createStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod, TypeFlow<?>[] actualParameters,
+                    ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
         return new DefaultStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     @Override
-    public InvokeTypeFlow createDeoptInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
+    public InvokeTypeFlow createDeoptInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod, TypeFlow<?>[] actualParameters,
+                    ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
         if (targetMethod.isStatic()) {
             return new DefaultStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey, true);
         } else {
@@ -276,7 +314,20 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public MultiTypeState multiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, int typesCount, AnalysisObject... objects) {
-        return PointsToStats.registerTypeState(bb, new MultiTypeState(canBeNull, typesBitSet, typesCount));
+        assert typesCount == typesBitSet.cardinality() : typesCount + " vs " + typesBitSet.cardinality();
+        assert typesCount > bb.analysisPolicy().multiTypeStateArrayBitSetThreshold() : Assertions.errorMessageContext("BitSet-based MultiTypeState should only be used for larger sets, typesCount",
+                        typesCount, "threshold", bb.analysisPolicy().multiTypeStateArrayBitSetThreshold());
+        return PointsToStats.registerTypeState(bb, new MultiTypeStateWithBitSet(canBeNull, typesBitSet, typesCount));
+    }
+
+    /**
+     * Create an instance of {@link MultiTypeStateWithArray}, register it in {@link PointsToStats}.
+     */
+    public MultiTypeStateWithArray multiTypeState(PointsToAnalysis bb, boolean canBeNull, int[] typeIds) {
+        assert typeIds != threadLocalTypeIdArray.get() : "The pre-allocated thread-local array should not be shared.";
+        assert typeIds.length <= bb.analysisPolicy().multiTypeStateArrayBitSetThreshold() : "MultiTypeStates with size above the MultiTypeStateArrayBitSetThreshold value " +
+                        bb.analysisPolicy().multiTypeStateArrayBitSetThreshold() + " should use bitsets.";
+        return PointsToStats.registerTypeState(bb, new MultiTypeStateWithArray(canBeNull, typeIds));
     }
 
     /*
@@ -322,9 +373,18 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
              * The inputs have different types, so the result is a MultiTypeState. We know the
              * types, just construct the types bit set.
              */
-            BitSet typesBitSet = TypeStateUtils.newBitSet(s1.exactType().getId(), s2.exactType().getId());
-            assert typesBitSet.cardinality() == 2 : typesBitSet;
-            TypeState result = multiTypeState(bb, resultCanBeNull, typesBitSet, 2);
+            var leftId = s1.exactType().getId();
+            var rightId = s2.exactType().getId();
+            TypeState result;
+            int resultSize = 2;
+            if (resultSize <= bb.analysisPolicy().multiTypeStateArrayBitSetThreshold()) {
+                int[] typeIds = leftId < rightId ? new int[]{leftId, rightId} : new int[]{rightId, leftId};
+                result = multiTypeState(bb, resultCanBeNull, typeIds);
+            } else {
+                BitSet typesBitSet = TypeStateUtils.newBitSet(s1.exactType().getId(), s2.exactType().getId());
+                assert typesBitSet.cardinality() == 2 : typesBitSet;
+                result = multiTypeState(bb, resultCanBeNull, typesBitSet, resultSize);
+            }
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
             return result;
         }
@@ -341,7 +401,18 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             /* The type of s2 is already contained in s1. */
             return s1.forCanBeNull(bb, resultCanBeNull);
         } else {
-            BitSet typesBitSet = TypeStateUtils.set(s1.typesBitSet(), s2.exactType().getId());
+            BitSet typesBitSet;
+            if (s1 instanceof MultiTypeStateWithArray withArray) {
+                /* We know the type is not in s1, so the size will increase by 1. */
+                if (withArray.typesCount() + 1 <= bb.analysisPolicy().multiTypeStateArrayBitSetThreshold()) {
+                    /* Create a new array-based type state with the extra type inserted in. */
+                    return multiArrayTypeStateWithExtraType(bb, s2.exactType(), withArray, resultCanBeNull);
+                }
+                typesBitSet = TypeStateUtils.newBitSet(withArray, s2.exactType());
+            } else {
+                typesBitSet = ((MultiTypeStateWithBitSet) s1).typesBitSet();
+                typesBitSet = TypeStateUtils.set(typesBitSet, s2.exactType().getId());
+            }
             int typesCount = s1.typesCount() + 1;
             assert typesCount == typesBitSet.cardinality() : typesBitSet;
             MultiTypeState result = multiTypeState(bb, resultCanBeNull, typesBitSet, typesCount);
@@ -350,32 +421,147 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         }
     }
 
+    /**
+     * Create a new {@link MultiTypeStateWithArray} state based on the {@code originalTypeState},
+     * extended with {@code newType}.
+     */
+    private MultiTypeStateWithArray multiArrayTypeStateWithExtraType(PointsToAnalysis bb, AnalysisType newType, MultiTypeStateWithArray originalTypeState, boolean resultCanBeNull) {
+        assert !originalTypeState.containsType(newType) : newType + " should not be in the TypeState: " + originalTypeState;
+        var newTypeId = newType.getId();
+        var oldTypeIds = originalTypeState.getTypeIdArray();
+        assert oldTypeIds.length + 1 <= bb.analysisPolicy().multiTypeStateArrayBitSetThreshold() : Assertions
+                        .errorMessageContext("The resulting array-based type state would be too large, originalTypeState", originalTypeState);
+        var newTypeIds = new int[oldTypeIds.length + 1];
+        if (newTypeId < oldTypeIds[0]) {
+            /* Fastpath if the new element will be at the beginning */
+            newTypeIds[0] = newTypeId;
+            System.arraycopy(oldTypeIds, 0, newTypeIds, 1, oldTypeIds.length);
+        } else if (newTypeId > oldTypeIds[oldTypeIds.length - 1]) {
+            /* Fastpath if the new element will be at the end */
+            System.arraycopy(oldTypeIds, 0, newTypeIds, 0, oldTypeIds.length);
+            newTypeIds[oldTypeIds.length] = newTypeId;
+        } else {
+            /* Find where to insert the new id using binary search. */
+            int insertionPoint = Arrays.binarySearch(oldTypeIds, newTypeId);
+            assert insertionPoint < 0 : newType + " should not be present in " + originalTypeState;
+            /* Extract the proper index for insertion. */
+            insertionPoint = (-insertionPoint) - 1;
+            if (insertionPoint > 0) {
+                /* Copy the smaller elements. */
+                System.arraycopy(oldTypeIds, 0, newTypeIds, 0, insertionPoint);
+            }
+            /* Insert the new element. */
+            newTypeIds[insertionPoint] = newTypeId;
+            if (insertionPoint < oldTypeIds.length) {
+                /* Copy the bigger elements. */
+                System.arraycopy(oldTypeIds, insertionPoint, newTypeIds, insertionPoint + 1, oldTypeIds.length - insertionPoint);
+            }
+        }
+        return multiTypeState(bb, resultCanBeNull, newTypeIds);
+    }
+
+    /**
+     * Helper method to extract a {@link BitSet} representing the set of types in the given
+     * {@code typeState}. Depending on the type of the {@link MultiTypeState}, this may be either
+     * cheap field access (for {@link MultiTypeStateWithBitSet}, or a more expensive construction of
+     * the {@link BitSet} from {@code typeId} array (for {@link MultiTypeStateWithArray}), which
+     * should be exercised rarely (should happen in ~1% of calls).
+     */
+    private static BitSet getBitSet(MultiTypeState typeState) {
+        return switch (typeState) {
+            case MultiTypeStateWithBitSet withBitSet -> withBitSet.typesBitSet();
+            case MultiTypeStateWithArray withArray -> TypeStateUtils.bitSetFromArray(withArray);
+        };
+    }
+
     @Override
     public TypeState doUnion(PointsToAnalysis bb, MultiTypeState s1, MultiTypeState s2) {
         assert s1.typesCount() >= s2.typesCount() : s1 + ", " + s2;
 
         boolean resultCanBeNull = s1.canBeNull() || s2.canBeNull();
 
+        if (s1 instanceof MultiTypeStateWithArray withArray1 && s2 instanceof MultiTypeStateWithArray withArray2) {
+            /*
+             * Try to optimize only if both are array-based, because otherwise the union has to be
+             * bitset-based anyway (it won't get smaller).
+             */
+            TypeState result = maybeMergeArrayBasedTypeStates(bb, withArray1, withArray2, resultCanBeNull);
+            if (result != null) {
+                return result;
+            }
+        }
+        var bitSet1 = getBitSet(s1);
+        var bitSet2 = getBitSet(s2);
+
         /*
          * No need for a deep equality check (which would need to iterate the arrays), since the
          * speculation logic below is doing that anyway.
          */
-        if (s1.typesBitSet() == s2.typesBitSet()) {
+        if (bitSet1 == bitSet2) {
             return s1.forCanBeNull(bb, resultCanBeNull);
         }
 
         /* Speculate that s1 is a superset of s2. */
-        if (TypeStateUtils.isSuperset(s1.typesBitSet(), s2.typesBitSet())) {
+        if (TypeStateUtils.isSuperset(bitSet1, bitSet2)) {
             return s1.forCanBeNull(bb, resultCanBeNull);
         }
 
         /* Logical OR the type bit sets. */
-        BitSet resultTypesBitSet = TypeStateUtils.or(s1.typesBitSet(), s2.typesBitSet());
+        BitSet resultTypesBitSet = TypeStateUtils.or(bitSet1, bitSet2);
 
         MultiTypeState result = multiTypeState(bb, resultCanBeNull, resultTypesBitSet, resultTypesBitSet.cardinality());
         assert !result.equals(s1) && !result.equals(s2) : result;
         PointsToStats.registerUnionOperation(bb, s1, s2, result);
         return result;
+    }
+
+    /**
+     * Optimistically try to merge two {@link MultiTypeStateWithArray}s, return {@code null} if the
+     * result exceeds {@link PointstoOptions#MultiTypeStateArrayBitSetThreshold}.
+     */
+    private TypeState maybeMergeArrayBasedTypeStates(PointsToAnalysis bb, MultiTypeStateWithArray left, MultiTypeStateWithArray right, boolean resultCanBeNull) {
+        assert left.typesCount() >= right.typesCount() : left + ", " + right;
+        var leftIds = left.getTypeIdArray();
+        var rightIds = right.getTypeIdArray();
+        int currLen = 0;
+        int maxResultLen = Math.min(leftIds.length + rightIds.length, bb.analysisPolicy().multiTypeStateArrayBitSetThreshold());
+        int[] result = threadLocalTypeIdArray.get();
+        int leftPos = 0;
+        int rightPos = 0;
+        /* Merge two type id arrays. */
+        while (currLen < maxResultLen && leftPos < leftIds.length && rightPos < rightIds.length) {
+            if (leftIds[leftPos] < rightIds[rightPos]) {
+                result[currLen++] = leftIds[leftPos++];
+            } else if (leftIds[leftPos] > rightIds[rightPos]) {
+                result[currLen++] = rightIds[rightPos++];
+            } else {
+                /* Same type id, insert only once. */
+                result[currLen++] = leftIds[leftPos++];
+                rightPos++;
+            }
+        }
+
+        /* Process leftover elements. */
+        while (currLen < maxResultLen && leftPos < leftIds.length) {
+            result[currLen++] = leftIds[leftPos++];
+        }
+        while (currLen < maxResultLen && rightPos < rightIds.length) {
+            result[currLen++] = rightIds[rightPos++];
+        }
+
+        /* Check if both inputs were fully covered. */
+        if (leftPos == leftIds.length && rightPos == rightIds.length) {
+            /* Check if left (the bigger one) was a superset, reuse it if possible. */
+            if (currLen == leftIds.length) {
+                assert left.isSuperSet(right) : left + " is not a superset of " + right;
+                return left.forCanBeNull(bb, resultCanBeNull);
+            }
+            assert currLen > leftIds.length : "Left type state could be reused. : " + left + ", " + right;
+            return multiTypeState(bb, resultCanBeNull, copySubArray(result, currLen));
+
+        }
+        /* The result is too big, fallback to bitset-based MultiTypeState. */
+        return null;
     }
 
     @Override
@@ -393,14 +579,32 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     public TypeState doIntersection(PointsToAnalysis bb, MultiTypeState s1, MultiTypeState s2) {
         boolean resultCanBeNull = s1.canBeNull() && s2.canBeNull();
 
-        /* Speculate that s1 and s2 have either the same types, or no types in common. */
+        if (s1 instanceof MultiTypeStateWithArray || s2 instanceof MultiTypeStateWithArray) {
+            /* Fastpath if one TypeState is array-based. */
+            return intersectArrayFastPath(bb, s1, s2, resultCanBeNull);
+        }
 
-        if (s1.typesBitSet().equals(s2.typesBitSet())) {
+        /*
+         * Speculate that the result of doIntersection will be small enough to be stored as an array
+         * even though the inputs are bigger. In practice, this is the case over 90% of the time.
+         */
+        if (Math.min(s1.typesCount(), s2.typesCount()) < bb.analysisPolicy().multiTypeStateArrayBitSetIntersectionSpeculationThreshold()) {
+            TypeState result = maybeIntersectIntoArrayBased(bb, ((MultiTypeStateWithBitSet) s1), ((MultiTypeStateWithBitSet) s2), resultCanBeNull);
+            if (result != null) {
+                return result;
+            }
+        }
+        /* Otherwise fallback to the original implementation. */
+
+        /* Speculate that s1 and s2 have either the same types, or no types in common. */
+        var bitSet1 = getBitSet(s1);
+        var bitSet2 = getBitSet(s2);
+        if (bitSet1.equals(bitSet2)) {
             /* Speculate that s1 and s2 have the same types, i.e., the result is s1. */
             return s1.forCanBeNull(bb, resultCanBeNull);
         }
 
-        if (!s1.typesBitSet().intersects(s2.typesBitSet())) {
+        if (!bitSet1.intersects(bitSet2)) {
             /* Speculate that s1 and s2 have no types in common, i.e., the result is empty. */
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
         }
@@ -409,17 +613,19 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
          * Speculate that s2 contains all types of s1, i.e., the filter is broader than s1, thus the
          * result is s1.
          */
-        if (TypeStateUtils.isSuperset(s2.typesBitSet(), s1.typesBitSet())) {
+        if (TypeStateUtils.isSuperset(bitSet2, bitSet1)) {
             return s1.forCanBeNull(bb, resultCanBeNull);
         }
 
-        BitSet resultTypesBitSet = TypeStateUtils.and(s1.typesBitSet(), s2.typesBitSet());
+        BitSet resultTypesBitSet = TypeStateUtils.and(bitSet1, bitSet2);
         int typesCount = resultTypesBitSet.cardinality();
         if (typesCount == 0) {
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
         } else if (typesCount == 1) {
             AnalysisType type = bb.getUniverse().getType(resultTypesBitSet.nextSetBit(0));
             return singleTypeState(bb, resultCanBeNull, type);
+        } else if (typesCount <= bb.analysisPolicy().multiTypeStateArrayBitSetThreshold()) {
+            return PointsToStats.registerTypeState(bb, new MultiTypeStateWithArray(resultCanBeNull, TypeStateUtils.typeIdArrayFromBitSet(resultTypesBitSet)));
         } else {
             MultiTypeState result = multiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount);
             assert !result.equals(s1) : result;
@@ -427,12 +633,122 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         }
     }
 
+    private TypeState maybeIntersectIntoArrayBased(PointsToAnalysis bb, MultiTypeStateWithBitSet s1, MultiTypeStateWithBitSet s2, boolean resultCanBeNull) {
+        MultiTypeStateWithBitSet lo = s1;
+        MultiTypeStateWithBitSet hi = s2;
+        if (s2.typesCount() < s1.typesCount()) {
+            lo = s2;
+            hi = s1;
+        }
+        var maxSize = bb.analysisPolicy().multiTypeStateArrayBitSetThreshold();
+        var resultLen = 0;
+        int[] resultArray = threadLocalTypeIdArray.get();
+        for (Iterator<Integer> iterator = lo.typeIdsIterator(); iterator.hasNext();) {
+            int typeId = iterator.next();
+            if (hi.containsType(typeId)) {
+                if (resultLen == maxSize) {
+                    /* The result does not fit into the array. */
+                    return null;
+                }
+                resultArray[resultLen++] = typeId;
+            }
+        }
+        if (resultLen == 0) {
+            return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
+        } else if (resultLen == 1) {
+            return singleTypeState(bb, resultCanBeNull, bb.getUniverse().getType(resultArray[0]));
+        } else {
+            assert resultLen < lo.typesCount() : "No types were removed, allocating new TypeState is not necessary: " + lo + " " + resultLen;
+            return multiTypeState(bb, resultCanBeNull, copySubArray(resultArray, resultLen));
+        }
+    }
+
+    /**
+     * Copy a subarray from the thread-local pre-allocated array that is to be passed into
+     * {@link #multiTypeState(PointsToAnalysis, boolean, int[])}.
+     */
+    private int[] copySubArray(int[] arr, int len) {
+        assert arr == threadLocalTypeIdArray.get() : "The input should be the pre-allocated thread-local array.";
+        return Arrays.copyOf(arr, len);
+    }
+
+    /**
+     * Optimized intersection when one of the {@link MultiTypeState}s is
+     * {@link MultiTypeStateWithArray}, as the result will also be small enough to be array-based.
+     */
+    private TypeState intersectArrayFastPath(PointsToAnalysis bb, MultiTypeState s1, MultiTypeState s2, boolean resultCanBeNull) {
+        assert s1 instanceof MultiTypeStateWithArray || s2 instanceof MultiTypeStateWithArray : "At least one of the MultiTypeStates should be array-based: " + s1 + ", " + s2;
+        var resultArray = threadLocalTypeIdArray.get();
+        int len = 0;
+        if (s1 instanceof MultiTypeStateWithArray withArray1 && s2 instanceof MultiTypeStateWithArray withArray2) {
+            len = intersectSortedUniqueArrays(withArray1.getTypeIdArray(), withArray2.getTypeIdArray(), resultArray);
+        } else {
+            MultiTypeStateWithArray withArray;
+            MultiTypeStateWithBitSet withBitSet;
+            if (s1 instanceof MultiTypeStateWithArray) {
+                withArray = (MultiTypeStateWithArray) s1;
+                withBitSet = (MultiTypeStateWithBitSet) s2;
+            } else {
+                withArray = (MultiTypeStateWithArray) s2;
+                withBitSet = (MultiTypeStateWithBitSet) s1;
+            }
+            for (int typeId : withArray.getTypeIdArray()) {
+                if (withBitSet.containsType(typeId)) {
+                    resultArray[len++] = typeId;
+                }
+            }
+        }
+        if (len == 0) {
+            return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
+        } else if (len == 1) {
+            return singleTypeState(bb, resultCanBeNull, bb.getUniverse().getType(resultArray[0]));
+        } else if (len == s1.typesCount()) {
+            /* withArray was a subset, can be returned. */
+            return s1.forCanBeNull(bb, resultCanBeNull);
+        } else if (len == s2.typesCount()) {
+            /* other was a subset, can be returned. */
+            return s2.forCanBeNull(bb, resultCanBeNull);
+        } else {
+            assert len < s1.typesCount() : "No types were removed, allocating new TypeState is not necessary: " + s1 + ", " + len;
+            assert len < s2.typesCount() : "No types were removed, allocating new TypeState is not necessary: " + s2 + ", " + len;
+            return multiTypeState(bb, resultCanBeNull, copySubArray(resultArray, len));
+        }
+    }
+
+    /**
+     * Intersect input arrays, writing the result in the caller-provided result array of sufficient
+     * size. Return the count such that the caller can know the valid slice of result array. If
+     * result array is larger than the intersection, leftover entries remain unchanged.
+     */
+    private static int intersectSortedUniqueArrays(int[] typeIdArray1, int[] typeIdArray2, int[] resultArray) {
+        assert resultArray.length >= Math.min(typeIdArray1.length, typeIdArray2.length);
+        int idx1 = 0;
+        int idx2 = 0;
+        int idxr = 0;
+        while (idx1 < typeIdArray1.length && idx2 < typeIdArray2.length) {
+            if (typeIdArray1[idx1] == typeIdArray2[idx2]) {
+                resultArray[idxr++] = typeIdArray1[idx1];
+                idx1++;
+                idx2++;
+            } else if (typeIdArray1[idx1] < typeIdArray2[idx2]) {
+                idx1++;
+            } else {
+                idx2++;
+            }
+        }
+        return idxr;
+    }
+
     @Override
     public TypeState doSubtraction(PointsToAnalysis bb, MultiTypeState s1, SingleTypeState s2) {
         boolean resultCanBeNull = s1.canBeNull() && !s2.canBeNull();
         if (s1.containsType(s2.exactType())) {
+            if (s1.typesCount() - 1 <= bb.analysisPolicy().multiTypeStateArrayBitSetThreshold()) {
+                /* -1 because 1 type will be removed for sure. */
+                return subtractIntoArrayBased(bb, s1, s2, resultCanBeNull);
+            }
             /* s2 is contained in s1, so remove s2's type from s1. */
-            BitSet resultTypesBitSet = TypeStateUtils.clear(s1.typesBitSet(), s2.exactType().getId());
+            BitSet resultTypesBitSet = TypeStateUtils.clear(((MultiTypeStateWithBitSet) s1).typesBitSet(), s2.exactType().getId());
             int typesCount = resultTypesBitSet.cardinality();
             assert typesCount > 0 : typesCount;
             if (typesCount == 1) {
@@ -450,14 +766,21 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     public TypeState doSubtraction(PointsToAnalysis bb, MultiTypeState s1, MultiTypeState s2) {
         boolean resultCanBeNull = s1.canBeNull() && !s2.canBeNull();
 
-        /* Speculate that s1 and s2 have either the same types, or no types in common. */
+        if (s1 instanceof MultiTypeStateWithArray) {
+            /* If s1 is array-based, hence small, the result will not be any bigger. */
+            return subtractIntoArrayBased(bb, s1, s2, resultCanBeNull);
+        }
 
-        if (s1.typesBitSet().equals(s2.typesBitSet())) {
+        /* Speculate that s1 and s2 have either the same types, or no types in common. */
+        var bitSet1 = getBitSet(s1);
+        var bitSet2 = getBitSet(s2);
+
+        if (bitSet1.equals(bitSet2)) {
             /* Speculate that s1 and s2 have the same types, i.e., the result is empty set. */
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
         }
 
-        if (!s1.typesBitSet().intersects(s2.typesBitSet())) {
+        if (!bitSet1.intersects(bitSet2)) {
             /* Speculate that s1 and s2 have no types in common, i.e., the result is s1. */
             return s1.forCanBeNull(bb, resultCanBeNull);
         }
@@ -466,19 +789,48 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
          * Speculate that s2 contains all types of s1, i.e., the filter is broader than s1, thus the
          * result is empty.
          */
-        if (TypeStateUtils.isSuperset(s2.typesBitSet(), s1.typesBitSet())) {
+        if (TypeStateUtils.isSuperset(bitSet2, bitSet1)) {
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
         }
 
-        BitSet resultTypesBitSet = TypeStateUtils.andNot(s1.typesBitSet(), s2.typesBitSet());
+        BitSet resultTypesBitSet = TypeStateUtils.andNot(bitSet1, bitSet2);
         int typesCount = resultTypesBitSet.cardinality();
         if (typesCount == 0) {
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
         } else if (typesCount == 1) {
             AnalysisType type = bb.getUniverse().getType(resultTypesBitSet.nextSetBit(0));
             return singleTypeState(bb, resultCanBeNull, type);
+        } else if (typesCount <= bb.analysisPolicy().multiTypeStateArrayBitSetThreshold()) {
+            return PointsToStats.registerTypeState(bb, new MultiTypeStateWithArray(resultCanBeNull, TypeStateUtils.typeIdArrayFromBitSet(resultTypesBitSet)));
         } else {
             return multiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount);
+        }
+    }
+
+    /**
+     * Optimized subtraction when the result is known to be small-enough to be array-based.
+     */
+    private TypeState subtractIntoArrayBased(PointsToAnalysis bb, TypeState source, TypeState toRemove, boolean resultCanBeNull) {
+        assert source.typesCount() <= bb.analysisPolicy().multiTypeStateArrayBitSetThreshold() + 1 : "The source type state is too large, explicit iteration could be slow: " + source;
+        var resultArray = threadLocalTypeIdArray.get();
+        int len = 0;
+        for (Iterator<Integer> iterator = source.typeIdsIterator(); iterator.hasNext();) {
+            int typeId = iterator.next();
+            if (!toRemove.containsType(typeId)) {
+                resultArray[len++] = typeId;
+            }
+        }
+        if (len == 0) {
+            return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
+        } else if (len == 1) {
+            return singleTypeState(bb, resultCanBeNull, bb.getUniverse().getType(resultArray[0]));
+        } else if (len == source.typesCount()) {
+            /* Nothing was removed, reuse input. */
+            return source.forCanBeNull(bb, resultCanBeNull);
+        } else {
+            assert len < source.typesCount() : "No types were removed, allocating new TypeState is not necessary: " + source + " " + len;
+            assert len <= bb.analysisPolicy().multiTypeStateArrayBitSetThreshold() : "Post condition check failed: the resulting type state is not small enough: " + source;
+            return multiTypeState(bb, resultCanBeNull, copySubArray(resultArray, len));
         }
     }
 

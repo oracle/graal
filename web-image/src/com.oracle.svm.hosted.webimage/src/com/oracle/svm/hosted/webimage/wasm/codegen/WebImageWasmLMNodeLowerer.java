@@ -122,6 +122,7 @@ import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.replacements.DimensionsNode;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.ZeroMemoryNode;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.vm.ci.code.Register;
@@ -324,6 +325,8 @@ public class WebImageWasmLMNodeLowerer extends WebImageWasmNodeLowerer {
             return lowerCompression(compression, reqs);
         } else if (n instanceof UnaryNode unary) {
             return lowerUnary(unary);
+        } else if (n instanceof UnaryMathIntrinsicGenerationNode unaryMathIntrinsicGenerationNode) {
+            return lowerUnaryMathIntrinsicGeneration(unaryMathIntrinsicGenerationNode);
         } else if (n instanceof ConditionalNode conditional) {
             return lowerConditional(conditional);
         } else if (n instanceof PiNode pi) {

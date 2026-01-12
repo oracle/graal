@@ -24,9 +24,12 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.graalvm.word.WordBase;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -35,6 +38,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -42,7 +46,9 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public abstract class HostedType extends HostedElement implements SharedType, WrappedJavaType, OriginalClassProvider {
 
@@ -60,12 +66,20 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     private final HostedInterface[] interfaces;
 
     protected HostedArrayClass arrayType;
+
+    /**
+     * Sentinel marker for the uninitialized state of {@link #permittedSubclasses}. Indicates that
+     * the permitted subclasses (for sealed types) has not yet been computed. Distinguishes this
+     * state from both a computed {@code null} (not sealed) and a computed list (which may be
+     * empty).
+     */
+    private static final List<? extends HostedType> PERMITTED_SUBCLASSES_UNINITIALIZED = new ArrayList<>();
+    private List<? extends HostedType> permittedSubclasses = PERMITTED_SUBCLASSES_UNINITIALIZED;
     protected HostedType[] subTypes;
     protected HostedField[] staticFields;
 
     boolean loadedFromPriorLayer;
     protected int typeID;
-    protected HostedType uniqueConcreteImplementation;
     protected HostedMethod[] allDeclaredMethods;
 
     // region closed-world only fields
@@ -140,13 +154,27 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     // endregion open-world only fields
 
     /**
-     * A more precise subtype that can replace this type as the declared type of values. Null if
-     * this type is never instantiated and does not have any instantiated subtype, i.e., if no value
-     * of this type can ever exist. Equal to this type if this type is instantiated, i.e, this type
-     * cannot be strengthened.
-     * 
-     * For open world the strengthen stamp type is equal to this type itself if the type is not a
-     * leaf type, i.e., it cannot be extended.
+     * The unique implementor of this type that can replace it in stamps as an exact type.
+     * <p>
+     * A {@code null} value means there is no unique implementor that can replace this type. The
+     * field is set to this type itself if it has no instantiated subtypes to enable its usage as an
+     * exact type, e.g., in places where the original stamp was non-exact.
+     * <p>
+     * In open-world analysis the field is set to {@code null} for non-leaf types since we have to
+     * assume that there may be some instantiated subtypes that we haven't seen yet.
+     */
+    protected HostedType uniqueConcreteImplementation;
+
+    /**
+     * A more precise subtype that can replace this type as the declared type of values.
+     * <p>
+     * A {@code null} value means that this type is never instantiated and does not have any
+     * instantiated subtype, i.e., no value of this type can ever exist and the code using this type
+     * is unreachable. It is set to this type if this type is itself instantiated or has more than
+     * one instantiated direct subtype, i.e, this type cannot be strengthened.
+     * <p>
+     * In open-world analysis the field is set to this type itself for non-leaf types since we have
+     * to assume that there may be some instantiated subtypes that we haven't seen yet.
      */
     protected HostedType strengthenStampType;
 
@@ -359,6 +387,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
+        return universe.lookup(wrapped.lookupType(unresolvedJavaType, resolve));
+    }
+
+    @Override
     public final boolean hasFinalizer() {
         /* We just ignore finalizers. */
         return false;
@@ -389,6 +422,23 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     @Override
     public final HostedArrayClass getArrayClass() {
         return arrayType;
+    }
+
+    @Override
+    public boolean isHidden() {
+        return wrapped.isHidden();
+    }
+
+    @Override
+    public List<? extends HostedType> getPermittedSubclasses() {
+        if (isPrimitive() || isArray()) {
+            return null;
+        }
+        if (permittedSubclasses == PERMITTED_SUBCLASSES_UNINITIALIZED) {
+            List<? extends AnalysisType> aPermittedSubclasses = wrapped.getPermittedSubclasses();
+            permittedSubclasses = aPermittedSubclasses == null ? null : aPermittedSubclasses.stream().map(universe::lookup).collect(Collectors.toUnmodifiableList());
+        }
+        return permittedSubclasses;
     }
 
     public HostedType getArrayClass(int dimension) {
@@ -516,8 +566,27 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
+    public HostedMethod getEnclosingMethod() {
+        return universe.lookup(wrapped.getEnclosingMethod());
+    }
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        ResolvedJavaType[] declaredTypes = wrapped.getDeclaredTypes();
+        for (int i = 0; i < declaredTypes.length; i++) {
+            declaredTypes[i] = universe.lookup(declaredTypes[i]);
+        }
+        return declaredTypes;
+    }
+
+    @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
         return getDeclaredConstructors(true);
+    }
+
+    @Override
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        return wrapped.getRecordComponents();
     }
 
     @Override
@@ -557,6 +626,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
+    public boolean isRecord() {
+        return wrapped.isRecord();
+    }
+
+    @Override
     public boolean hasDefaultMethods() {
         return wrapped.hasDefaultMethods();
     }
@@ -569,12 +643,6 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     @Override
     public boolean isCloneableWithAllocation() {
         return wrapped.isCloneableWithAllocation();
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        return universe.lookup(wrapped.getHostClass());
     }
 
     @Override

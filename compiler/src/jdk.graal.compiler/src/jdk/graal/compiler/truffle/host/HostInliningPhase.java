@@ -42,8 +42,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
-import com.oracle.truffle.compiler.HostMethodInfo;
-
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.debug.Assertions;
@@ -82,6 +80,7 @@ import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.truffle.HostMethodInfo;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -455,7 +454,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                      * Some if conditions may have already been converted to guards at this point.
                      * For guards that are protected inInterpreter blocks we need to mark all
                      * following blocks as inInterpreter blocks. We also mark all following fixed
-                     * nodes as inInterpeter by setting a local variable guardedByInInterpreter to
+                     * nodes as inInterpreter by setting a local variable guardedByInInterpreter to
                      * true.
                      */
                     FixedGuardNode guard = (FixedGuardNode) node;
@@ -907,7 +906,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
 
     /**
      * Returns <code>true</code> if a call tree should get inlined, otherwise <code>false</code>.
-     * This method does not yet make determine wheter the call site is in budget. See
+     * This method does not yet determine whether the call site is in budget. See
      * {@link #isInBudget(CallTree, int, int)} for that.
      */
     private boolean shouldInline(InliningPhaseContext context, CallTree call) {
@@ -1013,7 +1012,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
          * or non-direct virtual calls.
          */
         if (call.subTreeFastPathInvokes >= context.maxSubtreeInvokes) {
-            call.reason = "call has too many fast-path invokes - too complex, please optimize, see truffle/docs/HostOptimization.md";
+            call.reason = "call has too many fast-path invokes - too complex, please optimize, see truffle/docs/HostCompilation.md";
             return false;
         }
 

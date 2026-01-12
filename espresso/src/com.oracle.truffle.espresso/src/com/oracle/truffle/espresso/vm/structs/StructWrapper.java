@@ -28,14 +28,18 @@ import static com.oracle.truffle.espresso.ffi.NativeType.INT;
 import static com.oracle.truffle.espresso.ffi.NativeType.LONG;
 import static com.oracle.truffle.espresso.ffi.NativeType.OBJECT;
 import static com.oracle.truffle.espresso.ffi.NativeType.POINTER;
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.jni.JNIHandles;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.structs.GenerateStructs.KnownStruct;
 
@@ -50,9 +54,10 @@ import com.oracle.truffle.espresso.vm.structs.GenerateStructs.KnownStruct;
  * the processor will generate two classes for each of them:
  * <ul>
  * <li>A {@link StructStorage storage class} to store the size of the struct, and the offsets of
- * each struct member. It also provides a {@link StructStorage#wrap(JNIHandles, TruffleObject)}
- * method, that returns an instance of {@link StructWrapper this class}. These classes are intended
- * to be per-context singletons.</li>
+ * each struct member. It also provides a
+ * {@link StructStorage#wrap(JNIHandles,NativeMemory, TruffleObject)} method, that returns an
+ * instance of {@link StructWrapper this class}. These classes are intended to be per-context
+ * singletons.</li>
  * <li>A {@link StructWrapper wrapper class}, as described above. This generated class will also
  * have public getters and setters for each member of the struct.</li>
  * </ul>
@@ -769,13 +774,25 @@ public abstract class StructWrapper {
     }
 
     public void free(NativeAccess nativeAccess) {
-        nativeAccess.freeMemory(pointer);
+        try {
+            nativeAccess.nativeMemory().freeMemory(NativeUtils.interopAsPointer(pointer));
+        } catch (IllegalMemoryAccessException e) {
+            // Should not reach here as we are in control of the arguments!
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere(e);
+        }
     }
 
-    protected StructWrapper(JNIHandles handles, TruffleObject pointer, long capacity) {
+    protected StructWrapper(JNIHandles handles, NativeMemory nativeMemory, TruffleObject pointer, long capacity) {
         this.handles = handles;
         this.pointer = pointer;
-        this.buffer = NativeUtils.directByteBuffer(pointer, capacity);
+        try {
+            this.buffer = nativeMemory.wrapNativeMemory(NativeUtils.interopAsPointer(pointer), Math.toIntExact(capacity));
+        } catch (IllegalMemoryAccessException e) {
+            // Should not reach here as we are in control of the arguments!
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere(e);
+        }
     }
 
     protected boolean getBoolean(int offset) {

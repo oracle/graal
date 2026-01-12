@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.util.Set;
 
-import org.graalvm.nativeimage.AnnotationAccess;
-
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -41,14 +39,16 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ReachabilityRegistrationNode;
+import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.methodhandles.MethodHandleInvokerRenamingSubstitutionProcessor;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.iterators.NodePredicate;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
@@ -59,12 +59,14 @@ import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.FullInfopointNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LogicConstantNode;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.UnwindNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.MinMaxNode;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
@@ -157,7 +159,7 @@ public class InlineBeforeAnalysisPolicyUtils {
                     (Class<? extends Annotation>) ReflectionUtil.lookupClass("java.lang.invoke.LambdaForm$Compiled");
 
     public static boolean isMethodHandleIntrinsificationRoot(ResolvedJavaMethod method) {
-        return AnnotationAccess.isAnnotationPresent(method, COMPILED_LAMBDA_FORM_ANNOTATION);
+        return AnnotationUtil.isAnnotationPresent(method, COMPILED_LAMBDA_FORM_ANNOTATION);
     }
 
     public boolean isScopedMethod(ResolvedJavaMethod method) {
@@ -191,7 +193,7 @@ public class InlineBeforeAnalysisPolicyUtils {
          * other phases.
          */
         if (isScopedMethod(b.getMethod()) &&
-                        (AnnotationAccess.isAnnotationPresent(method, AlwaysInline.class) || AnnotationAccess.isAnnotationPresent(method, ForceInline.class))) {
+                        (AnnotationUtil.isAnnotationPresent(method, AlwaysInline.class) || AnnotationUtil.isAnnotationPresent(method, ForceInline.class))) {
             return false;
         }
 
@@ -245,14 +247,14 @@ public class InlineBeforeAnalysisPolicyUtils {
         if (hostVM.neverInlineTrivial(caller, callee)) {
             return false;
         }
-        if (AnnotationAccess.isAnnotationPresent(callee, Fold.class) || AnnotationAccess.isAnnotationPresent(callee, Node.NodeIntrinsic.class)) {
+        if (AnnotationUtil.isAnnotationPresent(callee, Fold.class) || AnnotationUtil.isAnnotationPresent(callee, Node.NodeIntrinsic.class)) {
             /*
              * We should never see a call to such a method. But if we do, do not inline them
              * otherwise we miss the opportunity later to report it as an error.
              */
             return false;
         }
-        if (AnnotationAccess.isAnnotationPresent(callee, RestrictHeapAccess.class)) {
+        if (AnnotationUtil.isAnnotationPresent(callee, RestrictHeapAccess.class)) {
             /*
              * This is conservative. We do not know the caller's heap restriction state yet because
              * that can only be computed after static analysis (it relies on the call graph produced
@@ -466,10 +468,20 @@ public class InlineBeforeAnalysisPolicyUtils {
                 return true;
             }
 
-            if (node instanceof ReachabilityRegistrationNode) {
+            if (node instanceof MinMaxNode<?> minMax && minMax.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
                 /*
-                 * These nodes do not affect compilation and are only used to execute handlers
-                 * depending on their reachability.
+                 * After GR-68934, we use MinMaxNode to represent certain min/max computations that
+                 * were previously represented using ConditionalNode. Such nodes were previously
+                 * matched by the case above, so we must continue to allow inlining for them to
+                 * avoid regressions.
+                 */
+                return true;
+            }
+
+            if (node instanceof AbstractAnalysisMetadataTrackingNode) {
+                /*
+                 * These nodes do not affect compilation and are only used to track inlined method
+                 * information or execute handlers depending on their reachability.
                  */
                 return true;
             }
@@ -569,7 +581,7 @@ public class InlineBeforeAnalysisPolicyUtils {
                     ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle$StaticAccessor"), "checkCast", Object.class));
 
     private static boolean inlineForMethodHandleIntrinsification(AnalysisMethod method) {
-        return AnnotationAccess.isAnnotationPresent(method, ForceInline.class) ||
+        return AnnotationUtil.isAnnotationPresent(method, ForceInline.class) ||
                         isMethodHandleIntrinsificationRoot(method) ||
                         INLINE_METHOD_HANDLE_CLASSES.contains(method.getDeclaringClass().getJavaClass()) ||
                         isManuallyListed(method.getJavaMethod());

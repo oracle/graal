@@ -50,6 +50,8 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
+import com.oracle.truffle.dsl.processor.model.NodeData;
+import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.Template;
 
 /**
@@ -66,6 +68,7 @@ public class CustomOperationModel extends Template {
     public final List<TypeMirror> implicitTags = new ArrayList<>();
     public Boolean forceCached;
     public boolean customYield;
+    public Boolean storeBytecodeIndex;
 
     public CustomOperationModel(ProcessorContext context, BytecodeDSLModel bytecode, TypeElement templateType, AnnotationMirror mirror, OperationModel operation) {
         super(context, templateType, mirror);
@@ -114,6 +117,81 @@ public class CustomOperationModel extends Template {
             return List.of(operation.instruction.nodeData);
         }
         return List.of();
+    }
+
+    public void setStoreBytecodeIndex(Boolean performsCalls) {
+        this.storeBytecodeIndex = performsCalls;
+    }
+
+    public boolean isStoreBytecodeIndex() {
+        return storeBytecodeIndex == null ? true : storeBytecodeIndex;
+    }
+
+    public boolean isStoreBytecodeIndexSet() {
+        return storeBytecodeIndex != null;
+    }
+
+    public boolean inferStoreBytecodeIndex() {
+        NodeData node = this.operation.instruction.nodeData;
+        if (node == null) {
+            // not a custom node, so not bytecode index to store
+            return false;
+        }
+        for (SpecializationData specializationData : node.getReachableSpecializations()) {
+            if (inferStoreBytecodeIndex(specializationData)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * To avoid storing the bci in cases when the operation is simple, we use the heuristic that a
+     * node will not escape/read its own bci unless it has a cached value. The bci generally escapes
+     * for calls.
+     *
+     * Note: the caches list includes bind values, so @Bind("$node") is included in the check.
+     */
+    @SuppressWarnings("static-method")
+    public boolean inferStoreBytecodeIndex(SpecializationData s) {
+        return !s.getCaches().isEmpty();
+    }
+
+    public boolean shouldStoreBytecodeIndex() {
+        if (isStoreBytecodeIndexSet()) {
+            if (isStoreBytecodeIndex()) {
+                return true;
+            } else {
+                NodeData node = this.operation.instruction.nodeData;
+                if (node == null) {
+                    return false;
+                }
+                for (SpecializationData specializationData : node.getReachableSpecializations()) {
+                    if (shouldStoreBytecodeIndex(specializationData)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        } else {
+            return inferStoreBytecodeIndex();
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    public boolean shouldStoreBytecodeIndex(SpecializationData s) {
+        if (isStoreBytecodeIndexSet()) {
+            if (isStoreBytecodeIndex()) {
+                return inferStoreBytecodeIndex(s);
+            } else {
+                if (s.getMethod() == null) {
+                    return false;
+                }
+                return ElementUtils.findAnnotationMirror(s.getMethod(), ProcessorContext.types().StoreBytecodeIndex) != null;
+            }
+        } else {
+            return inferStoreBytecodeIndex(s);
+        }
     }
 
 }

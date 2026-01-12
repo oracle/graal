@@ -53,7 +53,7 @@ class CollectPLTGOTCallSitesResolutionSupport implements MethodAddressResolution
     public boolean shouldCallViaPLTGOT(SharedMethod caller, SharedMethod callee) {
         boolean shouldCall = resolver.shouldCallViaPLTGOT(caller, callee);
         if (shouldCall) {
-            var callees = callerCalleesMap.computeIfAbsent((HostedMethod) caller, k -> ConcurrentHashMap.newKeySet());
+            var callees = callerCalleesMap.computeIfAbsent((HostedMethod) caller, _ -> ConcurrentHashMap.newKeySet());
             callees.add((HostedMethod) callee);
         }
         return shouldCall;

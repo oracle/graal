@@ -30,6 +30,7 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;

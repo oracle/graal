@@ -141,6 +141,14 @@ public class GeneratorUtils {
         return createConstructorUsingFields(modifiers, clazz, superConstructor);
     }
 
+    public static void addCompilationFinal(CodeVariableElement v, int dimensions) {
+        CodeAnnotationMirror mirror = new CodeAnnotationMirror(ProcessorContext.types().CompilerDirectives_CompilationFinal);
+        v.getAnnotationMirrors().add(mirror);
+        if (dimensions >= 0) {
+            mirror.setElementValue("dimensions", new CodeAnnotationValue(dimensions));
+        }
+    }
+
     public static void addBoundaryOrTransferToInterpreter(CodeExecutableElement method, CodeTreeBuilder builder) {
         if (builder != null && method != builder.findMethod()) {
             throw new AssertionError("Expected " + method + " but was " + builder.findMethod());

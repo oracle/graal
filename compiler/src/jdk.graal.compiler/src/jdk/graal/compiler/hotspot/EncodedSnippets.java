@@ -349,7 +349,7 @@ public class EncodedSnippets {
             nodePlugins = new NodePlugin[]{new SnippetCounterFoldingPlugin()};
         }
 
-        try (DebugContext debug = replacements.openDebugContext("LibGraal", method, options)) {
+        try (DebugContext debug = replacements.openSnippetDebugContext("LibGraal", method, options)) {
             // @formatter:off
             boolean isSubstitution = true;
             StructuredGraph result = new StructuredGraph.Builder(options, debug, allowAssumptions)
@@ -393,7 +393,7 @@ public class EncodedSnippets {
                     replacement = result.unique(replacement);
                     constant.replace(result, replacement);
                 } else {
-                    throw new InternalError(constant.toString(Verbosity.Debugger));
+                    throw new InternalError(constant.toString(Verbosity.All));
                 }
             }
         }

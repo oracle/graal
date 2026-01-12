@@ -27,7 +27,6 @@ package com.oracle.svm.configure;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.stream.Stream;
 
 import com.oracle.svm.util.StringUtil;
 
@@ -51,13 +50,16 @@ public interface ConfigurationTypeDescriptor extends Comparable<ConfigurationTyp
     }
 
     static ConfigurationTypeDescriptor fromClass(Class<?> clazz) {
-        Stream<String> interfacesStream = Arrays.stream(clazz.getInterfaces())
-                        .map(Class::getTypeName);
+        Class<?>[] interfaces = clazz.getInterfaces();
+        String[] interfaceNames = new String[interfaces.length];
+        for (int i = 0; i < interfaces.length; i++) {
+            interfaceNames[i] = interfaces[i].getTypeName();
+        }
         if (Proxy.isProxyClass(clazz)) {
-            return ProxyConfigurationTypeDescriptor.fromInterfaceReflectionNames(interfacesStream.toList());
+            return ProxyConfigurationTypeDescriptor.fromInterfaceReflectionNames(Arrays.asList(interfaceNames));
         } else if (LambdaUtils.isLambdaClass(clazz)) {
             String declaringClass = StringUtil.split(clazz.getTypeName(), LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)[0];
-            return LambdaConfigurationTypeDescriptor.fromReflectionNames(declaringClass, interfacesStream.toList());
+            return LambdaConfigurationTypeDescriptor.fromReflectionNames(declaringClass, Arrays.asList(interfaceNames));
         } else {
             return NamedConfigurationTypeDescriptor.fromReflectionName(clazz.getTypeName());
         }

@@ -27,12 +27,9 @@ package com.oracle.svm.hosted.code;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 
 import java.lang.reflect.Modifier;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Supplier;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -54,6 +51,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.graph.Node;
@@ -92,6 +90,7 @@ import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.collections.EconomicSet;
 
 public class DeoptimizationUtils {
 
@@ -136,7 +135,7 @@ public class DeoptimizationUtils {
             return false;
         }
 
-        if (method.getAnnotation(DeoptTest.class) != null) {
+        if (AnnotationUtil.getAnnotation(method, DeoptTest.class) != null) {
             return true;
         }
 
@@ -169,7 +168,7 @@ public class DeoptimizationUtils {
         if (Uninterruptible.Utils.isUninterruptible(method)) {
             return false;
         }
-        if (method.getAnnotation(RestrictHeapAccess.class) != null) {
+        if (AnnotationUtil.getAnnotation(method, RestrictHeapAccess.class) != null) {
             return false;
         }
         if (StubCallingConvention.Utils.hasStubCallingConvention(method)) {
@@ -408,7 +407,7 @@ public class DeoptimizationUtils {
          * Because this graph will have its flowgraph immediately updated after registration, there
          * is no reason to make this method's flowgraph a stub on creation.
          */
-        Collection<ResolvedJavaMethod> recomputeMethods = DeoptimizationUtils.registerDeoptEntries(graph, true,
+        Iterable<ResolvedJavaMethod> recomputeMethods = DeoptimizationUtils.registerDeoptEntries(graph, true,
                         (deoptEntryMethod -> ((PointsToAnalysisMethod) deoptEntryMethod).getOrCreateMultiMethod(DEOPT_TARGET_METHOD)));
 
         AnalysisMethod deoptMethod = aMethod.getMultiMethod(DEOPT_TARGET_METHOD);
@@ -431,9 +430,8 @@ public class DeoptimizationUtils {
     /**
      * @return the DeoptTarget methods which had new frame registered.
      */
-    public static Collection<ResolvedJavaMethod> registerDeoptEntries(StructuredGraph graph, boolean isRoot, DeoptTargetRetriever deoptRetriever) {
-
-        Set<ResolvedJavaMethod> changedMethods = new HashSet<>();
+    public static Iterable<ResolvedJavaMethod> registerDeoptEntries(StructuredGraph graph, boolean isRoot, DeoptTargetRetriever deoptRetriever) {
+        EconomicSet<ResolvedJavaMethod> changedMethods = EconomicSet.create();
         for (FrameState frameState : graph.getNodes(FrameState.TYPE)) {
             if (frameState.hasExactlyOneUsage()) {
                 Node usage = frameState.usages().first();

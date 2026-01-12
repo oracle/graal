@@ -27,7 +27,7 @@ import mx
 import mx_sdk_vm
 import mx_gate
 
-from mx_espresso import _espresso_stability, _has_native_espresso_standalone, _send_sigquit, get_java_home_dep, _jdk_lib_dir, jvm_standalone_with_llvm
+from mx_espresso import _espresso_stability, _send_sigquit, get_java_home_dep, _jdk_lib_dir, jvm_standalone_with_llvm
 from mx_sdk_vm_ng import _find_native_image_command, ThinLauncherProject  # pylint: disable=unused-import
 from mx_sdk_vm_impl import get_final_graalvm_distribution, has_component, graalvm_skip_archive
 
@@ -47,6 +47,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     stability=_espresso_stability,
 ))
 
+def _nfi_llvm_required():
+    # Linux needs nfi-llvm in JVM mode.  Darwin uses nfi-staticlib in JVM mode.
+    return not mx.is_darwin()
+
 def create_ni_standalone(base_standalone_name, register_distribution):
     espresso_suite = mx.suite('espresso')
     base_standalone = espresso_suite.dependency(base_standalone_name, fatalIfMissing=False)
@@ -64,14 +68,20 @@ def create_ni_standalone(base_standalone_name, register_distribution):
                 f'dependency:espresso:{base_standalone_name}/languages/java/lib/<lib:javavm>'
             ]
         else:
-            idx = layout['languages/java/lib/'].index('dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>')
-            layout['languages/java/lib/'][idx] = f'dependency:espresso:{base_standalone_name}/languages/java/lib/<lib:jvm>'
+            idx = layout['languages/java/lib/'].index('dependency:espresso:ESPRESSO_JVM_STANDALONE_MOKAPOT_SUPPORT/*')
+            if mx.is_darwin():
+                del layout['languages/java/lib/'][idx]
+                layout['languages/java/lib/fatpot/'] = [f'dependency:espresso:{base_standalone_name}/languages/java/lib/fatpot/<lib:jvm>']
+            else:
+                layout['languages/java/lib/'][idx] = f'dependency:espresso:{base_standalone_name}/languages/java/lib/<lib:jvm>'
+
             idx = layout['bin/'].index('dependency:espresso:espresso')
             del layout['bin/'][idx]
+
             layout['bin/<exe:espresso>'] = f'dependency:espresso:{base_standalone}/bin/<exe:espresso>'
             layout['bin/<exe:java>'] = 'link:<exe:espresso>'
             layout['./'][0]['exclude'].append("bin/<exe:java>")
-            if not jvm_standalone_with_llvm():
+            if not jvm_standalone_with_llvm() and _nfi_llvm_required():
                 mx.warn(f"{ni_standalone_name} requires using nfi-llvm but it looks like ESPRESSO_LLVM_JAVA_HOME wasn't set.")
         layout['languages/java/lib/'].append("dependency:espresso-compiler-stub:ESPRESSO_GRAAL/*")
         layout['./'][0]['exclude'].remove('lib/static')
@@ -79,18 +89,23 @@ def create_ni_standalone(base_standalone_name, register_distribution):
         if _find_native_image_command(espresso_java_home.java_home):
             # ESPRESSO_JAVA_HOME has native-image, keep that
             pass
-        elif has_component('ni') and espresso_java_home.java_home == mx_sdk_vm.base_jdk().home:
+        elif has_component('ni'):
             if graalvm_skip_archive():
                 mx.abort("Cannot build NI standalones with GRAALVM_SKIP_ARCHIVE enabled")
+
+            if espresso_java_home.java_home != mx_sdk_vm.base_jdk(stage1=False).home:
+                mx.abort(f"ESPRESSO_JAVA_HOME(={espresso_java_home.java_home}) must match JAVA_HOME (={mx_sdk_vm.base_jdk(stage1=True).home}) (or FINAL_STAGE_JAVA_HOME (={mx_sdk_vm.base_jdk(stage1=False).home}) if set)")
+
+            prefix = '*/Contents/Home/' if mx.is_darwin() else '*/'
 
             # substratevm is available and ESPRESSO_JAVA_HOME is JAVA_HOME, use GraalVM
             layout['./'][0]['source_type'] = 'extracted-dependency'
             layout['./'][0]['dependency'] = get_final_graalvm_distribution().qualifiedName()
-            layout['./'][0]['path'] = '*/*'
+            layout['./'][0]['path'] = prefix + '*'
             layout['./'][0]['exclude'] += [
-                '*/languages/elau',
-                '*/languages/java',
-                '*/bin/espresso'
+                prefix + 'languages/elau',
+                prefix + 'languages/java',
+                prefix + 'bin/espresso'
             ]
         else:
             layout = None
@@ -110,7 +125,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     native = create_ni_standalone('ESPRESSO_NATIVE_STANDALONE', register_distribution)
     jvm = create_ni_standalone('ESPRESSO_JVM_STANDALONE', register_distribution)
     if not (native or jvm):
-        raise mx.abort("Couldn't create any Espresso native-image standalone")
+        mx.warn("Couldn't create any Espresso native-image standalone")
 
 def _run_espresso_native_image_launcher(args, cwd=None, nonZeroIsFatal=True, out=None, err=None, timeout=None, mode=None):
     extra_args = ['-J--vm.' + arg for arg in mx_gate.get_jacoco_agent_args() or []]
@@ -124,9 +139,12 @@ def _run_espresso_native_image_launcher(args, cwd=None, nonZeroIsFatal=True, out
         extra_args += [
             '--vm.Dcom.oracle.svm.driver.java.executable.override=' + espresso_launcher,
             '-J--java.GuestFieldOffsetStrategy=graal',
-            '-J--java.NativeBackend=nfi-llvm',
-            '--vm.-java.NativeBackend=nfi-llvm'
         ]
+        if _nfi_llvm_required():
+            extra_args += [
+                '-J--java.NativeBackend=nfi-llvm',
+                '--vm.-java.NativeBackend=nfi-llvm'
+            ]
     standalone_output = mx.distribution(standalone).get_output()
     if not exists(standalone_output):
         raise mx.abort(f"{standalone} doesn't seem to be built, please run `mx build --targets={standalone}`")
@@ -136,10 +154,16 @@ def _run_espresso_native_image_launcher(args, cwd=None, nonZeroIsFatal=True, out
     return mx.run([native_image_command] + extra_args + args, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, on_timeout=_send_sigquit)
 
 def _detect_espresso_native_image_mode():
-    if _has_native_espresso_standalone() and exists(mx.distribution('ESPRESSO_NI_NATIVE_STANDALONE').get_output()):
+    native_dist = mx.distribution('ESPRESSO_NI_NATIVE_STANDALONE', fatalIfMissing=False)
+    jvm_dist = mx.distribution('ESPRESSO_JVM_NATIVE_STANDALONE', fatalIfMissing=False)
+    if native_dist and exists(native_dist.get_output()):
         return 'native'
-    else:
+    elif jvm_dist and exists(jvm_dist.get_output()):
         return 'jvm'
+    elif jvm_dist or native_dist:
+        raise mx.abort("No espresso Native Image Standalone is built")
+    else:
+        raise mx.abort("No espresso Native Image Standalone is available (see warnings above)")
 
 def _run_espresso_native_image_jvm_launcher(args, cwd=None, nonZeroIsFatal=True, out=None, err=None, timeout=None):
     return _run_espresso_native_image_launcher(args, cwd, nonZeroIsFatal, out, err, timeout, mode='jvm')

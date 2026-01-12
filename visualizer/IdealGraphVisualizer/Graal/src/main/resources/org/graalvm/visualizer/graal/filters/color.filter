@@ -8,23 +8,44 @@ var gray = new Color(220, 220, 220);
 var violet = new Color(201, 148, 199);
 var black = new Color(0, 0, 0);
 
-colorize("category", "controlSink", red);
-colorize("category", "controlSplit", red);
-colorize("category", "merge", red);
-colorize("category", "begin", orange);
-colorize("category", "end", orange);
-colorize("category", "fixed", yellow);
-colorize("category", "state", lightGreen);
-colorize("category", "phi", middleBlue);
-colorize("category", "proxy", middleBlue);
-colorize("category", "floating", lightBlue);
-colorize("class", ".*\\.nodes\\..*ParameterNode$", gray);
-colorize("class", ".*\\.nodes\\..*ConstantNode$", gray);
-colorize("class", ".*\\.nodes\\..*GuardNode$", violet);
-colorize("class", ".*\\.nodes\\.debug\\.BlackholeNode$", black);
+var cachedFilter = new CachedLanguageFilter();
+
+var f = new PropertyColorFilter();
+f.addRule("category", "controlSink", red);
+f.addRule("category", "controlSplit", red);
+f.addRule("category", "merge", red);
+f.addRule("category", "begin", orange);
+f.addRule("category", "end", orange);
+f.addRule("category", "fixed", yellow);
+f.addRule("category", "state", lightGreen);
+f.addRule("category", "phi", middleBlue);
+f.addRule("category", "proxy", middleBlue);
+f.addRule("category", "floating", lightBlue);
+
+f.addRule("class", "com.oracle.graal.nodes.ParameterNode", gray);
+f.addRule("class", "jdk.graal.compiler.nodes.ParameterNode", gray);
+f.addRule("class", "org.graalvm.compiler.nodes.ParameterNode", gray);
+
+f.addRule("class", "com.oracle.graal.nodes.ConstantNode", gray);
+f.addRule("class", "jdk.graal.compiler.nodes.ConstantNode", gray);
+f.addRule("class", "org.graalvm.compiler.nodes.ConstantNode", gray);
+
+f.addRule("class", "com.oracle.graal.nodes.GuardNode", violet);
+f.addRule("class", "jdk.graal.compiler.nodes.GuardNode", violet);
+f.addRule("class", "org.graalvm.compiler.nodes.GuardNode", violet);
+
+f.addRule("class", "com.oracle.graal.nodes.debug.BlackholeNode", black);
+f.addRule("class", "jdk.graal.compiler.nodes.debug.BlackholeNode", black);
+f.addRule("class", "org.graalvm.compiler.nodes.debug.BlackholeNode", black);
+
+cachedFilter.add(f);
 
 var f = new GraalEdgeColorFilter();
 f.setUsageColor("Successor", red);
 f.setUsageColor("Value", blue);
 f.setUsageColor("Memory", new Color(0, 128, 0));
-f.apply(graph);
+
+cachedFilter.add(f);
+
+// return the cached filter
+cachedFilter

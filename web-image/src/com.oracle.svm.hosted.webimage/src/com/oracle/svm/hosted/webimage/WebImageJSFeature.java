@@ -40,8 +40,13 @@ import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.webimage.codegen.WebImageJSBackend;
 import com.oracle.svm.hosted.webimage.codegen.WebImageNoRegisterConfig;
 import com.oracle.svm.hosted.webimage.codegen.phase.WebImageJSSuitesCreatorProvider;
@@ -53,6 +58,9 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 @AutomaticallyRegisteredFeature
 @Platforms(WebImageJSPlatform.class)
@@ -65,15 +73,10 @@ public class WebImageJSFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(Feature.AfterRegistrationAccess access) {
-        ImageSingletons.add(SubstrateRegisterConfigFactory.class, (config, metaAccess, target, preserveFramePointer) -> new WebImageNoRegisterConfig());
+        ImageSingletons.add(SubstrateRegisterConfigFactory.class, new WebImageSubstrateRegisterConfigFactory());
 
         // TODO: Introduce separate backends and lowering providers for WebImageJSPlatform.
-        ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
-            @Override
-            public SubstrateBackend newBackend(Providers newProviders) {
-                return new WebImageJSBackend(newProviders);
-            }
-        });
+        ImageSingletons.add(SubstrateBackendFactory.class, new WebImageSubstrateBackendFactory());
 
         ImageSingletons.add(SubstrateLoweringProviderFactory.class, WebImageJSLoweringProvider::new);
         ImageSingletons.add(TargetGraphBuilderPlugins.class, new JSGraphBuilderPlugins());
@@ -87,5 +90,21 @@ public class WebImageJSFeature implements InternalFeature {
         SubstrateAllocationSnippets allocationSnippets = ImageSingletons.lookup(SubstrateAllocationSnippets.class);
         SubstrateAllocationSnippets.Templates templates = new SubstrateAllocationSnippets.Templates(options, providers, allocationSnippets);
         templates.registerLowering(lowerings);
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+    private static final class WebImageSubstrateRegisterConfigFactory implements SubstrateRegisterConfigFactory {
+        @Override
+        public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer) {
+            return new WebImageNoRegisterConfig();
+        }
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+    private static final class WebImageSubstrateBackendFactory extends SubstrateBackendFactory {
+        @Override
+        public SubstrateBackend newBackend(Providers newProviders) {
+            return new WebImageJSBackend(newProviders);
+        }
     }
 }

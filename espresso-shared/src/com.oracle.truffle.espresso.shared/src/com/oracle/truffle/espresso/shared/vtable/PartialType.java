@@ -27,6 +27,7 @@ package com.oracle.truffle.espresso.shared.vtable;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
@@ -64,7 +65,7 @@ public interface PartialType<C extends TypeAccess<C, M, F>, M extends MethodAcce
      * {@link ModifiersProvider#isStatic() static} or {@link ModifiersProvider#isPrivate() private}
      * method.
      */
-    EconomicMap<C, List<M>> getInterfacesData();
+    UnmodifiableEconomicMap<C, List<M>> getInterfacesData();
 
     /**
      * The list of methods this type declares.

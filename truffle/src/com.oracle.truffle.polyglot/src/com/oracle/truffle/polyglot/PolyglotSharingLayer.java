@@ -48,6 +48,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -109,10 +110,14 @@ final class PolyglotSharingLayer {
          */
         volatile PreinitConfig preinitConfig;
         volatile PolyglotContextImpl preInitializedContext;
+        volatile Object bytecodeData;
 
         int claimedCount;
+        @CompilationFinal PolyglotInstructionTracers instructionTracers;
 
-        private Shared(PolyglotEngineImpl engine, ContextPolicy contextPolicy, Map<PolyglotLanguage, OptionValuesImpl> previousLanguageOptions) {
+        private Shared(PolyglotEngineImpl engine,
+                        ContextPolicy contextPolicy,
+                        Map<PolyglotLanguage, OptionValuesImpl> previousLanguageOptions) {
             this.sourceCache = new PolyglotSourceCache(engine.getDeadSourcesQueue(), TracingSourceCacheListener.createOrNull(engine), engine.sourceCacheStatisticsListener);
             this.contextPolicy = contextPolicy;
             this.instances = new PolyglotLanguageInstance[engine.languageCount];
@@ -259,11 +264,18 @@ final class PolyglotSharingLayer {
         }
 
         s.claimedCount++;
+        initializeInstructionTracers(s);
 
         if (engine.getEngineOptionValues().get(PolyglotEngineOptions.TraceCodeSharing)) {
             traceClaimLayer(true, s, context, requestingLanguages, previousLanguageOptions);
         }
         return true;
+    }
+
+    void initializeInstructionTracers(Shared s) {
+        if (s.instructionTracers == null) { // avoid initializing twice
+            s.instructionTracers = PolyglotInstructionTracers.install(this);
+        }
     }
 
     boolean isSingleContext() {
@@ -499,8 +511,38 @@ final class PolyglotSharingLayer {
         return shared.contextPolicy;
     }
 
+    @SuppressWarnings("unchecked")
+    public <T> T getOrCreateBytecodeData(Function<Object, T> create) {
+        Shared s = this.shared;
+        if (s == null) {
+            return null;
+        }
+        // double checked locking
+        Object v = s.bytecodeData;
+        if (v == null) {
+            synchronized (engine.lock) {
+                v = s.bytecodeData;
+                if (v == null) {
+                    s.bytecodeData = v = create.apply(this);
+                }
+            }
+        }
+        return (T) v;
+    }
+
     public boolean isClaimed() {
         return shared != null;
+    }
+
+    public void close() {
+        Shared s = this.shared;
+        if (s == null) {
+            return;
+        }
+        PolyglotInstructionTracers tracers = s.instructionTracers;
+        if (tracers != null) {
+            tracers.onLayerClose();
+        }
     }
 
     @Override
@@ -783,5 +825,4 @@ final class PolyglotSharingLayer {
         }
 
     }
-
 }

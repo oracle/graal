@@ -223,6 +223,11 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
+    protected void patchRelativeJumpTarget(int pos, int relativeOffset) {
+
+    }
+
+    @Override
     public AbstractAddress makeAddress(int transferSize, Register base, int displacement) {
         throw new UnsupportedOperationException();
     }

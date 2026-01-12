@@ -748,7 +748,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                     locals.setMatchStart(locals.getIndex());
                                 }
                             }
-                            inputIncRaw(locals, state.getInnerLiteral().getLiteral().encodedLength());
+                            inputIncRaw(locals, state.getInnerLiteral().getEncodedLength());
                             locals.setNextIndex(locals.getIndex());
                             ip = successors[0];
                             continue outer;

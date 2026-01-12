@@ -27,8 +27,10 @@ package com.oracle.svm.hosted.webimage.codegen.arithm;
 import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.MATH_IMUL;
 
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
+import com.oracle.svm.hosted.webimage.codegen.Runtime;
 import com.oracle.svm.hosted.webimage.codegen.wrappers.JSEmitter;
 import com.oracle.svm.hosted.webimage.js.JSKeyword;
+import com.oracle.svm.webimage.functionintrinsics.JSFunctionDefinition;
 import com.oracle.svm.webimage.hightiercodegen.Emitter;
 
 import jdk.graal.compiler.nodes.ValueNode;
@@ -62,5 +64,10 @@ public class BinaryIntOperationLowerer {
 
             emitter.lower(jsLTools);
         }
+    }
+
+    public static void unsignedMinMax(JSCodeGenTool codeGenTool, boolean isMin, ValueNode x, ValueNode y) {
+        JSFunctionDefinition fun = isMin ? Runtime.UnsignedMinI32 : Runtime.UnsignedMaxI32;
+        fun.emitCall(codeGenTool, Emitter.of(x), Emitter.of(y));
     }
 }

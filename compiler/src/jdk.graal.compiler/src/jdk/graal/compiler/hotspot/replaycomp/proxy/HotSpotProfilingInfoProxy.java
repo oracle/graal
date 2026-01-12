@@ -26,8 +26,6 @@ package jdk.graal.compiler.hotspot.replaycomp.proxy;
 
 import jdk.vm.ci.hotspot.HotSpotProfilingInfo;
 
-//JaCoCo Exclude
-
 public final class HotSpotProfilingInfoProxy extends ProfilingInfoProxy implements HotSpotProfilingInfo {
     HotSpotProfilingInfoProxy(InvocationHandler handler) {
         super(handler);

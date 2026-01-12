@@ -60,8 +60,6 @@ class VmGateTasks:
     graal_js_tests = 'graal-js-tests'
     graal_js_tests_compiled = 'graal-js-tests-compiled'
     graal_nodejs = 'graal-nodejs'
-    truffleruby = 'truffleruby'
-    ruby = 'ruby'
     python = 'python'
     fastr = 'fastr'
     integration = 'integration'
@@ -476,7 +474,7 @@ def _test_libgraal_truffle(extra_vm_arguments):
         "-Dpolyglot.engine.CompilationFailureAction=Throw",
         "-Djdk.graal.CompilationFailureAction=ExitVM",
         "-Dgraalvm.locatorDisabled=true",
-        "truffle", "LibGraalCompilerTest"])
+        "truffle", "LibGraalCompilerTest", "TruffleHostInliningTest"])
 
 def gate_body(args, tasks):
     with Task('Vm: GraalVM dist names', tasks, tags=['names']) as t:

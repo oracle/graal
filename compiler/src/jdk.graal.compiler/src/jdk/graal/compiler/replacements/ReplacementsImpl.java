@@ -43,6 +43,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.Pair;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -183,10 +185,10 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     @Override
     public Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method) {
         if (!inRuntimeCode()) {
-            if (method.getAnnotation(Node.NodeIntrinsic.class) != null || method.getAnnotation(Fold.class) != null) {
+            if (AnnotationValueSupport.getAnnotationValue(method, NodeIntrinsic.class) != null || AnnotationValueSupport.getAnnotationValue(method, Fold.class) != null) {
                 return GeneratedInvocationPlugin.class;
             }
-            if (method.getAnnotation(Word.Operation.class) != null) {
+            if (AnnotationValueSupport.getAnnotationValue(method, Word.Operation.class) != null) {
                 return WordOperationPlugin.class;
             }
         }
@@ -210,7 +212,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
             // Force inlining when parsing replacements
             return createIntrinsicInlineInfo(method, defaultBytecodeProvider);
         } else {
-            assert inRuntimeCode() || method.getAnnotation(NodeIntrinsic.class) == null : String.format("@%s method %s must only be called from within a replacement%n%s",
+            assert inRuntimeCode() || AnnotationValueSupport.getAnnotationValue(method, NodeIntrinsic.class) == null : String.format("@%s method %s must only be called from within a replacement%n%s",
                             NodeIntrinsic.class.getSimpleName(),
                             method.format("%h.%n"), b);
         }
@@ -272,10 +274,6 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
         return openSnippetDebugContext(idPrefix, method, DebugContext.forCurrentThread(), options);
     }
 
-    public DebugContext openDebugContext(String idPrefix, ResolvedJavaMethod method, OptionValues options) {
-        return openDebugContext(idPrefix, method, options, DebugContext.forCurrentThread(), false);
-    }
-
     private static final AtomicInteger nextDebugContextId = new AtomicInteger();
 
     private DebugContext openDebugContext(String idPrefix, ResolvedJavaMethod method, OptionValues options, DebugContext outer, boolean disabled) {
@@ -287,7 +285,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     @SuppressWarnings("try")
     public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
                     NodeSourcePosition replaceePosition, OptionValues options) {
-        assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
+        assert AnnotationValueSupport.getAnnotationValue(method, Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
 
         Pair<ResolvedJavaMethod, OptionValues> cacheKey = Pair.create(method, options);
@@ -320,7 +318,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
 
     @Override
     public boolean isSnippet(ResolvedJavaMethod method) {
-        return method.getAnnotation(Snippet.class) != null;
+        return AnnotationValueSupport.getAnnotationValue(method, Snippet.class) != null;
     }
 
     @Override
@@ -386,7 +384,9 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
      */
     public abstract static class GraphMaker {
 
-        /** The replacements object that the graphs are created for. */
+        /**
+         * The replacements object that the graphs are created for.
+         */
         protected final ReplacementsImpl replacements;
 
         /**
@@ -489,7 +489,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
                     if (method == null) {
                         return false;
                     }
-                    if (method.getAnnotation(Fold.class) != null) {
+                    if (AnnotationValueSupport.getAnnotationValue(method, Fold.class) != null) {
                         /*
                          * In SVM, @Fold methods cannot be handled eagerly, e.g.,
                          * because @ConstantParameter arguments are not yet constant. Thus, the
@@ -498,10 +498,8 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
                          */
                         return true;
                     }
-                    Node.NodeIntrinsic annotation = method.getAnnotation(Node.NodeIntrinsic.class);
-                    if (annotation != null && !annotation.hasSideEffect()) {
-                        return true;
-                    }
+                    AnnotationValue annotation = AnnotationValueSupport.getAnnotationValue(method, NodeIntrinsic.class);
+                    return annotation != null && !annotation.getBoolean("hasSideEffect");
                 }
                 return false;
             }
@@ -541,7 +539,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
                 }
 
                 IntrinsicContext initialIntrinsicContext = null;
-                Snippet snippetAnnotation = !inRuntimeCode() ? method.getAnnotation(Snippet.class) : null;
+                AnnotationValue snippetAnnotation = AnnotationValueSupport.getAnnotationValue(method, Snippet.class);
                 if (snippetAnnotation == null) {
                     // Post-parse inlined intrinsic
                     initialIntrinsicContext = new EncodedIntrinsicContext(substitutedMethod, method, bytecodeProvider, context, false);
@@ -549,7 +547,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
                     // Snippet
                     ResolvedJavaMethod original = substitutedMethod != null ? substitutedMethod : method;
                     initialIntrinsicContext = new EncodedIntrinsicContext(original, method, bytecodeProvider, context,
-                                    snippetAnnotation.allowPartialIntrinsicArgumentMismatch());
+                                    snippetAnnotation.getBoolean("allowPartialIntrinsicArgumentMismatch"));
                 }
 
                 createGraphBuilder(replacements.providers, config, OptimisticOptimizations.NONE, initialIntrinsicContext).apply(graph);

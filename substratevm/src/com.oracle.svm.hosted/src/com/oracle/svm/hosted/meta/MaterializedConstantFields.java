@@ -31,53 +31,70 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 /**
  * Tracks fields with constant values which could be inlined, but which must exist in memory -- for
  * example, when they might be accessed via JNI.
  */
-public class MaterializedConstantFields {
-    static void initialize() {
-        ImageSingletons.add(MaterializedConstantFields.class, new MaterializedConstantFields());
-    }
+@AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = MaterializedConstantFields.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public class MaterializedConstantFields implements InternalFeature {
+    private final Set<Integer> fields = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private boolean sealed = false;
 
     public static MaterializedConstantFields singleton() {
         return ImageSingletons.lookup(MaterializedConstantFields.class);
     }
 
-    private final Set<AnalysisField> fields = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private boolean sealed = false;
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        sealed = true;
+    }
 
     public void register(AnalysisField field) {
         assert field.isStatic() : "Only required for static final fields: " + field;
         assert field.isAccessed() : "Field must be accessed as read: " + field;
         assert !sealed : "Already sealed: " + field;
-        fields.add(field);
+        fields.add(field.getId());
     }
 
     public boolean contains(AnalysisField field) {
         if (field.isStatic()) {
-            return fields.contains(field);
+            return fields.contains(field.getId());
         }
         return false;
     }
 
-    void seal() {
-        sealed = true;
-    }
-}
+    public static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        private static final String FIELDS = "fields";
 
-@AutomaticallyRegisteredFeature
-class MaterializedConstantFieldsFeature implements InternalFeature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        MaterializedConstantFields.initialize();
-    }
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            var action = new SingletonLayeredCallbacks<MaterializedConstantFields>() {
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, MaterializedConstantFields singleton) {
+                    writer.writeIntList(FIELDS, singleton.fields.stream().toList());
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
+                }
 
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        MaterializedConstantFields.singleton().seal();
+                @Override
+                public void onSingletonRegistration(ImageSingletonLoader loader, MaterializedConstantFields singleton) {
+                    singleton.fields.addAll(loader.readIntList(FIELDS));
+                }
+            };
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+        }
     }
 }

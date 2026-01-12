@@ -73,7 +73,7 @@ public class AMD64HotSpotShenandoahCardBarrierOp extends AMD64LIRInstruction {
 
     @Override
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/a2743bab4fd203b0791cf47e617c1a95b05ab3cc/src/hotspot/cpu/x86/gc/shenandoah/shenandoahBarrierSetAssembler_x86.cpp#L509-L535",
+    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/b8aa130bab715f187476181acc5021b27958833f/src/hotspot/cpu/x86/gc/shenandoah/shenandoahBarrierSetAssembler_x86.cpp#L547-L573",
               sha1 = "ad163e79b0707221700bb3b2230581fb711ded61")
     // @formatter:on
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {

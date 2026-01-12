@@ -30,7 +30,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
@@ -70,6 +69,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.ast.id.GCKnownIds;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.id.WebImageWasmGCIds;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmGCUtil;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
 import com.oracle.svm.webimage.functionintrinsics.JSSystemFunction;
@@ -79,6 +79,7 @@ import com.oracle.svm.webimage.wasmgc.WasmExtern;
 import com.oracle.svm.webimage.wasmgc.WasmGCJSConversion;
 
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
+import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.TypeReference;
@@ -141,6 +142,8 @@ import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicGenerationNode;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -242,6 +245,37 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
         return new Instruction.Return(result);
     }
 
+    @Override
+    protected Instruction lowerExpression(ValueNode n, WasmIRWalker.Requirements reqs) {
+        Instruction inst = super.lowerExpression(n, reqs);
+
+        /*
+         * Produce a constant null value for always-null stamps.
+         *
+         * Always null stamps are a bit of a special case because they often don't have concrete
+         * type information, which is required in WasmGC because even null-constant have a static
+         * type. For that reason, the actual instruction are emitted as a top-level instruction and
+         * dropped (since it may have a side effect) and we simply return a "ref.null none", which
+         * represents the bottom type and thus satisfies all subtype checks, at all usages.
+         */
+        if (n.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp pointerStamp && pointerStamp.alwaysNull()) {
+            if (!(inst instanceof Instruction.LocalGet)) {
+                /*
+                 * We can't just not emit the instruction, it may have side effects, so we just emit
+                 * it in the same block and ignore its output (which is guaranteed to be null).
+                 *
+                 * If the node's value was stored in a variable and would be just loaded here, we
+                 * can omit this, as there are no side-effects.
+                 */
+                masm.genInst(new Instruction.Drop(inst));
+            }
+
+            return new Instruction.RefNull(WasmRefType.NONE);
+        } else {
+            return inst;
+        }
+    }
+
     protected Instruction lowerUnwind(UnwindNode n) {
         return new Instruction.Call(masm().getKnownIds().throwTemplate.requestFunctionId(), lowerExpression(n.exception()));
     }
@@ -252,9 +286,11 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
             case ConstantNode constant -> lowerConstant(constant);
             case ParameterNode param -> lowerParam(param);
             case BinaryNode binary -> lowerBinary(binary);
+            case BinaryMathIntrinsicGenerationNode binaryMathIntrinsic -> lowerBinaryMathIntrinsicGeneration(binaryMathIntrinsic);
             case CompressionNode compression -> lowerCompression(compression, reqs);
             case UnwindNode unwind -> lowerUnwind(unwind);
             case UnaryNode unary -> lowerUnary(unary);
+            case UnaryMathIntrinsicGenerationNode unaryMathIntrinsic -> lowerUnaryMathIntrinsicGeneration(unaryMathIntrinsic);
             case ReadExceptionObjectNode readExceptionObject -> lowerReadException(readExceptionObject);
             case BoxNode box -> lowerBox(box, reqs);
             case UnboxNode unbox -> lowerUnbox(unbox);

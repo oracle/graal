@@ -28,7 +28,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -42,6 +41,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.Formatter;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -49,6 +49,7 @@ import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -60,6 +61,8 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.api.replacements.Snippet.NonNullParameter;
@@ -71,6 +74,7 @@ import jdk.graal.compiler.core.CompilerThreadFactory;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
+import jdk.graal.compiler.core.test.VerifyPhase.VerificationError;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
@@ -100,8 +104,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.PhaseSuite;
-import jdk.graal.compiler.phases.VerifyPhase;
-import jdk.graal.compiler.phases.VerifyPhase.VerificationError;
 import jdk.graal.compiler.phases.contract.VerifyNodeCosts;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
@@ -139,6 +141,12 @@ public class CheckGraalInvariants extends GraalCompilerTest {
      */
     public static final String JRT_CLASS_PATH_ENTRY = "<jrt>";
 
+    /**
+     * Max errors before checking is stopped.
+     */
+    private static final String MAX_ERRORS_PROPERTY_NAME = CheckGraalInvariants.class.getName() + ".maxErrors";
+    private static final int MAX_ERRORS = Integer.parseInt(System.getProperty(MAX_ERRORS_PROPERTY_NAME, "10"));
+
     private static boolean shouldVerifyEquals(ResolvedJavaMethod m) {
         if (m.getName().equals("identityEquals")) {
             ResolvedJavaType c = m.getDeclaringClass();
@@ -152,11 +160,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
 
     public static void main(String[] args) {
 
-    }
-
-    public static String relativeFileName(String absolutePath) {
-        int lastFileSeparatorIndex = absolutePath.lastIndexOf(File.separator);
-        return absolutePath.substring(Math.max(lastFileSeparatorIndex, 0));
     }
 
     public static class InvariantsTool {
@@ -252,6 +255,9 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             return true;
         }
 
+        public boolean shouldVerifyWordFactory(@SuppressWarnings("unused") ResolvedJavaMethod method) {
+            return true;
+        }
     }
 
     @Test
@@ -337,7 +343,20 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         int availableProcessors = Runtime.getRuntime().availableProcessors();
         ThreadPoolExecutor executor = new ThreadPoolExecutor(availableProcessors, availableProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), factory);
 
-        List<String> errors = Collections.synchronizedList(new ArrayList<>());
+        AtomicBoolean tooManyErrors = new AtomicBoolean(false);
+        List<String> errors = Collections.synchronizedList(new ArrayList<>() {
+            @Override
+            public boolean add(String s) {
+                if (tooManyErrors.get()) {
+                    return false;
+                }
+                if (size() > MAX_ERRORS) {
+                    tooManyErrors.set(true);
+                    return false;
+                }
+                return super.add(s);
+            }
+        });
 
         List<VerifyPhase<CoreProviders>> verifiers = new ArrayList<>();
 
@@ -381,6 +400,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyLoopInfo());
         verifiers.add(new VerifyGuardsStageUsages());
         verifiers.add(new VerifyAArch64RegisterUsages());
+        verifiers.add(new VerifyAnnotatedElementUsage());
         VerifyAssertionUsage assertionUsages = null;
         boolean checkAssertions = tool.checkAssertions();
 
@@ -412,7 +432,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                     graphBuilderSuite.apply(graph, context);
                     // update phi stamps
                     graph.getNodes().filter(PhiNode.class).forEach(PhiNode::inferStamp);
-                    checkGraph(verifiers, context, graph);
+                    checkGraph(verifiers, context, graph, tool);
                     errors.add(String.format("Expected error while checking %s", m));
                 } catch (VerificationError e) {
                     // expected!
@@ -464,16 +484,19 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                         String methodName = className + "." + method.getName();
                         if (matches(filters, methodName)) {
                             executor.execute(() -> {
+                                if (tooManyErrors.get()) {
+                                    return;
+                                }
                                 try (DebugContext debug = new Builder(options).build()) {
-                                    boolean isSubstitution = method.getAnnotation(Snippet.class) != null;
+                                    boolean isSubstitution = AnnotationValueSupport.getAnnotationValue(method, Snippet.class) != null;
                                     StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).setIsSubstitution(isSubstitution).build();
                                     try (DebugCloseable _ = debug.disableIntercept(); DebugContext.Scope _ = debug.scope("CheckingGraph", graph, method)) {
-                                        checkMethod(method);
+                                        checkMethod(method, metaAccess);
                                         graphBuilderSuite.apply(graph, context);
                                         // update phi stamps
                                         graph.getNodes().filter(PhiNode.class).forEach(PhiNode::inferStamp);
                                         collectOptionFieldUsages(optionFieldUsages, optionDescriptorsType, method, graph);
-                                        checkGraph(verifiers, context, graph);
+                                        checkGraph(verifiers, context, graph, tool);
                                     } catch (VerificationError e) {
                                         errors.add(e.getMessage());
                                     } catch (BailoutException e) {
@@ -488,6 +511,9 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                         }
                     }
                 }
+                if (tooManyErrors.get()) {
+                    break;
+                }
             }
 
             executor.shutdown();
@@ -497,12 +523,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 throw new RuntimeException(e1);
             }
 
-            if (tool.shouldVerifyFoldableMethods()) {
-                try {
-                    foldableMethodsVerifier.finish();
-                } catch (Throwable e) {
-                    errors.add(e.getMessage());
-                }
+            try {
+                verifiers.forEach(VerifyPhase::finish);
+            } catch (Throwable e) {
+                errors.add(e.getMessage());
             }
         }
 
@@ -518,13 +542,14 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         checkOptionFieldUsages(errors, optionFieldUsages);
 
         if (!errors.isEmpty()) {
-            StringBuilder msg = new StringBuilder();
-            String nl = String.format("%n");
+            Formatter msg = new Formatter();
+            msg.format("Invariant checker failed with %d errors:%n", errors.size());
+            if (tooManyErrors.get()) {
+                msg.format("[Error limit of %d was exceeded. Use the %s system property to change the limit.]%n", MAX_ERRORS, MAX_ERRORS_PROPERTY_NAME);
+            }
+            int i = 0;
             for (String e : errors) {
-                if (!msg.isEmpty()) {
-                    msg.append(nl);
-                }
-                msg.append(e);
+                msg.format("%d: %s%n", ++i, e);
             }
             Assert.fail(msg.toString());
         }
@@ -679,17 +704,21 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         }
     }
 
-    private static void checkMethod(ResolvedJavaMethod method) {
-        if (method.getAnnotation(Snippet.class) == null) {
-            Annotation[][] parameterAnnotations = method.getParameterAnnotations();
-            for (int i = 0; i < parameterAnnotations.length; i++) {
-                for (Annotation a : parameterAnnotations[i]) {
-                    Class<? extends Annotation> annotationType = a.annotationType();
-                    if (annotationType == ConstantParameter.class || annotationType == VarargsParameter.class || annotationType == NonNullParameter.class) {
-                        VerificationError verificationError = new VerificationError("Parameter %d of %s is annotated with %s but the method is not annotated with %s", i, method,
-                                        annotationType.getSimpleName(),
-                                        Snippet.class.getSimpleName());
-                        throw verificationError;
+    private static void checkMethod(ResolvedJavaMethod method, MetaAccessProvider metaAccess) {
+        if (AnnotationValueSupport.getAnnotationValue(method, Snippet.class) == null) {
+            var parsed = AnnotationValueSupport.getParameterAnnotationValues(method);
+            if (parsed != null) {
+                for (int i = 0; i < parsed.values().size(); i++) {
+                    List<AnnotationValue> annotations = parsed.values().get(i);
+                    for (AnnotationValue a : annotations) {
+                        ResolvedJavaType annotationType = a.getAnnotationType();
+                        if (annotationType.equals(metaAccess.lookupJavaType(ConstantParameter.class)) ||
+                                        annotationType.equals(metaAccess.lookupJavaType(VarargsParameter.class)) ||
+                                        annotationType.equals(metaAccess.lookupJavaType(NonNullParameter.class))) {
+                            throw new VerificationError("Parameter %d of %s is annotated with %s but the method is not annotated with %s", i, method,
+                                            annotationType.toJavaName(false),
+                                            Snippet.class.getSimpleName());
+                        }
                     }
                 }
             }
@@ -699,13 +728,15 @@ public class CheckGraalInvariants extends GraalCompilerTest {
     /**
      * Checks the invariants for a single graph.
      */
-    private static void checkGraph(List<VerifyPhase<CoreProviders>> verifiers, HighTierContext context, StructuredGraph graph) {
+    private static void checkGraph(List<VerifyPhase<CoreProviders>> verifiers, HighTierContext context, StructuredGraph graph, InvariantsTool tool) {
         for (VerifyPhase<CoreProviders> verifier : verifiers) {
-            if (!(verifier instanceof VerifyUsageWithEquals) || shouldVerifyEquals(graph.method())) {
-                verifier.apply(graph, context);
-            } else {
-                verifier.apply(graph, context);
+            if (verifier instanceof VerifyUsageWithEquals && !shouldVerifyEquals(graph.method())) {
+                continue;
             }
+            if (verifier instanceof VerifyWordFactoryUsage && !tool.shouldVerifyWordFactory(graph.method())) {
+                continue;
+            }
+            verifier.apply(graph, context);
         }
         if (graph.method().isBridge()) {
             BridgeMethodUtils.getBridgedMethod(graph.method());

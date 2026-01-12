@@ -46,6 +46,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.truffle.api.interop.InteropException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
@@ -89,7 +90,7 @@ final class HostEntryPoint {
         // host access needs to be replaced
         GuestHostLanguage hostLanguage = new GuestHostLanguage(guestPolyglot, (AbstractHostAccess) guestPolyglot.createHostAccess());
         Object engine = guestPolyglot.buildEngine(new String[0], sandboxPolicy, OutputStream.nullOutputStream(), OutputStream.nullOutputStream(), null, new HashMap<>(), false, false, null, null,
-                        hostLanguage, false, false, null);
+                        hostLanguage, false, false, null, null);
         return guestToHost(engine);
     }
 
@@ -127,8 +128,8 @@ final class HostEntryPoint {
         Context remoteContext = dispatch.createContext(receiver, engine, sandboxPolicy, null, null, null, false, null, PolyglotAccess.NONE, false,
                         false, false, false, false, null, new HashMap<>(), new HashMap<>(),
                         new String[0], IOAccess.NONE, null,
-                        false, null, EnvironmentAccess.NONE,
-                        null, null, null, null, tmpDir, null, true, false, false);
+                        false, null, null,
+                        EnvironmentAccess.NONE, null, null, null, null, tmpDir, null, true, false, false);
         return guestToHost(remoteContext);
     }
 
@@ -144,7 +145,7 @@ final class HostEntryPoint {
         return guestToHost(api.getValueReceiver(v));
     }
 
-    public Object remoteMessage(long contextId, long receiverId, Message message, Object[] args) {
+    public Object remoteMessage(long contextId, long receiverId, Message message, Object[] args) throws InteropException {
         Context c = unmarshall(Context.class, contextId);
         c.enter();
         try {
@@ -154,13 +155,13 @@ final class HostEntryPoint {
             Object result;
             try {
                 result = lib.send(receiver, message, localValues);
+            } catch (InteropException e) {
+                throw e;
+            } catch (AbstractTruffleException e) {
+                // also send over stack traces and messages
+                return new GuestExceptionPointer(guestToHost(e), e.getMessage());
             } catch (Exception e) {
-                if (e instanceof AbstractTruffleException) {
-                    // also send over stack traces and messages
-                    return new GuestExceptionPointer(guestToHost(e), e.getMessage());
-                } else {
-                    throw new RuntimeException("Internal error thrown by remote message.", e);
-                }
+                throw new RuntimeException("Internal error thrown by remote message.", e);
             }
             return marshallAtGuest(result);
         } finally {

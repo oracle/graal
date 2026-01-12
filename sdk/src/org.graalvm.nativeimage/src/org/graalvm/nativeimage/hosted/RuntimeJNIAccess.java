@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,9 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 
 /**
@@ -58,15 +60,20 @@ import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class RuntimeJNIAccess {
 
+    private static final APIDeprecationSupport deprecationFlag = ImageSingletons.lookup(APIDeprecationSupport.class);
+
     /**
      * Makes the provided classes available for JNI access at run time. Needed when native code
      * looks up Java classes via <a href=
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#findclass">FindClass</a>.
+     * <p>
+     * This API is deprecated; use the {@link JNIAccess} instead.
      *
      * @since 22.3
      */
     public static void register(Class<?>... classes) {
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(ConfigurationCondition.alwaysTrue(), classes);
+        deprecationFlag.printDeprecationWarning();
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), classes);
     }
 
     /**
@@ -75,11 +82,14 @@ public final class RuntimeJNIAccess {
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getmethodid">GetMethodID</a>
      * or <a href=
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getstaticmethodid">GetStaticMethodID</a>.
+     * <p>
+     * This API is deprecated; use the {@link JNIAccess} instead.
      *
      * @since 22.3
      */
     public static void register(Executable... methods) {
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(ConfigurationCondition.alwaysTrue(), false, methods);
+        deprecationFlag.printDeprecationWarning();
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), false, false, methods);
     }
 
     /**
@@ -88,11 +98,14 @@ public final class RuntimeJNIAccess {
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getfieldid">GetFieldID</a>
      * or <a href=
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getstaticfieldid">GetStaticFieldID</a>.
+     * <p>
+     * This API is deprecated; use the {@link JNIAccess} instead.
      *
      * @since 22.3
      */
     public static void register(Field... fields) {
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(ConfigurationCondition.alwaysTrue(), false, fields);
+        deprecationFlag.printDeprecationWarning();
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), false, false, fields);
     }
 
     private RuntimeJNIAccess() {

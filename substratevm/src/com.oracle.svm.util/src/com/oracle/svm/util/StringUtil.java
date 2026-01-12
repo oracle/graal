@@ -26,6 +26,8 @@
 
 package com.oracle.svm.util;
 
+import org.graalvm.collections.UnmodifiableEconomicSet;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -108,6 +110,13 @@ public class StringUtil {
      */
     public static String joinSingleQuoted(Set<String> strings) {
         return joinSingleQuoted(strings.toArray(new String[0]));
+    }
+
+    /**
+     * See {@link #joinSingleQuoted(String...)}.
+     */
+    public static String joinSingleQuoted(UnmodifiableEconomicSet<String> strings) {
+        return joinSingleQuoted(strings.toArray(new String[strings.size()]));
     }
 
     public static String toSlashSeparated(String string) {

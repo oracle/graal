@@ -43,6 +43,7 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
@@ -52,11 +53,15 @@ import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.thread.NativeVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.TimeUtils;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.word.Word;
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class HeapDumpSupportImpl extends HeapDumping {
     private final HeapDumpWriter writer;
     private final HeapDumpOperation heapDumpOperation;
@@ -134,7 +139,7 @@ public class HeapDumpSupportImpl extends HeapDumping {
 
     @Override
     public void dumpHeap(String filename, boolean gcBefore, boolean overwrite) throws IOException {
-        if (!RawFileOperationSupport.isPresent()) {
+        if (!RawFileOperationSupport.isPresent() || (ImageLayerBuildingSupport.buildingImageLayer() && !HeapDumpMetadata.isLayeredMetadataAvailable())) {
             throw new UnsupportedOperationException(VMInspectionOptions.getHeapDumpNotSupportedMessage());
         }
 
@@ -168,7 +173,6 @@ public class HeapDumpSupportImpl extends HeapDumping {
         }
     }
 
-    @Fold
     static RawFileOperationSupport getFileSupport() {
         return RawFileOperationSupport.bigEndian();
     }

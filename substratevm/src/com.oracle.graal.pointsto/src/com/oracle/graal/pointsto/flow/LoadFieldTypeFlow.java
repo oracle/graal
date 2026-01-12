@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
-import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -36,7 +36,7 @@ import jdk.vm.ci.code.BytecodePosition;
  */
 public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
-    protected LoadFieldTypeFlow(BytecodePosition loadLocation, AnalysisField field) {
+    protected LoadFieldTypeFlow(BytecodePosition loadLocation, PointsToAnalysisField field) {
         super(loadLocation, field);
     }
 
@@ -48,7 +48,7 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
         private final FieldTypeFlow fieldFlow;
 
-        LoadStaticFieldTypeFlow(BytecodePosition loadLocation, AnalysisField field, FieldTypeFlow fieldFlow) {
+        LoadStaticFieldTypeFlow(BytecodePosition loadLocation, PointsToAnalysisField field, FieldTypeFlow fieldFlow) {
             super(loadLocation, field);
             this.fieldFlow = fieldFlow;
 
@@ -98,7 +98,7 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
          */
         private TypeFlow<?> objectFlow;
 
-        LoadInstanceFieldTypeFlow(BytecodePosition loadLocation, AnalysisField field, TypeFlow<?> objectFlow) {
+        LoadInstanceFieldTypeFlow(BytecodePosition loadLocation, PointsToAnalysisField field, TypeFlow<?> objectFlow) {
             super(loadLocation, field);
             this.objectFlow = objectFlow;
         }
@@ -146,16 +146,17 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            /*
-             * Nothing needs to change for open world analysis: we want to link all field flows when
-             * the receiver saturates.
-             */
-            if (!isSaturated()) {
+            if (bb.isClosed(field.getDeclaringClass())) {
                 /*
-                 * When the receiver flow saturates start observing the flow of the field declaring
-                 * type, unless the load is already saturated.
+                 * If the field declaring class is closed and the receiver flow saturates start
+                 * observing the flow of the declaring class, unless the load is already saturated.
                  */
-                replaceObservedWith(bb, field.getDeclaringClass());
+                if (!isSaturated()) {
+                    replaceObservedWith(bb, field.getDeclaringClass());
+                }
+            } else {
+                /* If the field declaring class is open simply propagate the saturation. */
+                onSaturated(bb);
             }
         }
 

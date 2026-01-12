@@ -42,7 +42,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -232,7 +232,7 @@ public abstract class Heap {
     /**
      * Notify the GC that the value of a GC-relevant option changed.
      */
-    public abstract void optionValueChanged(RuntimeOptionKey<?> key);
+    public abstract void optionValueChanged(NotifyGCRuntimeOptionKey<?> key);
 
     /**
      * Returns the number of bytes that were allocated by the given thread. The caller of this

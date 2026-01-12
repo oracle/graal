@@ -32,12 +32,15 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
+import com.oracle.svm.core.genscavenge.SerialAndEpsilonGCOptions;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 
 import jdk.graal.compiler.replacements.AllocationSnippets;
@@ -45,6 +48,13 @@ import jdk.graal.compiler.replacements.AllocationSnippets;
 /** Allocates Java objects in the {@link Metaspace}. */
 class MetaspaceObjectAllocator {
     private final ChunkedMetaspaceMemory memory;
+
+    private final UninterruptibleUtils.AtomicLong dynamicHubSize = new UninterruptibleUtils.AtomicLong(0);
+    private final UninterruptibleUtils.AtomicLong dynamicHubCount = new UninterruptibleUtils.AtomicLong(0);
+    private final UninterruptibleUtils.AtomicLong byteArraySize = new UninterruptibleUtils.AtomicLong(0);
+    private final UninterruptibleUtils.AtomicLong byteArrayCount = new UninterruptibleUtils.AtomicLong(0);
+    private final UninterruptibleUtils.AtomicLong intArraySize = new UninterruptibleUtils.AtomicLong(0);
+    private final UninterruptibleUtils.AtomicLong intArrayCount = new UninterruptibleUtils.AtomicLong(0);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     MetaspaceObjectAllocator(ChunkedMetaspaceMemory memory) {
@@ -63,28 +73,40 @@ class MetaspaceObjectAllocator {
         DynamicHub hub = DynamicHub.fromClass(DynamicHub.class);
         assert LayoutEncoding.getArrayBaseOffsetAsInt(hub.getLayoutEncoding()) == KnownOffsets.singleton().getVTableBaseOffset();
 
-        DynamicHub result = (DynamicHub) allocateArrayLikeObject(hub, vTableEntries);
+        DynamicHub result = (DynamicHub) allocateArrayLikeObject(hub, vTableEntries, dynamicHubSize);
+        if (SerialAndEpsilonGCOptions.PrintMetaspace.getValue()) {
+            dynamicHubCount.getAndIncrement();
+        }
         assert Heap.getHeap().getObjectHeader().verifyDynamicHubOffset(result);
         return result;
     }
 
     public byte[] allocateByteArray(int length) {
         DynamicHub hub = DynamicHub.fromClass(byte[].class);
-        return (byte[]) allocateArrayLikeObject(hub, length);
+        if (SerialAndEpsilonGCOptions.PrintMetaspace.getValue()) {
+            byteArrayCount.getAndIncrement();
+        }
+        return (byte[]) allocateArrayLikeObject(hub, length, byteArraySize);
     }
 
     public int[] allocateIntArray(int length) {
         DynamicHub hub = DynamicHub.fromClass(int[].class);
-        return (int[]) allocateArrayLikeObject(hub, length);
+        if (SerialAndEpsilonGCOptions.PrintMetaspace.getValue()) {
+            intArrayCount.getAndIncrement();
+        }
+        return (int[]) allocateArrayLikeObject(hub, length, intArraySize);
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
-    private Object allocateArrayLikeObject(DynamicHub hub, int arrayLength) {
+    private Object allocateArrayLikeObject(DynamicHub hub, int arrayLength, UninterruptibleUtils.AtomicLong counter) {
         UnsignedWord size = LayoutEncoding.getArrayAllocationSize(hub.getLayoutEncoding(), arrayLength);
 
         Pointer ptr = memory.allocate(size);
         Object result = FormatArrayNode.formatArray(ptr, DynamicHub.toClass(hub), arrayLength, true, false, AllocationSnippets.FillContent.WITH_ZEROES, true);
         assert size == LayoutEncoding.getSizeFromObject(result);
+        if (SerialAndEpsilonGCOptions.PrintMetaspace.getValue()) {
+            counter.getAndAdd(size.rawValue());
+        }
 
         enableRememberedSetTracking(result, size);
         return result;
@@ -95,5 +117,49 @@ class MetaspaceObjectAllocator {
         AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunk(result);
         /* This updates the first object table as well. */
         RememberedSet.get().enableRememberedSetForObject(chunk, result, size);
+    }
+
+    void printStats(Log log) {
+        long kilo = 1024;
+        long mega = kilo * kilo;
+        long hubCount = dynamicHubCount.get();
+        long hubSize = dynamicHubSize.get();
+        if (hubCount > 0) {
+            log.string(" + DynamicHub: ").unsigned(hubCount)
+                            .string(" objects for a total of ").rational(hubSize, mega, 2)
+                            .string("MB (avg: ").rational(hubSize, hubCount, 2).string("B)").newline();
+        } else {
+            log.string(" + DynamicHub: 0 objects").newline();
+        }
+
+        long byteCount = byteArrayCount.get();
+        long byteSize = byteArraySize.get();
+        if (byteCount > 0) {
+            log.string(" + byte[]: ").unsigned(byteCount)
+                            .string(" objects for a total of ").rational(byteSize, mega, 2)
+                            .string("MB (avg: ").rational(byteSize, byteCount, 2).string("B)").newline();
+        } else {
+            log.string(" + byte[]: 0 objects").newline();
+        }
+
+        long intCount = intArrayCount.get();
+        long intSize = intArraySize.get();
+        if (intCount > 0) {
+            log.string(" + int[]: ").unsigned(intCount)
+                            .string(" objects for a total of ").rational(intSize, mega, 2)
+                            .string("MB (avg: ").rational(intSize, intCount, 2).string("B)").newline();
+        } else {
+            log.string(" + int[]: 0 objects").newline();
+        }
+
+        long totalCount = hubCount + byteCount + intCount;
+        long totalSize = hubSize + byteSize + intSize;
+        if (totalCount > 0) {
+            log.string(" = Total: ").unsigned(totalCount)
+                            .string(" objects for a total of ").rational(totalSize, mega, 2)
+                            .string("MB (avg: ").rational(totalSize, totalCount, 2).string("B)").newline();
+        } else {
+            log.string(" = Total: 0 objects").newline();
+        }
     }
 }

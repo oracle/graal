@@ -34,10 +34,10 @@ import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
 import jdk.graal.compiler.debug.DebugContext;
+import org.graalvm.collections.EconomicSet;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_SIGNATURE_C13;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_SYMBOL_SECTION_NAME;
@@ -122,8 +122,8 @@ public final class CVTypeSectionImpl extends CVSectionImpl {
     }
 
     @Override
-    public Set<BuildDependency> getDependencies(Map<ObjectFile.Element, LayoutDecisionMap> decisions) {
-        Set<BuildDependency> deps = super.getDependencies(decisions);
+    public EconomicSet<BuildDependency> getDependencies(Map<ObjectFile.Element, LayoutDecisionMap> decisions) {
+        EconomicSet<BuildDependency> deps = super.getDependencies(decisions);
         PECoffObjectFile.PECoffSection targetSection = (PECoffObjectFile.PECoffSection) getElement().getOwner().elementForName(CV_SYMBOL_SECTION_NAME);
         LayoutDecision ourContent = decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
         /* Make our content depend on the codeview symbol section. */

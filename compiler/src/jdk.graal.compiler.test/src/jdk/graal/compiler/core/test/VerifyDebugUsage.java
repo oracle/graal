@@ -45,7 +45,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
-import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.graal.compiler.phases.common.ReportHotCodePhase;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.replacements.SnippetTemplate;
@@ -198,7 +197,7 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
      * the {@code Debug.*_LEVEL} constants.
      */
     protected int verifyDumpLevelParameter(MethodCallTargetNode debugCallTarget, ResolvedJavaMethod verifiedCallee, ValueNode arg)
-                    throws VerifyPhase.VerificationError {
+                    throws VerificationError {
         // The 'level' arg for the Debug.dump(...) methods must be a reference to one of
         // the Debug.*_LEVEL constants.
 
@@ -216,7 +215,7 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
     }
 
     protected void verifyDumpObjectParameter(MethodCallTargetNode debugCallTarget, ValueNode arg, ResolvedJavaMethod verifiedCallee, Integer dumpLevel)
-                    throws VerifyPhase.VerificationError {
+                    throws VerificationError {
         ResolvedJavaType argType = ((ObjectStamp) arg.stamp(NodeView.DEFAULT)).type();
         // GR-64309: Calls returning interface type are built with an unrestricted stamp. ArgType is
         // null for SubstrateInstalledCode.
@@ -230,7 +229,7 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
      * {@link DebugContext#INFO_LEVEL} only occurs in white-listed methods.
      */
     protected void verifyStructuredGraphDumping(MethodCallTargetNode debugCallTarget, ResolvedJavaMethod verifiedCallee, Integer dumpLevel)
-                    throws VerifyPhase.VerificationError {
+                    throws VerificationError {
         ResolvedJavaMethod method = debugCallTarget.graph().method();
         if (dumpLevel == null) {
             if (ParameterizedLevelStructuredGraphDumpAllowList.stream().noneMatch(ms -> ms.matches(method))) {

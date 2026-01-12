@@ -67,7 +67,8 @@ public class TStringIndexOfAnyByteTest extends TStringTestBase {
     @Test
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            if (encoding != TruffleString.Encoding.UTF_16 && encoding != TruffleString.Encoding.UTF_32) {
+            if (encoding != TruffleString.Encoding.UTF_16LE && encoding != TruffleString.Encoding.UTF_16BE &&
+                            encoding != TruffleString.Encoding.UTF_32LE && encoding != TruffleString.Encoding.UTF_32BE) {
                 Assert.assertEquals(0, node.execute(a, 0, array.length, new byte[]{array[0]}, encoding));
                 Assert.assertEquals(0, node.execute(a, 0, array.length, new byte[]{0, array[0]}, encoding));
                 Assert.assertEquals(0, node.execute(a, 0, array.length, array, encoding));

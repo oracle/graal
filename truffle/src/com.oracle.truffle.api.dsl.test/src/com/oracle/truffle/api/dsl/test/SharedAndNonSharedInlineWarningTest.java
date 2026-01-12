@@ -52,7 +52,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 public class SharedAndNonSharedInlineWarningTest {
-    private static final String EXPECTED_WARNING = "It is discouraged that specializations with specialization data class combine shared and exclusive%";
 
     @GenerateInline
     @GenerateCached(false)
@@ -93,6 +92,7 @@ public class SharedAndNonSharedInlineWarningTest {
         @Specialization
         static Object mixProfilesWithoutDataClass(int a,
                         @Bind Node node,
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached InlinedBranchProfile sharedBranch,
                         @Exclusive @Cached InlinedBranchProfile exclusiveBranch) {
             sharedBranch.enter(node);
@@ -141,6 +141,7 @@ public class SharedAndNonSharedInlineWarningTest {
         @Specialization
         static Object mixProfilesWithoutDataClass(int a,
                         @Bind Node node,
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached InlinedBranchProfile sharedBranch,
                         @Exclusive @Cached InlineNode exclusiveNode) {
             sharedBranch.enter(node);
@@ -165,6 +166,7 @@ public class SharedAndNonSharedInlineWarningTest {
         @Specialization
         static Object mixWithoutDataClass(int a,
                         @Bind Node node,
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached InlineNode sharedNode,
                         @Exclusive @Cached InlineNode exclusiveNode) {
             sharedNode.execute(node, a);
@@ -198,9 +200,9 @@ public class SharedAndNonSharedInlineWarningTest {
         }
 
         @Specialization
-        @ExpectWarning(EXPECTED_WARNING)
         static Object mixWithDataClass(int a,
                         @Bind Node node,
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached InlinedBranchProfile sharedBranch,
                         @Exclusive @Cached InlinedBranchProfile exclusiveBranch,
                         @SuppressWarnings("unused") @Cached IndirectCallNode cachedNode1,
@@ -255,9 +257,9 @@ public class SharedAndNonSharedInlineWarningTest {
         }
 
         @Specialization
-        @ExpectWarning(EXPECTED_WARNING)
         static Object mixWithDataClass(int a,
                         @Bind Node node,
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached InlinedBranchProfile sharedBranch,
                         @Exclusive @Cached InlineNode exclusiveNode,
                         @SuppressWarnings("unused") @Cached IndirectCallNode cachedNode1,
@@ -284,9 +286,9 @@ public class SharedAndNonSharedInlineWarningTest {
         }
 
         @Specialization
-        @ExpectWarning(EXPECTED_WARNING)
         static Object mixWithDataClass(int a,
                         @Bind Node node,
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached InlineNode sharedNode,
                         @Exclusive @Cached InlineNode exclusiveNode,
                         @SuppressWarnings("unused") @Cached IndirectCallNode cachedNode1,

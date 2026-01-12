@@ -83,6 +83,13 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
             return;
         }
         BasicBlock<?> defBlock = allocator.blockForId(interval.spillDefinitionPos());
+        if (defBlock.mayEmitThreadedCode()) {
+            // TODO (GR-69742): Generalize this optimization to handle generic cases based on split
+            // block frequencies
+            interval.setSpillState(SpillState.NoOptimization);
+            return;
+        }
+
         BasicBlock<?> spillBlock = null;
         Interval firstSpillChild = null;
         try (Indent indent = debug.logAndIndent("interval %s (%s)", interval, defBlock)) {

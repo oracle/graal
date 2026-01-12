@@ -44,6 +44,7 @@ import static com.oracle.truffle.polyglot.PolyglotEngineImpl.HOST_LANGUAGE_INDEX
 import static com.oracle.truffle.polyglot.PolyglotFastThreadLocals.LANGUAGE_CONTEXT_OFFSET;
 import static com.oracle.truffle.polyglot.PolyglotFastThreadLocals.computeLanguageIndexFromStaticIndex;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractPolyglotHostService;
@@ -76,8 +77,13 @@ class DefaultPolyglotHostService extends AbstractPolyglotHostService {
 
     @Override
     public RuntimeException hostToGuestException(AbstractHostLanguageService host, Throwable throwable) {
-        assert !host.isHostException(throwable);
+        assert !isHostException(throwable);
         return host.toHostException(PolyglotFastThreadLocals.getLanguageContext(null, computeLanguageIndexFromStaticIndex(HOST_LANGUAGE_INDEX, LANGUAGE_CONTEXT_OFFSET)), throwable);
+    }
+
+    private static boolean isHostException(Throwable throwable) {
+        InteropLibrary interop = InteropLibrary.getUncached(throwable);
+        return interop.isHostObject(throwable) && interop.isException(throwable);
     }
 
     @Override

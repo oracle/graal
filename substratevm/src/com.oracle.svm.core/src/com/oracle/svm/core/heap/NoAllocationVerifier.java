@@ -32,15 +32,17 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * Motivation: Open an instance of this class to detect attempts to allocate in the Heap.
+ * Open an instance of this class to prevent the current thread from allocating objects in the Java
+ * heap. A single verifier instance may only be used by one thread at a time.
  *
- * Design: There shouldn't be tests for a locked heap on the allocation fast-path, so the key is
- * that creating one of these sets top to end in the young space, so allocation attempts fail over
- * to the slow-path, and there can be a test for a locked heap on the slow path.
+ * Be careful if you use this class in performance critical code: it retires the TLAB of a thread,
+ * so subsequent allocations will enter the allocation slowpath (even if the allocation verifier is
+ * already closed at that point).
  */
-public class NoAllocationVerifier implements AutoCloseable {
-
+public final class NoAllocationVerifier implements AutoCloseable {
     public static final String ERROR_MSG = "Attempt to allocate while allocation was explicitly disabled using a NoAllocationVerifier";
+
+    private static final FastThreadLocalObject<NoAllocationVerifier> openVerifiers = FastThreadLocalFactory.createObject(NoAllocationVerifier.class, "NoAllocationVerifier.openVerifiers");
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */
     public static RuntimeException exit(final String callSite, final String typeName) {
@@ -56,8 +58,6 @@ public class NoAllocationVerifier implements AutoCloseable {
 
         throw VMError.shouldNotReachHere(ERROR_MSG);
     }
-
-    private static final FastThreadLocalObject<NoAllocationVerifier> openVerifiers = FastThreadLocalFactory.createObject(NoAllocationVerifier.class, "NoAllocationVerifier.openVerifiers");
 
     /**
      * Create an opened instance.
@@ -104,11 +104,11 @@ public class NoAllocationVerifier implements AutoCloseable {
         return openVerifiers.get() != null;
     }
 
-    private String reason;
+    private final String reason;
     private boolean isOpen;
     private NoAllocationVerifier next;
 
-    protected NoAllocationVerifier(String reason) {
+    private NoAllocationVerifier(String reason) {
         this.reason = reason;
         isOpen = false;
         next = null;

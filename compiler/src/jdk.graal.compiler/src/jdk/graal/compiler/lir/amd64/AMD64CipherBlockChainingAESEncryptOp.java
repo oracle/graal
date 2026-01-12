@@ -24,6 +24,11 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.AES_BLOCK_SIZE;
+import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.asXMMRegister;
+import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.keyShuffleMask;
+import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.loadKey;
+import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 import static jdk.vm.ci.amd64.AMD64.r11;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
@@ -42,14 +47,10 @@ import static jdk.vm.ci.amd64.AMD64.xmm7;
 import static jdk.vm.ci.amd64.AMD64.xmm8;
 import static jdk.vm.ci.amd64.AMD64.xmm9;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.AES_BLOCK_SIZE;
-import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.asXMMRegister;
-import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.keyShuffleMask;
-import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.loadKey;
-import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.Stride;
@@ -57,15 +58,14 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/4994bd594299e91e804438692e068b1c5dd5cc02/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L1253-L1400",
-          sha1 = "84d9fe0404167447e2d6b3d0cf9a07f752c474d5")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L1253-L1400",
+          sha1 = "27eaaba5d02e385a00e56873954323b965814723")
 // @formatter:on
 public final class AMD64CipherBlockChainingAESEncryptOp extends AMD64LIRInstruction {
 
@@ -126,6 +126,8 @@ public final class AMD64CipherBlockChainingAESEncryptOp extends AMD64LIRInstruct
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        AMD64Assembler.AMD64SIMDInstructionEncoding oldEncoding = masm.setTemporaryAvxEncoding(AMD64Assembler.AMD64SIMDInstructionEncoding.VEX);
+
         GraalError.guarantee(fromValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid fromValue kind: %s", fromValue);
         GraalError.guarantee(toValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid toValue kind: %s", toValue);
         GraalError.guarantee(keyValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid keyValue kind: %s", keyValue);
@@ -249,5 +251,7 @@ public final class AMD64CipherBlockChainingAESEncryptOp extends AMD64LIRInstruct
         // final value of r stored in rvec of CipherBlockChaining object
         masm.movdqu(new AMD64Address(rvec, 0), xmmResult);
         masm.movl(asRegister(resultValue), asRegister(lenValue));
+
+        masm.resetAvxEncoding(oldEncoding);
     }
 }

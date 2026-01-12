@@ -26,11 +26,11 @@
 
 package com.oracle.graal.pointsto.standalone;
 
-import org.graalvm.nativeimage.impl.AnnotationExtractor;
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.util.Arrays;
+
+import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 public class StandaloneAnnotationExtractor implements AnnotationExtractor {
     // Checkstyle: allow direct annotation access

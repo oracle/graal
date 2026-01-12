@@ -44,6 +44,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SCOPED;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SIGNATURE_POLYMORPHIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STABLE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STRICT;
@@ -1118,6 +1119,9 @@ public final class ClassfileParser {
         if (isHidden) {
             methodFlags |= ACC_HIDDEN;
         }
+        if (ParserMethod.isDeclaredSignaturePolymorphic(classType, signature, methodFlags, parsingContext.getJavaVersion())) {
+            methodFlags |= ACC_SIGNATURE_POLYMORPHIC;
+        }
 
         return ParserMethod.create(methodFlags, name, signature, methodAttributes);
     }
@@ -1489,6 +1493,12 @@ public final class ClassfileParser {
             Symbol<Name> innerClassName = null;
             if (innerClassIndex != 0) {
                 innerClassName = pool.className(innerClassIndex);
+            }
+            if (outerClassIndex != 0) {
+                Symbol<Name> outerClassName = pool.className(outerClassIndex);
+                if (outerClassName.length() > 0 && outerClassName.byteAt(0) == '[') {
+                    throw classFormatError("Outer class is an array class");
+                }
             }
 
             for (int j = 0; j < i; ++j) {

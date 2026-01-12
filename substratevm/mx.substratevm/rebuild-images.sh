@@ -40,7 +40,7 @@ location="$( cd -P "$( dirname "$source" )" && pwd )"
 graalvm_home="${location}/../../.."
 
 function usage_and_exit() {
-    echo "Usage: $0 [--verbose] polyglot|libpolyglot|espresso|js|llvm|python|ruby|R|wasm... [custom native-image args]..."
+    echo "Usage: $0 [--verbose] polyglot|libpolyglot|espresso|js|llvm|python|R|wasm... [custom native-image args]..."
     exit 1
 }
 
@@ -49,7 +49,7 @@ custom_args=()
 
 for opt in "${@:1}"; do
     case "$opt" in
-        polyglot|libpolyglot|espresso|js|llvm|python|ruby|R|wasm)
+        polyglot|libpolyglot|espresso|js|llvm|python|R|wasm)
            to_build+=("${opt}")
             ;;
         --help|-h)
@@ -120,9 +120,6 @@ for binary in "${to_build[@]}"; do
             ;;
         python)
             library pythonvm
-            ;;
-        ruby)
-            library rubyvm
             ;;
         R)
             launcher RMain

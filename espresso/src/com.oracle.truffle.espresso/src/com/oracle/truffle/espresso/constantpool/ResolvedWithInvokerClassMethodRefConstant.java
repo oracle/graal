@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
 
 /**
  * This is used for
- * {@link com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics#InvokeGeneric}
+ * {@link com.oracle.truffle.espresso.shared.meta.SignaturePolymorphicIntrinsic#InvokeGeneric}
  * polymorphic signature methods. The invoker object contains the method and appendix that should be
  * used to implement the intrinsic's behaviour. This is provided by the JDK
  * ({@code MethodHandleNatives.linkMethod}).

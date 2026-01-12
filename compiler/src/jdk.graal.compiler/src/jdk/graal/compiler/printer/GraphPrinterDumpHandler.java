@@ -26,6 +26,7 @@ package jdk.graal.compiler.printer;
 
 import static jdk.graal.compiler.debug.DebugConfig.asJavaMethod;
 import static jdk.graal.compiler.debug.DebugOptions.PrintUnmodifiedGraphs;
+import static jdk.graal.compiler.debug.PathUtilities.getDateString;
 
 import java.io.IOException;
 import java.nio.channels.ClosedByInterruptException;
@@ -346,7 +347,8 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
                 if (sunJavaCommand != null) {
                     props.put("sun.java.command", sunJavaCommand);
                 }
-                props.put("date", new Date().toString());
+                Date date = new Date(GraalServices.getGlobalTimeStamp());
+                props.put("date", getDateString(date));
             }
             printer.beginGroup(debug, name, name, debug.contextLookup(ResolvedJavaMethod.class), -1, props);
         } catch (IOException e) {

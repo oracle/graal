@@ -53,6 +53,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
@@ -212,6 +213,7 @@ import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 import jdk.graal.compiler.replacements.nodes.ProfileBooleanNode;
 import jdk.graal.compiler.replacements.nodes.ReverseBitsNode;
 import jdk.graal.compiler.replacements.nodes.ReverseBytesNode;
+import jdk.graal.compiler.replacements.nodes.ThreadedSwitchNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 import jdk.graal.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
@@ -348,30 +350,33 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerStringPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean supportsStubBasedPlugins) {
         final Registration r = new Registration(plugins, String.class);
-        r.register(new InvocationPlugin("hashCode", Receiver.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                String s = asConstantObject(b, String.class, receiver.get(false));
-                if (s != null) {
-                    b.addPush(JavaKind.Int, b.add(ConstantNode.forInt(s.hashCode())));
-                    return true;
+        if (!LibGraalSupport.inLibGraalRuntime()) {
+            // These intrinsics require converting constants to String objects in
+            // the current heap which is not not supported on libgraal.
+            r.register(new InvocationPlugin("hashCode", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    String s = asConstantObject(b, String.class, receiver.get(false));
+                    if (s != null) {
+                        b.addPush(JavaKind.Int, b.add(ConstantNode.forInt(s.hashCode())));
+                        return true;
+                    }
+                    return false;
                 }
-                return false;
-            }
-        });
-        r.register(new InvocationPlugin("intern", Receiver.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                String s = asConstantObject(b, String.class, receiver.get(false));
-                if (s != null) {
-                    JavaConstant interned = snippetReflection.forObject(s.intern());
-                    b.addPush(JavaKind.Object, b.add(ConstantNode.forConstant(interned, b.getMetaAccess(), b.getGraph())));
-                    return true;
+            });
+            r.register(new InvocationPlugin("intern", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    String s = asConstantObject(b, String.class, receiver.get(false));
+                    if (s != null) {
+                        JavaConstant interned = snippetReflection.forObject(s.intern());
+                        b.addPush(JavaKind.Object, b.add(ConstantNode.forConstant(interned, b.getMetaAccess(), b.getGraph())));
+                        return true;
+                    }
+                    return false;
                 }
-                return false;
-            }
-        });
-
+            });
+        }
         if (supportsStubBasedPlugins) {
             r.register(new StringEqualsInvocationPlugin());
         }
@@ -1787,6 +1792,13 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(new RequiredInlineOnlyInvocationPlugin("controlFlowAnchor", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode condition) {
+                b.add(new ControlFlowAnchorNode(condition));
+                return true;
+            }
+        });
         r.register(new RequiredInlineOnlyInvocationPlugin("neverStripMine") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -2045,7 +2057,14 @@ public class StandardGraphBuilderPlugins {
                 return false;
             }
         });
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("markThreadedSwitch", int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input) {
+                ThreadedSwitchNode threadedSwitchNode = b.add(new ThreadedSwitchNode(input));
+                b.push(input.getStackKind(), threadedSwitchNode);
+                return true;
+            }
+        });
     }
 
     public static void registerEnsureAllocatedHereIntrinsic(GraphBuilderContext b, ValueNode object) {
@@ -2622,7 +2641,7 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerStringCodingPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, "java.lang.StringCoding");
-        r.register(new InvocationPlugin("encodeISOArray0", byte[].class, int.class, byte[].class, int.class, int.class) {
+        r.register(new InvocationPlugin("implEncodeISOArray", byte[].class, int.class, byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
                             ValueNode da, ValueNode dp, ValueNode len) {
@@ -2635,7 +2654,7 @@ public class StandardGraphBuilderPlugins {
                 }
             }
         });
-        r.register(new InvocationPlugin("encodeAsciiArray0", char[].class, int.class, byte[].class, int.class, int.class) {
+        r.register(new InvocationPlugin("implEncodeAsciiArray", char[].class, int.class, byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
                             ValueNode da, ValueNode dp, ValueNode len) {
@@ -2647,10 +2666,17 @@ public class StandardGraphBuilderPlugins {
                 }
             }
         });
-        r.register(new InvocationPlugin("countPositives0", byte[].class, int.class, int.class) {
+        r.register(new InvocationPlugin("countPositives", byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode ba, ValueNode off, ValueNode len) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    helper.intrinsicRangeCheck(off, Condition.LT, ConstantNode.forInt(0));
+                    helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
+
+                    ValueNode arrayLength = b.add(new ArrayLengthNode(ba));
+                    ValueNode limit = b.add(AddNode.create(off, len, NodeView.DEFAULT));
+                    helper.intrinsicRangeCheck(arrayLength, Condition.LT, limit);
+
                     ValueNode array = helper.arrayElementPointer(ba, JavaKind.Byte, off);
                     b.addPush(JavaKind.Int, new CountPositivesNode(array, len));
                     return true;
@@ -2659,7 +2685,7 @@ public class StandardGraphBuilderPlugins {
         });
 
         r = new Registration(plugins, "sun.nio.cs.ISO_8859_1$Encoder");
-        r.register(new InvocationPlugin("encodeISOArray0", char[].class, int.class, byte[].class, int.class, int.class) {
+        r.register(new InvocationPlugin("implEncodeISOArray", char[].class, int.class, byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
                             ValueNode da, ValueNode dp, ValueNode len) {

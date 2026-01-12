@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,16 @@
  */
 package org.graalvm.collections;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Predicate;
+
 /**
- * Unmodifiable memory efficient set data structure.
+ * Unmodifiable memory efficient set data structure. It does not support {@linkplain #contains
+ * looking up} a {@code null} element.
  *
  * @since 19.0
  */
@@ -50,6 +58,7 @@ public interface UnmodifiableEconomicSet<E> extends Iterable<E> {
     /**
      * Returns {@code true} if this set contains a mapping for the {@code element}.
      *
+     * @throws UnsupportedOperationException if {@code element == null}
      * @since 19.0
      */
     boolean contains(E element);
@@ -69,7 +78,7 @@ public interface UnmodifiableEconomicSet<E> extends Iterable<E> {
     boolean isEmpty();
 
     /**
-     * Stores all of the elements in this set into {@code target}. An
+     * Stores all the elements in this set into {@code target}. An
      * {@link UnsupportedOperationException} will be thrown if the length of {@code target} does not
      * match the size of this set.
      *
@@ -90,4 +99,41 @@ public interface UnmodifiableEconomicSet<E> extends Iterable<E> {
 
         return target;
     }
+
+    default HashSet<E> toHashSet() {
+        HashSet<E> set = new HashSet<>(size());
+        for (E elem : this) {
+            set.add(elem);
+        }
+        return set;
+    }
+
+    default List<E> toList() {
+        List<E> list = new ArrayList<>();
+        iterator().forEachRemaining(list::add);
+        return list;
+    }
+
+    default boolean containsAll(Iterable<? extends E> coll) {
+        for (E e : coll) {
+            if (!contains(e)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    default boolean removeIf(Predicate<? super E> filter) {
+        Objects.requireNonNull(filter);
+        boolean removed = false;
+        final Iterator<E> each = iterator();
+        while (each.hasNext()) {
+            if (filter.test(each.next())) {
+                each.remove();
+                removed = true;
+            }
+        }
+        return removed;
+    }
+
 }

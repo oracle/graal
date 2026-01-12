@@ -74,7 +74,6 @@
       "aarch64"+: common.linux_aarch64,
     },
     "darwin"+: {
-      "amd64"+: common.darwin_amd64,
       "aarch64"+: common.darwin_aarch64,
     },
     "windows"+:{
@@ -90,6 +89,7 @@
   })),
 
   local all_jobs = {
+    "darwin:amd64"+: exclude,
     "windows:aarch64"+: exclude,
     "*:*:jdk19"+: exclude,
   },
@@ -126,7 +126,7 @@
     "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp,check_libcontainer_annotations,check_libcontainer_namespace") + eclipse + jdt + spotbugs + maven + mx_build_exploded + gdb("14.2") + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk-latest": tier1 + t("30:00"),
     }),
-    "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule,java_agent,condconfig") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
+    "basics": mxgate("build,helloworld,native_unittests,standalone_pointsto_unittests,truffle_unittests,debuginfotest,hellomodule,java_agent,condconfig") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk-latest": tier2 + partial(2) + gdb("14.2") + t("40:00"),
       "windows:amd64:jdk-latest": tier3 + t("1:30:00"),
     }) + variants({
@@ -139,9 +139,6 @@
       "java-compiler:ecj": {
         "linux:amd64:jdk-latest": tier2 + partial(2) + gdb("14.2") + t("40:00"),
       },
-    }),
-    "oraclejdk-helloworld": mxgate("build,helloworld,hellomodule") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk-latest": tier1 + use_oraclejdk_latest + t("30:00"),
     }),
   },
   // END MAIN BUILD DEFINITION

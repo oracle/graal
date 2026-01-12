@@ -6,3 +6,8 @@ all = [
 ]
 any = [
 ]
+[[rule]]
+files = "RuntimeClassLoading.java RuntimeDynamicHubMetadata.java RuntimeReflectionMetadata.java"
+all = [
+    "gilles.m.duboscq@oracle.com",
+]

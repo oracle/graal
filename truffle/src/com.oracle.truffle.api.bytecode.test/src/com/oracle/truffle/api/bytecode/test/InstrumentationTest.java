@@ -60,10 +60,12 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.InstructionTracer;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Variadic;
@@ -75,6 +77,7 @@ import com.oracle.truffle.api.bytecode.test.InstrumentationTest.InstrumentationT
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -372,6 +375,74 @@ public class InstrumentationTest extends AbstractInstructionTest {
         assertEquals("load.local$Int", clonedNode.getBytecodeNode().getInstructionsAsList().get(4).getName());
         assertEquals(6, clone.call());
         assertEquals("load.local$Int", clonedNode.getBytecodeNode().getInstructionsAsList().get(4).getName());
+    }
+
+    @Test
+    public void testManyInstrumentation() {
+        Class<?>[] allInstrumentations = new Class<?>[]{
+                        ManyInstrumentationsRootNode.Instrumentation1.class,
+                        ManyInstrumentationsRootNode.Instrumentation2.class,
+                        ManyInstrumentationsRootNode.Instrumentation3.class,
+                        ManyInstrumentationsRootNode.Instrumentation4.class,
+                        ManyInstrumentationsRootNode.Instrumentation5.class,
+                        ManyInstrumentationsRootNode.Instrumentation6.class,
+                        ManyInstrumentationsRootNode.Instrumentation7.class,
+                        ManyInstrumentationsRootNode.Instrumentation8.class,
+                        ManyInstrumentationsRootNode.Instrumentation9.class,
+                        ManyInstrumentationsRootNode.Instrumentation10.class,
+                        ManyInstrumentationsRootNode.Instrumentation11.class,
+                        ManyInstrumentationsRootNode.Instrumentation12.class,
+                        ManyInstrumentationsRootNode.Instrumentation13.class,
+                        ManyInstrumentationsRootNode.Instrumentation14.class,
+                        ManyInstrumentationsRootNode.Instrumentation15.class,
+                        ManyInstrumentationsRootNode.Instrumentation16.class,
+                        ManyInstrumentationsRootNode.Instrumentation17.class,
+                        ManyInstrumentationsRootNode.Instrumentation18.class,
+                        ManyInstrumentationsRootNode.Instrumentation19.class,
+                        ManyInstrumentationsRootNode.Instrumentation20.class,
+                        ManyInstrumentationsRootNode.Instrumentation21.class,
+                        ManyInstrumentationsRootNode.Instrumentation22.class,
+                        ManyInstrumentationsRootNode.Instrumentation23.class,
+                        ManyInstrumentationsRootNode.Instrumentation24.class,
+                        ManyInstrumentationsRootNode.Instrumentation25.class,
+                        ManyInstrumentationsRootNode.Instrumentation26.class,
+                        ManyInstrumentationsRootNode.Instrumentation27.class,
+                        ManyInstrumentationsRootNode.Instrumentation28.class,
+                        ManyInstrumentationsRootNode.Instrumentation29.class,
+                        ManyInstrumentationsRootNode.Instrumentation30.class,
+        };
+        ManyInstrumentationsRootNode root = ManyInstrumentationsRootNodeGen.BYTECODE.create(null, BytecodeConfig.DEFAULT, (b) -> {
+            b.beginRoot();
+            for (Class<?> instrument : allInstrumentations) {
+                String simpleName = instrument.getSimpleName();
+                try {
+                    b.getClass().getMethod("emit" + simpleName).invoke(b);
+                } catch (ReflectiveOperationException e) {
+                    throw new AssertionError(e);
+                }
+            }
+            b.emitLoadConstant(42);
+            b.endRoot();
+        }).getNode(0);
+
+        assertEquals(2, root.getBytecodeNode().getInstructionsAsList().size());
+        int expectedInstructionCount = 2;
+        for (Class<?> instrumentation : allInstrumentations) {
+            assertEquals(expectedInstructionCount, root.getBytecodeNode().getInstructionsAsList().size());
+            root.getRootNodes().update(ManyInstrumentationsRootNodeGen.BYTECODE.newConfigBuilder().addInstrumentation(instrumentation).build());
+            assertEquals(expectedInstructionCount + 1,
+                            root.getBytecodeNode().getInstructionsAsList().size());
+            expectedInstructionCount++;
+        }
+        root.getRootNodes().addInstructionTracer(new InstructionTracer() {
+            @Override
+            public void onInstructionEnter(InstructionAccess access, BytecodeNode bytecode, int bytecodeIndex, Frame frame) {
+            }
+        });
+
+        // instruction tracing doubles all instructions
+        assertEquals(expectedInstructionCount * 2,
+                        root.getBytecodeNode().getInstructionsAsList().size());
     }
 
     @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, //
@@ -851,13 +922,6 @@ public class InstrumentationTest extends AbstractInstructionTest {
             }
         }
 
-        @Instrumentation
-        static final class Instrumentation31 {
-            @Specialization
-            public static void doDefault() {
-            }
-        }
-
     }
 
     @ExpectError("Too many @Instrumentation annotated operations specified. %")
@@ -1091,13 +1155,6 @@ public class InstrumentationTest extends AbstractInstructionTest {
 
         @Instrumentation
         static final class Instrumentation31 {
-            @Specialization
-            public static void doDefault() {
-            }
-        }
-
-        @Instrumentation
-        static final class Instrumentation32 {
             @Specialization
             public static void doDefault() {
             }

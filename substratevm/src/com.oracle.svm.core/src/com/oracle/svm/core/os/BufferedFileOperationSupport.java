@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.os;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.nio.ByteOrder;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -42,6 +44,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.memory.NullableNativeMemory;
@@ -49,8 +52,13 @@ import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.BufferedFileOperationSupport.BufferedFileOperationSupportHolder;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.word.Word;
 
 /**
@@ -61,7 +69,6 @@ public class BufferedFileOperationSupport {
     /**
      * Returns a {@link BufferedFileOperationSupport} singleton that uses little endian byte order.
      */
-    @Fold
     public static BufferedFileOperationSupport littleEndian() {
         return BufferedFileOperationSupportHolder.singleton().littleEndian;
     }
@@ -69,7 +76,6 @@ public class BufferedFileOperationSupport {
     /**
      * Returns a {@link BufferedFileOperationSupport} singleton that uses big endian byte order.
      */
-    @Fold
     public static BufferedFileOperationSupport bigEndian() {
         return BufferedFileOperationSupportHolder.singleton().bigEndian;
     }
@@ -78,7 +84,6 @@ public class BufferedFileOperationSupport {
      * Returns a {@link BufferedFileOperationSupport} singleton that uses the native byte order of
      * the underlying architecture.
      */
-    @Fold
     public static BufferedFileOperationSupport nativeByteOrder() {
         return BufferedFileOperationSupportHolder.singleton().nativeOrder;
     }
@@ -100,7 +105,7 @@ public class BufferedFileOperationSupport {
      *         {@link RawFileOperationSupport#isValid valid} and if the allocation was successful.
      *         Returns a null pointer otherwise.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public BufferedFile allocate(RawFileDescriptor fd, NmtCategory nmtCategory) {
         if (!rawFiles().isValid(fd)) {
             return Word.nullPointer();
@@ -127,7 +132,7 @@ public class BufferedFileOperationSupport {
      * Free the {@link BufferedFile} and its corresponding buffer. Be aware that this operation does
      * neither flush pending data nor close the underlying {@link RawFileDescriptor}.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void free(BufferedFile f) {
         NullableNativeMemory.free(f);
     }
@@ -138,7 +143,7 @@ public class BufferedFileOperationSupport {
      * @return true if the data was flushed successful or there was no pending data that needed
      *         flushing.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean flush(BufferedFile f) {
         int unflushed = getUnflushedDataSize(f);
         if (unflushed == 0) {
@@ -160,7 +165,7 @@ public class BufferedFileOperationSupport {
      * @return If the operation is successful, it returns the current file position. Otherwise, it
      *         returns a value less than 0.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long position(BufferedFile f) {
         return f.getFilePosition() + getUnflushedDataSize(f);
     }
@@ -171,7 +176,7 @@ public class BufferedFileOperationSupport {
      *
      * @return true if the file position was updated to the given value, false otherwise.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean seek(BufferedFile f, long position) {
         if (position >= 0 && flush(f) && rawFiles().seek(f.getFileDescriptor(), position)) {
             f.setFilePosition(position);
@@ -185,7 +190,7 @@ public class BufferedFileOperationSupport {
      *
      * @return true if the data was written, false otherwise.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean write(BufferedFile f, Pointer data, UnsignedWord size) {
         /* Large data is written directly to the file without any buffering. */
         if (size.aboveOrEqual(LARGE_DATA_THRESHOLD)) {
@@ -228,7 +233,7 @@ public class BufferedFileOperationSupport {
      *
      * @return true if the data was written, false otherwise.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeBoolean(BufferedFile f, boolean data) {
         return writeByte(f, (byte) (data ? 1 : 0));
     }
@@ -238,7 +243,7 @@ public class BufferedFileOperationSupport {
      *
      * @return true if the data was written, false otherwise.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeByte(BufferedFile f, byte data) {
         if (!ensureBufferSpace(f, Byte.BYTES)) {
             return false;
@@ -256,7 +261,7 @@ public class BufferedFileOperationSupport {
      *
      * @return true if the data was written, false otherwise.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeShort(BufferedFile f, short data) {
         if (!ensureBufferSpace(f, Short.BYTES)) {
             return false;
@@ -274,7 +279,7 @@ public class BufferedFileOperationSupport {
      *
      * @return true if the data was written, false otherwise.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeChar(BufferedFile f, char data) {
         if (!ensureBufferSpace(f, Character.BYTES)) {
             return false;
@@ -292,7 +297,7 @@ public class BufferedFileOperationSupport {
      *
      * @return true if the data was written, false otherwise.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeInt(BufferedFile f, int data) {
         if (!ensureBufferSpace(f, Integer.BYTES)) {
             return false;
@@ -310,7 +315,7 @@ public class BufferedFileOperationSupport {
      *
      * @return true if the v was written, false otherwise.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeLong(BufferedFile f, long v) {
         if (!ensureBufferSpace(f, Long.BYTES)) {
             return false;
@@ -328,7 +333,7 @@ public class BufferedFileOperationSupport {
      *
      * @return true if the data was written, false otherwise.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeFloat(BufferedFile f, float v) {
         return writeInt(f, Float.floatToIntBits(v));
     }
@@ -339,12 +344,12 @@ public class BufferedFileOperationSupport {
      *
      * @return true if the data was written, false otherwise.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeDouble(BufferedFile f, double v) {
         return writeLong(f, Double.doubleToLongBits(v));
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeUTF8(BufferedFile f, String string) {
         return writeUTF8(f, string, null);
     }
@@ -355,7 +360,7 @@ public class BufferedFileOperationSupport {
      *
      * @return true if the data was written, false otherwise.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeUTF8(BufferedFile f, String string, CharReplacer replacer) {
         boolean success = true;
         for (int index = 0; index < string.length() && success; index++) {
@@ -368,7 +373,7 @@ public class BufferedFileOperationSupport {
         return success;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private boolean writeUTF8(BufferedFile f, char c) {
         boolean success;
         if (c <= 0x007F) {
@@ -384,19 +389,19 @@ public class BufferedFileOperationSupport {
         return success;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getUnflushedDataSize(BufferedFile f) {
         UnsignedWord result = f.getBufferPos().subtract(getBufferStart(f));
         assert result.belowOrEqual(BUFFER_SIZE);
         return (int) result.rawValue();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static Pointer getBufferStart(BufferedFile f) {
         return ((Pointer) f).add(SizeOf.unsigned(BufferedFile.class));
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private boolean ensureBufferSpace(BufferedFile f, int size) {
         assert size <= BUFFER_SIZE : "only called for small data";
         if (getUnflushedDataSize(f) + size >= BUFFER_SIZE) {
@@ -405,7 +410,7 @@ public class BufferedFileOperationSupport {
         return true;
     }
 
-    @Fold
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static RawFileOperationSupport rawFiles() {
         /* The byte order does not matter because we only use byte-order-independent methods. */
         return RawFileOperationSupport.nativeByteOrder();
@@ -432,6 +437,7 @@ public class BufferedFileOperationSupport {
         void setFilePosition(long value);
     }
 
+    @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
     public static class BufferedFileOperationSupportHolder {
         private final BufferedFileOperationSupport littleEndian;
         private final BufferedFileOperationSupport bigEndian;
@@ -447,15 +453,20 @@ public class BufferedFileOperationSupport {
             this.nativeOrder = nativeByteOrder == ByteOrder.LITTLE_ENDIAN ? littleEndian : bigEndian;
         }
 
-        @Fold
         static BufferedFileOperationSupportHolder singleton() {
             return ImageSingletons.lookup(BufferedFileOperationSupportHolder.class);
         }
     }
 }
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 class BufferedFileOperationFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (RawFileOperationSupport.isPresent()) {

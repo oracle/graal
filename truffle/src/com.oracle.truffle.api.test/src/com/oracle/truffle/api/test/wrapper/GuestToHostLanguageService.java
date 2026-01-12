@@ -72,8 +72,7 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public Object toGuestValue(Object context, Object hostValue, boolean asValue) {
-
+    public Object toGuestValue(Object node, Object hostValue, boolean asValue) {
         return hostValue;
     }
 
@@ -105,22 +104,7 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public boolean isHostValue(Object value) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Object unboxHostObject(Object hostValue) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public Object unboxProxyObject(Object hostValue) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Throwable unboxHostException(Throwable hostValue) {
         throw new UnsupportedOperationException();
     }
 
@@ -135,26 +119,6 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public boolean isHostException(Object exception) {
-        return false;
-    }
-
-    @Override
-    public boolean isHostFunction(Object obj) {
-        return false;
-    }
-
-    @Override
-    public boolean isHostObject(Object obj) {
-        return false;
-    }
-
-    @Override
-    public boolean isHostSymbol(Object obj) {
-        return false;
-    }
-
-    @Override
     public Object createHostAdapter(Object hostContextObject, Object[] types, Object classOverrides) {
         return null;
     }
@@ -166,11 +130,6 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
 
     @Override
     public Object migrateValue(Object hostContext, Object value, Object valueContext) {
-        return null;
-    }
-
-    @Override
-    public Error toHostResourceError(Throwable hostException) {
         return null;
     }
 

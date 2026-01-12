@@ -39,7 +39,10 @@ import java.util.stream.IntStream;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.CGlobalDataPointerSingleton;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.CGlobalData;
@@ -50,14 +53,17 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.hosted.imagelayer.CodeLocation;
+import com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature;
 import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -90,10 +96,12 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -103,6 +111,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class CGlobalDataFeature implements InternalFeature {
 
     private final Method getCGlobalDataInfoMethod = ReflectionUtil.lookupMethod(CGlobalDataNonConstantRegistry.class, "getCGlobalDataInfo", CGlobalDataImpl.class);
+    private final Field layerNumField = ReflectionUtil.lookupField(CGlobalDataInfo.class, "layerNum");
+    private final Field cGlobalDataRuntimeBaseAddressField = ReflectionUtil.lookupField(CGlobalDataPointerSingleton.class, "cGlobalDataRuntimeBaseAddress");
     private final Field offsetField = ReflectionUtil.lookupField(CGlobalDataInfo.class, "offset");
     private final Field isSymbolReferenceField = ReflectionUtil.lookupField(CGlobalDataInfo.class, "isSymbolReference");
     private final Field baseHolderPointerField = ReflectionUtil.lookupField(BoxedRelocatedPointer.class, "pointer");
@@ -130,6 +140,18 @@ public class CGlobalDataFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         a.registerObjectReplacer(this::replaceObject);
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            /*
+             * The non-constant registry needs to be rescanned in layered images to make sure it is
+             * always reachable in every layer and that all the data is properly tracked.
+             */
+            ScanReason reason = new OtherReason("Manual rescan triggered from " + CGlobalDataFeature.class);
+            ((FeatureImpl.BeforeAnalysisAccessImpl) access).rescanObject(nonConstantRegistry, reason);
+        }
     }
 
     @Override
@@ -180,8 +202,39 @@ public class CGlobalDataFeature implements InternalFeature {
                         }
                     }
 
-                    JavaConstant baseHolderConstant = providers.getSnippetReflection().forObject(CGlobalDataInfo.CGLOBALDATA_RUNTIME_BASE_ADDRESS);
-                    ConstantNode baseHolder = ConstantNode.forConstant(baseHolderConstant, b.getMetaAccess(), b.getGraph());
+                    ValueNode baseHolder;
+                    if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                        /*
+                         * When building layered images, each layer has its own CGlobalData base
+                         * pointer, meaning the one associated with this specific CGlobalDataInfo
+                         * needs to be used.
+                         */
+                        JavaConstant cGlobalDataPointerSingletonClass = providers.getSnippetReflection().forObject(CGlobalDataPointerSingleton.class);
+                        ConstantNode classConstant = ConstantNode.forConstant(cGlobalDataPointerSingletonClass, b.getMetaAccess(), b.getGraph());
+
+                        /* Load the array containing all the singletons. */
+                        ValueNode layers = b.add(ImageSingletons.lookup(LoadImageSingletonFeature.class).loadMultiLayeredImageSingleton(b, classConstant));
+
+                        /*
+                         * Get the layer number of the CGlobalDataInfo to get the index to use in
+                         * the singleton array.
+                         */
+                        ValueNode layerNum = b.add(LoadFieldNode.create(b.getAssumptions(), info, b.getMetaAccess().lookupJavaField(layerNumField)));
+
+                        /* Use the layer number to get the corresponding singleton. */
+                        ValueNode singleton = b.add(LoadIndexedNode.create(b.getAssumptions(), layers, layerNum, null, JavaKind.Object, b.getMetaAccess(), b.getConstantReflection()));
+
+                        /* Get the CGlobalData base pointer from the singleton. */
+                        baseHolder = b.add(LoadFieldNode.create(b.getAssumptions(), singleton, b.getMetaAccess().lookupJavaField(cGlobalDataRuntimeBaseAddressField)));
+                    } else {
+                        /*
+                         * In standalone image, there is only one CGlobalData base pointer, so there
+                         * is no need to have a custom access.
+                         */
+                        JavaConstant baseHolderConstant = providers.getSnippetReflection().forObject(CGlobalDataPointerSingleton.currentLayer().getRuntimeBaseAddress());
+                        baseHolder = ConstantNode.forConstant(baseHolderConstant, b.getMetaAccess(), b.getGraph());
+                    }
+
                     ResolvedJavaField holderPointerField = providers.getMetaAccess().lookupJavaField(baseHolderPointerField);
                     StampPair pointerStamp = StampPair.createSingle(providers.getWordTypes().getWordStamp((ResolvedJavaType) holderPointerField.getType()));
                     LoadFieldNode baseAddress = b.add(LoadFieldNode.createOverrideStamp(pointerStamp, baseHolder, holderPointerField));
@@ -270,7 +323,7 @@ public class CGlobalDataFeature implements InternalFeature {
                             "We currently do not allow CGlobalData code locations to be in a hidden class. Please adapt the code accordingly. Location: %s",
                             data.codeLocation);
         }
-        CGlobalDataInfo cGlobalDataInfo = new CGlobalDataInfo(data, definedAsGlobalInPriorLayer);
+        CGlobalDataInfo cGlobalDataInfo = new CGlobalDataInfo(data, definedAsGlobalInPriorLayer, DynamicImageLayerInfo.getCurrentLayerNumber());
         if (data.nonConstant) {
             nonConstantRegistry.registerNonConstantSymbol(cGlobalDataInfo);
         }

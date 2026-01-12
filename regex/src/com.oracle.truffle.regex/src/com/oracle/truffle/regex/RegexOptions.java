@@ -64,7 +64,7 @@ import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.MatchingMode;
 import com.oracle.truffle.regex.tregex.parser.RegexFlavor;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 /**
  * These options define how TRegex should interpret a given parsing request.
@@ -234,9 +234,9 @@ public final class RegexOptions {
 
     public static final String ENCODING_NAME = "Encoding";
 
-    @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Input string encoding.", usageSyntax = "UTF-8|UTF-16|UTF-16-RAW|UTF-32|BYTES|LATIN-1") //
-    public static final OptionKey<Encodings.Encoding> Encoding = new OptionKey<>(Encodings.UTF_16_RAW, new OptionType<>("Encoding", name -> {
-        Encodings.Encoding enc = Encodings.getEncoding(name);
+    @Option(name = "Encoding", category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Input string encoding.", usageSyntax = "UTF-8|UTF-16|UTF-16-RAW|UTF-32|BYTES|LATIN-1") //
+    public static final OptionKey<Encoding> EncodingOption = new OptionKey<>(Encoding.UTF_16_RAW, new OptionType<>("Encoding", name -> {
+        Encoding enc = Encoding.getEncoding(name);
         if (enc == null) {
             throw new IllegalArgumentException(String.format("unknown encoding '%s'. Supported encodings are: UTF-8,UTF-16,UTF-16-RAW,UTF-32,BYTES,LATIN-1", name));
         }
@@ -295,7 +295,7 @@ public final class RegexOptions {
                     (short) TRegexOptions.TRegexMaxDFATransitions,
                     (short) TRegexOptions.TRegexMaxBackTrackerMergeExplodeSize,
                     getDefaultFlavor(),
-                    Encodings.UTF_16_RAW, null, null, JAVA_JDK_VERSION_DEFAULT,
+                    Encoding.UTF_16_RAW, null, null, JAVA_JDK_VERSION_DEFAULT,
                     (short) TRegexOptions.TRegexQuantifierUnrollLimitSingleCC,
                     (short) TRegexOptions.TRegexQuantifierUnrollLimitGroup);
 
@@ -303,7 +303,7 @@ public final class RegexOptions {
     private final short maxDFASize;
     private final short maxBackTrackerCompileSize;
     private final RegexFlavor flavor;
-    private final Encodings.Encoding encoding;
+    private final Encoding encoding;
     private final MatchingMode matchingMode;
     private final String pythonLocale;
     private final short javaJDKVersion;
@@ -315,7 +315,7 @@ public final class RegexOptions {
                     short maxDFASize,
                     short maxBackTrackerCompileSize,
                     RegexFlavor flavor,
-                    Encodings.Encoding encoding,
+                    Encoding encoding,
                     MatchingMode matchingMode,
                     String pythonLocale,
                     short javaJDKVersion,
@@ -460,7 +460,7 @@ public final class RegexOptions {
         return flavor;
     }
 
-    public Encodings.Encoding getEncoding() {
+    public Encoding getEncoding() {
         return encoding;
     }
 
@@ -599,7 +599,7 @@ public final class RegexOptions {
         private short maxDFASize = TRegexOptions.TRegexMaxDFATransitions;
         private short maxBackTrackerCompileSize = TRegexOptions.TRegexMaxBackTrackerMergeExplodeSize;
         private RegexFlavor flavor;
-        private Encodings.Encoding encoding = Encodings.UTF_16_RAW;
+        private Encoding encoding = Encoding.UTF_16_RAW;
         private MatchingMode matchingMode;
         private String pythonLocale;
         private short javaJDKVersion = JAVA_JDK_VERSION_DEFAULT;
@@ -632,7 +632,7 @@ public final class RegexOptions {
                 parseBooleanSrcOption(GenerateInput, GENERATE_INPUT);
                 parseBooleanSrcOption(ForceLinearExecution, FORCE_LINEAR_EXECUTION);
                 flavor = optionValues.get(Flavor).get();
-                encoding = optionValues.get(Encoding);
+                encoding = optionValues.get(EncodingOption);
                 matchingMode = optionValues.get(MatchingMode);
                 pythonLocale = optionValues.get(PythonLocale);
                 javaJDKVersion = parseShortSrcOption("JavaJDKVersion", JavaJDKVersion, JAVA_JDK_VERSION_MIN);
@@ -855,36 +855,42 @@ public final class RegexOptions {
             }
         }
 
-        private Encodings.Encoding parseEncoding() throws RegexSyntaxException {
+        private Encoding parseEncoding() throws RegexSyntaxException {
             expectOptionName(ENCODING_NAME);
             if (i >= src.length()) {
-                throw optionsSyntaxErrorUnexpectedValue(Encodings.ALL_NAMES);
+                throw optionsSyntaxErrorUnexpectedValue(Encoding.ALL_NAMES);
             }
             switch (src.charAt(i)) {
                 case 'A':
-                    return expectEncodingValue(Encodings.ASCII);
+                    return expectEncodingValue(Encoding.ASCII);
                 case 'B':
-                    return expectValue(Encodings.BYTES, "BYTES", Encodings.ALL_NAMES);
+                    return expectValue(Encoding.BYTES, "BYTES", Encoding.ALL_NAMES);
                 case 'L':
-                    return expectEncodingValue(Encodings.LATIN_1);
+                    return expectEncodingValue(Encoding.LATIN_1);
                 case 'U':
                     switch (lookAheadInKey(4)) {
                         case '8':
-                            return expectEncodingValue(Encodings.UTF_8);
+                            return expectEncodingValue(Encoding.UTF_8);
                         case '1':
-                            return expectEncodingValue(Encodings.UTF_16);
+                            if (lookAheadInKey(6) == 'B') {
+                                return expectEncodingValue(Encoding.UTF_16BE);
+                            }
+                            return expectEncodingValue(Encoding.UTF_16);
                         case '3':
-                            return expectEncodingValue(Encodings.UTF_32);
+                            if (lookAheadInKey(6) == 'B') {
+                                return expectEncodingValue(Encoding.UTF_32BE);
+                            }
+                            return expectEncodingValue(Encoding.UTF_32);
                         default:
-                            throw optionsSyntaxErrorUnexpectedValue(Encodings.ALL_NAMES);
+                            throw optionsSyntaxErrorUnexpectedValue(Encoding.ALL_NAMES);
                     }
                 default:
-                    throw optionsSyntaxErrorUnexpectedValue(Encodings.ALL_NAMES);
+                    throw optionsSyntaxErrorUnexpectedValue(Encoding.ALL_NAMES);
             }
         }
 
-        private Encodings.Encoding expectEncodingValue(Encodings.Encoding enc) {
-            return expectValue(enc, enc.getName(), Encodings.ALL_NAMES);
+        private Encoding expectEncodingValue(Encoding enc) {
+            return expectValue(enc, enc.getName(), Encoding.ALL_NAMES);
         }
 
         private MatchingMode parseMatchingMode(String optionName) throws RegexSyntaxException {
@@ -944,12 +950,12 @@ public final class RegexOptions {
             return flavor;
         }
 
-        public Builder encoding(@SuppressWarnings("hiding") Encodings.Encoding encoding) {
+        public Builder encoding(@SuppressWarnings("hiding") Encoding encoding) {
             this.encoding = encoding;
             return this;
         }
 
-        public Encodings.Encoding getEncoding() {
+        public Encoding getEncoding() {
             return encoding;
         }
 

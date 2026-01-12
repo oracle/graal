@@ -48,7 +48,6 @@ import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugType;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -87,13 +86,13 @@ public final class DebugArrayDisplayValue extends DebugDisplayValue implements T
     }
 
     @ExportMessage
-    public boolean hasLanguage() {
+    public boolean hasLanguageId() {
         return true;
     }
 
     @ExportMessage
-    public Class<? extends TruffleLanguage<?>> getLanguage() {
-        return WasmLanguage.class;
+    String getLanguageId() {
+        return WasmLanguage.ID;
     }
 
     @ExportMessage

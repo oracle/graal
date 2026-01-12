@@ -137,7 +137,7 @@ public class NoProviderConstructorServiceLoaderTest {
      * Helper method for eager iterator tests.
      */
     private static Set<String> loadEagerIteratorNames() {
-        Set<String> simpleNames = new HashSet<>();
+        Set<String> simpleNames = new HashSet<>(); // noEconomicSet(test)
         ServiceLoader.load(ServiceInterface.class).iterator()
                         .forEachRemaining(s -> simpleNames.add(s.getClass().getSimpleName()));
         return simpleNames;

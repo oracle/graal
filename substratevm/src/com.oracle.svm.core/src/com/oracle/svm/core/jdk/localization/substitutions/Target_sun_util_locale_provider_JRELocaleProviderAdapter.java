@@ -53,6 +53,6 @@ final class Target_sun_util_locale_provider_JRELocaleProviderAdapter {
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     protected Set<String> createLanguageTagSet(String category) {
-        return ImageSingletons.lookup(LocalizationSupport.class).supportedLanguageTags;
+        return ImageSingletons.lookup(LocalizationSupport.class).supportedLanguageTags.toHashSet();
     }
 }

@@ -211,10 +211,7 @@ static uint32_t cores_per_cpu(CpuidInfo *_cpuid_info) {
   }
   else if (is_amd_family(_cpuid_info))
   {
-    result = _cpuid_info->ext_cpuid8_ecx.bits.threads_per_cpu + 1;
-    if (cpu_family(_cpuid_info) >= 0x17) { // Zen or later
-      result /= _cpuid_info->ext_cpuid1E_ebx.bits.threads_per_core + 1;
-    }
+    result = (_cpuid_info->ext_cpuid8_ecx.bits.cores_per_cpu + 1);
   }
   else if (is_zx(_cpuid_info))
   {
@@ -580,8 +577,6 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
   {
     if (_cpuid_info->sef_cpuid7_edx.bits.serialize != 0)
       features->fSERIALIZE = 1;
-    if (_cpuid_info->sef_cpuid7_edx.bits.hybrid != 0)
-      features->fHYBRID = 1;
     if (_cpuid_info->sef_cpuid7_edx.bits.avx512_fp16 != 0)
       features->fAVX512_FP16 = 1;
   }
@@ -695,7 +690,6 @@ void determineCPUFeatures(CPUFeatures* features) {
   features->fLSE =    !!(cpu_has("hw.optional.arm.FEAT_LSE"))    | !!(cpu_has("hw.optional.armv8_1_atomics"));
   features->fSHA512 = !!(cpu_has("hw.optional.arm.FEAT_SHA512")) | !!(cpu_has("hw.optional.armv8_2_sha512"));
   features->fSHA3 =   !!(cpu_has("hw.optional.arm.FEAT_SHA3"))   | !!(cpu_has("hw.optional.armv8_2_sha3"));
-  features->fSB =     !!(cpu_has("hw.optional.arm.FEAT_SB"));
   // Not (yet) checked in the Hotspot code.
   features->fDCPOP = 0;
   features->fSVE = 0;
@@ -757,9 +751,6 @@ void determineCPUFeatures(CPUFeatures* features) {
 #ifndef HWCAP_SVE
 #define HWCAP_SVE           (1L << 22)
 #endif
-#ifndef HWCAP_SB
-#define HWCAP_SB            (1L << 29)
-#endif
 #ifndef HWCAP_PACA
 #define HWCAP_PACA          (1L << 30)
 #endif
@@ -804,7 +795,6 @@ void determineCPUFeatures(CPUFeatures* features) {
   features->fSTXR_PREFETCH = 0;
   features->fA53MAC = 0;
   features->fDMB_ATOMICS = 0;
-  features->fSB = !!(auxv & HWCAP_SB);
   features->fPACA = !!(auxv & HWCAP_PACA);
   features->fSVEBITPERM = !!(auxv2 & HWCAP2_SVEBITPERM);
   features->fFPHP = !!(auxv & HWCAP_FPHP);

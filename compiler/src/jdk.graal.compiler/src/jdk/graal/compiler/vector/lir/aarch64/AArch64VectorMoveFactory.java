@@ -76,7 +76,7 @@ public class AArch64VectorMoveFactory extends AArch64MoveFactory {
         assert result.getPlatformKind().getSizeInBytes() <= input.getPlatformKind().getSizeInBytes() : "cannot move " + input + " into a larger Value " + result;
         AArch64Kind moveKind = (AArch64Kind) result.getPlatformKind();
         if (moveKind.getSizeInBytes() * Byte.SIZE > Long.SIZE) {
-            RegisterBackupPair backup = backupSlotProvider.getScratchRegister(moveKind);
+            RegisterBackupPair backup = backupSlotProvider.getScratchRegister(moveKind, null);
             Register scratchRegister = backup.register;
             VirtualStackSlot backupSlot = backup.backupSlot;
             return new AArch64ASIMDMove.StackMoveOp(result, input, scratchRegister, backupSlot);

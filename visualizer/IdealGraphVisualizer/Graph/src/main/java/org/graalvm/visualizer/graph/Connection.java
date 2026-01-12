@@ -29,6 +29,7 @@ import java.awt.Color;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 public final class Connection implements Link {
@@ -140,6 +141,22 @@ public final class Connection implements Link {
         outputSlot.getFigure().removeSuccessor(inputSlot.getFigure());
         outputSlot.connections.remove(this);
     }
+
+    /**
+     * When removing large numbers of figures, repeatedly removing individual edges becomes n squared because
+     * of the use of ArrayList.  If the {@code cleaned} map is passed in then the Figures to be removed have been marked
+     * with {@link  Figure#isDeleted()}.  The lists of successor, predecessors and connections are then just cleaned once.
+     */
+    public void remove(HashSet<Object> cleaned) {
+        if (cleaned == null) {
+            remove();
+            return;
+        }
+
+        inputSlot.cleanDeletedFigures(cleaned);
+        outputSlot.cleanDeletedFigures(cleaned);
+    }
+
 
     public String getToolTipText() {
         StringBuilder builder = new StringBuilder();

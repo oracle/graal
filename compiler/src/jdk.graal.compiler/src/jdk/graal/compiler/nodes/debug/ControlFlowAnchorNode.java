@@ -33,16 +33,26 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class ControlFlowAnchorNode extends FixedWithNextNode implements LIRLowerable, ControlFlowAnchored {
+public final class ControlFlowAnchorNode extends FixedWithNextNode implements LIRLowerable, ControlFlowAnchored, Canonicalizable {
 
     public static final NodeClass<ControlFlowAnchorNode> TYPE = NodeClass.create(ControlFlowAnchorNode.class);
 
+    @OptionalInput protected ValueNode numericCondition;
+
     public ControlFlowAnchorNode() {
         super(TYPE, StampFactory.forVoid());
+    }
+
+    public ControlFlowAnchorNode(ValueNode numericCondition) {
+        this();
+        this.numericCondition = numericCondition;
     }
 
     /**
@@ -60,5 +70,17 @@ public final class ControlFlowAnchorNode extends FixedWithNextNode implements LI
     @Override
     protected void afterClone(Node other) {
         assert other.graph() != null && other.graph() != graph() : this + " should never be cloned in the same graph";
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        if (numericCondition != null) {
+            // if we have a condition that evals to 0
+            if (numericCondition.isConstant() && numericCondition.asJavaConstant().asLong() == 0L) {
+                // delete this node
+                return null;
+            }
+        }
+        return this;
     }
 }

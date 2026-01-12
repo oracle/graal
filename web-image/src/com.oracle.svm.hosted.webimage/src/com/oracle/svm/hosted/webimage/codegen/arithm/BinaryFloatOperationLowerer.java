@@ -27,9 +27,13 @@ package com.oracle.svm.hosted.webimage.codegen.arithm;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.js.JSKeyword;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
+import com.oracle.svm.webimage.functionintrinsics.JSFunctionDefinition;
+import com.oracle.svm.webimage.hightiercodegen.Emitter;
 
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 
 public class BinaryFloatOperationLowerer {
@@ -48,4 +52,8 @@ public class BinaryFloatOperationLowerer {
         jsLTools.getCodeBuffer().emitKeyword(JSKeyword.RPAR);
     }
 
+    public static void minMax(JSCodeGenTool codeGenTool, boolean isMin, ValueNode x, ValueNode y) {
+        JSFunctionDefinition fun = isMin ? JSCallNode.MATH_MIN : JSCallNode.MATH_MAX;
+        fun.emitCall(codeGenTool, Emitter.of(x), Emitter.of(y));
+    }
 }

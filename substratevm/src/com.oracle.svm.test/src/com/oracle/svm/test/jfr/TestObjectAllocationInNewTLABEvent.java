@@ -33,8 +33,8 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.genscavenge.HeapParameters;
+import com.oracle.svm.core.genscavenge.TlabOptionCache;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.util.UnsignedUtils;
 
@@ -97,10 +97,10 @@ public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
                     foundBigByteArray = true;
                 }
                 checkTopStackFrame(event, "slowPathNewArrayLikeObjectWithoutAllocation0");
-            } else if (allocationSize >= K && tlabSize >= SubstrateGCOptions.TlabOptions.MinTLABSize.getValue() && tlabSize <= alignedHeapChunkSize && className.equals(byte[].class.getName())) {
+            } else if (allocationSize >= K && tlabSize >= TlabOptionCache.getMinTlabSize() && tlabSize <= alignedHeapChunkSize && className.equals(byte[].class.getName())) {
                 foundSmallByteArray = true;
                 checkTopStackFrame(event, "slowPathNewArrayLikeObjectWithoutAllocation0");
-            } else if (tlabSize >= SubstrateGCOptions.TlabOptions.MinTLABSize.getValue() && tlabSize <= alignedHeapChunkSize && className.equals(Helper.class.getName())) {
+            } else if (tlabSize >= TlabOptionCache.getMinTlabSize() && tlabSize <= alignedHeapChunkSize && className.equals(Helper.class.getName())) {
                 foundInstance = true;
                 checkTopStackFrame(event, "slowPathNewInstanceWithoutAllocation0");
             }

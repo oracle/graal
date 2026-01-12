@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
@@ -66,6 +67,7 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.nodes.BeginNode;
@@ -113,6 +115,7 @@ import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -136,7 +139,7 @@ public abstract class NonSnippetLowerings {
                     Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         this.mustNotAllocatePredicate = mustNotAllocatePredicate;
 
-        if (hosted) {
+        if (hosted || SubstrateOptions.useRistretto()) {
             // These nodes create a FrameState which cannot be deoptimized from
             lowerings.put(BytecodeExceptionNode.class, new BytecodeExceptionLowering());
             lowerings.put(ThrowBytecodeExceptionNode.class, new ThrowBytecodeExceptionLowering());
@@ -242,7 +245,7 @@ public abstract class NonSnippetLowerings {
             }
             outArguments.addAll(exceptionArguments);
         }
-        VMError.guarantee(descriptor != null, "No ForeignCallDescriptor for ByteCodeExceptionKind %s", exceptionKind);
+        GraalError.guarantee(descriptor != null, "No ForeignCallDescriptor for ByteCodeExceptionKind %s", exceptionKind);
         assert descriptor.getArgumentTypes().length == outArguments.size();
         return descriptor;
     }
@@ -427,25 +430,43 @@ public abstract class NonSnippetLowerings {
                          */
                         loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
                     } else {
-                        /*
-                         * In runtime-compiled code, we emit indirect calls via the respective heap
-                         * objects to avoid patching and creating trampolines.
-                         */
-                        JavaConstant codeInfo = SubstrateObjectConstant.forObject(targetMethod.getImageCodeInfo());
-                        ValueNode codeInfoConstant = ConstantNode.forConstant(codeInfo, tool.getMetaAccess(), graph);
-                        ValueNode codeStartFieldOffset = ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), knownOffsets.getImageCodeInfoCodeStartOffset(), graph);
-                        AddressNode codeStartField = graph.unique(new OffsetAddressNode(codeInfoConstant, codeStartFieldOffset));
-                        /*
-                         * Uses ANY_LOCATION because runtime-compiled code can be persisted and
-                         * loaded in a process where image code is located elsewhere.
-                         */
-                        ReadNode codeStart = graph.add(new ReadNode(codeStartField, LocationIdentity.ANY_LOCATION, FrameAccess.getWordStamp(), BarrierType.NONE, MemoryOrderMode.PLAIN));
-                        ValueNode offset = ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), targetMethod.getImageCodeOffset(), graph);
-                        AddressNode address = graph.unique(new OffsetAddressNode(codeStart, offset));
+                        // This needs to have a static type of CFunctionPointer to workaround
+                        // GR-72464
+                        CFunctionPointer rawAdrConstant = targetMethod.getAOTEntrypoint();
+                        assert !SubstrateUtil.HOSTED;
+                        if (rawAdrConstant == Word.nullPointer()) {
+                            /*
+                             * In runtime-compiled code, we emit indirect calls via the respective
+                             * heap objects to avoid patching and creating trampolines.
+                             */
+                            JavaConstant codeInfo = SubstrateObjectConstant.forObject(targetMethod.getImageCodeInfo());
+                            ValueNode codeInfoConstant = ConstantNode.forConstant(codeInfo, tool.getMetaAccess(), graph);
+                            ValueNode codeStartFieldOffset = ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), knownOffsets.getImageCodeInfoCodeStartOffset(), graph);
+                            AddressNode codeStartField = graph.unique(new OffsetAddressNode(codeInfoConstant, codeStartFieldOffset));
+                            /*
+                             * Uses ANY_LOCATION because runtime-compiled code can be persisted and
+                             * loaded in a process where image code is located elsewhere.
+                             */
+                            ReadNode codeStart = graph.add(new ReadNode(codeStartField, LocationIdentity.ANY_LOCATION, FrameAccess.getWordStamp(), BarrierType.NONE, MemoryOrderMode.PLAIN));
+                            ValueNode offset = ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), targetMethod.getImageCodeOffset(), graph);
+                            AddressNode address = graph.unique(new OffsetAddressNode(codeStart, offset));
 
-                        loweredCallTarget = graph.add(new SubstrateIndirectCallTargetNode(
-                                        address, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, targetMethod, callType, invokeKind));
-                        graph.addBeforeFixed(node, codeStart);
+                            loweredCallTarget = graph.add(new SubstrateIndirectCallTargetNode(
+                                            address, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, targetMethod, callType, invokeKind));
+                            graph.addBeforeFixed(node, codeStart);
+                        } else {
+                            /*
+                             * Directly lower to a call based on the raw address, no offset address
+                             * required.
+                             */
+                            assert SubstrateOptions.useRistretto();
+                            final long untrackedMethodAdr = rawAdrConstant.rawValue();
+                            GraalError.guarantee(untrackedMethodAdr != 0L, "runtime-loaded method has no valid entry point: %s", targetMethod);
+                            final ValueNode base = graph.addWithoutUnique(new FloatingWordCastNode(tool.getStampProvider().createMethodStamp(), ConstantNode.forLong(untrackedMethodAdr, graph)));
+                            loweredCallTarget = graph.add(new SubstrateIndirectCallTargetNode(
+                                            base, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature,
+                                            targetMethod, callType, invokeKind));
+                        }
                     }
                 } else if (implementations.length == 0 && isClosedTypeWorld) {
                     /*
@@ -458,7 +479,6 @@ public abstract class NonSnippetLowerings {
                      * a subsequent dead code elimination pass.
                      */
                     loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
-
                 } else {
                     StampProvider stampProvider = runtimeConfig.getProviders().getStampProvider();
                     LoadHubNode hub = graph.unique(new LoadHubNode(stampProvider, graph.addOrUnique(PiNode.create(receiver, nullCheck))));

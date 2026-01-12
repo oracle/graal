@@ -97,7 +97,7 @@ public class CopyLocalsTest extends AbstractBasicInterpreterTest {
 
         Frame frame = (Frame) foo.getCallTarget().call();
         BytecodeNode bytecode = foo.getBytecodeNode();
-        Instruction instr = bytecode.getInstructionsAsList().get(6);
+        Instruction instr = bytecode.getInstructionsAsList().get(run.testTracer() ? 12 : 6);
         Object[] locals = foo.getBytecodeNode().getLocalValues(instr.getBytecodeIndex(), frame);
         assertArrayEquals(new Object[]{42L, "abcd", true}, locals);
     }
@@ -143,7 +143,7 @@ public class CopyLocalsTest extends AbstractBasicInterpreterTest {
 
         Frame frame = (Frame) foo.getCallTarget().call();
         BytecodeNode bytecode = foo.getBytecodeNode();
-        Instruction instr = bytecode.getInstructionsAsList().get(6);
+        Instruction instr = bytecode.getInstructionsAsList().get(run.testTracer() ? 12 : 6);
         Object[] locals = bytecode.getLocalValues(instr.getBytecodeIndex(), frame);
         assertArrayEquals(new Object[]{42L, "abcd", run.getDefaultLocalValue()}, locals);
     }

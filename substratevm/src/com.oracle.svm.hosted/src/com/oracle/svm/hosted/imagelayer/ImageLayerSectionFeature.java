@@ -30,7 +30,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
@@ -55,9 +54,10 @@ import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
-import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.AppLayerCGlobalTracking;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -92,11 +92,13 @@ import jdk.vm.ci.meta.JavaConstant;
  *  |  ..           | bitmap of code offsets to patch       |  \  for how these are gathered, see
  *  |  ..           | bitmap of code addresses to patch     |  /  {@link LayeredDispatchTableFeature}
  *  |  ..           | image heap reference patches          |
+ *  |  ..           | image heap field update patches       |
  *  ---------------------------------------------------------
  * </pre>
  */
 @AutomaticallyRegisteredFeature
-public final class ImageLayerSectionFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public final class ImageLayerSectionFeature implements InternalFeature {
 
     private static final SectionName SVM_LAYER_SECTION = new SectionName.ProgbitsSectionName("svm_layer");
     private static final String LAYER_NAME_PREFIX = "__svm_vm_layer";
@@ -129,7 +131,7 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(HostedDynamicLayerInfoFeature.class, LoadImageSingletonFeature.class, CrossLayerConstantRegistryFeature.class, CGlobalDataFeature.class);
+        return List.of(HostedDynamicLayerInfoFeature.class, LoadImageSingletonFeature.class, CrossLayerConstantRegistryFeature.class, CGlobalDataFeature.class, CrossLayerFieldUpdaterFeature.class);
     }
 
     @Override
@@ -206,13 +208,24 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
         sectionMaxSize += Long.BYTES + relocsBitmapMaxSize; // offsets to patch
         sectionMaxSize += Long.BYTES + relocsBitmapMaxSize; // addresses to patch
 
-        sectionMaxSize += Long.BYTES;
+        /* Account for the length of the image heap reference and field update arrays. */
+        sectionMaxSize += 2 * Long.BYTES;
         if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
             /*
              * Patches for object references in image heaps of other layers. For a description of
              * the table layout, see CrossLayerConstantRegistryFeature#generateRelocationPatchArray.
              */
             sectionMaxSize += Integer.BYTES * CrossLayerConstantRegistryFeature.singleton().computeRelocationPatchesLength();
+            /*
+             * Patches for updated fields. For a description of the table layout see
+             * CrossLayerFieldUpdatersFeature#generateUpdatePatchArray.
+             */
+            int patchesLength = CrossLayerFieldUpdaterFeature.singleton().computeUpdatePatchesLength();
+            if (patchesLength > 0) {
+                // When the patch array is non-zero, then we must also store the header length
+                int headerLength = Integer.BYTES;
+                sectionMaxSize += headerLength + patchesLength;
+            }
         }
 
         layeredSectionData = new BasicProgbitsSectionImpl(new byte[sectionMaxSize]);
@@ -307,8 +320,22 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
             for (int value : relocationPatches) {
                 buffer.putInt(value);
             }
+
+            /*
+             * Currently we place field update patches exclusively in the application layer.
+             * 
+             * See CrossLayerFieldUpdatersFeature#generateUpdatePatchArray for a thorough
+             * description of the field update patch info layout.
+             */
+            byte[] fieldUpdatePatches = CrossLayerFieldUpdaterFeature.singleton().getUpdatePatches();
+            buffer.putLong(fieldUpdatePatches.length);
+            if (fieldUpdatePatches.length != 0) {
+                buffer.putInt(CrossLayerFieldUpdaterFeature.singleton().getHeaderSize());
+                buffer.put(fieldUpdatePatches);
+            }
         } else {
             buffer.putLong(0); // no image heap reference patches
+            buffer.putLong(0); // no image heap field update patches
         }
 
         int size = buffer.position();
@@ -330,7 +357,8 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
         buffer.position(buffer.position() + longsCount * Long.BYTES);
     }
 
-    private static class ImageLayerSectionImpl extends ImageLayerSection implements UnsavedSingleton {
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    private static class ImageLayerSectionImpl extends ImageLayerSection {
 
         ImageLayerSectionImpl(CGlobalData<Pointer> initialSectionStart, CGlobalData<WordPointer> cachedImageFDs, CGlobalData<WordPointer> cachedImageHeapOffsets,
                         CGlobalData<WordPointer> cachedImageHeapRelocations) {
@@ -353,11 +381,6 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
                 case VARIABLY_SIZED_DATA -> VARIABLY_SIZED_DATA_OFFSET;
                 case FIRST_SINGLETON -> FIRST_SINGLETON_OFFSET;
             };
-        }
-
-        @Override
-        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-            return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
         }
     }
 }

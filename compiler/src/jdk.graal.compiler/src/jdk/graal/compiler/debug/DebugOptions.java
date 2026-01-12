@@ -27,10 +27,10 @@ package jdk.graal.compiler.debug;
 import static jdk.graal.compiler.debug.PathUtilities.createDirectories;
 import static jdk.graal.compiler.debug.PathUtilities.exists;
 import static jdk.graal.compiler.debug.PathUtilities.getAbsolutePath;
+import static jdk.graal.compiler.debug.PathUtilities.getDateString;
 import static jdk.graal.compiler.debug.PathUtilities.getPath;
 
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import jdk.graal.compiler.options.EnumMultiOptionKey;
@@ -333,8 +333,7 @@ public class DebugOptions {
             dumpDir = getPath(DumpPath.getValue(options));
         } else {
             Date date = new Date(GraalServices.getGlobalTimeStamp());
-            SimpleDateFormat formatter = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss.SSS");
-            dumpDir = getPath(DumpPath.getValue(options), formatter.format(date));
+            dumpDir = getPath(DumpPath.getValue(options), getDateString(date));
         }
         dumpDir = getAbsolutePath(dumpDir);
         return dumpDir;

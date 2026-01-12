@@ -51,7 +51,7 @@ import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.charset.UnicodePropertyData;
 import com.oracle.truffle.regex.charset.UnicodePropertyDataVersion;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 final class JavaUnicodeProperties {
 
@@ -145,7 +145,7 @@ final class JavaUnicodeProperties {
 
     private JavaUnicodeProperties(UnicodeProperties unicode) {
         this.unicode = unicode;
-        defined = unicode.getProperty("General_Category=Unassigned").createInverse(Encodings.UTF_16);
+        defined = unicode.getProperty("General_Category=Unassigned").createInverse(Encoding.UTF_16);
 
         identifierIgnorable = CodePointSet.createNoDedup(0x0000, 0x0008, 0x000E, 0x001B, 0x007F, 0x009F).union(unicode.getProperty("General_Category=Format"));
 
@@ -211,7 +211,7 @@ final class JavaUnicodeProperties {
                         "General_Category=Paragraph_Separator",
                         "General_Category=Control",
                         "General_Category=Surrogate",
-                        "General_Category=Unassigned").createInverse(Encodings.UTF_16);
+                        "General_Category=Unassigned").createInverse(Encoding.UTF_16);
 
         whiteSpace = unionOfProperties(CodePointSet.createNoDedup(0x9, 0xd, 0x85, 0x85),
                         "General_Category=Space_Separator",
@@ -219,7 +219,7 @@ final class JavaUnicodeProperties {
                         "General_Category=Paragraph_Separator");
 
         digit = unicode.getProperty("General_Category=Decimal_Number");
-        nonDigit = digit.createInverse(Encodings.UTF_16);
+        nonDigit = digit.createInverse(Encoding.UTF_16);
 
         word = unionOfProperties(alphabetic, "Join_Control",
                         "General_Category=Nonspacing_Mark",
@@ -227,10 +227,10 @@ final class JavaUnicodeProperties {
                         "General_Category=Spacing_Mark",
                         "General_Category=Decimal_Number",
                         "General_Category=Connector_Punctuation");
-        nonWord = word.createInverse(Encodings.UTF_16);
+        nonWord = word.createInverse(Encoding.UTF_16);
 
         space = unicode.getProperty("WSpace");
-        nonSpace = space.createInverse(Encodings.UTF_16);
+        nonSpace = space.createInverse(Encoding.UTF_16);
     }
 
     static JavaUnicodeProperties create(RegexOptions options) {
@@ -395,7 +395,7 @@ final class JavaUnicodeProperties {
             case "DIGIT" -> unicode.getProperty("General_Category=Decimal_Number");
             case "BLANK" -> blank;
             case "GRAPH" -> graph;
-            case "PRINT" -> graph.union(blank).subtract(unicode.getProperty("General_Category=Control"), new CompilationBuffer(Encodings.UTF_16));
+            case "PRINT" -> graph.union(blank).subtract(unicode.getProperty("General_Category=Control"), new CompilationBuffer(Encoding.UTF_16));
             default -> null;
         };
     }

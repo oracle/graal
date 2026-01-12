@@ -354,6 +354,26 @@ abstract class AbstractServiceGenerator extends AbstractBridgeGenerator {
         builder.lineEnd(";");
     }
 
+    static void generateIsolateDeathHandlerBlockStart(CodeBuilder builder, MethodData methodData) {
+        if (methodData.isolateDeathHandler != null) {
+            builder.line("try {");
+            builder.indent();
+        }
+    }
+
+    final void generateIsolateDeathHandlerBlockEnd(CodeBuilder builder, MethodData methodData, CharSequence receiverVar) {
+        CharSequence isolateDeathExceptionVar = "isolateDeathException";
+        if (methodData.isolateDeathHandler != null) {
+            builder.dedent();
+            builder.lineStart("} catch (").write(getTypeCache().isolateDeathException).space().write(isolateDeathExceptionVar).lineEnd(") {");
+            builder.indent();
+            builder.lineStart().invokeStatic(methodData.isolateDeathHandler.handlerType(), "handleIsolateDeath", receiverVar, isolateDeathExceptionVar).lineEnd(";");
+            builder.lineStart("throw ").newInstance(getTypeCache().assertionError, "\"Should not reach here.\"").lineEnd(";");
+            builder.dedent();
+            builder.line("}");
+        }
+    }
+
     static CharSequence resolveLength(AbstractServiceParser.DirectionData directionData) {
         return directionData.lengthParameter != null && !directionData.lengthParameter.isEmpty() ? directionData.lengthParameter : null;
     }

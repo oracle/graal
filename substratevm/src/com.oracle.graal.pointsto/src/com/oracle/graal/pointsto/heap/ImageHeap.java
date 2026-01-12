@@ -84,7 +84,7 @@ public class ImageHeap {
              * A base layer constant was in the objectsCache from the base image. It might not have
              * been put in the objectsCache of the extension image yet.
              */
-            assert imageHeapConstant.getHostedObject() == null || imageHeapConstant.isInBaseLayer() || objectsCache.get(imageHeapConstant.getHostedObject()).equals(imageHeapConstant);
+            assert imageHeapConstant.getHostedObject() == null || imageHeapConstant.isInSharedLayer() || objectsCache.get(imageHeapConstant.getHostedObject()).equals(imageHeapConstant);
             return imageHeapConstant;
         }
         return objectsCache.get(uncompressed);

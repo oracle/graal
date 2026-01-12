@@ -68,6 +68,8 @@ abstract class PropertyMap implements ImmutableMap<Object, Property> {
 
     public abstract Property getLastProperty();
 
+    public abstract Property getFirstProperty();
+
     public abstract PropertyMap putCopy(Property element);
 
     public abstract PropertyMap replaceCopy(Property oldValue, Property newValue);

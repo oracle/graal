@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.espresso.substitutions.jvmci;
 
-import static com.oracle.truffle.espresso.jvmci.JVMCIUtils.LOGGER;
-import static com.oracle.truffle.espresso.jvmci.JVMCIUtils.findObjectType;
+import static com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils.LOGGER;
+import static com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils.findObjectType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIInstanceType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIObjectType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIPrimitiveType;
@@ -70,13 +70,16 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
         if (meta.jvmci.DummyEspressoGraalJVMCICompiler == null) {
             throw meta.throwNoClassDefFoundErrorBoundary("com.oracle.truffle.espresso.graal.DummyEspressoGraalJVMCICompiler is missing");
         }
-        openJVMCITo(meta.jvmci.GraalJVMCICompiler.module(), meta);
+        /*
+         * JVMCI.initializeRuntime has already opened JVMCI to jdk.graal.compiler. Let's further
+         * open it to jdk.graal.compiler.espresso.
+         */
         openJVMCITo(meta.jvmci.DummyEspressoGraalJVMCICompiler.module(), meta);
         LOGGER.fine("Creating DummyEspressoGraalJVMCICompiler");
         return (StaticObject) meta.jvmci.DummyEspressoGraalJVMCICompiler_create.invokeDirectStatic(self);
     }
 
-    private static void openJVMCITo(ModuleTable.ModuleEntry compilerModuleEntry, Meta meta) {
+    static void openJVMCITo(ModuleTable.ModuleEntry compilerModuleEntry, Meta meta) {
         LOGGER.finer(() -> "Opening JVMCI to " + compilerModuleEntry.getNameAsString());
         StaticObject compilerModule = compilerModuleEntry.module();
         meta.jvmci.Services_openJVMCITo.invokeDirectStatic(compilerModule);
@@ -160,7 +163,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
             Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(jvmciMethod);
             ObjectKlass accessingKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(accessingClass);
             LOGGER.finer(() -> "resolveMethod " + method + " on " + receiverKlass + " as seen from " + accessingKlass);
-            if (method.isSignaturePolymorphicDeclared() || !receiverKlass.isLinked() || receiverKlass.isInterface() || method.isStatic()) {
+            if (method.isDeclaredSignaturePolymorphic() || !receiverKlass.isLinked() || receiverKlass.isInterface() || method.isStatic()) {
                 return StaticObject.NULL;
             }
 

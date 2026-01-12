@@ -38,6 +38,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -118,7 +119,7 @@ public class DeoptState {
                 }
 
             case VirtualObject:
-                Object obj = materializeObject(TypeConversion.asS4(valueInfo.getData()), sourceFrame);
+                Object obj = materializeObject(valueInfo, sourceFrame);
                 return SubstrateObjectConstant.forObject(obj, valueInfo.isCompressedReference());
             case Illegal:
                 return JavaConstant.forIllegal();
@@ -135,13 +136,8 @@ public class DeoptState {
         return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), word.rawValue());
     }
 
-    /**
-     * Materializes a virtual object.
-     *
-     * @param virtualObjectId the id of the virtual object to materialize
-     * @return the materialized object
-     */
-    private Object materializeObject(int virtualObjectId, FrameInfoQueryResult sourceFrame) {
+    private Object materializeObject(FrameInfoQueryResult.ValueInfo valueInfo, FrameInfoQueryResult sourceFrame) {
+        assert valueInfo.getType() == ValueType.VirtualObject;
         if (materializedObjects == null) {
             materializedObjects = new Object[sourceFrame.getVirtualObjects().length];
         }
@@ -149,38 +145,66 @@ public class DeoptState {
             throw fatalDeoptimizationError(String.format("MaterializedObjects length (%s) does not match sourceFrame", materializedObjects.length), sourceFrame);
         }
 
+        /* Check if the object was already materialized earlier. */
+        int virtualObjectId = TypeConversion.asS4(valueInfo.getData());
         Object obj = materializedObjects[virtualObjectId];
         if (obj != null) {
             return obj;
         }
+
+        /* Materialize the object. */
+        return materializeObject0(valueInfo, virtualObjectId, sourceFrame);
+    }
+
+    private Object materializeObject0(FrameInfoQueryResult.ValueInfo valueInfo, int virtualObjectId, FrameInfoQueryResult sourceFrame) {
         DeoptimizationCounters.counters().virtualObjectsCount.inc();
 
         FrameInfoQueryResult.ValueInfo[] encodings = sourceFrame.getVirtualObjects()[virtualObjectId];
-        DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(readValue(encodings[0], sourceFrame));
         ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
 
-        int curIdx;
+        /* The first encoded value is always the hub. */
+        DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(readValue(encodings[0], sourceFrame));
+        assert hub != null;
+        int curIdx = 1;
+
+        Object obj;
         UnsignedWord curOffset;
         int layoutEncoding = hub.getLayoutEncoding();
         if (LayoutEncoding.isArray(layoutEncoding)) {
             /* For arrays, the second encoded value is the array length. */
             int length = readValue(encodings[1], sourceFrame).asInt();
+            curIdx++;
+
+            /* Allocate an array and zero it. The data will be filled in below. */
             obj = Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), length);
             curOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
-            curIdx = 2;
         } else {
             if (!LayoutEncoding.isPureInstance(layoutEncoding)) {
                 throw fatalDeoptimizationError("Non-pure instance layout encoding: " + layoutEncoding, sourceFrame);
             }
-            try {
-                obj = Unsafe.getUnsafe().allocateInstance(DynamicHub.toClass(hub));
-            } catch (InstantiationException ex) {
-                throw fatalDeoptimizationError("Instantiation exception: " + ex, sourceFrame);
+
+            if (valueInfo.isAutoBoxedPrimitive()) {
+                /*
+                 * For boxed primitives, we need to return a cached object if there is one. Note
+                 * that the encodings array may contain multiple entries for layouting reasons but
+                 * only the last one is relevant.
+                 */
+                obj = readValue(encodings[encodings.length - 1], sourceFrame).asBoxedPrimitive();
+                assert obj.getClass() == DynamicHub.toClass(hub);
+                materializedObjects[virtualObjectId] = obj;
+                return obj;
+            } else {
+                /* Allocate an instance and zero it. The data will be filled in below. */
+                try {
+                    obj = Unsafe.getUnsafe().allocateInstance(DynamicHub.toClass(hub));
+                } catch (InstantiationException ex) {
+                    throw fatalDeoptimizationError("Instantiation exception: " + ex, sourceFrame);
+                }
             }
             curOffset = Word.unsigned(objectLayout.getFirstFieldOffset());
-            curIdx = 1;
         }
 
+        /* Store the reference before filling the object. This breaks cycles in the object graph. */
         materializedObjects[virtualObjectId] = obj;
         Deoptimizer.maybeTestGC();
 
@@ -195,6 +219,7 @@ public class DeoptState {
             }
         }
 
+        /* Fill the object with data (except if we exited early). */
         while (curIdx < encodings.length) {
             FrameInfoQueryResult.ValueInfo value = encodings[curIdx];
             JavaKind kind = value.getKind();
@@ -203,7 +228,6 @@ public class DeoptState {
             curOffset = curOffset.add(objectLayout.sizeInBytes(kind));
             curIdx++;
         }
-
         return obj;
     }
 

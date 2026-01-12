@@ -131,6 +131,15 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
         return null;
     }
 
+    public TypeElement findInnerClass(String name) {
+        for (TypeElement field : getInnerClasses()) {
+            if (field.getSimpleName().toString().equals(name)) {
+                return field;
+            }
+        }
+        return null;
+    }
+
     @Override
     public NestingKind getNestingKind() {
         return isTopLevelClass() ? NestingKind.TOP_LEVEL : NestingKind.LOCAL;

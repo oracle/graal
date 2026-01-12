@@ -61,7 +61,7 @@ import com.oracle.truffle.regex.tregex.parser.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.util.TruffleNull;
 
 /**
@@ -182,12 +182,12 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
         // ECMAScript-specific: the 'u' and 'v' flags change the encoding
         if (optBuilder.getFlavor().getName().equals(RegexOptions.FLAVOR_ECMASCRIPT)) {
             if (flags.indexOf('u') >= 0 || flags.indexOf('v') >= 0) {
-                if (!optBuilder.isUtf16ExplodeAstralSymbols() && optBuilder.getEncoding() == Encodings.UTF_16_RAW) {
-                    optBuilder.encoding(Encodings.UTF_16);
+                if (!optBuilder.isUtf16ExplodeAstralSymbols() && optBuilder.getEncoding() == Encoding.UTF_16_RAW) {
+                    optBuilder.encoding(Encoding.UTF_16);
                 }
             } else {
-                if (optBuilder.getEncoding() == Encodings.UTF_16) {
-                    optBuilder.encoding(Encodings.UTF_16_RAW);
+                if (optBuilder.getEncoding() == Encoding.UTF_16) {
+                    optBuilder.encoding(Encoding.UTF_16_RAW);
                 }
             }
         }

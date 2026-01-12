@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,8 +26,10 @@
 
 package jdk.graal.compiler.nodes.calc;
 
+import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.NumUtil.Signedness;
+import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
@@ -44,12 +46,17 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
+/**
+ * Common superclass for min or max operations. The signed variants support both integer and
+ * floating-point inputs. The unsigned variants are for integers only.
+ */
 @NodeInfo(shortName = "MinMax")
 public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements NarrowableArithmeticNode, Canonicalizable.BinaryCommutative<ValueNode> {
 
@@ -91,14 +98,15 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
             op1 = op2;
             op2 = tmp;
         }
+        LIRKind cmpKind = nodeValueMap.getLIRGeneratorTool().getLIRKind(getX().stamp(NodeView.DEFAULT));
         if (this instanceof MaxNode) {
-            nodeValueMap.setResult(this, gen.emitMathMax(op1, op2));
+            nodeValueMap.setResult(this, gen.emitMathMax(cmpKind, op1, op2));
         } else if (this instanceof MinNode) {
-            nodeValueMap.setResult(this, gen.emitMathMin(op1, op2));
+            nodeValueMap.setResult(this, gen.emitMathMin(cmpKind, op1, op2));
         } else if (this instanceof UnsignedMaxNode) {
-            nodeValueMap.setResult(this, gen.emitMathUnsignedMax(op1, op2));
+            nodeValueMap.setResult(this, gen.emitMathUnsignedMax(cmpKind, op1, op2));
         } else if (this instanceof UnsignedMinNode) {
-            nodeValueMap.setResult(this, gen.emitMathUnsignedMin(op1, op2));
+            nodeValueMap.setResult(this, gen.emitMathUnsignedMin(cmpKind, op1, op2));
         } else {
             throw GraalError.shouldNotReachHereUnexpectedValue(this); // ExcludeFromJacocoGeneratedReport
         }
@@ -125,6 +133,11 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
             }
         }
         return this;
+    }
+
+    @Override
+    public boolean isNarrowable(int resultBits) {
+        return isNarrowable(resultBits, signedness());
     }
 
     protected boolean isNarrowable(int resultBits, Signedness signedness) {
@@ -287,11 +300,39 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
      */
     protected static ValueNode maybeExtendForCompare(ValueNode value, LoweringProvider lowerer, Signedness signedness) {
         Stamp fromStamp = value.stamp(NodeView.DEFAULT);
-        if (fromStamp instanceof PrimitiveStamp && PrimitiveStamp.getBits(fromStamp) < lowerer.smallestCompareWidth()) {
-            Stamp toStamp = IntegerStamp.create(lowerer.smallestCompareWidth());
+        Integer smallestCompareWidth = lowerer.smallestCompareWidth();
+        if (fromStamp instanceof PrimitiveStamp && smallestCompareWidth != null && PrimitiveStamp.getBits(fromStamp) < smallestCompareWidth) {
+            Stamp toStamp = IntegerStamp.create(smallestCompareWidth);
             boolean zeroExtend = (signedness == Signedness.UNSIGNED);
             return IntegerConvertNode.convert(value, toStamp, zeroExtend, NodeView.DEFAULT);
         }
         return value;
     }
+
+    /**
+     * Returns {@link Signedness#SIGNED} if this the comparison done by this node is signed,
+     * {@link Signedness#UNSIGNED} otherwise. Only integer min/max can be unsigned, floating point
+     * min/max is always signed.
+     */
+    public abstract Signedness signedness();
+
+    /**
+     * If {@code other} is identical to one of this min/max node's inputs, return a logic node
+     * equivalent to the condition {@code thisNode == other}. For example, {@code min(x, y) == y} is
+     * equivalent to {@code x >= y}, while {@code min(x, y) == x} is equivalent to {@code x <= y}.
+     * Return {@code null} if no equivalent logic node can be built. Implementations that build a
+     * compare node must take {@link LoweringProvider#smallestCompareWidth()} into account.
+     */
+    public LogicNode conditionForEqualsUsage(ValueNode other, CoreProviders providers) {
+        Condition conditionCode = conditionCodeForEqualsUsage(other);
+        if (conditionCode != null) {
+            return CompareNode.createAnyCompareNode(conditionCode,
+                            maybeExtendForCompare(getX(), providers.getLowerer(), signedness()),
+                            maybeExtendForCompare(getY(), providers.getLowerer(), signedness()),
+                            providers.getConstantReflection());
+        }
+        return null;
+    }
+
+    protected abstract Condition conditionCodeForEqualsUsage(ValueNode other);
 }

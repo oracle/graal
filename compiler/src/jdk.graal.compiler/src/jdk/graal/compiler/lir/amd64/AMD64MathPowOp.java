@@ -109,8 +109,8 @@ import jdk.vm.ci.code.Register;
  * </pre>
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/b1fa1ecc988fb07f191892a459625c2c8f2de3b5/src/hotspot/cpu/x86/stubGenerator_x86_64_pow.cpp#L31-L1863",
-          sha1 = "c5fe511a093228e9b3d7c9cf233f76da10ac586f")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/stubGenerator_x86_64_pow.cpp#L31-L1863",
+          sha1 = "2de298d389568b85a487a89d9cd95ff7faa23c4c")
 // @formatter:on
 public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
 

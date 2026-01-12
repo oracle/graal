@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+
+import com.oracle.svm.hosted.image.ImageHeapReasonSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -60,7 +64,8 @@ public class DynamicHubSupportFeature implements InternalFeature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         BeforeCompilationAccessImpl a = (BeforeCompilationAccessImpl) access;
-        a.getHeapScanner().rescanField(DynamicHubSupport.currentLayer(), ReflectionUtil.lookupField(DynamicHubSupport.class, "referenceMapEncoding"));
+        ScanReason reason = new OtherReason("Manual rescan triggered before compilation from " + DynamicHubSupport.class);
+        a.getHeapScanner().rescanField(DynamicHubSupport.currentLayer(), ReflectionUtil.lookupField(DynamicHubSupport.class, "referenceMapEncoding"), reason);
     }
 
     /**
@@ -73,6 +78,6 @@ public class DynamicHubSupportFeature implements InternalFeature {
     private static void addReferenceMapEncodingToImageHeap(NativeImageHeap heap, HostedUniverse hUniverse) {
         byte[] referenceMapEncoding = DynamicHubSupport.currentLayer().getReferenceMapEncoding();
         ImageHeapConstant singletonConstant = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(referenceMapEncoding);
-        heap.addConstant(singletonConstant, false, "Registered as a required heap constant within DynamicHubSupportFeature");
+        heap.addConstant(singletonConstant, false, ImageHeapReasonSupport.singleton().description("Registered as a required heap constant within DynamicHubSupportFeature"));
     }
 }

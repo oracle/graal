@@ -273,6 +273,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.bytecode.Bytecode;
@@ -2227,7 +2228,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      */
     protected void emitCheckForInvokeSuperSpecial(ValueNode[] args) {
         ResolvedJavaType callingClass = method.getDeclaringClass();
-        callingClass = getHostClass(callingClass);
         if (callingClass.isInterface()) {
             args[0] = emitIncompatibleClassChangeCheck(args[0], callingClass);
         }
@@ -2243,12 +2243,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             guardingNode = append(new FixedGuardNode(condition, ClassCastException, None, false));
         }
         return append(PiNode.create(object, StampFactory.object(checkedTypeRef, true), guardingNode));
-    }
-
-    @SuppressWarnings("deprecation")
-    private static ResolvedJavaType getHostClass(ResolvedJavaType type) {
-        ResolvedJavaType hostClass = type.getHostClass();
-        return hostClass != null ? hostClass : type;
     }
 
     protected JavaTypeProfile getProfileForInvoke(InvokeKind invokeKind) {
@@ -2752,7 +2746,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     protected boolean canInlinePartialIntrinsicExit() {
         assert !inRuntimeCode();
         return InlinePartialIntrinsicExitDuringParsing.getValue(options) && !inBuildtimeCode() &&
-                        method.getAnnotation(Snippet.class) == null;
+                        AnnotationValueSupport.getAnnotationValue(method, Snippet.class) == null;
     }
 
     private void printInlining(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean success, String msg) {
@@ -2947,8 +2941,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                             ResolvedJavaMethod targetMethod = ((Invoke) stateSplit).getTargetMethod();
                             if (!inRuntimeCode()) {
                                 GraalError.guarantee(targetMethod != null, "%s has null target method", stateSplit);
-                                GraalError.guarantee(targetMethod.getAnnotation(Fold.class) != null ||
-                                                targetMethod.getAnnotation(Node.NodeIntrinsic.class) != null,
+                                GraalError.guarantee(AnnotationValueSupport.getAnnotationValue(targetMethod, Fold.class) != null ||
+                                                AnnotationValueSupport.getAnnotationValue(targetMethod, Node.NodeIntrinsic.class) != null,
                                                 "Target should be fold or intrinsic ", targetMethod);
                             }
                             state = new FrameState(BytecodeFrame.AFTER_BCI);
@@ -3204,7 +3198,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         } else {
             this.controlFlowSplit = true;
             double[] successorProbabilities = successorProbabilites(actualSuccessors.size(), keySuccessors, keyProbabilities);
-            IntegerSwitchNode switchNode = append(new IntegerSwitchNode(value, actualSuccessors.size(), keys, keySuccessors, SwitchProbabilityData.create(keyProbabilities, profileSource)));
+            IntegerSwitchNode switchNode = append(new IntegerSwitchNode(value, actualSuccessors.size(), keys, keySuccessors, SwitchProbabilityData.create(keyProbabilities, profileSource), false));
             for (int i = 0; i < actualSuccessors.size(); i++) {
                 switchNode.setBlockSuccessor(i, createBlockTarget(successorProbabilities[i], actualSuccessors.get(i), frameState));
             }

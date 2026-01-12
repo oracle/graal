@@ -52,10 +52,16 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "NoOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true)),
-                @Variant(suffix = "Uncached", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true)),
-                @Variant(suffix = "AllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, boxingEliminationTypes = {
-                                int.class, boolean.class}))
+                @Variant(suffix = "NoOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
+                                enableThreadedSwitch = false, enableTagInstrumentation = true, enableYield = true)),
+                @Variant(suffix = "Uncached", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
+                                enableThreadedSwitch = true, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true)),
+                @Variant(suffix = "AllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
+                                enableThreadedSwitch = false, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, boxingEliminationTypes = {
+                                                int.class, boolean.class})),
+                @Variant(suffix = "ThreadedAllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
+                                enableThreadedSwitch = true, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, boxingEliminationTypes = {
+                                                int.class, boolean.class}))
 })
 public abstract class BytecodeDSLBenchmarkRootNode extends RootNode implements BytecodeRootNode {
 

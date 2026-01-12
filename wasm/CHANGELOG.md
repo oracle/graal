@@ -2,6 +2,12 @@
 
 This changelog summarizes major changes to the WebAssembly engine implemented in GraalVM (GraalWasm).
 
+## Version 25.1.0
+
+* Implemented the [exception handling](https://github.com/WebAssembly/exception-handling) proposal. This feature can be enabled with the experimental option `wasm.Exceptions=true`.
+* Implemented the [typed function references](https://github.com/WebAssembly/function-references) proposal. This feature can be enabled with the experimental option `wasm.TypedFunctionReferences=true`.
+* Enabled the standardized features [Extended Constant Expressions](https://github.com/WebAssembly/extended-const/blob/master/proposals/extended-const/Overview.md), [Multiple Memories](https://github.com/WebAssembly/multi-memory/blob/master/proposals/multi-memory/Overview.md), and [Relaxed SIMD](https://github.com/WebAssembly/relaxed-simd/tree/main/proposals/relaxed-simd) by default.
+
 ## Version 25.0.0
 
 * BREAKING: Changed Context.eval of _wasm_ sources to return a compiled, but not yet instantiated, module object instead of the module instance.
@@ -27,14 +33,13 @@ This changelog summarizes major changes to the WebAssembly engine implemented in
 * Added an implementation of the [SIMD](https://github.com/WebAssembly/simd) proposal using the JDK's Vector API. This improves peak performance when running WebAssembly code which makes heavy use of the new instructions in the SIMD proposal. This new implementation is always used in native image. On the JVM, it is opt-in and requires setting `--add-modules=jdk.incubator.vector`. Use of the incubating Vector API will result in the following warning message being printed to stderr:
   ```
   WARNING: Using incubator modules: jdk.incubator.vector
-   ```
-
+  ```
 
 ## Version 24.2.0
 
 * Updated developer metadata of Maven artifacts.
 * Deprecated the `--wasm.AsyncParsingBinarySize` and `--wasm.AsyncParsingStackSize` options. These options no longer have any effect and will be removed in a future release.
-* Implemented the [Relaxed SIMD](https://github.com/WebAssembly/relaxed-simd) proposal. This feature can be enabled with the options `--wasm.RelaxedSIMD`.
+* Implemented the [Relaxed SIMD](https://github.com/WebAssembly/relaxed-simd) proposal. This feature can be enabled with the option `--wasm.RelaxedSIMD`.
 
 ## Version 24.1.0
 

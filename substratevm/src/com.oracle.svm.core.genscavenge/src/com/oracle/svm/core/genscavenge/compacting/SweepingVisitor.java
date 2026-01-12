@@ -24,9 +24,12 @@
  */
 package com.oracle.svm.core.genscavenge.compacting;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.FillerObjectUtil;
 import com.oracle.svm.core.genscavenge.HeapChunk;
@@ -38,12 +41,13 @@ import com.oracle.svm.core.genscavenge.HeapChunk;
 public final class SweepingVisitor implements ObjectMoveInfo.Visitor {
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean visit(Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq) {
         assert objSeq.equal(newAddress);
         if (nextObjSeq.isNonNull()) {
             Pointer gapStart = objSeq.add(size);
             assert gapStart.belowThan(nextObjSeq);
-            FillerObjectUtil.writeFillerObjectAt(gapStart, nextObjSeq.subtract(gapStart));
+            FillerObjectUtil.writeFillerObjectAt(gapStart, nextObjSeq.subtract(gapStart), true);
             // Note that we have already added first object table entries for fillers during fixup.
         } else {
             AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(objSeq);

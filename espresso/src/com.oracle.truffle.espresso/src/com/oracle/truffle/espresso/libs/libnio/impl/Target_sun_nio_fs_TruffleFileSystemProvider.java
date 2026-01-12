@@ -53,7 +53,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
 
-@EspressoSubstitutions(type = "Lsun/nio/fs/TruffleFileSystemProvider;", group = LibNio.class)
+@EspressoSubstitutions(group = LibNio.class)
 public final class Target_sun_nio_fs_TruffleFileSystemProvider {
 
     @Substitution

@@ -24,14 +24,23 @@
  */
 package com.oracle.svm.interpreter;
 
-import com.oracle.svm.core.log.Log;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
 
 public class InterpreterUtil {
+    private static final boolean assertionsEnabled;
+    static {
+        boolean status = false;
+        assert (status = true) == true;
+        assertionsEnabled = status;
+    }
 
     /**
      * Alternative to {@link VMError#guarantee(boolean, String, Object)} that avoids
@@ -40,6 +49,13 @@ public class InterpreterUtil {
     public static void guarantee(boolean condition, String simpleFormat, Object arg1) {
         if (!condition) {
             VMError.guarantee(condition, MetadataUtil.fmt(simpleFormat, arg1));
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void assertion(boolean condition, String message) {
+        if (assertionsEnabled && !condition) {
+            VMError.guarantee(condition, message);
         }
     }
 

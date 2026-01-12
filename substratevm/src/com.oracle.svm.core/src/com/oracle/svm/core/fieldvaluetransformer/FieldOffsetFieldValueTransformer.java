@@ -67,6 +67,14 @@ public record FieldOffsetFieldValueTransformer(Field targetField, JavaKind retur
         }
     }
 
+    static JavaConstant constant(JavaKind returnKind, int value) {
+        return switch (returnKind) {
+            case Int -> JavaConstant.forInt(value);
+            case Long -> JavaConstant.forLong(value);
+            default -> throw VMError.shouldNotReachHere("Unexpected kind: " + returnKind);
+        };
+    }
+
     @Override
     public ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
         return FieldOffsetNode.create(returnKind, providers.getMetaAccess().lookupJavaField(targetField));

@@ -304,6 +304,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
             return ThreadLocal.withInitial(initialValue);
         }
+
+        @Override
+        public void setInitializedTimestamp(CallTarget target, long timestamp) {
+
+        }
     }
 
 }

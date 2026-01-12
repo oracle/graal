@@ -41,6 +41,8 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.word.Word;
@@ -79,6 +81,7 @@ public final class InvalidMethodPointerHandler {
     @StubCallingConvention
     @NeverInline("We need a separate frame that stores all registers")
     @Uninterruptible(reason = "Precaution.")
+    @LayeredCompilationBehavior(Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER)
     private static void invalidVTableEntryHandler() {
         Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
         CodePointer callerIP = KnownIntrinsics.readReturnAddress();

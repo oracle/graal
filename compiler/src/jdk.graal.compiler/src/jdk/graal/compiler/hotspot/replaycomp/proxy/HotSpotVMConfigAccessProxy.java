@@ -38,9 +38,7 @@ import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.hotspot.VMField;
 
-//JaCoCo Exclude
-
-final class HotSpotVMConfigAccessProxy extends HotSpotVMConfigAccess implements CompilationProxy {
+public final class HotSpotVMConfigAccessProxy extends HotSpotVMConfigAccess implements CompilationProxy {
     private final InvocationHandler handler;
 
     HotSpotVMConfigAccessProxy(InvocationHandler handler) {

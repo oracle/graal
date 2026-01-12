@@ -22,22 +22,27 @@
  */
 package org.graalvm.visualizer.graph;
 
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.*;
-
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 import org.graalvm.visualizer.data.Source;
 import org.graalvm.visualizer.layout.Port;
 import org.graalvm.visualizer.layout.Vertex;
 import org.graalvm.visualizer.util.StringUtils;
 
-import jdk.graal.compiler.graphio.parsing.model.InputNode;
-import jdk.graal.compiler.graphio.parsing.model.Properties;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_CONNECTION_COUNT;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_FIGURE;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
 
 public abstract class Slot implements Port, Source.Provider, Properties.Provider {
 
@@ -201,9 +206,13 @@ public abstract class Slot implements Port, Source.Provider, Properties.Provider
     }
 
     public void removeAllConnections() {
+        removeAllConnections(null);
+    }
+
+    public void removeAllConnections(HashSet<Object> cleaned) {
         List<Connection> connectionsCopy = new ArrayList<>(this.connections);
         for (Connection c : connectionsCopy) {
-            c.remove();
+            c.remove(cleaned);
         }
     }
 
@@ -212,4 +221,18 @@ public abstract class Slot implements Port, Source.Provider, Properties.Provider
         return figure;
     }
 
+    /**
+     * Clean up all edges which reference an {@link Figure#isDeleted()} figure.
+     */
+    void cleanDeletedFigures(HashSet<Object> cleaned) {
+        Figure input = getFigure();
+        if (!input.isDeleted()) {
+            if (cleaned.add(input)) {
+                input.cleanDeletedFigures();
+            }
+        }
+        if (cleaned.add(this)) {
+            this.connections.removeIf(x -> x.getInputSlot().getFigure().isDeleted() || x.getOutputSlot().getFigure().isDeleted());
+        }
+    }
 }

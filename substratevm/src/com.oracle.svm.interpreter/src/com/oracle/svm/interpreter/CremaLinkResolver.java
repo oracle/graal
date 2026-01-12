@@ -28,6 +28,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.espresso.shared.lookup.LookupSuccessInvocationFailure;
 import com.oracle.svm.espresso.shared.resolver.CallSiteType;
 import com.oracle.svm.espresso.shared.resolver.FieldAccessType;
 import com.oracle.svm.espresso.shared.resolver.LinkResolver;
@@ -67,14 +68,24 @@ public final class CremaLinkResolver {
                     Symbol<Name> name, Symbol<Signature> signature, InterpreterResolvedJavaType symbolicHolder,
                     boolean interfaceLookup,
                     boolean accessCheck, boolean loadingConstraints) {
-        return LinkResolver.resolveMethodSymbol(runtime, accessingClass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
+        try {
+            return LinkResolver.resolveMethodSymbol(runtime, accessingClass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
+        } catch (LookupSuccessInvocationFailure e) {
+            // GR-70938 Somehow communicate to the caller this info.
+            return e.getResult();
+        }
     }
 
     public static InterpreterResolvedJavaMethod resolveMethodSymbolOrNull(CremaRuntimeAccess runtime, InterpreterResolvedJavaType accessingClass,
                     Symbol<Name> name, Symbol<Signature> signature, InterpreterResolvedJavaType symbolicHolder,
                     boolean interfaceLookup,
                     boolean accessCheck, boolean loadingConstraints) {
-        return LinkResolver.resolveMethodSymbolOrNull(runtime, accessingClass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
+        try {
+            return LinkResolver.resolveMethodSymbolOrNull(runtime, accessingClass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
+        } catch (LookupSuccessInvocationFailure e) {
+            // GR-70938 Somehow communicate to the caller this info.
+            return e.getResult();
+        }
     }
 
     public static ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolveCallSiteOrThrow(

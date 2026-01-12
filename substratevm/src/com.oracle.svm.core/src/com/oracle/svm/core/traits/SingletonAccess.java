@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.core.traits;
 
-import java.util.EnumSet;
-
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.SingletonAccessFlags;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -36,10 +34,10 @@ import com.oracle.svm.core.util.VMError;
  */
 public class SingletonAccess {
     interface Supplier {
-        EnumSet<LayeredImageSingletonBuilderFlags> getAccessFlags();
+        SingletonAccessFlags getAccessFlags();
     }
 
-    public static EnumSet<LayeredImageSingletonBuilderFlags> getAccess(SingletonTrait trait) {
+    public static SingletonAccessFlags getAccess(SingletonTrait trait) {
         VMError.guarantee(trait.kind() == SingletonTraitKind.ACCESS);
         return ((Supplier) trait.metadata()).getAccessFlags();
     }

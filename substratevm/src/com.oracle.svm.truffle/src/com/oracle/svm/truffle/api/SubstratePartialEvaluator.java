@@ -27,12 +27,10 @@ package com.oracle.svm.truffle.api;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.truffle.compiler.ConstantFieldInfo;
-import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.SourceLanguagePositionProvider;
@@ -50,6 +48,8 @@ import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.graal.compiler.replacements.PEGraphDecoder.SpecialCallTargetCacheKey;
+import jdk.graal.compiler.truffle.ConstantFieldInfo;
+import jdk.graal.compiler.truffle.PartialEvaluationMethodInfo;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.PartialEvaluatorConfiguration;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
@@ -98,8 +98,13 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     }
 
     @Override
-    public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
+    public final ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
         return ((TruffleField) field).getConstantFieldInfo();
+    }
+
+    @Override
+    public final boolean isValueType(ResolvedJavaType type) {
+        return ((TruffleType) type).isValueType();
     }
 
     @Override

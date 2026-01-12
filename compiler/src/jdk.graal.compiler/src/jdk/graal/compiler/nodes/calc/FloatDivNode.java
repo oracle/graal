@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.nodes.calc;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_32;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_16;
 
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
@@ -41,7 +41,10 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 
 import jdk.vm.ci.meta.Constant;
 
-@NodeInfo(shortName = "/", cycles = CYCLES_32)
+/**
+ * Floating point division node.
+ */
+@NodeInfo(shortName = "/", cycles = CYCLES_16, cyclesRationale = "The node cycle estimate is taken from Agner Fog's instruction tables (https://www.agner.org/optimize/instruction_tables.pdf).")
 public class FloatDivNode extends BinaryArithmeticNode<Div> {
 
     public static final NodeClass<FloatDivNode> TYPE = NodeClass.create(FloatDivNode.class);

@@ -212,9 +212,9 @@ final class HotSpotToNativeServiceGenerator extends AbstractNativeServiceGenerat
             receiverNativePeer = "nativePeer";
             nonReceiverParameterStart = 1;
         } else {
-            receiver = PEER_FIELD;
+            receiver = "this";
             receiverCastStatement = null;
-            receiverNativePeer = receiver;
+            receiverNativePeer = PEER_FIELD;
             nonReceiverParameterStart = 0;
         }
         CharSequence nativeIsolateVar = "nativeIsolate";
@@ -270,6 +270,7 @@ final class HotSpotToNativeServiceGenerator extends AbstractNativeServiceGenerat
                 builder.line(receiverCastStatement.build());
             }
             builder.line(getNativeIsolate.build());
+            generateIsolateDeathHandlerBlockStart(builder, methodData);
             builder.line(enterScope.build());
             builder.line("try {");
             builder.indent();
@@ -286,7 +287,7 @@ final class HotSpotToNativeServiceGenerator extends AbstractNativeServiceGenerat
                 generatePostMarshallParameters(builder, binaryMarshalledParameters, nativeIsolateVar, marshalledParametersOutput, preUnmarshallResult.binaryInput, resFieldName, hasOutParameters);
             }
             builder.dedent();
-            generateHSToNativeStartPointExceptionHandlers(builder, nativeIsolateVar, scopeVarName);
+            generateHSToNativeStartPointExceptionHandlers(builder, methodData, receiver, nativeIsolateVar, scopeVarName);
             builder.dedent();
             builder.line("}");
             builder.lineStart("return ").write(resFieldName).lineEnd(";");
@@ -295,6 +296,7 @@ final class HotSpotToNativeServiceGenerator extends AbstractNativeServiceGenerat
                 builder.line(receiverCastStatement.build());
             }
             builder.line(getNativeIsolate.build());
+            generateIsolateDeathHandlerBlockStart(builder, methodData);
             builder.line(enterScope.build());
             builder.line("try {");
             builder.indent();
@@ -342,13 +344,14 @@ final class HotSpotToNativeServiceGenerator extends AbstractNativeServiceGenerat
                 }
             }
             builder.dedent();
-            generateHSToNativeStartPointExceptionHandlers(builder, nativeIsolateVar, scopeVarName);
+            generateHSToNativeStartPointExceptionHandlers(builder, methodData, receiver, nativeIsolateVar, scopeVarName);
         }
         builder.dedent();
         builder.line("}");
     }
 
-    private void generateHSToNativeStartPointExceptionHandlers(CodeBuilder builder, CharSequence nativeIsolateVar, CharSequence scopeVarName) {
+    private void generateHSToNativeStartPointExceptionHandlers(CodeBuilder builder, MethodData methodData, CharSequence receiverVar,
+                    CharSequence nativeIsolateVar, CharSequence scopeVarName) {
         CharSequence foreignException = "foreignException";
         CharSequence throwUnboxedException = new CodeBuilder(builder).write("throw").space().invoke(foreignException, "throwOriginalException",
                         nativeIsolateVar,
@@ -362,6 +365,7 @@ final class HotSpotToNativeServiceGenerator extends AbstractNativeServiceGenerat
         builder.lineStart().invoke(scopeVarName, "leave").lineEnd(";");
         builder.dedent();
         builder.line("}");
+        generateIsolateDeathHandlerBlockEnd(builder, methodData, receiverVar);
     }
 
     private boolean generatePreMarshallParameters(CodeBuilder builder, List<MarshalledParameter> marshalledParameters, CharSequence marshalledParametersOutput,

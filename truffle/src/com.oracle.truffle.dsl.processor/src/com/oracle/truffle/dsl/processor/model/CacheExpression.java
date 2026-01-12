@@ -204,6 +204,28 @@ public final class CacheExpression extends MessageContainer {
         this.sharedGroupValue = null;
     }
 
+    private String disabledSharingGroup;
+
+    /**
+     * Disabling sharing is different from just clearing sharing as it makes sure that the node
+     * still compiles correctly after automatically disabling sharing for an individual cache. There
+     * might be new warnings, but no new errors for disabled caches.
+     */
+    public void disableSharing() {
+        if (getInlinedNode() == null) {
+            throw new IllegalStateException("We do not support disabling sharing for non-inlined nodes.");
+        }
+
+        if (this.disabledSharingGroup == null) {
+            this.disabledSharingGroup = this.sharedGroup;
+        }
+        clearSharing();
+    }
+
+    public String getDisabledSharingGroup() {
+        return disabledSharingGroup;
+    }
+
     public AnnotationMirror getSharedGroupMirror() {
         return sharedGroupMirror;
     }

@@ -35,13 +35,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
@@ -57,7 +57,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ReflectionConfigurationParser;
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.core.c.ProjectHeaderFile;
 import com.oracle.svm.core.c.ProjectHeaderFileHeaderResolversRegistryFeature;
 import com.oracle.svm.core.code.ImageCodeInfo;
@@ -77,6 +77,10 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.log.Loggers;
 import com.oracle.svm.core.log.NoopLog;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
@@ -92,6 +96,7 @@ import com.oracle.svm.hosted.webimage.name.WebImageNamingConvention;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.snippets.WebImageNonSnippetLowerings;
 import com.oracle.svm.hosted.webimage.wasm.WasmLogHandler;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.webimage.WebImageSystemPropertiesSupport;
 import com.oracle.svm.webimage.api.Nothing;
@@ -115,6 +120,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
 @AutomaticallyRegisteredFeature
 @Platforms(WebImagePlatform.class)
 public class WebImageFeature implements InternalFeature {
@@ -189,12 +195,35 @@ public class WebImageFeature implements InternalFeature {
          *
          * These caches can contribute ~1MB to the image size, clearing them avoids this overhead at
          * the cost of having to recreate the Locale and BaseLocale objects once when they're
-         * requested at run-time.
+         * requested.
+         *
+         * On JDK21, ReferencedKeySet and ReferencedKeyMap don't exist. We have to go through
+         * reflection to access them because analysis tools like spotbugs still run on JDK21
          */
-        Field baseLocaleCacheField = accessImpl.findField("sun.util.locale.BaseLocale", "CACHE");
-        Field localeCacheField = accessImpl.findField("java.util.Locale", "LOCALE_CACHE");
-        access.registerFieldValueTransformer(baseLocaleCacheField, new ResetStableSupplierTransformer());
-        access.registerFieldValueTransformer(localeCacheField, new ResetStableSupplierTransformer());
+        Field baseLocaleCacheField = accessImpl.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
+        Field localeCacheField = accessImpl.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
+
+        access.registerFieldValueTransformer(baseLocaleCacheField, (receiver, originalValue) -> {
+            /*
+             * Executes `ReferencedKeySet.create(true,
+             * ReferencedKeySet.concurrentHashMapSupplier())` with reflection.
+             */
+            Class<?> referencedKeySetClazz = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeySet");
+            Method createMethod = ReflectionUtil.lookupMethod(referencedKeySetClazz, "create", boolean.class, Supplier.class);
+            Method concurrentHashMapSupplierMethod = ReflectionUtil.lookupMethod(referencedKeySetClazz, "concurrentHashMapSupplier");
+            return ReflectionUtil.invokeMethod(createMethod, null, true, ReflectionUtil.invokeMethod(concurrentHashMapSupplierMethod, null));
+        });
+
+        access.registerFieldValueTransformer(localeCacheField, (receiver, originalValue) -> {
+            /*
+             * Executes `ReferencedKeyMap.create(true,
+             * ReferencedKeyMap.concurrentHashMapSupplier())` with reflection.
+             */
+            Class<?> referencedKeyMapClazz = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeyMap");
+            Method createMethod = ReflectionUtil.lookupMethod(referencedKeyMapClazz, "create", boolean.class, Supplier.class);
+            Method concurrentHashMapSupplierMethod = ReflectionUtil.lookupMethod(referencedKeyMapClazz, "concurrentHashMapSupplier");
+            return ReflectionUtil.invokeMethod(createMethod, null, true, ReflectionUtil.invokeMethod(concurrentHashMapSupplierMethod, null));
+        });
     }
 
     @Override
@@ -203,9 +232,9 @@ public class WebImageFeature implements InternalFeature {
 
         String entryPointConfig = WebImageOptions.EntryPointsConfig.getValue(ImageSingletons.lookup(HostedOptionValues.class));
         if (entryPointConfig != null) {
-            ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
+            AccessConditionResolver<AccessCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
                             ClassInitializationSupport.singleton());
-            ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, false, conditionResolver, entryPointsData, null,
+            ReflectionConfigurationParser<AccessCondition, Class<?>> parser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, false, conditionResolver, entryPointsData, null,
                             null, null, access.getImageClassLoader());
             try {
                 parser.parseAndRegister(Path.of(entryPointConfig).toUri());
@@ -317,7 +346,6 @@ public class WebImageFeature implements InternalFeature {
         /*
          * Methods annotated with @JS are never trivial.
          */
-        return AnnotationAccess.isAnnotationPresent(callee, JS.class);
+        return AnnotationUtil.isAnnotationPresent(callee, JS.class);
     }
-
 }

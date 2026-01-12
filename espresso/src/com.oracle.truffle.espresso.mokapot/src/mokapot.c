@@ -46,11 +46,11 @@ JNIEXPORT void JNICALL mokapotAttachThread(MokapotEnv* moka_env) {
   tls_moka_env = moka_env;
 }
 
-JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetRTLD_DEFAULT() {
+JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetRTLD_DEFAULT(void) {
     return os_get_RTLD_DEFAULT();
 }
 
-JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetProcessHandle() {
+JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetProcessHandle(void) {
     return os_get_ProcessHandle();
 }
 
@@ -103,6 +103,7 @@ JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetc
   #define INIT__(name) \
       functions->name = fetch_by_name(#name, (void*)&name);
   VM_METHOD_LIST(INIT__)
+  PD_VM_METHOD_LIST(INIT__)
   #undef INIT_
 
   // Persist Moka env in TLS.
@@ -118,7 +119,7 @@ JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetc
   return moka_env;
 }
 
-MokapotEnv* getEnv() {
+MokapotEnv* getEnv(void) {
   // thread local Moka or JNI Env?
   return tls_moka_env;
 }
@@ -1068,7 +1069,7 @@ JNIEXPORT jboolean JNICALL JVM_IsSameClassPackage(JNIEnv *env, jclass class1, jc
 
 JNIEXPORT jint JNICALL JVM_GetLastErrorString(char *buf, int len) {
   NATIVE(JVM_GetLastErrorString);
-  return os_lasterror(buf, len);
+  return (jint) os_lasterror(buf, len);
 }
 
 JNIEXPORT char* JNICALL JVM_NativePath(char *pathname) {
@@ -1242,7 +1243,7 @@ JNIEXPORT int JNICALL JVM_GetHostName(char *name, int namelen) {
   return os_get_host_name(name, namelen);
 }
 
-static JNIEnv* getGuestJNI() {
+static JNIEnv* getGuestJNI(void) {
   JNIEnv *jniEnv = NULL;
   JavaVM *vm = (*getEnv())->vm;
   (*vm)->GetEnv(vm, (void **) &jniEnv, JNI_VERSION_1_6);
@@ -1410,9 +1411,9 @@ JNIEXPORT jboolean JNICALL JVM_AreNestMates(JNIEnv *env, jclass current, jclass 
   return (*getEnv())->JVM_AreNestMates(env, current, member);
 }
 
-JNIEXPORT void JNICALL JVM_BeforeHalt() {
+JNIEXPORT void JNICALL JVM_BeforeHalt(void) {
   IMPLEMENTED(JVM_BeforeHalt);
-  return (*getEnv())->JVM_BeforeHalt();
+  (*getEnv())->JVM_BeforeHalt();
 }
 
 
@@ -1612,7 +1613,7 @@ JNIEXPORT jboolean JNICALL JVM_IsDumpingClassList(JNIEnv* env) {
   return (*getEnv())->JVM_IsDumpingClassList(env);
 }
 
-JNIEXPORT jint JNICALL JVM_GetCDSConfigStatus() {
+JNIEXPORT jint JNICALL JVM_GetCDSConfigStatus(void) {
   IMPLEMENTED(JVM_GetCDSConfigStatus);
   return (*getEnv())->JVM_GetCDSConfigStatus();
 }
@@ -1632,7 +1633,7 @@ JNIEXPORT jobjectArray JNICALL JVM_GetProperties(JNIEnv *env) {
   return (*getEnv())->JVM_GetProperties(env);
 }
 
-JNIEXPORT jlong JNICALL JVM_GetRandomSeedForDumping() {
+JNIEXPORT jlong JNICALL JVM_GetRandomSeedForDumping(void) {
   IMPLEMENTED(JVM_GetRandomSeedForDumping);
   return (*getEnv())->JVM_GetRandomSeedForDumping();
 }
@@ -1729,7 +1730,11 @@ JNIEXPORT jboolean JNICALL JVM_IsForeignLinkerSupported(void) {
 JNIEXPORT jboolean JNICALL
 JVM_IsStaticallyLinked(void) {
   IMPLEMENTED(JVM_IsStaticallyLinked);
+#ifdef ESPRESSO_NFI_STATIC
+  return JNI_TRUE;
+#else
   return JNI_FALSE;
+#endif
 }
 
 JNIEXPORT void JNICALL JVM_VirtualThreadStart(JNIEnv* env, jobject vthread) {

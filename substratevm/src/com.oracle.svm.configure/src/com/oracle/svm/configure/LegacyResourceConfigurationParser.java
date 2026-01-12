@@ -33,12 +33,12 @@ import java.util.function.BiConsumer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.util.GlobUtils;
 import com.oracle.svm.util.TypeResult;
 
 final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationParser<C> {
-    LegacyResourceConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, EnumSet<ConfigurationParserOption> parserOptions) {
+    LegacyResourceConfigurationParser(AccessConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, EnumSet<ConfigurationParserOption> parserOptions) {
         super(conditionResolver, registry, parserOptions);
     }
 
@@ -74,7 +74,7 @@ final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationPa
     }
 
     @Override
-    protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> condition) {
+    protected UnresolvedAccessCondition parseCondition(EconomicMap<String, Object> condition) {
         return parseCondition(condition, false);
     }
 
@@ -110,8 +110,8 @@ final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationPa
     private void parsePatternEntry(Object data, BiConsumer<C, String> resourceRegistry, GlobPatternConsumer<C> globRegistry, String parentType) {
         EconomicMap<String, Object> resource = asMap(data, "Elements of " + parentType + " must be a resource descriptor object");
         checkAttributes(resource, "regex resource descriptor object", Collections.singletonList("pattern"), Collections.singletonList(CONDITIONAL_KEY));
-        TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource, false));
-        if (!resolvedConfigurationCondition.isPresent()) {
+        TypeResult<C> resolvedAccessCondition = conditionResolver.resolveCondition(parseCondition(resource, false));
+        if (!resolvedAccessCondition.isPresent()) {
             return;
         }
 
@@ -122,11 +122,11 @@ final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationPa
         if (value.startsWith("\\Q") && value.endsWith("\\E") && value.indexOf("\\E") == value.lastIndexOf("\\E")) {
             String globValue = value.substring("\\Q".length(), value.length() - "\\E".length());
             if (GlobUtils.validatePattern(globValue).isEmpty()) {
-                globRegistry.accept(resolvedConfigurationCondition.get(), null, globValue);
+                globRegistry.accept(resolvedAccessCondition.get(), null, globValue);
                 return;
             }
         }
 
-        resourceRegistry.accept(resolvedConfigurationCondition.get(), value);
+        resourceRegistry.accept(resolvedAccessCondition.get(), value);
     }
 }

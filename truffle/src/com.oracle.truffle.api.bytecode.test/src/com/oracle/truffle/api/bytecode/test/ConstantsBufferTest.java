@@ -170,6 +170,20 @@ public class ConstantsBufferTest {
         b.clear();
     }
 
+    @Test
+    public void testsNullsTransitionToHash() {
+        for (int nulls = 0; nulls < 16; nulls++) {
+            ConstantsBuffer b = new ConstantsBuffer();
+            int i0 = b.add(4L);
+            for (int i = 0; i < nulls; i++) {
+                b.addNull();
+            }
+            int i1 = b.add(4L);
+            assertEquals("constants must match with " + nulls + " nulls.", i0, i1);
+        }
+
+    }
+
     /** distinct objects that all share the same hashCode to stress collision handling. */
     private static final class Colliding {
         final int id;

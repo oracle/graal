@@ -40,7 +40,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -148,6 +147,6 @@ public final class SystemInOutErrSupport {
 }
 
 @SuppressWarnings("unused")
-class SystemInOutErrFeature implements Feature, FeatureSingleton {
+class SystemInOutErrFeature implements Feature {
     /* Dummy for backward compatibility. */
 }

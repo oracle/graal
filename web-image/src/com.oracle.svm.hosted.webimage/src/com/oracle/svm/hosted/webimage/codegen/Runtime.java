@@ -41,6 +41,8 @@ public class Runtime {
 
     // unsigned math comparison
     public static final JSFunctionDefinition UnsignedIClI32 = new JSGenericFunctionDefinition("unsignedCompareLessI32", 2, false, null, false);
+    public static final JSFunctionDefinition UnsignedMinI32 = new JSGenericFunctionDefinition("unsignedMinI32", 2, false, null, false);
+    public static final JSFunctionDefinition UnsignedMaxI32 = new JSGenericFunctionDefinition("unsignedMaxI32", 2, false, null, false);
 
     public static final JSFunctionDefinition isA = new JSGenericFunctionDefinition("isA", 3, false, null, false);
     public static final JSFunctionDefinition isExact = new JSGenericFunctionDefinition("isExact", 3, false, null, false);
@@ -96,7 +98,9 @@ public class Runtime {
     public static final JSFunctionDefinition MATH_LOG10 = new JSGenericFunctionDefinition("log10", 1, true, "Math", false);
     public static final JSFunctionDefinition MATH_SIN = new JSGenericFunctionDefinition("sin", 1, true, "Math", false);
     public static final JSFunctionDefinition MATH_SQRT = new JSGenericFunctionDefinition("sqrt", 1, true, "Math", false);
+    public static final JSFunctionDefinition MATH_CBRT = new JSGenericFunctionDefinition("cbrt", 1, true, "Math", false);
     public static final JSFunctionDefinition MATH_TAN = new JSGenericFunctionDefinition("tan", 1, true, "Math", false);
+    public static final JSFunctionDefinition MATH_TANH = new JSGenericFunctionDefinition("tanh", 1, true, "Math", false);
     public static final JSFunctionDefinition MATH_EXP = new JSGenericFunctionDefinition("exp", 1, true, "Math", false);
     public static final JSFunctionDefinition MATH_FLOOR = new JSGenericFunctionDefinition("floor", 1, true, "Math", false);
     public static final JSFunctionDefinition MATH_CEIL = new JSGenericFunctionDefinition("ceil", 1, true, "Math", false);

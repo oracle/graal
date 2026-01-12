@@ -54,7 +54,6 @@ import jdk.graal.compiler.debug.PathUtilities;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
-import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FrameState;
@@ -157,12 +156,12 @@ public final class ProfileReplaySupport {
                     StableProfileProvider profileProvider, TypeFilter profileSaveFilter) {
         if (SaveProfiles.getValue(debug.getOptions()) || LoadProfiles.getValue(debug.getOptions()) != null) {
             LambdaNameFormatter lambdaNameFormatter = new LambdaNameFormatter() {
-                private final StableMethodNameFormatter stableFormatter = new StableMethodNameFormatter(true);
+                private final StableMethodNameFormatter stableFormatter = new StableMethodNameFormatter();
 
                 @Override
                 public boolean isLambda(ResolvedJavaMethod m) {
                     // Include method handles here as well
-                    return LambdaUtils.isLambdaType(m.getDeclaringClass()) || StableMethodNameFormatter.isMethodHandle(m.getDeclaringClass());
+                    return m.getDeclaringClass().isHidden();
                 }
 
                 @Override
@@ -227,13 +226,14 @@ public final class ProfileReplaySupport {
      * {@link Options#WarnAboutGraphSignatureMismatch}). If {@link Options#SaveProfiles} is set, the
      * method additionally saves the previously collected profiles to the given profile path.
      */
+    @SuppressWarnings("try")
     public void profileReplayEpilogue(DebugContext debug, CompilationResult result, StructuredGraph graph, StableProfileProvider profileProvider, CompilationIdentifier compilationId,
                     int entryBCI, ResolvedJavaMethod method) {
         if ((SaveProfiles.getValue(debug.getOptions()) || LoadProfiles.getValue(debug.getOptions()) != null) && profileFilter.matches(method)) {
             String codeSignature = null;
             String graphSignature = null;
             if (result != null) {
-                try {
+                try (DebugContext.Scope scope = debug.scope("ProfileReplay")) {
                     codeSignature = result.getCodeSignature();
                     assert graph != null;
                     String s = getCanonicalGraphString(graph);
@@ -253,7 +253,7 @@ public final class ProfileReplaySupport {
                 }
             }
             if (SaveProfiles.getValue(debug.getOptions())) {
-                try {
+                try (DebugContext.Scope scope = debug.scope("ProfileReplay")) {
                     EconomicMap<String, Object> map = EconomicMap.create();
                     map.put("identifier", compilationId.toString());
                     map.put("method", method.format("%H.%n(%P)%R"));

@@ -386,11 +386,11 @@ public final class JavaMemoryUtil {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void copySwap2(Pointer from, Pointer to, UnsignedWord size) {
-        if (from.aboveThan(to)) {
+        if (from.aboveOrEqual(to)) {
             for (UnsignedWord offset = Word.zero(); offset.belowThan(size); offset = offset.add(2)) {
                 to.writeShort(offset, Short.reverseBytes(from.readShort(offset)));
             }
-        } else if (from.belowThan(to)) {
+        } else {
             for (UnsignedWord offset = size; offset.aboveThan(0); offset = offset.subtract(2)) {
                 to.writeShort(offset.subtract(2), Short.reverseBytes(from.readShort(offset.subtract(2))));
             }
@@ -399,11 +399,11 @@ public final class JavaMemoryUtil {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void copySwap4(Pointer from, Pointer to, UnsignedWord size) {
-        if (from.aboveThan(to)) {
+        if (from.aboveOrEqual(to)) {
             for (UnsignedWord offset = Word.zero(); offset.belowThan(size); offset = offset.add(4)) {
                 to.writeInt(offset, Integer.reverseBytes(from.readInt(offset)));
             }
-        } else if (from.belowThan(to)) {
+        } else {
             for (UnsignedWord offset = size; offset.aboveThan(0); offset = offset.subtract(4)) {
                 to.writeInt(offset.subtract(4), Integer.reverseBytes(from.readInt(offset.subtract(4))));
             }
@@ -412,11 +412,11 @@ public final class JavaMemoryUtil {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void copySwap8(Pointer from, Pointer to, UnsignedWord size) {
-        if (from.aboveThan(to)) {
+        if (from.aboveOrEqual(to)) {
             for (UnsignedWord offset = Word.zero(); offset.belowThan(size); offset = offset.add(8)) {
                 to.writeLong(offset, Long.reverseBytes(from.readLong(offset)));
             }
-        } else if (from.belowThan(to)) {
+        } else {
             for (UnsignedWord offset = size; offset.aboveThan(0); offset = offset.subtract(8)) {
                 to.writeLong(offset.subtract(8), Long.reverseBytes(from.readLong(offset.subtract(8))));
             }

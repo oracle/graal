@@ -53,8 +53,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-//JaCoCo Exclude
-
 /**
  * A proxy object for a compiler-interface class.
  * <p>
@@ -138,35 +136,6 @@ public interface CompilationProxy {
         }
 
         /**
-         * Creates a new symbolic method instance from a list receiver classes, method name, and
-         * parameter types. At least one of the receiver classes must declare a method with the
-         * given signature.
-         *
-         * @param receiverClasses the receiver classes
-         * @param methodName the method name
-         * @param params the parameter types
-         */
-        public SymbolicMethod(Class<?>[] receiverClasses, String methodName, Class<?>... params) {
-            this(methodName, params);
-            if (!LibGraalSupport.inLibGraalRuntime()) {
-                // Omit the check in the image to avoid increasing image size.
-                for (Class<?> receiverClass : receiverClasses) {
-                    try {
-                        receiverClass.getDeclaredMethod(methodName, params);
-                        return;
-                    } catch (NoSuchMethodException ignored) {
-                    }
-                    try {
-                        receiverClass.getMethod(methodName, params);
-                        return;
-                    } catch (NoSuchMethodException ignored) {
-                    }
-                }
-                throw new GraalError("Method " + methodName + " not found");
-            }
-        }
-
-        /**
          * Creates a new symbolic method from a receiver class, method name, and parameter types.
          * The receiver class must declare a method with the given signature.
          *
@@ -175,7 +144,21 @@ public interface CompilationProxy {
          * @param params the parameter types
          */
         public SymbolicMethod(Class<?> receiverClass, String methodName, Class<?>... params) {
-            this(new Class<?>[]{receiverClass}, methodName, params);
+            this(methodName, params);
+            if (!LibGraalSupport.inLibGraalRuntime()) {
+                // Omit the check in the image to avoid increasing image size.
+                try {
+                    receiverClass.getDeclaredMethod(methodName, params);
+                    return;
+                } catch (NoSuchMethodException ignored) {
+                }
+                try {
+                    receiverClass.getMethod(methodName, params);
+                    return;
+                } catch (NoSuchMethodException ignored) {
+                }
+                throw new GraalError("Method " + methodName + " not found");
+            }
         }
 
         @Override

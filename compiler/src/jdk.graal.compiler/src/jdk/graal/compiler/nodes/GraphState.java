@@ -571,7 +571,7 @@ public final class GraphState {
      * {@link jdk.graal.compiler.phases.common.FixReadsPhase} has not.
      */
     public boolean allowsFloatingReads() {
-        return isAfterStage(StageFlag.FLOATING_READS) && isBeforeStage(StageFlag.FIXED_READS);
+        return isDuringStage(StageFlag.FLOATING_READS) || isAfterStage(StageFlag.FLOATING_READS) && isBeforeStage(StageFlag.FIXED_READS);
     }
 
     /**
@@ -618,6 +618,7 @@ public final class GraphState {
      * order used to defined theses stages corresponds to their order in a standard compilation.
      */
     public enum StageFlag {
+        PARTIAL_EVALUATION,
         CANONICALIZATION,
         /* Stages applied by high tier. */
         LOOP_OVERFLOWS_CHECKED,

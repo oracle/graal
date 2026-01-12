@@ -25,22 +25,23 @@
 
 package jdk.graal.compiler.hotspot.test;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.math.BigInteger;
 import java.util.function.Function;
 
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.runtime.JVMCI;
 
-public class LambdaStableNameTest {
+public class LambdaStableNameTest extends GraalCompilerTest {
 
     @Test
     public void checkStableLamdaNameForRunnableAndAutoCloseable() {
@@ -51,7 +52,7 @@ public class LambdaStableNameTest {
         Runnable r1 = s::hashCode;
         String r1Name = getLambdaName(r1.getClass());
 
-        assertEquals("The two stable lambda names should the same as they reference the same method and implement the same interface", r0Name, r1Name);
+        Assert.assertEquals("The two stable lambda names should the same as they reference the same method and implement the same interface", r0Name, r1Name);
 
         AutoCloseable ac = s::hashCode;
         String acName = getLambdaName(ac.getClass());
@@ -59,7 +60,7 @@ public class LambdaStableNameTest {
         assertNotEquals("The two stable lambda names should not be the same as they reference the same method but implement different interfaces", r0Name, acName);
 
         String myName = getClass().getName().replace('.', '/');
-        assertEquals("The name known in 24.0 version is computed", "L" + myName + "$$Lambda.0x59cf38d78b5471f8ea57f1c28b37039c;", r0Name);
+        Assert.assertEquals("The name known in 24.0 version is computed", "L" + myName + "$$Lambda.0x59cf38d78b5471f8ea57f1c28b37039c;", r0Name);
 
         Function<String, Integer> f0 = (str) -> str.hashCode();
         String f0Name = getLambdaName(f0.getClass());
@@ -94,5 +95,15 @@ public class LambdaStableNameTest {
 
         BigInteger aValue = new BigInteger(hash, 16);
         assertNotNull("Hash can be parsed as a hex number: " + hash, aValue);
+    }
+
+    @Test
+    public void testStableMethodNameFormatter() {
+        Runnable runnable = "foo"::hashCode;
+        ResolvedJavaMethod method = getResolvedJavaMethod(runnable.getClass(), "run");
+        StableMethodNameFormatter formatter = new StableMethodNameFormatter();
+        String actualName = formatter.apply(method);
+        String expectedName = getClass().getName() + LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING + "/0x59cf38d78b5471f8ea57f1c28b37039c.run()";
+        Assert.assertEquals(expectedName, actualName);
     }
 }

@@ -37,7 +37,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 
@@ -82,7 +82,7 @@ public class ConfigurationType implements JsonPrintable {
         return copy;
     }
 
-    private final UnresolvedConfigurationCondition condition;
+    private final UnresolvedAccessCondition condition;
     private final ConfigurationTypeDescriptor typeDescriptor;
 
     private Map<String, FieldInfo> fields;
@@ -104,7 +104,7 @@ public class ConfigurationType implements JsonPrintable {
     private boolean serializable = false;
     private boolean typeJniAccessible = false;
 
-    public ConfigurationType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean includeAllElements) {
+    public ConfigurationType(UnresolvedAccessCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean includeAllElements) {
         this.condition = Objects.requireNonNull(condition);
         this.typeDescriptor = Objects.requireNonNull(typeDescriptor);
         allDeclaredClasses = allPublicClasses = allRecordComponents = allPermittedSubclasses = allNestMembers = allSigners = includeAllElements;
@@ -113,7 +113,7 @@ public class ConfigurationType implements JsonPrintable {
                         : ConfigurationMemberAccessibility.NONE;
     }
 
-    ConfigurationType(ConfigurationType other, UnresolvedConfigurationCondition condition) {
+    ConfigurationType(ConfigurationType other, UnresolvedAccessCondition condition) {
         // Our object is not yet published, so it is sufficient to take only the other object's lock
         synchronized (other) {
             typeDescriptor = other.typeDescriptor;
@@ -484,7 +484,7 @@ public class ConfigurationType implements JsonPrintable {
     @Override
     public synchronized void printJson(JsonWriter writer) throws IOException {
         writer.appendObjectStart();
-        ConfigurationConditionPrintable.printConditionAttribute(condition, writer, true);
+        AccessConditionPrintable.printConditionAttribute(condition, writer, true);
         writer.quote("type").appendFieldSeparator();
         typeDescriptor.printJson(writer);
 
@@ -558,7 +558,7 @@ public class ConfigurationType implements JsonPrintable {
         return map;
     }
 
-    UnresolvedConfigurationCondition getCondition() {
+    UnresolvedAccessCondition getCondition() {
         return condition;
     }
 

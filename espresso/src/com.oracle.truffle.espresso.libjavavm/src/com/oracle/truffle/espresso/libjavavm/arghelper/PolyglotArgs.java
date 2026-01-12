@@ -27,15 +27,24 @@ import static com.oracle.truffle.espresso.libjavavm.Arguments.abortExperimental;
 import static com.oracle.truffle.espresso.libjavavm.arghelper.ArgumentsHandler.isBooleanOption;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.logging.Formatter;
+import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.StreamHandler;
 
 import org.graalvm.launcher.Launcher;
 import org.graalvm.options.OptionCategory;
@@ -56,7 +65,11 @@ class PolyglotArgs {
 
     private Engine tempEngine;
 
-    private Path logFile;
+    private String logFilePattern;
+    private boolean displayVMOutput = true;
+    private boolean logVMOutput;
+
+    private Handler logHandler;
 
     PolyglotArgs(Context.Builder builder, ArgumentsHandler handler) {
         this.builder = builder;
@@ -75,13 +88,244 @@ class PolyglotArgs {
             tempEngine.close();
             tempEngine = null;
         }
-        if (logFile != null) {
-            try {
-                builder.logHandler(Launcher.newLogStream(logFile));
-            } catch (IOException ioe) {
-                throw abort(ioe.toString());
+        try {
+            logHandler = makeLogHandler();
+        } catch (IOException ioe) {
+            throw abort(ioe.toString());
+        }
+        builder.logHandler(logHandler);
+    }
+
+    private Handler makeLogHandler() throws IOException {
+        Path logFile = null;
+        if (logVMOutput) {
+            logFile = makeLogFilePath(logFilePattern != null ? logFilePattern : "espresso_%p.log");
+        }
+        OutputStream out;
+        if (displayVMOutput) {
+            if (logVMOutput) {
+                out = new TeeOutputStream(System.out, Launcher.newLogStream(logFile));
+            } else {
+                out = System.out;
+            }
+        } else {
+            if (logVMOutput) {
+                out = Launcher.newLogStream(logFile);
+            } else {
+                out = NullOutputStream.INSTANCE;
             }
         }
+        StreamHandler streamHandler;
+        if (displayVMOutput) {
+            streamHandler = new FlushingStreamHandler(out, LogFormatter.INSTANCE);
+        } else {
+            streamHandler = new StreamHandler(out, LogFormatter.INSTANCE);
+        }
+        /*
+         * Unlike Handler, StreamHandler sets its default Level to INFO. Truffle already handles
+         * levels so streamHandler's internal level should be as permissive as possible.
+         */
+        streamHandler.setLevel(Level.ALL);
+        return streamHandler;
+    }
+
+    private static final class FlushingStreamHandler extends StreamHandler {
+        FlushingStreamHandler(OutputStream out, Formatter formatter) {
+            super(out, formatter);
+        }
+
+        @Override
+        public void publish(LogRecord record) {
+            super.publish(record);
+            flush();
+        }
+    }
+
+    /**
+     * See also {@code com.oracle.truffle.polyglot.PolyglotLoggers.StreamLogHandler.FormatterImpl}.
+     */
+    private static final class LogFormatter extends Formatter {
+        static final LogFormatter INSTANCE = new LogFormatter();
+
+        @Override
+        public String format(LogRecord record) {
+            String loggerName = formatLoggerName(record.getLoggerName());
+            String message = formatMessage(record);
+            String stackTrace = formatStackTrace(record.getThrown());
+            if (loggerName == null) {
+                // raw message
+                if (stackTrace.isEmpty()) {
+                    return message;
+                }
+                return message + stackTrace;
+            }
+            return String.format("[%1$s] %2$s: %3$s%4$s%n", loggerName, record.getLevel().getName(), message, stackTrace);
+        }
+
+        private static String formatStackTrace(Throwable exception) {
+            if (exception == null) {
+                return "";
+            }
+            StringWriter str = new StringWriter();
+            try (PrintWriter out = new PrintWriter(str)) {
+                out.println();
+                exception.printStackTrace(out);
+            }
+            return str.toString();
+        }
+
+        private static String formatLoggerName(String loggerName) {
+            if (loggerName == null) {
+                return null;
+            }
+            String id;
+            String name;
+            int index = loggerName.indexOf('.');
+            if (index < 0) {
+                id = loggerName;
+                name = "";
+            } else {
+                id = loggerName.substring(0, index);
+                name = loggerName.substring(index + 1);
+            }
+            if (name.isEmpty()) {
+                return id;
+            }
+            StringBuilder sb = new StringBuilder(id);
+            sb.append("::");
+            sb.append(possibleSimpleName(name));
+            return sb.toString();
+        }
+
+        private static String possibleSimpleName(String loggerName) {
+            int index = -1;
+            for (int i = loggerName.indexOf('.'); i >= 0; i = loggerName.indexOf('.', i + 1)) {
+                if (i + 1 < loggerName.length() && Character.isUpperCase(loggerName.charAt(i + 1))) {
+                    index = i + 1;
+                    break;
+                }
+            }
+            return index < 0 ? loggerName : loggerName.substring(index);
+        }
+    }
+
+    /**
+     * Creates a path for the log given a pattern. In this pattern:
+     * <ul>
+     * <li>{@code %p} will be replaced by {@code pid1234} where 1234 is the current process id</li>
+     * <li>{@code %t} will be replaced by a timestamp for the current time with the format
+     * {@code yyyy-MM-dd_HH-mm-ss}</li>
+     * </ul>
+     * See {@code make_log_name} in {@code ostream.cpp}.
+     */
+    private static Path makeLogFilePath(String logFilePattern) {
+        String logFileName = logFilePattern;
+        int pidIdx = logFileName.indexOf("%p");
+        int tsIdx = logFileName.indexOf("%t");
+        if (pidIdx >= 0 || tsIdx >= 0) {
+            StringBuilder sb = new StringBuilder();
+            long pid = ProcessHandle.current().pid();
+            if (pidIdx >= 0 && tsIdx >= 0) {
+                if (pidIdx < tsIdx) {
+                    sb.append(logFileName, 0, pidIdx);
+                    sb.append("pid");
+                    sb.append(pid);
+                    sb.append(logFileName, pidIdx + 2, tsIdx);
+                    sb.append(getLogPathTimestamp());
+                    sb.append(logFileName, tsIdx + 2, logFileName.length());
+                } else {
+                    sb.append(logFileName, 0, tsIdx);
+                    sb.append(getLogPathTimestamp());
+                    sb.append(logFileName, tsIdx + 2, pidIdx);
+                    sb.append("pid");
+                    sb.append(pid);
+                    sb.append(logFileName, pidIdx + 2, logFileName.length());
+                }
+            } else if (pidIdx >= 0) {
+                sb.append(logFileName, 0, pidIdx);
+                sb.append("pid");
+                sb.append(pid);
+                sb.append(logFileName, pidIdx + 2, logFileName.length());
+            } else {
+                sb.append(logFileName, 0, tsIdx);
+                sb.append(getLogPathTimestamp());
+                sb.append(logFileName, tsIdx + 2, logFileName.length());
+            }
+            logFileName = sb.toString();
+        }
+        return Path.of(logFileName);
+    }
+
+    private static String getLogPathTimestamp() {
+        return DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss", Locale.ROOT).format(LocalDateTime.now());
+    }
+
+    private static final class NullOutputStream extends OutputStream {
+        static OutputStream INSTANCE = new NullOutputStream();
+
+        @Override
+        @SuppressWarnings("unused")
+        public void write(int b) {
+        }
+
+        @Override
+        @SuppressWarnings("unused")
+        public void write(byte[] b, int off, int len) {
+        }
+    }
+
+    private static final class TeeOutputStream extends OutputStream {
+        private final OutputStream a;
+        private final OutputStream b;
+
+        TeeOutputStream(OutputStream a, OutputStream b) {
+            this.a = a;
+            this.b = b;
+        }
+
+        @Override
+        public void write(int v) throws IOException {
+            this.a.write(v);
+            this.b.write(v);
+        }
+
+        @Override
+        public void write(byte[] data, int off, int len) throws IOException {
+            this.a.write(data, off, len);
+            this.b.write(data, off, len);
+        }
+
+        @Override
+        public void flush() throws IOException {
+            this.a.flush();
+            this.b.flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+            try {
+                this.a.close();
+            } finally {
+                this.b.close();
+            }
+
+        }
+    }
+
+    Handler getLogHandler() {
+        return logHandler;
+    }
+
+    void setLogFile(String logFileName) {
+        logFilePattern = logFileName;
+    }
+
+    void setDisplayVMOutput(boolean displayVMOutput) {
+        this.displayVMOutput = displayVMOutput;
+    }
+
+    void setLogVMOutput(boolean logVMOutput) {
+        this.logVMOutput = logVMOutput;
     }
 
     void parsePolyglotOption(String arg, boolean experimentalOptions) {
@@ -117,8 +361,10 @@ class PolyglotArgs {
                     throw abort(String.format("Invalid log level %s specified. %s'", arg, e.getMessage()));
                 }
                 return;
-            } else if (key.equals("log.file")) {
-                logFile = Paths.get(value);
+            } else if ("log.file".equals(key)) {
+                logFilePattern = value;
+                logVMOutput = true;
+                displayVMOutput = false;
                 return;
             }
         }

@@ -57,14 +57,26 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.ConstantOperand;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
+import com.oracle.truffle.api.bytecode.LocalAccessor;
 import com.oracle.truffle.api.bytecode.Instruction.Argument;
 import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
+import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
+import com.oracle.truffle.api.bytecode.test.error_tests.ExpectWarning;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.bytecode.LocalVariable;
+import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class LocalsTest extends AbstractBasicInterpreterTest {
 
@@ -373,7 +385,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         List<LocalVariable> locals = b.getLocals();
         assertEquals(5, locals.size());
         assertEquals(42L, root.getCallTarget().call());
-        if (run.hasBlockScoping()) {
+        if (run.hasBlockScoping() && !run.testTracer()) {
             assertEquals(0, locals.get(0).getStartIndex());
             assertEquals(endBci, locals.get(0).getEndIndex());
             assertEquals("l0", locals.get(0).getName());
@@ -730,6 +742,38 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testClearLocal() {
+        // l0 = 42L;
+        // clearLocal(l0);
+        // return l0;
+        BasicInterpreter root = parseNode("clearLocal", b -> {
+            b.beginRoot();
+
+            BytecodeLocal l0 = b.createLocal("l0", null);
+            b.beginStoreLocal(l0);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+
+            b.emitClearLocal(l0);
+
+            b.beginReturn();
+            b.emitLoadLocal(l0);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        Object defaultLocal = this.run.getDefaultLocalValue();
+        if (defaultLocal == null) {
+            assertThrows(FrameSlotTypeException.class, () -> {
+                root.getCallTarget().call();
+            });
+        } else {
+            assertSame(defaultLocal, root.getCallTarget().call());
+        }
+    }
+
+    @Test
     public void testIllegalOrDefault() {
         // @formatter:off
         // // B0
@@ -804,7 +848,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
 
     }
 
-    private <T extends BasicInterpreterBuilder> void assertParseFailure(BytecodeParser<T> parser) {
+    private void assertParseFailure(BytecodeParser<BasicInterpreterBuilder> parser) {
         assertThrows(IllegalArgumentException.class, () -> parseNode("invalid", parser));
     }
 
@@ -873,6 +917,10 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         b.endStoreLocal();
     }
 
+    private static <T extends BasicInterpreterBuilder> void clearLocal(T b, BytecodeLocal local) {
+        b.emitClearLocal(local);
+    }
+
     private static <T extends BasicInterpreterBuilder> void teeLocal(T b, BytecodeLocal local) {
         b.beginTeeLocal(local);
         b.emitLoadNull();
@@ -889,22 +937,26 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
     public void testInvalidLocalAccesses() {
         assertParseFailure(siblingRootsTest(LocalsTest::loadLocal));
         assertParseFailure(siblingRootsTest(LocalsTest::storeLocal));
+        assertParseFailure(siblingRootsTest(LocalsTest::clearLocal));
         assertParseFailure(siblingRootsTest(LocalsTest::teeLocal));
         assertParseFailure(siblingRootsTest(LocalsTest::teeLocalRange));
 
         assertParseFailure(nestedRootsInnerAccessTest(LocalsTest::loadLocal));
         assertParseFailure(nestedRootsInnerAccessTest(LocalsTest::storeLocal));
+        assertParseFailure(nestedRootsInnerAccessTest(LocalsTest::clearLocal));
         assertParseFailure(nestedRootsInnerAccessTest(LocalsTest::teeLocal));
         assertParseFailure(nestedRootsInnerAccessTest(LocalsTest::teeLocalRange));
 
         assertParseFailure(nestedRootsOuterAccessTest(LocalsTest::loadLocal));
         assertParseFailure(nestedRootsOuterAccessTest(LocalsTest::storeLocal));
+        assertParseFailure(nestedRootsOuterAccessTest(LocalsTest::clearLocal));
         assertParseFailure(nestedRootsOuterAccessTest(LocalsTest::teeLocal));
         assertParseFailure(nestedRootsOuterAccessTest(LocalsTest::teeLocalRange));
 
         if (run.hasBlockScoping()) {
             assertParseFailure(outOfScopeTest(LocalsTest::loadLocal));
             assertParseFailure(outOfScopeTest(LocalsTest::storeLocal));
+            assertParseFailure(outOfScopeTest(LocalsTest::clearLocal));
             assertParseFailure(outOfScopeTest(LocalsTest::teeLocal));
             assertParseFailure(outOfScopeTest(LocalsTest::teeLocalRange));
         }
@@ -993,6 +1045,25 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
                 assertThrows(IllegalArgumentException.class, () -> roots.getNode(1).getCallTarget().call(outerFrame));
                 assertThrows(IllegalArgumentException.class, () -> roots.getNode(2).getCallTarget().call(outerFrame));
             }
+        }
+    }
+
+}
+
+@ExpectWarning("Custom operation with name ClearLocal conflicts with a built-in operation with the same name. The built-in operation will not be generated.%")
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+abstract class HidesBuiltin extends RootNode implements BytecodeRootNode {
+
+    protected HidesBuiltin(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @Operation
+    @ConstantOperand(type = LocalAccessor.class)
+    public static final class ClearLocal {
+        @Specialization
+        public static void doClear(VirtualFrame frame, LocalAccessor accessor, @Bind BytecodeNode bytecode) {
+            accessor.clear(bytecode, frame);
         }
     }
 

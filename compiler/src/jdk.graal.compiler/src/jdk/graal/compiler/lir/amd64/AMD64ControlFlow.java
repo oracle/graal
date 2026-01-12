@@ -700,9 +700,10 @@ public class AMD64ControlFlow {
         @LIRInstruction.Alive(OperandFlag.REG) protected AllocatableValue scratch;
 
         private final boolean inputMayBeOutOfRange;
+        private final boolean mayEmitThreadedCode;
 
         public RangeTableSwitchOp(LIRGenerator gen, int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key,
-                        AllocatableValue scratch, boolean inputMayBeOutOfRange) {
+                        AllocatableValue scratch, boolean inputMayBeOutOfRange, boolean mayEmitThreadedCode) {
             super(TYPE);
             this.lowKey = lowKey;
             assert defaultTarget != null;
@@ -716,6 +717,7 @@ public class AMD64ControlFlow {
             this.scratch = scratch;
 
             this.inputMayBeOutOfRange = inputMayBeOutOfRange;
+            this.mayEmitThreadedCode = mayEmitThreadedCode;
         }
 
         @Override
@@ -725,7 +727,7 @@ public class AMD64ControlFlow {
             Register idxScratchReg = Register.None;
 
             // Compare index against jump table bounds
-            int highKey = lowKey + targets.length - 1;
+            final int highKey = lowKey + targets.length - 1;
             Register keyOffsetReg = keyReg;
             if (lowKey != 0) {
                 idxScratchReg = asRegister(idxScratch);
@@ -739,8 +741,6 @@ public class AMD64ControlFlow {
             }
 
             if (inputMayBeOutOfRange || remainingStrategy != null) {
-                masm.cmpl(keyOffsetReg, highKey - lowKey);
-
                 Label outOfRangeLabel = defaultTarget.label();
                 if (remainingStrategy != null) {
                     Label remainingLabel = new Label();
@@ -755,10 +755,14 @@ public class AMD64ControlFlow {
                         new StrategySwitchOp(remainingStrategy, remainingTargets, defaultTarget, key, scratch).emitCode(crb, masm);
                     });
                 }
-                masm.jcc(ConditionFlag.Above, outOfRangeLabel);
+
+                masm.cmplAndJcc(keyOffsetReg, highKey - lowKey, ConditionFlag.Above, outOfRangeLabel, false);
             }
 
             emitJumpTable(crb, masm, scratchReg, keyOffsetReg, lowKey, highKey, Arrays.stream(targets).map(LabelRef::label));
+            if (mayEmitThreadedCode) {
+                masm.stopRecordingCodeSnippet(crb);
+            }
         }
 
         public static void emitJumpTable(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register scratchReg, Register keyReg, int lowKey, int highKey,

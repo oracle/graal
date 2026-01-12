@@ -40,6 +40,7 @@ import com.oracle.svm.core.graal.amd64.SubstrateAMD64RegisterConfig;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeImage;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 
 import jdk.graal.compiler.asm.Assembler;
@@ -48,7 +49,6 @@ import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AMD64InterpreterStubSection extends InterpreterStubSection {
     public AMD64InterpreterStubSection() {
@@ -144,7 +144,7 @@ public class AMD64InterpreterStubSection extends InterpreterStubSection {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    protected void markEnterStubPatch(ObjectFile.ProgbitsSectionImpl pltBuffer, ResolvedJavaMethod enterStub) {
+    protected void markEnterStubPatch(ObjectFile.ProgbitsSectionImpl pltBuffer, HostedMethod enterStub) {
         pltBuffer.markRelocationSite(resolverPatchOffset, resolverPatchRelocationKind, NativeImage.localSymbolNameForMethod(enterStub), resolverKindAddend);
     }
 }

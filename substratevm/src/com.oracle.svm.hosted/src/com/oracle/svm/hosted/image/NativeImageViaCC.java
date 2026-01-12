@@ -38,6 +38,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
@@ -62,9 +63,9 @@ import jdk.graal.compiler.debug.Indent;
 
 public abstract class NativeImageViaCC extends NativeImage {
 
-    public NativeImageViaCC(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
-        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
+    public NativeImageViaCC(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, ImageHeapLayoutInfo heapLayout,
+                    NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
+        super(k, universe, metaAccess, nativeLibs, heap, heapLayout, codeCache, entryPoints, imageClassLoader);
     }
 
     private static List<String> diagnoseLinkerFailure(String linkerOutput) {
@@ -86,9 +87,8 @@ public abstract class NativeImageViaCC extends NativeImage {
     }
 
     @Override
-    @SuppressWarnings("try")
     public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
-        try (Indent indent = debug.logAndIndent("Writing native image")) {
+        try (Indent _ = debug.logAndIndent("Writing native image")) {
             // 0. Free codecache to make space for writing the objectFile
             codeCache.purge();
 

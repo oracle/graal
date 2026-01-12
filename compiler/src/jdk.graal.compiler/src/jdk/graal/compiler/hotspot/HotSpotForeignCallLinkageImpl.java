@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-
 import java.util.Arrays;
 
 import org.graalvm.collections.EconomicSet;
@@ -263,8 +261,8 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     }
 
     @Override
-    public long getMaxCallTargetOffset() {
-        return runtime().getHostJVMCIBackend().getCodeCache().getMaxCallTargetOffset(address);
+    public long getMaxCallTargetOffset(CodeCacheProvider codeCache) {
+        return codeCache.getMaxCallTargetOffset(address);
     }
 
     @Override

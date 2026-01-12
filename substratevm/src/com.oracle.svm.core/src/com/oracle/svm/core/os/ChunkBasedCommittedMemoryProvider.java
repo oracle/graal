@@ -55,7 +55,7 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
 
     /** Returns a non-null value or throws a pre-allocated exception. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public Pointer allocateMetaspaceChunk(UnsignedWord nbytes, UnsignedWord alignment) {
+    public Pointer allocateMetaspaceChunk(@SuppressWarnings("unused") UnsignedWord nbytes, @SuppressWarnings("unused") UnsignedWord alignment) {
         throw VMError.shouldNotReachHere("Metaspace is only supported if there is a contiguous address space.");
     }
 

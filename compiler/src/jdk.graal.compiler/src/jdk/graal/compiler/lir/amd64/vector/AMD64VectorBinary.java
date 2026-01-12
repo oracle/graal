@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRMVOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRRIOp;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVROp;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
@@ -151,6 +152,33 @@ public class AMD64VectorBinary {
                 assert y.getPlatformKind() == AMD64Kind.DOUBLE : Assertions.errorMessage(y);
                 opcode.emit(masm, size, asRegister(result), asRegister(x), (AMD64Address) crb.asDoubleConstRef(y.getJavaConstant(), opcode.isPacked() ? PD.getBytes() : 8));
             }
+        }
+    }
+
+    public static final class AVXBinaryImmOp extends AMD64VectorInstruction {
+
+        public static final LIRInstructionClass<AVXBinaryImmOp> TYPE = LIRInstructionClass.create(AVXBinaryImmOp.class);
+
+        @Opcode private final VexRVMIOp opcode;
+
+        @Def({OperandFlag.REG}) protected AllocatableValue result;
+        @Use({OperandFlag.REG}) protected AllocatableValue x;
+        @Use({OperandFlag.REG}) protected AllocatableValue y;
+        protected int imm8;
+
+        public AVXBinaryImmOp(VexRVMIOp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue x, AllocatableValue y, int imm8) {
+            super(TYPE, size);
+            assert (imm8 & 0xFF) == imm8 : imm8;
+            this.opcode = opcode;
+            this.result = result;
+            this.x = x;
+            this.y = y;
+            this.imm8 = imm8;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            opcode.emit(masm, size, asRegister(result), asRegister(x), asRegister(y), imm8);
         }
     }
 

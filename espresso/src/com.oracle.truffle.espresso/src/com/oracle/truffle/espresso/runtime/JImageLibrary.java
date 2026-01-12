@@ -24,8 +24,6 @@ package com.oracle.truffle.espresso.runtime;
 
 import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 
-import java.nio.ByteBuffer;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -39,11 +37,15 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
-import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
+import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.memory.MemoryBuffer;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAllocationException;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jni.RawBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 
 @SuppressWarnings("unused")
 final class JImageLibrary extends ContextAccessImpl {
@@ -108,46 +110,64 @@ final class JImageLibrary extends ContextAccessImpl {
         findResource = getNativeAccess().lookupAndBindSymbol(jimageLibrary, FIND_RESOURCE, FIND_RESOURCE_SIGNATURE);
         getResource = getNativeAccess().lookupAndBindSymbol(jimageLibrary, GET_RESOURCE, GET_RESOURCE_SIGNATURE);
 
-        this.javaBaseBuffer = RawBuffer.getNativeString(JAVA_BASE);
-        this.versionBuffer = RawBuffer.getNativeString(VERSION_STRING);
-        this.emptyStringBuffer = RawBuffer.getNativeString("");
-
+        NativeMemory nativeMemory = getContext().getNativeAccess().nativeMemory();
+        try {
+            this.javaBaseBuffer = RawBuffer.getNativeString(JAVA_BASE, nativeMemory);
+            this.versionBuffer = RawBuffer.getNativeString(VERSION_STRING, nativeMemory);
+            this.emptyStringBuffer = RawBuffer.getNativeString("", nativeMemory);
+        } catch (MemoryAllocationException e) {
+            throw throwOutOfMemory(e);
+        }
         this.uncached = InteropLibrary.getFactory().getUncached();
     }
 
     public TruffleObject open(String name) {
-        ByteBuffer error = NativeUtils.allocateDirect(JavaKind.Int.getByteCount());
-        try (RawBuffer nameBuffer = RawBuffer.getNativeString(name)) {
-            return (TruffleObject) execute(open, nameBuffer.pointer(), NativeUtils.byteBufferPointer(error));
+        NativeMemory nativeMemory = getContext().getNativeAccess().nativeMemory();
+        try (MemoryBuffer errorBuffer = nativeMemory.allocateMemoryBuffer(JavaKind.Int.getByteCount()); //
+                        RawBuffer nameBuffer = RawBuffer.getNativeString(name, nativeMemory)) {
+            return (TruffleObject) execute(open, nameBuffer.pointer(), new RawPointer(errorBuffer.address()));
+        } catch (MemoryAllocationException e) {
+            throw throwOutOfMemory(e);
         }
+    }
+
+    private EspressoException throwOutOfMemory(MemoryAllocationException e) {
+        Meta meta = getContext().getMeta();
+        return meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, e.getMessage(), getContext());
     }
 
     public void close(TruffleObject jimage) {
         execute(close, jimage);
+        this.javaBaseBuffer.close();
+        this.versionBuffer.close();
+        this.emptyStringBuffer.close();
     }
 
     public byte[] getClassBytes(TruffleObject jimage, ByteSequence name) {
+        NativeMemory nativeMemory = getContext().getNativeAccess().nativeMemory();
         // Prepare calls
-        ByteBuffer sizeBuffer = NativeUtils.allocateDirect(JavaKind.Long.getByteCount());
-        TruffleObject sizePtr = NativeUtils.byteBufferPointer(sizeBuffer);
-
-        long location = findLocation(jimage, sizePtr, name);
-        if (location == 0) {
-            return null;
+        try (MemoryBuffer sizeBuffer = nativeMemory.allocateMemoryBuffer(JavaKind.Long.getByteCount())) {
+            TruffleObject sizePtr = new RawPointer(sizeBuffer.address());
+            long location = findLocation(jimage, sizePtr, name);
+            if (location == 0) {
+                return null;
+            }
+            // Extract the result
+            long capacity = sizeBuffer.buffer().getLong(0);
+            try (MemoryBuffer allocateMemoryBuffer = nativeMemory.allocateMemoryBuffer((int) capacity)) {
+                execute(getResource, jimage, location, new RawPointer(allocateMemoryBuffer.address()), capacity);
+                byte[] result = new byte[(int) capacity];
+                allocateMemoryBuffer.buffer().get(result);
+                return result;
+            }
+        } catch (MemoryAllocationException e) {
+            throw throwOutOfMemory(e);
         }
-
-        // Extract the result
-        long capacity = sizeBuffer.getLong(0);
-        ByteBuffer bytes = NativeUtils.allocateDirect((int) capacity);
-        TruffleObject bytesPtr = NativeUtils.byteBufferPointer(bytes);
-        execute(getResource, jimage, location, bytesPtr, capacity);
-        byte[] result = new byte[(int) capacity];
-        bytes.get(result);
-        return result;
     }
 
     private long findLocation(TruffleObject jimage, TruffleObject sizePtr, ByteSequence name) {
-        try (RawBuffer nameBuffer = RawBuffer.getNativeString(name)) {
+        NativeMemory nativeMemory = getContext().getNativeAccess().nativeMemory();
+        try (RawBuffer nameBuffer = RawBuffer.getNativeString(name, nativeMemory)) {
             TruffleObject namePtr = nameBuffer.pointer();
             long location = (long) execute(findResource, jimage, emptyStringBuffer.pointer(), versionBuffer.pointer(), namePtr, sizePtr);
             if (location != 0) {
@@ -168,7 +188,7 @@ final class JImageLibrary extends ContextAccessImpl {
                     return location;
                 }
                 TruffleObject moduleName;
-                try (RawBuffer pkgBuffer = RawBuffer.getNativeString(pkg)) {
+                try (RawBuffer pkgBuffer = RawBuffer.getNativeString(pkg, nativeMemory)) {
                     moduleName = (TruffleObject) execute(packageToModule, jimage, pkgBuffer.pointer());
                 }
                 if (uncached.isNull(moduleName)) {
@@ -189,12 +209,15 @@ final class JImageLibrary extends ContextAccessImpl {
                     return (long) execute(findResource, jimage, javaBaseBuffer.pointer(), versionBuffer.pointer(), namePtr, sizePtr);
                 } else {
                     String nameAsString = moduleName == null ? "" : moduleName.toString();
-                    try (RawBuffer moduleNameBuffer = RawBuffer.getNativeString(nameAsString)) {
+                    try (RawBuffer moduleNameBuffer = RawBuffer.getNativeString(nameAsString, nativeMemory)) {
                         return (long) execute(findResource, jimage, moduleNameBuffer.pointer(), versionBuffer.pointer(), namePtr, sizePtr);
                     }
                 }
             }
+        } catch (MemoryAllocationException e) {
+            throw throwOutOfMemory(e);
         }
+
     }
 
     private static ByteSequence packageFromName(ByteSequence name) {

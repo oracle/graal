@@ -43,7 +43,7 @@ import jdk.graal.compiler.options.OptionType;
 public class ImageHeapConnectedComponentsFeature implements InternalFeature {
     public static class Options {
         @Option(help = "file:doc-files/PrintImageHeapConnectedComponents.md", type = OptionType.Debug)//
-        static final HostedOptionKey<Boolean> PrintImageHeapConnectedComponents = new HostedOptionKey<>(false);
+        public static final HostedOptionKey<Boolean> PrintImageHeapConnectedComponents = new HostedOptionKey<>(false);
     }
 
     private AbstractImage image;

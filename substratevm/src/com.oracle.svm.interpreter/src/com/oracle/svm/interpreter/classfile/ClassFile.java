@@ -1000,7 +1000,7 @@ public final class ClassFile {
                     // The VM already provides the resolved bootstrap method and appendix.
                     // Investigate how to persist the appendix (arbitrary object) on the constant pool.
                     BytecodeStream.patchCPI(code, bci, 0);
-                    BytecodeStream.patchAppendixCPI(code, bci, 0);
+                    BytecodeStream.patchIndyExtraCPI(code, bci, 0);
                     break;
             }
             // @formatter:on

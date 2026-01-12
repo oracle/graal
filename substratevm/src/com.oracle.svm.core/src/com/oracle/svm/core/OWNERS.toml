@@ -9,9 +9,9 @@ any = [
 [[rule]]
 files = "ClassLoaderSupport.java"
 all = [
-    "david.nestorovic@oracle.com",
-    "ivan.ristovic@oracle.com",
-    "paul.woegerer@oracle.com"
+    "paul.woegerer@oracle.com",
+    "vojin.jovanovic@oracle.com",
+    "christian.wirth@oracle.com"
 ]
 any = [
 ]

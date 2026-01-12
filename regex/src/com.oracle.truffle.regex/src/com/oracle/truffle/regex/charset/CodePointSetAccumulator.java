@@ -43,7 +43,7 @@ package com.oracle.truffle.regex.charset;
 import java.util.Iterator;
 
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 public class CodePointSetAccumulator implements Iterable<Range> {
 

@@ -38,6 +38,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.DefaultNameTransformati
 import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeImage;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -52,7 +53,7 @@ public final class CEntryPointData {
     public static final Class<?> DEFAULT_EXCEPTION_HANDLER = CEntryPoint.FatalExceptionHandler.class;
 
     public static CEntryPointData create(ResolvedJavaMethod method) {
-        return create(method.getAnnotation(CEntryPoint.class), method.getAnnotation(CEntryPointOptions.class),
+        return create(AnnotationUtil.getAnnotation(method, CEntryPoint.class), AnnotationUtil.getAnnotation(method, CEntryPointOptions.class),
                         () -> NativeImage.globalSymbolNameForMethod(method));
     }
 

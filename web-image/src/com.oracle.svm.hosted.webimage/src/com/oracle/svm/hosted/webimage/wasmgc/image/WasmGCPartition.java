@@ -71,6 +71,11 @@ public class WasmGCPartition implements ImageHeapPartition {
         return name;
     }
 
+    @Override
+    public boolean isWritable() {
+        return true;
+    }
+
     public boolean isPseudo() {
         return isPseudo;
     }

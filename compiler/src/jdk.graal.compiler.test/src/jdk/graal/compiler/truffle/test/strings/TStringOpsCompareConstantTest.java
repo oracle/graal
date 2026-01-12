@@ -77,7 +77,7 @@ public class TStringOpsCompareConstantTest extends TStringOpsCompareTest {
     @Override
     @Test
     public void testMemCmp() {
-        test(getMemcmpWithStrideIntl(), null, DUMMY_LOCATION,
+        test(getMemcmpWithStride(), null, DUMMY_LOCATION,
                         arrayA, offsetA, strideA,
                         arrayB, offsetB, strideB, lengthCMP);
     }

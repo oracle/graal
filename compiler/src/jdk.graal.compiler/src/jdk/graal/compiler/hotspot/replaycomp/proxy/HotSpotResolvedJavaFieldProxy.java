@@ -29,8 +29,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-//JaCoCo Exclude
-
 public final class HotSpotResolvedJavaFieldProxy extends CompilationProxyBase.CompilationProxyAnnotatedBase implements HotSpotResolvedJavaField {
     HotSpotResolvedJavaFieldProxy(InvocationHandler handler) {
         super(handler);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package com.oracle.svm.driver;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -134,6 +133,10 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         if (headArg.startsWith(BundleSupport.BUNDLE_OPTION)) {
+            // warning should be early, before any other output of the feature
+            if (nativeImage.bundleSupport == null) {
+                LogUtils.warning("Native Image Bundles are an experimental feature.");
+            }
             nativeImage.bundleSupport = BundleSupport.create(nativeImage, args.poll(), args);
             return true;
         }
@@ -227,12 +230,5 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String javaVMVersion = System.getProperty("java.vm.version");
         String javaVMInfo = System.getProperty("java.vm.info");
         nativeImage.showMessage("%s%s (%sbuild %s, %s)", javaVMName, vendorVersion, jdkDebugLevel, javaVMVersion, javaVMInfo);
-    }
-
-    @Override
-    void addFallbackBuildArgs(List<String> buildArgs) {
-        if (nativeImage.isVerbose()) {
-            buildArgs.add(VERBOSE_OPTION);
-        }
     }
 }

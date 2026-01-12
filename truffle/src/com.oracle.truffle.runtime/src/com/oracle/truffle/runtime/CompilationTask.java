@@ -102,18 +102,31 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
         // cannot compute a reliable rate yet. The rate will be computed the first time updateWeight
         // is called.
         lastWeight = -1.0;
-        lastTime = System.nanoTime();
+        long timestamp = System.nanoTime();
         OptimizedCallTarget target = targetRef.get();
         if (target == null) {
+            lastTime = timestamp;
             lastCount = Integer.MIN_VALUE;
             engineData = null;
             isOSR = false;
             cancelledPredicate = null;
         } else {
-            lastCount = target.getCallAndLoopCount();
             engineData = target.engine;
             isOSR = target.isOSR();
             cancelledPredicate = target.engine.cancelledPredicate;
+            lastCount = 0;
+            lastTime = target.getInitializedTimestamp();
+            if (target.isInitialized()) {
+                assert lastTime != 0;
+                updateWeight(timestamp);
+            } else {
+                /*
+                 * Call targets used for the initialization of the compiler are not initialized
+                 * before they are sent to the compilation queue.
+                 */
+                lastCount = target.getCallAndLoopCount();
+                lastTime = timestamp;
+            }
         }
     }
 
@@ -284,11 +297,28 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
         // A last weight > 0 indicates that it has been initialized. If so, only update its weight
         // if 1_000_000ns have elapsed since its last calculation. The elapsed time may be negative
         // since tasks may be added to the queue while traversing it.
-        if (lastWeight > 0 && elapsed < 1_000_000 || elapsed < 0) {
+        if (lastWeight >= 0 && elapsed < 1_000_000 || elapsed < 0) {
             return true;
         }
         int count = target.getCallAndLoopCount();
-        lastRate = rate(count, elapsed);
+        double currentRate = rate(count, elapsed);
+        if (lastWeight < 0) {
+            lastRate = currentRate;
+        } else {
+            /*
+             * "Assembles" the new rate from the last rate and the current rate by applying a decay
+             * from the interval (0, 1) to the last rate. The decay is computed using the configured
+             * rate half-life. For example, if the elapsed time is equal to the half-life, then <new
+             * rate> = <last rate> * 0.5 + <current rate> * 0.5; if the elapsed time is twice the
+             * half-life, then <new rate> = <last rate> * 0.25 + <current rate> * 0.75. The reason
+             * we do this is that the current interval, which has an unpredictable size, might not
+             * capture the current hotness of the compilation unit very well. Using the decay makes
+             * the computed rate capture a longer time interval while still giving priority to more
+             * recent executions.
+             */
+            double decay = Math.pow(2.0d, -1.0d * elapsed / engineData.traversingRateHalfLifeNs);
+            lastRate = lastRate * decay + currentRate * (1 - decay);
+        }
         lastTime = currentTime;
         lastCount = count;
         double weight = (1 + lastRate) * lastCount;
@@ -351,7 +381,8 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
 
     private double rate(int count, long elapsed) {
         // Divide by a minimum of 1000 to prevent division by zero/very small numbers.
-        return lastRate = ((double) count - lastCount) / Math.max(elapsed, 1000);
+        // Multiply by 1_000_000 to get per-millisecond rate.
+        return ((double) count - lastCount) / Math.max(elapsed, 1000) * 1_000_000;
     }
 
     public int targetHighestCompiledTier() {

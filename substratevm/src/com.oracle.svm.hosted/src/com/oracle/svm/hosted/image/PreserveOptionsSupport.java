@@ -48,7 +48,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -66,11 +66,12 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
@@ -84,7 +85,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
      * <li>All internal modules.</li>
      * <li>All tooling modules such as the java.compiler.</li>
      * <li>Modules that are currently not supported with Native Image (e.g.,
-     * <code>java.management</code>.</li>
+     * <code>java.management</code>).</li>
      * </ul>
      */
     public static final Set<String> JDK_MODULES_TO_PRESERVE = Set.of(
@@ -186,26 +187,37 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         return joiner.toString();
     }
 
-    public static void registerPreservedClasses(BigBang bb, MetaAccessProvider originalMetaAccess, NativeImageClassLoaderSupport classLoaderSupport) {
-        var classesOrPackagesToIgnore = SubstrateOptions.IgnorePreserveForClasses.getValue().valuesAsSet();
+    /**
+     * Sorts types such that subclasses precede superclasses and classes of the same class hierarchy
+     * depth are sorted alphabetically by name. This sort order avoids complexity related to field
+     * registration.
+     */
+    private static final Comparator<ResolvedJavaType> PRESERVED_CLASSES_COMPARATOR = (t1, t2) -> {
+        int t1Depth = JVMCIReflectionUtil.countSuperclasses(t1);
+        int t2Depth = JVMCIReflectionUtil.countSuperclasses(t2);
+        if (t1Depth == t2Depth) {
+            return t1.toClassName().compareTo(t2.toClassName());
+        }
+        return t2Depth - t1Depth;
+    };
+
+    public static void registerPreservedClasses(BigBang bb, NativeImageClassLoaderSupport classLoaderSupport) {
+        Set<String> classesOrPackagesToIgnore = SubstrateOptions.IgnorePreserveForClasses.getValue().valuesAsSet();
         ClassInclusionPolicy classInclusionPolicy = new DefaultAllInclusionPolicy("included by " + SubstrateOptionsParser.commandArgument(Preserve, ""));
         classInclusionPolicy.setBigBang(bb);
         var classesToPreserve = classLoaderSupport.getClassesToPreserve()
-                        .filter(clazz -> classInclusionPolicy.isOriginalTypeIncluded(originalMetaAccess.lookupJavaType(clazz)))
-                        .filter(c -> !(classesOrPackagesToIgnore.contains(c.getPackageName()) || classesOrPackagesToIgnore.contains(c.getName())))
-                        .sorted(Comparator.comparing(ReflectionUtil::getClassHierarchyDepth).reversed())
+                        .filter(classInclusionPolicy::isOriginalTypeIncluded)
+                        .filter(t -> !(classesOrPackagesToIgnore.contains(JVMCIReflectionUtil.getPackageName(t)) || classesOrPackagesToIgnore.contains(t.toClassName())))
+                        .sorted(PRESERVED_CLASSES_COMPARATOR)
+                        .map(OriginalClassProvider::getJavaClass)
                         .toList();
 
         final RuntimeReflectionSupport reflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
-        final RuntimeResourceSupport<ConfigurationCondition> resources = RuntimeResourceSupport.singleton();
+        final RuntimeResourceSupport<AccessCondition> resources = RuntimeResourceSupport.singleton();
         final RuntimeProxyRegistrySupport proxy = ImageSingletons.lookup(RuntimeProxyRegistrySupport.class);
-        final RuntimeSerializationSupport<ConfigurationCondition> serialization = RuntimeSerializationSupport.singleton();
-        final ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
+        final RuntimeSerializationSupport<AccessCondition> serialization = RuntimeSerializationSupport.singleton();
+        final AccessCondition always = AccessCondition.unconditional();
 
-        /*
-         * Sort descending by class hierarchy depth to avoid complexity related to field
-         * registration.
-         */
         classesToPreserve.forEach(c -> {
             registerType(reflection, c);
 
@@ -217,28 +229,28 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
             /* Register every single-interface proxy */
             // GR-62293 can't register proxies from jdk modules.
             if (c.getModule() == null && c.isInterface()) {
-                proxy.registerProxy(always, c);
+                proxy.registerProxy(always, true, c);
             }
 
             try {
                 for (Field declaredField : c.getDeclaredFields()) {
-                    reflection.register(always, false, declaredField);
+                    reflection.register(always, false, true, declaredField);
                 }
             } catch (LinkageError e) {
                 /* If we can't link we can not register for reflection */
             }
             if (SubstrateOptions.JNI.getValue()) {
                 final RuntimeJNIAccessSupport jni = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
-                jni.register(always, c);
+                jni.register(always, true, c);
                 try {
                     for (Method declaredMethod : c.getDeclaredMethods()) {
-                        jni.register(always, false, declaredMethod);
+                        jni.register(always, false, true, declaredMethod);
                     }
                     for (Constructor<?> declaredConstructor : c.getDeclaredConstructors()) {
-                        jni.register(always, false, declaredConstructor);
+                        jni.register(always, false, true, declaredConstructor);
                     }
                     for (Field declaredField : c.getDeclaredFields()) {
-                        jni.register(always, false, declaredField);
+                        jni.register(always, false, true, declaredField);
                     }
                 } catch (LinkageError e) {
                     /* If we can't link we can not register for JNI and reflection */
@@ -247,11 +259,13 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
             // if we register as unsafe allocated earlier there are build-time
             // initialization errors
-            reflection.register(always, !(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers())), c);
+            if (!(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers()))) {
+                reflection.registerUnsafeAllocation(always, true, c);
+            }
 
             /* Register resource bundles */
             if (BundleContentSubstitutedLocalizationSupport.isBundleSupported(c)) {
-                resources.addResourceBundles(always, c.getTypeName());
+                resources.addResourceBundles(always, true, c.getTypeName());
             }
         });
 
@@ -261,30 +275,30 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
          * upwards multiple times when caching is implemented.
          */
         classesToPreserve.reversed().forEach(c -> {
-            reflection.registerAllFields(always, c);
-            reflection.registerAllMethodsQuery(always, false, c);
-            serialization.register(always, c);
+            reflection.registerAllFields(always, true, c);
+            reflection.registerAllMethodsQuery(always, false, true, c);
+            serialization.register(always, true, c);
         });
 
         for (String className : classLoaderSupport.getClassNamesToPreserve()) {
             if (!classesOrPackagesToIgnore.contains(className)) {
-                reflection.registerClassLookup(always, className);
+                reflection.registerClassLookup(always, true, className);
             }
         }
     }
 
-    private static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
-        ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
-        reflection.register(always, false, c);
+    public static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
+        AccessCondition always = AccessCondition.unconditional();
+        reflection.register(always, true, c);
 
-        reflection.registerAllDeclaredFields(always, c);
-        reflection.registerAllDeclaredMethodsQuery(always, false, c);
-        reflection.registerAllDeclaredConstructorsQuery(always, false, c);
-        reflection.registerAllConstructorsQuery(always, false, c);
-        reflection.registerAllClassesQuery(always, c);
-        reflection.registerAllDeclaredClassesQuery(always, c);
-        reflection.registerAllNestMembersQuery(always, c);
-        reflection.registerAllPermittedSubclassesQuery(always, c);
+        reflection.registerAllDeclaredFields(always, true, c);
+        reflection.registerAllDeclaredMethodsQuery(always, false, true, c);
+        reflection.registerAllDeclaredConstructorsQuery(always, false, true, c);
+        reflection.registerAllConstructorsQuery(always, false, true, c);
+        reflection.registerAllClassesQuery(always, true, c);
+        reflection.registerAllDeclaredClassesQuery(always, true, c);
+        reflection.registerAllNestMembersQuery(always, true, c);
+        reflection.registerAllPermittedSubclassesQuery(always, true, c);
         reflection.registerAllRecordComponentsQuery(always, c);
         reflection.registerAllSignersQuery(always, c);
     }

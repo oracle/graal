@@ -79,8 +79,18 @@ public non-sealed class SingleTypeState extends TypeState {
     }
 
     @Override
+    public boolean containsType(int typeId) {
+        return type.getId() == typeId;
+    }
+
+    @Override
     protected final Iterator<AnalysisType> typesIterator(BigBang bb) {
         return singletonIterator(type);
+    }
+
+    @Override
+    public Iterator<Integer> typeIdsIterator() {
+        return singletonIterator(type.getId());
     }
 
     @Override

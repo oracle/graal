@@ -30,7 +30,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
@@ -92,7 +92,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + mainClassModuleArgParts[1], OptionOrigin.originDriver);
                 }
                 nativeImage.addPlainImageBuilderArg(nativeImage.oHModule + mainClassModuleArgParts[0], OptionOrigin.originDriver);
-                nativeImage.setModuleOptionMode(true);
+                nativeImage.enableModuleOption();
                 return true;
             case addModulesOption:
                 args.poll();
@@ -148,7 +148,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (headArg.startsWith(nativeImage.oHLayerCreate)) {
             String rawLayerCreateValue = headArg.substring(nativeImage.oHLayerCreate.length());
             if (!rawLayerCreateValue.isEmpty()) {
-                List<String> layerCreateValue = OptionUtils.resolveOptionValuesRedirection(SubstrateOptions.LayerCreate, rawLayerCreateValue, OptionOrigin.from(args.argumentOrigin));
+                List<String> layerCreateValue = OptionUtils.resolveOptionValuesRedirection(LayeredImageOptions.LayerCreate, rawLayerCreateValue, OptionOrigin.from(args.argumentOrigin));
                 LayerOption layerOption = LayerOption.parse(layerCreateValue);
                 for (ExtendedOption option : layerOption.extendedOptions()) {
                     var packageOptionValue = IncludeOptionsSupport.PackageOptionValue.from(option);

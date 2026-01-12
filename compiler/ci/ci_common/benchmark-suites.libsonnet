@@ -29,7 +29,7 @@
     run+: [
       self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args
     ],
-    timelimit: "30:00",
+    timelimit: "1:00:00",
     forks_batches:: null,
     forks_timelimit:: null,
     min_jdk_version:: 8,
@@ -91,15 +91,15 @@
 
   barista_template(suite_version=null, suite_name="barista", max_jdk_version=null, cmd_app_prefix=["hwloc-bind --cpubind node:0.core:0-3.pu:0 --membind node:0"], non_prefix_barista_args=[]):: cc.compiler_benchmark + {
     suite:: suite_name,
-    local barista_version = "v0.4.7",
+    local barista_version = "0.6.0",
     local suite_version_args = if suite_version != null then ["--bench-suite-version=" + suite_version] else [],
     local prefix_barista_arg = if std.length(cmd_app_prefix) > 0 then [std.format("--cmd-app-prefix=%s", std.join(" ", cmd_app_prefix))] else [],
     local all_barista_args = prefix_barista_arg + non_prefix_barista_args,
     local barista_args_with_separator = if std.length(all_barista_args) > 0 then ["--"] + all_barista_args else [],
     downloads+: {
       "WRK": { "name": "wrk", "version": "a211dd5", platformspecific: true},
-      "WRK2": { "name": "wrk2", "version": "2.1", platformspecific: true},
-      "BARISTA_BENCHMARKS": { "name": "barista", "version": "0.4.7"}
+      "WRK2": { "name": "wrk2", "version": "2.2", platformspecific: true},
+      "BARISTA_BENCHMARKS": { "name": "barista", "version": "0.5.1"}
     },
     packages+: {
       maven: "==3.8.6",

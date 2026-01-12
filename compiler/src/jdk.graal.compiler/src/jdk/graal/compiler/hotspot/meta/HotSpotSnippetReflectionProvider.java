@@ -129,7 +129,9 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
     @Override
     public Executable originalMethod(ResolvedJavaMethod method) {
         Objects.requireNonNull(method);
-        GraalError.guarantee(method instanceof HotSpotResolvedJavaMethod, "Unexpected implementation class: %s", method.getClass());
+        if (!(method instanceof HotSpotResolvedJavaMethod)) {
+            throw new IllegalArgumentException(String.format("Unexpected implementation class: %s", method.getClass().getName()));
+        }
 
         if (method.isClassInitializer()) {
             /* <clinit> methods never have a corresponding java.lang.reflect.Method. */

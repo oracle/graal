@@ -64,6 +64,7 @@ public final class ParserSymbols {
         public static final Symbol<Type> java_lang_Class = SYMBOLS.putType("Ljava/lang/Class;");
         public static final Symbol<Type> java_lang_Cloneable = SYMBOLS.putType("Ljava/lang/Cloneable;");
         public static final Symbol<Type> java_io_Serializable = SYMBOLS.putType("Ljava/io/Serializable;");
+        public static final Symbol<Type> java_lang_Object_array = SYMBOLS.putType("[Ljava/lang/Object;");
 
         public static final Symbol<Type> java_lang_invoke_LambdaForm$Compiled = SYMBOLS.putType("Ljava/lang/invoke/LambdaForm$Compiled;");
         public static final Symbol<Type> java_lang_invoke_LambdaForm$Hidden = SYMBOLS.putType("Ljava/lang/invoke/LambdaForm$Hidden;");
@@ -90,6 +91,10 @@ public final class ParserSymbols {
         public static final Symbol<Type> _double = SYMBOLS.putType("D" /* double */);
         public static final Symbol<Type> _long = SYMBOLS.putType("J" /* long */);
         public static final Symbol<Type> _void = SYMBOLS.putType("V" /* void */);
+
+        // Polymorphic signature methods
+        public static final Symbol<Type> java_lang_invoke_MethodHandle = SYMBOLS.putType("Ljava/lang/invoke/MethodHandle;");
+        public static final Symbol<Type> java_lang_invoke_VarHandle = SYMBOLS.putType("Ljava/lang/invoke/VarHandle;");
 
         public static void ensureInitialized() {
             /* nop */
@@ -133,6 +138,14 @@ public final class ParserSymbols {
         public static final Symbol<Name> Synthetic = SYMBOLS.putName("Synthetic");
         public static final Symbol<Name> clone = SYMBOLS.putName("clone");
 
+        // Polymorphic signature methods
+        public static final Symbol<Name> linkToStatic = SYMBOLS.putName("linkToStatic");
+        public static final Symbol<Name> linkToVirtual = SYMBOLS.putName("linkToVirtual");
+        public static final Symbol<Name> linkToSpecial = SYMBOLS.putName("linkToSpecial");
+        public static final Symbol<Name> linkToInterface = SYMBOLS.putName("linkToInterface");
+        public static final Symbol<Name> linkToNative = SYMBOLS.putName("linkToNative");
+        public static final Symbol<Name> invokeBasic = SYMBOLS.putName("invokeBasic");
+
         public static void ensureInitialized() {
             /* nop */
         }
@@ -140,6 +153,7 @@ public final class ParserSymbols {
 
     public static final class ParserSignatures {
         public static final Symbol<Signature> _void = SYMBOLS.putSignature(ParserTypes._void);
+        public static final Symbol<Signature> Object_Object_array = SYMBOLS.putSignature(ParserTypes.java_lang_Object, ParserTypes.java_lang_Object_array);
 
         public static void ensureInitialized() {
             /* nop */

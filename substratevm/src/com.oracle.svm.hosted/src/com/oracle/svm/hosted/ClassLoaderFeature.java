@@ -25,27 +25,25 @@
 package com.oracle.svm.hosted;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
-import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
-
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
-import com.oracle.svm.core.fieldvaluetransformer.ObjectToConstantFieldValueTransformer;
-import com.oracle.svm.core.hub.ClassForNameSupport;
+import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.internal.loader.ClassLoaders;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 @AutomaticallyRegisteredFeature
 public class ClassLoaderFeature implements InternalFeature {
@@ -57,22 +55,19 @@ public class ClassLoaderFeature implements InternalFeature {
 
     private static final NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
 
-    private static final ClassLoader bootClassLoader;
-    private static final ClassLoader platformClassLoader;
+    /**
+     * Field {@link NativeImageSystemClassLoader#defaultSystemClassLoader} contains the original
+     * {@code jdk.internal.loader.ClassLoaders.AppClassLoader} of the VM that runs the builder. This
+     * is what we want in the image.
+     */
+    private static final ClassLoader appClassLoader = nativeImageSystemClassLoader.defaultSystemClassLoader;
 
-    static {
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            platformClassLoader = ClassLoaders.platformClassLoader();
-            bootClassLoader = BootLoaderSupport.getBootLoader();
-        } else {
-            platformClassLoader = null;
-            bootClassLoader = null;
-        }
-    }
+    private static final ClassLoader platformClassLoader = ClassLoaders.platformClassLoader();
+    private static final ClassLoader bootClassLoader = BootLoaderSupport.getBootLoader();
 
     public static ClassLoader getRuntimeClassLoader(ClassLoader original) {
         if (replaceWithAppClassLoader(original)) {
-            return nativeImageSystemClassLoader.defaultSystemClassLoader;
+            return appClassLoader;
         }
 
         return original;
@@ -97,7 +92,7 @@ public class ClassLoaderFeature implements InternalFeature {
 
     JavaConstant replaceClassLoadersWithLayerConstant(CrossLayerConstantRegistry registry, Object object) {
         if (object instanceof ClassLoader loader) {
-            if (replaceWithAppClassLoader(loader) || loader == nativeImageSystemClassLoader.defaultSystemClassLoader) {
+            if (replaceWithAppClassLoader(loader) || loader == appClassLoader) {
                 return registry.getConstant(APP_KEY_NAME);
             } else if (loader == platformClassLoader) {
                 return registry.getConstant(PLATFORM_KEY_NAME);
@@ -118,19 +113,14 @@ public class ClassLoaderFeature implements InternalFeature {
         var packageManager = HostedClassLoaderPackageManagement.singleton();
         var registry = CrossLayerConstantRegistry.singletonOrNull();
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            packageManager.initialize(nativeImageSystemClassLoader.defaultSystemClassLoader, registry);
+            packageManager.initialize(appClassLoader, registry);
         }
 
         var config = (FeatureImpl.DuringSetupAccessImpl) access;
         if (ImageLayerBuildingSupport.firstImageBuild()) {
-            LibGraalLoader libGraalLoader = ((DuringSetupAccessImpl) access).imageClassLoader.classLoaderSupport.getLibGraalLoader();
-            if (libGraalLoader != null) {
-                ClassLoader libGraalClassLoader = (ClassLoader) libGraalLoader;
-                ClassForNameSupport.currentLayer().setLibGraalLoader(libGraalClassLoader);
-            }
             access.registerObjectReplacer(this::runtimeClassLoaderObjectReplacer);
             if (ImageLayerBuildingSupport.buildingInitialLayer()) {
-                config.registerObjectReachableCallback(ClassLoader.class, (a1, classLoader, reason) -> {
+                config.registerObjectReachableCallback(ClassLoader.class, (_, classLoader, _) -> {
                     if (HostedClassLoaderPackageManagement.isGeneratedSerializationClassLoader(classLoader)) {
                         registry.registerHeapConstant(HostedClassLoaderPackageManagement.getClassLoaderSerializationLookupKey(classLoader), classLoader);
                     }
@@ -145,15 +135,15 @@ public class ClassLoaderFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        var packagesField = ReflectionUtil.lookupField(ClassLoader.class, "packages");
         var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        var packagesField = JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(ClassLoader.class), "packages");
         if (!ImageLayerBuildingSupport.buildingImageLayer()) {
-            access.registerFieldValueTransformer(packagesField, new TraditionalPackageMapTransformer());
+            config.registerFieldValueTransformer(packagesField, new TraditionalPackageMapTransformer());
         } else {
             if (ImageLayerBuildingSupport.buildingInitialLayer()) {
                 config.registerFieldValueTransformer(packagesField, new InitialLayerPackageMapTransformer());
             } else {
-                access.registerFieldValueTransformer(packagesField, new ExtensionLayerPackageMapTransformer());
+                config.registerFieldValueTransformer(packagesField, new ExtensionLayerPackageMapTransformer());
             }
         }
 
@@ -165,7 +155,7 @@ public class ClassLoaderFeature implements InternalFeature {
              * fieldValueInterceptors will be computed for the scanned objects.
              */
             var registry = CrossLayerConstantRegistry.singletonOrNull();
-            registry.registerHeapConstant(APP_KEY_NAME, nativeImageSystemClassLoader.defaultSystemClassLoader);
+            registry.registerHeapConstant(APP_KEY_NAME, appClassLoader);
             registry.registerHeapConstant(PLATFORM_KEY_NAME, platformClassLoader);
             registry.registerHeapConstant(BOOT_KEY_NAME, bootClassLoader);
             registry.registerFutureHeapConstant(APP_PACKAGE_KEY_NAME, config.getMetaAccess().lookupJavaType(ConcurrentHashMap.class));
@@ -176,7 +166,8 @@ public class ClassLoaderFeature implements InternalFeature {
              * We need to scan this because the final package info cannot be installed until after
              * analysis has completed.
              */
-            config.rescanObject(HostedClassLoaderPackageManagement.singleton().getPriorAppClassLoaderPackages());
+            ScanReason reason = new OtherReason("Manual rescan triggered from " + ClassLoaderFeature.class);
+            config.rescanObject(HostedClassLoaderPackageManagement.singleton().getPriorAppClassLoaderPackages(), reason);
         }
     }
 
@@ -207,7 +198,7 @@ public class ClassLoaderFeature implements InternalFeature {
         }
     }
 
-    static class TraditionalPackageMapTransformer extends PackageMapTransformer {
+    static final class TraditionalPackageMapTransformer extends PackageMapTransformer {
 
         @Override
         public Object transform(Object receiver, Object originalValue) {
@@ -215,33 +206,27 @@ public class ClassLoaderFeature implements InternalFeature {
         }
     }
 
-    static class InitialLayerPackageMapTransformer extends PackageMapTransformer implements ObjectToConstantFieldValueTransformer {
+    static final class InitialLayerPackageMapTransformer extends PackageMapTransformer {
         final CrossLayerConstantRegistry registry = CrossLayerConstantRegistry.singletonOrNull();
 
         @Override
-        public JavaConstant transformToConstant(ResolvedJavaField field, Object receiver, Object originalValue, Function<Object, JavaConstant> toConstant) {
-            if (receiver == nativeImageSystemClassLoader.defaultSystemClassLoader) {
+        public Object transform(Object receiver, Object originalValue) {
+            if (receiver == appClassLoader) {
                 /*
                  * This map will be assigned within the application layer. Within this layer we
                  * register a relocatable constant.
                  */
-                return registry.getConstant(APP_PACKAGE_KEY_NAME);
-
+                return new JavaConstantWrapper(registry.getConstant(APP_PACKAGE_KEY_NAME));
             }
 
-            return toConstant.apply(doTransform(receiver, originalValue));
+            return doTransform(receiver, originalValue);
         }
     }
 
-    static class ExtensionLayerPackageMapTransformer implements FieldValueTransformerWithAvailability {
+    static class ExtensionLayerPackageMapTransformer implements JVMCIFieldValueTransformer {
 
         @Override
-        public boolean isAvailable() {
-            return true;
-        }
-
-        @Override
-        public Object transform(Object receiver, Object originalValue) {
+        public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
             throw VMError.shouldNotReachHere("No classloaders should be installed in extension layers: %s", receiver);
         }
     }

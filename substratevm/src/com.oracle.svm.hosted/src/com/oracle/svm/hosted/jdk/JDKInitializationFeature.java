@@ -37,6 +37,10 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -54,6 +58,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 public class JDKInitializationFeature implements InternalFeature {
     private static final String JDK_CLASS_REASON = "Core JDK classes are initialized at build time";
@@ -154,6 +159,10 @@ public class JDKInitializationFeature implements InternalFeature {
         if (FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime()) {
             rci.initializeAtRunTime("java.nio.file.spi", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
             rci.initializeAtRunTime("sun.nio.fs", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
+            /* Extended*Option need to be registered at run time. */
+            rci.initializeAtRunTime("com.sun.nio.file", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
+            /* Static references to ExtendedOptions. Needs to be run-time initialized. */
+            rci.initializeAtRunTime("jdk.internal.misc.FileSystemOption", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
 
             rci.initializeAtRunTime("java.nio.file.FileSystems", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
             rci.initializeAtRunTime("java.nio.file.FileSystems$DefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
@@ -181,9 +190,6 @@ public class JDKInitializationFeature implements InternalFeature {
              */
             rci.initializeAtBuildTime("sun.nio.fs.UnixPath", "Allow UnixPath objects in the image heap (" + FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON + ")");
             rci.initializeAtBuildTime("sun.nio.fs.WindowsPath", "Allow WindowsPath objects in the image heap (" + FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON + ")");
-
-            /* JrtFS support. */
-            rci.initializeAtBuildTime("jdk.internal.jrtfs.SystemImage", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
         }
 
         rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
@@ -228,7 +234,10 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("sun.security.validator", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.x509", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.jndi", JDK_CLASS_REASON);
-        if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
+        if (FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
+            rci.initializeAtRunTime("sun.security.ssl.SSLContextImpl", JDK_CLASS_REASON);
+            rci.initializeAtRunTime("sun.security.ssl.SSLAlgorithmConstraints", JDK_CLASS_REASON);
+        } else {
             rci.initializeAtBuildTime("sun.security.pkcs11", JDK_CLASS_REASON);
             rci.initializeAtBuildTime("sun.security.smartcardio", JDK_CLASS_REASON);
             rci.initializeAtBuildTime("com.sun.security.sasl", JDK_CLASS_REASON);
@@ -251,6 +260,8 @@ public class JDKInitializationFeature implements InternalFeature {
          */
         rci.initializeAtRunTime("java.lang.Math$RandomNumberGeneratorHolder", "Contains random seeds");
         rci.initializeAtRunTime("java.lang.StrictMath$RandomNumberGeneratorHolder", "Contains random seeds");
+
+        rci.initializeAtRunTime("java.lang.ProcessImpl", "launchMechanism and helperpath for jspawnhelper should be computed at run-time");
 
         rci.initializeAtRunTime("jdk.internal.misc.InnocuousThread", "Contains a thread group INNOCUOUSTHREADGROUP.");
         rci.initializeAtRunTime("jdk.internal.util.StaticProperty", "Contains run time specific values.");
@@ -327,8 +338,18 @@ public class JDKInitializationFeature implements InternalFeature {
      * already set by the time the builder starts running.
      */
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ((FeatureImpl.BeforeAnalysisAccessImpl) access).allowStableFieldFoldingBeforeAnalysis(ModuleEnableNativeAccessPlugin.ENABLE_NATIVE_ACCESS_FIELD);
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+        access.allowStableFieldFoldingBeforeAnalysis(ModuleEnableNativeAccessPlugin.ENABLE_NATIVE_ACCESS_FIELD);
+
+        // We force all Enum.hash fields to be eagerly computed.
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField(Enum.class, "hash"));
+
+        // The fields below are initialized in their static initializers or as a part of vm startup.
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField(ModuleLayer.class, "EMPTY_LAYER"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField(System.class, "initialIn"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField(System.class, "initialErr"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField("java.util.jar.Attributes$Name", "KNOWN_NAMES"));
     }
 
     /**

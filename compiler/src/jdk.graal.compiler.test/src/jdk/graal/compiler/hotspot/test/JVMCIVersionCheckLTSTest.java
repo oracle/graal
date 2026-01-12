@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,11 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
 import org.junit.Assert;
 import org.junit.Test;
+
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
 
 /**
  * Tests that {@link JVMCIVersionCheck} can strip the -LTS suffix.
@@ -35,14 +36,14 @@ import org.junit.Test;
 public class JVMCIVersionCheckLTSTest extends GraalCompilerTest {
 
     private static void expect(String jdkVersionString, String expected) {
-        JVMCIVersionCheck.Version version = JVMCIVersionCheck.createLabsJDKVersion(jdkVersionString, 1);
+        JVMCIVersionCheck.Version version = JVMCIVersionCheck.createLabsJDKVersion(jdkVersionString, "myrelease", 1);
         Assert.assertEquals(expected, version.stripLTS().toString());
     }
 
     @Test
     public void test() {
-        expect("24+17", "24+17-jvmci-b01");
-        expect("25+1", "25+1-jvmci-b01");
-        expect("25+1-LTS", "25+1-jvmci-b01");
+        expect("24+17", "24+17-jvmci-myrelease-b01");
+        expect("25+1", "25+1-jvmci-myrelease-b01");
+        expect("25+1-LTS", "25+1-jvmci-myrelease-b01");
     }
 }

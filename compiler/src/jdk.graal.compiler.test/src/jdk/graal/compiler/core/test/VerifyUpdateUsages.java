@@ -26,6 +26,7 @@ package jdk.graal.compiler.core.test;
 
 import java.util.List;
 
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.Input;
 import jdk.graal.compiler.graph.Node.OptionalInput;
@@ -36,8 +37,6 @@ import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.phases.VerifyPhase;
-
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -65,7 +64,7 @@ public class VerifyUpdateUsages extends VerifyPhase<CoreProviders> {
          * There are only two acceptable patterns for methods which update Node inputs, either a
          * single StoreField node and invoke of updateUsages or updateUsagesInterface, or 2
          * StoreFields that come from LoadFields on the same object. Other patterns can be added as
-         * needed but it would be best to keep things simple so that verification can be simple.
+         * needed, but it would be best to keep things simple so that verification can be simple.
          */
         List<StoreFieldNode> stores = graph.getNodes().filter(StoreFieldNode.class).snapshot();
         ResolvedJavaType declaringClass = graph.method().getDeclaringClass();
@@ -107,9 +106,7 @@ public class VerifyUpdateUsages extends VerifyPhase<CoreProviders> {
                             Node.class.getName(),
                             Node.class.getName());
         } else {
-            if (storeField1.value() instanceof LoadFieldNode && storeField2.value() instanceof LoadFieldNode) {
-                LoadFieldNode load1 = (LoadFieldNode) storeField1.value();
-                LoadFieldNode load2 = (LoadFieldNode) storeField2.value();
+            if (storeField1.value() instanceof LoadFieldNode load1 && storeField2.value() instanceof LoadFieldNode load2) {
                 // Check for swapping values within the same object
                 if (load1.object() == storeField1.object() &&
                                 load2.object() == storeField2.object() &&
@@ -129,7 +126,9 @@ public class VerifyUpdateUsages extends VerifyPhase<CoreProviders> {
     }
 
     boolean isNodeInput(ResolvedJavaField field, ResolvedJavaType declaringClass, ResolvedJavaType nodeInputList) {
-        return declaringClass.isAssignableFrom(field.getDeclaringClass()) && (field.getAnnotation(Input.class) != null || field.getAnnotation(OptionalInput.class) != null) &&
+        return declaringClass.isAssignableFrom(field.getDeclaringClass()) &&
+                        (AnnotationValueSupport.getAnnotationValue(field, Input.class) != null ||
+                                        AnnotationValueSupport.getAnnotationValue(field, OptionalInput.class) != null) &&
                         !field.getType().equals(nodeInputList);
     }
 }

@@ -24,9 +24,26 @@
  */
 package com.oracle.svm.core.foreign;
 
+import java.lang.foreign.GroupLayout;
+import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.PaddingLayout;
+import java.lang.foreign.SequenceLayout;
+import java.lang.foreign.StructLayout;
+import java.lang.foreign.ValueLayout;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import com.oracle.svm.configure.UnresolvedAccessCondition;
+import com.oracle.svm.configure.config.ForeignConfiguration.ConfigurationFunctionDescriptor;
+import com.oracle.svm.configure.config.ForeignConfiguration.StubDesc;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.ArenaIntrinsics;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.foreign.ForeignFunctionsRuntime.LinkRequest;
 import com.oracle.svm.core.nodes.foreign.ScopedMemExceptionHandlerClusterNode.ClusterBeginNode;
 import com.oracle.svm.core.nodes.foreign.ScopedMemExceptionHandlerClusterNode.ExceptionInputNode;
 import com.oracle.svm.core.nodes.foreign.ScopedMemExceptionHandlerClusterNode.ExceptionPathNode;
@@ -35,7 +52,10 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.internal.foreign.MemorySessionImpl;
+import jdk.internal.foreign.abi.LinkerOptions;
+import jdk.internal.foreign.layout.AbstractLayout;
 
 /**
  * For details on the implementation of shared arenas on substrate see
@@ -117,6 +137,69 @@ public class SubstrateForeignUtil {
         }
         // avoid any optimization based code duplication in the cluster, it disrupts later matching
         // of control flow when searching for this pattern
-        GraalDirectives.controlFlowAnchor();
+        GraalDirectives.controlFlowAnchor(scope);
+    }
+
+    /**
+     * Generates a JSON configuration entry that will specify the stub required by the given link
+     * request. This method is meant to be used to generate a useful error message for the user if a
+     * stub lookup failed.
+     */
+    static JsonPrintable linkRequestToJsonPrintable(LinkRequest linkRequest) {
+        List<String> parameterTypes = new LinkedList<>();
+        for (MemoryLayout argumentLayout : linkRequest.functionDescriptor().argumentLayouts()) {
+            parameterTypes.add(memoryLayoutToString(argumentLayout));
+        }
+        Optional<MemoryLayout> memoryLayout = linkRequest.functionDescriptor().returnLayout();
+        String returnLayout = memoryLayout.map(SubstrateForeignUtil::memoryLayoutToString).orElse("void");
+        ConfigurationFunctionDescriptor desc = new ConfigurationFunctionDescriptor(returnLayout, parameterTypes);
+
+        Map<String, Object> jsonOptions = Map.of();
+        if (!LinkerOptions.empty().equals(linkRequest.linkerOptions())) {
+            jsonOptions = new HashMap<>();
+            if (linkRequest.linkerOptions().isCritical()) {
+                jsonOptions.put("critical", Map.of("allowHeapAccess", linkRequest.linkerOptions().allowsHeapAccess()));
+            }
+            if (linkRequest.linkerOptions().isVariadicFunction()) {
+                jsonOptions.put("firstVariadicArg", linkRequest.linkerOptions().firstVariadicArgIndex());
+            }
+            if (linkRequest.linkerOptions().hasCapturedCallState()) {
+                jsonOptions.put("captureCallState", true);
+            }
+        }
+
+        return new StubDesc(UnresolvedAccessCondition.unconditional(), desc, jsonOptions);
+    }
+
+    /**
+     * Generates a memory layout description as defined in {@code FFM-API.md} to be used in the
+     * configuration file (usually {@code reachability-metadata.json}). This method implements the
+     * reverse operation of {@code com.oracle.svm.hosted.foreign.MemoryLayoutParser}.
+     */
+    private static String memoryLayoutToString(MemoryLayout memoryLayout) {
+        String layoutString = switch (memoryLayout) {
+            case ValueLayout valueLayout -> {
+                Class<?> carrier = valueLayout.carrier();
+                if (carrier == MemorySegment.class) {
+                    yield "void*";
+                }
+                yield "j" + carrier.getName();
+            }
+            case GroupLayout structLayout -> {
+                String[] memberStrings = new String[structLayout.memberLayouts().size()];
+                int i = 0;
+                for (MemoryLayout memberLayout : structLayout.memberLayouts()) {
+                    memberStrings[i++] = memoryLayoutToString(memberLayout);
+                }
+                String prefix = structLayout instanceof StructLayout ? "struct(" : "union(";
+                yield prefix + String.join(",", memberStrings) + ")";
+            }
+            case SequenceLayout sequenceLayout -> "sequence(" + sequenceLayout.elementCount() + ", " + memoryLayoutToString(sequenceLayout.elementLayout()) + ")";
+            case PaddingLayout paddingLayout -> "padding(" + paddingLayout.byteSize() + ")";
+        };
+        if (memoryLayout instanceof AbstractLayout<?> abstractLayout && !abstractLayout.hasNaturalAlignment()) {
+            return "align(" + memoryLayout.byteAlignment() + ", " + layoutString + ")";
+        }
+        return layoutString;
     }
 }

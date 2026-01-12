@@ -153,6 +153,7 @@ final class TruffleFromLibGraalEntryPoints {
     }
 
     @TruffleFromLibGraal(GetConstantFieldInfo)
+    @SuppressWarnings("deprecation")
     static int getConstantFieldInfo(Object truffleRuntime, long typeHandle, boolean isStatic, int fieldIndex) {
         ResolvedJavaType enclosing = LibGraal.unhand(ResolvedJavaType.class, typeHandle);
         ResolvedJavaField[] declaredFields = isStatic ? enclosing.getStaticFields() : enclosing.getInstanceFields(false);
@@ -454,6 +455,7 @@ final class TruffleFromLibGraalEntryPoints {
     }
 
     @TruffleFromLibGraal(GetPartialEvaluationMethodInfo)
+    @SuppressWarnings("deprecation")
     static Object getPartialEvaluationMethodInfo(Object truffleRuntime, long methodHandle) {
         ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
         PartialEvaluationMethodInfo info = ((TruffleCompilerRuntime) truffleRuntime).getPartialEvaluationMethodInfo(method);
@@ -471,6 +473,7 @@ final class TruffleFromLibGraalEntryPoints {
      * backward compatibility with LTS JDK 21.
      */
     @Deprecated
+    @SuppressWarnings("deprecation")
     static Object getHostMethodInfo(Object truffleRuntime, long methodHandle) {
         ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
         HostMethodInfo info = ((TruffleCompilerRuntime) truffleRuntime).getHostMethodInfo(method);

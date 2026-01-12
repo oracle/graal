@@ -28,9 +28,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-//JaCoCo Exclude
-
-final class MethodHandleAccessProviderProxy extends CompilationProxyBase implements MethodHandleAccessProvider {
+public final class MethodHandleAccessProviderProxy extends CompilationProxyBase implements MethodHandleAccessProvider {
     MethodHandleAccessProviderProxy(InvocationHandler handler) {
         super(handler);
     }

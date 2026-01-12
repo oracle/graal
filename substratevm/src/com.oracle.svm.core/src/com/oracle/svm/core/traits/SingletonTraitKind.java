@@ -80,7 +80,12 @@ public enum SingletonTraitKind {
      * overhead due to having multiple copies of this singleton installed (via different layers)
      * within the image heap.
      */
-    DUPLICABLE(EmptyMetadata.class);
+    DUPLICABLE(EmptyMetadata.class),
+
+    /**
+     * Used as a marker to indicate the singleton is not yet fully compatible with layered images.
+     */
+    PARTIALLY_LAYER_AWARE(EmptyMetadata.class);
 
     private final Class<?> metadataClass;
 
@@ -99,7 +104,7 @@ public enum SingletonTraitKind {
     public boolean isInConfiguration(boolean layeredBuild) {
         return switch (this) {
             case ACCESS -> true;
-            case LAYERED_CALLBACKS, DUPLICABLE, LAYERED_INSTALLATION_KIND -> layeredBuild;
+            case LAYERED_CALLBACKS, DUPLICABLE, LAYERED_INSTALLATION_KIND, PARTIALLY_LAYER_AWARE -> layeredBuild;
         };
     }
 
