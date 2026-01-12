@@ -57,8 +57,6 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.collections.GrowableWordArray;
 import com.oracle.svm.core.collections.GrowableWordArrayAccess;
 
-import jdk.graal.compiler.api.replacements.Fold;
-
 import java.nio.charset.StandardCharsets;
 
 import static com.oracle.svm.core.posix.headers.Fcntl.O_NOFOLLOW;
@@ -428,7 +426,6 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         return idx;
     }
 
-    @Fold
     static RawFileOperationSupport getFileSupport() {
         return RawFileOperationSupport.bigEndian();
     }
