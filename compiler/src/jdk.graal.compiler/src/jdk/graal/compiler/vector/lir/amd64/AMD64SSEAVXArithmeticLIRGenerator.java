@@ -83,6 +83,8 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.VCVTSI
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.VCVTSQ2SD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.VCVTSQ2SS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp.VCVTSS2SD;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VROUNDSD;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VROUNDSS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDPD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDPS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VANDPD;
@@ -953,6 +955,21 @@ public class AMD64SSEAVXArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
             getLIRGen().append(new AMD64VectorCompareOp(VUCOMISD, left, getLIRGen().asAllocatable(right)));
         } else {
             super.emitCompareOp(kind, left, right);
+        }
+    }
+
+    @Override
+    public Value emitRound(Value value, RoundingMode mode) {
+        if (value.getPlatformKind() == AMD64Kind.SINGLE) {
+            Variable result = getLIRGen().newVariable(LIRKind.combine(value));
+            getLIRGen().append(new AMD64VectorBinary.AVXBinaryImmOp(VROUNDSS, AVXSize.XMM, result, asAllocatable(value), asAllocatable(value), mode.encoding));
+            return result;
+        } else if (value.getPlatformKind() == AMD64Kind.DOUBLE) {
+            Variable result = getLIRGen().newVariable(LIRKind.combine(value));
+            getLIRGen().append(new AMD64VectorBinary.AVXBinaryImmOp(VROUNDSD, AVXSize.XMM, result, asAllocatable(value), asAllocatable(value), mode.encoding));
+            return result;
+        } else {
+            return super.emitRound(value, mode);
         }
     }
 

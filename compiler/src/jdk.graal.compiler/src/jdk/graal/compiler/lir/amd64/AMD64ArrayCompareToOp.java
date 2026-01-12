@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,15 +34,19 @@ import java.util.EnumSet;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CodeUtil;
@@ -102,7 +106,16 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
 
         // We only need the vector temporaries if we generate SSE code.
         if (supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.SSE4_2)) {
-            this.vectorTemp1 = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
+            if (supports(tool.target(), runtimeCheckedCPUFeatures, AMD64BaseAssembler.FULL_AVX512_FEATURES)) {
+                /*
+                 * Because we use the pcmpestri instruction which doesn't have an EVEX-encoded
+                 * variant, we must ensure that this register is one of xmm0-xmm15. We can only do
+                 * this by hardcoding it.
+                 */
+                this.vectorTemp1 = AMD64.xmm0.asValue(LIRKind.value(AMD64Kind.DOUBLE));
+            } else {
+                this.vectorTemp1 = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
+            }
         } else {
             this.vectorTemp1 = Value.ILLEGAL;
         }
@@ -220,7 +233,7 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             } else {
                 masm.pmovzxbw(vec1, new AMD64Address(str1, 0));
             }
-            masm.pcmpestri(vec1, new AMD64Address(str2, 0), pcmpmask);
+            pcmpestri(masm, vec1, new AMD64Address(str2, 0), pcmpmask);
             masm.jccb(ConditionFlag.Below, labelCompareIndexChar);
 
             if (strideA == strideB) {
@@ -228,7 +241,7 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             } else {
                 masm.pmovzxbw(vec1, new AMD64Address(str1, 8));
             }
-            masm.pcmpestri(vec1, new AMD64Address(str2, 16), pcmpmask);
+            pcmpestri(masm, vec1, new AMD64Address(str2, 16), pcmpmask);
             masm.jccb(ConditionFlag.AboveEqual, labelCompareWideVectors);
             masm.addl(cnt1, elementsPerXMMVector);
 
@@ -327,7 +340,7 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             } else {
                 masm.pmovzxbw(vec1, new AMD64Address(str1, 0));
             }
-            masm.pcmpestri(vec1, new AMD64Address(str2, 0), pcmpmask);
+            pcmpestri(masm, vec1, new AMD64Address(str2, 0), pcmpmask);
             masm.jcc(ConditionFlag.Below, labelCompareIndexChar);
             masm.subqAndJcc(cnt2, elementsPerXMMVector, ConditionFlag.Zero, labelLengthDiff, false);
             if (strideA == strideB) {
@@ -379,10 +392,10 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             masm.bind(labelCompareWideVectors);
             if (strideA == strideB) {
                 masm.movdqu(vec1, new AMD64Address(str1, result, maxStride));
-                masm.pcmpestri(vec1, new AMD64Address(str2, result, maxStride), pcmpmask);
+                pcmpestri(masm, vec1, new AMD64Address(str2, result, maxStride), pcmpmask);
             } else {
                 masm.pmovzxbw(vec1, new AMD64Address(str1, result, scale1));
-                masm.pcmpestri(vec1, new AMD64Address(str2, result, scale2), pcmpmask);
+                pcmpestri(masm, vec1, new AMD64Address(str2, result, scale2), pcmpmask);
             }
             // After pcmpestri cnt1(rcx) contains mismatched element index
 
@@ -398,10 +411,10 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             masm.negq(result);
             if (strideA == strideB) {
                 masm.movdqu(vec1, new AMD64Address(str1, result, maxStride));
-                masm.pcmpestri(vec1, new AMD64Address(str2, result, maxStride), pcmpmask);
+                pcmpestri(masm, vec1, new AMD64Address(str2, result, maxStride), pcmpmask);
             } else {
                 masm.pmovzxbw(vec1, new AMD64Address(str1, result, scale1));
-                masm.pcmpestri(vec1, new AMD64Address(str2, result, scale2), pcmpmask);
+                pcmpestri(masm, vec1, new AMD64Address(str2, result, scale2), pcmpmask);
             }
             masm.jccb(ConditionFlag.AboveEqual, labelLengthDiff);
 
@@ -492,6 +505,19 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
         } else {
             masm.movzbl(elem1, new AMD64Address(str1, index, stride1, 0));
             masm.movzwl(elem2, new AMD64Address(str2, index, stride2, 0));
+        }
+    }
+
+    private static void pcmpestri(AMD64MacroAssembler masm, Register vec, AMD64Address address, int imm8) {
+        if (masm.supportsFullAVX512()) {
+            GraalError.guarantee(vec.equals(AMD64.xmm0), "expect hardcoded register for pcmpestri on AVX512");
+            /*
+             * We're deliberately emitting a VEX-encoded VPCMPESTRI here because there is no
+             * EVEX-encoded variant.
+             */
+            AMD64Assembler.VexRMIOp.VPCMPESTRI.emit(masm, AVXSize.XMM, vec, address, imm8);
+        } else {
+            masm.pcmpestri(vec, address, imm8);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,6 +112,11 @@ public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
             maskRegisters = new Value[]{
                             k2.asValue(),
                             k3.asValue(),
+            };
+        } else if (supports(tool.target(), runtimeCheckedCPUFeatures, AMD64MacroAssembler.FULL_AVX512_FEATURES)) {
+            /* emitPtest needs a mask register on AVX512 even if we don't use ZMM registers. */
+            maskRegisters = new Value[]{
+                            k2.asValue(),
             };
         } else {
             maskRegisters = new Value[0];
@@ -303,7 +308,8 @@ public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
             // load next 8 characters
             masm.movdqu(tmp3Reg, new AMD64Address(src, len, Stride.S2, 16));
             masm.por(tmp4Reg, tmp3Reg);
-            masm.ptest(tmp4Reg, tmp1Reg);        // Check for Unicode chars in vector.
+            // Check for Unicode chars in vector.
+            emitPtest(masm, AVXSize.XMM, maskRegisters.length > 0 ? maskRegisters[0] : Value.ILLEGAL, tmp4Reg, tmp1Reg);
             masm.jccb(ConditionFlag.NotZero, labelResetForCopyTail);
             masm.packuswb(tmp2Reg, tmp3Reg);     // Only ASCII chars; compress each to a byte.
             masm.movdqu(new AMD64Address(dst, len, Stride.S1), tmp2Reg);
@@ -317,7 +323,8 @@ public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
             masm.pxor(tmp3Reg, tmp3Reg);
 
             masm.movdqu(tmp2Reg, new AMD64Address(src));
-            masm.ptest(tmp2Reg, tmp1Reg);        // Check for Unicode chars in vector.
+            // Check for Unicode chars in vector.
+            emitPtest(masm, AVXSize.XMM, maskRegisters.length > 0 ? maskRegisters[0] : Value.ILLEGAL, tmp2Reg, tmp1Reg);
             masm.jccb(ConditionFlag.NotZero, labelResetForCopyTail);
             masm.packuswb(tmp2Reg, tmp3Reg);     // Only ASCII chars; compress each to a byte.
             masm.movq(new AMD64Address(dst), tmp2Reg);

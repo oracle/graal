@@ -55,6 +55,7 @@ import java.util.function.BiConsumer;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.Stride;
@@ -136,6 +137,8 @@ public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruct
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        AMD64Assembler.AMD64SIMDInstructionEncoding oldEncoding = masm.setTemporaryAvxEncoding(AMD64Assembler.AMD64SIMDInstructionEncoding.VEX);
+
         GraalError.guarantee(fromValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid fromValue kind: %s", fromValue);
         GraalError.guarantee(toValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid toValue kind: %s", toValue);
         GraalError.guarantee(keyValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid keyValue kind: %s", keyValue);
@@ -365,6 +368,8 @@ public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruct
         // final value of r stored in rvec of CipherBlockChaining object
         masm.movdqu(new AMD64Address(rvec, 0), xmmPrevBlockCipher);
         masm.movl(asRegister(resultValue), asRegister(lenValue));
+
+        masm.resetAvxEncoding(oldEncoding);
     }
 
     private static void doFour(BiConsumer<Register, Register> op, Register src) {
