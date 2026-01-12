@@ -231,17 +231,38 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
      * <p>
      * This method is only called once all debug info entries are produced, the class entry and the
      * file index was generated.
+     * <p>
+     * Note: The class's own file is always at index 0 in the DWARF 5 file table (the primary source
+     * file). Other files are indexed starting at 1.
      *
      * @param file the given file entry
      * @return the index of the file entry
      */
     public int getFileIdx(FileEntry file) {
+        // Class's own file is at index 0 (primary source file in DWARF 5 file table)
+        // Compare by file name and directory index to handle cases where different FileEntry
+        // objects represent the same file.
+        if (file != null && this.fileEntry != null) {
+            String fileName = file.fileName();
+            String classFileName = this.fileEntry.fileName();
+            int fileDirIdx = getDirIdx(file);
+            int classDirIdx = getDirIdx(this.fileEntry);
+            if (fileName != null && fileName.equals(classFileName) && fileDirIdx == classDirIdx) {
+                return 0;
+            }
+        }
         assert indexedFiles != null : "Can only request file index after a ClassEntry is sealed.";
         if (file == null || !indexedFiles.containsKey(file)) {
             return 0;
         }
-
-        return indexedFiles.get(file);
+        // Adjust index: since the class's own file is at index 0, and the remaining files
+        // are written starting at index 1, we need to offset by -1 if the file comes after
+        // the class's own file in the original indexed list.
+        int idx = indexedFiles.get(file);
+        // If class's own file was in the list and got index 1, other files got index 2, 3, ...
+        // But since class's own file is now at index 0 and skipped in the loop,
+        // the remaining files shift down by 1.
+        return idx - 1;
     }
 
     private static DirEntry getDirEntry(FileEntry file) {

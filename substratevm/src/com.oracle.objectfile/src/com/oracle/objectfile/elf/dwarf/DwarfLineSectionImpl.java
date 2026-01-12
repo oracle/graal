@@ -308,25 +308,50 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         pos = writeULEB(DwarfForm.DW_FORM_udata.value(), buffer, pos);
 
         /*
-         * 1 ULEB128 for directory count.
+         * Count files, excluding the class's own file which will be written as the index 0 entry.
+         * This avoids duplicate file name warnings from dwarfdump --verify.
+         * We compare by file name and directory to handle cases where different FileEntry
+         * objects represent the same file.
          */
-        pos = writeULEB(classEntry.getFiles().size() + 1, buffer, pos);
+        String classFileName = classEntry.getFileName();
+        int classDirIdx = classEntry.getDirIdx();
+        int fileCount = 1; // Start with 1 for the index 0 entry
+        for (FileEntry fileEntry : classEntry.getFiles()) {
+            String fileName = fileEntry.fileName();
+            int dirIdx = classEntry.getDirIdx(fileEntry);
+            // Skip if this file has the same name and directory as the class file
+            if (classFileName == null || !classFileName.equals(fileName) || classDirIdx != dirIdx) {
+                fileCount++;
+            }
+        }
 
         /*
-         * Write explicit 0 dummy entry.
+         * 1 ULEB128 for file count.
          */
-        String fileName = uniqueDebugLineString(classEntry.getFileName());
-        pos = writeLineStrSectionOffset(fileName, buffer, pos);
+        pos = writeULEB(fileCount, buffer, pos);
+
+        /*
+         * Write explicit 0 entry (primary source file for this compilation unit).
+         */
+        String classFileBaseName = uniqueDebugLineString(classEntry.getFileName());
+        pos = writeLineStrSectionOffset(classFileBaseName, buffer, pos);
         pos = writeULEB(classEntry.getDirIdx(), buffer, pos);
 
         /*
-         * Write out the list of files
+         * Write out the list of files, skipping the class's own file since it's already at index 0.
          */
         int fileIdx = 1;
         for (FileEntry fileEntry : classEntry.getFiles()) {
-            assert classEntry.getFileIdx(fileEntry) == fileIdx;
+            String entryFileName = fileEntry.fileName();
             int dirIdx = classEntry.getDirIdx(fileEntry);
-            String baseName = uniqueDebugLineString(fileEntry.fileName());
+            // Skip if this file has the same name and directory as the class file
+            if (classFileName != null && classFileName.equals(entryFileName) && classDirIdx == dirIdx) {
+                // Skip - already written as index 0 entry
+                // Don't increment fileIdx since this entry was written at index 0
+                continue;
+            }
+            assert classEntry.getFileIdx(fileEntry) == fileIdx;
+            String baseName = uniqueDebugLineString(entryFileName);
             verboseLog(context, "  [0x%08x] %-5d %-5d %s", pos, fileIdx, dirIdx, baseName);
             pos = writeLineStrSectionOffset(baseName, buffer, pos);
             pos = writeULEB(dirIdx, buffer, pos);
@@ -415,7 +440,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             }
             String subfile = subFileEntry.fileName();
             int subFileIdx = classEntry.getFileIdx(subFileEntry);
-            assert subFileIdx > 0;
+            assert subFileIdx >= 0;
             long subLine = subrange.getLine();
             long subAddressLo = subrange.getLo();
             long subAddressHi = subrange.getHi();
