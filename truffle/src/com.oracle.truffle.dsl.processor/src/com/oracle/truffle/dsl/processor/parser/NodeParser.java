@@ -442,6 +442,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return node;  // error sync point
         }
 
+        initializeCacheUsedInCache(node);
         initializeUncachable(node);
         initializeAOT(node);
         boolean recommendInline = initializeInlinable(resolver, node);
@@ -2609,6 +2610,24 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeSpecializationIdsWithMethodNames(node.getSpecializations());
     }
 
+    private static void initializeCacheUsedInCache(final NodeData node) {
+        for (SpecializationData specialization : node.getSpecializations()) {
+            for (CacheExpression cache : specialization.getCaches()) {
+                if (cache.isAlwaysInitialized()) {
+                    continue;
+                }
+                DSLExpression cacheExpression = cache.getDefaultExpression();
+                if (cacheExpression == null) {
+                    continue;
+                }
+                Set<CacheExpression> caches = specialization.getBoundCaches(cacheExpression, false);
+                for (CacheExpression boundCache : caches) {
+                    boundCache.setUsedInCache(true);
+                }
+            }
+        }
+    }
+
     private void initializeExcludeForUncached(NodeData node) {
         boolean allExcluded = true;
         for (SpecializationData s : node.getReachableSpecializations()) {
@@ -4496,9 +4515,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     }
                 }
             }
-
             newGuards.add(guard);
         }
+
         for (CacheExpression cache : specialization.getCaches()) {
             if (cache.isWeakReferenceGet()) {
                 if (handledCaches.contains(cache)) {
