@@ -289,7 +289,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     }
 
     private static EventFactory lookupFactory() {
-        if (ImageInfo.inImageCode()) {
+        if (ImageInfo.inImageRuntimeCode()) {
             return ImageSingletons.contains(EventFactory.class) ? ImageSingletons.lookup(EventFactory.class) : null;
         } else {
             Iterator<EventFactory.Provider> it = TruffleRuntimeServices.load(EventFactory.Provider.class).iterator();
