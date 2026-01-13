@@ -149,7 +149,6 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
 
     @SuppressFBWarnings(value = "", justification = "FB reports null pointer dereferencing although it is not possible in this case.")
     private static boolean stripMacOS(AfterImageWriteAccessImpl accessImpl) {
-        // DEBUG: LogUtils.warning("DEBUG: stripMacOS called");
         String dsymutilExe = "dsymutil";
         String stripExe = "strip";
         String dsymExtension = ".dSYM";
