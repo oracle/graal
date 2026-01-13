@@ -176,12 +176,13 @@ struct ConstantReference {
     primitiveValue @3 :PrimitiveValue;
     methodPointer :group {
       methodId @4 :MethodId;
+      permitsRewriteToPLT @5 :Bool;
     }
     methodOffset :group {
-      methodId @5 :MethodId;
+      methodId @6 :MethodId;
     }
-    cEntryPointLiteralCodePointer @6 :CEntryPointLiteralReference;
-    cGlobalDataBasePointer @7 :Void;
+    cEntryPointLiteralCodePointer @7 :CEntryPointLiteralReference;
+    cGlobalDataBasePointer @8 :Void;
   }
 }
 

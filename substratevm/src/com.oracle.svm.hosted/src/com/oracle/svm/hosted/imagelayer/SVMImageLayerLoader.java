@@ -1587,8 +1587,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             AnalysisFuture<JavaConstant> task = new AnalysisFuture<>(() -> {
                 MethodRef ref;
                 if (constantRef.isMethodPointer()) {
-                    int mid = constantRef.getMethodPointer().getMethodId();
-                    ref = new MethodPointer(getAnalysisMethodForBaseLayerId(mid));
+                    ConstantReference.MethodPointer.Reader r = constantRef.getMethodPointer();
+                    AnalysisMethod method = getAnalysisMethodForBaseLayerId(r.getMethodId());
+                    ref = new MethodPointer(method, r.getPermitsRewriteToPLT());
                 } else {
                     int mid = constantRef.getMethodOffset().getMethodId();
                     ref = new MethodOffset(getAnalysisMethodForBaseLayerId(mid));

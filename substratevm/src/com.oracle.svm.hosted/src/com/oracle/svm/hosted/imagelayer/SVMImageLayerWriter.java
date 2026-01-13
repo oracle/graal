@@ -464,6 +464,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             FunctionPointerHolder classInitializer = info.getRuntimeClassInitializer();
             if (classInitializer != null) {
                 MethodPointer methodPointer = (MethodPointer) classInitializer.functionPointer;
+                VMError.guarantee(methodPointer.permitsRewriteToPLT() == MethodPointer.DEFAULT_PERMIT_REWRITE_TO_PLT, "Non-default value currently not supported, add in schema if needed");
                 AnalysisMethod classInitializerMethod = (AnalysisMethod) methodPointer.getMethod();
                 b.setInitializerMethodId(classInitializerMethod.getId());
             }
@@ -1033,7 +1034,11 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 AnalysisMethod method = getRelocatableConstantMethod(methodRef);
                 switch (methodRef) {
                     case MethodOffset _ -> builder.initMethodOffset().setMethodId(method.getId());
-                    case MethodPointer _ -> builder.initMethodPointer().setMethodId(method.getId());
+                    case MethodPointer mp -> {
+                        ConstantReference.MethodPointer.Builder b = builder.initMethodPointer();
+                        b.setMethodId(method.getId());
+                        b.setPermitsRewriteToPLT(mp.permitsRewriteToPLT());
+                    }
                     default -> throw VMError.shouldNotReachHere("Unsupported method ref: " + methodRef);
                 }
                 return true;

@@ -41,6 +41,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Do not use this concrete class in image runtime code. Use one of its superinterfaces instead.
  */
 public final class MethodPointer implements CFunctionPointer, MethodRef {
+    public static final boolean DEFAULT_PERMIT_REWRITE_TO_PLT = true;
+
     @Platforms(HOSTED_ONLY.class) //
     private final ResolvedJavaMethod method;
 
@@ -55,7 +57,7 @@ public final class MethodPointer implements CFunctionPointer, MethodRef {
 
     @Platforms(HOSTED_ONLY.class)
     public MethodPointer(ResolvedJavaMethod method) {
-        this(method, true);
+        this(method, DEFAULT_PERMIT_REWRITE_TO_PLT);
     }
 
     @Override
