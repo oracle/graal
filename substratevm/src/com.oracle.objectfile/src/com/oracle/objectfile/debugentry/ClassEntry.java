@@ -227,6 +227,28 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
     }
 
     /**
+     * Checks if the given file entry represents the same file as this class's primary source file.
+     * <p>
+     * We compare by file name and directory index rather than object identity because different
+     * FileEntry instances may represent the same logical file (e.g., when the same file is
+     * referenced from different code paths during debug info generation).
+     *
+     * @param file the file entry to check
+     * @return true if the file is the class's primary source file
+     */
+    public boolean isClassFile(FileEntry file) {
+        if (file == null || this.fileEntry == null) {
+            return false;
+        }
+        String fileName = file.fileName();
+        String classFileName = this.fileEntry.fileName();
+        if (fileName == null || classFileName == null || classFileName.isEmpty()) {
+            return false;
+        }
+        return fileName.equals(classFileName) && getDirIdx(file) == getDirIdx(this.fileEntry);
+    }
+
+    /**
      * Returns the file index of a given file entry within this class entry.
      * <p>
      * This method is only called once all debug info entries are produced, the class entry and the
@@ -239,29 +261,23 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
      * @return the index of the file entry
      */
     public int getFileIdx(FileEntry file) {
-        // Class's own file is at index 0 (primary source file in DWARF 5 file table)
-        // Compare by file name and directory index to handle cases where different FileEntry
-        // objects represent the same file.
-        if (file != null && this.fileEntry != null) {
-            String fileName = file.fileName();
-            String classFileName = this.fileEntry.fileName();
-            int fileDirIdx = getDirIdx(file);
-            int classDirIdx = getDirIdx(this.fileEntry);
-            if (fileName != null && fileName.equals(classFileName) && fileDirIdx == classDirIdx) {
-                return 0;
-            }
-        }
         assert indexedFiles != null : "Can only request file index after a ClassEntry is sealed.";
         if (file == null || !indexedFiles.containsKey(file)) {
             return 0;
         }
-        // Adjust index: since the class's own file is at index 0, and the remaining files
-        // are written starting at index 1, we need to offset by -1 if the file comes after
-        // the class's own file in the original indexed list.
+        // Class's own file is at index 0 (primary source file in DWARF 5 file table)
+        if (isClassFile(file)) {
+            return 0;
+        }
+        /*
+         * Adjust index: The class's own file is written at index 0 and skipped in the file table
+         * loop. The indexedFiles map uses 1-based indices (position 0 -> index 1, etc.).
+         * Since the class file (at position 0) is skipped, remaining files shift down by 1.
+         *
+         * Invariant: The class's own file is always at position 0 in the files list because
+         * it's added first in the constructor and distinct() preserves encounter order.
+         */
         int idx = indexedFiles.get(file);
-        // If class's own file was in the list and got index 1, other files got index 2, 3, ...
-        // But since class's own file is now at index 0 and skipped in the loop,
-        // the remaining files shift down by 1.
         return idx - 1;
     }
 

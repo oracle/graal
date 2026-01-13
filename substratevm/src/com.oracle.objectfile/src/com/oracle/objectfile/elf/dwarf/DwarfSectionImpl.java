@@ -268,15 +268,20 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
              * address space. The DWARF will be extracted to a dSYM bundle and used with
              * the final executable, so addresses must match the executable layout.
              *
-             * macOS 64-bit executables have a predictable layout:
-             * - __PAGEZERO: 0x0 to 0x100000000 (4GB)
+             * macOS 64-bit executables produced by native-image have a predictable layout:
+             * - __PAGEZERO: 0x0 to 0x100000000 (4GB, standard for 64-bit executables)
              * - __TEXT segment: starts at 0x100000000
-             * - __text section: typically at 0x100004000 (0x4000 offset for headers)
+             * - __text section: at 0x100004000 (0x4000 offset for Mach-O headers/load commands)
              *
-             * We use the executable text address (0x100004000) rather than the object
-             * file text address (0x10000) so that the dSYM has correct addresses.
+             * This address is consistent for both arm64 and x86_64 macOS executables produced
+             * by native-image. We use this fixed address rather than trying to read the actual
+             * address from the executable because the object file is generated before linking.
+             *
+             * TODO: Consider reading the actual text address from the linked executable in
+             * NativeImageDebugInfoStripFeature when creating the dSYM bundle, to handle cases
+             * where the linker might use a different address.
              */
-            long execTextVaddr = 0x100004000L; // Standard macOS arm64/x86_64 executable text address
+            long execTextVaddr = 0x100004000L;
             pos = writeLong(l + execTextVaddr, buffer, pos);
         } else {
             /*

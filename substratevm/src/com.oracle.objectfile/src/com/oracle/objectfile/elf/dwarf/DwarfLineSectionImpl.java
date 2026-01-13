@@ -310,17 +310,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * Count files, excluding the class's own file which will be written as the index 0 entry.
          * This avoids duplicate file name warnings from dwarfdump --verify.
-         * We compare by file name and directory to handle cases where different FileEntry
-         * objects represent the same file.
          */
-        String classFileName = classEntry.getFileName();
-        int classDirIdx = classEntry.getDirIdx();
         int fileCount = 1; // Start with 1 for the index 0 entry
         for (FileEntry fileEntry : classEntry.getFiles()) {
-            String fileName = fileEntry.fileName();
-            int dirIdx = classEntry.getDirIdx(fileEntry);
-            // Skip if this file has the same name and directory as the class file
-            if (classFileName == null || !classFileName.equals(fileName) || classDirIdx != dirIdx) {
+            if (!classEntry.isClassFile(fileEntry)) {
                 fileCount++;
             }
         }
@@ -342,16 +335,12 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          */
         int fileIdx = 1;
         for (FileEntry fileEntry : classEntry.getFiles()) {
-            String entryFileName = fileEntry.fileName();
-            int dirIdx = classEntry.getDirIdx(fileEntry);
-            // Skip if this file has the same name and directory as the class file
-            if (classFileName != null && classFileName.equals(entryFileName) && classDirIdx == dirIdx) {
-                // Skip - already written as index 0 entry
-                // Don't increment fileIdx since this entry was written at index 0
+            if (classEntry.isClassFile(fileEntry)) {
                 continue;
             }
             assert classEntry.getFileIdx(fileEntry) == fileIdx;
-            String baseName = uniqueDebugLineString(entryFileName);
+            int dirIdx = classEntry.getDirIdx(fileEntry);
+            String baseName = uniqueDebugLineString(fileEntry.fileName());
             verboseLog(context, "  [0x%08x] %-5d %-5d %s", pos, fileIdx, dirIdx, baseName);
             pos = writeLineStrSectionOffset(baseName, buffer, pos);
             pos = writeULEB(dirIdx, buffer, pos);
