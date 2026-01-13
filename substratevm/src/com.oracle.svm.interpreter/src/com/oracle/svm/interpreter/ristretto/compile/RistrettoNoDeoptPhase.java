@@ -49,7 +49,8 @@ public class RistrettoNoDeoptPhase extends Phase {
                  * TODO GR-72047 - this will be a non-permanent bailout until ristretto support
                  * permanent bailouts
                  */
-                throw new PermanentBailoutException("Ristretto must not use deoptimization when " + DeoptOptionName + " is disabled, but found node " + n);
+                throw new PermanentBailoutException(
+                                "Ristretto must not use deoptimization when " + DeoptOptionName + " is disabled, but found node " + n + " in method " + graph.method().format("%h.%n(%p)"));
             }
         }
     }
