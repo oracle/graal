@@ -181,6 +181,7 @@ public class RistrettoCompilationManager {
                 task.getRMethod().installedCode = null;
                 task.getRMethod().resetProfile();
             }
+            m.compilerExceptions.clear();
             m.performedCompilations.clear();
             m.submittedRequests.set(0);
             m.startedRequests.set(0);
