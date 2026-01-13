@@ -32,7 +32,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Map;
 
-import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.BuildPhaseProvider;
@@ -44,6 +43,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -145,6 +145,8 @@ public final class Target_java_lang_reflect_Field {
     }
 
     public static final class FieldDeletionReasonComputer implements FieldValueTransformerWithAvailability {
+        // JVMCI migration blocked by GR-72441: Equivalents of
+        // ConstantReflectionProvider.asJavaType() for fields and methods
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();
@@ -164,6 +166,8 @@ public final class Target_java_lang_reflect_Field {
     }
 
     static class FieldOffsetComputer implements FieldValueTransformerWithAvailability {
+        // JVMCI migration blocked by GR-72441: Equivalents of
+        // ConstantReflectionProvider.asJavaType() for fields and methods
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();
@@ -176,6 +180,8 @@ public final class Target_java_lang_reflect_Field {
     }
 
     static class LayerNumberComputer implements FieldValueTransformerWithAvailability {
+        // JVMCI migration blocked by GR-72441: Equivalents of
+        // ConstantReflectionProvider.asJavaType() for fields and methods
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();

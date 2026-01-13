@@ -1411,6 +1411,7 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedStaticShape {
     static ConcurrentHashMap<Object, Object> replacements;
 
     private static final class MapCleaner implements FieldValueTransformerWithAvailability {
+        // JVMCI migration blocked by GR-71999: Prepare Truffle for Terminus.
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isCompilationFinished();
@@ -1445,6 +1446,7 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
 }
 
 final class StaticPropertyOffsetTransformer implements FieldValueTransformerWithAvailability {
+    // JVMCI migration blocked by GR-71999: Prepare Truffle for Terminus.
     /*
      * We have to use reflection to access private members instead of aliasing them in the
      * substitution class since substitutions are present only at runtime
@@ -1519,6 +1521,7 @@ final class StaticPropertyOffsetTransformer implements FieldValueTransformerWith
 }
 
 final class ArrayBasedShapeGeneratorOffsetTransformer implements FieldValueTransformerWithAvailability {
+    // JVMCI migration blocked by GR-71999: Prepare Truffle for Terminus.
     static final Class<?> SHAPE_GENERATOR = TruffleBaseFeature.lookupClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
 
     private final String storageClassFieldName;
@@ -1667,6 +1670,7 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
     @Delete private String name;
 
     private static final class OffsetComputer implements FieldValueTransformerWithAvailability {
+        // JVMCI migration blocked by GR-71999: Prepare Truffle for Terminus.
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();

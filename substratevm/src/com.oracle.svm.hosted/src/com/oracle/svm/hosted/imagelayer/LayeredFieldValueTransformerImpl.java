@@ -52,6 +52,7 @@ import jdk.vm.ci.meta.JavaConstant;
  * contained with {@link TransformedValueState}.
  */
 public class LayeredFieldValueTransformerImpl extends FieldValueTransformerWithReceiverBasedAvailability {
+    // JVMCI migration blocked by GR-72530: migrate LayeredFieldValueTransformerImpl to JVMCI
     final AnalysisField aField;
     final LayeredFieldValueTransformer<?> layerTransformer;
 

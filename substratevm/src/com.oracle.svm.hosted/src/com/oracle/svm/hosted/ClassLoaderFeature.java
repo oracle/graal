@@ -181,6 +181,7 @@ public class ClassLoaderFeature implements InternalFeature {
     }
 
     abstract static class PackageMapTransformer implements FieldValueTransformerWithAvailability {
+        // JVMCI migration blocked by GR-72593: Migrate ClassLoaderFeature to terminus
 
         @Override
         public boolean isAvailable() {

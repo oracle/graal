@@ -517,6 +517,7 @@ final class SignatureKey {
 }
 
 final class ComputeVTableIndex implements FieldValueTransformerWithAvailability {
+    // JVMCI migration blocked by GR-72585: Migrate com.oracle.svm.core.reflect for terminus
     @Override
     public boolean isAvailable() {
         return BuildPhaseProvider.isHostedUniverseBuilt();
@@ -540,6 +541,7 @@ final class ComputeVTableIndex implements FieldValueTransformerWithAvailability 
 }
 
 final class ComputeInterfaceTypeID implements FieldValueTransformerWithAvailability {
+    // JVMCI migration blocked by GR-72585: Migrate com.oracle.svm.core.reflect for terminus
     @Override
     public boolean isAvailable() {
         return BuildPhaseProvider.isHostedUniverseBuilt();

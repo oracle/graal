@@ -606,6 +606,7 @@ final class Target_java_lang_ClassValue {
 }
 
 class ClassValueInitializer implements FieldValueTransformerWithAvailability {
+    // JVMCI migration blocked by GR-72533: Migrate ClassValueSupport to JVMCI.
     @Override
     public Object transform(Object receiver, Object originalValue) {
         ClassValue<?> v = (ClassValue<?>) receiver;
