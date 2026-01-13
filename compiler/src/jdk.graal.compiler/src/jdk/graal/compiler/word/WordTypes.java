@@ -114,9 +114,8 @@ public class WordTypes {
 
             if (wordMethod == null) {
                 if (targetMethod.getDeclaringClass().isConcrete()) {
-                    throw GraalError.shouldNotReachHere(String.format("Cannot resolve method %s of concrete implementation %s of word type against root word implementation=%s. " +
-                                    "Do not use concrete subtype methods for word types, resort to abstract word API.", targetMethod.format("%H.%n(%p)"), targetMethod.getDeclaringClass(),
-                                    wordImplType));
+                    throw GraalError.shouldNotReachHere(String.format("Cannot invoke method %s of concrete WordBase subtype %s. Use only interfaces deriving from %s, or %s itself.",
+                                    targetMethod.format("%n(%p)"), targetMethod.getDeclaringClass(), wordBaseType, wordImplType));
                 }
             }
 
