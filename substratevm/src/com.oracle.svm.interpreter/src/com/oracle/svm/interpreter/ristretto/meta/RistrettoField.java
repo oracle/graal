@@ -36,6 +36,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * JVMCI representation of a {@link ResolvedJavaField} used by Ristretto for compilation. Exists
@@ -91,12 +92,26 @@ public final class RistrettoField extends SubstrateField {
     }
 
     @Override
-    public SubstrateType getType() {
+    public JavaType getType() {
         JavaType fieldType = interpreterField.getType();
         if (fieldType instanceof InterpreterResolvedJavaType iType) {
             return RistrettoType.create(iType);
         }
+        if (fieldType instanceof UnresolvedJavaType) {
+            return fieldType;
+        }
         throw GraalError.shouldNotReachHere("Must have a ristretto type available at this point for " + interpreterField + " but is " + fieldType);
+    }
+
+    @Override
+    public JavaKind getStorageKind() {
+        JavaType fieldType = getType();
+        if (fieldType instanceof UnresolvedJavaType) {
+            throw GraalError.shouldNotReachHere("Trying to get storage kind of unresolved field " + fieldType);
+        } else {
+            GraalError.guarantee(fieldType instanceof RistrettoType, "Must have a ristretto field or an unresolved one but found " + fieldType);
+            return ((RistrettoType) fieldType).getStorageKind();
+        }
     }
 
     @Override
@@ -139,9 +154,4 @@ public final class RistrettoField extends SubstrateField {
         throw GraalError.shouldNotReachHere("Only static fields should end up here");
     }
 
-    @Override
-    public JavaKind getStorageKind() {
-        SubstrateType fieldType = getType();
-        return fieldType.getStorageKind();
-    }
 }
