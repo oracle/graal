@@ -341,7 +341,8 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public final InterpreterResolvedObjectType getArrayClass() {
-        throw VMError.intentionallyUnimplemented();
+        Class<?> arrayClass = java.lang.reflect.Array.newInstance(clazz, 0).getClass();
+        return (InterpreterResolvedObjectType) DynamicHub.fromClass(arrayClass).getInterpreterType();
     }
 
     @Override
