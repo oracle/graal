@@ -74,7 +74,6 @@ public final class RistrettoType extends SubstrateType {
             GraalError.guarantee(iComponentType != null, "Must find component type if we are dealing with an array, this %s component type %s", this, iComponentType);
             return create(iComponentType);
         } else {
-
             return null;
         }
     }
@@ -108,5 +107,12 @@ public final class RistrettoType extends SubstrateType {
         assert other instanceof RistrettoType : Assertions.errorMessage("Must already be wrapped", this, other);
         RistrettoType rTypeOther = (RistrettoType) other;
         return this.interpreterType.isAssignableFrom(rTypeOther.interpreterType);
+    }
+
+    @Override
+    public ResolvedJavaType getArrayClass() {
+        InterpreterResolvedJavaType iArrayType = interpreterType.getArrayClass();
+        assert iArrayType != null;
+        return RistrettoType.create(iArrayType);
     }
 }
