@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,19 +26,28 @@ package com.oracle.svm.core.graal.code;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.c.CGlobalData;
 
-/** Placeholder for the base address of {@link CGlobalData} memory during the image build. */
+/**
+ * Placeholder for the base address of {@link CGlobalData} memory during the image build.
+ *
+ * Do not use this concrete class in image runtime code. Use one of its superinterfaces instead.
+ */
 public final class CGlobalDataBasePointer implements PointerBase, RelocatedPointer {
+    @Platforms(HOSTED_ONLY.class) //
     public static final CGlobalDataBasePointer INSTANCE = new CGlobalDataBasePointer();
 
+    @Platforms(HOSTED_ONLY.class)
     private CGlobalDataBasePointer() {
     }
 
+    @Platforms(HOSTED_ONLY.class)
     private static RuntimeException mustNotBeCalledHosted() {
         throw shouldNotReachHere("must not be called in hosted mode");
     }
