@@ -5789,8 +5789,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     }
 
     public final void psllq(Register dst, Register shift) {
-        // Prefer AVX2 VPSLLVQ when available; fallback to SSE PSLLQ
-        simdOp(SSEOp.PSLLQ, OperandSize.PD, VexRVMOp.VPSLLVQ, AVXSize.XMM, dst, shift);
+        simdOp(SSEOp.PSLLQ, OperandSize.PD, VexShiftOp.VPSLLQ, AVXSize.XMM, dst, shift);
     }
 
     public final void psllq(Register dst, int imm8) {
