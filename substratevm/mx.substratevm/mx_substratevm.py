@@ -2564,7 +2564,6 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         graal_compiler_flags_base = [
             '-XX:+UnlockExperimentalVMOptions',
             '-XX:+EnableJVMCI',
-            '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
             '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime', # use truffle interpreter as fallback
             '-Dgraalvm.ForcePolyglotInvalid=true', # use PolyglotInvalid PolyglotImpl fallback (when --tool:truffle is not used)
             '-Dgraalvm.locatorDisabled=true',
