@@ -59,7 +59,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.impl.Word;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.tutorial.CInterfaceTutorial.CInterfaceTutorialDirectives;
 
@@ -203,7 +203,7 @@ public class CInterfaceTutorial {
         int dataSize = SizeOf.get(MyData.class);
 
         /* Call a function from the standard C library. */
-        memcpy(copy, data, Word.unsigned(dataSize));
+        memcpy(copy, data, WordFactory.unsigned(dataSize));
 
         dump(copy);
 
