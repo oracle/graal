@@ -96,7 +96,7 @@ public final class RistrettoField extends SubstrateField {
         if (fieldType instanceof InterpreterResolvedJavaType iType) {
             return RistrettoType.create(iType);
         }
-        throw GraalError.shouldNotReachHere("Must have a ristretto type available at this point");
+        throw GraalError.shouldNotReachHere("Must have a ristretto type available at this point " + interpreterField);
     }
 
     @Override
