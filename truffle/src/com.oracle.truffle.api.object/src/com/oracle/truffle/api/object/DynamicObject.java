@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -432,7 +432,7 @@ public abstract class DynamicObject implements TruffleObject {
                         @Cached("shape") Shape cachedShape,
                         @Bind("shape == cachedShape") boolean guard,
                         @Cached("key") Object cachedKey,
-                        @Cached("cachedShape.getLocation(key)") Location cachedLocation) throws UnexpectedResultException {
+                        @Cached("getLocationWithFinalAssumption(cachedShape, key)") Location cachedLocation) throws UnexpectedResultException {
             if (cachedLocation != null) {
                 return cachedLocation.getLongInternal(receiver, cachedShape, guard);
             } else {
@@ -447,7 +447,7 @@ public abstract class DynamicObject implements TruffleObject {
                         @Cached("shape") Shape cachedShape,
                         @Bind("shape == cachedShape") boolean guard,
                         @Cached("key") Object cachedKey,
-                        @Cached("cachedShape.getLocation(key)") Location cachedLocation) throws UnexpectedResultException {
+                        @Cached("getLocationWithFinalAssumption(cachedShape, key)") Location cachedLocation) throws UnexpectedResultException {
             if (cachedLocation != null) {
                 return cachedLocation.getIntInternal(receiver, cachedShape, guard);
             } else {
@@ -462,7 +462,7 @@ public abstract class DynamicObject implements TruffleObject {
                         @Cached("shape") Shape cachedShape,
                         @Bind("shape == cachedShape") boolean guard,
                         @Cached("key") Object cachedKey,
-                        @Cached("cachedShape.getLocation(key)") Location cachedLocation) throws UnexpectedResultException {
+                        @Cached("getLocationWithFinalAssumption(cachedShape, key)") Location cachedLocation) throws UnexpectedResultException {
             if (cachedLocation != null) {
                 return cachedLocation.getDoubleInternal(receiver, cachedShape, guard);
             } else {
@@ -477,7 +477,7 @@ public abstract class DynamicObject implements TruffleObject {
                         @Cached("shape") Shape cachedShape,
                         @Bind("shape == cachedShape") boolean guard,
                         @Cached("key") Object cachedKey,
-                        @Cached("cachedShape.getLocation(key)") Location cachedLocation) {
+                        @Cached("getLocationWithFinalAssumption(cachedShape, key)") Location cachedLocation) {
             if (cachedLocation != null) {
                 return cachedLocation.getInternal(receiver, cachedShape, guard);
             } else {
@@ -528,6 +528,15 @@ public abstract class DynamicObject implements TruffleObject {
             } else {
                 return defaultValue;
             }
+        }
+
+        static Location getLocationWithFinalAssumption(Shape shape, Object key) {
+            Location location = shape.getLocation(key);
+            if (location != null) {
+                // ensure final assumption is initialized
+                location.getFinalAssumptionInternal();
+            }
+            return location;
         }
 
         /**
