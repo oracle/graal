@@ -289,7 +289,7 @@ public class SubstrateType implements SharedType, RuntimeAnnotated {
         return result;
     }
 
-    private SubstrateType getSuperType() {
+    protected SubstrateType getSuperType() {
         if (isArray() || isInterface()) {
             return SubstrateMetaAccess.singleton().lookupJavaType(Object.class);
         } else {
