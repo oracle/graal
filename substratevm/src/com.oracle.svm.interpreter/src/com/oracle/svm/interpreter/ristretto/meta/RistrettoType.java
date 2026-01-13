@@ -115,4 +115,19 @@ public final class RistrettoType extends SubstrateType {
         assert iArrayType != null;
         return RistrettoType.create(iArrayType);
     }
+
+    @Override
+    public SubstrateType getSuperclass() {
+        DynamicHub superHub = getHub().getSuperHub();
+        return RistrettoType.create((InterpreterResolvedJavaType) superHub.getInterpreterType());
+    }
+
+    @Override
+    protected SubstrateType getSuperType() {
+        if (isArray() || isInterface()) {
+            return RistrettoType.create((InterpreterResolvedJavaType) DynamicHub.fromClass(Object.class).getInterpreterType());
+        } else {
+            return getSuperclass();
+        }
+    }
 }
