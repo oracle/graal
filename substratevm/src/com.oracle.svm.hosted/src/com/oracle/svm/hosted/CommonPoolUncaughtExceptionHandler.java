@@ -28,8 +28,6 @@ package com.oracle.svm.hosted;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.concurrent.ForkJoinPool;
 
-import com.oracle.svm.core.util.ExitStatus;
-
 /**
  * An uncaught exception handler for the {@linkplain ForkJoinPool#commonPool() common pool} as used
  * in the context of image building. This handler is responsible for immediate abort in the case of
@@ -42,8 +40,8 @@ public class CommonPoolUncaughtExceptionHandler implements UncaughtExceptionHand
 
     @Override
     public synchronized void uncaughtException(Thread t, Throwable e) {
-        System.err.print("Aborting image build. Uncaught Exception in thread " + t + ' ');
+        System.err.print("Aborting image build. Uncaught Exception in ForkJoinPool#commonPool() thread " + t + ' ');
         e.printStackTrace(System.err);
-        System.exit(ExitStatus.BUILDER_ERROR.getValue());
+        NativeImageGenerator.exitBuilderWithError();
     }
 }
