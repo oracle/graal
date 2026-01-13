@@ -162,6 +162,11 @@ public final class RistrettoMethod extends SubstrateMethod {
     }
 
     @Override
+    public boolean canBeStaticallyBound() {
+        return interpreterMethod.canBeStaticallyBound();
+    }
+
+    @Override
     public String getName() {
         return interpreterMethod.getName();
     }

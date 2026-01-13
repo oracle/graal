@@ -870,7 +870,13 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Override
     public final boolean canBeStaticallyBound() {
-        throw VMError.intentionallyUnimplemented();
+        return ((hasReceiver() && getDeclaringClass().isArray()) ||
+                        isFinal() ||
+                        isPrivate() ||
+                        isStatic() ||
+                        getDeclaringClass().isLeaf() ||
+                        isConstructor()) &&
+                        isConcrete();
     }
 
     @Override
