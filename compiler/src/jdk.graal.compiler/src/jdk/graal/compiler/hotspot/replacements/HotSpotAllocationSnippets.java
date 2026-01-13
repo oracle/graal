@@ -142,18 +142,19 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     @Snippet
     protected Object allocateInstance(KlassPointer hub,
                     @ConstantParameter long size,
-                    @ConstantParameter boolean forceSlowPath,
+                    @ConstantParameter boolean useTLAB,
                     @ConstantParameter FillContent fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
-        Object result = allocateInstanceImpl(hub.asWord(), Word.unsigned(size), forceSlowPath, fillContents, emitMemoryBarrier, true, profilingData, withException);
+        Object result = allocateInstanceImpl(hub.asWord(), Word.unsigned(size), useTLAB, fillContents, emitMemoryBarrier, true, profilingData, withException);
         return piCastToSnippetReplaceeStamp(result);
     }
 
     @Snippet
     public Object allocateArray(KlassPointer hub,
                     int length,
+                    @ConstantParameter boolean useTLAB,
                     @ConstantParameter int arrayBaseOffset,
                     @ConstantParameter int log2ElementSize,
                     @ConstantParameter FillContent fillContents,
@@ -164,7 +165,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
-        Object result = allocateArrayImpl(hub.asWord(), length, false, arrayBaseOffset, log2ElementSize, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
+        Object result = allocateArrayImpl(hub.asWord(), length, useTLAB, arrayBaseOffset, log2ElementSize, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
                         supportsOptimizedFilling, profilingData, withException);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -216,6 +217,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     public Object allocateArrayDynamic(Class<?> elementType,
                     Class<?> voidClass,
                     int length,
+                    @ConstantParameter boolean useTLAB,
                     @ConstantParameter FillContent fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter JavaKind knownElementKind,
@@ -271,7 +273,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         int arrayBaseOffset = (layoutHelper >> layoutHelperHeaderSizeShift(INJECTED_VMCONFIG)) & layoutHelperHeaderSizeMask(INJECTED_VMCONFIG);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
         Object result;
-        result = allocateArrayImpl(nonNullKlass.asWord(), length, false, arrayBaseOffset, log2ElementSize, fillContents, arrayBaseOffset, emitMemoryBarrier, false,
+        result = allocateArrayImpl(nonNullKlass.asWord(), length, useTLAB, arrayBaseOffset, log2ElementSize, fillContents, arrayBaseOffset, emitMemoryBarrier, false,
                         supportsBulkZeroing, supportsOptimizedFilling, profilingData, withException);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -446,11 +448,6 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     @Override
     protected final int objectAlignment() {
         return HotSpotReplacementsUtil.objectAlignment(INJECTED_VMCONFIG);
-    }
-
-    @Override
-    public final boolean useTLAB() {
-        return HotSpotReplacementsUtil.useTLAB(INJECTED_VMCONFIG);
     }
 
     @Override
@@ -670,7 +667,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.add("hub", hub);
             // instanceSize returns a negative number for types which should be slow path allocated
             args.add("size", NumUtil.safeAbs(size));
-            args.add("forceSlowPath", size < 0);
+            args.add("useTLAB", shouldUseTLAB(config, size));
             args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
             args.add("emitMemoryBarrier", node.emitMemoryBarrier());
             args.add("profilingData", getProfilingData(localOptions, "instance", type));
@@ -693,7 +690,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.add("hub", hub);
             // instanceSize returns a negative number for types which should be slow path allocated
             args.add("size", NumUtil.safeAbs(size));
-            args.add("forceSlowPath", size < 0);
+            args.add("useTLAB", shouldUseTLAB(config, size));
             args.add("fillContents", FillContent.fromBoolean(true));
             args.add("emitMemoryBarrier", true /* barrier */);
             args.add("profilingData", getProfilingData(localOptions, "instance", type));
@@ -721,6 +718,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.add("hub", hub);
             ValueNode length = node.length();
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
+            args.add("useTLAB", shouldUseTLAB(config));
             args.add("arrayBaseOffset", arrayBaseOffset);
             args.add("log2ElementSize", log2ElementSize);
             args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
@@ -751,6 +749,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.add("hub", hub);
             ValueNode length = node.length();
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
+            args.add("useTLAB", shouldUseTLAB(config));
             args.add("arrayBaseOffset", arrayBaseOffset);
             args.add("log2ElementSize", log2ElementSize);
             args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
@@ -851,6 +850,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.add("elementType", node.getElementType());
             args.add("voidClass", voidClass);
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
+            args.add("useTLAB", shouldUseTLAB(config));
             args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
             args.add("emitMemoryBarrier", node.emitMemoryBarrier());
             /*
@@ -882,6 +882,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.add("elementType", node.getElementType());
             args.add("voidClass", voidClass);
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
+            args.add("useTLAB", shouldUseTLAB(config));
             args.add("fillContents", FillContent.fromBoolean(true));
             args.add("emitMemoryBarrier", true/* barriers */);
             /*
@@ -927,9 +928,16 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             return HotSpotAllocationSnippets.lookupArrayClass(tool.getMetaAccess(), kind);
         }
 
+        public static boolean shouldUseTLAB(GraalHotSpotVMConfig config) {
+            return HotSpotReplacementsUtil.useTLAB(config);
+        }
+
+        public static boolean shouldUseTLAB(GraalHotSpotVMConfig config, long size) {
+            return shouldUseTLAB(config) && size >= 0;
+        }
     }
 
-    private static class HotSpotAllocationProfilingData extends AllocationProfilingData {
+    public static class HotSpotAllocationProfilingData extends AllocationProfilingData {
         String path;
         String typeContext;
 

@@ -315,7 +315,7 @@ public class SubstrateOptions {
             GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
 
             if (newLevel == OptimizationLevel.SIZE) {
-                configureOs(values);
+                configureOptimizeForCodeSize(values, true, true);
             }
 
             if (optimizeValueUpdateHandler != null) {
@@ -325,19 +325,21 @@ public class SubstrateOptions {
         }
     };
 
-    public static void configureOs(EconomicMap<OptionKey<?>, Object> values) {
-        enableForOs(GraalOptions.ReduceCodeSize, values);
-        enableForOs(ReduceImplicitExceptionStackTraceInformation, values);
-        enableForOs(GraalOptions.OptimizeLongJumps, values);
+    public static void configureOptimizeForCodeSize(EconomicMap<OptionKey<?>, Object> values, boolean disableLoopOptimizations, boolean disablePEA) {
+        enable(GraalOptions.ReduceCodeSize, values);
+        enable(ReduceImplicitExceptionStackTraceInformation, values);
+        enable(GraalOptions.OptimizeLongJumps, values);
 
-        /*
-         * Remove all loop optimizations that can increase code size, i.e., duplicate a loop body
-         * somehow.
-         */
-        disableForOs(GraalOptions.LoopPeeling, values);
-        disableForOs(GraalOptions.LoopUnswitch, values);
-        disableForOs(GraalOptions.FullUnroll, values);
-        disableForOs(GraalOptions.PartialUnroll, values);
+        if (disableLoopOptimizations) {
+            /*
+             * Remove all loop optimizations that can increase code size, i.e., duplicate a loop
+             * body somehow.
+             */
+            disable(GraalOptions.LoopPeeling, values);
+            disable(GraalOptions.LoopUnswitch, values);
+            disable(GraalOptions.FullUnroll, values);
+            disable(GraalOptions.PartialUnroll, values);
+        }
 
         /*
          * Do not align code to further reduce code size.
@@ -347,17 +349,19 @@ public class SubstrateOptions {
         GraalOptions.IsolatedLoopHeaderAlignment.update(values, 0);
         // We cannot check for architecture at the moment because ImageSingletons has not been
         // initialized yet
-        disableForOs(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
+        disable(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
 
-        /*
-         * Do not run PEA - it can fan out allocations too much.
-         */
-        disableForOs(GraalOptions.PartialEscapeAnalysis, values);
+        if (disablePEA) {
+            /*
+             * Do not run PEA - it can fan out allocations too much.
+             */
+            disable(GraalOptions.PartialEscapeAnalysis, values);
+        }
 
         /*
          * Do not fan out division.
          */
-        disableForOs(GraalOptions.OptimizeDiv, values);
+        disable(GraalOptions.OptimizeDiv, values);
 
         /*
          * Do more conditional elimination.
@@ -367,22 +371,22 @@ public class SubstrateOptions {
         /*
          * Every dead code elimination should be non-optional
          */
-        disableForOs(DeadCodeEliminationPhase.Options.ReduceDCE, values);
+        disable(DeadCodeEliminationPhase.Options.ReduceDCE, values);
     }
 
     /**
-     * Sets {@code key} to false in {@code values} as a consequence of {@code -Os} having been
-     * specified. This silently overrides any existing value for {@code key} in {@code values}.
+     * Sets {@code key} to false in {@code values}. This silently overrides any existing value for
+     * {@code key} in {@code values}.
      */
-    public static void disableForOs(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
+    public static void disable(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
         key.update(values, false);
     }
 
     /**
-     * Sets {@code key} to true in {@code values} as a consequence of {@code -Os} having been
-     * specified. This silently overrides any existing value for {@code key} in {@code values}.
+     * Sets {@code key} to true in {@code values}. This silently overrides any existing value for
+     * {@code key} in {@code values}.
      */
-    public static void enableForOs(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
+    public static void enable(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
         key.update(values, true);
     }
 

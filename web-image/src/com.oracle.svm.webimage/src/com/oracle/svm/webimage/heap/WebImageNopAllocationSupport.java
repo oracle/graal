@@ -64,11 +64,6 @@ public class WebImageNopAllocationSupport implements GCAllocationSupport {
     }
 
     @Override
-    public boolean useTLAB() {
-        throw GraalError.unimplementedOverride();
-    }
-
-    @Override
     public boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray) {
         throw GraalError.unimplementedOverride();
     }
