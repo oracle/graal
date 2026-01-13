@@ -179,8 +179,13 @@ public final class ImageClassLoader {
      * Determines if {@code element} is compatible with the {@linkplain #platform target platform}.
      */
     private boolean isInPlatform(Annotated element) {
-        Platforms platformAnnotation = classLoaderSupport.annotationExtractor.getAnnotation(element, Platforms.class);
-        return NativeImageGenerator.includedIn(platform, platformAnnotation);
+        try {
+            Platforms platformAnnotation = classLoaderSupport.annotationExtractor.getAnnotation(element, Platforms.class);
+            return NativeImageGenerator.includedIn(platform, platformAnnotation);
+        } catch (LinkageError t) {
+            handleClassLoadingError(t, "getting @Platforms annotation value for %s", element);
+            return false;
+        }
     }
 
     /**
@@ -324,7 +329,14 @@ public final class ImageClassLoader {
      */
     void registerType(ResolvedJavaType type) {
         assert OriginalClassProvider.getOriginalType(type).equals(type) : type;
-        PlatformSupportResult res = isPlatformSupported(type, platform);
+        PlatformSupportResult res;
+        try {
+            res = isPlatformSupported(type, platform);
+        } catch (LinkageError error) {
+            handleClassLoadingError(error, "getting @Platforms annotation value for %s", type);
+            res = PlatformSupportResult.NO;
+        }
+
         if (res == PlatformSupportResult.HOSTED) {
             synchronized (hostedOnlyTypes) {
                 hostedOnlyTypes.add(type);
