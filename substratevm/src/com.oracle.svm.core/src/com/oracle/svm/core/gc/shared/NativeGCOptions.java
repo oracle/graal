@@ -275,19 +275,8 @@ public class NativeGCOptions {
     }
 
     public static class NativeGCHostedOptionKey<T> extends HostedOptionKey<T> {
-        private final boolean passToCpp;
-
-        public NativeGCHostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> validation) {
-            this(defaultValue, true, validation);
-        }
-
-        public NativeGCHostedOptionKey(T defaultValue, boolean passToCpp, Consumer<HostedOptionKey<T>> validation) {
-            super(defaultValue, validation);
-            this.passToCpp = passToCpp;
-        }
-
-        public boolean shouldPassToCpp() {
-            return passToCpp;
+        public NativeGCHostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> validation, HostedOptionKeyFlag... flags) {
+            super(defaultValue, validation, flags);
         }
 
         @Override
@@ -328,7 +317,7 @@ public class NativeGCOptions {
                     if (HostedOptionKey.class.isAssignableFrom(type)) {
                         HostedOptionKey<?> key = (HostedOptionKey<?>) field.get(null);
                         Object value = key.getValueOrDefault(map);
-                        if (shouldPassToCpp(key) && value != null) {
+                        if (key.shouldPassToNativeGC() && value != null) {
                             buffer.putString(key.getName());
                             buffer.putPrimitive(value);
                         }
@@ -339,13 +328,6 @@ public class NativeGCOptions {
             }
             buffer.putEnd();
             return buffer.toArray();
-        }
-
-        private static boolean shouldPassToCpp(HostedOptionKey<?> key) {
-            if (key instanceof NativeGCHostedOptionKey<?>) {
-                return ((NativeGCHostedOptionKey<?>) key).shouldPassToCpp();
-            }
-            return true;
         }
     }
 

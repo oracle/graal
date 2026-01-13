@@ -43,6 +43,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.core.SubstrateGCOptions.TLABPolicy;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.allocationprofile.AllocationCounter;
 import com.oracle.svm.core.allocationprofile.AllocationSite;
@@ -823,14 +824,21 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
         public static boolean shouldUseTLAB(StructuredGraph graph) {
             Boolean useTLAB = SubstrateGCOptions.UseTLAB.getValue();
-            if (useTLAB != null) {
-                return useTLAB;
+            if (!useTLAB) {
+                /* Never use a TLAB. */
+                return false;
+            }
+
+            TLABPolicy policy = SubstrateGCOptions.TLABUsagePolicy.getValue();
+            if (policy == TLABPolicy.Always) {
+                return true;
             }
 
             /*
              * Use a TLAB by default, except when we optimize for code size or when we do an image
              * build for a non-native platform.
              */
+            assert policy == TLABPolicy.Auto;
             return !GraalOptions.ReduceCodeSize.getValue(graph.getOptions());
         }
 
