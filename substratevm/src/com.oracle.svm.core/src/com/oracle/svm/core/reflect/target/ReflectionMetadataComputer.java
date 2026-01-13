@@ -28,6 +28,7 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 
 public abstract class ReflectionMetadataComputer implements FieldValueTransformerWithAvailability {
+    // JVMCI migration blocked by GR-72585: Migrate com.oracle.svm.core.reflect for terminus
 
     @Override
     public boolean isAvailable() {

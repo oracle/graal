@@ -24,15 +24,16 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-public record ValueNeverAvailableFieldValueTransformer(ResolvedJavaField field) implements FieldValueTransformerWithAvailability {
+public record ValueNeverAvailableFieldValueTransformer(ResolvedJavaField field) implements JVMCIFieldValueTransformerWithAvailability {
 
     @Override
-    public Object transform(Object receiver, Object originalValue) {
+    public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
         throw VMError.shouldNotReachHere("Value for this field is never available: " + field);
     }
 

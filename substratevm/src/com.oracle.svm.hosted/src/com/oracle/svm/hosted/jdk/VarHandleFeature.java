@@ -52,6 +52,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -100,7 +101,11 @@ public class VarHandleFeature implements InternalFeature {
 
     class VarHandleSupportImpl extends VarHandleSupport {
         @Override
-        protected ResolvedJavaField findVarHandleField(Object varHandle, boolean guaranteeUnsafeAccessed) {
+        protected ResolvedJavaField findVarHandleField(CoreProviders providers, JavaConstant varHandleConstant, boolean guaranteeUnsafeAccessed) {
+            // Convert to JVMCI
+            // GR-72590: Migrate MethodHandleFeature and VarHandleFeature to terminus
+            Object varHandle = providers.getSnippetReflection().asObject(Object.class, varHandleConstant);
+            VMError.guarantee(varHandle != null);
             ResolvedJavaField result;
             if (hUniverse != null) {
                 result = findVarHandleHostedField(varHandle);

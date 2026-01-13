@@ -403,6 +403,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             substitutionProcessor = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
 
             access.registerFieldValueTransformer(providerListField, new FieldValueTransformerWithAvailability() {
+                // JVMCI migration blocked by GR-72131: Refactor security service code for project
+                // Terminus.
                 /*
                  * We must wait until all providers have been registered before filtering the list.
                  */
@@ -433,6 +435,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             });
 
             access.registerFieldValueTransformer(verificationResultsField, new FieldValueTransformerWithAvailability() {
+                // JVMCI migration blocked by GR-72131: Refactor security service code for project
+                // Terminus.
                 /*
                  * We must wait until all providers have been registered before filtering the list.
                  */

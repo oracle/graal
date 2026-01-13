@@ -87,6 +87,7 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         a.registerFieldValueTransformer(ReflectionUtil.lookupField(ThreadGroup.class, "ngroups"), new FieldValueTransformerWithAvailability() {
+            // JVMCI migration blocked by GR-72587: Migrate (virtual) thread support for terminus
 
             /*
              * We must wait until reachableThreadGroups stabilizes after analysis to replace this
@@ -105,6 +106,7 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
         });
 
         a.registerFieldValueTransformer(ReflectionUtil.lookupField(ThreadGroup.class, "groups"), new FieldValueTransformerWithAvailability() {
+            // JVMCI migration blocked by GR-72587: Migrate (virtual) thread support for terminus
 
             /*
              * We must wait until reachableThreadGroups stabilizes after analysis to replace this

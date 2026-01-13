@@ -160,6 +160,8 @@ public class MethodHandleFeature implements InternalFeature {
         access.registerFieldValueTransformer(
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.ClassSpecializer"), "cache"),
                         new FieldValueTransformerWithAvailability() {
+                            // JVMCI migration blocked by GR-72590: Migrate MethodHandleFeature to
+                            // terminus
                             private static final Class<?> SPECIES_DATA_CLASS = ReflectionUtil.lookupClass("java.lang.invoke.ClassSpecializer$SpeciesData");
 
                             /*
@@ -206,6 +208,7 @@ public class MethodHandleFeature implements InternalFeature {
         access.allowStableFieldFoldingBeforeAnalysis(access.findField("jdk.internal.reflect.ReflectionFactory", "config"));
 
         FieldValueTransformerWithAvailability methodHandleArrayTransformer = new FieldValueTransformerWithAvailability() {
+            // JVMCI migration blocked by GR-72590: Migrate MethodHandleFeature to terminus
             @Override
             public boolean isAvailable() {
                 return BuildPhaseProvider.isHostedUniverseBuilt();
@@ -255,6 +258,8 @@ public class MethodHandleFeature implements InternalFeature {
         access.registerFieldValueTransformer(
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.StringConcatFactory$InlineHiddenClassStrategy"), "CACHE"),
                         new FieldValueTransformerWithAvailability() {
+                            // JVMCI migration blocked by GR-72590: Migrate MethodHandleFeature to
+                            // terminus
                             @Override
                             public boolean isAvailable() {
                                 return BuildPhaseProvider.isHostedUniverseBuilt();

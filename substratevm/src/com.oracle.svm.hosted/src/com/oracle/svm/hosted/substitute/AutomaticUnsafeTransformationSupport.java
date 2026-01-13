@@ -66,7 +66,6 @@ import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -901,7 +900,7 @@ public class AutomaticUnsafeTransformationSupport {
                 case ArrayBaseOffset -> new ArrayBaseOffsetFieldValueTransformer(targetType, field.getType().getJavaKind());
                 case ArrayIndexScale -> new ArrayIndexScaleFieldValueTransformer(targetType, field.getType().getJavaKind());
                 case ArrayIndexShift -> new ArrayIndexShiftFieldValueTransformer(targetType, field.getType().getJavaKind());
-                case FieldOffset -> new FieldOffsetFieldValueTransformer(OriginalFieldProvider.getJavaField(targetField), field.getType().getJavaKind());
+                case FieldOffset -> new FieldOffsetFieldValueTransformer(targetField, field.getType().getJavaKind());
                 case StaticFieldBase -> new StaticFieldBaseFieldValueTransformer(targetField);
                 default -> throw VMError.shouldNotReachHere("Unexpected kind: " + kind);
             };
