@@ -24,14 +24,17 @@
  */
 package com.oracle.svm.core.option;
 
+import java.util.function.Consumer;
+
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.svm.common.option.LocatableOption;
 import com.oracle.svm.common.option.MultiOptionValue;
-import org.graalvm.collections.EconomicMap;
+import com.oracle.svm.core.collections.EnumBitmask;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
-
-import java.util.function.Consumer;
 
 /**
  * Defines a hosted {@link Option} that is used during native image generation, in contrast to a
@@ -40,16 +43,32 @@ import java.util.function.Consumer;
  * @see com.oracle.svm.core.option
  */
 public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionKey<T> {
+<<<<<<< HEAD
     private final Consumer<HostedOptionKey<T>> validation;
+=======
+    private final Consumer<HostedOptionKey<T>> buildTimeValidation;
+    private final int flags;
+>>>>>>> a1079903ebb (Add option TLABUsagePolicy.)
     private OptionOrigin lastOrigin;
 
-    public HostedOptionKey(T defaultValue) {
-        this(defaultValue, null);
+    public HostedOptionKey(T defaultValue, HostedOptionKeyFlag... flags) {
+        this(defaultValue, null, flags);
     }
 
+<<<<<<< HEAD
     public HostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> validation) {
         super(defaultValue);
         this.validation = validation;
+=======
+    public HostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> buildTimeValidation, HostedOptionKeyFlag... flags) {
+        super(defaultValue);
+        this.buildTimeValidation = buildTimeValidation;
+        this.flags = EnumBitmask.computeBitmask(flags);
+    }
+
+    public boolean shouldPassToNativeGC() {
+        return !EnumBitmask.hasBit(flags, HostedOptionKeyFlag.DoNotPassToNativeGC);
+>>>>>>> a1079903ebb (Add option TLABUsagePolicy.)
     }
 
     /**
@@ -110,5 +129,10 @@ public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionK
 
     public OptionOrigin getLastOrigin() {
         return lastOrigin;
+    }
+
+    public enum HostedOptionKeyFlag {
+        /** If this flag is set, then the option value is not passed to native GCs like G1. */
+        DoNotPassToNativeGC,
     }
 }
