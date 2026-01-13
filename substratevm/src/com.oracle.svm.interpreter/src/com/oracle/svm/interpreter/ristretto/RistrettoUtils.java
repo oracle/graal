@@ -278,6 +278,9 @@ public class RistrettoUtils {
                         }
                         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After parsing ");
                         OptimisticOptimizations optimisticOpts = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseLoopLimitChecks);
+                        if (!RistrettoOptions.getJITUseDeoptimization()) {
+                            optimisticOpts = OptimisticOptimizations.NONE;
+                        }
                         final Backend backend = runtimeConfig.lookupBackend(method);
                         SubstrateCompilationResult result = new SubstrateCompilationResult(graph.compilationId(), method.format("%H.%n(%p)"));
                         Providers providers = backend.getProviders();
