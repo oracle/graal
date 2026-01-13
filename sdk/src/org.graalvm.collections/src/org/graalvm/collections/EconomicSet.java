@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -165,7 +165,7 @@ public interface EconomicSet<E> extends UnmodifiableEconomicSet<E> {
      * @since 19.0
      */
     static <E> EconomicSet<E> create(Equivalence strategy) {
-        return EconomicMapImpl.create(strategy, true);
+        return EconomicMapImpl.create(strategy);
     }
 
     /**
@@ -196,7 +196,7 @@ public interface EconomicSet<E> extends UnmodifiableEconomicSet<E> {
      * @since 19.0
      */
     static <E> EconomicSet<E> create(Equivalence strategy, int initialCapacity) {
-        return EconomicMapImpl.create(strategy, initialCapacity, true);
+        return EconomicMapImpl.create(strategy, initialCapacity);
     }
 
     /**
@@ -206,7 +206,7 @@ public interface EconomicSet<E> extends UnmodifiableEconomicSet<E> {
      * @since 19.0
      */
     static <E> EconomicSet<E> create(Equivalence strategy, UnmodifiableEconomicSet<E> c) {
-        return EconomicMapImpl.create(strategy, c, true);
+        return EconomicMapImpl.create(strategy, c);
     }
 
     /**
