@@ -26,9 +26,10 @@ package com.oracle.svm.interpreter.ristretto.meta;
 
 import java.util.function.Function;
 
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
@@ -295,7 +296,7 @@ public final class RistrettoMethod extends SubstrateMethod {
     }
 
     @Override
-    public MethodPointer getAOTEntrypoint() {
+    public CFunctionPointer getAOTEntrypoint() {
         assert !SubstrateUtil.HOSTED;
         assert SubstrateOptions.useRistretto();
         assert interpreterMethod.hasNativeEntryPoint();

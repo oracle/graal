@@ -184,6 +184,7 @@ public class CremaSupportImpl implements CremaSupport {
         return methods;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static void addSupportedElements(BuildTimeInterpreterUniverse btiUniverse, AnalysisUniverse analysisUniverse, List<InterpreterResolvedJavaMethod> methods,
                     ResolvedJavaMethod wrappedMethod) {
         if (!analysisUniverse.hostVM().platformSupported(wrappedMethod)) {

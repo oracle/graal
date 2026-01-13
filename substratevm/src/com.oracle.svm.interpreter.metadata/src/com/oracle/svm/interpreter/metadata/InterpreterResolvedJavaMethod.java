@@ -47,6 +47,7 @@ import java.util.function.Function;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.FunctionPointerHolder;
@@ -655,11 +656,11 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         return nativeEntryPoint != null;
     }
 
-    public final MethodPointer getNativeEntryPoint() {
+    public final CFunctionPointer getNativeEntryPoint() {
         if (nativeEntryPoint == null) {
             return Word.nullPointer();
         }
-        return (MethodPointer) nativeEntryPoint.getReferent().functionPointer;
+        return nativeEntryPoint.getReferent().functionPointer;
     }
 
     public final ReferenceConstant<FunctionPointerHolder> getNativeEntryPointHolderConstant() {
