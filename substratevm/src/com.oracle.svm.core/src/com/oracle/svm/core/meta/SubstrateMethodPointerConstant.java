@@ -41,11 +41,10 @@ public class SubstrateMethodPointerConstant implements VMConstant {
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final MethodPointer pointer;
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateMethodPointerConstant(MethodPointer pointer) {
-        this.pointer = pointer;
+        this.pointer = Objects.requireNonNull(pointer);
     }
-
-    public static final SubstrateMethodPointerConstant ALWAYS_NULL = new SubstrateMethodPointerConstant(null);
 
     public MethodPointer pointer() {
         return pointer;
@@ -63,7 +62,7 @@ public class SubstrateMethodPointerConstant implements VMConstant {
 
     @Override
     public String toString() {
-        return "method: " + (pointer == null ? "null" : pointer.getMethod().format("%H.%n"));
+        return "method: " + pointer.getMethod().format("%H.%n");
     }
 
     @Override
@@ -71,17 +70,12 @@ public class SubstrateMethodPointerConstant implements VMConstant {
         if (!(obj instanceof SubstrateMethodPointerConstant)) {
             return false;
         }
-        if (this == ALWAYS_NULL) {
-            return obj == ALWAYS_NULL;
-        } else if (obj == ALWAYS_NULL) {
-            return this == ALWAYS_NULL;
-        }
         SubstrateMethodPointerConstant that = (SubstrateMethodPointerConstant) obj;
         return this == obj || this.pointer.getMethod().equals(that.pointer.getMethod());
     }
 
     @Override
     public int hashCode() {
-        return pointer == null ? 0 : Objects.hashCode(pointer.getMethod());
+        return Objects.hashCode(pointer.getMethod());
     }
 }
