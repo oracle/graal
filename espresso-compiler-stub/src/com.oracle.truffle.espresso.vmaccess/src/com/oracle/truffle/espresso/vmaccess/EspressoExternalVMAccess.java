@@ -198,6 +198,29 @@ final class EspressoExternalVMAccess implements VMAccess {
         return providers;
     }
 
+    /**
+     * Marker interface for a concrete implementation of a {@link ResolvedJavaType},
+     * {@link ResolvedJavaMethod} or {@link ResolvedJavaField} owned by
+     * {@link EspressoExternalVMAccess}.
+     */
+    interface Element {
+    }
+
+    @Override
+    public boolean owns(ResolvedJavaType value) {
+        return value instanceof Element;
+    }
+
+    @Override
+    public boolean owns(ResolvedJavaMethod value) {
+        return value instanceof Element;
+    }
+
+    @Override
+    public boolean owns(ResolvedJavaField value) {
+        return value instanceof Element;
+    }
+
     @Override
     public JavaConstant invoke(ResolvedJavaMethod method, JavaConstant receiver, JavaConstant... arguments) {
         if (!(method instanceof EspressoExternalResolvedJavaMethod espressoMethod)) {

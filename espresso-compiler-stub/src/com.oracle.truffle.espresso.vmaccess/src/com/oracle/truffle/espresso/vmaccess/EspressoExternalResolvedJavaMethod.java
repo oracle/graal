@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
 
-final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJavaMethod {
+final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJavaMethod implements EspressoExternalVMAccess.Element {
     static final EspressoExternalResolvedJavaMethod[] EMPTY_ARRAY = new EspressoExternalResolvedJavaMethod[0];
     private static final ExceptionHandler[] NO_HANDLERS = new ExceptionHandler[0];
     private static final LocalVariableTable EMPTY_LVT = new LocalVariableTable(new Local[0]);

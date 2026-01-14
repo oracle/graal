@@ -39,7 +39,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolvedInstanceType {
+final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolvedInstanceType implements EspressoExternalVMAccess.Element {
     private final EspressoExternalVMAccess access;
     /**
      * A handle to an espresso Klass.

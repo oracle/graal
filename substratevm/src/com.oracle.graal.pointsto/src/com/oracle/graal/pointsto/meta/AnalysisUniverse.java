@@ -81,6 +81,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
+/**
+ * See javadoc for {@code HostedUniverse}.
+ */
 public class AnalysisUniverse implements Universe {
 
     protected final HostVM hostVM;

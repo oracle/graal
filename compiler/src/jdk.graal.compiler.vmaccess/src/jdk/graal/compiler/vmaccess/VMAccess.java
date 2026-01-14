@@ -47,6 +47,26 @@ public interface VMAccess {
     Providers getProviders();
 
     /**
+     * Determines if the concrete type of {@code value} is owned by this access. That is, it is the
+     * canonical reference to a Java class in the JVM accessed by this object.
+     */
+    boolean owns(ResolvedJavaType value);
+
+    /**
+     * Determines if the concrete type of {@code value} is owned by this access.
+     *
+     * @see #owns(ResolvedJavaType)
+     */
+    boolean owns(ResolvedJavaMethod value);
+
+    /**
+     * Determines if the concrete type of {@code value} is owned by this access.
+     *
+     * @see #owns(ResolvedJavaType)
+     */
+    boolean owns(ResolvedJavaField value);
+
+    /**
      * Invokes the provided method.
      * <ul>
      * <li>For instance methods (not {@linkplain ResolvedJavaMethod#isStatic() static} and not
@@ -61,7 +81,6 @@ public interface VMAccess {
      * doesn't need to be prepended.</li>
      * </ul>
      *
-     * @return the result as a {@link JavaConstant} or null if the method has a void return type.
      * @param method the method to invoke.
      * @param receiver for non-static, non-constructor methods, the receiver of the invocation
      *            passed a {@link JavaConstant}. This must be {@code null} for static or constructor
@@ -70,6 +89,7 @@ public interface VMAccess {
      *            signature} passed as {@link JavaConstant} objects. The arguments are subject to
      *            conversions as described in the Java Language Specifications' strict invocation
      *            context (5.3).
+     * @return the result as a {@link JavaConstant} or null if the method has a void return type.
      * @throws InvocationException if the invoked method throws an exception, it is wrapped in an
      *             {@link InvocationException}.
      */

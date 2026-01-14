@@ -30,7 +30,7 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
-final class EspressoExternalResolvedJavaField extends AbstractEspressoResolvedJavaField {
+final class EspressoExternalResolvedJavaField extends AbstractEspressoResolvedJavaField implements EspressoExternalVMAccess.Element {
     private final Value fieldMirror;
     private final int flags;
 
