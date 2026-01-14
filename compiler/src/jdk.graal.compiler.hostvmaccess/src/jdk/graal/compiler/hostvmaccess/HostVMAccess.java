@@ -41,6 +41,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.graal.compiler.vmaccess.ModuleSupport;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -207,6 +208,11 @@ final class HostVMAccess implements VMAccess {
     @Override
     public ResolvedJavaType lookupBootClassLoaderType(String name) {
         return lookupType(name, null);
+    }
+
+    @Override
+    public ResolvedJavaModule getModule(ResolvedJavaType type) {
+        return new HostVMResolvedJavaModuleImpl(providers.getSnippetReflection().originalClass(type).getModule());
     }
 
     @Override

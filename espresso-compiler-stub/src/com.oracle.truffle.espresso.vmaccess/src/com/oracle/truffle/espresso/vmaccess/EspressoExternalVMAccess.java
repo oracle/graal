@@ -52,6 +52,7 @@ import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.vmaccess.InvocationException;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -175,6 +176,11 @@ final class EspressoExternalVMAccess implements VMAccess {
     @Override
     public ResolvedJavaType lookupBootClassLoaderType(String name) {
         return lookupType(name, JavaConstant.NULL_POINTER);
+    }
+
+    @Override
+    public ResolvedJavaModule getModule(ResolvedJavaType type) {
+        throw JVMCIError.unimplemented("getModule() is not yet implemented");
     }
 
     private ResolvedJavaType lookupType(String name, JavaConstant classLoader) {

@@ -146,6 +146,11 @@ public interface VMAccess {
     ResolvedJavaType lookupBootClassLoaderType(String name);
 
     /**
+     * Gets the {@link ResolvedJavaModule} of the given {@link ResolvedJavaType}.
+     */
+    ResolvedJavaModule getModule(ResolvedJavaType type);
+
+    /**
      * A builder can be used to set a JVM context up and observe it through a {@link VMAccess}.
      * <p>
      * The {@link java.util.ServiceLoader} API can be used to locate such a builder. Implementations

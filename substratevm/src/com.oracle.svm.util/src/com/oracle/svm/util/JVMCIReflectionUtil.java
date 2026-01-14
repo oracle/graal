@@ -367,7 +367,7 @@ public final class JVMCIReflectionUtil {
     }
 
     public static ResolvedJavaModule getModule(ResolvedJavaType declaringClass) {
-        return JVMCIReflectionUtilFallback.getModule(declaringClass);
+        return GraalAccess.getVMAccess().getModule(declaringClass);
     }
 
     /**
