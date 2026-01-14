@@ -28,6 +28,7 @@ import java.lang.module.ModuleDescriptor;
 import java.util.Objects;
 import java.util.Set;
 
+import jdk.graal.compiler.vmaccess.ModuleSupport;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 
 /**
@@ -100,5 +101,14 @@ final class HostVMResolvedJavaModuleImpl implements ResolvedJavaModule {
             return moduleImpl;
         }
         throw new IllegalArgumentException("Unsupported ResolvedJavaModule implementation: " + module.getClass().getName());
+    }
+
+    /**
+     * Updates a {@code accessingModule} to read {@code this} module during the image build. This
+     * method is not meant to change any runtime property of {@code this} module. This method is
+     * accessed reflectively.
+     */
+    void addReads(Module accessingModule) {
+        ModuleSupport.addOpens(accessingModule, toImpl(this).module);
     }
 }

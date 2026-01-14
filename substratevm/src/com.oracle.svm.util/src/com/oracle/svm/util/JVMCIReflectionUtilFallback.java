@@ -27,12 +27,7 @@ package com.oracle.svm.util;
 import java.net.URL;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
-import java.util.stream.Stream;
 
-import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
-import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
-import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
-import jdk.internal.loader.BootLoader;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -45,15 +40,6 @@ final class JVMCIReflectionUtilFallback {
         return OriginalClassProvider.getJavaClass(type);
     }
 
-    static ResolvedJavaPackage getPackage(ResolvedJavaType type) {
-        Package pkg = getJavaClass(type).getPackage();
-        return pkg == null ? null : new ResolvedJavaPackageImpl(pkg);
-    }
-
-    static ResolvedJavaModule getModule(ResolvedJavaType declaringClass) {
-        return new ResolvedJavaModuleImpl(getJavaClass(declaringClass).getModule());
-    }
-
     static URL getOrigin(ResolvedJavaType type) {
         ProtectionDomain pd = getJavaClass(type).getProtectionDomain();
         CodeSource cs = pd.getCodeSource();
@@ -61,13 +47,5 @@ final class JVMCIReflectionUtilFallback {
             return null;
         }
         return cs.getLocation();
-    }
-
-    public static Stream<ResolvedJavaPackage> bootLoaderPackages() {
-        return BootLoader.packages().map(ResolvedJavaPackageImpl::new);
-    }
-
-    public static ResolvedJavaModuleLayer bootModuleLayer() {
-        return new ResolvedJavaModuleLayerImpl(ModuleLayer.boot());
     }
 }

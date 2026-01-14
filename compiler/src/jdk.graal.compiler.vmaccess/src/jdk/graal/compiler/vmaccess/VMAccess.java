@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package jdk.graal.compiler.vmaccess;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.stream.Stream;
 
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.Constant;
@@ -149,6 +150,23 @@ public interface VMAccess {
      * Gets the {@link ResolvedJavaModule} of the given {@link ResolvedJavaType}.
      */
     ResolvedJavaModule getModule(ResolvedJavaType type);
+
+    /**
+     * Gets the package enclosing {@code type} or null if {@code type} represents an array type, a
+     * primitive type or void.
+     */
+    ResolvedJavaPackage getPackage(ResolvedJavaType type);
+
+    /**
+     * Returns a stream of the packages defined to the boot loader. See
+     * {@code jdk.internal.loader.BootLoader#packages()}.
+     */
+    Stream<ResolvedJavaPackage> bootLoaderPackages();
+
+    /**
+     * Returns the boot layer. See {@link java.lang.ModuleLayer#boot()}.
+     */
+    ResolvedJavaModuleLayer bootModuleLayer();
 
     /**
      * A builder can be used to set a JVM context up and observe it through a {@link VMAccess}.

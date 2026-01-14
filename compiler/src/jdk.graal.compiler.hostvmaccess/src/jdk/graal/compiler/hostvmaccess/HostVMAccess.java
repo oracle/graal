@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.stream.Stream;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
@@ -42,7 +43,10 @@ import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.graal.compiler.vmaccess.ModuleSupport;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
+import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.graal.compiler.vmaccess.VMAccess;
+import jdk.internal.loader.BootLoader;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -212,7 +216,34 @@ final class HostVMAccess implements VMAccess {
 
     @Override
     public ResolvedJavaModule getModule(ResolvedJavaType type) {
-        return new HostVMResolvedJavaModuleImpl(providers.getSnippetReflection().originalClass(type).getModule());
+        return new HostVMResolvedJavaModuleImpl(getOriginalClass(type).getModule());
+    }
+
+    @Override
+    public ResolvedJavaPackage getPackage(ResolvedJavaType type) {
+        Package pkg = getOriginalClass(type).getPackage();
+        if (pkg == null) {
+            return null;
+        }
+        return new HostVMResolvedJavaPackageImpl(providers.getMetaAccess(), pkg);
+    }
+
+    private Class<?> getOriginalClass(ResolvedJavaType type) {
+        Class<?> originalClass = providers.getSnippetReflection().originalClass(type);
+        if (originalClass == null) {
+            throw new RuntimeException("No original class for type " + type);
+        }
+        return originalClass;
+    }
+
+    @Override
+    public Stream<ResolvedJavaPackage> bootLoaderPackages() {
+        return BootLoader.packages().map(p -> new HostVMResolvedJavaPackageImpl(providers.getMetaAccess(), p));
+    }
+
+    @Override
+    public ResolvedJavaModuleLayer bootModuleLayer() {
+        return new HostVMResolvedJavaModuleLayerImpl(ModuleLayer.boot());
     }
 
     @Override

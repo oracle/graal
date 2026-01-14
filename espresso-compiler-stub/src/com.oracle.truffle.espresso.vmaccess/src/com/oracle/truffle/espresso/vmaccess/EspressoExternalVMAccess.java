@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.vmaccess;
 import static com.oracle.truffle.espresso.vmaccess.EspressoExternalConstantReflectionProvider.safeGetClass;
 
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -53,6 +54,8 @@ import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
+import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -181,6 +184,21 @@ final class EspressoExternalVMAccess implements VMAccess {
     @Override
     public ResolvedJavaModule getModule(ResolvedJavaType type) {
         throw JVMCIError.unimplemented("getModule() is not yet implemented");
+    }
+
+    @Override
+    public ResolvedJavaPackage getPackage(ResolvedJavaType type) {
+        throw JVMCIError.unimplemented("getPackage() is not yet implemented");
+    }
+
+    @Override
+    public Stream<ResolvedJavaPackage> bootLoaderPackages() {
+        throw JVMCIError.unimplemented("bootLoaderPackages() is not yet implemented");
+    }
+
+    @Override
+    public ResolvedJavaModuleLayer bootModuleLayer() {
+        throw JVMCIError.unimplemented("bootModuleLayer() is not yet implemented");
     }
 
     private ResolvedJavaType lookupType(String name, JavaConstant classLoader) {

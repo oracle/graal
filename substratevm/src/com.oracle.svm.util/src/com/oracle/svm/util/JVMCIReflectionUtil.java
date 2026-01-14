@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -326,7 +326,7 @@ public final class JVMCIReflectionUtil {
      * primitive type or void.
      */
     public static ResolvedJavaPackage getPackage(ResolvedJavaType type) {
-        return JVMCIReflectionUtilFallback.getPackage(type);
+        return GraalAccess.getVMAccess().getPackage(OriginalClassProvider.getOriginalType(type));
     }
 
     /**
@@ -367,7 +367,7 @@ public final class JVMCIReflectionUtil {
     }
 
     public static ResolvedJavaModule getModule(ResolvedJavaType declaringClass) {
-        return GraalAccess.getVMAccess().getModule(declaringClass);
+        return GraalAccess.getVMAccess().getModule(OriginalClassProvider.getOriginalType(declaringClass));
     }
 
     /**
@@ -400,14 +400,14 @@ public final class JVMCIReflectionUtil {
      * {@code jdk.internal.loader.BootLoader#packages()}.
      */
     public static Stream<ResolvedJavaPackage> bootLoaderPackages() {
-        return JVMCIReflectionUtilFallback.bootLoaderPackages();
+        return GraalAccess.getVMAccess().bootLoaderPackages();
     }
 
     /**
      * Returns the boot layer. See {@link java.lang.ModuleLayer#boot()}.
      */
     public static ResolvedJavaModuleLayer bootModuleLayer() {
-        return JVMCIReflectionUtilFallback.bootModuleLayer();
+        return GraalAccess.getVMAccess().bootModuleLayer();
     }
 
     /**

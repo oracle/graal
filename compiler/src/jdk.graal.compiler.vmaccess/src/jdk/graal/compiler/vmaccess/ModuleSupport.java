@@ -25,6 +25,7 @@
 package jdk.graal.compiler.vmaccess;
 
 import java.util.Optional;
+import java.util.Set;
 
 import jdk.internal.module.Modules;
 
@@ -75,7 +76,8 @@ public final class ModuleSupport {
     }
 
     public static void addOpens(Module accessingModule, Module targetModule, String... packageNames) {
-        for (String packageName : packageNames) {
+        Set<String> packages = packageNames.length > 0 ? Set.of(packageNames) : targetModule.getPackages();
+        for (String packageName : packages) {
             Modules.addOpens(targetModule, packageName, accessingModule);
         }
     }

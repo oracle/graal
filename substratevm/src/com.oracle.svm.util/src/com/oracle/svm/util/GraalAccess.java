@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,6 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.graal.compiler.vmaccess.VMAccess.Builder;
 import jdk.vm.ci.code.TargetDescription;
@@ -200,7 +199,7 @@ public final class GraalAccess {
             case Class<?> clazz -> lookupType(clazz);
             case Method method -> lookupMethod(method);
             case Constructor<?> cons -> lookupMethod(cons);
-            case Package pkg -> new ResolvedJavaPackageImpl(pkg);
+            // case Package pkg -> new ResolvedJavaPackageImpl(pkg);
             case Field field -> lookupField(field);
             case RecordComponent rc -> lookupRecordComponent(rc);
             default -> throw new IllegalArgumentException(String.valueOf(element));
@@ -225,9 +224,5 @@ public final class GraalAccess {
 
     public static SnippetReflectionProvider getOriginalSnippetReflection() {
         return getOriginalProviders().getSnippetReflection();
-    }
-
-    public static ResolvedJavaModule lookupModule(Module module) {
-        return new ResolvedJavaModuleImpl(module);
     }
 }

@@ -360,6 +360,7 @@ suite = {
         ],
         "jdk.internal.vm.ci": [
           "jdk.vm.ci.meta",
+          "jdk.vm.ci.meta.annotation",
           "jdk.vm.ci.runtime",
           "jdk.vm.ci.code",
         ],
