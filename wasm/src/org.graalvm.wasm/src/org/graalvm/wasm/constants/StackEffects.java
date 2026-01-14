@@ -411,6 +411,7 @@ public final class StackEffects {
      */
     public static byte getAggregateOpStackEffect(int aggregateOpcode) {
         assert aggregateOpcode < 256;
+        assert aggregateOpStackEffects[aggregateOpcode] != UNREACHABLE;
         return aggregateOpStackEffects[aggregateOpcode];
     }
 
@@ -424,6 +425,7 @@ public final class StackEffects {
      */
     public static byte getMiscOpStackEffect(int miscOpcode) {
         assert miscOpcode < 256;
+        assert miscOpStackEffects[miscOpcode] != UNREACHABLE;
         return miscOpStackEffects[miscOpcode];
     }
 
@@ -437,6 +439,7 @@ public final class StackEffects {
      */
     public static byte getVectorOpStackEffect(int vectorOpcode) {
         assert vectorOpcode < 256;
+        assert vectorOpStackEffects[vectorOpcode] != UNREACHABLE;
         return vectorOpStackEffects[vectorOpcode];
     }
 }
