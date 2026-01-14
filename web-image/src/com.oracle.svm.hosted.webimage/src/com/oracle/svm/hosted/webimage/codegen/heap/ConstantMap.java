@@ -129,7 +129,7 @@ public class ConstantMap {
      * {@link ObjectType}.
      */
     public void processInternedStrings() {
-        HostedMetaAccess metaAccess = (HostedMetaAccess) providers.getMetaAccess();
+        HostedMetaAccess metaAccess = providers.getMetaAccess();
         HostedField internedStringsField = metaAccess.optionalLookupJavaField(StringInternSupport.getInternedStringsField());
         boolean usesInternedStrings = internedStringsField != null && internedStringsField.isReachable();
         JavaConstant imageInternedStringsConstant = providers.getSnippetReflection().forObject(StringInternSupport.getImageInternedStrings());

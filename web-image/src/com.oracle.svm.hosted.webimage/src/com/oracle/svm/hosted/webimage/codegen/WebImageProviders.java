@@ -26,7 +26,10 @@ package com.oracle.svm.hosted.webimage.codegen;
 
 import java.io.PrintStream;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.Labeler;
@@ -47,6 +50,10 @@ public abstract class WebImageProviders extends CoreProvidersDelegate {
         this.out = out;
         this.debug = debug;
         this.labeler = getLabelInjector();
+    }
+
+    public static WebImageProviders singleton() {
+        return ImageSingletons.lookup(WebImageProviders.class);
     }
 
     public PrintStream stdout() {
@@ -85,5 +92,10 @@ public abstract class WebImageProviders extends CoreProvidersDelegate {
             }
         }
         throw VMError.shouldNotReachHere("method not found " + name);
+    }
+
+    @Override
+    public HostedMetaAccess getMetaAccess() {
+        return (HostedMetaAccess) super.getMetaAccess();
     }
 }

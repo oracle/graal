@@ -140,19 +140,18 @@ public class ClassMetadataLowerer {
         // Maps field offsets to field names
         HashMap<Integer, String> fieldMap = new HashMap<>();
 
-        for (HostedField f : t.getInstanceFields(true)) {
-            if (JSObject.class.isAssignableFrom(t.getJavaClass())) {
-                continue;
+        if (!tools.getProviders().getMetaAccess().lookupJavaType(JSObject.class).isAssignableFrom(t)) {
+            for (HostedField f : t.getInstanceFields(true)) {
+
+                int offset = getFieldOffset(f);
+
+                if (offset < 0) {
+                    continue;
+                }
+
+                String fieldName = tools.getJSProviders().typeControl().requestFieldName(f);
+                fieldMap.put(offset, fieldName);
             }
-
-            int offset = getFieldOffset(f);
-
-            if (offset < 0) {
-                continue;
-            }
-
-            String fieldName = tools.getJSProviders().typeControl().requestFieldName(f);
-            fieldMap.put(offset, fieldName);
         }
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();

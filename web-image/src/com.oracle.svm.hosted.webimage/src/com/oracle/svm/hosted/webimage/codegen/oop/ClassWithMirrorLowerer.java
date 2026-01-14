@@ -40,6 +40,7 @@ import org.graalvm.webimage.api.JSObject;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
@@ -52,15 +53,17 @@ import com.oracle.svm.hosted.webimage.snippets.JSSnippet;
 import com.oracle.svm.hosted.webimage.snippets.JSSnippets;
 import com.oracle.svm.hosted.webimage.util.metrics.MethodMetricsCollector;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
@@ -201,8 +204,9 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
      * Accesses to those fields must be intercepted. The fields also do not appear in the Java
      * object.
      */
-    public static boolean isFieldRepresentedInJavaScript(ResolvedJavaField field) {
-        return !field.isStatic() && isJSObjectSubtype(OriginalClassProvider.getJavaClass(field.getDeclaringClass()));
+    public static boolean isFieldRepresentedInJavaScript(MetaAccessProvider metaAccess, ResolvedJavaField field) {
+        ResolvedJavaType jsObjectType = metaAccess.lookupJavaType(JSObject.class);
+        return !field.isStatic() && jsObjectType.isAssignableFrom(field.getDeclaringClass());
     }
 
     /**
@@ -217,15 +221,11 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
         return type != null && (AnnotationUtil.isAnnotationPresent(type, JS.Import.class) || isSubclassOfImport(type.getSuperclass()));
     }
 
-    public static boolean isJSObjectSubtype(Class<?> cls) {
-        return JSObject.class.isAssignableFrom(cls);
-    }
-
-    public static List<HostedField> getOwnFieldOnJSSide(HostedType type) {
+    public static List<HostedField> getOwnFieldOnJSSide(HostedMetaAccess metaAccess, HostedType type) {
         List<HostedField> fields = new ArrayList<>();
 
         for (HostedField instanceField : type.getInstanceFields(false)) {
-            if (isFieldRepresentedInJavaScript(instanceField)) {
+            if (isFieldRepresentedInJavaScript(metaAccess, instanceField)) {
                 fields.add(instanceField);
             }
         }
@@ -256,7 +256,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
 
             if (needExternDeclaration()) {
                 // We need to mark the fields in the externs file.
-                for (HostedField field : getOwnFieldOnJSSide(type)) {
+                for (HostedField field : getOwnFieldOnJSSide(codeGenTool.getProviders().getMetaAccess(), type)) {
                     externClassDescriptor.addProperty(field.getName());
                 }
             }
@@ -299,12 +299,10 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
     }
 
     private void genJavaScriptExportMirrorClassDefinition() {
-        Class<?> javaClass = type.getJavaClass();
-        String className = javaClass.getName();
-        String packageName = javaClass.getPackage().getName();
-        if (packageName.length() > 0) {
-            className = className.substring(packageName.length() + 1);
-        }
+        String fullName = JVMCIReflectionUtil.getTypeName(type);
+        // strip the package name
+        String className = fullName.substring(fullName.lastIndexOf('.') + 1);
+        String packageName = JVMCIReflectionUtil.getPackageName(type);
         String hub = null;
         if (!((ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class)).maybeInitializeAtBuildTime(type)) {
             hub = codeGenTool.getJSProviders().typeControl().requestHubName(type);
@@ -330,7 +328,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
         }
 
         // Initialize properties.
-        for (HostedField field : getOwnFieldOnJSSide(type)) {
+        for (HostedField field : getOwnFieldOnJSSide(tool.getProviders().getMetaAccess(), type)) {
             tool.genResolvedVarDeclThisPrefix(field.getName());
             genDefaultValue(tool, buffer, field);
             tool.genResolvedVarDeclPostfix(null);

@@ -43,7 +43,7 @@ import com.oracle.svm.hosted.webimage.codegen.oop.ClassWithMirrorLowerer;
 import com.oracle.svm.hosted.webimage.js.JSObjectAccessMethod;
 import com.oracle.svm.hosted.webimage.js.JSObjectAccessMethodSupport;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.api.Nothing;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 
@@ -73,6 +73,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class JSBodyFeature implements InternalFeature {
     @Override
     public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        ResolvedJavaType jsObjectType = providers.getMetaAccess().lookupJavaType(JSObject.class);
         plugins.appendNodePlugin(new NodePlugin() {
             @Override
             public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
@@ -84,7 +85,7 @@ public final class JSBodyFeature implements InternalFeature {
 
             @Override
             public boolean handleLoadField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field) {
-                if (ClassWithMirrorLowerer.isFieldRepresentedInJavaScript(field)) {
+                if (ClassWithMirrorLowerer.isFieldRepresentedInJavaScript(b.getMetaAccess(), field)) {
                     genJSObjectFieldAccess(b, object, field, null);
                     return true;
                 }
@@ -93,7 +94,7 @@ public final class JSBodyFeature implements InternalFeature {
 
             @Override
             public boolean handleStoreField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field, ValueNode value) {
-                if (ClassWithMirrorLowerer.isFieldRepresentedInJavaScript(field)) {
+                if (ClassWithMirrorLowerer.isFieldRepresentedInJavaScript(b.getMetaAccess(), field)) {
                     genJSObjectFieldAccess(b, object, field, value);
                     return true;
                 }
@@ -148,7 +149,6 @@ public final class JSBodyFeature implements InternalFeature {
         plugins.prependInlineInvokePlugin(new InlineInvokePlugin() {
             @Override
             public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-                ResolvedJavaType jsObjectType = b.getMetaAccess().lookupJavaType(JSObject.class);
                 ResolvedJavaType declaringClass = method.getDeclaringClass();
                 // Constructors of JavaScript classes must never be inlined, because they contain
                 // initialization code related to mirror hookup.
@@ -160,7 +160,6 @@ public final class JSBodyFeature implements InternalFeature {
 
             @Override
             public void notifyNotInlined(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
-                ResolvedJavaType jsObjectType = b.getMetaAccess().lookupJavaType(JSObject.class);
                 ResolvedJavaType declaringClass = method.getDeclaringClass();
                 // Important: even though the node is not inlined during parsing, later inlining
                 // attempts must be prevented too.
@@ -216,7 +215,7 @@ public final class JSBodyFeature implements InternalFeature {
         // Add helper classes.
         bigbang.addRootClass(Nothing.class, true, false);
 
-        bigbang.addRootMethod(ReflectionUtil.lookupMethod(JSValue.class, "as", Class.class), true, "JSValue.as, registered in " + JSBodyFeature.class);
+        bigbang.addRootMethod((AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, jsValueType, "as", Class.class), true, "JSValue.as, registered in " + JSBodyFeature.class);
     }
 
     @Override
@@ -239,31 +238,32 @@ public final class JSBodyFeature implements InternalFeature {
      * discovered by the reachability analysis.
      */
     private static void findJSObjectSubtypes(FeatureImpl.DuringAnalysisAccessImpl access) {
+        AnalysisType jsObjectType = access.getMetaAccess().lookupJavaType(JSObject.class);
+
         boolean requireAnalysisIteration = false;
-        for (Class<?> jsObjectClass : access.findSubclasses(JSObject.class)) {
+        for (AnalysisType subType : access.findSubtypes(jsObjectType)) {
             // The methods of @JS.Import are intended to be called from Java. They can be discovered
             // by the analysis.
-            if (jsObjectClass.isAnnotationPresent(JS.Import.class)) {
+            if (AnnotationUtil.isAnnotationPresent(subType, JS.Import.class)) {
                 continue;
             }
 
-            AnalysisType type = access.getMetaAccess().lookupJavaType(jsObjectClass);
-            if (type.isReachable()) {
-                for (AnalysisMethod method : type.getDeclaredMethods(false)) {
+            if (subType.isReachable()) {
+                for (AnalysisMethod method : subType.getDeclaredMethods(false)) {
                     // TODO GR-33956: Only register public methods
                     if (!(method.isDirectRootMethod() || method.isVirtualRootMethod())) {
                         access.registerAsRoot(method, false, "JSObject subtype method, registered in " + JSBodyFeature.class);
                         requireAnalysisIteration = true;
                     }
                 }
-                for (AnalysisMethod method : type.getDeclaredConstructors(false)) {
+                for (AnalysisMethod method : subType.getDeclaredConstructors(false)) {
                     // TODO GR-33956: Only register public constructors
                     if (!(method.isDirectRootMethod() || method.isVirtualRootMethod())) {
                         access.registerAsRoot(method, true, "JSObject subtype constructor, registered in " + JSBodyFeature.class);
                         requireAnalysisIteration = true;
                     }
                 }
-                for (ResolvedJavaField javaField : type.getInstanceFields(false)) {
+                for (ResolvedJavaField javaField : subType.getInstanceFields(false)) {
                     AnalysisField field = (AnalysisField) javaField;
                     // TODO GR-33956: Only register public/protected fields
                     requireAnalysisIteration = requireAnalysisIteration | field.registerAsAccessed("used from web-image");

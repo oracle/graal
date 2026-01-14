@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.webimage.codegen;
 
 import static jdk.graal.compiler.core.common.calc.CanonicalCondition.BT;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -76,6 +75,7 @@ import com.oracle.svm.hosted.webimage.codegen.wrappers.JSEmitter;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.js.JSKeyword;
 import com.oracle.svm.hosted.webimage.snippets.JSSnippets;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.functionintrinsics.ImplicitExceptions;
 import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionDefinition;
@@ -528,7 +528,7 @@ public class WebImageJSNodeLowerer extends NodeLowerer {
 
     @Override
     protected void lower(BoxNode node) {
-        HostedMetaAccess metaAccess = (HostedMetaAccess) codeGenTool.getProviders().getMetaAccess();
+        HostedMetaAccess metaAccess = codeGenTool.getProviders().getMetaAccess();
 
         ResolvedVar resolvedVar = codeGenTool.getAllocatedVariable(node);
         if (resolvedVar == null) {
@@ -858,7 +858,7 @@ public class WebImageJSNodeLowerer extends NodeLowerer {
 
     @Override
     protected void lower(UnboxNode node) {
-        HostedMetaAccess metaAccess = (HostedMetaAccess) codeGenTool.getProviders().getMetaAccess();
+        HostedMetaAccess metaAccess = codeGenTool.getProviders().getMetaAccess();
         Class<?> boxing = node.getBoxingKind().toBoxedJavaClass();
         ResolvedJavaField valueField = AbstractBoxingNode.getValueField(metaAccess.lookupJavaType(boxing));
 
@@ -1040,12 +1040,9 @@ public class WebImageJSNodeLowerer extends NodeLowerer {
 
     @Override
     protected void lower(LoadArrayComponentHubNode node) {
-        try {
-            ResolvedJavaField f = codeGenTool.getProviders().getMetaAccess().lookupJavaField(DynamicHub.class.getDeclaredField("componentType"));
-            codeGenTool.genPropertyAccess(Emitter.of(node.getValue()), Emitter.of(f));
-        } catch (NoSuchFieldException t) {
-            throw GraalError.shouldNotReachHere(t);
-        }
+        HostedType dynamicHubType = codeGenTool.getProviders().getMetaAccess().lookupJavaType(DynamicHub.class);
+        ResolvedJavaField f = JVMCIReflectionUtil.getUniqueDeclaredField(dynamicHubType, "componentType");
+        codeGenTool.genPropertyAccess(Emitter.of(node.getValue()), Emitter.of(f));
     }
 
     @Override
@@ -1398,7 +1395,7 @@ public class WebImageJSNodeLowerer extends NodeLowerer {
      * @see WebImageImplicitExceptionsFeature#getSupportMethodName(BytecodeExceptionNode.BytecodeExceptionKind)
      */
     protected void lowerBytecodeException(BytecodeExceptionNode.BytecodeExceptionKind exceptionKind, List<ValueNode> args) {
-        HostedType exceptionsType = (HostedType) codeGenTool.getProviders().getMetaAccess().lookupJavaType(ImplicitExceptions.class);
+        HostedType exceptionsType = codeGenTool.getProviders().getMetaAccess().lookupJavaType(ImplicitExceptions.class);
         HostedMethod meth = WebImageProviders.findMethod(exceptionsType, WebImageImplicitExceptionsFeature.getSupportMethodName(exceptionKind));
         codeGenTool.genStaticCall(meth, Emitter.of(args));
     }
@@ -1561,14 +1558,6 @@ public class WebImageJSNodeLowerer extends NodeLowerer {
                         ((actualUsageCount(node) == 0) ||
                                         codeGenTool.declared(node) ||
                                         node instanceof EndNode);
-    }
-
-    public static Method getMethod(Class<?> clazz, String name, Class<?>... parameterTypes) {
-        try {
-            return clazz.getMethod(name, parameterTypes);
-        } catch (NoSuchMethodException e) {
-            throw JVMCIError.shouldNotReachHere(e);
-        }
     }
 
     public static void lowerConstant(PrimitiveConstant c, JSCodeGenTool jsLTools) {

@@ -74,7 +74,7 @@ public class JavaScriptBodyFeature implements Feature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         access.getHostVM().registerNeverInlineTrivialHandler(this::neverInlineTrivial);
-        access.registerSubstitutionProcessor(new JavaScriptBodySubstitutitionProcessor());
+        access.registerSubstitutionProcessor(new JavaScriptBodySubstitutionProcessor());
     }
 
     private boolean neverInlineTrivial(@SuppressWarnings("unused") AnalysisMethod caller, AnalysisMethod callee) {
@@ -90,7 +90,7 @@ public class JavaScriptBodyFeature implements Feature {
         JavaScriptBodyIntrinsification.findJSMethods(accessImpl);
     }
 
-    static class JavaScriptBodySubstitutitionProcessor extends SubstitutionProcessor {
+    static class JavaScriptBodySubstitutionProcessor extends SubstitutionProcessor {
 
         private final Map<ResolvedJavaMethod, CustomSubstitutionMethod> callWrappers = new ConcurrentHashMap<>();
 

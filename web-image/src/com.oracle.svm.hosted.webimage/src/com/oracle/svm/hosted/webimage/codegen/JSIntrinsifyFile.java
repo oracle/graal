@@ -33,10 +33,10 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
-import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.webimage.type.TypeControl;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -141,8 +141,7 @@ public class JSIntrinsifyFile {
                  * may disable it for their preceding type.
                  */
                 tjs.emit = true;
-                Class<?> c = ReflectionUtil.lookupClass(false, tjs.name, providers.getClassLoader());
-                tjs.resolvedType = (HostedType) providers.getMetaAccess().lookupJavaType(c);
+                tjs.resolvedType = providers.getMetaAccess().getUniverse().lookup(tjs.analysisType);
             } else if (js instanceof FieldIntrinsification fjs) {
                 HostedType type = fjs.precedingType.resolvedType;
 
@@ -408,6 +407,7 @@ public class JSIntrinsifyFile {
     }
 
     public static final class TypeIntrinsification extends JSIntrinsification {
+        public AnalysisType analysisType;
         public HostedType resolvedType;
     }
 

@@ -71,7 +71,7 @@ public abstract class WebImageCompileQueue extends CompileQueue {
     @Override
     protected boolean canBeUsedForInlining(Invoke invoke) {
         HostedMethod method = (HostedMethod) invoke.callTarget().targetMethod();
-        if (method.isConstructor() && JSObject.class.isAssignableFrom(method.getDeclaringClass().getJavaClass())) {
+        if (method.isConstructor() && providers.getMetaAccess().lookupJavaType(JSObject.class).isAssignableFrom(method.getDeclaringClass())) {
             // The constructor of a JavaScript class must be not be inlined after the graph is
             // parsed.
             return false;

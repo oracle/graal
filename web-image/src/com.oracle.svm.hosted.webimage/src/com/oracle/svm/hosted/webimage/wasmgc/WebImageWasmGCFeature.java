@@ -55,7 +55,6 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.webimage.WebImageFeature;
 import com.oracle.svm.hosted.webimage.codegen.WebImageNoRegisterConfig;
-import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
 import com.oracle.svm.hosted.webimage.snippets.WebImageIdentityHashCodeSnippets;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmAssembler;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCCloneSupport;
@@ -151,7 +150,7 @@ public class WebImageWasmGCFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        WasmGCAllocationSupport.preRegisterAllocationTemplates((WebImageWasmGCProviders) ImageSingletons.lookup(WebImageProviders.class));
+        WasmGCAllocationSupport.preRegisterAllocationTemplates(WebImageWasmGCProviders.singleton());
     }
 
     @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)

@@ -50,7 +50,7 @@ public class WebImageTruffleGraphBuilderPlugins {
     }
 
     public static void registerExactMathPlugins(InvocationPlugins plugins) {
-        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/ExactMath;"));
+        plugins.registerIntrinsificationPredicate(t -> t.toClassName().equals("com.oracle.truffle.api.ExactMath"));
         var r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.ExactMath").setAllowOverwrite(true);
 
         // TODO GR-65897 Remove this once we support unsigned float conversions in Wasm backend
