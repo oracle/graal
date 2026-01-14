@@ -1042,8 +1042,7 @@ public abstract class SymbolTable {
             default -> {
                 assert WasmType.isConcreteReferenceType(heapType);
                 yield switch (typeKind(heapType)) {
-                    case ARRAY_KIND -> WasmType.ARRAY_HEAPTYPE;
-                    case STRUCT_KIND -> WasmType.STRUCT_HEAPTYPE;
+                    case ARRAY_KIND, STRUCT_KIND -> WasmType.ANY_HEAPTYPE;
                     case FUNCTION_KIND -> WasmType.FUNC_HEAPTYPE;
                     default -> throw CompilerDirectives.shouldNotReachHere();
                 };
