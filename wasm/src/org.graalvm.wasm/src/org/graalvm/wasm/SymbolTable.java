@@ -583,7 +583,7 @@ public abstract class SymbolTable {
         typeKinds[typeIdx] = ARRAY_KIND;
 
         int size = 2;
-        ensureTypeCapacity(typeDataSize + size);
+        ensureTypeDataCapacity(typeDataSize + size);
         typeData[typeDataSize] = elemType;
         typeData[typeDataSize + 1] = mutability;
         typeDataSize += size;
@@ -596,7 +596,7 @@ public abstract class SymbolTable {
         typeKinds[typeIdx] = STRUCT_KIND;
 
         int size = 1 + 2 * fieldCount;
-        ensureTypeCapacity(typeDataSize + size);
+        ensureTypeDataCapacity(typeDataSize + size);
         typeData[typeDataSize] = fieldCount;
         typeDataSize += size;
     }
