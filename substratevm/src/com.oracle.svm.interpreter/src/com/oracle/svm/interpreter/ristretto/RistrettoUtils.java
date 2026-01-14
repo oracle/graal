@@ -211,6 +211,12 @@ public class RistrettoUtils {
         return installedCode;
     }
 
+    public static DebugContext.Description getDescription(SubstrateMethod method) {
+        final String id = "RistrettoJIT:" + method.format("%H.%n(%p)");
+        DebugContext.Description desc = new DebugContext.Description(method, id);
+        return desc;
+    }
+
     public static CompilationResult doCompile(DebugContext initialDebug, RuntimeConfiguration runtimeConfig, LIRSuites lirSuites, SubstrateMethod method) {
         SubstrateGraalUtils.updateGraalArchitectureWithHostCPUFeatures(runtimeConfig.lookupBackend(method));
 
@@ -239,9 +245,8 @@ public class RistrettoUtils {
 
             @Override
             protected CompilationResult performCompilation(DebugContext initialDebug) {
-                DebugContext.Description desc = new DebugContext.Description(method, "RistrettoJIT:" + method.format("%H.%n(%p)"));
                 try (DebugContext debug = new DebugContext.Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(runtimeConfig.getProviders().getSnippetReflection()))
-                                .description(desc)
+                                .description(getDescription(method))
                                 .build()) {
                     try (CompilationWatchDog _ = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, SubstrateGraalUtils.COMPILATION_WATCH_DOG_EVENT_HANDLER, null)) {
                         StructuredGraph graph;
