@@ -23,8 +23,13 @@
 package com.oracle.truffle.espresso.runtime;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.graalvm.nativeimage.PinnedObject;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -51,6 +56,8 @@ public class EspressoThreadLocalState {
     private boolean inTransformer;
 
     private WeakReference<Thread> hostThread;
+
+    private List<PinnedObject> pinnedObjects;
 
     @SuppressWarnings("unused")
     public EspressoThreadLocalState(EspressoContext context, Thread t) {
@@ -179,6 +186,28 @@ public class EspressoThreadLocalState {
 
     public boolean isInContinuation() {
         return inContinuation;
+    }
+
+    @TruffleBoundary
+    public void pushPinnedObject(PinnedObject pinnedObject) {
+        if (pinnedObjects == null) {
+            pinnedObjects = new ArrayList<>();
+        }
+        pinnedObjects.add(pinnedObject);
+    }
+
+    @TruffleBoundary
+    public PinnedObject popPinnedObject(long addressOfFirstElement) {
+        if (pinnedObjects == null) {
+            return null;
+        }
+        for (int i = pinnedObjects.size() - 1; i >= 0; i--) {
+            PinnedObject pinnedObject = pinnedObjects.get(i);
+            if (pinnedObject.addressOfArrayElement(0).rawValue() == addressOfFirstElement) {
+                return pinnedObjects.remove(i);
+            }
+        }
+        return null;
     }
 
     public final class ContinuationScope implements AutoCloseable {
