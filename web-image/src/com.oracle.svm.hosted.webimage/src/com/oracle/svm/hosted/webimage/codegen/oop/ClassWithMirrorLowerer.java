@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -86,8 +86,8 @@ import jdk.vm.ci.meta.Signature;
  * class.</li>
  * <li>Java mirror's Java constructor -- the Java constructor method, property of the generated
  * JavaScript class.</li>
- * <li>Handshake -- setting the {@code javaNative} property on the JS mirror and associating the
- * Java mirror with the JS mirror (see {@code conversion.setJavaScriptNative}).</li>
+ * <li>Handshake -- associating the Java mirror with the JS mirror (see
+ * {@code conversion.setJavaScriptNative}).</li>
  * </ul>
  *
  * Objectives of this class:
@@ -157,8 +157,7 @@ import jdk.vm.ci.meta.Signature;
  * In the first case, the Java mirror is not yet associated with the JavaScript mirror. The
  * JavaScript mirror instance is therefore created (with the {@code skipJavaCtor} argument) and
  * associated with the Java mirror (see {@code conversion.setJavaScriptNative}). The super
- * constructor is then called. The {@link JSObject} constructor then completes the handshake: it
- * extracts the JavaScript mirror instance, and stores the {@code javaNative} property.
+ * constructor is then called.
  *
  * In the second and the third case, the JavaScript mirror instance exists and it is associated with
  * the Java mirror.
@@ -349,8 +348,6 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
         // Set the mirror fields.
         buffer.emitText("conversion.setJavaScriptNative(javaMirror, this);");
         buffer.emitNewLine();
-        buffer.emitText("this[SYM.javaNative] = javaMirror;");
-        buffer.emitNewLine();
         // Call Java mirror's Java constructor.
         // We use the ProxyHandler's overload resolution.
         buffer.emitConstDeclPrefix("handler");
@@ -358,7 +355,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
         buffer.emitText(codeGenTool.getJSProviders().typeControl().requestHubName(type));
         buffer.emitText(");");
         buffer.emitNewLine();
-        buffer.emitText("handler._getJavaConstructorMethod()(this, ...args);");
+        buffer.emitText("handler._getJavaConstructorMethod()(conversion.toProxy(javaMirror), ...args);");
         buffer.emitNewLine();
 
         // In imported classes, the "this" created by "new" is replaced with the imported instance,
@@ -404,6 +401,8 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
     }
 
     private void genBridgeMethod(CodeBuffer buffer, String name, boolean isStatic) {
+        String hubName = codeGenTool.getJSProviders().typeControl().requestHubName(type);
+
         if (isStatic) {
             buffer.emitText("static ");
         }
@@ -413,17 +412,22 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
         buffer.emitKeyword(JSKeyword.RPAR);
         buffer.emitWhiteSpace();
         buffer.emitScopeBegin();
-        codeGenTool.genResolvedConstDeclPrefix("handler");
-        buffer.emitText("conversion.getOrCreateProxyHandler(");
-        buffer.emitText(codeGenTool.getJSProviders().typeControl().requestHubName(type));
-        buffer.emitText(");");
-        buffer.emitNewLine();
-        buffer.emitText("return handler.");
-        buffer.emitText(isStatic ? "_getStaticMethods()[" : "_getMethods()[");
-        buffer.emitStringLiteral(name);
-        buffer.emitText("].apply(");
-        buffer.emitText(isStatic ? "null, args);" : "this, args);");
-        buffer.emitNewLine();
+        if (isStatic) {
+            codeGenTool.genResolvedConstDeclPrefix("handler");
+            buffer.emitText("conversion.getOrCreateProxyHandler(");
+            buffer.emitText(hubName);
+            buffer.emitText(");");
+            buffer.emitNewLine();
+            buffer.emitText("return handler.");
+            buffer.emitText("_getStaticMethods()[");
+            buffer.emitStringLiteral(name);
+            buffer.emitText("].apply(null, args);");
+            buffer.emitNewLine();
+        } else {
+            buffer.emitText("return conversion.coerceToFacadeClass(this, conversion.toProxy(" + hubName + "))[");
+            buffer.emitStringLiteral(name);
+            buffer.emitText("](...args);");
+        }
         buffer.emitScopeEnd();
     }
 
@@ -519,8 +523,6 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
             // In both cases, just hand-shake at the end.
             codeBuffer.emitText("conversion.setJavaScriptNative(" + thisName + ", importedMirror);");
             codeBuffer.emitNewLine();
-            codeBuffer.emitText("conversion.extractJavaScriptNative(" + thisName + ")[SYM.javaNative] = " + thisName + ";");
-            codeBuffer.emitNewLine();
         } else {
             codeBuffer.emitIfHeaderLeft();
             codeBuffer.emitText("initialJavaScriptMirror === null");
@@ -529,8 +531,6 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
             // Case 1:
             // Create the JavaScript mirror, and store it.
             codeBuffer.emitText("conversion.setJavaScriptNative(" + thisName + ", new (" + internalMirrorClassName(codeGenTool, type) + ")(SYM.skipJavaCtor));");
-            codeBuffer.emitNewLine();
-            codeBuffer.emitText("conversion.extractJavaScriptNative(" + thisName + ")[SYM.javaNative] = " + thisName + ";");
             codeBuffer.emitNewLine();
 
             // Cases 2 and 3: nothing special to do.

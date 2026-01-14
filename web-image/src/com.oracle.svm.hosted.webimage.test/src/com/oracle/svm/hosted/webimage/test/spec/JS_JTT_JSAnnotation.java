@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import com.oracle.svm.hosted.webimage.test.util.JTTTestSuite;
 import com.oracle.svm.hosted.webimage.test.util.WebImageTestOptions;
 import com.oracle.svm.webimage.jtt.api.ArrayProxyTest;
 import com.oracle.svm.webimage.jtt.api.CoercionConversionTest;
+import com.oracle.svm.webimage.jtt.api.ExternalProxyConversionTest;
 import com.oracle.svm.webimage.jtt.api.HtmlApiExamplesTest;
 import com.oracle.svm.webimage.jtt.api.JSErrorsTest;
 import com.oracle.svm.webimage.jtt.api.JSNumberTest;
@@ -159,5 +160,10 @@ public class JS_JTT_JSAnnotation extends JTTTestSuite {
     @Test
     public void arrayProxyTest() {
         testFileAgainstNoBuild(ArrayProxyTest.class.getName());
+    }
+
+    @Test
+    public void externalProxyConversionTest() {
+        testFileAgainstNoBuild(ExternalProxyConversionTest.class.getName());
     }
 }

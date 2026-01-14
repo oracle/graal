@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,6 @@ import java.util.Map;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.webimage.api.JSValue;
 
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -140,9 +139,9 @@ public class JSCodeGenTool extends CodeGenTool {
         genComment(type.toJavaName(true), WebImageOptions.CommentVerbosity.MINIMAL);
         if (WebImageOptions.ClosureCompiler.getValue()) {
             MetaAccessProvider meta = getProviders().getMetaAccess();
-            if (meta.lookupJavaType(JSValue.class).isAssignableFrom(type) || meta.lookupJavaType(Class.class).equals(type)) {
-                // We assign the javaNative property to JSValue instances and to certain hub
-                // objects, so we need bracket access.
+            if (meta.lookupJavaType(Class.class).equals(type)) {
+                // We assign various hidden fields to Class instances (e.g. the symbol of the JS
+                // class or the corresponding boxed hub)
                 codeBuffer.emitText("/** @unrestricted */");
                 codeBuffer.emitNewLine();
             }
