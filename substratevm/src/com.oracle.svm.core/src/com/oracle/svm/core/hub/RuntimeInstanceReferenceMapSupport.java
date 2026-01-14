@@ -71,11 +71,16 @@ public class RuntimeInstanceReferenceMapSupport {
      * @return a compressed offset, relative to the heap base, that points to an
      *         {@link InstanceReferenceMap}.
      */
-    public int getOrCreateReferenceMap(DynamicHub superHub, int... declaredInstanceReferenceFieldsOffsets) {
+    public int getOrCreateReferenceMap(DynamicHub superHub, int monitorOffset, int... declaredInstanceReferenceFieldsOffsets) {
         /* Create a bitmap and mark where there are declared object fields. */
         SubstrateReferenceMap map = new SubstrateReferenceMap();
         for (int offset : declaredInstanceReferenceFieldsOffsets) {
             map.markReferenceAtOffset(offset, true);
+        }
+
+        assert monitorOffset >= 0 : "Monitor offset must not be negative " + monitorOffset;
+        if (monitorOffset > 0) {
+            map.markReferenceAtOffset(monitorOffset, true);
         }
 
         /* If there are no declared object fields, reuse the reference map from the super class. */
