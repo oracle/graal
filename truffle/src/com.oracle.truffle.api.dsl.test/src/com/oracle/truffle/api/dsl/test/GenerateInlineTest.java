@@ -55,6 +55,7 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -117,6 +118,7 @@ import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlinedByDef
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlinedByDefaultInCachedWithAlwaysInlineCachedNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlinedByDefaultInInlineOnlyUserNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlinedNodeInGuardNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlinedSharedNodeInCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseIntrospectionNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseMixedAndInlinedNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseNoStateNodeGen;
@@ -1494,11 +1496,11 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
         node.execute(1);
     }
 
-    public static class InlinedInGuard extends Node {
+    public static class CustomStatebit extends Node {
 
         final StateField field;
 
-        InlinedInGuard(InlineTarget target) {
+        CustomStatebit(InlineTarget target) {
             this.field = target.getState(0, 1);
         }
 
@@ -1507,9 +1509,9 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
             return true;
         }
 
-        public static InlinedInGuard inline(
+        public static CustomStatebit inline(
                         @RequiredField(value = StateField.class, bits = 1) InlineTarget target) {
-            return new InlinedInGuard(target);
+            return new CustomStatebit(target);
         }
 
     }
@@ -1521,15 +1523,11 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         abstract Object execute(Object arg);
 
-        @Specialization(guards = "guard.execute(this, arg)", limit = "1")
-        Object s0(int arg, @Cached InlinedInGuard guard) {
-            /*
-             * Inlined caches that are bound in guards must not be in the same state bitset as the
-             * dependent specialization bits. At the end of slow-path specialization we set the
-             * state bits of the specialization. If an inlined node in the guard changes the state
-             * bits we would override when we set the specialization bits.
-             */
-            assertEquals(1, guard.field.get(this));
+        @SuppressWarnings("truffle-guard")
+        @Specialization(guards = {"arg == 1", "guard.execute(this, arg)"}, limit = "1")
+        @TruffleBoundary
+        static Object s1(int arg, @Bind Node node, @Cached CustomStatebit guard) {
+            assertEquals(1, guard.field.get(node));
             return arg;
         }
     }
@@ -1538,6 +1536,68 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
     public void testInlinedNodeInGuard() {
         UseInlinedNodeInGuard node = adoptNode(UseInlinedNodeInGuardNodeGen.create()).get();
         node.execute(1);
+    }
+
+    @SuppressWarnings("unused")
+    @GenerateInline(false)
+    @Introspectable
+
+    public abstract static class UseInlinedSharedNodeInCache extends Node {
+
+        abstract Object execute(Object arg);
+
+        @Specialization(guards = {"arg == 0"})
+        @TruffleBoundary
+        static Object s0(int arg,
+                        @Bind Node node,
+                        @Shared @Cached CustomStatebit inlinedBit,
+                        @Cached("inlinedBit.execute($node, 1)") boolean result) {
+            /*
+             * Cached values that are bound in cached values must not be in the same state bitset as
+             * the dependent specialization bits. At the end of slow-path specialization we set the
+             * state bits of the specialization. If an inlined node used in the cache initializer
+             * changes the state bits it would otherwise override specialization state bits.
+             */
+            assertEquals(1, inlinedBit.field.get(node));
+
+            return arg;
+        }
+    }
+
+    @Test
+    public void testInlinedSharedNodeInCache() {
+        UseInlinedSharedNodeInCache node = adoptNode(UseInlinedSharedNodeInCacheNodeGen.create()).get();
+        node.execute(0);
+    }
+
+    @SuppressWarnings("unused")
+    @GenerateInline(false)
+    @Introspectable
+    public abstract static class UseInlinedExclusiveNodeInCache extends Node {
+
+        abstract Object execute(Object arg);
+
+        @Specialization(guards = {"arg == 0"})
+        @TruffleBoundary
+        static Object s0(int arg,
+                        @Bind Node node,
+                        @Cached CustomStatebit inlinedBit,
+                        @Cached("inlinedBit.execute($node, 1)") boolean result) {
+            /*
+             * Cached values that are bound in cached values must not be in the same state bitset as
+             * the dependent specialization bits. At the end of slow-path specialization we set the
+             * state bits of the specialization. If an inlined node used in the cache initializer
+             * changes the state bits it would otherwise override specialization state bits.
+             */
+            assertEquals(1, inlinedBit.field.get(node));
+            return arg;
+        }
+    }
+
+    @Test
+    public void testInlinedExclusiveNodeInCache() {
+        UseInlinedSharedNodeInCache node = adoptNode(UseInlinedSharedNodeInCacheNodeGen.create()).get();
+        node.execute(0);
     }
 
     @SuppressWarnings("unused")
