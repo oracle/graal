@@ -34,6 +34,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class RistrettoParser extends BytecodeParser {
 
@@ -46,6 +47,10 @@ public class RistrettoParser extends BytecodeParser {
     protected JavaType decorateCatchType(JavaType type) {
         if (type == null) {
             return null;
+        }
+        if (type instanceof UnresolvedJavaType) {
+            // Do not force resolving if the exception type is not loaded yet.
+            return type;
         }
         assert type instanceof InterpreterResolvedJavaType : Assertions.errorMessage("Must be an interpreter type ", type);
         return RistrettoType.create((InterpreterResolvedJavaType) type);
