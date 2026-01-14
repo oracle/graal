@@ -89,30 +89,43 @@ public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecu
         SubstrateJVM.getSamplerBufferPool().adjustBufferCount();
 
         for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
-            install(thread, createRecurringCallbackTimer());
+            RecurringCallbackTimer timer = createRecurringCallbackTimer();
+            if (timer != null) {
+                install(thread, timer);
+            }
         }
     }
 
     @Override
     protected void updateInterval() {
         assert VMOperation.isInProgressAtSafepoint();
+
         for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
             uninstall(thread);
-            install(thread, createRecurringCallbackTimer());
+
+            RecurringCallbackTimer timer = createRecurringCallbackTimer();
+            if (timer != null) {
+                install(thread, timer);
+            }
         }
     }
 
     @Override
     protected void stopSampling() {
         assert VMOperation.isInProgressAtSafepoint();
+
         for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
             uninstall(thread);
         }
     }
 
     private RecurringCallbackTimer createRecurringCallbackTimer() {
-        /* Allocates an object, so this can only be done in interruptible code. */
-        return RecurringCallbackSupport.createCallbackTimer(TimeUtils.millisToNanos(newIntervalMillis), CALLBACK);
+        assert VMOperation.isInProgressAtSafepoint();
+
+        if (newIntervalMillis > 0) {
+            return RecurringCallbackSupport.createCallbackTimer(TimeUtils.millisToNanos(newIntervalMillis), CALLBACK);
+        }
+        return null;
     }
 
     @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
@@ -144,14 +157,28 @@ public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecu
 
     @Override
     public void beforeThreadRun() {
-        RecurringCallbackTimer callback = createRecurringCallbackTimer();
+        RecurringCallbackTimer callback = RecurringCallbackSupport.createUninitializedCallbackTimer();
         beforeThreadRun0(callback);
     }
 
+    /**
+     * To prevent races, only {@link Uninterruptible} code may be executed from that point on.
+     * Otherwise, {@link #isSampling} or other sampling-related status values could change at any
+     * time.
+     * <p>
+     * Note that even though all executed code is uninterruptible, the value of
+     * {@link #newIntervalMillis} can change at any time. If the value changes after it was read
+     * below, we might temporarily register a recurring callback with an outdated interval. This is
+     * fine because the recurring callback will be replaced by the VM operation that is triggered by
+     * {@link AbstractJfrExecutionSampler#update}.
+     */
     @Uninterruptible(reason = "Prevent VM operations that modify the execution sampler or the recurring callbacks.")
     private void beforeThreadRun0(RecurringCallbackTimer callback) {
         if (isSampling()) {
             SubstrateJVM.getSamplerBufferPool().adjustBufferCount();
+
+            /* Initialize and install the callback now that we are in uninterruptible code. */
+            callback.initialize(TimeUtils.millisToNanos(newIntervalMillis), CALLBACK);
             install(CurrentIsolate.getCurrentThread(), callback);
         }
     }
