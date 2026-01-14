@@ -458,7 +458,8 @@ public final class JVMCIReflectionUtil {
      * @see ReflectionUtil#newInstance
      */
     public static JavaConstant newInstance(ResolvedJavaType type) {
-        return JVMCIReflectionUtilFallback.newInstance(type);
+        ResolvedJavaMethod ctor = getDeclaredConstructor(false, type);
+        return GraalAccess.getVMAccess().invoke(ctor, null);
     }
 
     /**
@@ -467,7 +468,9 @@ public final class JVMCIReflectionUtil {
      * @see java.lang.reflect.Array#newInstance(Class, int)
      */
     public static JavaConstant newArrayInstance(ResolvedJavaType componentType, int length) {
-        return JVMCIReflectionUtilFallback.newArrayInstance(componentType, length);
+        JavaConstant[] elements = new JavaConstant[length];
+        Arrays.fill(elements, JavaConstant.defaultForKind(componentType.getJavaKind()));
+        return GraalAccess.getVMAccess().asArrayConstant(componentType, elements);
     }
 
     /**
