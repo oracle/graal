@@ -25,6 +25,7 @@
 
 import os
 import pathlib
+import platform
 import re
 import shutil
 import tempfile
@@ -51,6 +52,7 @@ import mx_subst
 import mx_util
 import mx_substratevm_benchmark  # pylint: disable=unused-import
 import mx_substratevm_namespace  # pylint: disable=unused-import
+from mx import is_linux
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
 from mx_sdk_vm_impl import svm_experimental_options
@@ -116,8 +118,8 @@ def svm_suite():
 def svmbuild_dir(suite=None):
     if not suite:
         suite = svm_suite()
-    return join(suite.dir, 'svmbuild')
-
+    out_root = suite.get_output_root()
+    return join(out_root, 'svmbuild')
 
 def is_musl_supported():
     jdk = get_jdk()
@@ -431,6 +433,8 @@ def svm_gate_body(args, tasks):
         if t:
             if mx.is_windows():
                 mx.warn('layereddebuginfotest does not work on Windows')
+            elif mx.is_darwin() and platform.machine() == "arm64":
+                mx.warn('layered images do not currently work on ARM macOS')
             # Running debuginfotest with layers does not work for static builds
             elif '--static' not in args.extra_image_builder_arguments:
                 with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
@@ -456,7 +460,7 @@ def svm_gate_body(args, tasks):
 
     with Task('native unittests', tasks, tags=[GraalTags.native_unittests]) as t:
         if t:
-            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+            with native_image_context(IMAGE_ASSERTION_FLAGS):
                 native_unittests_task(args.extra_image_builder_arguments)
 
     with Task('conditional configuration tests', tasks, tags=[GraalTags.condconfig]) as t:
@@ -543,7 +547,13 @@ def svm_gate_body(args, tasks):
         if t:
             java_agent_test(args.extra_image_builder_arguments)
 
-def native_unittests_task(extra_build_args=None):
+def _compute_native_unittest_args(extra_build_args=None, include_svm_test_features=True):
+    """
+    Compute the arguments and environment necessary to run the native unit tests.
+    This logic is shared by the gate task and the mx native-unittest command.
+    """
+    additional_build_args = []
+    # Windows/JDK specific ignores that affect which tests run
     if mx.is_windows():
         # GR-24075
         mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ProcessPropertiesTest')
@@ -553,22 +563,27 @@ def native_unittests_task(extra_build_args=None):
     resources_from_dir = join(cp_entry_name, 'resourcesFromDir')
     simple_dir = join(cp_entry_name, 'simpleDir')
 
-    os.makedirs(cp_entry_name)
-    os.makedirs(resources_from_dir)
-    os.makedirs(simple_dir)
+    mx_util.ensure_dir_exists(resources_from_dir)
+    mx_util.ensure_dir_exists(simple_dir)
 
+    # Create/overwrite simple resource files (idempotent content write)
     for i in range(4):
-        with open(join(cp_entry_name, "resourcesFromDir", f'cond-resource{i}.txt'), 'w') as out:
-            out.write(f"Conditional file{i}" + '\n')
+        with open(join(resources_from_dir, f'cond-resource{i}.txt'), 'w') as out:
+            out.write(f"Conditional file{i}\n")
+        with open(join(simple_dir, f'simple-resource{i}.txt'), 'w') as out:
+            out.write(f"Simple file{i}\n")
 
-        with open(join(cp_entry_name, "simpleDir", f'simple-resource{i}.txt'), 'w') as out:
-            out.write(f"Simple file{i}" + '\n')
-
-    additional_build_args = svm_experimental_options([
-        '-H:AdditionalSecurityProviders=com.oracle.svm.test.services.SecurityServiceTest$NoOpProvider,sun.security.pkcs11.SunPKCS11',
-        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.services.SecurityServiceTest$JCACompliantNoOpService',
+    # Always add our extra classpath entry with resources
+    additional_build_args += svm_experimental_options([
         '-cp', cp_entry_name
     ])
+    # Only add SVM test-specific security provider/service overrides when running the SVM tests.
+    # Truffle/native unittests (and others) don't have com.oracle.svm.test on the classpath.
+    if include_svm_test_features:
+        additional_build_args += svm_experimental_options([
+            '-H:AdditionalSecurityProviders=com.oracle.svm.test.services.SecurityServiceTest$NoOpProvider,sun.security.pkcs11.SunPKCS11',
+            '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.services.SecurityServiceTest$JCACompliantNoOpService',
+        ])
     if extra_build_args is not None:
         additional_build_args += extra_build_args
 
@@ -576,8 +591,19 @@ def native_unittests_task(extra_build_args=None):
         if mx.is_windows():
             mx_unittest.add_global_ignore_glob('com.oracle.svm.test.SecurityServiceTest')
 
-    native_unittest(['--build-args', _native_unittest_features] + additional_build_args)
+    # Inject SVM test feature classes only if we are actually running SVM tests.
+    # Truffle unit tests (and other suites) do not have com.oracle.svm.test on the classpath,
+    # so adding these features would fail with "Feature class not found".
+    if include_svm_test_features:
+        return ['--build-args', _native_unittest_features] + additional_build_args
+    else:
+        return ['--build-args'] + additional_build_args
 
+# Do not inline this, it's used from the enterprise repository.
+def native_unittests_task(extra_build_args=None):
+    # native_unittests runs the SVM test suite => include SVM test features.
+    computed = _compute_native_unittest_args(extra_build_args, include_svm_test_features=True)
+    native_image_context_run(_native_unittest, computed)
 
 def conditional_config_task(native_image):
     agent_path = build_native_image_agent(native_image)
@@ -723,7 +749,14 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
 
         failures = []
         for classes in batched(test_classes, test_classes_per_run):
-            ret = mx.run([unittest_image] + run_args + [arg for c in classes for arg in ['--run-explicit', c]], nonZeroIsFatal=False)
+            # Run the tests with the working directory set to the junit test dir so that any
+            # artifacts created with default filenames (e.g. JFR dumps like svmjunit-pid-*.jfr)
+            # end up under the suite output (MX_ALT_OUTPUT_ROOT) rather than the source tree.
+            ret = mx.run(
+                [unittest_image] + run_args + [arg for c in classes for arg in ['--run-explicit', c]],
+                nonZeroIsFatal=False,
+                cwd=junit_test_dir
+            )
             if ret != 0:
                 failures.append((ret, classes))
         if len(failures) != 0:
@@ -2601,9 +2634,24 @@ def _debug_args():
 
 @mx.command(suite.name, 'native-unittest')
 def native_unittest(args):
-    """builds a native image of JUnit tests and runs them."""
-    native_image_context_run(_native_unittest, args)
-
+    """Builds a native image of JUnit tests and runs them."""
+    arg_list = list(args)
+    # Decide whether to include the SVM test feature injections based on the selectors provided.
+    # If no selectors were provided, native-unittest will default to SVM tests, so include features.
+    def _is_svm_selector(a: str) -> bool:
+        return a.startswith('com.oracle.svm.test')
+    include_svm_test_features = True if not arg_list else any(_is_svm_selector(a) for a in arg_list)
+    computed = _compute_native_unittest_args(include_svm_test_features=include_svm_test_features)
+    # Merge computed build args into an existing --build-args block if present, otherwise append.
+    if '--build-args' in arg_list:
+        idx = arg_list.index('--build-args')
+        # Insert everything after the token so argparse collects both user and computed values.
+        arg_list[idx+1:idx+1] = computed[1:]  # skip the '--build-args' token
+        merged_args = arg_list
+    else:
+        merged_args = arg_list + computed
+    # Important: keep user-provided selectors/args order intact.
+    native_image_context_run(_native_unittest, merged_args)
 
 @mx.command(suite, 'javac-image', '[image-options]')
 def javac_image(args):
@@ -2655,8 +2703,11 @@ def _get_libcontainer_files(skip_svm_specific=False):
 def check_libcontainer_annotations(args):
     """Verifies that files from libcontainer that are copied from hotspot have a @BasedOnJDKFile annotation in ContainerLibrary."""
 
-    # collect paths to check
+    if not is_linux():
+        mx.warn("Skipping check_libcontainer_annotations because this is a Linux specific task.")
+        return
 
+    # collect paths to check
     libcontainer_dir, paths = _get_libcontainer_files()
 
     java_project = mx.project("com.oracle.svm.core")
@@ -2720,6 +2771,9 @@ LIBCONTAINER_NAMESPACE = "svm_libcontainer_namespace"
 
 @mx.command(suite, LIBCONTAINER_NAMESPACE)
 def svm_libcontainer_namespace(args):
+    if not is_linux():
+        mx.warn("Skipping svm_libcontainer_namespace as it is a Linux specific task.")
+        return
     libcontainer_project = mx.project("com.oracle.svm.native.libcontainer")
     for src_dir in  libcontainer_project.source_dirs():
         mx.command_function("svm_namespace")(args + ["--directory", src_dir , "--namespace", "svm_container"])
