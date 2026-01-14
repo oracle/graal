@@ -69,8 +69,4 @@ public class TRegexLazyFindStartRootNode extends RegexBodyNode {
         return start;
     }
 
-    @Override
-    public String getEngineLabel() {
-        return "TRegex bck";
-    }
 }

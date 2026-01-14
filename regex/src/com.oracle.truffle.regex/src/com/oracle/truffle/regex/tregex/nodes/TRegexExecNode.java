@@ -263,11 +263,6 @@ public final class TRegexExecNode extends RegexExecNode implements RegexProfile.
         return TRegexExecutorEntryNode.create(language, executor);
     }
 
-    @Override
-    public String getEngineLabel() {
-        return "TRegex fwd";
-    }
-
     public abstract static class RunRegexSearchNode extends Node {
 
         protected abstract RegexResult run(VirtualFrame frame, TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo);

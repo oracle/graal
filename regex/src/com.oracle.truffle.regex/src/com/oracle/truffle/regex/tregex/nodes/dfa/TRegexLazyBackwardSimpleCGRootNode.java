@@ -65,8 +65,4 @@ public class TRegexLazyBackwardSimpleCGRootNode extends RegexBodyNode {
         return null;
     }
 
-    @Override
-    public String getEngineLabel() {
-        return "TRegex bck";
-    }
 }
