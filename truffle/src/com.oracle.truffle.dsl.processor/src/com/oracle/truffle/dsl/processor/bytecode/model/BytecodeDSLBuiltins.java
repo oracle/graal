@@ -42,6 +42,7 @@ package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import static com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.OPCODE_WIDTH;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.lang.model.type.TypeMirror;
@@ -297,32 +298,31 @@ public class BytecodeDSLBuiltins {
                         .setOperationBeginArguments(new OperationArgument(types.Source, Encoding.CONSTANT, "source", "the source object to associate with the enclosed operations")) //
                         .setDynamicOperands(transparentOperationChild());
 
-        String sourceDoc = """
-                        SourceSection associates the children in its {@code body} with the source section with the given character {@code index} and {@code length}.
-                        To specify an {@link Source#createUnavailableSection() unavailable source section}, provide {@code -1} for both arguments.
+        String sourceSectionDoc = """
+                        SourceSection associates the children in its {@code body} with the source section described by its attributes.
                         This operation must be (directly or indirectly) enclosed within a Source operation.
                         """;
 
+        List<OperationArgument> sourceSectionArguments = new ArrayList<>();
+        sourceSectionArguments.add(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "tag", "a tag indicating the kind of source section"));
+        for (int i = 0; i < SourceSectionKind.MAX_ATTRIBUTES; i++) {
+            sourceSectionArguments.add(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "attr" + (i + 1), "data attribute " + (i + 1) + " of the source section"));
+        }
+
         m.sourceSectionPrefixOperation = m.operation(OperationKind.SOURCE_SECTION, "SourceSectionPrefix",
-                        sourceDoc, "SourceSection") //
+                        sourceSectionDoc, "SourceSectionPrefix") //
                         .setTransparent(true) //
+                        .setPrivate() //
                         .setVariadic(true, 0) //
-                        .setOperationBeginArguments(
-                                        new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index",
-                                                        "the starting character index of the source section, or -1 if the section is unavailable"),
-                                        new OperationArgument(context.getType(int.class), Encoding.INTEGER, "length",
-                                                        "the length (in characters) of the source section, or -1 if the section is unavailable")) //
+                        .setOperationBeginArguments(sourceSectionArguments.toArray(OperationArgument[]::new)) //
                         .setDynamicOperands(transparentOperationChild());
 
         m.sourceSectionSuffixOperation = m.operation(OperationKind.SOURCE_SECTION, "SourceSectionSuffix",
-                        sourceDoc, "SourceSection") //
+                        sourceSectionDoc, "SourceSectionSuffix") //
                         .setTransparent(true) //
+                        .setPrivate() //
                         .setVariadic(true, 0) //
-                        .setOperationEndArguments(
-                                        new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index",
-                                                        "the starting character index of the source section, or -1 if the section is unavailable"),
-                                        new OperationArgument(context.getType(int.class), Encoding.INTEGER, "length",
-                                                        "the length (in characters) of the source section, or -1 if the section is unavailable")) //
+                        .setOperationEndArguments(sourceSectionArguments.toArray(OperationArgument[]::new)) //
                         .setDynamicOperands(transparentOperationChild());
 
         if (m.enableTagInstrumentation) {

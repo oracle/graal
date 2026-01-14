@@ -225,7 +225,10 @@ public abstract class AbstractBasicInterpreterTest {
                 buffer.writeByte(5);
                 buffer.writeUTF(source.getLanguage());
                 buffer.writeUTF(source.getName());
-                buffer.writeUTF(source.getCharacters().toString());
+                buffer.writeBoolean(source.hasCharacters());
+                if (source.hasCharacters()) {
+                    buffer.writeUTF(source.getCharacters().toString());
+                }
             } else {
                 throw new AssertionError("Serializer does not handle object " + object);
             }
@@ -257,8 +260,10 @@ public abstract class AbstractBasicInterpreterTest {
                 case 5 -> {
                     String language = buffer.readUTF();
                     String name = buffer.readUTF();
-                    String characters = buffer.readUTF();
-                    yield Source.newBuilder(language, characters, name).build();
+                    boolean hasCharacters = buffer.readBoolean();
+                    CharSequence characters = hasCharacters ? buffer.readUTF() : "";
+                    CharSequence content = hasCharacters ? characters : Source.CONTENT_NONE;
+                    yield Source.newBuilder(language, characters, name).content(content).build();
                 }
                 default -> throw new AssertionError("Deserializer does not handle code " + objectCode);
             };

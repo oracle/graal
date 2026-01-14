@@ -99,6 +99,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediateEncoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.SourceSectionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.generator.DSLExpressionGenerator;
@@ -154,6 +155,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     final TypeMirror abstractBuilderType;
 
     final BytecodeDSLModel model;
+    final SourceInfoTable sourceInfoTable;
 
     /**
      * We generate several CodeTypeElements to implement a Bytecode DSL interpreter. For each type,
@@ -179,10 +181,10 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
     // Implementations of public classes that Truffle interpreters interact with.
     final BytecodeRootNodesImplElement bytecodeRootNodesImpl = new BytecodeRootNodesImplElement(this);
-
-    // Helper classes that map instructions/operations/tags to constant integral values.
-    final InstructionsElement instructionsElement = new InstructionsElement(this);
     private final BytecodeDescriptorElement bytecodeDescriptorElement = new BytecodeDescriptorElement(this);
+
+    // Helper classes that map interpreter constructs to constants.
+    final InstructionsElement instructionsElement = new InstructionsElement(this);
     final OperationConstantsElement operationsElement = new OperationConstantsElement(this);
     final FrameTagConstantsElement frameTagsElement;
 
@@ -242,9 +244,6 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             continuationRootNodeImpl = null;
         }
 
-        // Define constants for accessing the frame.
-        this.addAll(createFrameLayoutConstants());
-
         if (model.usesBoxingElimination() || model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
             frameTagsElement = this.add(new FrameTagConstantsElement(this));
         } else {
@@ -266,9 +265,12 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
         this.add(bytecodeDescriptorElement);
 
+        this.sourceInfoTable = new SourceInfoTable();
+
         if (model.isBytecodeUpdatable()) {
             this.oldBytecodesBoxElement = this.add(new OldBytecodesBoxElement(this));
         }
+
         this.abstractBytecodeNode = this.add(new AbstractBytecodeNodeElement(this));
 
         if (model.enableTagInstrumentation) {
@@ -284,6 +286,11 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         }
         this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "buildIndex"));
         this.add(createBytecodeUpdater());
+
+        // Define constants for accessing the frame.
+        this.addAll(createFrameLayoutConstants());
+
+        sourceInfoTable.lazyInit();
 
         // Define the interpreter implementations.
         BytecodeNodeElement cachedBytecodeNode = this.add(new BytecodeNodeElement(this, InterpreterTier.CACHED));
@@ -2778,4 +2785,115 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     public static void storeBciInFrame(CodeTreeBuilder b, String frame, String bci) {
         b.statement("FRAMES.setInt(" + frame + ", " + BCI_INDEX + ", ", bci, ")");
     }
+
+    /**
+     * Declares constants and methods on the root node and provides helper methods for interacting
+     * with the source info table.
+     */
+    final class SourceInfoTable {
+        static final int NUM_ATTRIBUTES = Math.max(SourceSectionKind.MAX_ATTRIBUTES, 2);
+
+        private final List<CodeVariableElement> constants;
+        final CodeVariableElement unspecifiedAttribute;
+        final CodeVariableElement sourceOffset;
+        final CodeVariableElement startBciOffset;
+        final CodeVariableElement endBciOffset;
+        /*
+         * A table entry needs enough attributes to encode all source section kinds. For suffix
+         * sections, an entry needs enough attributes to encode a link in the patch list (node id +
+         * table index).
+         */
+        final List<CodeVariableElement> attributeOffsets;
+        final int entryLength;
+        final CodeVariableElement entryLengthVariable;
+
+        public final CodeExecutableElement createSourceSection;
+
+        SourceInfoTable() {
+            this.constants = new ArrayList<>();
+            // -1 is a valid value for some SourceSection constructors.
+            this.unspecifiedAttribute = addConstant("UNSPECIFIED_ATTR", -2);
+            int offset = 0;
+            this.sourceOffset = addConstant("OFFSET_SOURCE", offset++);
+            this.startBciOffset = addConstant("OFFSET_START_BCI", offset++);
+            this.endBciOffset = addConstant("OFFSET_END_BCI", offset++);
+            this.attributeOffsets = new ArrayList<>();
+            for (int i = 0; i < NUM_ATTRIBUTES; i++) {
+                attributeOffsets.add(addConstant("OFFSET_ATTR" + (i + 1), offset++));
+            }
+            this.entryLength = offset;
+            this.entryLengthVariable = addConstant("ENTRY_LENGTH", this.entryLength);
+
+            this.createSourceSection = BytecodeRootNodeElement.this.add(createCreateSourceSection());
+        }
+
+        private CodeVariableElement addConstant(String name, int value) {
+            CodeVariableElement result = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_" + name);
+            result.createInitBuilder().string(value);
+            constants.add(result);
+            return result;
+        }
+
+        private CodeExecutableElement createCreateSourceSection() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), types.SourceSection, "createSourceSection");
+            ex.addParameter(new CodeVariableElement(generic(List.class, types.Source), "sources"));
+            ex.addParameter(new CodeVariableElement(type(int[].class), "info"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "index"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(type(int.class), "sourceIndex", loadElement("info", "index", sourceOffset));
+            b.declaration(types.Source, "source", "sources.get(sourceIndex)");
+
+            b.declaration(type(int.class), "attr1", loadElement("info", "index", attributeOffsets.get(0)));
+            b.declaration(type(int.class), "attr2", loadElement("info", "index", attributeOffsets.get(1)));
+            b.declaration(type(int.class), "attr3", loadElement("info", "index", attributeOffsets.get(2)));
+            b.declaration(type(int.class), "attr4", loadElement("info", "index", attributeOffsets.get(3)));
+
+            /*
+             * The builder does not allow user-specified attributes to be all negative unless they
+             * are all -1, which encodes an unavailable section. Some attributes may not be
+             * specified (e.g., in createSourceSection(-1)), but we use -2 to indicate
+             * "unspecified", so it suffices to check for all negative values.
+             */
+            b.startIf().string("attr1 < 0 && attr2 < 0 && attr3 < 0 && attr4 < 0").end().startBlock();
+            b.startReturn().string("source.createUnavailableSection()").end();
+            b.end().startElseIf().string("attr4 != ").variable(unspecifiedAttribute).end().startBlock();
+            b.startReturn().string("source.createSection(attr1, attr2, attr3, attr4)").end();
+            b.end().startElseIf().string("attr3 != ").variable(unspecifiedAttribute).end().startBlock();
+            b.startReturn().string("source.createSection(attr1, attr2, attr3)").end();
+            b.end().startElseIf().string("attr2 != ").variable(unspecifiedAttribute).end().startBlock();
+            b.startReturn().string("source.createSection(attr1, attr2)").end();
+            b.end().startElseBlock();
+            b.startAssert().string("attr1 != ").variable(unspecifiedAttribute).end();
+            b.startReturn().string("source.createSection(attr1)").end();
+            b.end();
+
+            return ex;
+        }
+
+        void lazyInit() {
+            // Defer adding constants until lazyInit so constants are grouped with other int
+            // constants
+            BytecodeRootNodeElement.this.addAll(constants);
+        }
+
+        public static CodeTree loadElement(String sourceInfo, String index, CodeVariableElement offset) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+            b.string(sourceInfo).string("[").string(index).string(" + ").variable(offset).string("]");
+            return b.build();
+        }
+
+        public CodeTree loadStartBci(String sourceInfo, String index) {
+            return loadElement(sourceInfo, index, startBciOffset);
+        }
+
+        public CodeTree loadEndBci(String sourceInfo, String index) {
+            return loadElement(sourceInfo, index, endBciOffset);
+        }
+
+        public CodeTree loadSource(String sourceInfo, String index) {
+            return loadElement(sourceInfo, index, sourceOffset);
+        }
+    }
+
 }
