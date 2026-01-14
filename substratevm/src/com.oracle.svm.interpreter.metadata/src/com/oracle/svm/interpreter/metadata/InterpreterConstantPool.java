@@ -178,6 +178,9 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             if (entry instanceof JavaConstant || entry instanceof JavaType) {
                 return entry;
             }
+        } else if (tag == Tag.STRING && entry instanceof String) {
+            // Strings are directly cached as a java.lang.String
+            return entry;
         }
         throw VMError.shouldNotReachHereAtRuntime();
     }

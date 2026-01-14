@@ -27,6 +27,7 @@ package com.oracle.svm.interpreter.ristretto.meta;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.interpreter.Interpreter;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.CremaResolvedJavaFieldImpl;
@@ -34,6 +35,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -133,7 +135,18 @@ public final class RistrettoConstantPool implements ConstantPool {
 
     @Override
     public Object lookupConstant(int cpi, boolean resolve) {
-        return interpreterConstantPool.lookupConstant(cpi, resolve);
+        Object retVal = interpreterConstantPool.lookupConstant(cpi, resolve);
+        if (retVal instanceof JavaConstant) {
+            return retVal;
+        } else if (retVal instanceof String) {
+            /*
+             * Interpreter caches strings directly as a string.
+             */
+            JavaConstant c = RuntimeCompilationSupport.getRuntimeConfig().getProviders().getSnippetReflection().forObject(retVal);
+            GraalError.guarantee(c != null, "Must have constant for string " + retVal);
+            return c;
+        }
+        throw GraalError.shouldNotReachHere(String.format("Unknown value for constant lookup, cpi=%s resolve=%s this=%s", cpi, resolve, this));
     }
 
     @Override
