@@ -1238,7 +1238,7 @@ public final class NativeImageClassLoaderSupport {
                 type = imageClassLoader.typeForName(className);
             } catch (AssertionError error) {
                 VMError.shouldNotReachHere(error);
-            } catch (ClassNotFoundException | LinkageError t) {
+            } catch (ClassNotFoundException | SecurityException | LinkageError t) {
                 if (preserveReflectionMetadata) {
                     classNamesToPreserve.add(className);
                 }

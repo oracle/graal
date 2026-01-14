@@ -42,6 +42,7 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TimerTask;
+import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
@@ -108,6 +109,12 @@ public class NativeImageGeneratorRunner {
     public static void main(String[] args) {
         List<NativeImageGeneratorRunnerProvider> providers = new ArrayList<>();
         ServiceLoader.load(NativeImageGeneratorRunnerProvider.class).forEach(providers::add);
+
+        var ueh = ForkJoinPool.commonPool().getUncaughtExceptionHandler();
+        if (!(ueh instanceof CommonPoolUncaughtExceptionHandler)) {
+            throw VMError.shouldNotReachHere("Unable to install " + CommonPoolUncaughtExceptionHandler.class.getName() +
+                            " via java.util.concurrent.ForkJoinPool.commonPool.exceptionHandler system property");
+        }
 
         if (providers.isEmpty()) {
             new NativeImageGeneratorRunner().start(args);

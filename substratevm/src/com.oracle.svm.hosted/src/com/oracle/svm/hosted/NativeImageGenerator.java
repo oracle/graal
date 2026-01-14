@@ -54,7 +54,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
@@ -158,6 +157,7 @@ import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
@@ -1178,9 +1178,13 @@ public class NativeImageGenerator {
                  * thrown on the main thread.
                  */
                 reporter.printEpilog(Optional.of(imageName), Optional.of(NativeImageGenerator.this), loader, NativeImageGeneratorRunner.BuildOutcome.FAILED, Optional.of(throwable), options);
-                System.exit(ExitStatus.BUILDER_ERROR.getValue());
+                exitBuilderWithError();
             }
         });
+    }
+
+    public static void exitBuilderWithError() {
+        System.exit(ExitStatus.BUILDER_ERROR.getValue());
     }
 
     protected void registerEntryPointStubs(Map<Method, CEntryPointData> entryPoints) {
