@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.substitutions.libs;
+package com.oracle.truffle.espresso.libs;
 
-import com.oracle.truffle.api.dsl.Bind;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
-import com.oracle.truffle.espresso.substitutions.SubstitutionNode;
 
-@EspressoSubstitutions
-public final class Target_java_io_DefaultFileSystem {
+@EspressoSubstitutions(type = "Ljdk/net/ExtendedSocketOptions$PlatformSocketOptions;")
+public final class Target_jdk_net_ExtendedSocketOptions_PlatformSocketOptions {
+
     @Substitution(languageFilter = EspressoLibsFilter.class)
-    public abstract static class GetFileSystem extends SubstitutionNode {
-        abstract @JavaType(internalName = "Ljava/io/FileSystem;") StaticObject execute();
-
-        @Specialization
-        public static @JavaType(internalName = "Ljava/io/FileSystem;") StaticObject getFileSystem(
-                        @Bind("getContext()") EspressoContext ctx,
-                        @Cached("create(getContext().getTruffleIO().java_io_TruffleFileSystem_init.getCallTarget())") DirectCallNode tfsInit) {
-            StaticObject tfs = ctx.getAllocator().createNew(ctx.getTruffleIO().java_io_TruffleFileSystem);
-            tfsInit.call(tfs);
-            return tfs;
-        }
+    public static @JavaType(internalName = "Ljdk/net/ExtendedSocketOptions$PlatformSocketOptions;") StaticObject create(
+                    @Inject LibsMeta libsMeta) {
+        @JavaType(internalName = "Ljdk/net/ExtendedSocketOptions$PlatformSocketOptions;")
+        StaticObject nonPlatformSpecificOptions = libsMeta.jdk_net_ExtendedSocketOptions$PlatformSocketOptions.allocateInstance(libsMeta.getContext());
+        libsMeta.jdk_net_ExtendedSocketOptions$PlatformSocketOptions_init.invokeDirectSpecial(
+                        /* this */ nonPlatformSpecificOptions);
+        return nonPlatformSpecificOptions;
     }
 }

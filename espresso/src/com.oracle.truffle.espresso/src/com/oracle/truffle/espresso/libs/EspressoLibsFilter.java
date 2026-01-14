@@ -20,7 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-@SuppressPackageWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
-package com.oracle.truffle.espresso.substitutions.libs;
+package com.oracle.truffle.espresso.libs;
 
-import com.oracle.truffle.api.dsl.SuppressPackageWarnings;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.substitutions.LanguageFilter;
+
+public class EspressoLibsFilter implements LanguageFilter {
+    public static final LanguageFilter INSTANCE = new EspressoLibsFilter();
+
+    @Override
+    public boolean isValidFor(EspressoLanguage language) {
+        return language.useEspressoLibs();
+    }
+}
