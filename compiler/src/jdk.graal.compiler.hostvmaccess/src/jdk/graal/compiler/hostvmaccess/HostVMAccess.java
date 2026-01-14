@@ -27,6 +27,7 @@ package jdk.graal.compiler.hostvmaccess;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
 import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -41,8 +42,10 @@ import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.graal.compiler.vmaccess.ModuleSupport;
 import jdk.graal.compiler.vmaccess.VMAccess;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -160,6 +163,26 @@ final class HostVMAccess implements VMAccess {
             }
         }
         return snippetReflection.forObject(array);
+    }
+
+    @Override
+    public ResolvedJavaMethod asResolvedJavaMethod(Constant constant) {
+        SnippetReflectionProvider snippetReflection = providers.getSnippetReflection();
+        Executable executable = snippetReflection.asObject(Executable.class, (JavaConstant) constant);
+        if (executable != null) {
+            return providers.getMetaAccess().lookupJavaMethod(executable);
+        }
+        return null;
+    }
+
+    @Override
+    public ResolvedJavaField asResolvedJavaField(Constant constant) {
+        SnippetReflectionProvider snippetReflection = providers.getSnippetReflection();
+        Field field = snippetReflection.asObject(Field.class, (JavaConstant) constant);
+        if (field != null) {
+            return providers.getMetaAccess().lookupJavaField(field);
+        }
+        return null;
     }
 
     @Override

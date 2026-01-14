@@ -57,9 +57,11 @@ import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -251,6 +253,31 @@ final class EspressoExternalVMAccess implements VMAccess {
             }
         }
         return new EspressoExternalObjectConstant(this, array);
+    }
+
+    @Override
+    public ResolvedJavaMethod asResolvedJavaMethod(Constant constant) {
+        if (constant instanceof EspressoExternalObjectConstant espressoConstant) {
+            // j.l.r.Executable?
+            Value value = espressoConstant.getValue();
+            String name = value.getMetaObject().getMetaQualifiedName();
+            if ("java.lang.reflect.Method".equals(name) || "java.lang.reflect.Constructor".equals(name)) {
+                return EspressoExternalConstantReflectionProvider.methodAsJavaResolvedMethod(value, this);
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public ResolvedJavaField asResolvedJavaField(Constant constant) {
+        if (constant instanceof EspressoExternalObjectConstant espressoConstant) {
+            // j.l.r.Field?
+            Value value = espressoConstant.getValue();
+            if ("java.lang.reflect.Field".equals(value.getMetaObject().getMetaQualifiedName())) {
+                return EspressoExternalConstantReflectionProvider.fieldAsJavaResolvedField(value, this);
+            }
+        }
+        return null;
     }
 
     static RuntimeException throwHostException(PolyglotException e) {
