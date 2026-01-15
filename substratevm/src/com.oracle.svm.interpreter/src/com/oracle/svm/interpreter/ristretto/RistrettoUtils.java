@@ -252,6 +252,13 @@ public class RistrettoUtils {
                         StructuredGraph graph;
                         Suites suites;
                         PhaseSuite<HighTierContext> graphBuilderSuite;
+
+                        /*
+                         * When doing a parse we want special providers with ristretto JVMCI - if we
+                         * compile from image serialized graphs we can use normal svm runtime JVMCI.
+                         */
+                        boolean useRistrettoProviders;
+
                         if (method instanceof RistrettoMethod rMethod) {
                             final OptionValues options = debug.getOptions();
                             // final int entryBCI = 0;
@@ -275,7 +282,9 @@ public class RistrettoUtils {
                                 TestingBackdoor.installLastGraphThieves(suites, graph);
                             }
                             graphBuilderSuite = ristrettoGraphBuilderSuite;
+                            useRistrettoProviders = true;
                         } else {
+                            useRistrettoProviders = false;
                             graph = RuntimeCompilationSupport.decodeGraph(debug, null, compilationId, method, null);
                             suites = RuntimeCompilationSupport.getMatchingSuitesForGraph(graph);
                             // no parsing in non ristretto runtime compilation
@@ -290,11 +299,13 @@ public class RistrettoUtils {
                         SubstrateCompilationResult result = new SubstrateCompilationResult(graph.compilationId(), method.format("%H.%n(%p)"));
                         Providers providers = backend.getProviders();
 
-                        // use our ristretto meta access
-                        providers = providers.copyWith(new RistrettoMetaAccess(providers.getMetaAccess()));
+                        if (useRistrettoProviders) {
+                            // use our ristretto meta access
+                            providers = providers.copyWith(new RistrettoMetaAccess(providers.getMetaAccess()));
 
-                        // and the ristretto field provider
-                        providers = providers.copyWith(new RistrettoConstantFieldProvider(providers.getMetaAccess(), providers.getSnippetReflection()));
+                            // and the ristretto field provider
+                            providers = providers.copyWith(new RistrettoConstantFieldProvider(providers.getMetaAccess(), providers.getSnippetReflection()));
+                        }
 
                         GraalCompiler.compile(new GraalCompiler.Request<>(graph,
                                         method,
