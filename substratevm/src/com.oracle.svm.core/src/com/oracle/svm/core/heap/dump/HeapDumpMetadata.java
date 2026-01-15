@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.heap.dump;
 
+import static com.oracle.svm.core.heap.dump.HeapDumpWriter.HeapDumpException;
+import static com.oracle.svm.core.heap.dump.HeapDumpWriter.HeapDumpError.AllocationFailed;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -140,7 +143,7 @@ public class HeapDumpMetadata {
         return true;
     }
 
-    public boolean initialize() {
+    public void initialize() {
         assert classInfos.isNull() && fieldInfoTable.isNull() && fieldNameTable.isNull();
 
         HeapDumpEncodedData[] encodedDataArray = HeapDumpEncodedData.layeredSingletons();
@@ -176,19 +179,19 @@ public class HeapDumpMetadata {
         UnsignedWord classInfosSize = Word.unsigned(classInfoCount).multiply(SizeOf.get(ClassInfo.class));
         classInfos = NullableNativeMemory.calloc(classInfosSize, NmtCategory.HeapDump);
         if (classInfos.isNull()) {
-            return false;
+            throw HeapDumpException.throwSingleton(AllocationFailed);
         }
 
         UnsignedWord fieldStartsSize = Word.unsigned(totalFieldCount).multiply(SizeOf.get(FieldInfoPointer.class));
         fieldInfoTable = NullableNativeMemory.calloc(fieldStartsSize, NmtCategory.HeapDump);
         if (fieldInfoTable.isNull()) {
-            return false;
+            throw HeapDumpException.throwSingleton(AllocationFailed);
         }
 
         UnsignedWord fieldNameTableSize = Word.unsigned(fieldNameCount).multiply(SizeOf.get(FieldNamePointer.class));
         fieldNameTable = NullableNativeMemory.calloc(fieldNameTableSize, NmtCategory.HeapDump);
         if (fieldNameTable.isNull()) {
-            return false;
+            throw HeapDumpException.throwSingleton(AllocationFailed);
         }
 
         /*
@@ -270,7 +273,6 @@ public class HeapDumpMetadata {
                 computeInstanceFieldsDumpSize(classInfo);
             }
         }
-        return true;
     }
 
     /**
