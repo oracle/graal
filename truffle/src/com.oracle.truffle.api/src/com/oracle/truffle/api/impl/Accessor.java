@@ -848,11 +848,11 @@ public abstract class Accessor {
 
         public abstract int findGuestToHostFrame(Object polyglotEngineImpl, StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
 
+        public abstract int findHostToGuestFrame(Object polyglotEngineImpl, StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
+
         public abstract <T extends Throwable> T updateHostException(Throwable forException, T hostException);
 
         public abstract void materializePolyglotException(RuntimeException exception);
-
-        public abstract boolean isGuestToHostRootNode(Object polyglotEngineImpl, RootNode rootNode);
     }
 
     public abstract static class LanguageSupport extends Support {

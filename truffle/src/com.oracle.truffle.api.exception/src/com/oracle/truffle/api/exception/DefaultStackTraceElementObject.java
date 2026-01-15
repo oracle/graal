@@ -165,4 +165,9 @@ final class DefaultStackTraceElementObject implements TruffleObject {
     boolean isInternal() {
         return rootNode.isInternal();
     }
+
+    @Override
+    public String toString() {
+        return (String) toDisplayString(true);
+    }
 }

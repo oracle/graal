@@ -1050,6 +1050,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
 
+        public abstract int findNextHostToGuestStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
+
         public abstract Object migrateValue(Object hostContext, Object value, Object valueContext);
 
         public abstract void pin(Object receiver);
@@ -1059,8 +1061,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean allowsPublicAccess();
 
         public abstract boolean isHostStackTraceVisibleToGuest();
-
-        public abstract boolean isGuestToHostRootNode(Object rootNode);
     }
 
     public abstract static class AbstractValueDispatch extends AbstractDispatchClass {

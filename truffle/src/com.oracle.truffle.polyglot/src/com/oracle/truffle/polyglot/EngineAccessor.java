@@ -2397,6 +2397,15 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public int findHostToGuestFrame(Object polyglotEngineImpl, StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
+            PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngineImpl;
+            if (engine.host == null) {
+                return -1;
+            }
+            return engine.host.findNextHostToGuestStackTraceElement(firstElement, hostStack, nextElementIndex);
+        }
+
+        @Override
         public <T extends Throwable> T updateHostException(Throwable forException, T hostException) {
             return PolyglotImpl.findInstance().getRootImpl().mergeHostStackTrace(forException, hostException);
         }
@@ -2405,12 +2414,6 @@ final class EngineAccessor extends Accessor {
         public void materializePolyglotException(RuntimeException polyglotException) {
             PolyglotExceptionImpl impl = (PolyglotExceptionImpl) PolyglotImpl.findInstance().getAPIAccess().getPolyglotExceptionReceiver(polyglotException);
             impl.materialize();
-        }
-
-        @Override
-        public boolean isGuestToHostRootNode(Object polyglotEngineImpl, RootNode rootNode) {
-            PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngineImpl;
-            return engine.host != null && engine.host.isGuestToHostRootNode(rootNode);
         }
     }
 

@@ -89,7 +89,8 @@ public final class TruffleStackTrace extends Exception {
     private final int lazyFrames;
 
     // contains host exception frames
-    private MaterializedHostException materializedHostException;
+    private Throwable materializedHostException;
+    private boolean originatedInHostLanguage;
 
     private TruffleStackTrace(List<TruffleStackTraceElement> frames, int lazyFrames) {
         this.frames = frames;
@@ -107,15 +108,16 @@ public final class TruffleStackTrace extends Exception {
     private void materializeHostException(Throwable throwable) {
         if (this.materializedHostException == null) {
             Throwable base = null;
-            boolean originatedInHostLanguage = true;
+            boolean fromHostLanguage = true;
             if (LanguageAccessor.ENGINE.isHostException(throwable)) {
                 base = LanguageAccessor.ENGINE.asHostException(throwable);
             }
             if (base == null) {
                 base = new Exception();
-                originatedInHostLanguage = false;
+                fromHostLanguage = false;
             }
-            this.materializedHostException = new MaterializedHostException(LanguageAccessor.ENGINE.updateHostException(throwable, base), originatedInHostLanguage);
+            this.materializedHostException = LanguageAccessor.ENGINE.updateHostException(throwable, base);
+            this.originatedInHostLanguage = fromHostLanguage;
         }
     }
 
@@ -129,10 +131,12 @@ public final class TruffleStackTrace extends Exception {
     }
 
     StackTraceElement[] getInternalStackTrace() {
-        MaterializedHostException hostException = this.materializedHostException;
-        Throwable exception = hostException != null ? hostException.exception : this;
-        StackTraceElement[] hostFrames = exception.getStackTrace();
-        if (lazyFrames == 0 || (hostException != null && hostException.originatedInHostLanguage)) {
+        Throwable hostException = this.materializedHostException;
+        if (hostException == null) {
+            hostException = this;
+        }
+        StackTraceElement[] hostFrames = hostException.getStackTrace();
+        if (lazyFrames == 0 || originatedInHostLanguage) {
             return hostFrames;
         } else {
             StackTraceElement[] extended = new StackTraceElement[hostFrames.length + lazyFrames];
@@ -460,8 +464,5 @@ public final class TruffleStackTrace extends Exception {
 
     private static Frame captureFrame(FrameInstance frame, RootNode rootNode) {
         return LanguageAccessor.NODES.isCaptureFramesForTrace(rootNode, frame.getCompilationTier() > 0) ? frame.getFrame(FrameAccess.READ_ONLY) : null;
-    }
-
-    private record MaterializedHostException(Throwable exception, boolean originatedInHostLanguage) {
     }
 }

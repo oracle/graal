@@ -140,4 +140,9 @@ final class HostStackTraceElementObject implements TruffleObject {
         }
 
     }
+
+    @Override
+    public String toString() {
+        return String.valueOf(stackTraceElement);
+    }
 }
