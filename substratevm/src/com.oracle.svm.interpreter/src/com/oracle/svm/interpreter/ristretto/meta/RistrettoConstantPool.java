@@ -136,7 +136,7 @@ public final class RistrettoConstantPool implements ConstantPool {
     @Override
     public Object lookupConstant(int cpi, boolean resolve) {
         Object retVal = interpreterConstantPool.lookupConstant(cpi, resolve);
-        if (retVal instanceof JavaConstant) {
+        if (retVal instanceof JavaConstant || retVal instanceof JavaType) {
             return retVal;
         } else if (retVal instanceof String) {
             /*
