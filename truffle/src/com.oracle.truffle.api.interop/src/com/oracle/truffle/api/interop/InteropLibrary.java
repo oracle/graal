@@ -700,7 +700,7 @@ public abstract class InteropLibrary extends Library {
      * side effects. The default implementation returns {@code false}.
      *
      * @see #getBytecodeIndex(Object)
-     * @since 26.0
+     * @since 25.1
      */
     @Abstract(ifExported = {"getBytecodeIndex"})
     public boolean hasBytecodeIndex(Object receiver) {
@@ -713,7 +713,7 @@ public abstract class InteropLibrary extends Library {
      * bytecode index.
      *
      * @see #hasBytecodeIndex(Object)
-     * @since 26.0
+     * @since 25.1
      */
     @Abstract(ifExported = {"hasBytecodeIndex"})
     public int getBytecodeIndex(Object receiver) throws UnsupportedMessageException {
@@ -727,7 +727,7 @@ public abstract class InteropLibrary extends Library {
      * implementation returns {@code false}.
      *
      * @see #getLanguageId(Object)
-     * @since 26.0
+     * @since 25.1
      */
     public boolean isInternal(Object receiver) {
         return false;

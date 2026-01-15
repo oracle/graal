@@ -65,6 +65,17 @@ import com.oracle.truffle.host.HostObject.GuestToHostCalls;
 
 public class HostLanguageService extends AbstractHostLanguageService {
 
+    private static final String POLYGLOT_PACKAGE = "org.graalvm.polyglot.";
+    private static final String HOST_INTEROP_PACKAGE = "com.oracle.truffle.polyglot.";
+    private static final String[] JAVA_INTEROP_HOST_TO_GUEST = {
+                    HOST_INTEROP_PACKAGE + "PolyglotMap",
+                    HOST_INTEROP_PACKAGE + "PolyglotList",
+                    HOST_INTEROP_PACKAGE + "PolyglotFunction",
+                    HOST_INTEROP_PACKAGE + "PolyglotMapAndFunction",
+                    HOST_INTEROP_PACKAGE + "PolyglotFunctionProxyHandler",
+                    HOST_INTEROP_PACKAGE + "PolyglotObjectProxyHandler"
+    };
+
     final HostLanguage language;
     private final APIAccess api;
 
@@ -250,6 +261,19 @@ public class HostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
+    public int findNextHostToGuestStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
+        StackTraceElement element = firstElement;
+        int index = nextElementIndex;
+        if (!isHostToGuest(element)) {
+            return -1;
+        }
+        while (isHostToGuest(element) && index < hostStack.length) {
+            element = hostStack[index++];
+        }
+        return index - nextElementIndex - 1;
+    }
+
+    @Override
     public void pin(Object receiver) {
         HostMethodScope.pin(receiver);
     }
@@ -267,11 +291,6 @@ public class HostLanguageService extends AbstractHostLanguageService {
     @Override
     public boolean isHostStackTraceVisibleToGuest() {
         return api.allowsHostStackTrace(language.hostClassCache.hostAccess);
-    }
-
-    @Override
-    public boolean isGuestToHostRootNode(Object rootNode) {
-        return rootNode instanceof GuestToHostRootNode;
     }
 
     private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {
@@ -316,5 +335,18 @@ public class HostLanguageService extends AbstractHostLanguageService {
             default:
                 return false;
         }
+    }
+
+    private static boolean isHostToGuest(StackTraceElement element) {
+        if (element.getClassName().startsWith(POLYGLOT_PACKAGE) && element.getClassName().indexOf('.', POLYGLOT_PACKAGE.length()) < 0) {
+            return !element.getClassName().equals("org.graalvm.polyglot.Engine$APIAccessImpl");
+        } else if (element.getClassName().startsWith(HOST_INTEROP_PACKAGE)) {
+            for (String hostToGuestClassName : JAVA_INTEROP_HOST_TO_GUEST) {
+                if (element.getClassName().equals(hostToGuestClassName)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

@@ -337,7 +337,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * {@code throwable}. The returned object is suitable for use as the result of
      * {@link InteropLibrary#getExceptionStackTrace(Object)}.
      *
-     * @since 26.0
+     * @since 25.1
      */
     public static Object createDefaultExceptionStackTrace(Throwable throwable) {
         return MergedHostGuestIterator.getExceptionStackTrace(throwable, null, false, false);

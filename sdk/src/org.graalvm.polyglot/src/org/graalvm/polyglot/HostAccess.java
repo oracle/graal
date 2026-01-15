@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -341,7 +341,7 @@ public final class HostAccess {
      * This setting controls whether stack frames originating from the host are exposed to the guest
      * application when inspecting exception stack traces.
      *
-     * @since 26.0
+     * @since 25.1
      * @see Builder#allowHostStackFrames(HostStackFrames)
      */
     public enum HostStackFrames {
@@ -349,14 +349,14 @@ public final class HostAccess {
         /**
          * Host stack frames are visible to the guest application.
          *
-         * @since 26.0
+         * @since 25.1
          */
         ALL,
 
         /**
          * Host stack frames are hidden from the guest application.
          *
-         * @since 26.0
+         * @since 25.1
          */
         NONE
     }
@@ -1416,7 +1416,7 @@ public final class HostAccess {
          *
          * @param value the policy determining how host stack frames are exposed to the guest
          * @throws NullPointerException if {@code value} is {@code null}
-         * @since 26.0
+         * @since 25.1
          */
         public Builder allowHostStackFrames(HostStackFrames value) {
             Objects.requireNonNull(value);

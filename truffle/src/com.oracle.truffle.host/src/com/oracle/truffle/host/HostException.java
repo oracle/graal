@@ -79,8 +79,8 @@ final class HostException extends AbstractTruffleException {
         Throwable lazyStackTrace = HostAccessor.LANGUAGE.getOrCreateLazyStackTrace(original);
         if (!HostAccessor.LANGUAGE.isEmptyStackTrace(lazyStackTrace)) {
             // Share LazyStackTrace with the underlying host exception so that lazy stack trace
-            // elements
-            // appended to the HostException propagate to original exception and vice versa.
+            // elements appended to the HostException propagate to original exception and vice
+            // versa.
             HostAccessor.EXCEPTION.setLazyStackTrace(hostException, lazyStackTrace);
         }
         return hostException;

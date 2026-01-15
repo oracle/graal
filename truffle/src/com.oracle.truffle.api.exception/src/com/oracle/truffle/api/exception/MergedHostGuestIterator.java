@@ -59,17 +59,6 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
 
     private static final boolean TRACE_STACK_TRACE_WALKING = false;
 
-    private static final String POLYGLOT_PACKAGE = "org.graalvm.polyglot.";
-    private static final String HOST_INTEROP_PACKAGE = "com.oracle.truffle.polyglot.";
-    private static final String[] JAVA_INTEROP_HOST_TO_GUEST = {
-                    HOST_INTEROP_PACKAGE + "PolyglotMap",
-                    HOST_INTEROP_PACKAGE + "PolyglotList",
-                    HOST_INTEROP_PACKAGE + "PolyglotFunction",
-                    HOST_INTEROP_PACKAGE + "PolyglotMapAndFunction",
-                    HOST_INTEROP_PACKAGE + "PolyglotFunctionProxyHandler",
-                    HOST_INTEROP_PACKAGE + "PolyglotObjectProxyHandler"
-    };
-
     private final Object polyglotEngineImpl;
     private final Iterator<G> guestFrames;
     private final StackTraceElement[] hostStack;
@@ -95,7 +84,7 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
         boolean inHost = true;
         if (!forceInHost) {
             for (TruffleStackTraceElement element : stack) {
-                if (ExceptionAccessor.ENGINE.isGuestToHostRootNode(polyglotEngine, element.getTarget().getRootNode())) {
+                if (ExceptionAccessor.HOST.isGuestToHostRootNode(element.getTarget().getRootNode())) {
                     hasGuestToHostCalls = true;
                     break;
                 } else {
@@ -174,7 +163,7 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
             if (inHostLanguage) {
                 int guestToHost = findGuestToHostFrame(polyglotEngineImpl, element, hostStack, hostFrames.nextIndex());
                 if (guestToHost >= 0) {
-                    assert !isHostToGuest(element);
+                    assert findHostToGuestFrame(polyglotEngineImpl, element, hostStack, hostFrames.nextIndex()) < 0;
                     inHostLanguage = false;
 
                     for (int i = 0; i < guestToHost; i++) {
@@ -183,19 +172,13 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
                     }
                 }
             } else {
-                if (isHostToGuest(element)) {
+                int hostToGuest = findHostToGuestFrame(polyglotEngineImpl, element, hostStack, hostFrames.nextIndex());
+                if (hostToGuest >= 0) {
                     inHostLanguage = true;
 
-                    // skip extra host-to-guest frames
-                    while (hostFrames.hasNext()) {
-                        StackTraceElement next = hostFrames.next();
-                        traceStackTraceElement(next);
-                        if (isHostToGuest(next)) {
-                            element = next;
-                        } else {
-                            hostFrames.previous();
-                            break;
-                        }
+                    for (int i = 0; i < hostToGuest; i++) {
+                        element = hostFrames.next();
+                        traceStackTraceElement(element);
                     }
                 }
             }
@@ -246,22 +229,6 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
         return isLazyStackTraceElement(element) || ExceptionAccessor.RUNTIME.isGuestCallStackFrame(element);
     }
 
-    private static boolean isHostToGuest(StackTraceElement element) {
-        if (isLazyStackTraceElement(element)) {
-            return false;
-        }
-        if (element.getClassName().startsWith(POLYGLOT_PACKAGE) && element.getClassName().indexOf('.', POLYGLOT_PACKAGE.length()) < 0) {
-            return !element.getClassName().equals("org.graalvm.polyglot.Engine$APIAccessImpl");
-        } else if (element.getClassName().startsWith(HOST_INTEROP_PACKAGE)) {
-            for (String hostToGuestClassName : JAVA_INTEROP_HOST_TO_GUEST) {
-                if (element.getClassName().equals(hostToGuestClassName)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     // Return the number of frames with reflective calls to skip
     private static int findGuestToHostFrame(Object polyglotEngineImpl, StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
         if (isLazyStackTraceElement(firstElement) || polyglotEngineImpl == null) {
@@ -270,11 +237,19 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
         return ExceptionAccessor.ENGINE.findGuestToHostFrame(polyglotEngineImpl, firstElement, hostStack, nextElementIndex);
     }
 
+    private static int findHostToGuestFrame(Object polyglotEngineImpl, StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
+        if (isLazyStackTraceElement(firstElement) || polyglotEngineImpl == null) {
+            return -1;
+        }
+        return ExceptionAccessor.ENGINE.findHostToGuestFrame(polyglotEngineImpl, firstElement, hostStack, nextElementIndex);
+    }
+
     private void traceStackTraceElement(StackTraceElement element) {
         if (TRACE_STACK_TRACE_WALKING) {
+            boolean isHostToGuest = findHostToGuestFrame(polyglotEngineImpl, element, hostStack, hostFrames.nextIndex()) >= 0;
             PrintStream out = System.out;
             out.printf("host: %5s, guestToHost: %2s, hostToGuest: %5s, guestCall: %5s, -- %s %n", inHostLanguage,
-                            findGuestToHostFrame(polyglotEngineImpl, element, hostStack, hostFrames.nextIndex()), isHostToGuest(element),
+                            findGuestToHostFrame(polyglotEngineImpl, element, hostStack, hostFrames.nextIndex()), isHostToGuest,
                             isGuestCall(element), element);
         }
     }
@@ -297,7 +272,7 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
 
         ListIterator<TruffleStackTraceElement> guestStackIterator = guestStack.listIterator();
         boolean includeHostFrames = includeHostStack || (polyglotEngine != null && ExceptionAccessor.ENGINE.getHostService(polyglotEngine).isHostStackTraceVisibleToGuest());
-        int lastGuestToHostIndex = includeHostFrames && polyglotEngine != null ? indexOfLastGuestToHostFrame(polyglotEngine, guestStack) : -1;
+        int lastGuestToHostIndex = includeHostFrames && polyglotEngine != null ? indexOfLastGuestToHostFrame(guestStack) : -1;
 
         Iterator<Object> mergedElements = new MergedHostGuestIterator<>(polyglotEngine, hostStack, guestStackIterator, inHost, includeHostFrames,
                         new Function<StackTraceElement, Object>() {
@@ -324,7 +299,7 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
                             @Override
                             public Object apply(TruffleStackTraceElement element) {
                                 RootNode rootNode = element.getTarget().getRootNode();
-                                if (ExceptionAccessor.ENGINE.isGuestToHostRootNode(polyglotEngine, rootNode)) {
+                                if (ExceptionAccessor.HOST.isGuestToHostRootNode(rootNode)) {
                                     // omit guest to host frame (e.g. HostObject.doInvoke)
                                     return null;
                                 } else if (ExceptionAccessor.ENGINE.isHostToGuestRootNode(rootNode)) {
@@ -342,11 +317,11 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
         return elementsList.toArray();
     }
 
-    private static int indexOfLastGuestToHostFrame(Object polyglotEngine, List<TruffleStackTraceElement> guestStack) {
+    private static int indexOfLastGuestToHostFrame(List<TruffleStackTraceElement> guestStack) {
         for (var iterator = guestStack.listIterator(guestStack.size()); iterator.hasPrevious();) {
             int index = iterator.previousIndex();
             TruffleStackTraceElement element = iterator.previous();
-            if (ExceptionAccessor.ENGINE.isGuestToHostRootNode(polyglotEngine, element.getTarget().getRootNode())) {
+            if (ExceptionAccessor.HOST.isGuestToHostRootNode(element.getTarget().getRootNode())) {
                 return index;
             }
         }
