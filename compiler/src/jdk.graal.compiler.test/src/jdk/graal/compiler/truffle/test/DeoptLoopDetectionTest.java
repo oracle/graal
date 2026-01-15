@@ -49,8 +49,18 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.common.NullObject;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
@@ -453,6 +463,91 @@ public class DeoptLoopDetectionTest {
                 target.call();
             }
         }, 0, 1);
+    }
+
+    @GenerateInline(false)
+    abstract static class ParentNode extends Node {
+        abstract int execute(int v);
+
+        @Specialization
+        int doIt(int v,
+                        @Cached(inline = true) Level1Node level1Node) {
+            return level1Node.execute(this, v);
+        }
+    }
+
+    @GenerateInline
+    abstract static class Level1Node extends Node {
+        abstract int execute(Node node, int v);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "v == cachedValue", limit = "1")
+        static int doCached(Node node, int v,
+                        @Cached("v") int cachedValue,
+                        @Cached @Shared Level1ProcessValueNode processValueNode,
+                        @Cached("processValueNode.execute(node, v)") int cachedProcessedValue) {
+            return cachedProcessedValue;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(replaces = "doCached")
+        static int doUncached(Node node, int v,
+                        @Cached @Shared Level1ProcessValueNode processValueNode) {
+            return processValueNode.execute(node, v);
+        }
+    }
+
+    @GenerateInline
+    abstract static class Level1ProcessValueNode extends Node {
+        abstract int execute(Node node, int v);
+
+        @Specialization
+        static int processValue(Node node, int v,
+                        @Cached Level2Node level2Node) {
+            return level2Node.execute(node, v);
+        }
+    }
+
+    @GenerateCached
+    @GenerateInline(inlineByDefault = true)
+    @GenerateUncached
+    abstract static class Level2Node extends Node {
+
+        public abstract int execute(Node node, int v);
+
+        @Specialization(limit = "1")
+        static int doIt(int v,
+                        @CachedLibrary("v") InteropLibrary lib) {
+            try {
+                return lib.asInt(v);
+            } catch (UnsupportedMessageException e) {
+                throw new AssertionError(e);
+            }
+        }
+    }
+
+    @Test
+    public void testInlinedCachedNode() {
+        AssertionError expectedError = Assert.assertThrows(AssertionError.class, () -> assertDeoptLoop(new BaseRootNode() {
+
+            @Child ParentNode parentNode = DeoptLoopDetectionTestFactory.ParentNodeGen.create();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                int v = (int) frame.getArguments()[0];
+                return parentNode.execute(v);
+            }
+
+        }, "inlinedCachedNode", new Consumer<>() {
+
+            int v = 42;
+
+            @Override
+            public void accept(CallTarget target) {
+                target.call(Math.min(v++, 43));
+            }
+        }, 0, 1));
+        Assert.assertEquals("No deopt loop detected after " + MAX_EXECUTIONS + " executions", expectedError.getMessage());
     }
 
     private static final int MAX_EXECUTIONS = 1024;

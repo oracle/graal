@@ -1013,10 +1013,10 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, build_args=None):
         '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl.asm=ALL-UNNAMED',
         '--enable-native-access=org.graalvm.truffle',
     ] + (mx_sdk_vm_impl.svm_experimental_options(['-H:+DumpThreadStacksOnSignal']) if jdk.version < mx.VersionSpec("24") else
-         ['--enable-monitoring=threaddump'])
+         ['--enable-monitoring=threaddump']) + ['-Dpolyglot.engine.AllowExperimentalOptions=true']
     run_args = run_truffle_runtime_args + (['-Xss1m'] if is_libc_musl else []) + [
         mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>'),
-    ]
+    ] + ['-Dpolyglot.engine.AllowExperimentalOptions=true', '-Dpolyglot.engine.WarnVirtualThreadSupport=false']
     exclude_args = list(itertools.chain(*[('--exclude-class', item) for item in excluded_tests]))
     native_truffle_unittest(test_packages + ['--build-args'] + build_args + ['--run-args'] + run_args + exclude_args)
 
