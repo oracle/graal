@@ -101,6 +101,13 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     private int nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
     private final Map<FunctionType, CallTarget> interopCallAdapters = new ConcurrentHashMap<>();
 
+    /**
+     * Computes the equivalence class of a defined type. Every distinct defined type has a unique
+     * equivalence class and two defined types are equal iff their equivalence classes are equal.
+     * <p>
+     * These type equivalence classes are shared for all modules of all contexts in a given
+     * {@link WasmLanguage} instance.
+     */
     public int equivalenceClassFor(DefinedType type) {
         CompilerAsserts.neverPartOfCompilation();
         Integer equivalenceClass = equivalenceClasses.get(type);

@@ -91,6 +91,13 @@ public final class DefinedType implements HeapType {
         this.typeEquivalenceClass = typeEquivalenceClass;
     }
 
+    /**
+     * Gets the type equivalence class of this type. This can be used to implement more efficient
+     * equality checks on defined types, since {@code a.equals(b)} iff
+     * {@code a.typeEquivalenceClass() == b.typeEquivalenceClass()} (this works across different
+     * modules and contexts, as long as they share the same {@link org.graalvm.wasm.WasmLanguage}
+     * instance).
+     */
     public int typeEquivalenceClass() {
         return typeEquivalenceClass;
     }
