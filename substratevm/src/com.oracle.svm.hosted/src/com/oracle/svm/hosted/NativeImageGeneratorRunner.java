@@ -113,7 +113,7 @@ public class NativeImageGeneratorRunner {
         var ueh = ForkJoinPool.commonPool().getUncaughtExceptionHandler();
         if (!(ueh instanceof CommonPoolUncaughtExceptionHandler)) {
             throw VMError.shouldNotReachHere("Unable to install " + CommonPoolUncaughtExceptionHandler.class.getName() +
-                            " via java.util.concurrent.ForkJoinPool.commonPool.exceptionHandler system property");
+                            " via java.util.concurrent.ForkJoinPool.common.exceptionHandler system property");
         }
 
         if (providers.isEmpty()) {

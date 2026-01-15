@@ -117,7 +117,8 @@ public class NativeImage {
     private static final String DEFAULT_GENERATOR_CLASS_NAME = NativeImageGeneratorRunner.class.getName();
     private static final String DEFAULT_GENERATOR_MODULE_NAME = NativeImageGeneratorRunner.class.getModule().getName();
 
-    private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getCanonicalName();
+    private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getName();
+    private static final String CUSTOM_COMMON_FORK_JOIN_POOL_THREAD_FACTORY = NativeImageSystemClassLoader.NativeImageForkJoinWorkerThreadFactory.class.getName();
 
     static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
@@ -859,6 +860,7 @@ public class NativeImage {
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
         addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
+        addImageBuilderJavaArgs("-Djava.util.concurrent.ForkJoinPool.common.threadFactory=" + CUSTOM_COMMON_FORK_JOIN_POOL_THREAD_FACTORY);
 
         addImageBuilderJavaArgs("-D" + ImageInfo.PROPERTY_IMAGE_CODE_KEY + "=" + ImageInfo.PROPERTY_IMAGE_CODE_VALUE_BUILDTIME);
 
