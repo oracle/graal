@@ -24,15 +24,20 @@
  */
 package com.oracle.svm.core.jfr;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
+import com.oracle.svm.core.headers.LibC;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.collections.AbstractUninterruptibleHashtable;
 import com.oracle.svm.core.collections.UninterruptibleEntry;
 import com.oracle.svm.core.heap.Heap;
@@ -41,6 +46,7 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.ReplaceDotWithSlash;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -75,18 +81,38 @@ public class JfrSymbolRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
     public long getSymbolId(String imageHeapString, boolean previousEpoch, boolean replaceDotWithSlash) {
-        if (imageHeapString == null) {
+        if (imageHeapString == null || imageHeapString.isEmpty()) {
             return 0;
         }
 
         assert Heap.getHeap().isInImageHeap(imageHeapString);
+        int length = UninterruptibleUtils.String.modifiedUTF8Length(imageHeapString, false);
+        Pointer buffer = NullableNativeMemory.malloc(length, NmtCategory.JFR);
+        if (buffer.isNull()) {
+            return 0;
+        }
+        UninterruptibleUtils.String.toModifiedUTF8(imageHeapString, imageHeapString.length(), buffer, buffer.add(length), false, replaceDotWithSlash ? dotWithSlash : null);
 
+        return getSymbolId(buffer, Word.unsigned(length), previousEpoch);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static int getHash(Pointer buffer, UnsignedWord length) {
+        long sum = 0;
+        for (int i = 0; length.aboveThan(i); i++) {
+            sum += buffer.readByte(i);
+        }
+        return UninterruptibleUtils.Long.hashCode(sum);
+    }
+
+    @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
+    public long getSymbolId(Pointer buffer, UnsignedWord length, boolean previousEpoch) {
+
+        assert buffer.isNonNull();
         JfrSymbol symbol = StackValue.get(JfrSymbol.class);
-        symbol.setValue(imageHeapString);
-        symbol.setReplaceDotWithSlash(replaceDotWithSlash);
-
-        long rawPointerValue = Word.objectToUntrackedPointer(imageHeapString).rawValue();
-        symbol.setHash(UninterruptibleUtils.Long.hashCode(rawPointerValue));
+        symbol.setModifiedUTF8(buffer); // symbol allocated in native memory
+        symbol.setLength(length);
+        symbol.setHash(getHash(buffer, length));
 
         /*
          * Get an existing entry from the hashtable or insert a new entry. This needs to be atomic
@@ -98,11 +124,13 @@ public class JfrSymbolRepository implements JfrRepository {
             JfrSymbolEpochData epochData = getEpochData(previousEpoch);
             JfrSymbol existingEntry = (JfrSymbol) epochData.table.get(symbol);
             if (existingEntry.isNonNull()) {
+                NullableNativeMemory.free(symbol.getModifiedUTF8());
                 return existingEntry.getId();
             }
 
             JfrSymbol newEntry = (JfrSymbol) epochData.table.putNew(symbol);
             if (newEntry.isNull()) {
+                NullableNativeMemory.free(symbol.getModifiedUTF8());
                 return 0L;
             }
 
@@ -111,13 +139,13 @@ public class JfrSymbolRepository implements JfrRepository {
                 epochData.buffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
             }
 
-            CharReplacer charReplacer = newEntry.getReplaceDotWithSlash() ? dotWithSlash : null;
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initialize(data, epochData.buffer);
 
             JfrNativeEventWriter.putLong(data, newEntry.getId());
-            JfrNativeEventWriter.putString(data, newEntry.getValue(), charReplacer);
+            JfrNativeEventWriter.putString(data, newEntry.getModifiedUTF8(), (int) newEntry.getLength().rawValue());
             if (!JfrNativeEventWriter.commit(data)) {
+                NullableNativeMemory.free(symbol.getModifiedUTF8());
                 return 0L;
             }
 
@@ -163,19 +191,17 @@ public class JfrSymbolRepository implements JfrRepository {
         @RawField
         void setId(long value);
 
-        @PinnedObjectField
         @RawField
-        String getValue();
-
-        @PinnedObjectField
-        @RawField
-        void setValue(String value);
+        void setLength(UnsignedWord value);
 
         @RawField
-        boolean getReplaceDotWithSlash();
+        UnsignedWord getLength();
 
         @RawField
-        void setReplaceDotWithSlash(boolean value);
+        void setModifiedUTF8(PointerBase value);
+
+        @RawField
+        Pointer getModifiedUTF8();
     }
 
     private static class JfrSymbolHashtable extends AbstractUninterruptibleHashtable {
@@ -204,7 +230,7 @@ public class JfrSymbolRepository implements JfrRepository {
         protected boolean isEqual(UninterruptibleEntry v0, UninterruptibleEntry v1) {
             JfrSymbol a = (JfrSymbol) v0;
             JfrSymbol b = (JfrSymbol) v1;
-            return a.getValue() == b.getValue() && a.getReplaceDotWithSlash() == b.getReplaceDotWithSlash();
+            return a.getLength().equal(b.getLength()) && LibC.memcmp(a.getModifiedUTF8(), b.getModifiedUTF8(), a.getLength()) == 0;
         }
 
         @Override
@@ -215,6 +241,15 @@ public class JfrSymbolRepository implements JfrRepository {
                 result.setId(++nextId);
             }
             return result;
+        }
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        protected void free(UninterruptibleEntry entry) {
+            JfrSymbol symbol = (JfrSymbol) entry;
+            /* The base method will free only the entry itself, not actual utf8 data. */
+            NullableNativeMemory.free(symbol.getModifiedUTF8());
+            super.free(entry);
         }
     }
 

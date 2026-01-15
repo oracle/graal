@@ -45,7 +45,6 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrRepository;
 import com.oracle.svm.core.jfr.JfrType;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
 
@@ -85,7 +84,7 @@ public final class JfrOldObjectRepository implements JfrRepository {
             JfrNativeEventWriterDataAccess.initialize(data, epochData.buffer);
             JfrNativeEventWriter.putLong(data, id);
             JfrNativeEventWriter.putLong(data, pointer.rawValue());
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.getTypeRepository().getClassId(obj.getClass()));
+            JfrNativeEventWriter.putClass(data, obj.getClass());
             writeDescription(obj, data);
             JfrNativeEventWriter.putLong(data, 0L); // GC root
             if (!JfrNativeEventWriter.commit(data)) {

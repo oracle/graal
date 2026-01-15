@@ -28,15 +28,17 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 
-import java.nio.charset.StandardCharsets;
-
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
@@ -47,11 +49,13 @@ import com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
-import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.NativeVMOperation;
+import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.word.Word;
@@ -77,6 +81,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
     private static final short FLAG_COMPRESSED_INTS = 0b01;
     private static final short FLAG_CHUNK_FINAL = 0b10;
 
+    private final JfrChangeEpochOperation epochChangeOp;
     private final VMMutex lock;
     private final JfrGlobalMemory globalMemory;
     private final JfrMetadata metadata;
@@ -86,7 +91,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
 
     private long notificationThreshold;
 
-    private String filename;
+    private String fileToOpen;
     private RawFileDescriptor fd;
     private long chunkStartTicks;
     private long chunkStartNanos;
@@ -104,6 +109,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         this.globalMemory = globalMemory;
         this.metadata = new JfrMetadata(null);
         this.compressedInts = true;
+        this.epochChangeOp = new JfrChangeEpochOperation();
 
         /*
          * Repositories earlier in the write order may reference entries of repositories later in
@@ -143,25 +149,31 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
     }
 
     @Override
-    public void setFilename(String filename) {
+    public void setFilename(String fileToOpen) {
         assert lock.isOwner();
-        this.filename = filename;
+        this.fileToOpen = fileToOpen;
     }
 
     @Override
     public void maybeOpenFile() {
         assert lock.isOwner();
-        if (filename != null) {
-            openFile(filename);
+        assert !hasOpenFile();
+        if (fileToOpen != null) {
+            openFile(fileToOpen);
         }
     }
 
     @Override
     public void openFile(String outputFile) {
         assert lock.isOwner();
-        filename = outputFile;
-        fd = getFileSupport().create(filename, FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.READ_WRITE);
+        openFile(getFileSupport().create(outputFile, FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.READ_WRITE));
+    }
 
+    @Override
+    public void openFile(RawFileDescriptor file) {
+        assert lock.isOwner();
+        fileToOpen = null;
+        fd = file;
         chunkStartTicks = JfrTicks.elapsedTicks();
         chunkStartNanos = JfrTicks.currentTimeNanos();
         nextGeneration = 1;
@@ -170,7 +182,6 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         lastMetadataId = -1;
         metadataPosition = -1;
         lastCheckpointOffset = -1;
-
         writeFileHeader();
     }
 
@@ -222,8 +233,10 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
          * Switch to a new epoch. This is done at a safepoint to ensure that we end up with
          * consistent data, even if multiple threads have JFR events in progress.
          */
-        JfrChangeEpochOperation op = new JfrChangeEpochOperation();
-        op.enqueue();
+        int size = SizeOf.get(NativeVMOperationData.class);
+        NativeVMOperationData data = StackValue.get(size);
+        UnmanagedMemoryUtil.fill((Pointer) data, Word.unsigned(size), (byte) 0);
+        epochChangeOp.enqueue(data);
 
         /*
          * After changing the epoch, all subsequently triggered JFR events will be recorded into the
@@ -237,7 +250,6 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         patchFileHeader(false);
 
         getFileSupport().close(fd);
-        filename = null;
         fd = Word.nullPointer();
     }
 
@@ -355,8 +367,9 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
 
     private int writeSerializers() {
         JfrSerializer[] serializers = JfrSerializerSupport.get().getSerializers();
-        for (JfrSerializer serializer : serializers) {
-            serializer.write(this);
+        // noinspection ForLoopReplaceableByForEach: must be allocation free.
+        for (int i = 0; i < serializers.length; i++) {
+            serializers[i].write(this);
         }
         return serializers.length;
     }
@@ -524,10 +537,34 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         if (str.isEmpty()) {
             getFileSupport().writeByte(fd, StringEncoding.EMPTY_STRING.getValue());
         } else {
-            byte[] bytes = str.getBytes(StandardCharsets.UTF_8);
             getFileSupport().writeByte(fd, StringEncoding.UTF8_BYTE_ARRAY.getValue());
-            writeCompressedInt(bytes.length);
-            getFileSupport().write(fd, bytes);
+
+            int length = UninterruptibleUtils.String.modifiedUTF8Length(str, false);
+            writeCompressedInt(length);
+            int bufferSize = 64;
+            Pointer buffer = StackValue.get(bufferSize);
+            Pointer bufferEnd = buffer.add(bufferSize);
+            int charsWritten = 0;
+            UnsignedWord totalBytesWritten = Word.unsigned(0);
+            while (charsWritten < str.length()) {
+                // Fill up the buffer as much as possible
+                Pointer pos = buffer;
+                while (charsWritten < str.length()) {
+                    char ch = UninterruptibleUtils.String.charAt(str, charsWritten);
+                    int nextCharSize = UninterruptibleUtils.String.modifiedUTF8Length(ch);
+                    if (pos.add(nextCharSize).aboveThan(bufferEnd)) {
+                        // buffer is too full to add the next char
+                        break;
+                    }
+                    pos = UninterruptibleUtils.String.writeModifiedUTF8(pos, ch);
+                    charsWritten++;
+                }
+                // Write the contents of the buffer to disk
+                UnsignedWord bytesToDisk = pos.subtract(buffer);
+                getFileSupport().write(fd, buffer, bytesToDisk);
+                totalBytesWritten = totalBytesWritten.add(bytesToDisk);
+            }
+            assert totalBytesWritten.equal(length);
         }
     }
 
@@ -629,13 +666,14 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         }
     }
 
-    private class JfrChangeEpochOperation extends JavaVMOperation {
+    private class JfrChangeEpochOperation extends NativeVMOperation {
+        @Platforms(Platform.HOSTED_ONLY.class)
         protected JfrChangeEpochOperation() {
             super(VMOperationInfos.get(JfrChangeEpochOperation.class, "JFR change epoch", SystemEffect.SAFEPOINT));
         }
 
         @Override
-        protected void operate() {
+        protected void operate(NativeVMOperationData d) {
             changeEpoch();
         }
 

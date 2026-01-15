@@ -24,130 +24,232 @@
  */
 package com.oracle.svm.core.jfr;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import com.oracle.svm.core.c.struct.PinnedObjectField;
 
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.UnsignedWord;
+import jdk.graal.compiler.word.Word;
 
+import com.oracle.svm.core.collections.AbstractUninterruptibleHashtable;
+import com.oracle.svm.core.collections.UninterruptibleEntry;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
+import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
+import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 /**
- * Repository that collects and writes used classes, packages, modules, and classloaders.
+ * Repository that collects and writes used classes, packages, modules, and classloaders. There are
+ * three kinds of tables used by this class: {@code epochTypeData*}, {@code flushed*}, and
+ * {@link #typeInfo}. The {@code flushed*} tables record which classes have already been flushed to
+ * disk. The {@code epochTypeData*} tables hold classes that have yet to be flushed as well as
+ * classes that are already flushed (they are written by threads emitting events). The
+ * {@link #typeInfo} table is derived at flushpoints by using the {@code epochTypeData*} and
+ * {@code flushed*} tables to determine the set of classes that have yet to be flushed.
+ *
+ * Unlike other JFR repositories, there are no epoch data buffers that require lock protection.
+ * Similar to other constant repositories, writes/reads to the current {@code epochData} are allowed
+ * to race at flushpoints. There is no risk of separating events from constant data due to the write
+ * order (constants before events during emission, and events before constants during flush). The
+ * {@code epochData} tables are only cleared at rotation safepoints.
  */
 public class JfrTypeRepository implements JfrRepository {
-    private final EconomicSet<Class<?>> flushedClasses = EconomicSet.create();
-    private final Map<String, PackageInfo> flushedPackages = new HashMap<>();
-    private final Map<Module, Long> flushedModules = new HashMap<>();
-    private final Map<ClassLoader, Long> flushedClassLoaders = new HashMap<>();
+    private static final String BOOTSTRAP_NAME = "bootstrap";
+    // The following tables are only used by the flushing/rotating thread.
+    private final JfrClassInfoTable flushedClasses;
+    private final JfrPackageInfoTable flushedPackages;
+    private final JfrModuleInfoTable flushedModules;
+    private final JfrClassLoaderInfoTable flushedClassLoaders;
+    private final TypeInfo typeInfo;
+
+    /*
+     * epochTypeData tables are written by threads emitting events and read from the
+     * flushing/rotating thread. Their purpose is to lazily collect tagged JFR classes, which are
+     * later serialized during flush/rotation.
+     */
+    private final JfrClassInfoTable epochTypeData0;
+    private final JfrClassInfoTable epochTypeData1;
+
+    private final UninterruptibleUtils.CharReplacer dotWithSlash;
     private long currentPackageId = 0;
     private long currentModuleId = 0;
     private long currentClassLoaderId = 0;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrTypeRepository() {
+        flushedClasses = new JfrClassInfoTable();
+        flushedPackages = new JfrPackageInfoTable();
+        flushedModules = new JfrModuleInfoTable();
+        flushedClassLoaders = new JfrClassLoaderInfoTable();
+
+        typeInfo = new TypeInfo();
+        dotWithSlash = new ReplaceDotWithSlash();
+
+        epochTypeData0 = new JfrClassInfoTable();
+        epochTypeData1 = new JfrClassInfoTable();
     }
 
     public void teardown() {
         clearEpochData();
+        getEpochData(false).clear();
+        typeInfo.teardown();
+    }
+
+    @Uninterruptible(reason = "Result is only valid until epoch changes.")
+    private JfrClassInfoTable getEpochData(boolean previousEpoch) {
+        boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
+        return epoch ? epochTypeData0 : epochTypeData1;
     }
 
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getClassId(Class<?> clazz) {
+        JfrClassInfoTable classInfoTable = getEpochData(false);
+        ClassInfoRaw classInfoRaw = StackValue.get(ClassInfoRaw.class);
+        classInfoRaw.setId(JfrTraceId.getTraceId(clazz));
+        classInfoRaw.setHash(getHash(clazz.getName()));
+        classInfoRaw.setName(clazz.getName());
+        classInfoRaw.setInstance(clazz);
+        classInfoTable.putIfAbsent(classInfoRaw);
+
         return JfrTraceId.load(clazz);
     }
 
     @Override
     public int write(JfrChunkWriter writer, boolean flushpoint) {
-        TypeInfo typeInfo = collectTypeInfo(flushpoint);
-        int count = writeClasses(writer, typeInfo, flushpoint);
-        count += writePackages(writer, typeInfo, flushpoint);
-        count += writeModules(writer, typeInfo, flushpoint);
-        count += writeClassLoaders(writer, typeInfo, flushpoint);
-
+        typeInfo.reset();
+        collectTypeInfo(flushpoint);
+        int count = writeClasses(writer, flushpoint);
+        count += writePackages(writer, flushpoint);
+        count += writeModules(writer, flushpoint);
+        count += writeClassLoaders(writer, flushpoint);
         if (flushpoint) {
-            flushedClasses.addAll(typeInfo.classes);
+            flushedClasses.putAll(typeInfo.classes);
             flushedPackages.putAll(typeInfo.packages);
             flushedModules.putAll(typeInfo.modules);
             flushedClassLoaders.putAll(typeInfo.classLoaders);
         } else {
             clearEpochData();
         }
-
         return count;
     }
 
     /**
      * Visit all used classes, and collect their packages, modules, classloaders and possibly
      * referenced classes.
+     *
+     * This method does not need to be marked uninterruptible since the epoch cannot change while
+     * the chunkwriter lock is held.
      */
-    private TypeInfo collectTypeInfo(boolean flushpoint) {
-        TypeInfo typeInfo = new TypeInfo();
-        Heap.getHeap().visitLoadedClasses((clazz) -> {
-            if (flushpoint) {
-                if (JfrTraceId.isUsedCurrentEpoch(clazz)) {
-                    visitClass(typeInfo, clazz);
+    private void collectTypeInfo(boolean flushpoint) {
+        JfrClassInfoTable classInfoTable = getEpochData(!flushpoint);
+        ClassInfoRaw[] table = (ClassInfoRaw[]) classInfoTable.getTable();
+
+        for (int i = 0; i < table.length; i++) {
+            ClassInfoRaw entry = table[i];
+            while (entry.isNonNull()) {
+                Class<?> clazz = entry.getInstance();
+                assert DynamicHub.fromClass(clazz).isLoaded();
+                if (flushpoint) {
+                    /*
+                     * Must check the bit is set since we don't clear the epoch data tables until
+                     * safepoint.
+                     */
+                    if (JfrTraceId.isUsedCurrentEpoch(clazz)) {
+                        visitClass(clazz);
+                    }
+                } else {
+                    if (JfrTraceId.isUsedPreviousEpoch(clazz)) {
+                        JfrTraceId.clearUsedPreviousEpoch(clazz);
+                        visitClass(clazz);
+                    }
                 }
-            } else {
-                if (JfrTraceId.isUsedPreviousEpoch(clazz)) {
-                    JfrTraceId.clearUsedPreviousEpoch(clazz);
-                    visitClass(typeInfo, clazz);
-                }
+                entry = entry.getNext();
             }
-        });
-        return typeInfo;
-    }
-
-    private void visitClass(TypeInfo typeInfo, Class<?> clazz) {
-        if (clazz != null && addClass(typeInfo, clazz)) {
-            visitClassLoader(typeInfo, clazz.getClassLoader());
-            visitPackage(typeInfo, clazz.getPackage(), clazz.getModule());
-            visitClass(typeInfo, clazz.getSuperclass());
         }
     }
 
-    private void visitPackage(TypeInfo typeInfo, Package pkg, Module module) {
-        if (pkg != null && addPackage(typeInfo, pkg, module)) {
-            visitModule(typeInfo, module);
+    private void visitClass(Class<?> clazz) {
+        if (clazz != null && addClass(clazz)) {
+            visitClassLoader(clazz.getClassLoader());
+            visitPackage(clazz);
+            visitClass(clazz.getSuperclass());
         }
     }
 
-    private void visitModule(TypeInfo typeInfo, Module module) {
-        if (module != null && addModule(typeInfo, module)) {
-            visitClassLoader(typeInfo, module.getClassLoader());
+    private void visitPackage(Class<?> clazz) {
+        if (addPackage(clazz)) {
+            visitModule(clazz);
         }
     }
 
-    private void visitClassLoader(TypeInfo typeInfo, ClassLoader classLoader) {
+    private void visitModule(Class<?> clazz) {
+        Module module = clazz.getModule();
+        if (module != null && addModule(module)) {
+            visitClassLoader(module.getClassLoader());
+        }
+    }
+
+    private void visitClassLoader(ClassLoader classLoader) {
         // The null class-loader is serialized as the "bootstrap" class-loader.
-        if (classLoader != null && addClassLoader(typeInfo, classLoader)) {
-            visitClass(typeInfo, classLoader.getClass());
+        if (addClassLoader(classLoader)) {
+            if (classLoader != null) {
+                visitClass(classLoader.getClass());
+            }
         }
     }
 
-    private int writeClasses(JfrChunkWriter writer, TypeInfo typeInfo, boolean flushpoint) {
-        if (typeInfo.classes.isEmpty()) {
+    private int writeClasses(JfrChunkWriter writer, boolean flushpoint) {
+        int size = typeInfo.classes.getSize();
+        ClassInfoRaw[] table = (ClassInfoRaw[]) typeInfo.classes.getTable();
+        if (size == 0) {
             return EMPTY;
         }
         writer.writeCompressedLong(JfrType.Class.getId());
-        writer.writeCompressedInt(typeInfo.classes.size());
+        writer.writeCompressedInt(size);
 
-        for (Class<?> clazz : typeInfo.classes) {
-            writeClass(typeInfo, writer, clazz, flushpoint);
+        // Nested loops since the visitor pattern may allocate.
+        for (int i = 0; i < table.length; i++) {
+            ClassInfoRaw entry = table[i];
+            while (entry.isNonNull()) {
+                writeClass(writer, entry, flushpoint);
+                entry = entry.getNext();
+            }
         }
         return NON_EMPTY;
     }
 
-    private void writeClass(TypeInfo typeInfo, JfrChunkWriter writer, Class<?> clazz, boolean flushpoint) {
-        writer.writeCompressedLong(JfrTraceId.getTraceId(clazz));
-        writer.writeCompressedLong(getClassLoaderId(typeInfo, clazz.getClassLoader()));
+    private void writeClass(JfrChunkWriter writer, ClassInfoRaw classInfoRaw, boolean flushpoint) {
+        assert classInfoRaw.getHash() != 0;
+        Class<?> clazz = classInfoRaw.getInstance();
+        PackageInfoRaw packageInfoRaw = StackValue.get(PackageInfoRaw.class);
+        setPackageNameAndLength(clazz, packageInfoRaw);
+        packageInfoRaw.setHash(getHash(packageInfoRaw));
+
+        boolean hasClassLoader = clazz.getClassLoader() != null;
+        writer.writeCompressedLong(classInfoRaw.getId());
+        writer.writeCompressedLong(getClassLoaderId(hasClassLoader ? clazz.getClassLoader().getName() : null, hasClassLoader));
         writer.writeCompressedLong(getSymbolId(writer, clazz.getName(), flushpoint, true));
-        writer.writeCompressedLong(getPackageId(typeInfo, clazz.getPackage()));
+        writer.writeCompressedLong(getPackageId(packageInfoRaw));
         writer.writeCompressedLong(clazz.getModifiers());
         writer.writeBoolean(clazz.isHidden());
+
+        // We no longer need the buffer.
+        if (packageInfoRaw.getModifiedUTF8Name().isNonNull()) {
+            NullableNativeMemory.free(packageInfoRaw.getModifiedUTF8Name());
+        }
     }
 
     @Uninterruptible(reason = "Needed for JfrSymbolRepository.getSymbolId().")
@@ -160,160 +262,243 @@ public class JfrTypeRepository implements JfrRepository {
         return SubstrateJVM.getSymbolRepository().getSymbolId(symbol, !flushpoint, replaceDotWithSlash);
     }
 
-    private int writePackages(JfrChunkWriter writer, TypeInfo typeInfo, boolean flushpoint) {
-        if (typeInfo.packages.isEmpty()) {
+    /*
+     * Copy to a new buffer so each table has its own copy of the data. This simplifies cleanup and
+     * mitigates double frees.
+     */
+    @Uninterruptible(reason = "Needed for JfrSymbolRepository.getSymbolId().")
+    private static long getSymbolId(JfrChunkWriter writer, Pointer source, UnsignedWord length, boolean flushpoint) {
+        Pointer destination = NullableNativeMemory.malloc(length, NmtCategory.JFR);
+        if (destination.isNull()) {
+            return 0L;
+        }
+        UnmanagedMemoryUtil.copy(source, destination, length);
+
+        assert writer.isLockedByCurrentThread();
+        return SubstrateJVM.getSymbolRepository().getSymbolId(destination, length, !flushpoint);
+    }
+
+    private int writePackages(JfrChunkWriter writer, boolean flushpoint) {
+        int size = typeInfo.packages.getSize();
+        PackageInfoRaw[] table = (PackageInfoRaw[]) typeInfo.packages.getTable();
+        if (size == 0) {
             return EMPTY;
         }
         writer.writeCompressedLong(JfrType.Package.getId());
-        writer.writeCompressedInt(typeInfo.packages.size());
+        writer.writeCompressedInt(size);
 
-        for (Map.Entry<String, PackageInfo> pkgInfo : typeInfo.packages.entrySet()) {
-            writePackage(typeInfo, writer, pkgInfo.getKey(), pkgInfo.getValue(), flushpoint);
+        for (int i = 0; i < table.length; i++) {
+            PackageInfoRaw packageInfoRaw = table[i];
+            while (packageInfoRaw.isNonNull()) {
+                writePackage(writer, packageInfoRaw, flushpoint);
+                packageInfoRaw = packageInfoRaw.getNext();
+            }
         }
         return NON_EMPTY;
     }
 
-    private void writePackage(TypeInfo typeInfo, JfrChunkWriter writer, String pkgName, PackageInfo pkgInfo, boolean flushpoint) {
-        writer.writeCompressedLong(pkgInfo.id);  // id
-        writer.writeCompressedLong(getSymbolId(writer, pkgName, flushpoint, true));
-        writer.writeCompressedLong(getModuleId(typeInfo, pkgInfo.module));
+    private void writePackage(JfrChunkWriter writer, PackageInfoRaw packageInfoRaw, boolean flushpoint) {
+        assert packageInfoRaw.getHash() != 0;
+        writer.writeCompressedLong(packageInfoRaw.getId());  // id
+        writer.writeCompressedLong(getSymbolId(writer, packageInfoRaw.getModifiedUTF8Name(), packageInfoRaw.getNameLength(), flushpoint));
+        writer.writeCompressedLong(getModuleId(packageInfoRaw.getModuleName(), packageInfoRaw.getHasModule()));
         writer.writeBoolean(false); // exported
     }
 
-    private int writeModules(JfrChunkWriter writer, TypeInfo typeInfo, boolean flushpoint) {
-        if (typeInfo.modules.isEmpty()) {
+    private int writeModules(JfrChunkWriter writer, boolean flushpoint) {
+        int size = typeInfo.modules.getSize();
+        ModuleInfoRaw[] table = (ModuleInfoRaw[]) typeInfo.modules.getTable();
+        if (size == 0) {
             return EMPTY;
         }
         writer.writeCompressedLong(JfrType.Module.getId());
-        writer.writeCompressedInt(typeInfo.modules.size());
+        writer.writeCompressedInt(size);
 
-        for (Map.Entry<Module, Long> modInfo : typeInfo.modules.entrySet()) {
-            writeModule(typeInfo, writer, modInfo.getKey(), modInfo.getValue(), flushpoint);
+        for (int i = 0; i < table.length; i++) {
+            ModuleInfoRaw entry = table[i];
+            while (entry.isNonNull()) {
+                writeModule(writer, entry, flushpoint);
+                entry = entry.getNext();
+            }
         }
         return NON_EMPTY;
     }
 
-    private void writeModule(TypeInfo typeInfo, JfrChunkWriter writer, Module module, long id, boolean flushpoint) {
-        writer.writeCompressedLong(id);
-        writer.writeCompressedLong(getSymbolId(writer, module.getName(), flushpoint, false));
+    private void writeModule(JfrChunkWriter writer, ModuleInfoRaw moduleInfoRaw, boolean flushpoint) {
+        writer.writeCompressedLong(moduleInfoRaw.getId());
+        writer.writeCompressedLong(getSymbolId(writer, moduleInfoRaw.getName(), flushpoint, false));
         writer.writeCompressedLong(0); // Version, e.g. "11.0.10-internal"
         writer.writeCompressedLong(0); // Location, e.g. "jrt:/java.base"
-        writer.writeCompressedLong(getClassLoaderId(typeInfo, module.getClassLoader()));
+        writer.writeCompressedLong(getClassLoaderId(moduleInfoRaw.getClassLoaderName(), moduleInfoRaw.getHasClassLoader()));
     }
 
-    private static int writeClassLoaders(JfrChunkWriter writer, TypeInfo typeInfo, boolean flushpoint) {
-        if (typeInfo.classLoaders.isEmpty()) {
+    private int writeClassLoaders(JfrChunkWriter writer, boolean flushpoint) {
+        if (typeInfo.classLoaders.getSize() == 0) {
             return EMPTY;
         }
         writer.writeCompressedLong(JfrType.ClassLoader.getId());
-        writer.writeCompressedInt(typeInfo.classLoaders.size());
+        writer.writeCompressedInt(typeInfo.classLoaders.getSize());
 
-        for (Map.Entry<ClassLoader, Long> clInfo : typeInfo.classLoaders.entrySet()) {
-            writeClassLoader(writer, clInfo.getKey(), clInfo.getValue(), flushpoint);
+        for (int i = 0; i < typeInfo.classLoaders.getTable().length; i++) {
+            ClassLoaderInfoRaw entry = (ClassLoaderInfoRaw) typeInfo.classLoaders.getTable()[i];
+            while (entry.isNonNull()) {
+                writeClassLoader(writer, entry, flushpoint);
+                entry = entry.getNext();
+            }
         }
         return NON_EMPTY;
     }
 
-    private static void writeClassLoader(JfrChunkWriter writer, ClassLoader cl, long id, boolean flushpoint) {
-        writer.writeCompressedLong(id);
-        if (cl == null) {
-            writer.writeCompressedLong(0);
-            writer.writeCompressedLong(getSymbolId(writer, "bootstrap", flushpoint, false));
-        } else {
-            writer.writeCompressedLong(JfrTraceId.getTraceId(cl.getClass()));
-            writer.writeCompressedLong(getSymbolId(writer, cl.getName(), flushpoint, false));
-        }
+    private static void writeClassLoader(JfrChunkWriter writer, ClassLoaderInfoRaw classLoaderInfoRaw, boolean flushpoint) {
+        writer.writeCompressedLong(classLoaderInfoRaw.getId());
+        writer.writeCompressedLong(classLoaderInfoRaw.getClassTraceId());
+        writer.writeCompressedLong(getSymbolId(writer, classLoaderInfoRaw.getName(), flushpoint, false));
     }
 
-    private static class PackageInfo {
-        private final long id;
-        private final Module module;
+    private boolean addClass(Class<?> clazz) {
+        ClassInfoRaw classInfoRaw = StackValue.get(ClassInfoRaw.class);
+        classInfoRaw.setId(JfrTraceId.getTraceId(clazz));
+        classInfoRaw.setHash(getHash(clazz.getName()));
 
-        PackageInfo(long id, Module module) {
-            this.id = id;
-            this.module = module;
-        }
-    }
-
-    private boolean addClass(TypeInfo typeInfo, Class<?> clazz) {
-        if (isClassVisited(typeInfo, clazz)) {
+        // Once the traceID is set, we can do a look-up.
+        if (isClassVisited(classInfoRaw)) {
             return false;
         }
-        return typeInfo.classes.add(clazz);
-    }
 
-    private boolean isClassVisited(TypeInfo typeInfo, Class<?> clazz) {
-        return typeInfo.classes.contains(clazz) || flushedClasses.contains(clazz);
-    }
-
-    private boolean addPackage(TypeInfo typeInfo, Package pkg, Module module) {
-        if (isPackageVisited(typeInfo, pkg)) {
-            assert module == (flushedPackages.containsKey(pkg.getName()) ? flushedPackages.get(pkg.getName()).module : typeInfo.packages.get(pkg.getName()).module);
-            return false;
-        }
-        // The empty package represented by "" is always traced with id 0
-        long id = pkg.getName().isEmpty() ? 0 : ++currentPackageId;
-        typeInfo.packages.put(pkg.getName(), new PackageInfo(id, module));
+        classInfoRaw.setName(clazz.getName());
+        classInfoRaw.setInstance(clazz);
+        assert !typeInfo.classes.contains(classInfoRaw);
+        typeInfo.classes.putNew(classInfoRaw);
+        assert typeInfo.classes.contains(classInfoRaw);
         return true;
     }
 
-    private boolean isPackageVisited(TypeInfo typeInfo, Package pkg) {
-        return flushedPackages.containsKey(pkg.getName()) || typeInfo.packages.containsKey(pkg.getName());
+    private boolean isClassVisited(ClassInfoRaw classInfoRaw) {
+        return typeInfo.classes.contains(classInfoRaw) || flushedClasses.contains(classInfoRaw);
     }
 
-    private long getPackageId(TypeInfo typeInfo, Package pkg) {
-        if (pkg != null) {
-            if (flushedPackages.containsKey(pkg.getName())) {
-                return flushedPackages.get(pkg.getName()).id;
+    /** We cannot directly call getPackage() or getPackageName() since that may allocate. */
+    private boolean addPackage(Class<?> clazz) {
+        boolean hasModule = clazz.getModule() != null;
+        String moduleName = hasModule ? clazz.getModule().getName() : null;
+
+        PackageInfoRaw packageInfoRaw = StackValue.get(PackageInfoRaw.class);
+        packageInfoRaw.setName(null); // No allocation free way to get the name String.
+        setPackageNameAndLength(clazz, packageInfoRaw);
+
+        /*
+         * The empty/null package represented by "" is always traced with id 0. The id 0 is reserved
+         * and does not need to be serialized.
+         */
+        if (packageInfoRaw.getNameLength().equal(0)) {
+            return false;
+        }
+        packageInfoRaw.setHash(getHash(packageInfoRaw));
+        if (isPackageVisited(packageInfoRaw)) {
+            assert moduleName == (flushedPackages.contains(packageInfoRaw) ? ((PackageInfoRaw) flushedPackages.get(packageInfoRaw)).getModuleName()
+                            : ((PackageInfoRaw) typeInfo.packages.get(packageInfoRaw)).getModuleName());
+            NullableNativeMemory.free(packageInfoRaw.getModifiedUTF8Name());
+            return false;
+        }
+
+        packageInfoRaw.setId(++currentPackageId);
+        packageInfoRaw.setHasModule(hasModule);
+        packageInfoRaw.setModuleName(moduleName);
+        typeInfo.packages.putNew(packageInfoRaw);
+        // Do not free the buffer. A pointer to it is shallow copied into the hash map.
+        assert typeInfo.packages.contains(packageInfoRaw);
+        return true;
+    }
+
+    private boolean isPackageVisited(PackageInfoRaw packageInfoRaw) {
+        return flushedPackages.contains(packageInfoRaw) || typeInfo.packages.contains(packageInfoRaw);
+    }
+
+    private long getPackageId(PackageInfoRaw packageInfoRaw) {
+        if (packageInfoRaw.getModifiedUTF8Name().isNonNull() && packageInfoRaw.getNameLength().aboveOrEqual(1)) {
+            if (flushedPackages.contains(packageInfoRaw)) {
+                return ((PackageInfoRaw) flushedPackages.get(packageInfoRaw)).getId();
             }
-            return typeInfo.packages.get(pkg.getName()).id;
+            return ((PackageInfoRaw) typeInfo.packages.get(packageInfoRaw)).getId();
+        } else {
+            // Empty package has reserved ID 0
+            return 0;
+        }
+    }
+
+    private boolean addModule(Module module) {
+        ModuleInfoRaw moduleInfoRaw = StackValue.get(ModuleInfoRaw.class);
+        moduleInfoRaw.setName(module.getName());
+        moduleInfoRaw.setHash(getHash(module.getName()));
+        if (isModuleVisited(moduleInfoRaw)) {
+            return false;
+        }
+        moduleInfoRaw.setId(++currentModuleId);
+        moduleInfoRaw.setHasClassLoader(module.getClassLoader() != null);
+        moduleInfoRaw.setClassLoaderName(moduleInfoRaw.getHasClassLoader() ? module.getClassLoader().getName() : null);
+        typeInfo.modules.putNew(moduleInfoRaw);
+        return true;
+    }
+
+    private boolean isModuleVisited(ModuleInfoRaw moduleInfoRaw) {
+        return typeInfo.modules.contains(moduleInfoRaw) || flushedModules.contains(moduleInfoRaw);
+    }
+
+    private long getModuleId(String moduleName, boolean hasModule) {
+        if (hasModule) {
+            ModuleInfoRaw moduleInfoRaw = StackValue.get(ModuleInfoRaw.class);
+            moduleInfoRaw.setName(moduleName);
+            moduleInfoRaw.setHash(getHash(moduleName));
+            if (flushedModules.contains(moduleInfoRaw)) {
+                return ((ModuleInfoRaw) flushedModules.get(moduleInfoRaw)).getId();
+            }
+            return ((ModuleInfoRaw) typeInfo.modules.get(moduleInfoRaw)).getId();
         } else {
             return 0;
         }
     }
 
-    private boolean addModule(TypeInfo typeInfo, Module module) {
-        if (isModuleVisited(typeInfo, module)) {
-            return false;
-        }
-        typeInfo.modules.put(module, ++currentModuleId);
-        return true;
-    }
-
-    private boolean isModuleVisited(TypeInfo typeInfo, Module module) {
-        return typeInfo.modules.containsKey(module) || flushedModules.containsKey(module);
-    }
-
-    private long getModuleId(TypeInfo typeInfo, Module module) {
-        if (module != null) {
-            if (flushedModules.containsKey(module)) {
-                return flushedModules.get(module);
-            }
-            return typeInfo.modules.get(module);
+    private boolean addClassLoader(ClassLoader classLoader) {
+        ClassLoaderInfoRaw classLoaderInfoRaw = StackValue.get(ClassLoaderInfoRaw.class);
+        if (classLoader == null) {
+            classLoaderInfoRaw.setName(BOOTSTRAP_NAME);
         } else {
-            return 0;
+            classLoaderInfoRaw.setName(classLoader.getName());
         }
-    }
 
-    private boolean addClassLoader(TypeInfo typeInfo, ClassLoader classLoader) {
-        if (isClassLoaderVisited(typeInfo, classLoader)) {
+        classLoaderInfoRaw.setHash(getHash(classLoaderInfoRaw.getName()));
+        if (isClassLoaderVisited(classLoaderInfoRaw)) {
             return false;
         }
-        typeInfo.classLoaders.put(classLoader, ++currentClassLoaderId);
+
+        if (classLoader == null) {
+            // Bootstrap loader has reserved ID of 0
+            classLoaderInfoRaw.setId(0);
+            classLoaderInfoRaw.setClassTraceId(0);
+        } else {
+            classLoaderInfoRaw.setId(++currentClassLoaderId);
+            classLoaderInfoRaw.setClassTraceId(JfrTraceId.getTraceId(classLoader.getClass()));
+        }
+
+        typeInfo.classLoaders.putNew(classLoaderInfoRaw);
         return true;
     }
 
-    private boolean isClassLoaderVisited(TypeInfo typeInfo, ClassLoader classLoader) {
-        return flushedClassLoaders.containsKey(classLoader) || typeInfo.classLoaders.containsKey(classLoader);
+    private boolean isClassLoaderVisited(ClassLoaderInfoRaw classLoaderInfoRaw) {
+        return flushedClassLoaders.contains(classLoaderInfoRaw) || typeInfo.classLoaders.contains(classLoaderInfoRaw);
     }
 
-    private long getClassLoaderId(TypeInfo typeInfo, ClassLoader classLoader) {
-        if (classLoader != null) {
-            if (flushedClassLoaders.containsKey(classLoader)) {
-                return flushedClassLoaders.get(classLoader);
+    private long getClassLoaderId(String classLoaderName, boolean hasClassLoader) {
+        if (hasClassLoader) {
+            ClassLoaderInfoRaw classLoaderInfoRaw = StackValue.get(ClassLoaderInfoRaw.class);
+            classLoaderInfoRaw.setName(classLoaderName);
+            classLoaderInfoRaw.setHash(getHash(classLoaderName));
+            if (flushedClassLoaders.contains(classLoaderInfoRaw)) {
+                return ((ClassLoaderInfoRaw) flushedClassLoaders.get(classLoaderInfoRaw)).getId();
             }
-            return typeInfo.classLoaders.get(classLoader);
+            return ((ClassLoaderInfoRaw) typeInfo.classLoaders.get(classLoaderInfoRaw)).getId();
         }
+        // Bootstrap classloader
         return 0;
     }
 
@@ -325,12 +510,352 @@ public class JfrTypeRepository implements JfrRepository {
         currentPackageId = 0;
         currentModuleId = 0;
         currentClassLoaderId = 0;
+        getEpochData(true).clear();
     }
 
-    private static final class TypeInfo {
-        final EconomicSet<Class<?>> classes = EconomicSet.create();
-        final Map<String, PackageInfo> packages = new HashMap<>();
-        final Map<Module, Long> modules = new HashMap<>();
-        final Map<ClassLoader, Long> classLoaders = new HashMap<>();
+    private final class TypeInfo {
+        final JfrClassInfoTable classes = new JfrClassInfoTable();
+        final JfrPackageInfoTable packages = new JfrPackageInfoTable();
+        final JfrModuleInfoTable modules = new JfrModuleInfoTable();
+        final JfrClassLoaderInfoTable classLoaders = new JfrClassLoaderInfoTable();
+
+        void reset() {
+            classes.clear();
+            packages.clear();
+            modules.clear();
+            classLoaders.clear();
+        }
+
+        void teardown() {
+            classes.teardown();
+            packages.teardown();
+            modules.teardown();
+            classLoaders.teardown();
+        }
+    }
+
+    /**
+     * This method sets the package name and length. packageInfoRaw may be on the stack or native
+     * memory.
+     */
+    private void setPackageNameAndLength(Class<?> clazz, PackageInfoRaw packageInfoRaw) {
+        DynamicHub hub = DynamicHub.fromClass(clazz);
+        if (!LayoutEncoding.isHybrid(hub.getLayoutEncoding())) {
+            while (hub.hubIsArray()) {
+                hub = hub.getComponentType();
+            }
+        }
+
+        /*
+         * Primitives have the null package, which technically has the name "java.lang", but JFR
+         * still assigns these the reserved 0 id.
+         */
+        if (hub.isPrimitive()) {
+            packageInfoRaw.setModifiedUTF8Name(Word.nullPointer());
+            packageInfoRaw.setNameLength(Word.unsigned(0));
+            return;
+        }
+
+        String str = hub.getName();
+        int dot = str.lastIndexOf('.');
+        if (dot == -1) {
+            dot = 0;
+        }
+
+        int utf8Length = UninterruptibleUtils.String.modifiedUTF8Length(str, false, dotWithSlash);
+        Pointer buffer = NullableNativeMemory.malloc(utf8Length, NmtCategory.JFR);
+        Pointer bufferEnd = buffer.add(utf8Length);
+
+        // If malloc fails, set a blank package name.
+        if (buffer.isNull()) {
+            packageInfoRaw.setModifiedUTF8Name(Word.nullPointer());
+            packageInfoRaw.setNameLength(Word.unsigned(0));
+            return;
+        }
+
+        assert buffer.add(dot).belowOrEqual(bufferEnd);
+
+        /*
+         * Since we're serializing now, we must do replacements here, instead of the symbol
+         * repository.
+         */
+        Pointer packageNameEnd = UninterruptibleUtils.String.toModifiedUTF8(str, dot, buffer, bufferEnd, false, dotWithSlash);
+        packageInfoRaw.setModifiedUTF8Name(buffer);
+
+        UnsignedWord packageNameLength = packageNameEnd.subtract(buffer); // end - start
+        packageInfoRaw.setNameLength(packageNameLength);
+        if (dot == 0) {
+            assert packageNameLength.equal(0);
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static int getHash(String imageHeapString) {
+        // It's possible the type exists, but has no name.
+        if (imageHeapString == null) {
+            return 0;
+        }
+        long rawPointerValue = Word.objectToUntrackedPointer(imageHeapString).rawValue();
+        return UninterruptibleUtils.Long.hashCode(rawPointerValue);
+    }
+
+    /**
+     * We do not have access to an image heap String for packages. Instead, sum the value of the
+     * serialized String and use that for the hash.
+     */
+    private static int getHash(PackageInfoRaw packageInfoRaw) {
+        if (packageInfoRaw.getModifiedUTF8Name().isNull() || packageInfoRaw.getNameLength().belowOrEqual(0)) {
+            return 0;
+        }
+        long sum = 0;
+        for (int i = 0; packageInfoRaw.getNameLength().aboveThan(i); i++) {
+            sum += (packageInfoRaw.getModifiedUTF8Name()).readByte(i);
+        }
+        return UninterruptibleUtils.Long.hashCode(sum);
+    }
+
+    @RawStructure
+    private interface JfrTypeInfo extends UninterruptibleEntry {
+        @PinnedObjectField
+        @RawField
+        void setName(String value);
+
+        @PinnedObjectField
+        @RawField
+        String getName();
+
+        @RawField
+        void setId(long value);
+
+        @RawField
+        long getId();
+    }
+
+    @RawStructure
+    private interface ClassInfoRaw extends JfrTypeInfo {
+        @PinnedObjectField
+        @RawField
+        void setInstance(Class<?> value);
+
+        @PinnedObjectField
+        @RawField
+        Class<?> getInstance();
+    }
+
+    @RawStructure
+    private interface PackageInfoRaw extends JfrTypeInfo {
+        @PinnedObjectField
+        @RawField
+        void setModuleName(String value);
+
+        @PinnedObjectField
+        @RawField
+        String getModuleName();
+
+        @RawField
+        void setHasModule(boolean value);
+
+        @RawField
+        boolean getHasModule();
+
+        @RawField
+        void setNameLength(UnsignedWord value);
+
+        @RawField
+        UnsignedWord getNameLength();
+
+        @RawField
+        void setModifiedUTF8Name(Pointer value);
+
+        @RawField
+        Pointer getModifiedUTF8Name();
+    }
+
+    @RawStructure
+    private interface ModuleInfoRaw extends JfrTypeInfo {
+        @PinnedObjectField
+        @RawField
+        void setClassLoaderName(String value);
+
+        @PinnedObjectField
+        @RawField
+        String getClassLoaderName();
+
+        // Needed because CL name may be empty or null, even if CL is non-null
+        @RawField
+        void setHasClassLoader(boolean value);
+
+        @RawField
+        boolean getHasClassLoader();
+    }
+
+    @RawStructure
+    private interface ClassLoaderInfoRaw extends JfrTypeInfo {
+        @RawField
+        void setClassTraceId(long value);
+
+        @RawField
+        long getClassTraceId();
+    }
+
+    private abstract class JfrTypeInfoTable extends AbstractUninterruptibleHashtable {
+        JfrTypeInfoTable(NmtCategory nmtCategory) {
+            super(nmtCategory);
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected boolean isEqual(UninterruptibleEntry v0, UninterruptibleEntry v1) {
+            JfrTypeInfo a = (JfrTypeInfo) v0;
+            JfrTypeInfo b = (JfrTypeInfo) v1;
+            return a.getName() != null ? a.getName().equals(b.getName()) : b.getName() == null;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void putAll(JfrTypeInfoTable sourceTable) {
+            for (int i = 0; i < sourceTable.getTable().length; i++) {
+                JfrTypeInfo entry = (JfrTypeInfo) sourceTable.getTable()[i];
+                while (entry.isNonNull()) {
+                    putNew(entry);
+                    entry = entry.getNext();
+                }
+            }
+        }
+    }
+
+    private final class JfrClassInfoTable extends JfrTypeInfoTable {
+        @Platforms(Platform.HOSTED_ONLY.class)
+        JfrClassInfoTable() {
+            super(NmtCategory.JFR);
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected ClassInfoRaw[] createTable(int size) {
+            return new ClassInfoRaw[size];
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected boolean isEqual(UninterruptibleEntry v0, UninterruptibleEntry v1) {
+            JfrTypeInfo a = (JfrTypeInfo) v0;
+            JfrTypeInfo b = (JfrTypeInfo) v1;
+            return a.getId() == b.getId();
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected UninterruptibleEntry copyToHeap(UninterruptibleEntry visitedOnStack) {
+            return copyToHeap(visitedOnStack, SizeOf.unsigned(ClassInfoRaw.class));
+        }
+    }
+
+    private final class JfrPackageInfoTable extends JfrTypeInfoTable {
+        @Platforms(Platform.HOSTED_ONLY.class)
+        JfrPackageInfoTable() {
+            super(NmtCategory.JFR);
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected PackageInfoRaw[] createTable(int size) {
+            return new PackageInfoRaw[size];
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected UninterruptibleEntry copyToHeap(UninterruptibleEntry visitedOnStack) {
+            return copyToHeap(visitedOnStack, SizeOf.unsigned(PackageInfoRaw.class));
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected boolean isEqual(UninterruptibleEntry v0, UninterruptibleEntry v1) {
+            // IDs cannot be compared since they are only assigned after checking the table.
+            PackageInfoRaw entry1 = (PackageInfoRaw) v0;
+            PackageInfoRaw entry2 = (PackageInfoRaw) v1;
+            return entry1.getNameLength().equal(entry2.getNameLength()) && LibC.memcmp(entry1.getModifiedUTF8Name(), entry2.getModifiedUTF8Name(), entry1.getNameLength()) == 0;
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected void free(UninterruptibleEntry entry) {
+            PackageInfoRaw packageInfoRaw = (PackageInfoRaw) entry;
+            /* The base method will free only the entry itself, not the utf8 data. */
+            NullableNativeMemory.free(packageInfoRaw.getModifiedUTF8Name());
+            packageInfoRaw.setModifiedUTF8Name(Word.nullPointer());
+            super.free(entry);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void putAll(JfrPackageInfoTable sourceTable) {
+            for (int i = 0; i < sourceTable.getTable().length; i++) {
+                PackageInfoRaw sourceInfo = (PackageInfoRaw) sourceTable.getTable()[i];
+                while (sourceInfo.isNonNull()) {
+                    if (!contains(sourceInfo)) {
+                        // Put if not already there.
+                        PackageInfoRaw destinationInfo = (PackageInfoRaw) putNew(sourceInfo);
+                        // allocate a new buffer.
+                        Pointer newUtf8Name = NullableNativeMemory.malloc(sourceInfo.getNameLength(), NmtCategory.JFR);
+                        // set the buffer ptr.
+                        destinationInfo.setModifiedUTF8Name(newUtf8Name);
+                        // Copy source buffer contents over to new buffer.
+                        if (newUtf8Name.isNonNull()) {
+                            UnmanagedMemoryUtil.copy(sourceInfo.getModifiedUTF8Name(), newUtf8Name, sourceInfo.getNameLength());
+                        }
+                    }
+                    sourceInfo = sourceInfo.getNext();
+                }
+            }
+        }
+    }
+
+    private final class JfrModuleInfoTable extends JfrTypeInfoTable {
+        @Platforms(Platform.HOSTED_ONLY.class)
+        JfrModuleInfoTable() {
+            super(NmtCategory.JFR);
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected ModuleInfoRaw[] createTable(int size) {
+            return new ModuleInfoRaw[size];
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected UninterruptibleEntry copyToHeap(UninterruptibleEntry visitedOnStack) {
+            return copyToHeap(visitedOnStack, SizeOf.unsigned(ModuleInfoRaw.class));
+        }
+    }
+
+    private final class JfrClassLoaderInfoTable extends JfrTypeInfoTable {
+        @Platforms(Platform.HOSTED_ONLY.class)
+        JfrClassLoaderInfoTable() {
+            super(NmtCategory.JFR);
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected ClassLoaderInfoRaw[] createTable(int size) {
+            return new ClassLoaderInfoRaw[size];
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected UninterruptibleEntry copyToHeap(UninterruptibleEntry visitedOnStack) {
+            return copyToHeap(visitedOnStack, SizeOf.unsigned(ClassLoaderInfoRaw.class));
+        }
+    }
+
+    private static final class ReplaceDotWithSlash implements UninterruptibleUtils.CharReplacer {
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public char replace(char ch) {
+            if (ch == '.') {
+                return '/';
+            }
+            return ch;
+        }
     }
 }

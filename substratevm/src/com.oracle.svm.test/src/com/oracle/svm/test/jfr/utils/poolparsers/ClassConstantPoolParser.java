@@ -36,7 +36,7 @@ import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 public class ClassConstantPoolParser extends AbstractRepositoryParser {
     public ClassConstantPoolParser(JfrFileParser parser) {
-        super(parser);
+        super(parser, 0L);
     }
 
     @Override
