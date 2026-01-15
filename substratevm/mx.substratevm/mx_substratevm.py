@@ -1870,6 +1870,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     priority=0,
     library_configs=[
         mx_sdk_vm.LibraryConfig(
+            use_modules='image',
             destination='<lib:jvm>',
             jar_distributions=['substratevm:SVM_LIBJVM'],
             build_args=svm_experimental_options(['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages]),

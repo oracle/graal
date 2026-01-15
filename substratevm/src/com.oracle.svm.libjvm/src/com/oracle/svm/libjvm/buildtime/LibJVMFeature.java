@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.libjvm;
+package com.oracle.svm.libjvm.buildtime;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -36,7 +36,7 @@ import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 import jdk.graal.compiler.vmaccess.ModuleSupport;
 
-final class LibJVMFeature extends JNIRegistrationUtil implements Feature {
+public final class LibJVMFeature extends JNIRegistrationUtil implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

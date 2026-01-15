@@ -1110,6 +1110,15 @@ suite = {
                 "src",
                 "resources"
             ],
+            "dependencies": [
+                "com.oracle.svm.core",
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
+                ],
+            },
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [
@@ -1821,6 +1830,7 @@ suite = {
                     """* to org.graalvm.nativeimage.base,
                             jdk.graal.compiler,
                             org.graalvm.nativeimage.driver,
+                            org.graalvm.nativeimage.libjvm,
                             org.graalvm.nativeimage.librarysupport,
                             org.graalvm.nativeimage.junitsupport,
                             org.graalvm.nativeimage.llvm,
@@ -2355,6 +2365,18 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.libjvm",
             ],
+            "distDependencies": [
+                "LIBRARY_SUPPORT",
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.libjvm",
+                "exports" : [
+                    "com.oracle.svm.libjvm.buildtime",
+                ],
+                "requires" : [
+                    "org.graalvm.nativeimage.builder",
+                ],
+            },
             "maven": False,
         },
 
@@ -2389,6 +2411,7 @@ suite = {
                            org.graalvm.nativeimage.configure,
                            org.graalvm.nativeimage.librarysupport,
                            org.graalvm.nativeimage.driver,
+                           org.graalvm.nativeimage.libjvm,
                            org.graalvm.nativeimage.llvm,
                            org.graalvm.nativeimage.agent.jvmtibase,
                            org.graalvm.nativeimage.agent.tracing,
