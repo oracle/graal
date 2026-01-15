@@ -1341,7 +1341,7 @@ suite = {
             "jacoco" : "exclude",
         },
 
-        "com.oracle.svm.features": {
+        "com.oracle.svm.guest.features": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -1907,13 +1907,13 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM image guest context components",
             "dependencies": [
-                "com.oracle.svm.features",
+                "com.oracle.svm.guest.features",
             ],
             "distDependencies": [
                 "sdk:NATIVEIMAGE",
             ],
             "moduleInfo" : {
-                "name" : "org.graalvm.nativeimage.runtime",
+                "name" : "org.graalvm.nativeimage.guest",
                 "exports" : [],
                 "opens" : [],
                 "requires": [
