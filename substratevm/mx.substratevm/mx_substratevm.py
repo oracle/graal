@@ -1878,6 +1878,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             home_finder=False,
         ),
     ],
+    jvm_configs=[{
+        'configs': ['-svm KNOWN'],
+        'priority': 3,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
+    }],
     support_libraries_distributions=[],
     stability="experimental",
     jlink=False,
