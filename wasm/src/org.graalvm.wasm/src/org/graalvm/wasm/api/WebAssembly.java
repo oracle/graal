@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -959,9 +959,9 @@ public class WebAssembly extends Dictionary {
     }
 
     private static EmbedderDataHolder getEmbedderDataHolder(Object[] args) {
-        if (!(args[0] instanceof EmbedderDataHolder)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument is an object that cannot hold embedder data");
+        if (args[0] instanceof EmbedderDataHolder holder) {
+            return holder;
         }
-        return ((EmbedderDataHolder) args[0]);
+        throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument is an object that cannot hold embedder data");
     }
 }
