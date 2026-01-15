@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1618,7 +1618,7 @@ public final class JniEnv extends NativeEnv {
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetStringCritical(@JavaType(String.class) StaticObject str, @Pointer TruffleObject isCopyPtr, @Inject EspressoLanguage language, @Inject Meta meta) {
-        if (ImageInfo.inImageRuntimeCode() && str.isEspressoObject() && StringConversion.isUTF16(meta, str)) {
+        if (ImageInfo.inImageRuntimeCode() && PinnedObject.isSupported() && str.isEspressoObject() && StringConversion.isUTF16(meta, str)) {
             StaticObject array = meta.java_lang_String_value.getObject(str);
             assert array.isEspressoObject();
             PinnedObject pinnedObject = PinnedObject.create(array.unwrap(language));
@@ -1729,7 +1729,7 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     public void ReleaseStringCritical(@SuppressWarnings("unused") @JavaType(String.class) StaticObject str, @Pointer TruffleObject criticalRegionPtr, @Inject EspressoLanguage language) {
-        if (ImageInfo.inImageRuntimeCode()) {
+        if (ImageInfo.inImageRuntimeCode() && PinnedObject.isSupported()) {
             PinnedObject pinnedObject = language.getThreadLocalState().popPinnedObject(NativeUtils.interopAsPointer(criticalRegionPtr));
             if (pinnedObject != null) {
                 pinnedObject.close();
@@ -2789,7 +2789,7 @@ public final class JniEnv extends NativeEnv {
         JavaKind componentKind = ((ArrayKlass) clazz.getMirrorKlass(getMeta())).getComponentType().getJavaKind();
         assert componentKind.isPrimitive();
         int length = GetArrayLength(array);
-        if (ImageInfo.inImageRuntimeCode() && array.isEspressoObject()) {
+        if (ImageInfo.inImageRuntimeCode() && PinnedObject.isSupported() && array.isEspressoObject()) {
             PinnedObject pinnedObject = PinnedObject.create(array.unwrap(language));
             if (!getUncached().isNull(isCopyPtr)) {
                 ByteBuffer isCopyBuf = NativeUtils.wrapNativeMemoryOrThrow(isCopyPtr, 1, nativeMemory, getMeta());
@@ -2828,7 +2828,7 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     public void ReleasePrimitiveArrayCritical(@JavaType(Object.class) StaticObject object, @Pointer TruffleObject carrayPtr, int mode, @Inject EspressoLanguage language) {
-        if (ImageInfo.inImageRuntimeCode()) {
+        if (ImageInfo.inImageRuntimeCode() && PinnedObject.isSupported()) {
             PinnedObject pinnedObject = language.getThreadLocalState().popPinnedObject(NativeUtils.interopAsPointer(carrayPtr));
             if (pinnedObject != null) {
                 pinnedObject.close();
