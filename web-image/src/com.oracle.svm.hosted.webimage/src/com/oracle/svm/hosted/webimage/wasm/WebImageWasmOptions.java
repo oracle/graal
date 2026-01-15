@@ -41,10 +41,6 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 
 public class WebImageWasmOptions {
-
-    @Option(help = "Size of the WASM shadow stack (in 64KiB pages).") //
-    public static final HostedOptionKey<Integer> StackSize = new HostedOptionKey<>(16);
-
     @Option(help = "Determine the level of verbosity for comments in the WASM text format." +
                     "Has no effect on code size, the binary format does not have comments.")//
     public static final EnumOptionKey<CommentVerbosity> WasmComments = new EnumOptionKey<>(CommentVerbosity.NORMAL);

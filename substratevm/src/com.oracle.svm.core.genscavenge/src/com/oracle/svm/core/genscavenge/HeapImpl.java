@@ -715,7 +715,10 @@ public final class HeapImpl extends Heap {
     private static boolean isIrrelevantForGCPolicy(RuntimeOptionKey<?> key) {
         return key == SubstrateGCOptions.DisableExplicitGC ||
                         key == SubstrateGCOptions.PrintGC ||
-                        key == SubstrateGCOptions.VerboseGC;
+                        key == SubstrateGCOptions.VerboseGC ||
+                        key == SubstrateGCOptions.ConcealedOptions.VerifyBeforeGC ||
+                        key == SubstrateGCOptions.ConcealedOptions.VerifyDuringGC ||
+                        key == SubstrateGCOptions.ConcealedOptions.VerifyAfterGC;
     }
 
     @Override

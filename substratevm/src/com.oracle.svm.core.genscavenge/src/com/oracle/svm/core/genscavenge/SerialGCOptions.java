@@ -73,24 +73,11 @@ public final class SerialGCOptions {
     @Option(help = "Enables card marking for image heap objects, which arranges them in chunks. Automatically enabled when supported. Serial GC only.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ImageHeapCardMarking = new HostedOptionKey<>(null, SerialGCOptions::validateSerialHostedOption);
 
-    @Option(help = "This number of milliseconds multiplied by the free heap memory in MByte is the time span " +
-                    "for which a soft reference will keep its referent alive after its last access. Serial GC only.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Integer> SoftRefLRUPolicyMSPerMB = new HostedOptionKey<>(1000, SerialGCOptions::validateSerialHostedOption);
-
     @Option(help = "Print summary GC information after application main method returns. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false, SerialGCOptions::validateSerialRuntimeOption);
 
     @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false, SerialGCOptions::validateSerialRuntimeOption);
-
-    @Option(help = "Verify the heap before doing a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> VerifyBeforeGC = new HostedOptionKey<>(true, SerialGCOptions::validateSerialHostedOption);
-
-    @Option(help = "Verify the heap during a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> VerifyDuringGC = new HostedOptionKey<>(true, SerialGCOptions::validateSerialHostedOption);
-
-    @Option(help = "Verify the heap after doing a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> VerifyAfterGC = new HostedOptionKey<>(true, SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "Verify the remembered set if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyRememberedSet = new HostedOptionKey<>(true, SerialGCOptions::validateSerialHostedOption);
