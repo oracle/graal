@@ -89,6 +89,7 @@ local devkits = graal_common.devkits;
 
   vm_linux_aarch64: self.common_vm_linux + graal_common.linux_aarch64,
 
+  vm_linux_aarch64_ol8: self.common_vm_linux + graal_common.linux_aarch64_ol8,
   vm_linux_aarch64_ol9: self.common_vm_linux + graal_common.linux_aarch64_ol9,
   vm_ol9_aarch64: self.vm_linux_aarch64_ol9,
 
