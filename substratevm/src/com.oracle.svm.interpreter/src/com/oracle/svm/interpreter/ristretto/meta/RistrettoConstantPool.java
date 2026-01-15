@@ -30,8 +30,8 @@ import java.util.function.Function;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.interpreter.Interpreter;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
-import com.oracle.svm.interpreter.metadata.CremaResolvedJavaFieldImpl;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 
@@ -88,7 +88,15 @@ public final class RistrettoConstantPool implements ConstantPool {
     @Override
     public JavaField lookupField(int rawIndex, ResolvedJavaMethod method, int opcode) {
         JavaField javaField = interpreterConstantPool.lookupField(rawIndex, method, opcode);
-        if (javaField instanceof CremaResolvedJavaFieldImpl iField) {
+        /*
+         * A note on wrapping AOT fields into ristretto JVMCI API: When compiling dynamically loaded
+         * types with ristretto every interpreter type is a crema resolved type that is wrapped to a
+         * ristretto type. However, when interfacing with AOT types (in stamp intersection,
+         * optimizations etc) we need ristretto types that are compatible in class with each other.
+         * Thus, we wrap here all interpreter fields (also those that are not crema resolved -> AOT
+         * fields).
+         */
+        if (javaField instanceof InterpreterResolvedJavaField iField) {
             return RistrettoField.create(iField);
         }
         return javaField;
