@@ -42,6 +42,7 @@ import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.UnresolvedJavaMethod;
 
@@ -136,8 +137,16 @@ public final class RistrettoConstantPool implements ConstantPool {
     @Override
     public Object lookupConstant(int cpi, boolean resolve) {
         Object retVal = interpreterConstantPool.lookupConstant(cpi, resolve);
-        if (retVal instanceof JavaConstant || retVal instanceof JavaType) {
+        if (retVal instanceof JavaConstant) {
             return retVal;
+        } else if (retVal instanceof JavaType jt) {
+            if (retVal instanceof ResolvedJavaType) {
+                GraalError.guarantee(retVal instanceof InterpreterResolvedJavaType, "Must be an interpreter resolved java type but is %s", retVal);
+                return RistrettoType.create((InterpreterResolvedJavaType) retVal);
+            } else {
+                // unresolved entry, just return it
+                return retVal;
+            }
         } else if (retVal instanceof String) {
             /*
              * Interpreter caches strings directly as a string.
