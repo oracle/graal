@@ -3256,14 +3256,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 }
 
                 b.startCase().staticReference(parent.frameTagsElement.getObject()).end();
-                if (parent.model.loadIllegalLocalStrategy != LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
-                    /*
-                     * On illegal cached tag, quicken to the generic instruction. Illegal local
-                     * loads will throw FrameSlotTypeException/produce the default value as
-                     * specified.
-                     */
-                    b.startCase().staticReference(parent.frameTagsElement.getIllegal()).end();
-                }
+                b.startCase().staticReference(parent.frameTagsElement.getIllegal()).end();
                 b.startCaseBlock();
                 b.startStatement().string("newInstruction = ").tree(parent.createInstructionConstant(genericTypeInstruction)).end();
                 parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "LoadLocal$" + genericTypeInstruction.getQuickeningName());
