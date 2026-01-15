@@ -44,6 +44,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 
 @TargetClass(value = jdk.internal.loader.BuiltinClassLoader.class)
 @SuppressWarnings({"unused", "static-method"})
@@ -67,6 +68,16 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
             throw new ClassNotFoundException(name);
         }
         return clazz;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = ClassForNameSupport.IgnoresClassLoader.class)
+    protected Class<?> defineClass(String cn, Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule loadedModule) {
+        /*
+         * Avoid dragging in logging & formatting code through
+         * ModuleReader->JarFile->Manifest->Attributes
+         */
+        throw RuntimeClassLoading.throwNoBytecodeClasses(cn);
     }
 
     @Substitute
@@ -117,4 +128,8 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
             return new ConcurrentHashMap<>();
         }
     }
+}
+
+@TargetClass(value = jdk.internal.loader.BuiltinClassLoader.class, innerClass = "LoadedModule")
+final class Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule {
 }
