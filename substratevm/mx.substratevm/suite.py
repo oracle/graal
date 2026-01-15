@@ -1227,7 +1227,7 @@ suite = {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation",
-],
+                ],
             },
             "checkstyle": "com.oracle.svm.test",
             "workingSets": "SVM",
@@ -1349,10 +1349,6 @@ suite = {
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "21+",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-                "SVM_PROCESSOR",
-            ],
             "workingSets": "SVM",
             "jacoco" : "exclude",
         },
