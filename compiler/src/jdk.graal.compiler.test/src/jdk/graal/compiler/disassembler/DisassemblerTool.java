@@ -450,6 +450,10 @@ public class DisassemblerTool {
     }
 
     public static void main(String... args) throws IOException {
+        if (System.getProperty("os.name", "").startsWith("Windows")) {
+            System.err.println("distool is unsupported on Windows");
+            System.exit(-1);
+        }
 
         String ext = "";
         boolean quiet = false;
