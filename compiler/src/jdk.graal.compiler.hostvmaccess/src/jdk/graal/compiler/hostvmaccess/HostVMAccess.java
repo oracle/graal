@@ -32,6 +32,9 @@ import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.URL;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
 import java.util.stream.Stream;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -244,6 +247,17 @@ final class HostVMAccess implements VMAccess {
     @Override
     public ResolvedJavaModuleLayer bootModuleLayer() {
         return new HostVMResolvedJavaModuleLayerImpl(ModuleLayer.boot());
+    }
+
+    @Override
+    public URL getCodeSourceLocation(ResolvedJavaType type) {
+        Class<?> originalClass = providers.getSnippetReflection().originalClass(type);
+        ProtectionDomain pd = originalClass.getProtectionDomain();
+        CodeSource cs = pd.getCodeSource();
+        if (cs == null) {
+            return null;
+        }
+        return cs.getLocation();
     }
 
     @Override

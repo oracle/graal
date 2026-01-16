@@ -26,6 +26,7 @@ package jdk.graal.compiler.vmaccess;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.net.URL;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -167,6 +168,13 @@ public interface VMAccess {
      * Returns the boot layer. See {@link java.lang.ModuleLayer#boot()}.
      */
     ResolvedJavaModuleLayer bootModuleLayer();
+
+    /**
+     * Returns the location of the code source associated with this {@link ResolvedJavaType}.
+     *
+     * @return the location (URL), or {@code null} if no URL was supplied during construction.
+     */
+    URL getCodeSourceLocation(ResolvedJavaType type);
 
     /**
      * A builder can be used to set a JVM context up and observe it through a {@link VMAccess}.

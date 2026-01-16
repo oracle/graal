@@ -372,13 +372,11 @@ public final class JVMCIReflectionUtil {
 
     /**
      * Returns the <em>origin</em> associated with this {@link ResolvedJavaType}.
-     * <p>
-     * This is not yet properly implemented as it falls back to the original class (GR-71068).
      *
      * @return the location (URL), or {@code null} if no URL was supplied during construction.
      */
     public static URL getOrigin(ResolvedJavaType type) {
-        return JVMCIReflectionUtilFallback.getOrigin(type);
+        return GraalAccess.getVMAccess().getCodeSourceLocation(OriginalClassProvider.getOriginalType(type));
     }
 
     /**

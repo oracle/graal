@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.vmaccess;
 
 import static com.oracle.truffle.espresso.vmaccess.EspressoExternalConstantReflectionProvider.safeGetClass;
 
+import java.net.URL;
 import java.util.Objects;
 import java.util.stream.Stream;
 
@@ -199,6 +200,11 @@ final class EspressoExternalVMAccess implements VMAccess {
     @Override
     public ResolvedJavaModuleLayer bootModuleLayer() {
         throw JVMCIError.unimplemented("bootModuleLayer() is not yet implemented");
+    }
+
+    @Override
+    public URL getCodeSourceLocation(ResolvedJavaType type) {
+        throw JVMCIError.unimplemented("getCodeSourceLocation() is not yet implemented");
     }
 
     private ResolvedJavaType lookupType(String name, JavaConstant classLoader) {
