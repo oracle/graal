@@ -1549,6 +1549,10 @@ final class BytecodeNodeElement extends AbstractElement {
             b.statement("break");
             b.end(); // default case block
 
+        } else {
+            b.caseDefault().startCaseBlock();
+            b.tree(GeneratorUtils.createShouldNotReachHere());
+            b.end();
         }
 
         b.end(); // switch
