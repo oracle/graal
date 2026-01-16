@@ -107,14 +107,20 @@ public record FunctionType(@CompilerDirectives.CompilationFinal(dimensions = 1) 
         CompilerAsserts.neverPartOfCompilation();
         StringBuilder sb = new StringBuilder();
         sb.append("(func");
-        for (int i = 0; i < paramTypes.length; i++) {
-            sb.append(" (param ");
-            sb.append(paramTypes[i]);
+        if (paramTypes.length != 0) {
+            sb.append(" (param");
+            for (int i = 0; i < paramTypes.length; i++) {
+                sb.append(' ');
+                sb.append(paramTypes[i]);
+            }
             sb.append(")");
         }
-        for (int i = 0; i < resultTypes.length; i++) {
-            sb.append(" (result ");
-            sb.append(resultTypes[i]);
+        if (resultTypes.length != 0) {
+            sb.append(" (result");
+            for (int i = 0; i < resultTypes.length; i++) {
+                sb.append(' ');
+                sb.append(resultTypes[i]);
+            }
             sb.append(")");
         }
         sb.append(")");
