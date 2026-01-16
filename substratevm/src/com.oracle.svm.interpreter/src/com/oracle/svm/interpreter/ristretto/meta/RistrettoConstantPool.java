@@ -145,7 +145,13 @@ public final class RistrettoConstantPool implements ConstantPool {
     @Override
     public Object lookupConstant(int cpi, boolean resolve) {
         Object retVal = interpreterConstantPool.lookupConstant(cpi, resolve);
-        if (retVal instanceof JavaConstant) {
+        if (retVal == null) {
+            /*
+             * If the interpreter has not yet resolved this constant. However, it is an allowed
+             * result to return null. The compiler will create an unresolved deopt for these cases.
+             */
+            return null;
+        } else if (retVal instanceof JavaConstant) {
             return retVal;
         } else if (retVal instanceof JavaType jt) {
             if (retVal instanceof ResolvedJavaType) {
