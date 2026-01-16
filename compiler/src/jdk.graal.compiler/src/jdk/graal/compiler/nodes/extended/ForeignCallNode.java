@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.nodes.extended;
 
+import static jdk.graal.compiler.nodeinfo.InputType.Association;
 import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 import static jdk.graal.compiler.nodeinfo.InputType.State;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
@@ -44,6 +45,7 @@ import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.ReadArgumentNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.memory.AbstractMemoryCheckpoint;
@@ -52,10 +54,12 @@ import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Node for a {@linkplain ForeignCallDescriptor foreign} call.
+ *
+ * It can be associated with {@link ReadArgumentNode}s.
  */
 // @formatter:off
 @NodeInfo(nameTemplate = "ForeignCall#{p#descriptorName/s}",
-          allowedUsageTypes = Memory,
+          allowedUsageTypes = {Memory, Association},
           cycles = CYCLES_2,
           cyclesRationale = "Rough estimation of the call operation itself.",
           size = SIZE_2,

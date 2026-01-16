@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -119,9 +119,16 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
      * know the signature of such calls during image building.
      */
     public void register(ForeignCallSignature sig) {
-        if (!foreignCalls.containsKey(sig)) {
+        if (!isRegistered(sig)) {
             foreignCalls.put(sig, null);
         }
+    }
+
+    /**
+     * Checks if a foreign call signature is registered.
+     */
+    public boolean isRegistered(ForeignCallSignature sig) {
+        return foreignCalls.containsKey(sig);
     }
 
     /**

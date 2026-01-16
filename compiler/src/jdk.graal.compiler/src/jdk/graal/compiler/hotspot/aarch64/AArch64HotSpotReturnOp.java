@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.aarch64;
 
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.v0;
@@ -50,14 +51,17 @@ public final class AArch64HotSpotReturnOp extends AArch64HotSpotEpilogueOp imple
     public static final LIRInstructionClass<AArch64HotSpotReturnOp> TYPE = LIRInstructionClass.create(AArch64HotSpotReturnOp.class);
 
     @Use({REG, ILLEGAL}) private Value result;
+    @Use({REG, STACK}) private Value[] additionalReturns;
+
     private final boolean isStub;
     private final boolean requiresReservedStackAccessCheck;
 
-    public AArch64HotSpotReturnOp(Value result, boolean isStub, GraalHotSpotVMConfig config, Register thread, boolean requiresReservedStackAccessCheck) {
+    public AArch64HotSpotReturnOp(Value result, Value[] additionalReturns, boolean isStub, GraalHotSpotVMConfig config, Register thread, boolean requiresReservedStackAccessCheck) {
         super(TYPE, config, thread);
         this.requiresReservedStackAccessCheck = requiresReservedStackAccessCheck;
         assert validReturnValue(result);
         this.result = result;
+        this.additionalReturns = additionalReturns;
         this.isStub = isStub;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PR
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_PUSH_RBP;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_SET_FRAME_POINTER;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.graal.compiler.lir.LIRValueUtil.asConstantValue;
@@ -47,7 +46,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import com.oracle.svm.core.pltgot.GOTAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -97,6 +95,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
+import com.oracle.svm.core.pltgot.GOTAccess;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
@@ -274,9 +273,10 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         @Temp({REG, OperandFlag.ILLEGAL}) private AllocatableValue cfiTargetRegister;
 
-        public SubstrateAMD64DirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state,
+        public SubstrateAMD64DirectCallOp(ResolvedJavaMethod callTarget, Value result,
+                        Value[] parameters, Value[] temps, Value[] additionalReturns, LIRFrameState state,
                         Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp) {
-            super(TYPE, callTarget, result, parameters, temps, state);
+            super(TYPE, callTarget, result, parameters, temps, additionalReturns, state);
             this.newThreadStatus = newThreadStatus;
             this.javaFrameAnchor = javaFrameAnchor;
             this.javaFrameAnchorTemp = javaFrameAnchorTemp;
@@ -317,8 +317,9 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         private SubstrateCallingConventionType callingConventionType;
 
-        public SubstrateAMD64IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
-                        LIRFrameState state, Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp,
+        public SubstrateAMD64IndirectCallOp(ResolvedJavaMethod callTarget, Value result,
+                        Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state,
+                        Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp,
                         BiConsumer<CompilationResultBuilder, Integer> offsetRecorder) {
             this(callTarget, result, parameters, temps, targetAddress, state, javaFrameAnchor, javaFrameAnchorTemp, newThreadStatus, destroysCallerSavedRegisters, exceptionTemp, offsetRecorder,
                             new Value[0], null);
@@ -373,7 +374,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         public SubstrateAMD64ComputedIndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps,
                         Value addressBase, Computation[] addressComputation,
                         LIRFrameState state, Value exceptionTemp, LIRKindTool lirKindTool, ConstantReflectionProvider constantReflection) {
-            super(TYPE, callTarget, result, parameters, temps, state);
+            super(TYPE, callTarget, result, parameters, temps, Value.NO_VALUES, state);
             this.addressBase = this.addressBaseTemp = addressBase;
             this.exceptionTemp = exceptionTemp;
             this.addressComputation = addressComputation;
@@ -634,17 +635,17 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         }
 
         @Override
-        public void emitReturn(JavaKind kind, Value input) {
+        public void emitReturn(JavaKind kind, Value input, AllocatableValue tailCallTarget, AllocatableValue[] additionalReturns) {
             AllocatableValue operand = Value.ILLEGAL;
             if (input != null) {
                 operand = resultOperandFor(kind, input.getValueKind());
                 emitMove(operand, input);
             }
-            append(emitReturnOp(operand));
+            append(emitReturnOp(operand, tailCallTarget, additionalReturns));
         }
 
-        protected AMD64ReturnOp emitReturnOp(AllocatableValue operand) {
-            return new AMD64ReturnOp(operand);
+        protected AMD64ReturnOp emitReturnOp(AllocatableValue operand, AllocatableValue tailCallTarget, AllocatableValue[] additionalReturns) {
+            return new AMD64ReturnOp(operand, tailCallTarget, additionalReturns);
         }
 
         @Override
@@ -657,19 +658,6 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             return (SubstrateRegisterConfig) super.getRegisterConfig();
         }
 
-        // @Override
-        // public boolean canEliminateRedundantMoves() {
-        // if (getResult().getMethod().isDeoptTarget()) {
-        // /*
-        // * Redundant move elimination can extend the liferanges of intervals, even over
-        // * method calls. This would introduce new stack slots which are live for a method
-        // * call, but not recognized during register allocation.
-        // */
-        // return false;
-        // }
-        // return true;
-        // }
-
         protected boolean getDestroysCallerSavedRegisters(ResolvedJavaMethod targetMethod) {
             if (getResult().getMethod().isDeoptTarget()) {
                 /*
@@ -681,7 +669,17 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
                  */
                 return true;
             }
-            return targetMethod == null || !((SharedMethod) targetMethod).hasCalleeSavedRegisters();
+            if (targetMethod == null) {
+                return true;
+            }
+            SharedMethod sharedMethod = (SharedMethod) targetMethod;
+            if (sharedMethod.hasCalleeSavedRegisters()) {
+                return false;
+            }
+            if (sharedMethod.getCallingConventionKind().isCustom()) {
+                return sharedMethod.getCustomCallingConventionType().destroysCallerSavedRegisters();
+            }
+            return true;
         }
 
         protected Value emitIndirectForeignCallAddress(ForeignCallLinkage linkage) {
@@ -731,7 +729,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
                 append(new SubstrateAMD64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info,
                                 Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp, null));
             } else {
-                append(new SubstrateAMD64DirectCallOp(targetMethod, result, arguments, temps, info, Value.ILLEGAL,
+                append(new SubstrateAMD64DirectCallOp(targetMethod, result, arguments, temps, Value.NO_VALUES, info, Value.ILLEGAL,
                                 Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp));
             }
         }
@@ -769,7 +767,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         @Override
         public void emitUnwind(Value operand) {
-            throw shouldNotReachHere("handled by lowering");
+            throw VMError.shouldNotReachHere("handled by lowering");
         }
 
         @Override
@@ -779,7 +777,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
                 emitForeignCall(linkage, state, actionAndReason, failedSpeculation);
                 append(new DeadEndOp());
             } else {
-                throw shouldNotReachHere("Substrate VM does not use deoptimization");
+                throw VMError.shouldNotReachHere("Substrate VM does not use deoptimization");
             }
         }
 
@@ -790,7 +788,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         @Override
         public void emitInstructionSynchronizationBarrier() {
-            throw shouldNotReachHere("AMD64 does not need instruction synchronization");
+            throw VMError.shouldNotReachHere("AMD64 does not need instruction synchronization");
         }
 
         @Override
@@ -901,7 +899,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         @Override
         public void visitSafepointNode(SafepointNode node) {
-            throw shouldNotReachHere("handled by lowering");
+            throw VMError.shouldNotReachHere("handled by lowering");
         }
 
         @Override
@@ -965,7 +963,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
                 values[0] = saved;
             }
 
-            if (type.nativeABI()) {
+            if (type.nativeABI() && type.mayBeVarargs()) {
                 VMError.guarantee(values.length == invokeCc.getArgumentCount() - 1, "The last argument should be missing.");
                 AllocatableValue raxValue = invokeCc.getArgument(values.length);
                 VMError.guarantee(raxValue instanceof RegisterValue && ((RegisterValue) raxValue).getRegister().equals(rax));
@@ -1050,9 +1048,20 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         @Override
         protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
+            SubstrateCallingConventionType cc = (SubstrateCallingConventionType) callTarget.callType();
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             vzeroupperBeforeCall((SubstrateAMD64LIRGenerator) getLIRGeneratorTool(), parameters, callState, (SharedMethod) targetMethod);
-            append(new SubstrateAMD64DirectCallOp(targetMethod, result, parameters, temps, callState,
+
+            Value[] actualTemps = temps;
+            Value[] additionalReturns = Value.NO_VALUES;
+
+            if (cc.customABI()) {
+                GraalError.guarantee(temps.length == 0, "existing temps");
+                actualTemps = cc.getKilledRegister(getCodeCache().getRegisterConfig().getCallerSaveRegisters());
+                additionalReturns = cc.getAdditionalReturns(result, parameters);
+            }
+
+            append(new SubstrateAMD64DirectCallOp(targetMethod, result, parameters, actualTemps, additionalReturns, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
                             getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));
         }
@@ -1153,7 +1162,6 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             // Assume the SVM ForeignCallSignature are identical to the Graal ones.
             return gen.getForeignCalls().lookupForeignCall(chooseCPUFeatureVariant(foreignCallDescriptor, gen.target(), Stubs.getRequiredCPUFeatures(valueNode.getClass())));
         }
-
     }
 
     @SuppressWarnings("unlikely-arg-type")
@@ -1954,19 +1962,19 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
     }
 
     protected FrameContext createFrameContext(SharedMethod method, Deoptimizer.StubType stubType, CallingConvention callingConvention) {
-        if (stubType == Deoptimizer.StubType.EntryStub) {
-            return new DeoptEntryStubContext(method, callingConvention);
-        } else if (stubType == Deoptimizer.StubType.ExitStub) {
-            return new DeoptExitStubContext(method, callingConvention);
-        } else if (stubType == Deoptimizer.StubType.InterpreterEnterStub) {
-            assert InterpreterSupport.isEnabled();
-            return new AMD64InterpreterStubs.InterpreterEnterStubContext(method, callingConvention);
-        } else if (stubType == Deoptimizer.StubType.InterpreterLeaveStub) {
-            assert InterpreterSupport.isEnabled();
-            return new AMD64InterpreterStubs.InterpreterLeaveStubContext(method, callingConvention);
-        }
-
-        return new SubstrateAMD64FrameContext(method, callingConvention);
+        return switch (stubType) {
+            case EntryStub -> new DeoptEntryStubContext(method, callingConvention);
+            case ExitStub -> new DeoptExitStubContext(method, callingConvention);
+            case InterpreterEnterStub -> {
+                assert InterpreterSupport.isEnabled();
+                yield new AMD64InterpreterStubs.InterpreterEnterStubContext(method, callingConvention);
+            }
+            case InterpreterLeaveStub -> {
+                assert InterpreterSupport.isEnabled();
+                yield new AMD64InterpreterStubs.InterpreterLeaveStubContext(method, callingConvention);
+            }
+            case NoDeoptStub -> new SubstrateAMD64FrameContext(method, callingConvention);
+        };
     }
 
     @Override

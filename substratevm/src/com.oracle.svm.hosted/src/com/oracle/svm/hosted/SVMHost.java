@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,6 +81,7 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.NeverInlineTrivial;
+import com.oracle.svm.core.NeverStrengthenGraphWithConstants;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
@@ -920,6 +921,11 @@ public class SVMHost extends HostVM {
         return SubstrateOptions.NeverInline.getValue().values().stream()
                         .map(MethodFilter::parse)
                         .anyMatch(filter -> filter.matches(method));
+    }
+
+    @Override
+    public boolean hasNeverStrengthenGraphWithConstantsDirective(ResolvedJavaMethod method) {
+        return AnnotationUtil.isAnnotationPresent(method, NeverStrengthenGraphWithConstants.class);
     }
 
     @Override

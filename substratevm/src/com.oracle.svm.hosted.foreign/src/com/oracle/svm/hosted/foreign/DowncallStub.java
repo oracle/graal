@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -159,8 +159,8 @@ class DowncallStub extends NonBytecodeMethod {
         }
 
         state.clearLocals();
-        SubstrateCallingConventionType cc = SubstrateCallingConventionType.makeCustom(true, adapted.parametersAssignment().toArray(new AssignedLocation[0]),
-                        adapted.returnsAssignment().toArray(new AssignedLocation[0]));
+        SubstrateCallingConventionType cc = SubstrateCallingConventionType.makeCustom(true, adapted.parametersAssignment().toArray(AssignedLocation.EMPTY_ARRAY),
+                        adapted.returnsAssignment().toArray(AssignedLocation.EMPTY_ARRAY));
 
         CFunction.Transition transition = nep.skipsTransition() ? CFunction.Transition.NO_TRANSITION : CFunction.Transition.TO_NATIVE;
 

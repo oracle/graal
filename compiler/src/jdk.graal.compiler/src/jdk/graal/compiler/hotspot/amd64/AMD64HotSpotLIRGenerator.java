@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -285,7 +285,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private Register pollOnReturnScratchRegister;
 
     @Override
-    public void emitReturn(JavaKind kind, Value input) {
+    public void emitReturn(JavaKind kind, Value input, AllocatableValue tailCallTarget, AllocatableValue[] additionalReturns) {
+        GraalError.guarantee(Value.ILLEGAL.equals(tailCallTarget), "Returning to a custom return address is unsupported on HotSpot");
         AllocatableValue operand = Value.ILLEGAL;
         if (input != null) {
             operand = resultOperandFor(kind, input.getValueKind());
@@ -299,7 +300,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             append(new AMD64RestoreRegistersOp(saveOnEntry.getSlots(), saveOnEntry));
         }
         Register thread = getProviders().getRegisters().getThreadRegister();
-        append(new AMD64HotSpotReturnOp(operand, getStub() != null, thread, pollOnReturnScratchRegister, config, getResult().requiresReservedStackAccessCheck()));
+        append(new AMD64HotSpotReturnOp(operand, additionalReturns, getStub() != null, thread,
+                        pollOnReturnScratchRegister, config, getResult().requiresReservedStackAccessCheck()));
     }
 
     @Override

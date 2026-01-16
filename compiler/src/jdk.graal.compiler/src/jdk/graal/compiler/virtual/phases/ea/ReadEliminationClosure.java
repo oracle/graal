@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,6 +69,7 @@ import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.nodes.virtual.FieldAliasNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationBlockState.CacheEntry;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationBlockState.LoadCacheEntry;
@@ -177,21 +178,25 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                         LocationIdentity location = ((MemoryAccess) node).getLocationIdentity();
                         if (location.isSingle()) {
                             ValueNode object = null;
-                            if (node instanceof LoadFieldNode) {
-                                object = ((LoadFieldNode) node).object();
+                            ValueNode access = (ValueNode) node;
+                            if (node instanceof LoadFieldNode loadFieldNode) {
+                                object = loadFieldNode.object();
                             } else if (node instanceof ReadNode read) {
                                 if (!read.getBarrierType().canReadEliminate()) {
                                     assert deleted == false;
                                     return false;
                                 }
-                                object = ((ReadNode) node).getAddress();
+                                object = read.getAddress();
+                            } else if (node instanceof FieldAliasNode fieldAlias) {
+                                // Injects the aliasing relationship
+                                object = fieldAlias.getReceiver();
+                                access = fieldAlias.getAlias();
                             } else {
                                 // unknown node, no elimination possible
                                 assert deleted == false;
                                 return false;
                             }
                             object = GraphUtil.unproxify(object);
-                            ValueNode access = (ValueNode) node;
                             LoadCacheEntry identifier = new LoadCacheEntry(object, location);
                             ValueNode cachedValue = state.getCacheEntry(identifier);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -315,7 +315,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         super(jvmciRuntime, runtime, metaAccess, codeCache, wordTypes);
     }
 
-    protected static void link(Stub stub) {
+    public static void link(Stub stub) {
         stub.getLinkage().setCompiledStub(stub);
     }
 

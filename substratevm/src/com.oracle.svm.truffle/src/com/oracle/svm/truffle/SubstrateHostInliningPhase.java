@@ -24,19 +24,20 @@
  */
 package com.oracle.svm.truffle;
 
-import jdk.graal.compiler.core.common.CompilationIdentifier;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.phases.common.CanonicalizerPhase;
-import jdk.graal.compiler.phases.tiers.HighTierContext;
-import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
-import jdk.graal.compiler.truffle.host.HostInliningPhase;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.truffle.host.HostInliningPhase;
+import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -73,8 +74,12 @@ public final class SubstrateHostInliningPhase extends HostInliningPhase {
             return false;
         } else if (super.isEnabledFor(env, method)) {
             return true;
-        } else if (truffleFeature.runtimeCompiledMethods.contains(translateMethod(method)) &&
-                        isTruffleBoundary(env, method) == null) {
+        }
+
+        AnalysisMethod translatedMethod = translateMethod(method);
+        if (truffleFeature.runtimeCompiledMethods.contains(translatedMethod) && isTruffleBoundary(env, method) == null) {
+            return true;
+        } else if (translatedMethod.wrapped instanceof SubstrateTruffleBytecodeHandlerStub) {
             return true;
         }
         return false;
@@ -94,7 +99,7 @@ public final class SubstrateHostInliningPhase extends HostInliningPhase {
     }
 
     @Override
-    protected ResolvedJavaMethod translateMethod(ResolvedJavaMethod method) {
+    protected AnalysisMethod translateMethod(ResolvedJavaMethod method) {
         return ((HostedMethod) method).getWrapped();
     }
 }

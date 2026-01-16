@@ -561,6 +561,7 @@ suite = {
         "HSDIS_LIBRARY",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_TEST",
+        "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_COMPILER",
         "truffle:TRUFFLE_RUNTIME",
       ],

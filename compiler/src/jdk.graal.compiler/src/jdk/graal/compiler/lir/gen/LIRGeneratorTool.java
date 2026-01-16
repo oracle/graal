@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,8 +45,10 @@ import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueKindFactory;
@@ -176,11 +178,41 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
         throw GraalError.unimplemented("Halt operation is not implemented on this architecture");  // ExcludeFromJacocoGeneratedReport
     }
 
+    default void emitReturn(JavaKind javaKind, Value input) {
+        emitReturn(javaKind, input, Value.ILLEGAL, AllocatableValue.NONE);
+    }
+
     /**
      * Emits a return instruction. Implementations need to insert a move if the input is not in the
      * correct location.
      */
-    void emitReturn(JavaKind javaKind, Value input);
+    void emitReturn(JavaKind javaKind, Value input, AllocatableValue tailCallTarget, AllocatableValue[] additionalReturns);
+
+    default void emitMultiReturns(JavaKind returnResultKind, Value returnResult, Value[] additionalReturnResults, Value tailCallTarget) {
+        CallingConvention cc = getResult().getCallingConvention();
+        Value updatedReturnResult = returnResult;
+        AllocatableValue[] additionalReturns = new AllocatableValue[additionalReturnResults.length];
+        // Move additionalReturnResults back to the parameter locations
+        for (int i = 0; i < additionalReturnResults.length; i++) {
+            Value additionalReturnResult = additionalReturnResults[i];
+            AllocatableValue operand = cc.getArgument(i);
+            if (operand instanceof RegisterValue registerValue) {
+                emitMove(registerValue, additionalReturnResult);
+                if (returnResult.equals(additionalReturnResult)) {
+                    // The calling convention uses the same register for both default return result
+                    // and this additional return result. Use the copy stored in this register to
+                    // avoid redundant move.
+                    updatedReturnResult = registerValue;
+                }
+            } else if (operand instanceof StackSlot stackSlot) {
+                emitMove(stackSlot, additionalReturnResult);
+            } else {
+                throw GraalError.shouldNotReachHere(operand.toString());
+            }
+            additionalReturns[i] = operand;
+        }
+        emitReturn(returnResultKind, updatedReturnResult, tailCallTarget == null ? Value.ILLEGAL : asAllocatable(tailCallTarget), additionalReturns);
+    }
 
     /**
      * Returns an {@link AllocatableValue} holding the {@code value} by moving it if necessary. If

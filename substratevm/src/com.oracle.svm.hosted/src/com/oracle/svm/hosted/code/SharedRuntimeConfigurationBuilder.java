@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,6 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.function.Function;
-
-import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.SubstrateOptions;
@@ -98,7 +96,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         ConstantFieldProvider constantFieldProvider = createConstantFieldProvider();
 
         for (ConfigKind config : ConfigKind.values()) {
-            registerConfigs.put(config, ImageSingletons.lookup(SubstrateRegisterConfigFactory.class).newRegisterFactory(config, metaAccess, ConfigurationValues.getTarget(),
+            registerConfigs.put(config, SubstrateRegisterConfigFactory.singleton().newRegisterFactory(config, metaAccess, ConfigurationValues.getTarget(),
                             SubstrateOptions.PreserveFramePointer.getValue()));
         }
 

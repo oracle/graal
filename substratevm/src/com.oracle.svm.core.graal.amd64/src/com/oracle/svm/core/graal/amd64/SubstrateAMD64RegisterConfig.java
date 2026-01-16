@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -389,7 +389,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
                 AssignedLocation storage = type.fixedParameterAssignment[i];
                 if (storage.assignsToRegister()) {
-                    if (!kind.isNumericInteger() && !kind.isNumericFloat()) {
+                    if (kind == JavaKind.Void || kind == JavaKind.Illegal) {
                         throw unsupportedFeature("Unsupported storage/kind pair - Storage: " + storage + " ; Kind: " + kind);
                     }
                     Register reg = storage.register();
@@ -419,7 +419,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
          * SubstrateAMD64NodeLIRBuilder.visitInvokeArguments. This information can be useful for
          * functions taking a variable number of arguments (varargs).
          */
-        if (type.nativeABI()) {
+        if (type.nativeABI() && type.mayBeVarargs()) {
             kinds = Arrays.copyOf(kinds, kinds.length + 1);
             locations = Arrays.copyOf(locations, locations.length + 1);
             kinds[kinds.length - 1] = JavaKind.Int;
