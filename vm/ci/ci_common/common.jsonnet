@@ -538,7 +538,7 @@ local devkits = graal_common.devkits;
   # Linux/AMD64
   deploy_vm_standalones_javaLatest_linux_amd64: vm.vm_java_Latest + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'amd64', 'daily', deploy=true) + self.deploy_graalvm_standalones('latest', record_file_sizes=true) + {name: 'daily-deploy-vm-standalones-java-latest-linux-amd64', notify_groups:: ["deploy"]},
   # Linux/AARCH64
-  deploy_vm_standalones_javaLatest_linux_aarch64: vm.vm_java_Latest + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'aarch64', 'daily', deploy=true) + self.deploy_graalvm_standalones('latest') + {name: 'daily-deploy-vm-standalones-java-latest-linux-aarch64', notify_groups:: ["deploy"], capabilities+: ["!xgene3"]},
+  deploy_vm_standalones_javaLatest_linux_aarch64: vm.vm_java_Latest + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'aarch64', 'daily', deploy=true, os_distro='ol8') + self.deploy_graalvm_standalones('latest') + {name: 'daily-deploy-vm-standalones-java-latest-linux-aarch64', notify_groups:: ["deploy"], capabilities+: ["!xgene3"]},
   # Darwin/AARCH64
   deploy_vm_standalones_javaLatest_darwin_aarch64: vm.vm_java_Latest + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'daily', deploy=true) + self.deploy_graalvm_standalones('latest') + {name: 'daily-deploy-vm-standalones-java-latest-darwin-aarch64', capabilities+: ["darwin_sonoma"], notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '3:00:00'},
   # Windows/AMD64
