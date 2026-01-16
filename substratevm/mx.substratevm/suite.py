@@ -1642,7 +1642,7 @@ suite = {
                     "jdk.vm.ci.meta.annotation",
                 ],
             },
-            "checkstyle": "com.oracle.svm.hosted",
+            "checkstyle": "com.oracle.svm.interpreter",
             "javaCompliance": "24+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -1674,7 +1674,7 @@ suite = {
                     "jdk.internal.misc", # Unsafe
                 ],
             },
-            "checkstyle": "com.oracle.svm.hosted",
+            "checkstyleVersion" : "10.21.0",
             "javaCompliance": "24+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -1697,7 +1697,7 @@ suite = {
                     "jdk.vm.ci.meta.annotation",
                 ],
             },
-            "checkstyle": "com.oracle.svm.hosted",
+            "checkstyle": "com.oracle.svm.interpreter",
             "javaCompliance": "24+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -1724,7 +1724,7 @@ suite = {
                     "jdk.internal.misc", # Signal
                 ],
             },
-            "checkstyle": "com.oracle.svm.hosted",
+            "checkstyle": "com.oracle.svm.interpreter",
             "javaCompliance": "24+",
             "annotationProcessors": [
                 "substratevm:SVM_PROCESSOR",
@@ -1751,7 +1751,7 @@ suite = {
                     "jdk.internal.misc", # Signal
                 ],
             },
-            "checkstyle": "com.oracle.svm.hosted",
+            "checkstyle": "com.oracle.svm.interpreter",
             "javaCompliance": "24+",
             "annotationProcessors": [
                 "substratevm:SVM_PROCESSOR",
