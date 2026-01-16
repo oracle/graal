@@ -24,7 +24,12 @@ package com.oracle.truffle.espresso.vmaccess;
 
 import static com.oracle.truffle.espresso.vmaccess.EspressoExternalConstantReflectionProvider.safeGetClass;
 
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
 import java.util.Objects;
 import java.util.stream.Stream;
 
@@ -92,6 +97,10 @@ final class EspressoExternalVMAccess implements VMAccess {
     private final JavaConstant unsafe;
     private final ResolvedJavaType classNotFoundExceptionType;
     private JavaConstant systemClassLoader;
+    private final ResolvedJavaMethod getProtectionDomain;
+    private final ResolvedJavaMethod getCodeSource;
+    private final ResolvedJavaMethod getLocation;
+    private final ResolvedJavaMethod toString;
 
     @SuppressWarnings("this-escape")
     EspressoExternalVMAccess(Context context) {
@@ -125,8 +134,27 @@ final class EspressoExternalVMAccess implements VMAccess {
         ResolvedJavaMethod unsafeGetter = unsafeType.findMethod("getUnsafe", providers.getMetaAccess().parseMethodDescriptor("()Ljdk/internal/misc/Unsafe;"));
         unsafe = invoke(unsafeGetter, null);
 
+        ResolvedJavaType protectionDomainType = providers.getMetaAccess().lookupJavaType(ProtectionDomain.class);
+        ResolvedJavaType codeSourceType = providers.getMetaAccess().lookupJavaType(CodeSource.class);
+
+        Signature getProtectionDomainSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/security/ProtectionDomain;");
+        getProtectionDomain = classType.findMethod("getProtectionDomain", getProtectionDomainSignature);
+
+        Signature getCodeSourceSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/security/CodeSource;");
+        getCodeSource = protectionDomainType.findMethod("getCodeSource", getCodeSourceSignature);
+
+        Signature getLocationSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/net/URL;");
+        getLocation = codeSourceType.findMethod("getLocation", getLocationSignature);
+
+        Signature toStringSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/String;");
+        toString = javaLangObject.findMethod("toString", toStringSignature);
+
         JVMCIError.guarantee(forName != null, "Required method: forName");
         JVMCIError.guarantee(unsafeAllocateInstance != null, "Required method: unsafeAllocateInstance");
+        JVMCIError.guarantee(getProtectionDomain != null, "Required method: getProtectionDomain");
+        JVMCIError.guarantee(getCodeSource != null, "Required method: getCodeSource");
+        JVMCIError.guarantee(getLocation != null, "Required method: getLocation");
+        JVMCIError.guarantee(toString != null, "Required method: toString");
     }
 
     private EspressoExternalResolvedPrimitiveType[] createPrimitiveTypes() {
@@ -204,7 +232,24 @@ final class EspressoExternalVMAccess implements VMAccess {
 
     @Override
     public URL getCodeSourceLocation(ResolvedJavaType type) {
-        throw JVMCIError.unimplemented("getCodeSourceLocation() is not yet implemented");
+        JavaConstant originalClass = providers.getConstantReflection().asJavaClass(type);
+
+        JavaConstant pd = invoke(getProtectionDomain, originalClass);
+        JavaConstant cs = invoke(getCodeSource, pd);
+        if (cs.isNull()) {
+            return null;
+        }
+        JavaConstant location = invoke(getLocation, cs);
+        if (location.isNull()) {
+            return null;
+        }
+        JavaConstant locationStringConstant = invoke(toString, location);
+        String locationString = providers.getSnippetReflection().asObject(String.class, locationStringConstant);
+        try {
+            return new URI(locationString).toURL();
+        } catch (MalformedURLException | URISyntaxException e) {
+            throw JVMCIError.shouldNotReachHere(e);
+        }
     }
 
     private ResolvedJavaType lookupType(String name, JavaConstant classLoader) {
