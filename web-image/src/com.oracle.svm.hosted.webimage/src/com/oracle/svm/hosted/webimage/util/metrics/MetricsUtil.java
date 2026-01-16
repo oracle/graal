@@ -64,7 +64,9 @@ public final class MetricsUtil {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // Checkstyle: allow System.err
+            e.printStackTrace(System.err);
+            // Checkstyle: disallow System.err
             assert false : "Unexpected non-static field in a *MetricKeys class";
         }
         return metricKeys;

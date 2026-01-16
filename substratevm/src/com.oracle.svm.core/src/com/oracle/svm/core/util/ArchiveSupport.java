@@ -171,7 +171,7 @@ public class ArchiveSupport {
         } catch (IOException e) {
             if (isVerbose) {
                 LogUtils.info("Could not recursively delete path: " + toDelete);
-                e.printStackTrace();
+                e.printStackTrace(System.out);
             }
         }
     }

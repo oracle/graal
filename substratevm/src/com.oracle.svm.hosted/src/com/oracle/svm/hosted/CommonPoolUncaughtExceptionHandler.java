@@ -40,8 +40,8 @@ public class CommonPoolUncaughtExceptionHandler implements UncaughtExceptionHand
 
     @Override
     public synchronized void uncaughtException(Thread t, Throwable e) {
-        System.err.print("Aborting image build. Uncaught Exception in ForkJoinPool#commonPool() thread " + t + ' ');
-        e.printStackTrace(System.err);
+        System.out.print("Aborting image build. Uncaught Exception in ForkJoinPool#commonPool() thread " + t + ' ');
+        e.printStackTrace(System.out);
         NativeImageGenerator.exitBuilderWithError();
     }
 }

@@ -525,7 +525,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             }
         });
         if (!mismatchedAssignableResults.isEmpty()) {
-            mismatchedAssignableResults.forEach(System.err::println);
+            mismatchedAssignableResults.forEach(System.out::println);
             throw new AssertionError("Verification of all-instantiated type flows failed");
         }
         return true;

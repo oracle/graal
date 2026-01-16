@@ -35,7 +35,6 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import java.util.Map;
 
-import com.oracle.svm.core.JavaMainWrapper;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -56,6 +55,7 @@ import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.IsolateArguments;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
@@ -489,8 +489,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         try {
             RuntimeSupport.executeInitializationHooks();
         } catch (Throwable t) {
+            // Checkstyle: allow System.err
             System.err.println("Uncaught exception while running isolate initialization hooks:");
-            t.printStackTrace();
+            t.printStackTrace(System.err);
+            // Checkstyle: disallow System.err
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
 
@@ -498,8 +500,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         try {
             ThreadListenerSupport.get().beforeThreadRun();
         } catch (Throwable t) {
+            // Checkstyle: allow System.err
             System.err.println("Uncaught exception in beforeThreadRun():");
-            t.printStackTrace();
+            t.printStackTrace(System.err);
+            // Checkstyle: disallow System.err
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
 

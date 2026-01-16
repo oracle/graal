@@ -54,11 +54,11 @@ public class JSEntryPointRegistry implements ReflectionRegistry {
     @Override
     public void register(AccessCondition condition, boolean queriedOnly, boolean preserved, Executable... methods) {
         if (!AccessCondition.unconditional().equals(condition)) {
-            System.err.println("Conditional specification in entry points configuration is not supported and is ignored");
+            System.out.println("Conditional specification in entry points configuration is not supported and is ignored");
         }
 
         if (queriedOnly) {
-            System.err.println("Query specification in entry points configuration is not supported and is ignored");
+            System.out.println("Query specification in entry points configuration is not supported and is ignored");
         } else {
             Collections.addAll(entryPoints, methods);
         }
@@ -66,7 +66,7 @@ public class JSEntryPointRegistry implements ReflectionRegistry {
 
     @Override
     public void register(AccessCondition condition, boolean finalIsWritable, boolean preserved, Field... fields) {
-        System.err.println("The specification for fields in entry points configuration is not supported and is ignored.");
+        System.out.println("The specification for fields in entry points configuration is not supported and is ignored.");
     }
 
     @Override

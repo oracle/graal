@@ -391,7 +391,7 @@ public final class PointsToAnalyzer {
     }
 
     protected static void reportException(Throwable e) {
-        System.err.print("Exception:");
-        e.printStackTrace();
+        System.out.print("Exception:");
+        e.printStackTrace(System.out);
     }
 }
