@@ -1227,7 +1227,7 @@ suite = {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation",
-],
+                ],
             },
             "checkstyle": "com.oracle.svm.test",
             "workingSets": "SVM",
@@ -1341,7 +1341,7 @@ suite = {
             "jacoco" : "exclude",
         },
 
-        "com.oracle.svm.features": {
+        "com.oracle.svm.guest.features": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -1349,10 +1349,6 @@ suite = {
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "21+",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-                "SVM_PROCESSOR",
-            ],
             "workingSets": "SVM",
             "jacoco" : "exclude",
         },
@@ -1907,6 +1903,32 @@ suite = {
             },
         },
 
+        "SVM_GUEST": {
+            "subDir": "src",
+            "description" : "SubstrateVM image guest context components",
+            "dependencies": [
+                "com.oracle.svm.guest.features",
+            ],
+            "distDependencies": [
+                "sdk:NATIVEIMAGE",
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.guest",
+                "exports" : [],
+                "opens" : [],
+                "requires": [
+                    "transitive org.graalvm.nativeimage",
+                ],
+                "uses" : [
+                    "org.graalvm.nativeimage.Platform",
+                ],
+            },
+            "noMavenJavadoc": True,
+            "maven": {
+                "tag": ["default", "public"],
+            },
+        },
+
         "SVM_CAPNPROTO_RUNTIME" : {
             "subDir" : "src",
             "description" : "Capn Proto Runtime shaded module.",
@@ -1955,7 +1977,6 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM basic library-support components",
             "dependencies": [
-                "com.oracle.svm.features",
                 "com.oracle.svm.polyglot",
                 "com.oracle.svm.thirdparty",
             ],

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.features.jdk;
+package com.oracle.svm.guest.features.jdk.hosted;
 
 import java.lang.reflect.Method;
 import java.util.Objects;

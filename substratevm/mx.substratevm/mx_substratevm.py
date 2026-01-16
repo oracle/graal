@@ -1418,7 +1418,7 @@ svm = mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     # Use short name for Truffle Runtime SVM to select by priority
     dependencies=['GraalVM compiler', 'SubstrateVM Static Libraries', 'Graal SDK Native Image', 'svmt'],
-    jar_distributions=['substratevm:LIBRARY_SUPPORT'],
+    jar_distributions=['substratevm:LIBRARY_SUPPORT', 'substratevm:SVM_GUEST'],
     builder_jar_distributions=[
         'substratevm:SVM',
         'substratevm:SVM_CONFIGURE',
