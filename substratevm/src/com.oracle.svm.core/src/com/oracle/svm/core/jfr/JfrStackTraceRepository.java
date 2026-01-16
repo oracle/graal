@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -57,6 +56,7 @@ import com.oracle.svm.core.sampler.SamplerSampleWriterData;
 import com.oracle.svm.core.sampler.SamplerSampleWriterDataAccess;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
+import org.graalvm.word.impl.Word;
 
 /**
  * Repository that collects all metadata about stacktraces.

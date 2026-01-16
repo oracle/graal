@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.UnsafeMemorySupport;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import org.graalvm.word.impl.Word;
 
 @AutomaticallyRegisteredImageSingleton(UnsafeMemorySupport.class)
 @Platforms(InternalPlatform.NATIVE_ONLY.class)

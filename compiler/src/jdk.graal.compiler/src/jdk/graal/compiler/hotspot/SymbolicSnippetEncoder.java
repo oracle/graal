@@ -292,7 +292,7 @@ public class SymbolicSnippetEncoder {
                 for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
                     ResolvedJavaMethod callee = callTarget.targetMethod();
                     if (!delayedInvocationPluginMethods.contains(callee) && !Objects.equals(callee, original) && !Objects.equals(callee, method)) {
-                        throw GraalError.shouldNotReachHere("method " + callee.format("%H.%n") + " not inlined in snippet " + method.getName() + " (maybe not final?)"); // ExcludeFromJacocoGeneratedReport
+                        throw GraalError.shouldNotReachHere("method " + callee.format("%H.%n") + " not inlined in snippet " + method.format("%h.%n") + " (maybe not final?)"); // ExcludeFromJacocoGeneratedReport
                     }
                 }
                 debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After buildGraph");

@@ -43,6 +43,7 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.NeverInline;
@@ -103,8 +104,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.ObjectAccess;
 
 /**
  * This class dumps the image heap and the Java heap into a file (HPROF binary format), similar to
@@ -1095,7 +1095,7 @@ public class HeapDumpWriter {
          * GC_CLASS_DUMP and a GC_INSTANCE_DUMP record with the same id but that breaks VisualVM in
          * a weird way. So, we generate an artificial id for GC_CLASS_DUMP entries.
          */
-        Word hubAddress = Word.objectToUntrackedPointer(hub);
+        Word hubAddress = Word.objectToUntrackedWord(hub);
         if (hubAddress.isNonNull()) {
             hubAddress = hubAddress.add(1);
         }
@@ -1375,7 +1375,7 @@ public class HeapDumpWriter {
             }
 
             if (isLarge(obj)) {
-                boolean added = GrowableWordArrayAccess.add(largeObjects, Word.objectToUntrackedPointer(obj), NmtCategory.HeapDump);
+                boolean added = GrowableWordArrayAccess.add(largeObjects, Word.objectToUntrackedWord(obj), NmtCategory.HeapDump);
                 if (!added) {
                     Log.log().string("Failed to add an element to the large object list. Heap dump will be incomplete.").newline();
                 }

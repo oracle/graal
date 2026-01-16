@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.util;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
+import org.graalvm.word.impl.Word;
 
 /**
  * Utility methods on Unsigned values.

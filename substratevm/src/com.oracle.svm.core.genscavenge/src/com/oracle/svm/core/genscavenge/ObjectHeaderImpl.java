@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.AlwaysInline;
@@ -49,8 +50,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.ObjectAccess;
 import jdk.vm.ci.code.CodeUtil;
 
 /**
@@ -276,7 +276,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
          * All DynamicHub instances are in the native image heap and therefore do not move, so we
          * can convert the hub to a Pointer without any precautions.
          */
-        Word result = Word.objectToUntrackedPointer(hub);
+        Word result = Word.objectToUntrackedWord(hub);
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             result = result.subtract(KnownIntrinsics.heapBase());
             result = result.shiftLeft(numReservedExtraHubBits);

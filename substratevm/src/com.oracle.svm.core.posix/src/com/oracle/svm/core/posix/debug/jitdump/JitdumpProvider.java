@@ -67,7 +67,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public class JitdumpProvider {
     public static class Options {
@@ -119,7 +119,7 @@ public class JitdumpProvider {
     /**
      * The file name of a jitdump file is defined as {@literal jit-<pid>.dump}. The file will be
      * placed in the directory as specified by {@link Options#RuntimeJitdumpDir}.
-     * 
+     *
      * @return the full path of the jitdump file
      */
     public static Path getJitdumpPath() {
@@ -247,7 +247,7 @@ public class JitdumpProvider {
 
     /**
      * Create a {@link JitdumpEntry.FileHeader jitdump header} and writes it to the jitdump file.
-     * 
+     *
      * @param fd the file descriptor to write to.
      */
     private static void writeHeader(RawFileOperationSupport.RawFileDescriptor fd) {
@@ -272,7 +272,7 @@ public class JitdumpProvider {
      * <p>
      * A code close record only consists of a {@link JitdumpEntry.RecordHeader} with the record id
      * {@link JitdumpEntry.RecordType#JIT_CODE_CLOSE} and no record body.
-     * 
+     *
      * @param fd the file descriptor to write to.
      */
     private static void writeCloseRecord(RawFileOperationSupport.RawFileDescriptor fd) {

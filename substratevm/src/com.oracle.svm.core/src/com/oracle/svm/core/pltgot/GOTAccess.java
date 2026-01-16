@@ -29,8 +29,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public class GOTAccess {
 

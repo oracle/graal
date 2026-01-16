@@ -28,8 +28,8 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 import static com.oracle.svm.core.util.PointerUtils.roundDown;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 import static com.oracle.svm.core.util.VMError.guarantee;
-import static jdk.graal.compiler.word.Word.nullPointer;
-import static jdk.graal.compiler.word.Word.unsigned;
+import static org.graalvm.word.impl.Word.nullPointer;
+import static org.graalvm.word.impl.Word.unsigned;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -76,7 +76,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Reserves a fixed-size address range and provides memory from it by committing and uncommitting

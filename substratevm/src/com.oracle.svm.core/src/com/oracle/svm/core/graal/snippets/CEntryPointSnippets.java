@@ -125,8 +125,8 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
-import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
+import org.graalvm.word.impl.Word;
 
 /**
  * Snippets for calling from C to Java. See {@link CEntryPointActions} and

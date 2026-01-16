@@ -852,7 +852,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             if (linkAtBuildTime) {
                 reportUnresolvedElement("type", type.toJavaName());
             } else {
-                ExceptionSynthesizer.throwException(this, NoClassDefFoundError.class, type.toJavaName());
+                String message = type.toJavaName();
+                if (lastUnresolvedElementException != null && lastUnresolvedElementException.getCause() != null) {
+                    message += " [" + lastUnresolvedElementException.getCause() + "]";
+                }
+                ExceptionSynthesizer.throwException(this, NoClassDefFoundError.class, message);
             }
         }
 

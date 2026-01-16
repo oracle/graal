@@ -38,8 +38,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 @AutomaticallyRegisteredImageSingleton(FrameAccess.class)
 @Platforms(WebImageWasmLMPlatform.class)

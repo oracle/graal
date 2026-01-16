@@ -33,8 +33,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.Jvm;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 @TargetClass(java.lang.System.class)
 final class Target_java_lang_System {

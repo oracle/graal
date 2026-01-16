@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -50,6 +49,7 @@ import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Resource;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSyslimits;
+import org.graalvm.word.impl.Word;
 
 @AutomaticallyRegisteredFeature
 class PosixNativeLibraryFeature implements InternalFeature {

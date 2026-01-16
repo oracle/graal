@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.config.ConfigurationValues;

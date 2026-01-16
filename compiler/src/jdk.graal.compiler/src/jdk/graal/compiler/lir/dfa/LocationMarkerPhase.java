@@ -28,7 +28,10 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
+import java.util.List;
+
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -36,14 +39,13 @@ import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.lir.framemap.ReferenceMapBuilder;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.FinalCodeAnalysisPhase;
-
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Value;
-
-import java.util.List;
 
 /**
  * Mark all live references for a frame state. The frame state uses this information to build the
@@ -94,11 +96,26 @@ public final class LocationMarkerPhase extends FinalCodeAnalysisPhase {
             if (!info.hasDebugInfo()) {
                 info.initDebugInfo();
             }
+            try {
+                ReferenceMapBuilder refMap = frameMap.newReferenceMapBuilder();
+                values.addLiveValues(refMap);
 
-            ReferenceMapBuilder refMap = frameMap.newReferenceMapBuilder();
-            values.addLiveValues(refMap);
-
-            info.debugInfo().setReferenceMap(refMap.finish(info));
+                info.debugInfo().setReferenceMap(refMap.finish(info));
+            } catch (BailoutException ex) {
+                // Do not intercept bailouts as some tests (such as ExceedMaxOopMapStackOffset)
+                // may be expecting a bailout
+                throw ex;
+            } catch (Throwable ex) {
+                BytecodeFrame frame = info.topFrame;
+                GraalError error = ex instanceof GraalError ? (GraalError) ex : new GraalError(ex);
+                String prefix = "lir frame: ";
+                while (frame != null) {
+                    error.addContext(prefix + frame.getMethod().asStackTraceElement(frame.getBCI()));
+                    frame = (BytecodeFrame) frame.getCaller();
+                    prefix = "          ";
+                }
+                throw error;
+            }
         }
 
         /**

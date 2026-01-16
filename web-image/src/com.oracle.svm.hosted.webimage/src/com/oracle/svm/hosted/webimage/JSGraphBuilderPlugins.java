@@ -30,12 +30,13 @@ import java.util.Arrays;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.hosted.webimage.wasm.WasmLMGraphBuilderPlugins;
 import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
 
-import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -56,7 +57,6 @@ import jdk.graal.compiler.replacements.SnippetSubstitutionInvocationPlugin;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.StringUTF16Snippets;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

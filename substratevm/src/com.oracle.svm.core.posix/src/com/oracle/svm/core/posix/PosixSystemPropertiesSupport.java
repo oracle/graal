@@ -31,8 +31,7 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Unistd;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public abstract class PosixSystemPropertiesSupport extends SystemPropertiesSupport {
 

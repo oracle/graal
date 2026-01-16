@@ -29,6 +29,7 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.AlwaysInline;
@@ -43,8 +44,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.ObjectAccess;
 
 /**
  * The object header is a 32-bit word (currently 64bit, see GR-42105). The two least-significant
@@ -163,7 +163,7 @@ public class WasmObjectHeader extends ObjectHeader {
          * All DynamicHub instances are in the native image heap and therefore do not move, so we
          * can convert the hub to a Pointer without any precautions.
          */
-        return Word.objectToUntrackedPointer(hub);
+        return Word.objectToUntrackedWord(hub);
     }
 
     @Override

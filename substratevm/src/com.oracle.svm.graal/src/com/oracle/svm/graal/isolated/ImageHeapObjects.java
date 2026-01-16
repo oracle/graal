@@ -24,8 +24,9 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -52,7 +53,7 @@ public final class ImageHeapObjects {
             return Word.nullPointer();
         }
         VMError.guarantee(isInImageHeap(t));
-        Word result = Word.objectToUntrackedPointer(t);
+        UnsignedWord result = Word.objectToUntrackedWord(t);
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             result = result.subtract(KnownIntrinsics.heapBase());
         }

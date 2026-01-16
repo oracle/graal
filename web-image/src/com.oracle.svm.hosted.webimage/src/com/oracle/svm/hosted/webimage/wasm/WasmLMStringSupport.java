@@ -32,8 +32,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.hosted.webimage.wasm.gc.WasmAllocation;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.webimage.wasmgc.annotation.WasmExport;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Support class to create Java strings from the JS runtime through exported functions.

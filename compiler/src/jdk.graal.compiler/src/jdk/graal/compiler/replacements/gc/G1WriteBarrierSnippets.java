@@ -31,6 +31,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -46,6 +47,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.gc.G1ArrayRangePostWriteBarrierNode;
 import jdk.graal.compiler.nodes.gc.G1ArrayRangePreWriteBarrierNode;
@@ -62,7 +64,7 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
-import jdk.graal.compiler.word.Word;
+import jdk.graal.compiler.word.WordCastNode;
 
 /**
  * Implementation of the write barriers for the G1 garbage collector.
@@ -120,7 +122,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                     int traceStartCycle, Counters counters) {
         Word thread = getThread();
         verifyOop(object);
-        Word field = Word.fromAddress(address);
+        Word field = WordCastNode.castToWord(address);
         byte markingValue = thread.readByte(satbQueueMarkingActiveOffset(), SATB_QUEUE_MARKING_ACTIVE_LOCATION);
 
         boolean trace = isTracingActive(traceStartCycle);
@@ -142,7 +144,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             // The load is always issued except the cases of CAS and referent field.
             Object previousObject;
             if (doLoad) {
-                previousObject = field.readObject(0, BarrierType.NONE, LocationIdentity.any());
+                previousObject = JavaReadNode.readObject(field, 0, BarrierType.NONE, LocationIdentity.any());
                 if (trace) {
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(previousObject).rawValue());
                     verifyOop(previousObject);
@@ -183,7 +185,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
         Pointer oop;
         if (usePrecise) {
-            oop = Word.fromAddress(address);
+            oop = WordCastNode.castToWord(address);
         } else {
             if (verifyBarrier()) {
                 verifyNotArray(object);
@@ -266,11 +268,11 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         Word indexAddress = thread.add(satbQueueIndexOffset());
         long indexValue = indexAddress.readWord(0, SATB_QUEUE_INDEX_LOCATION).rawValue();
         long scale = objectArrayIndexScale();
-        Word start = getPointerToFirstArrayElement(Word.fromAddress(address), length, elementStride);
+        Word start = getPointerToFirstArrayElement(WordCastNode.castToWord(address), length, elementStride);
 
         for (int i = 0; GraalDirectives.injectIterationCount(10, i < length); i++) {
             Word arrElemPtr = start.add(Word.unsigned(i * scale));
-            Object previousObject = arrElemPtr.readObject(0, BarrierType.NONE, LocationIdentity.any());
+            Object previousObject = JavaReadNode.readObject(arrElemPtr, 0, BarrierType.NONE, LocationIdentity.any());
             verifyOop(previousObject);
             if (probability(FREQUENT_PROBABILITY, previousObject != null)) {
                 if (probability(FREQUENT_PROBABILITY, indexValue != 0)) {
@@ -293,7 +295,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         }
 
         Word base = cardTableBase();
-        Word addr = Word.fromAddress(address);
+        Word addr = WordCastNode.castToWord(address);
         Word start = base.add(cardTableOffset(getPointerToFirstArrayElement(addr, length, elementStride)));
         Word end = base.add(cardTableOffset(getPointerToLastArrayElement(addr, length, elementStride)));
 
@@ -408,8 +410,8 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
      */
     private void validateObject(Object parent, Object child) {
         if (verifyOops() && child != null) {
-            Word parentWord = Word.objectToTrackedPointer(parent);
-            Word childWord = Word.objectToTrackedPointer(child);
+            Word parentWord = Word.objectToTrackedWord(parent);
+            Word childWord = Word.objectToTrackedWord(child);
             boolean success = validateOop(validateObjectCallDescriptor(), parentWord, childWord);
             AssertionNode.dynamicAssert(success, "Verification ERROR, Parent: %p Child: %p\n", parentWord.rawValue(), childWord.rawValue());
         }

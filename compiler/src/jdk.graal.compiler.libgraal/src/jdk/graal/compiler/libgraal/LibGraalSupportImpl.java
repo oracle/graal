@@ -52,11 +52,11 @@ import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.libgraal.truffle.HSTruffleCompilerRuntime;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.hotspot.CompilerThreadCanCallJavaScope;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
+import org.graalvm.word.impl.Word;
 
 /**
  * Implementation of {@link LibGraalSupport} that is only loaded by the libgraal class loader when

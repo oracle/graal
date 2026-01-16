@@ -116,7 +116,7 @@ import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Garbage collector (incremental or complete) for {@link HeapImpl}.

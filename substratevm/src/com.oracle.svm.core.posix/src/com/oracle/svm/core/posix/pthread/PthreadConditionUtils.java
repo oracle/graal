@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.pthread;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 
@@ -40,6 +39,7 @@ import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.util.TimeUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import org.graalvm.word.impl.Word;
 
 /**
  * This class contains helper methods for the clock and time handling for {@link pthread_cond_t

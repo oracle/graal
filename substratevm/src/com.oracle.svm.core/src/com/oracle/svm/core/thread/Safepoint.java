@@ -53,7 +53,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.PauseNode;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Manages the initiation of safepoints. A safepoint is a global state where all Java threads,

@@ -27,7 +27,6 @@ package com.oracle.svm.core.jvmti;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_NONE;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_NOT_AVAILABLE;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
@@ -49,6 +48,7 @@ import com.oracle.svm.core.nmt.NmtCategory;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
+import org.graalvm.word.impl.Word;
 
 /** Methods related to {@link JvmtiEnv}. */
 public final class JvmtiEnvUtil {

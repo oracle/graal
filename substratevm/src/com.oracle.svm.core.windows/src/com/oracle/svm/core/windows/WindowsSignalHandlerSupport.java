@@ -28,7 +28,6 @@ import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSIT
 
 import java.util.Locale;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -43,6 +42,7 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.WinBase;
+import org.graalvm.word.impl.Word;
 
 @AutomaticallyRegisteredImageSingleton(SignalHandlerSupport.class)
 public class WindowsSignalHandlerSupport implements SignalHandlerSupport {

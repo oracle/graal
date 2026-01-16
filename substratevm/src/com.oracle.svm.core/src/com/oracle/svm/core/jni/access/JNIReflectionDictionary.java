@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
@@ -62,7 +63,6 @@ import com.oracle.svm.core.util.Utf8.WrappedAsciiCString;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.util.SignatureUtil;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.Signature;
 
@@ -322,7 +322,7 @@ public final class JNIReflectionDictionary {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JNIAccessibleMethod getMethodByID(JNIMethodId method) {
-        if (!SubstrateOptions.SpawnIsolates.getValue() && method == Word.zero()) {
+        if (!SubstrateOptions.SpawnIsolates.getValue() && method.equal(Word.zero())) {
             return null;
         }
         Pointer p = KnownIntrinsics.heapBase().add((Pointer) method);

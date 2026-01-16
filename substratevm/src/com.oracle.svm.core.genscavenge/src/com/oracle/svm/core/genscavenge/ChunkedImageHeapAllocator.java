@@ -31,8 +31,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 class ChunkedImageHeapAllocator {
     abstract static class Chunk {

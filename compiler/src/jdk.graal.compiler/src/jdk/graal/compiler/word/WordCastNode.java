@@ -27,6 +27,8 @@ package jdk.graal.compiler.word;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.word.impl.Word;
+
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -42,6 +44,8 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.memory.address.AddressNode.Address;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
@@ -54,11 +58,11 @@ import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
 /**
- * Casts between Word and Object exposed by the {@link Word#fromAddress},
- * {@link Word#objectToTrackedPointer}, {@link Word#objectToUntrackedPointer} and
- * {@link Word#toObject()} operations. It has an impact on the pointer maps for the GC, so it must
- * not be scheduled or optimized away.
+ * Casts between Word and Object exposed by the {@link Word#objectToTrackedPointer},
+ * {@link Word#objectToUntrackedPointer} and {@link Word#toObject()} operations. It has an impact on
+ * the pointer maps for the GC, so it must not be scheduled or optimized away.
  */
+@Node.NodeIntrinsicFactory
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 public final class WordCastNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable {
 
@@ -214,5 +218,18 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
             }
             generator.setResult(this, result);
         }
+    }
+
+    @NodeIntrinsic
+    public static native Word castToWord(Address address);
+
+    /**
+     * Node intrinsic factory for {@link #castToWord(Address)}.
+     */
+    public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter WordTypes wordTypes, ValueNode input) {
+        JavaKind toWordReturnKind = JavaKind.Object;
+        JavaKind wordKind = wordTypes.getWordKind();
+        b.push(toWordReturnKind, b.add(addressToWord(input, wordKind)));
+        return true;
     }
 }

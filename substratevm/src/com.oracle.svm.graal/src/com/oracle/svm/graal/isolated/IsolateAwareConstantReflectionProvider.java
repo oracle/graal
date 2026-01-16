@@ -44,13 +44,13 @@ import com.oracle.svm.graal.meta.SubstrateMemoryAccessProviderImpl;
 import com.oracle.svm.graal.meta.SubstrateMetaAccess;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.word.impl.Word;
 
 final class IsolateAwareConstantReflectionProvider extends SubstrateConstantReflectionProvider {
     private static final IsolatedMemoryAccessProvider ISOLATED_MEMORY_ACCESS_PROVIDER_SINGLETON = new IsolatedMemoryAccessProvider();

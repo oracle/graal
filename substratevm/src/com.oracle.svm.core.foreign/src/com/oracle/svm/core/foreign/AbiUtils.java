@@ -50,6 +50,7 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
@@ -76,7 +77,6 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
-import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.internal.foreign.CABI;
 import jdk.internal.foreign.abi.ABIDescriptor;

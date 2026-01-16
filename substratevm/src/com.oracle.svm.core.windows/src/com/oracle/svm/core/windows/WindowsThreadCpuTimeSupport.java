@@ -25,7 +25,6 @@
 package com.oracle.svm.core.windows;
 
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
@@ -38,6 +37,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
+import org.graalvm.word.impl.Word;
 
 @AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
 final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {

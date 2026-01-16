@@ -58,7 +58,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.UnreachableNode;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public abstract class ExceptionUnwind {
 

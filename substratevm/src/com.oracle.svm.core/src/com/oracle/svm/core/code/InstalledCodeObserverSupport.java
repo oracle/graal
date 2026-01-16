@@ -41,7 +41,7 @@ import com.oracle.svm.core.nmt.NmtCategory;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 @AutomaticallyRegisteredImageSingleton
 public final class InstalledCodeObserverSupport {

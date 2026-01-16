@@ -35,6 +35,8 @@ import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.util.Collections;
 
+import org.graalvm.word.impl.Word;
+
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -58,7 +60,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.common.InitTimer;

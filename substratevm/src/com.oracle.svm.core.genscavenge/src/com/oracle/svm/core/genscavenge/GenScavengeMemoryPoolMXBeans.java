@@ -27,7 +27,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.management.MemoryUsage;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -37,6 +36,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import org.graalvm.word.impl.Word;
 
 public class GenScavengeMemoryPoolMXBeans {
     static final String YOUNG_GEN_SCAVENGER = "young generation scavenger";

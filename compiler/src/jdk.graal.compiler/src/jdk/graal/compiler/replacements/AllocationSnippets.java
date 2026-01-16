@@ -33,6 +33,7 @@ import static jdk.graal.compiler.replacements.nodes.ExplodeLoopNode.explodeLoop;
 
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.nodes.PrefetchAllocateNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
@@ -40,7 +41,6 @@ import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.replacements.SnippetCounter.Group;
 import jdk.graal.compiler.replacements.nodes.ExplodeLoopNode;
 import jdk.graal.compiler.replacements.nodes.ZeroMemoryNode;
-import jdk.graal.compiler.word.Word;
 
 /**
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.

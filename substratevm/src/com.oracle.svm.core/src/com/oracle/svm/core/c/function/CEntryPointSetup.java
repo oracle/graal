@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.c.function;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import org.graalvm.word.impl.Word;
 
 public class CEntryPointSetup {
     public static final class EnterPrologue implements CEntryPointOptions.Prologue {

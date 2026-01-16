@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
@@ -58,8 +59,6 @@ import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonTraits;
-
-import jdk.graal.compiler.word.Word;
 
 /**
  * Provides buffered, OS-independent operations on files. Most of the code is implemented in a way
@@ -100,7 +99,7 @@ public class BufferedFileOperationSupport {
 
     /**
      * Allocate a {@link BufferedFile} for a {@link RawFileDescriptor}.
-     * 
+     *
      * @return a {@link BufferedFile} if the {@link RawFileDescriptor} was
      *         {@link RawFileOperationSupport#isValid valid} and if the allocation was successful.
      *         Returns a null pointer otherwise.

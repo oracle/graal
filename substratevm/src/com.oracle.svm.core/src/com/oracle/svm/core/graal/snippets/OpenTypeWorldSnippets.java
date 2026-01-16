@@ -63,7 +63,7 @@ import jdk.graal.compiler.replacements.InstanceOfSnippetsTemplates;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.Snippets;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.impl.ObjectAccess;
 import jdk.vm.ci.meta.JavaKind;
 
 /**

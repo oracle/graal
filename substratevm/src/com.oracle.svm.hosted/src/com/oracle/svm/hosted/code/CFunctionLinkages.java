@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -39,7 +40,6 @@ import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredImageSingleton

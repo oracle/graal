@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.libgraal.truffle;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ObjectHandles;
+import org.graalvm.word.impl.Word;
 
 /**
  * Manages handles to libgraal objects whose lifetime is controlled by

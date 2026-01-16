@@ -40,7 +40,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
     private static final String SYSTEM_OUT_OF_MEMORY_MSG = "Either the OS/container is out of memory or another system-level resource limit was reached (such as the number of memory mappings).";

@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.code;
 
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.word.impl.Word.Operation;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -36,7 +37,6 @@ import com.oracle.svm.util.AnnotationUtil;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.spi.Replacements;
-import jdk.graal.compiler.word.Word.Operation;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**

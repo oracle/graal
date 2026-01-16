@@ -57,10 +57,10 @@ import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.BreakpointNode;
 import jdk.graal.compiler.util.Digest;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+import org.graalvm.word.impl.Word;
 
 public class SubstrateUtil {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,21 @@ package org.graalvm.word.impl;
  * The canonical {@link WordFactoryOperation} represented by a method in a word type.
  */
 public enum WordFactoryOpcode {
+    /**
+     * Creates a word whose value is 0.
+     */
     ZERO,
+
+    /**
+     * Creates a word whose value is supplied by a {@code long} or {@code int} parameter. An {@code
+     * int} parameter is zero-extended on a 64-bit platform. A {@code long} parameter is (lossily)
+     * narrowed on a 32-bit platform.
+     */
     FROM_UNSIGNED,
+
+    /**
+     * Creates a word whose value is supplied by a {@code long} or {@code int} parameter. An {@code
+     * int} parameter is sign-extended on a 64-bit platform.
+     */
     FROM_SIGNED,
 }

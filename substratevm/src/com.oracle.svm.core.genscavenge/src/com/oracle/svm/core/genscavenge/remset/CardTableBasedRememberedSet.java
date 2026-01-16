@@ -59,9 +59,9 @@ import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.gc.BarrierSet;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.word.impl.Word;
 
 /**
  * A card table based remembered set where the {@link CardTable} and the {@link FirstObjectTable}

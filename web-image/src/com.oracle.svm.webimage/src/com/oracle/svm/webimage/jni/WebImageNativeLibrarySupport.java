@@ -37,8 +37,7 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public class WebImageNativeLibrarySupport extends PlatformNativeLibrarySupport {
     @Override

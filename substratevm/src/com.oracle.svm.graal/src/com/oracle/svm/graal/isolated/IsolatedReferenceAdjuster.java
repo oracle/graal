@@ -42,8 +42,8 @@ import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaConstant;
+import org.graalvm.word.impl.Word;
 
 /**
  * Reference adjuster for {@linkplain ClientHandle handles} from an {@link IsolatedObjectConstant},

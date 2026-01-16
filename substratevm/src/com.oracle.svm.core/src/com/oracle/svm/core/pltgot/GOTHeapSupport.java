@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.pltgot;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
@@ -46,6 +45,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.PauseNode;
+import org.graalvm.word.impl.Word;
 
 public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapSupport {
 

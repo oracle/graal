@@ -43,8 +43,8 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * This class contains support methods to throw implicit exceptions of according to the
- * specification of Java bytecode.
+ * This class contains support methods to throw implicit exceptions according to the specification
+ * of Java bytecode.
  *
  * All methods in this class are an implementation detail that should not be observable by users,
  * therefore these methods are filtered in exception stack traces (see {@link StackTraceUtils}).

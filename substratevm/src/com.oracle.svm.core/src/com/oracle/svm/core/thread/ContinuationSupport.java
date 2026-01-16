@@ -47,7 +47,7 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class ContinuationSupport {

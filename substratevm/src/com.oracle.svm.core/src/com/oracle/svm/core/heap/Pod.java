@@ -55,7 +55,7 @@ import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.BarrieredAccess;
+import org.graalvm.word.impl.BarrieredAccess;
 import jdk.vm.ci.meta.JavaKind;
 
 /**

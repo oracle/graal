@@ -29,6 +29,7 @@ import static com.oracle.svm.core.heap.InstanceReferenceMapEncoder.REFERENCE_MAP
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.AlwaysInline;
@@ -40,8 +41,6 @@ import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneSnippets;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
-
-import jdk.graal.compiler.word.Word;
 
 @DuplicatedInNativeCode
 public class InstanceReferenceMapDecoder {

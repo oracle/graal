@@ -28,7 +28,7 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_END;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
-import static jdk.graal.compiler.word.Word.nullPointer;
+import static org.graalvm.word.impl.Word.nullPointer;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -43,8 +43,7 @@ import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public abstract class AbstractCommittedMemoryProvider implements CommittedMemoryProvider {
     @Uninterruptible(reason = "Still being initialized.")

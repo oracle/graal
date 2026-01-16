@@ -63,7 +63,7 @@ import com.oracle.svm.core.util.Counter;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public class RuntimeCodeCache {
 

@@ -26,7 +26,6 @@
 package com.oracle.svm.core.sampler;
 
 import jdk.graal.compiler.nodes.PauseNode;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -35,10 +34,11 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.util.VMError;
+import org.graalvm.word.impl.Word;
 
 /**
  * The custom implementation of spin lock that is async signal safe.
- * 
+ *
  * In some specific situations, the signal handler can interrupt execution while the same thread
  * already has the lock. This implementation will check and fatally fail while other spin locks
  * implementations can deadlock in this case. So it is essential to check if the current thread is

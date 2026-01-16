@@ -30,6 +30,7 @@ import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.BeforeCompilationAccess;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.SubstrateOptions;
@@ -49,7 +50,6 @@ import com.oracle.svm.hosted.thread.VMThreadFeature;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
-import jdk.graal.compiler.word.Word;
 
 /**
  * For performance reasons, the GC-related C++ code accesses certain static/thread-local/instance

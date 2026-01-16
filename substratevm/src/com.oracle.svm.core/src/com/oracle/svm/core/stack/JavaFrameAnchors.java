@@ -56,7 +56,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Maintains the linked list of {@link JavaFrameAnchor} for stack walking. Note that a thread may

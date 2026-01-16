@@ -27,7 +27,6 @@ package com.oracle.svm.core.memory;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
@@ -41,6 +40,7 @@ import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.nmt.NmtMallocHeader;
+import org.graalvm.word.impl.Word;
 
 /**
  * Internal API for managing native memory. This class supports native memory tracking (NMT) and is

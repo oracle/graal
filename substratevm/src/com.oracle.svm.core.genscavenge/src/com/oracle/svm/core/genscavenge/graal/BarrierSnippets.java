@@ -38,6 +38,7 @@ import java.util.Map;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
@@ -76,7 +77,7 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.gc.WriteBarrierSnippets;
-import jdk.graal.compiler.word.Word;
+import jdk.graal.compiler.word.WordCastNode;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -183,7 +184,8 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             return;
         }
 
-        Word addr = Word.fromAddress(address);
+        Word addr = WordCastNode.castToWord(address);
+
         if (shouldOutline && !eliminated) {
             callPostWriteBarrierStub(POST_WRITE_BARRIER, fixedObject, addr);
             return;
@@ -216,7 +218,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             return;
         }
 
-        Word addr = Word.fromAddress(address);
+        Word addr = WordCastNode.castToWord(address);
         Word startAddress = WriteBarrierSnippets.getPointerToFirstArrayElement(addr, length, elementStride);
         Word endAddress = WriteBarrierSnippets.getPointerToLastArrayElement(addr, length, elementStride);
 

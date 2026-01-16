@@ -31,8 +31,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Apply an ObjectVisitor to all the new Objects in a Space since a snapshot.

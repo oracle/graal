@@ -44,13 +44,13 @@ import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * This class implements native memory tracking (NMT). There are two components to NMT: tracking
  * memory allocations (malloc/realloc/calloc), and tracking virtual memory usage (not supported
  * yet).
- * 
+ *
  * For tracking memory allocations, we have an internal API (see {@link NativeMemory}) that adds a
  * custom {@link NmtMallocHeader header} to each allocation if NMT is enabled. This header stores
  * data that is needed to properly untrack the memory when it is freed.

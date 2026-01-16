@@ -32,6 +32,8 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUE
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
+import org.graalvm.word.impl.Word;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
@@ -44,7 +46,6 @@ import jdk.graal.compiler.hotspot.word.KlassPointer;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.word.Word;
 
 /**
  * Stub for secondary supers table lookup in the case of collision.

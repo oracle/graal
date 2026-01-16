@@ -31,6 +31,7 @@ import java.io.Serial;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -39,8 +40,6 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
-
-import jdk.graal.compiler.word.Word;
 
 /**
  * Analyzes if run-time compiled code has any references to otherwise unreachable objects. Throws an

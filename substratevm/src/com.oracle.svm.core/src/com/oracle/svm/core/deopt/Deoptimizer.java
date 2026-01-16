@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
@@ -91,8 +92,7 @@ import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.lir.asm.FrameContext;
 import jdk.graal.compiler.nodes.UnreachableNode;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.word.BarrieredAccess;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.BarrieredAccess;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -894,7 +894,7 @@ public final class Deoptimizer {
 
     /**
      * The handler for lazy deoptimization.
-     * 
+     *
      * Despite being marked Uninterruptible, this contains interruptible sections when we look up
      * the code info, and construct the {@link DeoptimizedFrame}.
      */

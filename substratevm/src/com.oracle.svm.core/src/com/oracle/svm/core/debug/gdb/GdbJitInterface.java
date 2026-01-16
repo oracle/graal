@@ -47,8 +47,7 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.ProjectHeaderFile;
 import com.oracle.svm.core.debug.SubstrateDebugInfoInstaller;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * This interface is based on the <a href=
@@ -172,7 +171,7 @@ public class GdbJitInterface {
      * <li>Set {@link JITDescriptor#setActionFlag action_flag} to {@link JITActions#JIT_REGISTER}
      * <li>Set the {@code JITCodeEntry} as {@link JITDescriptor#setRelevantEntry relevant_entry}
      * </ul>
-     * 
+     *
      * @param addr the address of the in-memory run-time debug info object file
      * @param size the size of the in-memory run-time debug info object file
      * @param entry the {@code JITCodeEntry} to fill and pass to {@code GDB}.

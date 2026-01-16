@@ -37,7 +37,7 @@ import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
 import jdk.graal.compiler.core.common.util.AbstractTypeReader;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 @DuplicatedInNativeCode
 public class CodeReferenceMapDecoder {

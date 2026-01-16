@@ -67,9 +67,9 @@ import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
+import org.graalvm.word.impl.Word;
 
 public class AArch64InterpreterStubs {
 

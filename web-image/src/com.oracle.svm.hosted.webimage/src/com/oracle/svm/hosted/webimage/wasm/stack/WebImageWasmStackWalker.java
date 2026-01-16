@@ -40,8 +40,7 @@ import com.oracle.svm.webimage.wasm.code.WasmCodeInfoHolder;
 import com.oracle.svm.webimage.wasm.code.WasmCodeInfoQueryResult;
 import com.oracle.svm.webimage.wasm.code.WasmSimpleCodeInfoQueryResult;
 import com.oracle.svm.webimage.wasm.stack.WebImageWasmFrameMap;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Stack walker for the WebImage Wasm backend.

@@ -47,8 +47,8 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.extended.MembarNode;
-import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
+import org.graalvm.word.impl.Word;
 
 /** Uses {@link AlignedHeapChunk}s to manage the raw {@link Metaspace} memory. */
 class ChunkedMetaspaceMemory {

@@ -29,7 +29,6 @@ import java.util.function.Supplier;
 
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import jdk.graal.compiler.libgraal.LibGraalSupportImpl;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JClass;
@@ -65,6 +64,7 @@ import org.graalvm.nativeimage.libgraal.LibGraalRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.word.impl.Word;
 
 /**
  * Truffle specific {@link CEntryPoint} implementations.

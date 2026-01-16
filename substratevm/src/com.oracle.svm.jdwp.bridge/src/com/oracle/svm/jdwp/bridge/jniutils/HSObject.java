@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JNIEnv;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JObject;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JWeak;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Encapsulates a JNI handle to an object in the HotSpot heap. Depending on which constructor is

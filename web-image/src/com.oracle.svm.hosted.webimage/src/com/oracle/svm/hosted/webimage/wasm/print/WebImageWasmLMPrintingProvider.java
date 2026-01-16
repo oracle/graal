@@ -28,6 +28,7 @@ package com.oracle.svm.hosted.webimage.wasm.print;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -39,8 +40,6 @@ import com.oracle.svm.hosted.webimage.wasm.nodes.WasmPrintNode;
 import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.webimage.print.WebImagePrintingProvider;
-
-import jdk.graal.compiler.word.Word;
 
 /**
  * Printing functionality for the Wasm backend.

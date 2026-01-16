@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
+import org.graalvm.word.impl.Word;
 
 /**
  * Accounting for a {@link Space} or {@link Generation}. For the eden space, the values are

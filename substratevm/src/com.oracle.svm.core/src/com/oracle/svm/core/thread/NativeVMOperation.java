@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -32,6 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfo;
+import org.graalvm.word.impl.Word;
 
 /**
  * An immutable VM operation that lives in the image heap. All mutable state is kept in native

@@ -34,8 +34,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.nmt.NmtCategory;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Internal API for managing native memory. This class supports native memory tracking (NMT) and is

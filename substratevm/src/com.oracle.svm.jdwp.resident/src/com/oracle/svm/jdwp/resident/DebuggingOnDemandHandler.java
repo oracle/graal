@@ -74,10 +74,10 @@ import com.oracle.svm.jdwp.bridge.nativebridge.NativeObjectHandles;
 import com.oracle.svm.jdwp.resident.impl.ResidentJDWP;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Signal;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.word.impl.Word;
 
 public class DebuggingOnDemandHandler implements Signal.Handler {
 

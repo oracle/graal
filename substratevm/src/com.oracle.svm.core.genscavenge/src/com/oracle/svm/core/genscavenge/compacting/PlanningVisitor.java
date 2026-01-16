@@ -43,8 +43,7 @@ import com.oracle.svm.core.genscavenge.remset.BrickTable;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.LayoutEncoding;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Decides where live objects will be moved during compaction and stores this information in gaps

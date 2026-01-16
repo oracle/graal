@@ -25,7 +25,6 @@
 
 package com.oracle.svm.core.sampler;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -38,6 +37,7 @@ import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
+import org.graalvm.word.impl.Word;
 
 /**
  * Keeps track of {@link #availableBuffers available} and {@link #fullBuffers full} buffers. If

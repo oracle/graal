@@ -401,8 +401,7 @@ public class LIRKind extends ValueKind<LIRKind> {
     }
 
     /**
-     * Check whether this value is derived from a reference in a non-linear way. If this returns
-     * {@code true}, this value must not be live at safepoints.
+     * Checks whether this value is derived from a reference in a way the GC can not track.
      */
     public boolean isUnknownReference() {
         return referenceMask == UNKNOWN_REFERENCE;

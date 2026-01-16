@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 
@@ -35,6 +34,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfo;
 import com.oracle.svm.core.jdk.SplittableRandomAccessors;
 import com.oracle.svm.core.util.VMError;
+import org.graalvm.word.impl.Word;
 
 /**
  * The abstract base class for all VM operations that are allocated on the Java heap. Allocating the

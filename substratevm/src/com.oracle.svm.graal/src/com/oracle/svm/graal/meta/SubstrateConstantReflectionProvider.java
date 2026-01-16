@@ -39,7 +39,6 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -47,6 +46,7 @@ import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.word.impl.Word;
 
 public class SubstrateConstantReflectionProvider extends SharedConstantReflectionProvider {
     private final MetaAccessProvider metaAccess;
@@ -165,7 +165,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
          */
         if (Heap.getHeap().isInPrimaryImageHeap(object)) {
             SignedWord base = (SignedWord) KnownIntrinsics.heapBase();
-            SignedWord offset = Word.objectToUntrackedPointer(object).subtract(base);
+            SignedWord offset = Word.objectToUntrackedWord(object).subtract(base);
             return NumUtil.safeToInt(offset.rawValue());
         } else {
             return 0;

@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.word;
 
+import org.graalvm.word.impl.Word;
+import org.graalvm.word.impl.Word.Operation;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.WordFactoryOperation;
 
@@ -42,6 +44,8 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.word.impl.BarrieredAccess;
+import org.graalvm.word.impl.ObjectAccess;
 
 /**
  * Encapsulates information for Java types representing raw words (as opposed to Objects).
@@ -98,12 +102,12 @@ public class WordTypes {
     }
 
     /**
-     * Gets the method annotated with {@link Word.Operation} based on a given method that represents
-     * a word operation (but may not necessarily have the annotation).
+     * Gets the method annotated with {@link Operation} based on a given method that represents a
+     * word operation (but may not necessarily have the annotation).
      *
      * @param callingContextType the {@linkplain ResolvedJavaType type} from which
      *            {@code targetMethod} is invoked
-     * @return the {@link Word.Operation} method resolved for {@code targetMethod} if any
+     * @return the {@link Operation} method resolved for {@code targetMethod} if any
      */
     public ResolvedJavaMethod getWordOperation(ResolvedJavaMethod targetMethod, ResolvedJavaType callingContextType) {
         final boolean isWordBase = wordBaseType.isAssignableFrom(targetMethod.getDeclaringClass());

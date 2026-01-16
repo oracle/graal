@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -1142,8 +1142,21 @@ suite = {
         "name" : "org.graalvm.word",
         "requires" : [],
         "exports" : [
+            # Export the word interface types and WordFactory publicly
             "org.graalvm.word",
-            "org.graalvm.word.impl to jdk.graal.compiler",
+
+            # Export the package containing Word to all modules
+            # co-developed in the same repository.
+            """org.graalvm.word.impl to
+                   jdk.graal.compiler,
+                   org.graalvm.truffle.runtime.svm,
+                   org.graalvm.nativeimage.builder,
+                   org.graalvm.nativeimage.foreign,
+                   com.oracle.graal.graal_enterprise,
+                   com.oracle.svm.svm_enterprise,
+                   com.oracle.truffle.enterprise.svm,
+                   com.oracle.svm.enterprise.truffle,
+                   org.graalvm.extraimage.builder""",
         ],
         "uses" : [],
         "opens" : [],

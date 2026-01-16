@@ -31,7 +31,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * A libgraal specific garbage collection policy that responds to GC hints and aggressively
@@ -129,7 +129,7 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
 
     /**
      * The adjusting logic are as follows:
-     * 
+     *
      * 1. if we hit hinted GC twice in a row, there is no allocation failure in between. If the eden
      * space is previously expanded, we will aggressively shrink the eden space to half, such that
      * the memory footprint will be lower in subsequent execution.

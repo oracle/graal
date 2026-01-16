@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.io.Serial;
 import java.util.ArrayList;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -50,6 +49,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import org.graalvm.word.impl.Word;
 
 /** Loads/Unloads JVMTI agents that are located in shared object files. */
 public class JvmtiAgents {

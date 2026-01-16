@@ -254,10 +254,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         public boolean checkAssertions() {
             return true;
         }
-
-        public boolean shouldVerifyWordFactory(@SuppressWarnings("unused") ResolvedJavaMethod method) {
-            return true;
-        }
     }
 
     @Test
@@ -378,7 +374,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyDebugUsage());
         verifiers.add(new VerifyVirtualizableUsage());
         verifiers.add(new VerifyUpdateUsages());
-        verifiers.add(new VerifyWordFactoryUsage());
         verifiers.add(new VerifyBailoutUsage());
         verifiers.add(new VerifySystemPropertyUsage());
         verifiers.add(new VerifyInstanceOfUsage());
@@ -731,9 +726,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
     private static void checkGraph(List<VerifyPhase<CoreProviders>> verifiers, HighTierContext context, StructuredGraph graph, InvariantsTool tool) {
         for (VerifyPhase<CoreProviders> verifier : verifiers) {
             if (verifier instanceof VerifyUsageWithEquals && !shouldVerifyEquals(graph.method())) {
-                continue;
-            }
-            if (verifier instanceof VerifyWordFactoryUsage && !tool.shouldVerifyWordFactory(graph.method())) {
                 continue;
             }
             verifier.apply(graph, context);

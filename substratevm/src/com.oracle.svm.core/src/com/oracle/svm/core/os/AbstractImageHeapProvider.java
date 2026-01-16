@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -47,8 +48,6 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.graal.compiler.word.Word;
 
 public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
     private static final CGlobalData<WordPointer> CACHED_RESERVED_IMAGE_HEAP_SIZE = CGlobalDataFactory.createWord();

@@ -40,8 +40,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeapProvider {
     @Override

@@ -24,13 +24,13 @@
  */
 package jdk.graal.compiler.replacements;
 
+import org.graalvm.word.impl.Word;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
-import jdk.graal.compiler.word.Word;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
