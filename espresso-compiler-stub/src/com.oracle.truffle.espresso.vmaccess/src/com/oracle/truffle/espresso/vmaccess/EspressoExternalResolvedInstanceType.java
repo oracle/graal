@@ -203,7 +203,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
         for (int i = 0; i < size; i++) {
             Value methodMeta = value.getArrayElement(i);
             EspressoExternalResolvedInstanceType methodHolder;
-            Value methodHolderMeta = methodMeta.invokeMember("holder");
+            Value methodHolderMeta = methodMeta.getMember("holder");
             if (metaObject.equals(methodHolderMeta)) {
                 methodHolder = this;
             } else {
