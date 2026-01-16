@@ -39,7 +39,7 @@ public class RistrettoOptions {
     public static final RuntimeOptionKey<Integer> JITCompilerInvocationThreshold = new RuntimeOptionKey<>(1000);
 
     @Option(help = "Number of threads to use for Graal JIT compilation.")//
-    public static final RuntimeOptionKey<Integer> JITCompilerThreadCount = new RuntimeOptionKey<>(1);
+    public static final HostedOptionKey<Integer> JITCompilerThreadCount = new HostedOptionKey<>(1);
 
     @Option(help = "Trace decisions about when to compile what.")//
     public static final RuntimeOptionKey<Boolean> JITTraceCompilationQueuing = new RuntimeOptionKey<>(false);
