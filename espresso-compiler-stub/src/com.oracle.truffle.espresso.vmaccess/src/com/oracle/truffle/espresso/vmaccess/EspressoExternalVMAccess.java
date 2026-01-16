@@ -102,7 +102,6 @@ final class EspressoExternalVMAccess implements VMAccess {
     private final ResolvedJavaMethod getLocation;
     private final ResolvedJavaMethod toString;
     final ResolvedJavaType javaLangModule;
-    final ResolvedJavaMethod getClass;
     private final ResolvedJavaMethod getModule;
 
     @SuppressWarnings("this-escape")
@@ -152,9 +151,6 @@ final class EspressoExternalVMAccess implements VMAccess {
         Signature toStringSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/String;");
         toString = javaLangObject.findMethod("toString", toStringSignature);
 
-        Signature getClassSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/Class;");
-        getClass = javaLangObject.findMethod("getClass", getClassSignature);
-
         Signature getModuleSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/Module;");
         getModule = classType.findMethod("getModule", getModuleSignature);
 
@@ -166,7 +162,6 @@ final class EspressoExternalVMAccess implements VMAccess {
         JVMCIError.guarantee(getCodeSource != null, "Required method: getCodeSource");
         JVMCIError.guarantee(getLocation != null, "Required method: getLocation");
         JVMCIError.guarantee(toString != null, "Required method: toString");
-        JVMCIError.guarantee(getClass != null, "Required method: getClass");
         JVMCIError.guarantee(getModule != null, "Required method: getModule");
     }
 
@@ -227,7 +222,11 @@ final class EspressoExternalVMAccess implements VMAccess {
     public ResolvedJavaModule getModule(ResolvedJavaType type) {
         JavaConstant originalClass = providers.getConstantReflection().asJavaClass(type);
         JavaConstant module = invoke(getModule, originalClass);
-        return new EspressoExternalResolvedJavaModule(this, module);
+        if (!(module instanceof EspressoExternalObjectConstant espressoConstant)) {
+            throw new IllegalArgumentException("Constant has unexpected type " + module.getClass() + ": " + module);
+        }
+        Value value = espressoConstant.getValue();
+        return new EspressoExternalResolvedJavaModule(this, value);
     }
 
     @Override

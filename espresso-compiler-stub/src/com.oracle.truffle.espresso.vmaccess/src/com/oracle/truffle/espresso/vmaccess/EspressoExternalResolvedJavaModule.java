@@ -22,32 +22,41 @@
  */
 package com.oracle.truffle.espresso.vmaccess;
 
+import static com.oracle.truffle.espresso.vmaccess.EspressoExternalConstantReflectionProvider.safeGetClass;
+
 import java.lang.module.ModuleDescriptor;
 import java.util.Set;
+
+import org.graalvm.polyglot.Value;
 
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
 final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
     private final EspressoExternalVMAccess access;
-    private final JavaConstant module;
     private final String name;
+    private final Value value;
 
-    EspressoExternalResolvedJavaModule(EspressoExternalVMAccess access, JavaConstant module) {
+    EspressoExternalResolvedJavaModule(EspressoExternalVMAccess access, Value value) {
+        // j.l.Module?
+        if (!"java.lang.Module".equals(value.getMetaObject().getMetaQualifiedName())) {
+            throw new IllegalArgumentException("Constant has unexpected type " + value.getMetaObject().getMetaQualifiedName() + ": " + value);
+        }
         Providers providers = access.getProviders();
-        assert access.javaLangModule.equals(providers.getConstantReflection().asJavaType(access.invoke(access.getClass, module)));
 
         this.access = access;
-        this.module = module;
+        this.value = value;
 
         Signature getNameSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/String;");
         ResolvedJavaMethod getName = access.javaLangModule.findMethod("getName", getNameSignature);
-        JavaConstant nameConstant = access.invoke(getName, module);
-        this.name = providers.getSnippetReflection().asObject(String.class, nameConstant);
+        if (!(getName instanceof EspressoExternalResolvedJavaMethod espressoMethod)) {
+            throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaMethod, got " + safeGetClass(getName));
+        }
+        Value nameValue = espressoMethod.getMirror().execute(value);
+        this.name = nameValue.asString();
     }
 
     @Override
