@@ -101,6 +101,9 @@ final class EspressoExternalVMAccess implements VMAccess {
     private final ResolvedJavaMethod getCodeSource;
     private final ResolvedJavaMethod getLocation;
     private final ResolvedJavaMethod toString;
+    final ResolvedJavaType javaLangModule;
+    final ResolvedJavaMethod getClass;
+    private final ResolvedJavaMethod getModule;
 
     @SuppressWarnings("this-escape")
     EspressoExternalVMAccess(Context context) {
@@ -149,12 +152,22 @@ final class EspressoExternalVMAccess implements VMAccess {
         Signature toStringSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/String;");
         toString = javaLangObject.findMethod("toString", toStringSignature);
 
+        Signature getClassSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/Class;");
+        getClass = javaLangObject.findMethod("getClass", getClassSignature);
+
+        Signature getModuleSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/Module;");
+        getModule = classType.findMethod("getModule", getModuleSignature);
+
+        javaLangModule = providers.getMetaAccess().lookupJavaType(Module.class);
+
         JVMCIError.guarantee(forName != null, "Required method: forName");
         JVMCIError.guarantee(unsafeAllocateInstance != null, "Required method: unsafeAllocateInstance");
         JVMCIError.guarantee(getProtectionDomain != null, "Required method: getProtectionDomain");
         JVMCIError.guarantee(getCodeSource != null, "Required method: getCodeSource");
         JVMCIError.guarantee(getLocation != null, "Required method: getLocation");
         JVMCIError.guarantee(toString != null, "Required method: toString");
+        JVMCIError.guarantee(getClass != null, "Required method: getClass");
+        JVMCIError.guarantee(getModule != null, "Required method: getModule");
     }
 
     private EspressoExternalResolvedPrimitiveType[] createPrimitiveTypes() {
@@ -212,7 +225,9 @@ final class EspressoExternalVMAccess implements VMAccess {
 
     @Override
     public ResolvedJavaModule getModule(ResolvedJavaType type) {
-        throw JVMCIError.unimplemented("getModule() is not yet implemented");
+        JavaConstant originalClass = providers.getConstantReflection().asJavaClass(type);
+        JavaConstant module = invoke(getModule, originalClass);
+        return new EspressoExternalResolvedJavaModule(this, module);
     }
 
     @Override
