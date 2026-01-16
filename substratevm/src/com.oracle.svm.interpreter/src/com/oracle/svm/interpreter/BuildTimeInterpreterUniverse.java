@@ -48,7 +48,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -72,6 +71,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterUniverseImpl;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.ReferenceConstant;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -328,7 +328,7 @@ public final class BuildTimeInterpreterUniverse {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void setUnmaterializedConstantValue(InterpreterResolvedJavaField thiz, JavaConstant constant) {
-        assert constant == JavaConstant.NULL_POINTER || constant instanceof PrimitiveConstant || constant instanceof ImageHeapConstant;
+        assert constant.equals(JavaConstant.NULL_POINTER) || constant instanceof PrimitiveConstant || constant instanceof ImageHeapConstant;
         BuildTimeInterpreterUniverse buildTimeInterpreterUniverse = BuildTimeInterpreterUniverse.singleton();
         switch (thiz.getJavaKind()) {
             case Boolean, Byte, Short, Char, Int, Float, Long, Double:

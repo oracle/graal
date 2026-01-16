@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.Constant;
 final class IsolateAwareObjectConstantEquality implements ObjectConstantEquality {
     @Override
     public boolean test(SubstrateObjectConstant x, SubstrateObjectConstant y) {
-        if (x == y) {
+        if (x.identicalTo(y)) {
             return true;
         } else if (x instanceof DirectSubstrateObjectConstant && y instanceof DirectSubstrateObjectConstant) {
             return ((DirectSubstrateObjectConstant) x).getObject() == ((DirectSubstrateObjectConstant) y).getObject();

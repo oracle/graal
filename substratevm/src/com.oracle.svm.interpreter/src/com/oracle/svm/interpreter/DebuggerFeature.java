@@ -641,7 +641,7 @@ public class DebuggerFeature implements InternalFeature {
             if (field.isArtificiallyReachable()) {
                 // Value should be already computed.
                 JavaConstant value = field.getUnmaterializedConstant();
-                VMError.guarantee(value != null && value != JavaConstant.ILLEGAL);
+                VMError.guarantee(value != null && !value.equals(JavaConstant.ILLEGAL));
                 continue;
             }
             HostedField hostedField = accessImpl.getMetaAccess().getUniverse().optionalLookup(field.getOriginalField());

@@ -59,11 +59,6 @@ import java.util.function.ToLongBiFunction;
 import java.util.spi.LocaleServiceProvider;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.hosted.code.FactoryMethod;
-import com.oracle.svm.util.LogUtils;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
-import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativebridge.BinaryMarshaller;
 import org.graalvm.nativebridge.DispatchHandler;
@@ -76,7 +71,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
@@ -90,8 +84,11 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.SharedArenaSupport;
+import com.oracle.svm.hosted.code.FactoryMethod;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
@@ -99,14 +96,17 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
+import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -1188,7 +1188,7 @@ public class PermissionsFeature implements Feature {
                 if (method.equals(invoke.callTarget().targetMethod())) {
                     NodeInputList<ValueNode> args = invoke.callTarget().arguments();
                     ValueNode arg1 = args.get(1);
-                    res = arg1 instanceof ConstantNode constantNode && constantNode.getValue() == JavaConstant.NULL_POINTER;
+                    res = arg1 instanceof ConstantNode constantNode && constantNode.getValue().equals(JavaConstant.NULL_POINTER);
                 }
             }
             return res != null && res;

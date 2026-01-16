@@ -56,6 +56,7 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -364,6 +365,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyUsageWithEquals(JavaType.class));
         verifiers.add(new VerifyUsageWithEquals(JavaMethod.class));
         verifiers.add(new VerifyUsageWithEquals(JavaField.class));
+        verifiers.add(new VerifyUsageWithEquals(JavaConstant.class));
         verifiers.add(new VerifyUsageWithEquals(LocationIdentity.class));
         verifiers.add(new VerifyUsageWithEquals(LIRKind.class));
         verifiers.add(new VerifyUsageWithEquals(ArithmeticOpTable.class));

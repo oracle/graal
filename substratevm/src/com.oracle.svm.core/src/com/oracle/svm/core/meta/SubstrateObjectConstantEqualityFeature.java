@@ -26,14 +26,15 @@ package com.oracle.svm.core.meta;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
 
 final class SubstrateObjectConstantEquality implements ObjectConstantEquality {
+
     @Override
     public boolean test(SubstrateObjectConstant x, SubstrateObjectConstant y) {
-        if (x == y) {
+        if (x.identicalTo(y)) {
             return true;
         } else if (x instanceof DirectSubstrateObjectConstant && y instanceof DirectSubstrateObjectConstant) {
             return ((DirectSubstrateObjectConstant) x).getObject() == ((DirectSubstrateObjectConstant) y).getObject();

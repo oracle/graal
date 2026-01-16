@@ -67,7 +67,7 @@ public class HostedValuesProvider {
      * Run all registered object replacers.
      */
     public JavaConstant replaceObject(JavaConstant value) {
-        if (value == JavaConstant.NULL_POINTER) {
+        if (value.equals(JavaConstant.NULL_POINTER)) {
             return JavaConstant.NULL_POINTER;
         }
         if (value instanceof ImageHeapConstant) {
