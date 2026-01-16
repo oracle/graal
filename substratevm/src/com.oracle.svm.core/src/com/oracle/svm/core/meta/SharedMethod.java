@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.meta;
 
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -122,5 +124,5 @@ public interface SharedMethod extends ResolvedJavaMethod {
      * @return an AOT compiled entry point of this method or {@code Word.nullPointer()} if no
      *         compiled entry point is available.
      */
-    MethodPointer getAOTEntrypoint();
+    CFunctionPointer getAOTEntrypoint();
 }

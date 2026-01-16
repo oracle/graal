@@ -2591,6 +2591,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final MethodPointer.Builder initMethodPointer() {
         _setShortField(2, (short)ConstantReference.Which.METHOD_POINTER.ordinal());
         _setIntField(0,0);
+        _setBooleanField(48,false);
   return new ConstantReference.MethodPointer.Builder(segment, data, pointers, dataSize, pointerCount);
       }
 
@@ -2825,6 +2826,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           _setIntField(0, value);
         }
 
+        public final boolean getPermitsRewriteToPLT() {
+          return _getBooleanField(48);
+        }
+        public final void setPermitsRewriteToPLT(boolean value) {
+          _setBooleanField(48, value);
+        }
+
       }
 
       public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -2834,6 +2842,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
         public final int getMethodId() {
           return _getIntField(0);
+        }
+
+        public final boolean getPermitsRewriteToPLT() {
+          return _getBooleanField(48);
         }
 
       }

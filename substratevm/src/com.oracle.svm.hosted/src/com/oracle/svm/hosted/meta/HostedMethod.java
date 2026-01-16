@@ -35,6 +35,8 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
@@ -698,7 +700,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public MethodPointer getAOTEntrypoint() {
+    public CFunctionPointer getAOTEntrypoint() {
         throw VMError.intentionallyUnimplemented();
     }
 }

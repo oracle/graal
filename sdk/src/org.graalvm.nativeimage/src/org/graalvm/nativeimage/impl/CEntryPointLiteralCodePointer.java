@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.ComparableWord;
 
@@ -47,13 +49,20 @@ import org.graalvm.word.ComparableWord;
  * This is a holder object that just stores the raw name and signature of the method we
  * reference. During native image generation, this object gets replaced with the actual pointer to
  * the method, and the necessary relocation information is generated.
+ *
+ * Do not use this concrete class in image runtime code. Use one of its superinterfaces instead.
  */
 public class CEntryPointLiteralCodePointer implements CFunctionPointer {
-
+    @Platforms(HOSTED_ONLY.class) //
     public final Class<?> definingClass;
+
+    @Platforms(HOSTED_ONLY.class) //
     public final String methodName;
+
+    @Platforms(HOSTED_ONLY.class) //
     public final Class<?>[] parameterTypes;
 
+    @Platforms(HOSTED_ONLY.class)
     public CEntryPointLiteralCodePointer(Class<?> definingClass, String methodName, Class<?>... parameterTypes) {
         this.definingClass = definingClass;
         this.methodName = methodName;

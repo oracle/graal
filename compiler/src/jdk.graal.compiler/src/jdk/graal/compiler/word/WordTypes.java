@@ -32,6 +32,7 @@ import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -110,6 +111,14 @@ public class WordTypes {
         if (isWordBase && !targetMethod.isStatic()) {
             assert wordImplType.isLinked();
             wordMethod = wordImplType.resolveConcreteMethod(targetMethod, callingContextType);
+
+            if (wordMethod == null) {
+                if (targetMethod.getDeclaringClass().isConcrete()) {
+                    throw GraalError.shouldNotReachHere(String.format("Cannot invoke method %s of concrete WordBase subtype %s. Use only interfaces deriving from %s, or %s itself.",
+                                    targetMethod.format("%n(%p)"), targetMethod.getDeclaringClass(), wordBaseType, wordImplType));
+                }
+            }
+
         }
         assert wordMethod != null : targetMethod;
         return wordMethod;
