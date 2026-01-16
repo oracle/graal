@@ -55,6 +55,36 @@
     </module>
 
     <module name="RegexpSinglelineJava">
+      <property name="id" value="systemErr"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Disallow calls to System.err."/>
+      <property name="severity" value="error"/>
+      <property name="format" value="System\.err"/>
+      <property name="message" value="Calls to System.err are restricted. Please use logging or System.out instead. (Use &quot;// Checkstyle: allow System.err ... // Checkstyle: disallow System.err&quot; to disable this check.)"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: allow System.err"/>
+      <property name="onCommentFormat" value="Checkstyle: disallow System.err"/>
+      <property name="idFormat" value="systemErr"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable System.err calls"/>
+    </module>
+
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="printStackTrace"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Disallow calls to Throwable.printStackTrace()."/>
+      <property name="severity" value="error"/>
+      <property name="format" value="\.printStackTrace\(\)"/>
+      <property name="message" value="Calls to Throwable.printStackTrace() are restricted. Please use .printStackTrace(PrintStream s) instead. (Use &quot;// Checkstyle: allow Throwable.printStackTrace() ... // Checkstyle: disallow Throwable.printStackTrace()&quot; to disable this check.)"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: allow Throwable.printStackTrace()"/>
+      <property name="onCommentFormat" value="Checkstyle: disallow Throwable.printStackTrace()"/>
+      <property name="idFormat" value="printStackTrace"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable Throwable.printStackTrace() calls"/>
+    </module>
+
+    <module name="RegexpSinglelineJava">
       <property name="id" value="userError"/>
       <metadata name="net.sf.eclipsecs.core.comment" value="Consistent format strings for UserError."/>
       <property name="severity" value="error"/> 
