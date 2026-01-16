@@ -50,6 +50,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.runtime.JVMCIRuntime;
 
 /**
  * An implementation of {@link VMAccess} that reflects on the JVM it's currently running inside.
@@ -63,10 +64,13 @@ import jdk.vm.ci.runtime.JVMCI;
 final class HostVMAccess implements VMAccess {
     private final ClassLoader appClassLoader;
     private final Providers providers;
+    private final Module hostImplModule;
 
     HostVMAccess(ClassLoader appClassLoader) {
         this.appClassLoader = appClassLoader;
-        GraalRuntime graalRuntime = ((GraalJVMCICompiler) JVMCI.getRuntime().getCompiler()).getGraalRuntime();
+        JVMCIRuntime runtime = JVMCI.getRuntime();
+        this.hostImplModule = runtime.getClass().getModule();
+        GraalRuntime graalRuntime = ((GraalJVMCICompiler) runtime.getCompiler()).getGraalRuntime();
         Backend hostBackend = graalRuntime.getCapability(RuntimeProvider.class).getHostBackend();
         providers = hostBackend.getProviders();
     }
@@ -74,6 +78,21 @@ final class HostVMAccess implements VMAccess {
     @Override
     public Providers getProviders() {
         return providers;
+    }
+
+    @Override
+    public boolean owns(ResolvedJavaType value) {
+        return value.getClass().getModule() == hostImplModule;
+    }
+
+    @Override
+    public boolean owns(ResolvedJavaMethod value) {
+        return value.getClass().getModule() == hostImplModule;
+    }
+
+    @Override
+    public boolean owns(ResolvedJavaField value) {
+        return value.getClass().getModule() == hostImplModule;
     }
 
     @Override

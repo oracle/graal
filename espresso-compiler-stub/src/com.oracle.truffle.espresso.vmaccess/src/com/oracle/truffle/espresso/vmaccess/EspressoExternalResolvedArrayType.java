@@ -30,7 +30,7 @@ import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedObjectType;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 
-final class EspressoExternalResolvedArrayType extends AbstractEspressoResolvedArrayType {
+final class EspressoExternalResolvedArrayType extends AbstractEspressoResolvedArrayType implements EspressoExternalVMAccess.Element {
     private final EspressoExternalVMAccess access;
 
     EspressoExternalResolvedArrayType(EspressoResolvedJavaType elementalType, int dimensions, EspressoExternalVMAccess access) {

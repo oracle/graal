@@ -30,7 +30,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
-final class EspressoExternalResolvedPrimitiveType extends AbstractEspressoResolvedPrimitiveType {
+final class EspressoExternalResolvedPrimitiveType extends AbstractEspressoResolvedPrimitiveType implements EspressoExternalVMAccess.Element {
     private final EspressoExternalVMAccess access;
 
     EspressoExternalResolvedPrimitiveType(EspressoExternalVMAccess access, JavaKind kind) {
