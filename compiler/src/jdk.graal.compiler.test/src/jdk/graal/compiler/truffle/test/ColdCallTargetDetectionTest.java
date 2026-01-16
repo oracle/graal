@@ -35,8 +35,6 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.api.test.GCUtils;
-import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assume;
@@ -45,12 +43,14 @@ import org.junit.Test;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
 import com.oracle.truffle.runtime.AbstractCompilationTask;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
+import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
 
 public class ColdCallTargetDetectionTest {
     private static final Pattern TARGET_NAME_PATTERN = Pattern.compile("ColdCallTargetDetection(\\d+)");
@@ -152,6 +152,7 @@ public class ColdCallTargetDetectionTest {
         AtomicInteger trialCounter = new AtomicInteger();
         do {
             SubprocessTestUtils.newBuilder(ColdCallTargetDetectionTest.class, test).//
+                            failOnNonZeroExit(false).//
                             prefixVmOption("-XX:ReservedCodeCacheSize=" + codeCacheSize + "m", "-XX:NonNMethodCodeHeapSize=" + nonNmethodCodeHeapSize + "m").//
                             postfixVmOption("-Djdk.graal.CompilationFailureAction=Silent").//
                             onExit((subprocess) -> {
