@@ -164,7 +164,8 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     @Override
     public Object lookupConstant(int cpi) {
         Object entry = objAt(cpi);
-        // method ref and type ref have to be resolved already
+        // method ref and type ref have to be resolved already, null is a proper value for
+        // unresolved constants
         if (entry instanceof JavaConstant || entry instanceof JavaType) {
             return entry;
         }
@@ -175,14 +176,8 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
              * Thus, "resolve"==force the constant creation and return if that worked.
              */
             entry = resolvedAt(cpi, holder);
-            if (entry instanceof JavaConstant || entry instanceof JavaType) {
-                return entry;
-            }
-        } else if (tag == Tag.STRING && entry instanceof String) {
-            // Strings are directly cached as a java.lang.String
-            return entry;
         }
-        throw VMError.shouldNotReachHereAtRuntime();
+        return entry;
     }
 
     @Override
