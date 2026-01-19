@@ -711,6 +711,13 @@ public class Linker {
                             SymbolTable symtab = instance.symbolTable();
 
                             WasmStruct struct = symtab.structTypeAccess(structTypeIdx).shape().getFactory().create(symtab.closedTypeAt(structTypeIdx));
+                            int fieldCount = symtab.structTypeFieldCount(structTypeIdx);
+                            StaticProperty[] properties = symtab.structTypeAccess(structTypeIdx).properties();
+                            for (int fieldIndex = 0; fieldIndex < fieldCount; fieldIndex++) {
+                                if (WasmType.isReferenceType(symtab.structTypeFieldTypeAt(structTypeIdx, fieldIndex))) {
+                                    properties[fieldIndex].setObject(struct, WasmConstant.NULL);
+                                }
+                            }
                             stack.add(struct);
                             break;
                         }

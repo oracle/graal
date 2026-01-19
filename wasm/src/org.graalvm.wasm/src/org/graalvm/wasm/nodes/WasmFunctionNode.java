@@ -2175,7 +2175,11 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 final int structTypeIdx = rawPeekI32(bytecode, offset);
                 offset += 4;
 
-                WasmStruct struct = module.structTypeAccess(structTypeIdx).shape().getFactory().create(module.closedTypeAt(structTypeIdx));
+                final WasmStructAccess structAccess = module.structTypeAccess(structTypeIdx);
+                final int numFields = module.structTypeFieldCount(structTypeIdx);
+
+                WasmStruct struct = structAccess.shape().getFactory().create(module.closedTypeAt(structTypeIdx));
+                initStructDefaultFields(structTypeIdx, struct, structAccess, numFields);
                 WasmFrame.pushReference(frame, stackPointer, struct);
                 stackPointer += 1;
                 break;
@@ -5392,6 +5396,22 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                     assert WasmType.isReferenceType(fieldType);
                     property.setObject(struct, WasmFrame.popReference(frame, --stackPointer));
                 }
+            }
+        }
+    }
+
+    @ExplodeLoop
+    private void initStructDefaultFields(int structTypeIndex, WasmStruct struct, WasmStructAccess structAccess, int numFields) {
+        CompilerAsserts.partialEvaluationConstant(structTypeIndex);
+        CompilerAsserts.partialEvaluationConstant(structAccess);
+        CompilerAsserts.partialEvaluationConstant(numFields);
+        for (int fieldIndex = 0; fieldIndex < numFields; fieldIndex++) {
+            int fieldType = module.structTypeFieldTypeAt(structTypeIndex, fieldIndex);
+            CompilerAsserts.partialEvaluationConstant(fieldType);
+            boolean fieldIsReferenceType = WasmType.isReferenceType(fieldType);
+            CompilerAsserts.partialEvaluationConstant(fieldIsReferenceType);
+            if (fieldIsReferenceType) {
+                structAccess.properties()[fieldIndex].setObject(struct, WasmConstant.NULL);
             }
         }
     }
