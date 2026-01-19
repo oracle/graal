@@ -125,7 +125,7 @@ final class ProcessIsolateStack {
     }
 
     private static int getTransitionIndex(StackTraceElement[] stack) {
-        return FOREIGN_EXCEPTION_CLASS.equals(stack[0].getClassName()) && CREATE_METHOD.equals(stack[0].getMethodName()) ? 1 : 0;
+        return stack.length > 0 && FOREIGN_EXCEPTION_CLASS.equals(stack[0].getClassName()) && CREATE_METHOD.equals(stack[0].getMethodName()) ? 1 : 0;
     }
 
     private static int getBoundaryIndex(StackTraceElement[] stack) {
