@@ -37,24 +37,24 @@ import jdk.vm.ci.meta.Signature;
 final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
     private final EspressoExternalVMAccess access;
     private final String name;
-    private final Value value;
+    private final Value moduleValue;
 
-    EspressoExternalResolvedJavaModule(EspressoExternalVMAccess access, Value value) {
+    EspressoExternalResolvedJavaModule(EspressoExternalVMAccess access, Value moduleValue) {
         // j.l.Module?
-        if (!"java.lang.Module".equals(value.getMetaObject().getMetaQualifiedName())) {
-            throw new IllegalArgumentException("Constant has unexpected type " + value.getMetaObject().getMetaQualifiedName() + ": " + value);
+        if (!"java.lang.Module".equals(moduleValue.getMetaObject().getMetaQualifiedName())) {
+            throw new IllegalArgumentException("Constant has unexpected type " + moduleValue.getMetaObject().getMetaQualifiedName() + ": " + moduleValue);
         }
         Providers providers = access.getProviders();
 
         this.access = access;
-        this.value = value;
+        this.moduleValue = moduleValue;
 
         Signature getNameSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/String;");
         ResolvedJavaMethod getName = access.javaLangModule.findMethod("getName", getNameSignature);
         if (!(getName instanceof EspressoExternalResolvedJavaMethod espressoMethod)) {
             throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaMethod, got " + safeGetClass(getName));
         }
-        Value nameValue = espressoMethod.getMirror().execute(value);
+        Value nameValue = espressoMethod.getMirror().execute(moduleValue);
         this.name = nameValue.asString();
     }
 
@@ -95,6 +95,8 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
 
     @Override
     public boolean isAutomatic() {
-        throw JVMCIError.unimplemented();
+        Value moduleDescriptor = access.javaLangModule_getDescriptor.getMirror().execute(moduleValue);
+        Value isAutomatic = access.javaLangModuleModuleDescriptor_isAutomatic.getMirror().execute(moduleDescriptor);
+        return isAutomatic.asBoolean();
     }
 }
