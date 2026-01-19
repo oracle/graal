@@ -43,8 +43,16 @@ public final class Target_sun_management_VMManagementImpl {
 
     @CompilerDirectives.TruffleBoundary
     @Substitution
-    public static @JavaType(String.class) StaticObject getVersion0(@Inject LibsState libsState, @Inject InformationLeak iL, @Inject Meta meta) {
-        Management management = libsState.checkAndGetManagement();
+    public static @JavaType(String.class) StaticObject getVersion0(@Inject LibsState libsState, @Inject InformationLeak iL, @Inject Meta meta, @Inject EspressoContext context) {
+        if (!context.getEspressoEnv().EnableManagement) {
+            /*
+             * This method is called in the static class initializer so we conservatively don't
+             * throw a SecurityException if management is not allowed. Additionally, the native
+             * method should not return null.
+             */
+            return meta.toGuestString("");
+        }
+        Management management = libsState.getManagement();
         int jmmVersion = iL.getManagementVersion(management);
         int major = (jmmVersion & 0x0FFF0000) >>> 16;
         int minor = (jmmVersion & 0x0000FF00) >>> 8;
@@ -53,8 +61,15 @@ public final class Target_sun_management_VMManagementImpl {
 
     @Substitution
     @CompilerDirectives.TruffleBoundary
-    public static void initOptionalSupportFields(@Inject LibsState libsState, @Inject InformationLeak iL, @Inject LibsMeta libsMeta) {
-        Management management = libsState.checkAndGetManagement();
+    public static void initOptionalSupportFields(@Inject LibsState libsState, @Inject InformationLeak iL, @Inject LibsMeta libsMeta, @Inject EspressoContext context) {
+        if (!context.getEspressoEnv().EnableManagement) {
+            /*
+             * This method is called in the static class initializer so we conservatively don't
+             * throw a SecurityException if management is not allowed.
+             */
+            return;
+        }
+        Management management = libsState.getManagement();
         iL.initOptionalSupportFields(management, libsMeta);
     }
 

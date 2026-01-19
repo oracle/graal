@@ -105,6 +105,11 @@ public class LibsState {
     @TruffleBoundary
     public Management checkAndGetManagement() {
         checkManagement();
+        return getManagement();
+    }
+
+    @TruffleBoundary
+    public Management getManagement() {
         Management management = context.getVM().getManagement();
         if (management == null) {
             // management is only null if Management is disabled

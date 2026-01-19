@@ -2808,6 +2808,10 @@ public final class Meta extends ContextAccessImpl
         throw throwExceptionWithMessage(java_lang_ArrayIndexOutOfBoundsException, "Array index out of range: " + index);
     }
 
+    public EspressoException throwArrayIndexOutOfBounds(String msg) {
+        throw throwExceptionWithMessage(java_lang_ArrayIndexOutOfBoundsException, msg);
+    }
+
     public EspressoException throwArrayIndexOutOfBounds(int index, int length) {
         throw throwExceptionWithMessage(java_lang_ArrayIndexOutOfBoundsException, "Array index out of range: " + index + " for length " + length);
     }

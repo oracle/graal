@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.libs.libnet.impl;
 
 import com.oracle.truffle.espresso.libs.InformationLeak;
 import com.oracle.truffle.espresso.libs.libnet.LibNet;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.Substitution;
@@ -36,13 +37,27 @@ public final class Target_java_net_InetAddress {
     }
 
     @Substitution
-    public static boolean isIPv6Supported(@Inject InformationLeak iL) {
+    public static boolean isIPv6Supported(@Inject InformationLeak iL, @Inject EspressoContext ctx) {
+        /*
+         * This method is called in the static class initializer so we should not throw a
+         * SecurityException if SocketIO is not allowed.
+         */
+        if (!ctx.getEnv().isSocketIOAllowed()) {
+            return false;
+        }
         return iL.isIPv6Available();
 
     }
 
     @Substitution
-    public static boolean isIPv4Available(@Inject InformationLeak iL) {
+    public static boolean isIPv4Available(@Inject InformationLeak iL, @Inject EspressoContext ctx) {
+        /*
+         * This method will eventually be called from the static class initializer so we should not
+         * throw a SecurityException if SocketIO is not allowed.
+         */
+        if (!ctx.getEnv().isSocketIOAllowed()) {
+            return false;
+        }
         return iL.isIPv4Available();
     }
 }

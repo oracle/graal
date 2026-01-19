@@ -648,6 +648,12 @@ public final class EspressoOptions {
                     usageSyntax = "true|false") //
     public static final OptionKey<Boolean> UseEspressoLibs = new OptionKey<>(false);
 
+    @Option(help = "Whether to perform bounds checks on array accesses via Unsafe!", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> CheckUnsafeArrayBounds = new OptionKey<>(false);
+
     @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal).", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //

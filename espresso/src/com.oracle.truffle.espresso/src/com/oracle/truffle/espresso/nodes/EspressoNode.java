@@ -50,6 +50,7 @@ public abstract class EspressoNode extends Node implements ContextAccess {
     }
 
     @Override
+    @Idempotent
     public final EspressoLanguage getLanguage() {
         return EspressoLanguage.get(this);
     }

@@ -23,9 +23,7 @@
 package com.oracle.truffle.espresso.io;
 
 import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
-import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAccessMode;
 import static com.oracle.truffle.espresso.libs.libnio.impl.Target_sun_nio_ch_IOUtil.FD_LIMIT;
-import static com.oracle.truffle.espresso.substitutions.standard.Target_sun_misc_Unsafe.ADDRESS_SIZE;
 
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -241,9 +239,9 @@ public final class TruffleIO implements ContextAccess {
      *             The exception will have the same guest type as the host exception that happened.
      */
     @TruffleBoundary
-    public TruffleFile getPublicTruffleFileSafe(String path) {
+    public TruffleFile getInternalTruffleFile(String path) {
         try {
-            return context.getEnv().getPublicTruffleFile(path);
+            return context.getEnv().getInternalTruffleFile(path);
         } catch (UnsupportedOperationException e) {
             throw Throw.throwUnsupported(e.getMessage(), context);
         } catch (SecurityException e) {
@@ -286,7 +284,7 @@ public final class TruffleIO implements ContextAccess {
      */
     @TruffleBoundary
     public int openSocket(boolean preferIPv6, boolean tcp, boolean reuse, boolean server) {
-        context.getLibsState().net.checkNetworkEnabled();
+        assert context.getEnv().isSocketIOAllowed();
         // opening the channel
         java.net.ProtocolFamily family = preferIPv6 ? StandardProtocolFamily.INET6 : StandardProtocolFamily.INET;
         ChannelWrapper channelWrapper;
@@ -370,6 +368,7 @@ public final class TruffleIO implements ContextAccess {
     public void bind(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess, boolean preferIPv6, @JavaType(InetAddress.class) StaticObject addr,
                     int port, LibsState libsState) {
+        assert getContext().getEnv().isSocketIOAllowed();
         ChannelWrapper channelWrapper = files.getOrDefault(getFD(self, fdAccess), null);
         Objects.requireNonNull(channelWrapper);
         InetAddress inetAddress = libsState.net.fromGuestInetAddress(addr, preferIPv6);
@@ -404,6 +403,7 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public int accept(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess, @JavaType(FileDescriptor.class) StaticObject newfd, SocketAddress[] ret) {
+        assert getContext().getEnv().isSocketIOAllowed();
         ServerSocketChannel serverSocketChannel = getServerSocketChannel(self, fdAccess);
         try {
             // accept the connection
@@ -445,6 +445,7 @@ public final class TruffleIO implements ContextAccess {
      */
     public <T> T getSocketOption(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess, SocketOption<T> name) {
+        assert getContext().getEnv().isSocketIOAllowed();
         try {
             return getNetworkChannel(self, fdAccess).getOption(name);
         } catch (IOException e) {
@@ -457,6 +458,7 @@ public final class TruffleIO implements ContextAccess {
      */
     public <T> void setSocketOption(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess, SocketOption<T> name, T value) {
+        assert getContext().getEnv().isSocketIOAllowed();
         try {
             getNetworkChannel(self, fdAccess).setOption(name, value);
         } catch (IOException e) {
@@ -469,6 +471,7 @@ public final class TruffleIO implements ContextAccess {
      */
     public boolean connect(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess, SocketAddress remote) {
+        assert getContext().getEnv().isSocketIOAllowed();
         try {
             // todo (GR-69946) add uninterruptible support
             return getSocketChannel(self, fdAccess).connect(remote);
@@ -482,6 +485,7 @@ public final class TruffleIO implements ContextAccess {
      */
     public void shutdownSocketChannel(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess, boolean input, boolean output) {
+        assert getContext().getEnv().isSocketIOAllowed();
         try {
             SocketChannel socketChannel = getSocketChannel(self, fdAccess);
             if (input) {
@@ -514,7 +518,7 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public void listen(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess, int backlog) {
-
+        assert getContext().getEnv().isSocketIOAllowed();
         ServerTCPChannelWrapper tcpWrapper = getServerTCPChannelWrapper(self, fdAccess);
         ServerSocketChannel channel = (ServerSocketChannel) tcpWrapper.channel;
         try {
@@ -535,6 +539,7 @@ public final class TruffleIO implements ContextAccess {
     @TruffleBoundary
     public @JavaType StaticObject getLocalAddress(@JavaType(Object.class) StaticObject self,
                     FDAccess fdAccess) {
+        assert getContext().getEnv().isSocketIOAllowed();
         try {
             int fd = getFD(self, fdAccess);
             NetworkChannel networkChannel = getNetworkChannel(fd);
@@ -566,6 +571,7 @@ public final class TruffleIO implements ContextAccess {
      */
     @TruffleBoundary
     public int getPort(@JavaType(Object.class) StaticObject self, FDAccess fdAccess) {
+        assert getContext().getEnv().isSocketIOAllowed();
         try {
             int fd = getFD(self, fdAccess);
             InetSocketAddress socketAddress = (InetSocketAddress) getNetworkChannel(fd).getLocalAddress();
@@ -1230,6 +1236,7 @@ public final class TruffleIO implements ContextAccess {
      * the user if not.
      */
     private void ensurePosixFileSystem() {
+        // We are forcing a host unix system (GR-71965) !
         TruffleFile probe = null;
         try {
             probe = context.getEnv().createTempFile(null, null, null);
@@ -1239,7 +1246,7 @@ public final class TruffleIO implements ContextAccess {
                 LibsState.getLogger().warning("The underlying fileSystem does not support PosixPermissions, which is assumed by EspressoLibs");
             }
         } catch (Exception e) {
-            LibsState.getLogger().warning("Could not verify that the underlying file system is a posix/unix file system");
+            LibsState.getLogger().warning("Could not verify that the underlying file system is a posix/unix file system with exception: " + e);
         } finally {
             if (probe != null) {
                 try {
@@ -1316,7 +1323,7 @@ public final class TruffleIO implements ContextAccess {
     }
 
     private int open(String path, Set<? extends OpenOption> options) {
-        return open(getPublicTruffleFileSafe(path), options);
+        return open(getInternalTruffleFile(path), options);
     }
 
     private int nextFreeFd() {
@@ -1410,8 +1417,8 @@ public final class TruffleIO implements ContextAccess {
     }
 
     private AddressLengthPair[] extractAddressLengthPairs(long address, int len, NativeMemory nativeMemory) {
-        int lenOffset = ADDRESS_SIZE;
-        int sizeOfIOVec = (short) (ADDRESS_SIZE * 2);
+        int lenOffset = nativeMemory.addressSize();
+        int sizeOfIOVec = (short) (nativeMemory.addressSize() * 2);
         long curIOVecAddr = address;
         long nextAddr;
         long nextLen;
@@ -1419,13 +1426,8 @@ public final class TruffleIO implements ContextAccess {
         AddressLengthPair[] addressLengthPairs = new AddressLengthPair[len];
         for (int i = 0; i < len; i++) {
             try {
-                if (ADDRESS_SIZE == 4) {
-                    nextAddr = nativeMemory.getInt(curIOVecAddr, MemoryAccessMode.PLAIN);
-                    nextLen = nativeMemory.getInt(curIOVecAddr + lenOffset, MemoryAccessMode.PLAIN);
-                } else {
-                    nextAddr = nativeMemory.getLong(curIOVecAddr, MemoryAccessMode.PLAIN);
-                    nextLen = nativeMemory.getLong(curIOVecAddr + lenOffset, MemoryAccessMode.PLAIN);
-                }
+                nextAddr = nativeMemory.getAddress(curIOVecAddr);
+                nextLen = nativeMemory.getAddress(curIOVecAddr + lenOffset);
             } catch (IllegalMemoryAccessException e) {
                 throw Throw.throwIOException("Invalid memory access: Trying to access memory outside the allocated region", getContext());
             }
