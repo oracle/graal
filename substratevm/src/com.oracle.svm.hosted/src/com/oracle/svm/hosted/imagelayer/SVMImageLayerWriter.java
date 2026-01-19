@@ -1019,7 +1019,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             var pb = builder.initPrimitiveValue();
             pb.setTypeChar(NumUtil.safeToUByte(primitiveConstant.getJavaKind().getTypeChar()));
             pb.setRawValue(primitiveConstant.getRawValue());
-        } else if (constant == JavaConstant.NULL_POINTER) {
+        } else if (constant.equals(JavaConstant.NULL_POINTER)) {
             builder.setNullPointer(Void.VOID);
         } else {
             return false;

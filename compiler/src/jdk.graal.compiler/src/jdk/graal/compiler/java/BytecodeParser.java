@@ -461,7 +461,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.ProfilingInfo;
-import jdk.vm.ci.meta.RawConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -3177,8 +3176,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         throw new JsrNotSupportedBailout(msg);
     }
 
-    private ConstantNode getJsrConstant(long bci) {
-        JavaConstant nextBciConstant = new RawConstant(bci);
+    private ConstantNode getJsrConstant(int bci) {
+        JavaConstant nextBciConstant = JavaConstant.forInt(bci);
         Stamp nextBciStamp = StampFactory.forConstant(nextBciConstant);
         ConstantNode nextBciNode = new ConstantNode(nextBciConstant, nextBciStamp);
         return graph.unique(nextBciNode);

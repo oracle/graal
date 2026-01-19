@@ -149,7 +149,8 @@ public class ObjectState {
                  */
                 ValueNode[] newEntries = entries.clone();
                 for (int i = 0; i < newEntries.length; i++) {
-                    if (newEntries[i].asJavaConstant() == JavaConstant.defaultForKind(virtual.entryKind(metaAccessExtensionProvider, i).getStackKind())) {
+                    JavaConstant newEntryConstant = newEntries[i].asJavaConstant();
+                    if (newEntryConstant != null && newEntryConstant.equals(JavaConstant.defaultForKind(virtual.entryKind(metaAccessExtensionProvider, i).getStackKind()))) {
                         newEntries[i] = null;
                     }
                 }
