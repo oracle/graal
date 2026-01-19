@@ -153,7 +153,7 @@ public final class RistrettoConstantPool implements ConstantPool {
             return null;
         } else if (retVal instanceof JavaConstant) {
             return retVal;
-        } else if (retVal instanceof JavaType jt) {
+        } else if (retVal instanceof JavaType) {
             if (retVal instanceof ResolvedJavaType) {
                 GraalError.guarantee(retVal instanceof InterpreterResolvedJavaType, "Must be an interpreter resolved java type but is %s", retVal);
                 return RistrettoType.create((InterpreterResolvedJavaType) retVal);

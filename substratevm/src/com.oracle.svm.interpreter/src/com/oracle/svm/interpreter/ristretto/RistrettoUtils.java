@@ -94,7 +94,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.word.impl.Word;
 
 public class RistrettoUtils {
 
@@ -172,7 +171,7 @@ public class RistrettoUtils {
     }
 
     public static StructuredGraph parseOnly(SubstrateMethod method) {
-        if (method instanceof RistrettoMethod rMethod) {
+        if (method instanceof RistrettoMethod) {
             final RuntimeConfiguration runtimeConfig = RuntimeCompilationSupport.getRuntimeConfig();
             final DebugContext debug = new DebugContext.Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(runtimeConfig.getProviders().getSnippetReflection())).build();
             final OptionValues options = debug.getOptions();
@@ -244,7 +243,7 @@ public class RistrettoUtils {
             }
 
             @Override
-            protected CompilationResult performCompilation(DebugContext initialDebug) {
+            protected CompilationResult performCompilation(DebugContext d) {
                 try (DebugContext debug = new DebugContext.Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(runtimeConfig.getProviders().getSnippetReflection()))
                                 .description(getDescription(method))
                                 .build()) {
@@ -259,7 +258,7 @@ public class RistrettoUtils {
                          */
                         boolean useRistrettoProviders;
 
-                        if (method instanceof RistrettoMethod rMethod) {
+                        if (method instanceof RistrettoMethod) {
                             final OptionValues options = debug.getOptions();
                             // final int entryBCI = 0;
                             final SpeculationLog speculationLog = new SubstrateSpeculationLog();
@@ -275,7 +274,7 @@ public class RistrettoUtils {
                             }
                             assert graph != null;
                             PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite(runtimeConfig);
-                            suites = adaptSuitesForRistretto(RuntimeCompilationSupport.getMatchingSuitesForGraph(graph), ristrettoGraphBuilderSuite);
+                            suites = adaptSuitesForRistretto(RuntimeCompilationSupport.getMatchingSuitesForGraph(graph));
                             if (TestingBackdoor.shouldRememberGraph()) {
                                 // override the suites with graph capturing phases
                                 suites = suites.copy();
@@ -342,7 +341,7 @@ public class RistrettoUtils {
         }.run(initialDebug);
     }
 
-    private static Suites adaptSuitesForRistretto(Suites suites, PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite) {
+    private static Suites adaptSuitesForRistretto(Suites suites) {
         Suites effectiveSuites = suites.copy();
         if (!RistrettoOptions.getJITUseDeoptimization()) {
             effectiveSuites = effectiveSuites.copy();
