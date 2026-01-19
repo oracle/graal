@@ -33,13 +33,12 @@ public class LabelNotResolvedError extends RAVError {
                 unresolvedVariablesStringBuilder.append(", ");
             }
 
-            if (i != label.dests.count - 1) {
-                labelStringBuilder.append(", ");
-            }
+            labelStringBuilder.append(", ");
         }
 
         int unresLen = unresolvedVariablesStringBuilder.length();
         unresolvedVariablesStringBuilder.delete(unresLen - 2, unresLen);
+
         return "Could not resolve " + unresolvedVariablesStringBuilder + ": LABEL " + labelStringBuilder + "]";
     }
 }
