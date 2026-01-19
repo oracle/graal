@@ -1,7 +1,7 @@
 suite = {
   "mxversion": "7.48.0",
   "name" : "sulong",
-  "version" : "25.0.2",
+  "version" : "25.0.3",
   "release" : False,
   "versionConflictResolution" : "latest",
   "groupId": "org.graalvm.llvm",
