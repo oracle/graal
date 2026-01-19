@@ -7,6 +7,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRValueUtil;
+import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.Variable;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
@@ -14,6 +15,7 @@ import jdk.vm.ci.meta.Value;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -193,32 +195,80 @@ public final class RegisterAllocationVerifier {
         return true;
     }
 
+    class VariableLocations implements Iterable<Value> {
+        protected Set<String> internalList;
+        protected Map<String, Value> valueMap;
+
+        public VariableLocations() {
+            this.internalList = new HashSet<>();
+            this.valueMap = new HashMap<>();
+        }
+
+        public VariableLocations(VariableLocations other) {
+            this.internalList = new HashSet<>(other.internalList);
+            this.valueMap = new HashMap<>(other.valueMap);
+        }
+
+        public void add(Value location) {
+            var locString = getValueKeyString(location);
+            internalList.add(locString);
+            valueMap.put(locString, location);
+        }
+
+        public void remove(Value location) {
+            var locString = getValueKeyString(location);
+            internalList.remove(locString);
+            valueMap.remove(locString);
+        }
+
+        public boolean isEmpty() {
+            return internalList.isEmpty();
+        }
+
+        public boolean contains(Value location) {
+            var locString = getValueKeyString(location);
+            return valueMap.containsKey(locString);
+        }
+
+        protected String getValueKeyString(Value value) {
+            if (value instanceof RegisterValue regValue) {
+                return regValue.getRegister().toString();
+            }
+
+            return value.toString();
+        }
+
+        @Override
+        public Iterator<Value> iterator() {
+            return internalList.stream().map(valueMap::get).iterator();
+        }
+    }
+
     private void propagateLabelChangeFromPredecessors(BasicBlock<?> defBlock) {
         var labelInstr = (RAVInstruction.Op) this.blockInstructions.get(defBlock).getFirst();
 
         // Definition block needs to have this set.
         var propagateMap = new HashMap<BasicBlock<?>, List<Variable>>();
-        var variableToRegisters = new HashMap<Variable, RegisterValue>();
+        var locationMap = new HashMap<BasicBlock<?>, Map<Variable, VariableLocations>>();
+
+        var defVariableToLocations = new HashMap<Variable, VariableLocations>();
         var defBlockVariablesToPropagate = new LinkedList<Variable>();
         for (int i = 0; i < labelInstr.dests.count; i++) {
-            var register = (RegisterValue) labelInstr.dests.curr[i];
+            var register = labelInstr.dests.curr[i];
             var variable = LIRValueUtil.asVariable(labelInstr.dests.orig[i]);
 
             defBlockVariablesToPropagate.add(variable);
-            variableToRegisters.put(variable, register);
+
+            var variableLocationList = new VariableLocations();
+            variableLocationList.add(register);
+            defVariableToLocations.put(variable, variableLocationList);
         }
 
         Queue<BasicBlock<?>> worklist = new LinkedList<>();
         Set<BasicBlock<?>> processed = new HashSet<>();
         worklist.add(defBlock);
         propagateMap.put(defBlock, defBlockVariablesToPropagate);
-
-        // Monitor_notowner01 + Moniitor_contended01
-        // B23  216       stack:48|QWORD[.] = MOVE input: rsi|QWORD[.] moveKind: QWORD // LSRAEliminateSpillMove: store at definition
-        // old variable supposed to be overwriten stored in spillSpill slots...
-        // TODO: any location we store the new variables in, needs to be propagated as well
-        // and this can be done in successors and needs to be accounted for...
-        // TODO: Reconsider any move with label variable.
+        locationMap.put(defBlock, defVariableToLocations);
 
         while (!worklist.isEmpty()) {
             var curr = worklist.remove();
@@ -227,21 +277,89 @@ public final class RegisterAllocationVerifier {
             }
             processed.add(curr);
 
-            var def = this.blockDefinitions.get(curr);
             var state = this.blockStates.get(curr);
-
             var variablesToPropagate = propagateMap.get(curr);
-            var itToPropagate = variablesToPropagate.iterator();
-            var variablesToBePropagated = new LinkedList<Variable>();
-            while (itToPropagate.hasNext()) {
-                var variable = LIRValueUtil.asVariable(itToPropagate.next());
-                var register = variableToRegisters.get(variable);
+            var variableToLocations = locationMap.get(curr);
 
-                if (def.contains(register)) {
+            var instructions = blockInstructions.get(curr);
+            for (var instruction : instructions) {
+                if (curr.equals(defBlock) && instruction.lirInstruction instanceof StandardOp.LabelOp) {
+                    continue;
+                }
+
+                Value fromLocation;
+                Value toLocation;
+
+                switch (instruction) {
+                    case RAVInstruction.Move move -> {
+                        fromLocation = move.from;
+                        toLocation = move.to;
+                    }
+                    case RAVInstruction.Spill spill -> {
+                        fromLocation = spill.from;
+                        toLocation = spill.to;
+                    }
+                    case RAVInstruction.StackMove stack -> {
+                        fromLocation = stack.from;
+                        toLocation = stack.to;
+                    }
+                    case RAVInstruction.Reload reload -> {
+                        fromLocation = reload.from;
+                        toLocation = reload.to;
+                    }
+                    case RAVInstruction.VirtualMove virtMove -> {
+                        toLocation = virtMove.location;
+                        fromLocation = null;
+                    }
+                    case RAVInstruction.Op op -> {
+                        for (int i = 0; i < op.dests.count; i++) {
+                            var location = op.dests.curr[i];
+                            if (location == null) {
+                                continue;
+                            }
+
+                            var itToPropagate = variablesToPropagate.iterator();
+                            while (itToPropagate.hasNext()) {
+                                var variable = LIRValueUtil.asVariable(itToPropagate.next());
+                                var locations = variableToLocations.get(variable);
+                                locations.remove(location);
+                            }
+                        }
+
+                        continue;
+                    }
+                    default -> {
+                        continue;
+                    }
+                }
+
+                var itToPropagate = variablesToPropagate.iterator();
+                while (itToPropagate.hasNext()) {
+                    var variable = LIRValueUtil.asVariable(itToPropagate.next());
+                    var locations = variableToLocations.get(variable);
+                    if (fromLocation != null && locations.contains(fromLocation)) {
+                        locations.add(toLocation);
+                    } else if (locations.contains(toLocation)) {
+                        locations.remove(toLocation); // Overwritten
+                    }
+                }
+            }
+
+            var variablesToBePropagated = new LinkedList<Variable>();
+            var iterator = variablesToPropagate.iterator();
+            while (iterator.hasNext()) {
+                var variable = LIRValueUtil.asVariable(iterator.next());
+                var locations = variableToLocations.get(variable);
+                if (locations.isEmpty()) {
                     continue;
                 }
 
                 variablesToBePropagated.add(variable);
+                for (var location : locations) {
+                    if (state != null) {
+                        state.values.put(location, new ValueAllocationState(variable));
+                    }
+                }
             }
 
             if (variablesToBePropagated.isEmpty()) {
@@ -260,7 +378,23 @@ public final class RegisterAllocationVerifier {
                     // for example: B0 defines [v0] in label, B1 is it's successor as well as it's
                     // predecessor, and if it does not overwrite this register, it would change
                     // entry state for B0 to include v0, which is defined by B0.
-                    throw new CircularDefinitionError(defBlock, curr, labelInstr, variablesToBePropagated);
+
+                    for (int j = 0; j < labelInstr.dests.count; j++) {
+                        var variable = LIRValueUtil.asVariable(labelInstr.dests.orig[j]);
+
+                        if (!variablesToPropagate.contains(variable)) {
+                            continue;
+                        }
+
+                        var location = labelInstr.dests.curr[j];
+                        var locations = variableToLocations.get(variable);
+                        if (locations.contains(location)) {
+                            // Only throw this error if location in label was not overwritten.
+                            throw new CircularDefinitionError(defBlock, curr, labelInstr, variablesToBePropagated);
+                        }
+                    }
+
+                    continue;
                 }
 
                 boolean dominates = succ.dominates(defBlock);
@@ -268,13 +402,19 @@ public final class RegisterAllocationVerifier {
                     continue;
                 }
 
+                Map<Variable, VariableLocations> newLoc = new HashMap<>();
                 var itToBePropagated = variablesToBePropagated.iterator();
                 while (itToBePropagated.hasNext()) {
                     var variable = LIRValueUtil.asVariable(itToBePropagated.next());
-                    var register = variableToRegisters.get(variable);
-                    succEntryState.values.put(register, new ValueAllocationState(variable));
+                    var locations = variableToLocations.get(variable);
+                    for (var location : locations) {
+                        succEntryState.values.put(location, new ValueAllocationState(variable));
+                    }
+
+                    newLoc.put(variable, new VariableLocations(locations));
                 }
 
+                locationMap.put(succ, newLoc);
                 propagateMap.put(succ, variablesToBePropagated);
                 worklist.add(succ);
             }
