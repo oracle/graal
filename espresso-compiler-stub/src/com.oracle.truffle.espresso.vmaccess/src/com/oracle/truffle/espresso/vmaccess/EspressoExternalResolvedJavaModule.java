@@ -26,6 +26,7 @@ import static com.oracle.truffle.espresso.vmaccess.EspressoExternalConstantRefle
 
 import java.util.Set;
 
+import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 
 import jdk.graal.compiler.phases.util.Providers;
@@ -85,7 +86,9 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
 
     @Override
     public Set<String> getPackages() {
-        throw JVMCIError.unimplemented();
+        Value packages = access.javaLangModule_getPackage.getMirror().execute(moduleValue);
+        return packages.as(new TypeLiteral<>() {
+        });
     }
 
     @Override
