@@ -159,7 +159,8 @@ public final class DefinedType implements HeapType {
         if (this.recursiveTypes.equals(that.recursiveTypes) && this.subTypeIndex == that.subTypeIndex) {
             return true;
         }
-        return this.recursiveTypes.subTypes()[subTypeIndex].superType() != null && this.recursiveTypes.subTypes()[subTypeIndex].superType().isSubtypeOf(that);
+        DefinedType superType = this.recursiveTypes.subTypes()[subTypeIndex].superType();
+        return superType != null && superType.isSubtypeOf(that);
     }
 
     @Override

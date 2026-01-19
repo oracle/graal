@@ -728,6 +728,9 @@ public abstract class SymbolTable {
         }
         for (int subTypeIndex = 0; subTypeIndex < subTypes.length; subTypeIndex++) {
             subTypes[subTypeIndex].unroll(recursiveTypes);
+            if (hasSuperType(recursiveTypeGroupStart + subTypeIndex)) {
+                subTypes[subTypeIndex].superType().setTypeEquivalenceClass(closedTypeAt(superType(recursiveTypeGroupStart + subTypeIndex)).typeEquivalenceClass());
+            }
         }
     }
 
