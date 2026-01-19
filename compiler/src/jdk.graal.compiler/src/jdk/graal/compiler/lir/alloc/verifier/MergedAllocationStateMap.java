@@ -13,7 +13,7 @@ public class MergedAllocationStateMap {
     /**
      * These are instances of Value we need to keep for getValueLocations,
      * indexed by their string representation.
-     *
+     * <p>
      * Because Values have their own toString implementation,
      * that the hash map uses and for some Values we do not
      * want this (especially due to kinds), which are irrelevant
@@ -25,11 +25,11 @@ public class MergedAllocationStateMap {
     protected Map<String, Integer> locationTimings;
     /**
      * Prioritized locations are ones made by the register allocator itself.
-     *
+     * <p>
      * Whenever we are resolving phi variables, these are prioritized
      * because they are likely what the register allocator chose
      * to be used as phi locations.
-     *
+     * <p>
      * If there's multiple, then time should make the difference.
      */
     protected Map<String, Boolean> prioritizedLocations;
@@ -117,7 +117,7 @@ public class MergedAllocationStateMap {
     }
 
     public void putClone(Value key, AllocationState value) {
-        if (value.isConflicted() || value.isUnknown()) {
+        if (value.isUnknown()) {
             this.put(key, value);
             return;
         }

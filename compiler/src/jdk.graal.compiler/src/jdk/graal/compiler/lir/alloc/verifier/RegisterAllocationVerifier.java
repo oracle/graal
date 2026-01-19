@@ -357,7 +357,7 @@ public final class RegisterAllocationVerifier {
                 variablesToBePropagated.add(variable);
                 for (var location : locations) {
                     if (state != null) {
-                        state.values.put(location, new ValueAllocationState(variable));
+                        state.values.put(location, new ValueAllocationState(variable, labelInstr.lirInstruction));
                     }
                 }
             }
@@ -408,7 +408,7 @@ public final class RegisterAllocationVerifier {
                     var variable = LIRValueUtil.asVariable(itToBePropagated.next());
                     var locations = variableToLocations.get(variable);
                     for (var location : locations) {
-                        succEntryState.values.put(location, new ValueAllocationState(variable));
+                        succEntryState.values.put(location, new ValueAllocationState(variable, labelInstr.lirInstruction));
                     }
 
                     newLoc.put(variable, new VariableLocations(locations));

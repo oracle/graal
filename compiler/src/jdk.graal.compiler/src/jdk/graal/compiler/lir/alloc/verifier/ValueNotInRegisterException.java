@@ -23,15 +23,29 @@ public class ValueNotInRegisterException extends RAVException {
     }
 
     static String getErrorMessage(LIRInstruction instruction, BasicBlock<?> block, Value variable, Value location, AllocationState state) {
-        return "Value " +
-                variable +
-                " not found in " +
-                location +
-                " for instruction " +
-                instruction +
-                " in block " +
-                block +
-                " actual state is " +
-                state;
+        var messageBuilder = new StringBuilder();
+        messageBuilder
+                .append("Value ")
+                .append(variable)
+                .append(" not found in ")
+                .append(location)
+                .append("for instruction ")
+                .append(instruction)
+                .append(" in ")
+                .append(block)
+                .append(" actual state is ");
+
+        if (state instanceof ConflictedAllocationState confState) {
+            var confStates = confState.getConflictedStates();
+
+            messageBuilder.append("\n");
+            for (var conflictedState : confStates) {
+                messageBuilder.append(" - ").append(conflictedState.getValue()).append(" from ").append(conflictedState.source).append("\n");
+            }
+        } else {
+            messageBuilder.append(state);
+        }
+
+        return messageBuilder.toString();
     }
 }

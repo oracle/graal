@@ -1,30 +1,32 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
-import jdk.vm.ci.meta.Value;
-
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 public class ConflictedAllocationState extends AllocationState {
-    protected Set<Value> conflictedValues;
+    protected Set<ValueAllocationState> conflictedStates;
 
-    public ConflictedAllocationState(Value value1, Value value2) {
-        this.conflictedValues = new HashSet<>();
-        this.conflictedValues.add(value1);
-        this.conflictedValues.add(value2);
+    public ConflictedAllocationState() {
+        this.conflictedStates = new HashSet<>();
     }
 
-    private ConflictedAllocationState(Set<Value> conflictedValues) {
-        this.conflictedValues = new HashSet<>(conflictedValues);
+    public ConflictedAllocationState(ValueAllocationState state1, ValueAllocationState state2) {
+        this();
+        this.conflictedStates.add(state1); // Not using addConflictedValue because a warning is thrown
+        this.conflictedStates.add(state2);
     }
 
-    public void addConflictedValue(Value value) {
-        this.conflictedValues.add(value);
+    private ConflictedAllocationState(Set<ValueAllocationState> conflictedStates) {
+        this.conflictedStates = new HashSet<>(conflictedStates);
     }
 
-    public Set<Value> getConflictedValues() {
-        return this.conflictedValues;
+    public void addConflictedValue(ValueAllocationState state) {
+        this.conflictedStates.add(state);
+    }
+
+    public Set<ValueAllocationState> getConflictedStates() {
+        return this.conflictedStates;
     }
 
     @Override
@@ -34,20 +36,21 @@ public class ConflictedAllocationState extends AllocationState {
 
     @Override
     public AllocationState meet(AllocationState other) {
+        var newlyConflictedState = new ConflictedAllocationState(this.getConflictedStates());
         if (other instanceof ValueAllocationState valueState) {
-            this.addConflictedValue(valueState.getValue());
+            newlyConflictedState.addConflictedValue(valueState);
         }
 
         if (other instanceof ConflictedAllocationState conflictedState) {
-            this.conflictedValues.addAll(conflictedState.conflictedValues);
+            newlyConflictedState.conflictedStates.addAll(conflictedState.conflictedStates);
         }
 
-        return this;
+        return newlyConflictedState;
     }
 
     @Override
     public AllocationState clone() {
-        return new ConflictedAllocationState(this.conflictedValues);
+        return new ConflictedAllocationState(this.conflictedStates);
     }
 
     @Override
@@ -57,6 +60,6 @@ public class ConflictedAllocationState extends AllocationState {
 
     @Override
     public String toString() {
-        return "Conflicted {" + Arrays.toString(this.conflictedValues.toArray()) + "}";
+        return "Conflicted {" + Arrays.toString(this.conflictedStates.toArray()) + "}";
     }
 }

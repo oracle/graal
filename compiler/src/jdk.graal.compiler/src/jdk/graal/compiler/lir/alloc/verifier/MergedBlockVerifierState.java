@@ -209,7 +209,7 @@ public class MergedBlockVerifierState {
                 this.checkRegisterDestinationValidity(location);
             }
 
-            this.values.put(location, new ValueAllocationState(variable));
+            this.values.put(location, new ValueAllocationState(variable, op.lirInstruction));
         }
 
         for (int i = 0; i < op.temp.count; i++) {
@@ -226,7 +226,7 @@ public class MergedBlockVerifierState {
 
     protected void updateWithVirtualMove(RAVInstruction.VirtualMove virtMove) {
         if (virtMove.location instanceof RegisterValue) {
-            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant));
+            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant, virtMove.lirInstruction));
         } else if (LIRValueUtil.isVariable(virtMove.location)) {
             // v4|QWORD[.] = MOVE input: v3|QWORD[.] moveKind: QWORD
             // Move before allocation
@@ -234,10 +234,10 @@ public class MergedBlockVerifierState {
             // TestCase: BoxingTest.boxBoolean
             var locations = this.values.getValueLocations(virtMove.variableOrConstant);
             for (var location : locations) {
-                this.values.put(location, new ValueAllocationState(virtMove.location));
+                this.values.put(location, new ValueAllocationState(virtMove.location, virtMove.lirInstruction));
             }
         } else {
-            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant));
+            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant, virtMove.lirInstruction));
         }
     }
 }

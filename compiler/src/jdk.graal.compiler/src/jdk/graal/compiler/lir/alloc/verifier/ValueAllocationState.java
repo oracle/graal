@@ -2,6 +2,7 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.ConstantValue;
+import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.vm.ci.code.RegisterValue;
@@ -10,8 +11,9 @@ import jdk.vm.ci.meta.Value;
 
 public class ValueAllocationState extends AllocationState implements Cloneable {
     protected Value value;
+    protected LIRInstruction source;
 
-    public ValueAllocationState(Value value) {
+    public ValueAllocationState(Value value, LIRInstruction source) {
         if (value instanceof RegisterValue || LIRValueUtil.isVariable(value) || value instanceof ConstantValue || value instanceof StackSlot || value instanceof VirtualStackSlot || Value.ILLEGAL.equals(value)) {
             // StackSlot, RegisterValue is present in start block in label as predefined argument
             // VirtualStackSlot is used for RESTORE_REGISTERS and SAVE_REGISTERS
@@ -21,6 +23,7 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
             // but real registers can also be used as that, in some cases.
             // TODO: reconsider handling of StackSlots
             this.value = value;
+            this.source = source;
         } else {
             throw GraalError.shouldNotReachHere("Invalid type of value used " + value);
         }
@@ -45,7 +48,7 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
 
         var otherValueAllocState = (ValueAllocationState) other;
         if (!this.value.equals(otherValueAllocState.getValue())) {
-            return new ConflictedAllocationState(this.value, otherValueAllocState.getValue());
+            return new ConflictedAllocationState(this, otherValueAllocState);
         }
 
         return this;
@@ -64,5 +67,10 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
     @Override
     public String toString() {
         return "Value {" + this.value + "}";
+    }
+
+    @Override
+    public int hashCode() {
+        return this.value.hashCode();
     }
 }
