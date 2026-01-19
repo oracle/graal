@@ -16,7 +16,7 @@ public class CircularDefinitionError extends RAVError {
         StringBuilder operandString = new StringBuilder("[");
         var values = label.dests;
         for (int i = 0; i < values.count; i++) {
-            if (LIRValueUtil.isVariable(values.orig[i])) {
+            if (!LIRValueUtil.isVariable(values.orig[i])) {
                 continue; // Avoid fatal error
             }
 
@@ -38,6 +38,7 @@ public class CircularDefinitionError extends RAVError {
         }
 
         operandString.setLength(operandString.length() - 2);
+        operandString.append("]");
 
         return "Circular definition for variable detected " + predecessor + " -> " + defBlock + " with " + operandString;
     }
