@@ -210,7 +210,7 @@ public class InlineableGraph implements Inlineable {
             if (graphBuilder != null) {
                 graphBuilder.apply(newGraph, context);
             }
-            GraalError.guarantee(newGraph.start().next() != null, "Graph needs to be populated by the GraphBuilderSuite " + method + ", " + method.canBeInlined());
+            GraalError.guarantee(newGraph.start().next() != null, "Graph needs to be populated by the GraphBuilderSuite %s,%s ", method, method.canBeInlined());
 
             new DeadCodeEliminationPhase(DeadCodeEliminationPhase.Optionality.Optional).apply(newGraph);
 

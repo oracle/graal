@@ -398,7 +398,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         InterpreterResolvedJavaField[] fields = getInstanceFields(true);
         for (InterpreterResolvedJavaField f : fields) {
             // Compare offsets (stored as int at build time but passed as long here)
-            if ((long) f.getOffset() == offset) {
+            if (f.getOffset() == offset) {
                 // If an expected kind is provided, enforce it
                 if (expectedKind == null || expectedKind == f.getJavaKind()) {
                     return f;
