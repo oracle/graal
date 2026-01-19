@@ -166,7 +166,7 @@ public final class RistrettoConstantPool implements ConstantPool {
              * Interpreter caches strings directly as a string.
              */
             JavaConstant c = RuntimeCompilationSupport.getRuntimeConfig().getProviders().getSnippetReflection().forObject(retVal);
-            GraalError.guarantee(c != null, "Must have constant for string " + retVal);
+            GraalError.guarantee(c != null, "Must have constant for string %s", retVal);
             return c;
         }
         throw GraalError.shouldNotReachHere(String.format("Unknown value for constant lookup, cpi=%s resolve=%s this=%s", cpi, resolve, this));
