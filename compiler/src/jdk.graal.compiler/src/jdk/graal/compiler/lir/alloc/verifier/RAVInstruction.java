@@ -130,6 +130,27 @@ public class RAVInstruction {
             }
             return true;
         }
+
+        @Override
+        public String toString() {
+            StringBuilder result = new StringBuilder("[");
+            for (int i = 0; i < this.count; i++) {
+                if (this.curr[i] != null) {
+                    result.append(this.orig[i].toString()).append(" -> ").append(this.curr[i].toString());
+                } else {
+                    result.append(this.orig[i].toString());
+                }
+
+                result.append(", ");
+            }
+
+            if (this.count > 0) {
+                result.setLength(result.length() - 2);
+            }
+
+            result.append("]");
+            return result.toString();
+        }
     }
 
     public static class Op extends Base {
@@ -164,6 +185,11 @@ public class RAVInstruction {
             }
             return false;
         }
+
+        @Override
+        public String toString() {
+            return this.dests.toString() + " = Op " + this.uses.toString() + " " + this.alive.toString() + " " + this.temp.toString();
+        }
     }
 
     public static class Move extends Base {
@@ -174,6 +200,10 @@ public class RAVInstruction {
             super(instr);
             this.from = from;
             this.to = to;
+        }
+
+        public String toString() {
+            return to.toString() + " = MOVE " + from.toString();
         }
     }
 
@@ -192,6 +222,10 @@ public class RAVInstruction {
             this.from = from;
             this.to = to;
         }
+
+        public String toString() {
+            return to.toString() + " = MOVE " + from.toString();
+        }
     }
 
     public static class Reload extends Base {
@@ -202,6 +236,10 @@ public class RAVInstruction {
             super(instr);
             this.from = from;
             this.to = to;
+        }
+
+        public String toString() {
+            return to.toString() + " = RELOAD " + from.toString();
         }
     }
 
@@ -214,6 +252,10 @@ public class RAVInstruction {
             this.to = to;
             this.from = from;
         }
+
+        public String toString() {
+            return to.toString() + " = SPILL " + from.toString();
+        }
     }
 
     public static class VirtualMove extends Base {
@@ -224,6 +266,10 @@ public class RAVInstruction {
             super(instr);
             this.variableOrConstant = variableOrConstant;
             this.location = location;
+        }
+
+        public String toString() {
+            return location.toString() + " = VIRTMOVE " + variableOrConstant.toString();
         }
     }
 }
