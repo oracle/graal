@@ -31,7 +31,6 @@ import org.graalvm.polyglot.Value;
 
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
@@ -65,13 +64,18 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
     }
 
     @Override
-    public boolean isOpen(String pn) {
-        throw JVMCIError.unimplemented();
+    public boolean isOpen(String packageName) {
+        Value packageNameValue = access.invokeJVMCIHelper("toGuestString", packageName);
+        return access.javaLangModule_isOpen_String.getMirror().execute(moduleValue, packageNameValue).asBoolean();
     }
 
     @Override
     public boolean isOpen(String packageName, ResolvedJavaModule accessingModule) {
-        throw JVMCIError.unimplemented();
+        if (!(accessingModule instanceof EspressoExternalResolvedJavaModule espressoModule)) {
+            throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaModule, got " + safeGetClass(accessingModule));
+        }
+        Value packageNameValue = access.invokeJVMCIHelper("toGuestString", packageName);
+        return access.javaLangModule_isOpen_String_Module.getMirror().execute(moduleValue, packageNameValue, espressoModule.moduleValue).asBoolean();
     }
 
     @Override
