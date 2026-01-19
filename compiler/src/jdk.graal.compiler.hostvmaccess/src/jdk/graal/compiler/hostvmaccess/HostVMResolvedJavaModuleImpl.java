@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.hostvmaccess;
 
-import java.lang.module.ModuleDescriptor;
 import java.util.Objects;
 import java.util.Set;
 
@@ -92,8 +91,8 @@ final class HostVMResolvedJavaModuleImpl implements ResolvedJavaModule {
     }
 
     @Override
-    public ModuleDescriptor getDescriptor() {
-        return module.getDescriptor();
+    public boolean isAutomatic() {
+        return module.getDescriptor().isAutomatic();
     }
 
     private static HostVMResolvedJavaModuleImpl toImpl(ResolvedJavaModule module) {

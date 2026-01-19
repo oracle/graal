@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.vmaccess;
 
 import static com.oracle.truffle.espresso.vmaccess.EspressoExternalConstantReflectionProvider.safeGetClass;
 
-import java.lang.module.ModuleDescriptor;
 import java.util.Set;
 
 import org.graalvm.polyglot.Value;
@@ -95,7 +94,7 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
     }
 
     @Override
-    public ModuleDescriptor getDescriptor() {
+    public boolean isAutomatic() {
         throw JVMCIError.unimplemented();
     }
 }
