@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
-import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.AlwaysInline;
@@ -53,6 +52,7 @@ import com.oracle.svm.test.debug.CStructTests;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.vm.ci.code.InstalledCode;
+import org.graalvm.word.WordFactory;
 
 class RuntimeCompilations {
 
@@ -323,7 +323,7 @@ public class RuntimeCompileDebugInfoTest {
     }
 
     private static TestFunctionPointer getFunctionPointer(InstalledCode installedCode) {
-        return Word.pointer(installedCode.getEntryPoint());
+        return WordFactory.pointer(installedCode.getEntryPoint());
     }
 
     @SuppressWarnings("unused")

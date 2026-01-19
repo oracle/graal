@@ -51,6 +51,7 @@ import org.graalvm.word.impl.Word;
 import org.junit.Assert;
 import org.junit.Test;
 
+@AddExports("org.graalvm.word/org.graalvm.word.impl")
 public class WordTests {
 
     static long[] words = {
