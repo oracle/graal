@@ -442,7 +442,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
          * After starting all the necessary threads, we can finally execute complex JDK code or code
          * that allocates a significant amount of memory.
          */
-        RuntimeOptionValues.singleton().updateCache();
+        RuntimeOptionValues.singleton().copyBuildTimeValuesToCache();
         IsolateArgumentParser.singleton().copyToRuntimeOptions();
 
         if (parameters.isNonNull() && parameters.version() >= 3 && parameters.getArgv().isNonNull()) {

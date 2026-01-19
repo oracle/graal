@@ -55,7 +55,7 @@ import jdk.graal.compiler.options.OptionValues;
  * option values can also be accessed from {@link Uninterruptible} code. Note that the cache is
  * reset after every image build in case that multiple images are built in the same process to
  * ensure that options don't carry over between image builds. Note that for layered images, we need
- * to initialize the cache at run-time (see {@link RuntimeOptionValues#updateCache}).
+ * to initialize the cache at run-time (see {@link RuntimeOptionValues#copyBuildTimeValuesToCache}).
  *
  * @see com.oracle.svm.core.option
  */

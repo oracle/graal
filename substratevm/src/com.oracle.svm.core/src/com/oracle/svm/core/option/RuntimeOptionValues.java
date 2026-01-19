@@ -104,11 +104,17 @@ public class RuntimeOptionValues extends ModifiableOptionValues {
     }
 
     /**
-     * For layered native images, we need to update the cached values at run-time because the
-     * {@link RuntimeOptionKey}s can be in shared layers, while the {@link RuntimeOptionValues}
-     * singleton is in the application layer.
+     * In layered native images, {@link RuntimeOptionKey} objects can live in the base layer, while
+     * the final option values are only known to the application layer. When a user supplies a value
+     * for a runtime option at build-time, the cached value field inside the corresponding
+     * {@link RuntimeOptionKey} cannot be reliably initialized at build-time due to this separation.
+     * <p>
+     * To address this, we copy all non-default runtime option values into the cache during early VM
+     * startup, before any option parsing takes place. If an option is provided at run-time using
+     * {@code -XX:...}, the cache is later updated again during option parsing (see calls to
+     * {@link RuntimeOptionKey#setRawCachedValue}).
      */
-    public void updateCache() {
+    public void copyBuildTimeValuesToCache() {
         assert !SubstrateUtil.HOSTED;
 
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
