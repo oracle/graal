@@ -1,5 +1,6 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
 
@@ -15,6 +16,11 @@ public class DefinitionSet {
     public DefinitionSet() {
         this.internalSet = new HashSet<>();
         this.valueMap = new HashMap<>();
+    }
+
+    public DefinitionSet(DefinitionSet defSet) {
+        this.internalSet = new HashSet<>(defSet.internalSet);
+        this.valueMap = new HashMap<>(defSet.valueMap);
     }
 
     public void add(Value value) {
@@ -35,6 +41,10 @@ public class DefinitionSet {
     protected String getValueKeyString(Value value) {
         if (value instanceof RegisterValue regValue) {
             return regValue.getRegister().toString();
+        }
+
+        if (LIRValueUtil.isVariable(value)) {
+            return "v" + LIRValueUtil.asVariable(value).index;
         }
 
         return value.toString();

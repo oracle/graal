@@ -38,7 +38,7 @@ public final class RegisterAllocationVerifier {
     // FromPredecessors resolver
     public BlockMap<DefinitionSet> blockDefinitions;
 
-    public FromUsageResolver fromUsageResolver;
+    public FromUsageResolverGlobal fromUsageResolver;
 
     protected RegisterAllocationConfig registerAllocationConfig;
 
@@ -62,7 +62,7 @@ public final class RegisterAllocationVerifier {
         this.variableRegisterMap = new HashMap<>();
         this.usageAliasMap = new HashMap<>();
 
-        this.fromUsageResolver = new FromUsageResolver(lir, blockInstructions);
+        this.fromUsageResolver = new FromUsageResolverGlobal(lir, blockInstructions);
         this.registerAllocationConfig = registerAllocationConfig;
     }
 
