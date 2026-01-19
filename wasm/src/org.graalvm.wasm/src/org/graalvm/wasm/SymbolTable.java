@@ -645,16 +645,21 @@ public abstract class SymbolTable {
         StaticShape.Builder shapeBuilder = StaticShape.newBuilder(language);
         FieldType[] fieldTypes = new FieldType[structTypeFieldCount(structTypeIdx)];
         StaticProperty[] properties = new StaticProperty[structTypeFieldCount(structTypeIdx)];
+        WasmStructAccess superTypeAccess = hasSuperType(structTypeIdx) && isStructType(superType(structTypeIdx)) ? structTypeAccess(superType(structTypeIdx)) : null;
+        int superFieldCount = superTypeAccess != null ? superTypeAccess.properties().length : 0;
         for (int i = 0; i < fieldTypes.length; i++) {
             StorageType storageType = closedStorageTypeOf(structTypeFieldTypeAt(structTypeIdx, i), recursiveTypeGroupStart);
             byte mutability = structTypeFieldMutabilityAt(structTypeIdx, i);
             fieldTypes[i] = new FieldType(storageType, mutability);
-            properties[i] = new DefaultStaticProperty(Integer.toString(i));
-            shapeBuilder.property(properties[i], fieldTypes[i].javaClass(), mutability == Mutability.CONSTANT);
+            if (i < superFieldCount) {
+                properties[i] = superTypeAccess.properties()[i];
+            } else {
+                properties[i] = new DefaultStaticProperty(Integer.toString(i));
+                shapeBuilder.property(properties[i], fieldTypes[i].javaClass(), mutability == Mutability.CONSTANT);
+            }
         }
         StaticShape<WasmStructFactory> shape;
-        if (hasSuperType(structTypeIdx) && isStructType(superType(structTypeIdx))) {
-            WasmStructAccess superTypeAccess = structTypeAccess(superType(structTypeIdx));
+        if (superTypeAccess != null) {
             shape = shapeBuilder.build(superTypeAccess.shape());
         } else {
             shape = shapeBuilder.build(WasmStruct.class, WasmStructFactory.class);
