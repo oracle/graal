@@ -37,14 +37,12 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
     protected PhiResolution phiResolution;
     protected TaggedConstantFactory taggedConstantFactory;
     protected boolean moveConstants;
-    public Map<ConstantValue, DefinitionSet> constantVariableMap;
 
     protected PreRegisterAllocationPhase(PhiResolution phiResolution, boolean moveConstants) {
         this.preallocMap = new HashMap<>();
         this.phiResolution = phiResolution;
         this.taggedConstantFactory = new TaggedConstantFactory();
         this.moveConstants = moveConstants;
-        this.constantVariableMap = new HashMap<>();
     }
 
     public static class ConstantOverrideValueProcedure implements ValueProcedure {
@@ -171,22 +169,6 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
                 instruction.forEachAlive(opRAVInstr.alive.copyOriginalProc);
 
                 this.preallocMap.put(instruction, opRAVInstr);
-
-                if (instruction.isLoadConstantOp()) {
-                    var constOp = StandardOp.LoadConstantOp.asLoadConstantOp(instruction);
-                    var input = constOp.getConstant();
-                    var output = constOp.getResult();
-
-                    if (LIRValueUtil.isVariable(output)) {
-                        var variable = LIRValueUtil.asVariable(output);
-                        var constValue = new ConstantValue(variable.getValueKind(), input);
-                        if (!this.constantVariableMap.containsKey(constValue)) {
-                            this.constantVariableMap.put(constValue, new DefinitionSet());
-                        }
-
-                        this.constantVariableMap.get(constValue).add(variable);
-                    }
-                }
 
                 if (!speculative) {
                     previousInstr = opRAVInstr;

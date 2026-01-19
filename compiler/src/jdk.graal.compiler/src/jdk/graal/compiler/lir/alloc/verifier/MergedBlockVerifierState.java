@@ -8,12 +8,9 @@ import jdk.graal.compiler.lir.CastValue;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
-import jdk.graal.compiler.lir.Variable;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.Value;
-
-import java.util.Map;
 
 public class MergedBlockVerifierState {
     public MergedAllocationStateMap values;
@@ -21,19 +18,19 @@ public class MergedBlockVerifierState {
     protected PhiResolution phiResolution;
     protected RegisterAllocationConfig registerAllocationConfig;
 
-    protected Map<ConstantValue, DefinitionSet> constantVariableMap;
+    protected ConflictResolver conflictConstantResolver;
 
-    public MergedBlockVerifierState(RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, Map<ConstantValue, DefinitionSet> constantVariableMap) {
+    public MergedBlockVerifierState(RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, ConflictResolver constantConflictResolver) {
         this.values = new MergedAllocationStateMap();
         this.phiResolution = phiResolution;
         this.registerAllocationConfig = registerAllocationConfig;
-        this.constantVariableMap = constantVariableMap;
+        this.conflictConstantResolver = constantConflictResolver;
     }
 
-    protected MergedBlockVerifierState(MergedBlockVerifierState other, RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, Map<ConstantValue, DefinitionSet> constantVariableMap) {
+    protected MergedBlockVerifierState(MergedBlockVerifierState other, RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, ConflictResolver constantConflictResolver) {
         this.phiResolution = phiResolution;
         this.registerAllocationConfig = registerAllocationConfig;
-        this.constantVariableMap = constantVariableMap;
+        this.conflictConstantResolver = constantConflictResolver;
 
         if (other == null) {
             this.values = new MergedAllocationStateMap();
@@ -87,39 +84,9 @@ public class MergedBlockVerifierState {
             }
 
             if (state.isConflicted()) {
-                var conflictedState = (ConflictedAllocationState) state;
-
-                var confStates = conflictedState.getConflictedStates();
-
-                Variable variable = null;
-                ConstantValue constantValue = null;
-
-                for (var states : confStates) {
-                    var value = states.getValue();
-                    if (LIRValueUtil.isVariable(value)) {
-                        if (variable != null && !variable.equals(value)) {
-                            throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
-                        }
-
-                        variable = LIRValueUtil.asVariable(value);
-                    } else if (value instanceof ConstantValue constValue) {
-                        if (constantValue != null && !constantValue.equals(constValue)) {
-                            throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
-                        }
-
-                        constantValue = constValue;
-                    }
-                }
-
-                if (variable == null || constantValue == null) {
-                    throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
-                }
-
-                if (!this.constantVariableMap.containsKey(constantValue)) {
-                    throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
-                }
-
-                if (!this.constantVariableMap.get(constantValue).contains(variable)) {
+                var variable = LIRValueUtil.asVariable(orig);
+                var resolvedState = this.conflictConstantResolver.resolveConflictedState(variable, (ConflictedAllocationState) state);
+                if (resolvedState == null) {
                     throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
                 }
 
@@ -143,12 +110,14 @@ public class MergedBlockVerifierState {
                         continue;
                     }
 
-                    if (valAllocState.value instanceof ConstantValue constValue) {
-                        if (!this.constantVariableMap.get(constValue).contains(orig)) {
+                    if (valAllocState.value instanceof ConstantValue) {
+                        var variable = LIRValueUtil.asVariable(orig);
+                        var resolvedState = this.conflictConstantResolver.resolveValueState(variable, valAllocState);
+                        if (resolvedState == null) {
                             throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
                         }
 
-                        this.values.put(curr, new ValueAllocationState(orig, op.lirInstruction));
+                        this.values.put(curr, new ValueAllocationState(variable, op.lirInstruction));
                         continue;
                     }
 

@@ -42,15 +42,17 @@ public final class RegisterAllocationVerifier {
 
     protected RegisterAllocationConfig registerAllocationConfig;
 
-    protected Map<ConstantValue, DefinitionSet> constantVariableMap;
+    protected ConflictResolver constantMaterializationConflictResolver;
 
-    public RegisterAllocationVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, PhiResolution phiResolution, RegisterAllocationConfig registerAllocationConfig, Map<ConstantValue, DefinitionSet> constantVariableMap) {
+    public RegisterAllocationVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, PhiResolution phiResolution, RegisterAllocationConfig registerAllocationConfig) {
         this.lir = lir;
+
+        this.constantMaterializationConflictResolver = new ConstantMaterializationConflictResolver();
 
         var cfg = lir.getControlFlowGraph();
         this.blockInstructions = blockInstructions;
         this.blockEntryStates = new BlockMap<>(cfg);
-        this.blockEntryStates.put(cfg.getStartBlock(), new MergedBlockVerifierState(registerAllocationConfig, phiResolution, constantVariableMap));
+        this.blockEntryStates.put(cfg.getStartBlock(), new MergedBlockVerifierState(registerAllocationConfig, phiResolution, constantMaterializationConflictResolver));
         this.blockStates = new BlockMap<>(cfg);
         this.phiResolution = phiResolution;
 
@@ -62,8 +64,6 @@ public final class RegisterAllocationVerifier {
 
         this.fromUsageResolver = new FromUsageResolver(lir, blockInstructions);
         this.registerAllocationConfig = registerAllocationConfig;
-
-        this.constantVariableMap = constantVariableMap;
     }
 
     private boolean doPrecessorsHaveStates(BasicBlock<?> block) {
@@ -533,7 +533,7 @@ public final class RegisterAllocationVerifier {
             }
 
             // Create new entry state for successor blocks out of current block state
-            var state = new MergedBlockVerifierState(this.blockEntryStates.get(block), registerAllocationConfig, phiResolution, this.constantVariableMap);
+            var state = new MergedBlockVerifierState(this.blockEntryStates.get(block), registerAllocationConfig, phiResolution, constantMaterializationConflictResolver);
             for (var instr : instructions) {
                 state.update(instr, block);
             }
@@ -552,7 +552,7 @@ public final class RegisterAllocationVerifier {
 
                 MergedBlockVerifierState succState;
                 if (this.blockEntryStates.get(succ) == null) {
-                    succState = new MergedBlockVerifierState(registerAllocationConfig, phiResolution, this.constantVariableMap);
+                    succState = new MergedBlockVerifierState(registerAllocationConfig, phiResolution, constantMaterializationConflictResolver);
 
                     // Either there's no state because it was not yet processed first part of the condition
                     // or, we need to reset it because label changed, second part of the condition
@@ -672,6 +672,8 @@ public final class RegisterAllocationVerifier {
     }
 
     public void run() {
+        this.constantMaterializationConflictResolver.prepare(lir, blockInstructions);
+
         if (this.phiResolution == PhiResolution.FromUsage) {
             this.fromUsageResolver.resolvePhiFromUsage();
         }
