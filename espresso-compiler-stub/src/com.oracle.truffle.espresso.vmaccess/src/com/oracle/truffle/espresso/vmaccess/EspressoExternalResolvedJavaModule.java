@@ -50,7 +50,7 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
         this.moduleValue = moduleValue;
 
         Signature getNameSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/String;");
-        ResolvedJavaMethod getName = access.javaLangModule.findMethod("getName", getNameSignature);
+        ResolvedJavaMethod getName = access.java_lang_Module.findMethod("getName", getNameSignature);
         if (!(getName instanceof EspressoExternalResolvedJavaMethod espressoMethod)) {
             throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaMethod, got " + safeGetClass(getName));
         }
@@ -66,7 +66,7 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
     @Override
     public boolean isOpen(String packageName) {
         Value packageNameValue = access.invokeJVMCIHelper("toGuestString", packageName);
-        return access.javaLangModule_isOpen_String.getMirror().execute(moduleValue, packageNameValue).asBoolean();
+        return access.java_lang_Module_isOpen_String.getMirror().execute(moduleValue, packageNameValue).asBoolean();
     }
 
     @Override
@@ -75,13 +75,13 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
             throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaModule, got " + safeGetClass(accessingModule));
         }
         Value packageNameValue = access.invokeJVMCIHelper("toGuestString", packageName);
-        return access.javaLangModule_isOpen_String_Module.getMirror().execute(moduleValue, packageNameValue, espressoModule.moduleValue).asBoolean();
+        return access.java_lang_Module_isOpen_String_Module.getMirror().execute(moduleValue, packageNameValue, espressoModule.moduleValue).asBoolean();
     }
 
     @Override
     public boolean isExported(String packageName) {
         Value packageNameValue = access.invokeJVMCIHelper("toGuestString", packageName);
-        return access.javaLangModule_isExported_String.getMirror().execute(moduleValue, packageNameValue).asBoolean();
+        return access.java_lang_Module_isExported_String.getMirror().execute(moduleValue, packageNameValue).asBoolean();
     }
 
     @Override
@@ -90,12 +90,12 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
             throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaModule, got " + safeGetClass(accessingModule));
         }
         Value packageNameValue = access.invokeJVMCIHelper("toGuestString", packageName);
-        return access.javaLangModule_isExported_String_Module.getMirror().execute(moduleValue, packageNameValue, espressoModule.moduleValue).asBoolean();
+        return access.java_lang_Module_isExported_String_Module.getMirror().execute(moduleValue, packageNameValue, espressoModule.moduleValue).asBoolean();
     }
 
     @Override
     public Set<String> getPackages() {
-        Value packages = access.javaLangModule_getPackage.getMirror().execute(moduleValue);
+        Value packages = access.java_lang_Module_getPackages.getMirror().execute(moduleValue);
         return packages.as(new TypeLiteral<>() {
         });
     }
@@ -107,8 +107,8 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
 
     @Override
     public boolean isAutomatic() {
-        Value moduleDescriptor = access.javaLangModule_getDescriptor.getMirror().execute(moduleValue);
-        Value isAutomatic = access.javaLangModuleModuleDescriptor_isAutomatic.getMirror().execute(moduleDescriptor);
+        Value moduleDescriptor = access.java_lang_Module_getDescriptor.getMirror().execute(moduleValue);
+        Value isAutomatic = access.java_lang_module_ModuleDescriptor_isAutomatic.getMirror().execute(moduleDescriptor);
         return isAutomatic.asBoolean();
     }
 }
