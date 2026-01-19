@@ -66,6 +66,7 @@ import org.graalvm.wasm.WasmStore;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmTag;
 import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.array.WasmArray;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -83,6 +84,11 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import org.graalvm.wasm.struct.WasmStruct;
+import org.graalvm.wasm.types.AbstractHeapType;
+import org.graalvm.wasm.types.DefinedType;
+import org.graalvm.wasm.types.FunctionType;
+import org.graalvm.wasm.types.ReferenceType;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -103,6 +109,8 @@ public class WebAssembly extends Dictionary {
         addMember("table_size", new Executable(WebAssembly::tableSize));
 
         addMember("func_type", new Executable(WebAssembly::funcType));
+        addMember("is_array", new Executable(WebAssembly::isArray));
+        addMember("is_struct", new Executable(WebAssembly::isStruct));
         addMember("is_func", new Executable(WebAssembly::isFunc));
 
         addMember("mem_alloc", new Executable(WebAssembly::memAlloc));
@@ -157,7 +165,7 @@ public class WebAssembly extends Dictionary {
         Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), moduleName).mimeType(WasmLanguage.WASM_MIME_TYPE).build();
         CallTarget parseResult = currentContext.environment().parsePublic(source);
         WasmModule module = WasmLanguage.getParsedModule(parseResult);
-        assert module.limits().equals(JsConstants.JS_LIMITS);
+        assert module.limits().equals(JS_LIMITS);
         return new WasmModuleWithSource(module, source);
     }
 
@@ -265,7 +273,7 @@ public class WebAssembly extends Dictionary {
             } else if (tableIndex != null) {
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.table.name(), TableKind.toString(module.tableElementType(tableIndex))));
             } else if (f != null) {
-                list.add(new ModuleExportDescriptor(name, ImportExportKind.function.name(), WebAssembly.functionTypeToString(f)));
+                list.add(new ModuleExportDescriptor(name, ImportExportKind.function.name(), WebAssembly.functionInfo(f)));
             } else if (globalIndex != null) {
                 String valueType = ValueType.fromValue(module.globalValueType(globalIndex)).toString();
                 String mutability = module.isGlobalMutable(globalIndex) ? "mut" : "con";
@@ -299,7 +307,8 @@ public class WebAssembly extends Dictionary {
             switch (descriptor.identifier()) {
                 case ImportIdentifier.FUNCTION:
                     final WasmFunction f = module.importedFunction(descriptor);
-                    list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), ImportExportKind.function.name(), WebAssembly.functionTypeToString(f)));
+                    list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), ImportExportKind.function.name(),
+                                    WebAssembly.functionTypeToInteropString(f.type().asFunctionType())));
                     break;
                 case ImportIdentifier.TABLE:
                     final Integer tableIndex = importedTableDescriptors.get(descriptor);
@@ -436,10 +445,10 @@ public class WebAssembly extends Dictionary {
     }
 
     public WasmTable tableAlloc(int initial, int maximum, TableKind elemKind, Object initialValue) {
-        if (Integer.compareUnsigned(initial, maximum) > 0) {
+        if (compareUnsigned(initial, maximum) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds max memory size");
         }
-        if (Integer.compareUnsigned(initial, JS_LIMITS.tableInstanceSizeLimit()) > 0) {
+        if (compareUnsigned(initial, JS_LIMITS.tableInstanceSizeLimit()) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds implementation limit");
         }
         if (elemKind != TableKind.externref && elemKind != TableKind.anyfunc) {
@@ -537,10 +546,20 @@ public class WebAssembly extends Dictionary {
         checkArgumentCount(args, 1);
         if (args[0] instanceof WasmFunctionInstance) {
             WasmFunction fn = ((WasmFunctionInstance) args[0]).function();
-            return functionTypeToString(fn);
+            return functionInfo(fn);
         } else {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm function");
         }
+    }
+
+    private static Object isArray(Object[] args) {
+        checkArgumentCount(args, 1);
+        return args[0] instanceof WasmArray;
+    }
+
+    private static Object isStruct(Object[] args) {
+        checkArgumentCount(args, 1);
+        return args[0] instanceof WasmStruct;
     }
 
     private static Object isFunc(Object[] args) {
@@ -548,28 +567,59 @@ public class WebAssembly extends Dictionary {
         return args[0] instanceof WasmFunctionInstance;
     }
 
-    public static String functionTypeToString(WasmFunction f) {
+    public static String typeToInteropString(org.graalvm.wasm.types.ValueType type) {
+        return switch (type.valueKind()) {
+            case Number, Vector -> type.toString();
+            case Reference -> {
+                ReferenceType refType = (ReferenceType) type;
+                yield switch (refType.heapType().heapKind()) {
+                    case Abstract -> {
+                        AbstractHeapType abstractHeapType = (AbstractHeapType) refType.heapType();
+                        yield switch (abstractHeapType) {
+                            case NOEXN, EXN -> "exnref";
+                            case NOFUNC, FUNC -> "funcref";
+                            case NOEXTERN, EXTERN -> "externref";
+                            case NONE, ARRAY, STRUCT, I31, EQ, ANY -> "anyref";
+                        };
+                    }
+                    case DefinedType -> {
+                        DefinedType definedType = (DefinedType) refType.heapType();
+                        if (definedType.isFunctionType()) {
+                            yield "funcref";
+                        } else {
+                            yield "anyref";
+                        }
+                    }
+                };
+            }
+        };
+    }
+
+    public static String functionInfo(WasmFunction f) {
+        CompilerAsserts.neverPartOfCompilation();
+        return f.index() + functionTypeToInteropString(f.type().asFunctionType());
+    }
+
+    public static String functionTypeToInteropString(FunctionType functionType) {
         CompilerAsserts.neverPartOfCompilation();
         StringBuilder typeInfo = new StringBuilder();
 
-        typeInfo.append(f.index());
-
         typeInfo.append('(');
-        int paramCount = f.paramCount();
+        int paramCount = functionType.paramTypes().length;
         for (int i = 0; i < paramCount; i++) {
             if (i != 0) {
                 typeInfo.append(' ');
             }
-            typeInfo.append(ValueType.fromValue(f.paramTypeAt(i)));
+            typeInfo.append(typeToInteropString(functionType.paramTypes()[i]));
         }
         typeInfo.append(')');
 
-        int resultCount = f.resultCount();
+        int resultCount = functionType.resultTypes().length;
         for (int i = 0; i < resultCount; i++) {
             if (i != 0) {
                 typeInfo.append(' ');
             }
-            typeInfo.append(ValueType.fromValue(f.resultTypeAt(i)));
+            typeInfo.append(typeToInteropString(functionType.resultTypes()[i]));
         }
         return typeInfo.toString();
     }
@@ -580,7 +630,7 @@ public class WebAssembly extends Dictionary {
         assert attribute == WasmTag.Attribute.EXCEPTION;
         final int typeIndex = module.tagTypeIndex(tagIndex);
 
-        return FuncType.fromDefinedType(module.closedTypeAt(typeIndex)).toString();
+        return functionTypeToInteropString(module.closedTypeAt(typeIndex).asFunctionType());
     }
 
     private static Object memAlloc(Object[] args) {
@@ -878,7 +928,7 @@ public class WebAssembly extends Dictionary {
         if (!(args[0] instanceof WasmTag tag)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be a wasm tag");
         }
-        return FuncType.fromDefinedType(tag.type()).toString();
+        return functionTypeToInteropString(tag.type().asFunctionType());
     }
 
     public WasmRuntimeException exnAlloc(Object[] args) {

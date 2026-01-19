@@ -1398,8 +1398,8 @@ public class WasmJsApiSuite {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmInstance instance = moduleInstantiate(wasm, source, null);
             final WasmFunctionInstance fn = (WasmFunctionInstance) WebAssembly.instanceExport(instance, "func");
-            final String fnType = WebAssembly.functionTypeToString(fn.function());
-            Assert.assertEquals("func_type", "0(i32 i64)f32", fnType);
+            final String fnInfo = WebAssembly.functionInfo(fn.function());
+            Assert.assertEquals("func_type", "0(i32 i64)f32", fnInfo);
         });
     }
 
@@ -1410,8 +1410,8 @@ public class WasmJsApiSuite {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmInstance instance = moduleInstantiate(wasm, source, null);
             final WasmFunctionInstance fn = (WasmFunctionInstance) WebAssembly.instanceExport(instance, "f");
-            final String fnType = WebAssembly.functionTypeToString(fn.function());
-            Assert.assertEquals("func_type", "0(i32 i64)f32 f64", fnType);
+            final String fnInfo = WebAssembly.functionInfo(fn.function());
+            Assert.assertEquals("func_type", "0(i32 i64)f32 f64", fnInfo);
         });
     }
 
