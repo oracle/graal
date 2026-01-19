@@ -92,6 +92,7 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -413,12 +414,20 @@ public final class GCImpl implements GC {
     }
 
     private static boolean shouldVerify(HeapVerifier.Occasion occasion) {
-        return switch (occasion) {
-            case Before -> SerialGCOptions.VerifyBeforeGC.getValue();
-            case During -> SerialGCOptions.VerifyDuringGC.getValue();
-            case After -> SerialGCOptions.VerifyAfterGC.getValue();
+        RuntimeOptionKey<Boolean> key = switch (occasion) {
+            case Before -> SubstrateGCOptions.ConcealedOptions.VerifyBeforeGC;
+            case During -> SubstrateGCOptions.ConcealedOptions.VerifyDuringGC;
+            case After -> SubstrateGCOptions.ConcealedOptions.VerifyAfterGC;
             default -> throw VMError.shouldNotReachHere("Unexpected heap verification occasion.");
         };
+
+        assert SubstrateGCOptions.VerifyHeap.getValue();
+        Boolean value = key.getValue();
+        if (value == null) {
+            /* The option doesn't have a value but VerifyHeap is enabled, so default to true. */
+            return true;
+        }
+        return key.getValue();
     }
 
     private String getGCKind() {

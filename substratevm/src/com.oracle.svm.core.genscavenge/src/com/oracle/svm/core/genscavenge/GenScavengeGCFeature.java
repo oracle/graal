@@ -110,6 +110,10 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(ImageHeapInfo.class, new ImageHeapInfo());
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
 
+        if (SubstrateGCOptions.VerifyHeap.getValue()) {
+            ImageSingletons.add(HeapVerifier.class, new HeapVerifier());
+        }
+
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             TlabOptionCache tlabOptionCache = new TlabOptionCache();
             ImageSingletons.add(TlabOptionCache.class, tlabOptionCache);
@@ -119,12 +123,8 @@ class GenScavengeGCFeature implements InternalFeature {
                 ImageSingletons.lookup(PerfManager.class).register(createPerfData());
             }
         }
+
         TlabOptionCache.validateHostedOptionValues();
-
-        if (SubstrateGCOptions.VerifyHeap.getValue()) {
-            ImageSingletons.add(HeapVerifier.class, new HeapVerifier());
-        }
-
         HeapParameters.initialize();
     }
 

@@ -104,7 +104,6 @@ web_image_hosted_options = [
     "RuntimeDebugChecks",
     "SILENT_COMPILE",
     "SourceMapSourceRoot=",
-    "StackSize=",
     "StrictWarnings",
     "UnsafeErrorMessages",
     "UseBinaryen",

@@ -35,6 +35,7 @@ import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.UserError;
 
@@ -130,6 +131,10 @@ public class SubstrateGCOptions {
     @Option(help = "Dynamically resize TLAB size for threads.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> ResizeTLAB = new RuntimeOptionKey<>(true, IsolateCreationOnly);
 
+    @Option(help = "This number of milliseconds multiplied by the free heap memory in MByte is the time span " +
+                    "for which a soft reference will keep its referent alive after its last access.", type = OptionType.Expert) //
+    public static final RuntimeOptionKey<Integer> SoftRefLRUPolicyMSPerMB = new NotifyGCRuntimeOptionKey<>(1000);
+
     private static void verifyTLABUsagePolicy(@SuppressWarnings("unused") HostedOptionKey<?> key) {
         if (!UseTLAB.getValue() && TLABUsagePolicy.getValue() == TLABPolicy.Always) {
             throw UserError.invalidOptionValue(TLABUsagePolicy, TLABPolicy.Always.name(), "This option value can only be used if option '" + UseTLAB.getName() + "' is enabled");
@@ -145,6 +150,26 @@ public class SubstrateGCOptions {
         /** Use GC-specific accessors instead. */
         @Option(help = "Starting TLAB size (in bytes); zero means set ergonomically.", type = OptionType.Expert)//
         public static final RuntimeOptionKey<Long> TLABSize = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
+
+        @Option(help = "Verify the heap before doing a garbage collection.", type = OptionType.Debug)//
+        public static final RuntimeOptionKey<Boolean> VerifyBeforeGC = new NotifyGCRuntimeOptionKey<>(null, ConcealedOptions::validateVerifyGCOption);
+
+        @Option(help = "Verify the heap during a garbage collection.", type = OptionType.Debug)//
+        public static final RuntimeOptionKey<Boolean> VerifyDuringGC = new NotifyGCRuntimeOptionKey<>(null, ConcealedOptions::validateVerifyGCOption);
+
+        @Option(help = "Verify the heap after doing a garbage collection.", type = OptionType.Debug)//
+        public static final RuntimeOptionKey<Boolean> VerifyAfterGC = new NotifyGCRuntimeOptionKey<>(null, ConcealedOptions::validateVerifyGCOption);
+
+        public static void validateVerifyGCOption(RuntimeOptionKey<Boolean> key) {
+            Boolean value = key.getValue();
+            if (value != null && value) {
+                if (SubstrateOptions.useEpsilonGC()) {
+                    throw UserError.invalidOptionValue(key, true, "This option cannot be enabled if epsilon GC is used");
+                } else if (SubstrateOptions.useSerialGC() && !VerifyHeap.getValue()) {
+                    throw UserError.invalidOptionValue(key, true, "This option can only be used together with " + SubstrateOptionsParser.commandArgument(VerifyHeap, "+"));
+                }
+            }
+        }
     }
 
     public enum TLABPolicy {

@@ -60,17 +60,12 @@ public class HostedOptionParser implements HostedOptionProvider {
 
     @SuppressWarnings("hiding")
     public HostedOptionParser(ClassLoader imageClassLoader, List<String> arguments) {
-        /* Collect options. */
         EconomicMap<String, OptionDescriptor> allHostedOptions = EconomicMap.create();
         EconomicMap<String, OptionDescriptor> allRuntimeOptions = EconomicMap.create();
         collectOptions(OptionsContainer.getDiscoverableOptions(imageClassLoader), allHostedOptions, allRuntimeOptions);
 
-        EconomicMap<String, OptionDescriptor> allOptions = EconomicMap.create(allHostedOptions);
-        allOptions.putAll(allRuntimeOptions);
-
-        /* Write fields. */
         this.arguments = Collections.unmodifiableList(arguments);
-        this.allOptions = allOptions;
+        this.allOptions = mergeOptions(allHostedOptions, allRuntimeOptions);
         this.allHostedOptions = allHostedOptions;
         this.allRuntimeOptions = allRuntimeOptions;
     }
@@ -98,6 +93,20 @@ public class HostedOptionParser implements HostedOptionProvider {
                 }
             }
         });
+    }
+
+    private static EconomicMap<String, OptionDescriptor> mergeOptions(EconomicMap<String, OptionDescriptor> allHostedOptions, EconomicMap<String, OptionDescriptor> allRuntimeOptions) {
+        EconomicMap<String, OptionDescriptor> allOptions = EconomicMap.create(allHostedOptions);
+        var runtimeOptionCursor = allRuntimeOptions.getEntries();
+        while (runtimeOptionCursor.advance()) {
+            String name = runtimeOptionCursor.getKey();
+            OptionDescriptor newDesc = runtimeOptionCursor.getValue();
+            OptionDescriptor existingDesc = allOptions.put(name, newDesc);
+            if (existingDesc != null && newDesc != existingDesc) {
+                throw shouldNotReachHere("Option name \"" + name + "\" has multiple definitions: " + existingDesc.getLocation() + " and " + newDesc.getLocation());
+            }
+        }
+        return allOptions;
     }
 
     public List<String> parse() {
