@@ -2164,6 +2164,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         memory_fill(instance, n, val, dst, memoryIndex);
     }
 
+    @BytecodeInterpreterSwitch
     private int executeAggregate(WasmInstance instance, VirtualFrame frame, int startingOffset, int startingStackPointer, int aggregateOpcode) {
         int offset = startingOffset;
         int stackPointer = startingStackPointer;
