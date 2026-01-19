@@ -109,7 +109,7 @@ public final class RistrettoField extends SubstrateField {
         if (fieldType instanceof UnresolvedJavaType) {
             throw GraalError.shouldNotReachHere("Trying to get storage kind of unresolved field " + fieldType);
         } else {
-            GraalError.guarantee(fieldType instanceof RistrettoType, "Must have a ristretto field or an unresolved one but found " + fieldType);
+            GraalError.guarantee(fieldType instanceof RistrettoType, "Must have a ristretto field or an unresolved one but found %s", fieldType);
             return ((RistrettoType) fieldType).getStorageKind();
         }
     }
