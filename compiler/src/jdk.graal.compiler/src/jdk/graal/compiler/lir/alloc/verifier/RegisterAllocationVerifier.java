@@ -491,10 +491,14 @@ public final class RegisterAllocationVerifier {
             var block = this.lir.getBlockById(blockId);
             var state = this.blockEntryStates.get(block);
             var instructions = this.blockInstructions.get(block);
-            var labelInstr = (RAVInstruction.Op) instructions.getFirst();
+
+            RAVInstruction.Op labelInstrOfSucc = null;
+            if (block.getSuccessorCount() == 1) {
+                labelInstrOfSucc = (RAVInstruction.Op) this.blockInstructions.get(block.getSuccessorAt(0)).getFirst();
+            }
 
             for (var instr : instructions) {
-                state.check(instr, block, labelInstr);
+                state.check(instr, block, labelInstrOfSucc);
                 state.update(instr, block);
             }
         }
