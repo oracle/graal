@@ -293,7 +293,6 @@ import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
-import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -3763,7 +3762,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                  */
                 BeginNode piNodeAnchor = graph.add(new BeginNode());
                 ObjectStamp checkedStamp = StampFactory.objectNonNull(checkedCatchType);
-                JavaType tt = ((AbstractObjectStamp) exception.stamp(NodeView.DEFAULT)).type();
                 PiNode piNode = graph.addWithoutUnique(new PiNode(exception, checkedStamp));
                 frameState.pop(JavaKind.Object);
                 frameState.push(JavaKind.Object, piNode);
