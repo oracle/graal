@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.libs;
 
+import static com.oracle.truffle.api.CompilerDirectives.inInterpreter;
+import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreterAndInvalidate;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.ALL;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -139,12 +141,24 @@ public final class LibsMeta implements ContextAccess {
      * same idea as {@link Meta#postSystemInit()}.
      */
     public void postSystemInit() {
-        // libextnet
-        jdk_net_ExtendedSocketOptions$PlatformSocketOptions = knownKlass(EspressoSymbols.Types.jdk_net_ExtendedSocketOptions$PlatformSocketOptions);
-        jdk_net_ExtendedSocketOptions$PlatformSocketOptions_init = jdk_net_ExtendedSocketOptions$PlatformSocketOptions.lookupDeclaredMethod(EspressoSymbols.Names._init_,
-                        EspressoSymbols.Signatures._void);
         if (management != null) {
             management.postSystemInit();
+        }
+    }
+
+    /**
+     * Method for initializing jdk/net classes lazily.
+     */
+    void initJdkNet() {
+        if (jdk_net_ExtendedSocketOptions$PlatformSocketOptions == null || //
+                        jdk_net_ExtendedSocketOptions$PlatformSocketOptions_init == null) {
+            // writing to a compilation final field should be done in interpreter
+            if (!inInterpreter()) {
+                transferToInterpreterAndInvalidate();
+            }
+            jdk_net_ExtendedSocketOptions$PlatformSocketOptions = knownKlass(EspressoSymbols.Types.jdk_net_ExtendedSocketOptions$PlatformSocketOptions);
+            jdk_net_ExtendedSocketOptions$PlatformSocketOptions_init = jdk_net_ExtendedSocketOptions$PlatformSocketOptions.lookupDeclaredMethod(EspressoSymbols.Names._init_,
+                            EspressoSymbols.Signatures._void);
         }
     }
 
