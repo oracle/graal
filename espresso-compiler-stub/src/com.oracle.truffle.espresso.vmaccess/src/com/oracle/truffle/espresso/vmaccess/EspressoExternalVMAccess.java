@@ -106,6 +106,8 @@ final class EspressoExternalVMAccess implements VMAccess {
     final EspressoExternalResolvedJavaMethod javaLangModule_getDescriptor;
     final EspressoExternalResolvedJavaMethod javaLangModuleModuleDescriptor_isAutomatic;
     final EspressoExternalResolvedJavaMethod javaLangModule_getPackage;
+    final EspressoExternalResolvedJavaMethod javaLangModule_isExported_String;
+    final EspressoExternalResolvedJavaMethod javaLangModule_isExported_String_Module;
 
     @SuppressWarnings("this-escape")
     EspressoExternalVMAccess(Context context) {
@@ -165,6 +167,12 @@ final class EspressoExternalVMAccess implements VMAccess {
         Signature getPackagesSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/util/Set;");
         javaLangModule_getPackage = (EspressoExternalResolvedJavaMethod) javaLangModule.findMethod("getPackages", getPackagesSignature);
 
+        Signature isExportedStringSignature = providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/String;)Z");
+        javaLangModule_isExported_String = (EspressoExternalResolvedJavaMethod) javaLangModule.findMethod("isExported", isExportedStringSignature);
+
+        Signature isExportedStringModuleSignature = providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/String;Ljava/lang/Module;)Z");
+        javaLangModule_isExported_String_Module = (EspressoExternalResolvedJavaMethod) javaLangModule.findMethod("isExported", isExportedStringModuleSignature);
+
         ResolvedJavaType moduleDescriptorType = providers.getMetaAccess().lookupJavaType(java.lang.module.ModuleDescriptor.class);
         Signature isAutomaticSignature = providers.getMetaAccess().parseMethodDescriptor("()Z");
         javaLangModuleModuleDescriptor_isAutomatic = (EspressoExternalResolvedJavaMethod) moduleDescriptorType.findMethod("isAutomatic", isAutomaticSignature);
@@ -179,6 +187,8 @@ final class EspressoExternalVMAccess implements VMAccess {
         JVMCIError.guarantee(javaLangModule_getDescriptor != null, "Required method: Module.getDescriptor");
         JVMCIError.guarantee(javaLangModuleModuleDescriptor_isAutomatic != null, "Required method: ModuleDescriptor.isAutomatic");
         JVMCIError.guarantee(javaLangModule_getPackage != null, "Required method: Module.getPackages");
+        JVMCIError.guarantee(javaLangModule_isExported_String != null, "Required method: Module.isExported(String)");
+        JVMCIError.guarantee(javaLangModule_isExported_String_Module != null, "Required method: Module.isExported(String, Module)");
     }
 
     private EspressoExternalResolvedPrimitiveType[] createPrimitiveTypes() {

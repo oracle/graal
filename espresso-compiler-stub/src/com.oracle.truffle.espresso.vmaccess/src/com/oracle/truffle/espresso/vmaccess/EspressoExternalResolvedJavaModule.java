@@ -76,12 +76,17 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
 
     @Override
     public boolean isExported(String packageName) {
-        throw JVMCIError.unimplemented();
+        Value packageNameValue = access.invokeJVMCIHelper("toGuestString", packageName);
+        return access.javaLangModule_isExported_String.getMirror().execute(moduleValue, packageNameValue).asBoolean();
     }
 
     @Override
     public boolean isExported(String packageName, ResolvedJavaModule accessingModule) {
-        throw JVMCIError.unimplemented();
+        if (!(accessingModule instanceof EspressoExternalResolvedJavaModule espressoModule)) {
+            throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaModule, got " + safeGetClass(accessingModule));
+        }
+        Value packageNameValue = access.invokeJVMCIHelper("toGuestString", packageName);
+        return access.javaLangModule_isExported_String_Module.getMirror().execute(moduleValue, packageNameValue, espressoModule.moduleValue).asBoolean();
     }
 
     @Override
