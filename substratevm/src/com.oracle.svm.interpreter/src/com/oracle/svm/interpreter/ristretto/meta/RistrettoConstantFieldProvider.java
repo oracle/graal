@@ -52,7 +52,7 @@ public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvid
         } else if (javaField instanceof InterpreterResolvedJavaField) {
             iField = (InterpreterResolvedJavaField) javaField;
         }
-        if (iField != null && isFinalField(iField, tool)) {
+        if (iField != null && isFinalField(iField, tool) && isHolderInitialized(iField)) {
             final InterpreterResolvedJavaType declaringClass = iField.getDeclaringClass();
             JavaKind kind = iField.getJavaKind();
             Object receiver;
