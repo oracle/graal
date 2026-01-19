@@ -5,11 +5,15 @@ import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.CastValue;
+import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
+import jdk.graal.compiler.lir.Variable;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.Value;
+
+import java.util.Map;
 
 public class MergedBlockVerifierState {
     public MergedAllocationStateMap values;
@@ -17,15 +21,19 @@ public class MergedBlockVerifierState {
     protected PhiResolution phiResolution;
     protected RegisterAllocationConfig registerAllocationConfig;
 
-    public MergedBlockVerifierState(RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution) {
+    protected Map<ConstantValue, DefinitionSet> constantVariableMap;
+
+    public MergedBlockVerifierState(RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, Map<ConstantValue, DefinitionSet> constantVariableMap) {
         this.values = new MergedAllocationStateMap();
         this.phiResolution = phiResolution;
         this.registerAllocationConfig = registerAllocationConfig;
+        this.constantVariableMap = constantVariableMap;
     }
 
-    protected MergedBlockVerifierState(MergedBlockVerifierState other, RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution) {
+    protected MergedBlockVerifierState(MergedBlockVerifierState other, RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, Map<ConstantValue, DefinitionSet> constantVariableMap) {
         this.phiResolution = phiResolution;
         this.registerAllocationConfig = registerAllocationConfig;
+        this.constantVariableMap = constantVariableMap;
 
         if (other == null) {
             this.values = new MergedAllocationStateMap();
@@ -74,19 +82,77 @@ public class MergedBlockVerifierState {
             }
 
             AllocationState state = this.values.get(curr);
-            if (state.isConflicted() || state.isUnknown()) {
+            if (state.isUnknown()) {
                 throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
             }
 
+            if (state.isConflicted()) {
+                var conflictedState = (ConflictedAllocationState) state;
+
+                var confStates = conflictedState.getConflictedStates();
+
+                Variable variable = null;
+                ConstantValue constantValue = null;
+
+                for (var states : confStates) {
+                    var value = states.getValue();
+                    if (LIRValueUtil.isVariable(value)) {
+                        if (variable != null && !variable.equals(value)) {
+                            throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+                        }
+
+                        variable = LIRValueUtil.asVariable(value);
+                    } else if (value instanceof ConstantValue constValue) {
+                        if (constantValue != null && !constantValue.equals(constValue)) {
+                            throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+                        }
+
+                        constantValue = constValue;
+                    }
+                }
+
+                if (variable == null || constantValue == null) {
+                    throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+                }
+
+                if (!this.constantVariableMap.containsKey(constantValue)) {
+                    throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+                }
+
+                if (!this.constantVariableMap.get(constantValue).contains(variable)) {
+                    throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+                }
+
+                this.values.put(curr, new ValueAllocationState(variable, op.lirInstruction));
+                continue;
+            }
+
             if (state instanceof ValueAllocationState valAllocState) {
+                if (!kindsEqual(orig, valAllocState.value) && !(op.lirInstruction instanceof StandardOp.JumpOp)) {
+                    if (!(orig instanceof CastValue castOrig && kindsEqual(castOrig.underlyingValue(), valAllocState.value))) {
+                        // If orig was recast, it does not matter for this validation
+                        // as we just check that the type before is correct
+                        // TODO: sort this code better
+                        throw new KindsMismatchException(op.lirInstruction, block, orig, valAllocState.value, false);
+                    }
+                }
+
                 if (!valAllocState.value.equals(orig)) {
                     if (orig instanceof CastValue castValue && valAllocState.value.equals(castValue.underlyingValue())) {
                         // check for underlying value for CastValue.
                         continue;
                     }
 
-                    // Kind sizes should be checked here as well.
-                    throw new KindsMismatchException(op.lirInstruction, block, orig, valAllocState.value, false);
+                    if (valAllocState.value instanceof ConstantValue constValue) {
+                        if (!this.constantVariableMap.get(constValue).contains(orig)) {
+                            throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+                        }
+
+                        this.values.put(curr, new ValueAllocationState(orig, op.lirInstruction));
+                        continue;
+                    }
+
+                    throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
                 }
 
                 continue;
