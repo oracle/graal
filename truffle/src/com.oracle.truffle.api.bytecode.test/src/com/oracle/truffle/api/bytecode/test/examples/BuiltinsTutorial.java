@@ -552,7 +552,7 @@ public class BuiltinsTutorial {
     private static BuiltinLanguageRootNode deserialize(byte[] deserialized) {
         try {
             BytecodeRootNodes<BuiltinLanguageRootNode> nodes = BuiltinLanguageRootNodeGen.deserialize(LanguageWithBuiltins.get(), BytecodeConfig.DEFAULT,
-                            () -> SerializationUtils.createDataInput(ByteBuffer.wrap(deserialized)),
+                            () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(deserialized)),
                             (context, input) -> {
                                 return input.readInt();
                             });

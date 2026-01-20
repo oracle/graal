@@ -127,7 +127,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             try {
                 PrologEpilogBytecodeNodeGen.serialize(new DataOutputStream(output), SERIALIZER, builder);
-                Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
+                Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
                 nodes = PrologEpilogBytecodeNodeGen.deserialize(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
             } catch (IOException ex) {
                 throw new AssertionError(ex);
