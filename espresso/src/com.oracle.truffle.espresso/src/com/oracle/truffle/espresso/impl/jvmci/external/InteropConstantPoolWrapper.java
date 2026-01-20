@@ -520,9 +520,9 @@ public class InteropConstantPoolWrapper implements TruffleObject {
                         @Cached @Exclusive InlinedBranchProfile typeError,
                         @Cached @Exclusive InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
             assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
-            if (arguments.length != 2) {
+            if (arguments.length != 1) {
                 arityError.enter(node);
-                throw ArityException.create(2, 2, arguments.length);
+                throw ArityException.create(1, 1, arguments.length);
             }
             if (!(arguments[0] instanceof Integer index)) {
                 typeError.enter(node);
@@ -532,7 +532,7 @@ public class InteropConstantPoolWrapper implements TruffleObject {
             if (safeTagAt(receiver.constantPool, index, context.getMeta()) != ConstantPool.Tag.UTF8) {
                 throw context.getMeta().throwIllegalArgumentExceptionBoundary();
             }
-            return TypeSymbols.nameToType(receiver.constantPool.utf8At(index)).toString();
+            return receiver.constantPool.utf8At(index).toString();
         }
 
         @Fallback
