@@ -220,7 +220,7 @@ public abstract class BytecodeParser {
 
                 memoryLib.initialize(memory, null, module.bytecode(), effectiveOffset, offsetAddress, dataLength);
             } else {
-                instance.setDataInstance(i, effectiveOffset);
+                instance.resetDataInstance(i);
             }
         }
     }

@@ -742,30 +742,6 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
-     * Adds the runtime header of a data segment to the bytecode.
-     * 
-     * @param length The length of the data segment
-     */
-    public void addDataRuntimeHeader(int length) {
-        int location = location();
-        add1(0);
-        int flags = 0;
-        if (length <= 63) {
-            flags = length;
-        } else if (fitsIntoUnsignedByte(length)) {
-            flags |= BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8;
-            add1(length);
-        } else if (fitsIntoUnsignedShort(length)) {
-            flags |= BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16;
-            add2(length);
-        } else {
-            flags |= BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32;
-            add4(length);
-        }
-        set(location, (byte) flags);
-    }
-
-    /**
      * Adds the header of an elem segment to the bytecode.
      * 
      * @param mode The segment mode of the elem segment

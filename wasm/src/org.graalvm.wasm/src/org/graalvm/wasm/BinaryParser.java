@@ -3474,8 +3474,6 @@ public class BinaryParser extends BinaryStreamParser {
         if (bulkMemoryAndRefTypes) {
             module.checkDataSegmentCount(dataSegmentCount);
         }
-        final int droppedDataInstanceOffset = bytecode.location();
-        module.setDroppedDataInstanceOffset(droppedDataInstanceOffset);
         bytecode.addOp(Bytecode.UNREACHABLE);
         for (int dataSegmentIndex = 0; dataSegmentIndex != dataSegmentCount; ++dataSegmentIndex) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
@@ -3541,15 +3539,13 @@ public class BinaryParser extends BinaryStreamParser {
                 module.setDataInstance(currentDataSegmentId, headerOffset);
                 module.addLinkAction((context, store, instance, imports) -> {
                     store.linker().resolveDataSegment(store, instance, currentDataSegmentId, memoryIndex, currentOffsetAddress, offsetBytecode, byteLength,
-                                    bytecodeOffset, droppedDataInstanceOffset);
+                                    bytecodeOffset);
                 });
             } else {
                 bytecode.addDataHeader(mode, byteLength);
-                final int bytecodeOffset = bytecode.location();
-                bytecode.addDataRuntimeHeader(byteLength);
                 module.setDataInstance(currentDataSegmentId, headerOffset);
                 module.addLinkAction((context, store, instance, imports) -> {
-                    store.linker().resolvePassiveDataSegment(store, instance, currentDataSegmentId, bytecodeOffset);
+                    store.linker().resolvePassiveDataSegment(instance, currentDataSegmentId);
                 });
             }
             // Add the data section to the bytecode.

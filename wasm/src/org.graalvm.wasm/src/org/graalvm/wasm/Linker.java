@@ -987,8 +987,7 @@ public class Linker {
         return dependencies;
     }
 
-    void resolveDataSegment(WasmStore store, WasmInstance instance, int dataSegmentId, int memoryIndex, long offsetAddress, byte[] offsetBytecode, int byteLength, int bytecodeOffset,
-                    int droppedDataInstanceOffset) {
+    void resolveDataSegment(WasmStore store, WasmInstance instance, int dataSegmentId, int memoryIndex, long offsetAddress, byte[] offsetBytecode, int byteLength, int bytecodeOffset) {
         assertUnsignedIntLess(memoryIndex, instance.symbolTable().memoryCount(), Failure.UNSPECIFIED_MALFORMED,
                         "Specified memory was not declared or imported in the module '%s'", instance.name());
         final Runnable resolveAction = () -> {
@@ -1008,7 +1007,7 @@ public class Linker {
             WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
             final byte[] bytecode = instance.module().bytecode();
             memoryLib.initialize(memory, null, bytecode, bytecodeOffset, baseAddress, byteLength);
-            instance.setDataInstance(dataSegmentId, droppedDataInstanceOffset);
+            instance.dropDataInstance(dataSegmentId);
         };
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (instance.symbolTable().importedMemory(memoryIndex) != null) {
@@ -1023,19 +1022,12 @@ public class Linker {
         resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    void resolvePassiveDataSegment(WasmStore store, WasmInstance instance, int dataSegmentId, int bytecodeOffset) {
-        final Runnable resolveAction = () -> {
-            if (store.getContextOptions().memoryOverheadMode()) {
-                // Do not initialize the data segment when in memory overhead mode.
-                return;
-            }
-            instance.setDataInstance(dataSegmentId, bytecodeOffset);
-        };
+    void resolvePassiveDataSegment(WasmInstance instance, int dataSegmentId) {
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (dataSegmentId > 0) {
             dependencies.add(new DataSym(instance.name(), dataSegmentId - 1));
         }
-        resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
+        resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), NO_RESOLVE_ACTION);
     }
 
     public static void initializeTable(WasmInstance instance, int tableIndex, Object initValue) {

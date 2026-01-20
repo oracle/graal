@@ -419,11 +419,6 @@ public abstract class SymbolTable {
     @CompilationFinal private boolean dataCountExists;
     @CompilationFinal private int dataSegmentCount;
 
-    /**
-     * Offset representing dropped data instances.
-     */
-    @CompilationFinal private int droppedDataInstanceOffset;
-
     @CompilationFinal private int codeEntryCount;
 
     /**
@@ -1713,14 +1708,6 @@ public abstract class SymbolTable {
 
     public int dataInstanceCount() {
         return dataSegmentCount;
-    }
-
-    void setDroppedDataInstanceOffset(int address) {
-        droppedDataInstanceOffset = address;
-    }
-
-    public int droppedDataInstanceOffset() {
-        return droppedDataInstanceOffset;
     }
 
     public void checkElemIndex(int elemIndex) {

@@ -438,12 +438,11 @@ public class WasmInstantiator {
                 final int dataBytecodeOffset = effectiveOffset;
                 linkActions.add((context, store, instance, imports) -> {
                     store.linker().resolveDataSegment(store, instance, dataIndex, memoryIndex, dataOffsetAddress, dataOffsetBytecode, dataLength,
-                                    dataBytecodeOffset, instance.droppedDataInstanceOffset());
+                                    dataBytecodeOffset);
                 });
             } else {
-                final int dataBytecodeOffset = effectiveOffset;
                 linkActions.add((context, store, instance, imports) -> {
-                    store.linker().resolvePassiveDataSegment(store, instance, dataIndex, dataBytecodeOffset);
+                    store.linker().resolvePassiveDataSegment(instance, dataIndex);
                 });
             }
         }
