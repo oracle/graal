@@ -116,6 +116,8 @@ final class EspressoExternalVMAccess implements VMAccess {
     final EspressoExternalResolvedJavaMethod java_lang_module_ModuleDescriptor_isAutomatic;
     // j.l.NamedPackage
     final EspressoExternalResolvedJavaField java_lang_NamedPackage_module;
+    // j.l.Package
+    final EspressoExternalResolvedJavaMethod java_lang_Package_getPackageInfo;
     // java.security
     private final ResolvedJavaMethod java_security_ProtectionDomain_getCodeSource;
     private final ResolvedJavaMethod java_security_CodeSource_getLocation;
@@ -202,6 +204,10 @@ final class EspressoExternalVMAccess implements VMAccess {
         ResolvedJavaType namedPackageType = lookupBootClassLoaderType("java.lang.NamedPackage");
         java_lang_NamedPackage_module = (EspressoExternalResolvedJavaField) lookupField(namedPackageType, "module");
 
+        ResolvedJavaType packageType = providers.getMetaAccess().lookupJavaType(java.lang.Package.class);
+        Signature getPackageInforSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/Class;");
+        java_lang_Package_getPackageInfo = (EspressoExternalResolvedJavaMethod) packageType.findMethod("getPackageInfo", getPackageInforSignature);
+
         JVMCIError.guarantee(java_lang_Class_forName_String_boolean_ClassLoader != null, "Required method: forName");
         JVMCIError.guarantee(jdk_internal_misc_Unsafe_allocateInstance_Class != null, "Required method: unsafeAllocateInstance");
         JVMCIError.guarantee(java_lang_Class_getProtectionDomain != null, "Required method: getProtectionDomain");
@@ -217,6 +223,7 @@ final class EspressoExternalVMAccess implements VMAccess {
         JVMCIError.guarantee(java_lang_Module_isExported_String_Module != null, "Required method: Module.isExported(String, Module)");
         JVMCIError.guarantee(java_lang_Module_isOpen_String != null, "Required method: Module.isOpen(String)");
         JVMCIError.guarantee(java_lang_Module_isOpen_String_Module != null, "Required method: Module.isOpen(String, Module)");
+        JVMCIError.guarantee(java_lang_Package_getPackageInfo != null, "Required method: Package.getPackageInfo()");
         JVMCIError.guarantee(java_lang_NamedPackage_module != null, "Required field: NamedPackage.module");
     }
 

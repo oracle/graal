@@ -70,12 +70,30 @@ final class EspressoExternalResolvedJavaPackage implements ResolvedJavaPackage {
 
     @Override
     public <T> T getDeclaredAnnotationInfo(Function<AnnotationsInfo, T> parser) {
-        throw JVMCIError.unimplemented();
+        EspressoExternalResolvedInstanceType packageInfo = getAnnotatedPackageInfo();
+        if (packageInfo != null) {
+            return packageInfo.getDeclaredAnnotationInfo(parser);
+        }
+        return parser.apply(null);
     }
 
     @Override
     public AnnotationsInfo getTypeAnnotationInfo() {
-        throw JVMCIError.unimplemented();
+        EspressoExternalResolvedInstanceType packageInfo = getAnnotatedPackageInfo();
+        if (packageInfo != null) {
+            return packageInfo.getTypeAnnotationInfo();
+        }
+        return null;
+    }
+
+    private EspressoExternalResolvedInstanceType getAnnotatedPackageInfo() {
+        var packageInfoConstant = ((EspressoExternalObjectConstant) access.invoke(access.java_lang_Package_getPackageInfo,
+                        EspressoExternalConstantReflectionProvider.asObjectConstant(packageValue, access))).getValue();
+        if (packageInfoConstant.isNull()) {
+            return null;
+        }
+        return (EspressoExternalResolvedInstanceType) access.getProviders().getConstantReflection()
+                        .asJavaType(EspressoExternalConstantReflectionProvider.asObjectConstant(packageInfoConstant, access));
     }
 
     @Override
