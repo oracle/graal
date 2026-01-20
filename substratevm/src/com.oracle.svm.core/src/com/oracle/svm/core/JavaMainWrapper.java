@@ -53,8 +53,8 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -223,8 +223,10 @@ public class JavaMainWrapper {
                 return VMInspectionOptions.dumpImageHeap() ? 0 : 1;
             }
 
-            // Ensure that native code using JNI_GetCreatedJavaVMs finds this isolate.
-            JNIJavaVMList.addJavaVM(JNIFunctionTables.singleton().getGlobalJavaVM());
+            if (SubstrateOptions.JNI.getValue()) {
+                // Ensure that native code using JNI_GetCreatedJavaVMs finds this isolate.
+                JNIJavaVMList.addJavaVM(JNIFunctionTables.singleton().getGlobalJavaVM());
+            }
 
             /*
              * Invoke the application's main method. Invoking the main method via a method handle
