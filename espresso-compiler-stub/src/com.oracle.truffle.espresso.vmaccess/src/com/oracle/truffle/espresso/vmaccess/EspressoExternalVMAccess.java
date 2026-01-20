@@ -291,7 +291,26 @@ final class EspressoExternalVMAccess implements VMAccess {
 
     @Override
     public Stream<ResolvedJavaPackage> bootLoaderPackages() {
-        throw JVMCIError.unimplemented("bootLoaderPackages() is not yet implemented");
+        /*
+         * Obtain jdk.internal.loader.BootLoader.packages() from the guest and materialize it to an
+         * array to bridge into a Java Stream on the host.
+         */
+        Value bootLoaderMeta = requireMetaObject("jdk.internal.loader.BootLoader");
+        Value stream = bootLoaderMeta.getMember("packages").execute();
+        // Stream#toArray() -> Object[]
+        Value array = stream.invokeMember("toArray");
+        if (array == null || array.isNull()) {
+            return Stream.empty();
+        }
+        long size = array.getArraySize();
+        Stream.Builder<ResolvedJavaPackage> builder = Stream.builder();
+        for (long i = 0; i < size; i++) {
+            Value pkg = array.getArrayElement(i);
+            if (pkg != null && !pkg.isNull()) {
+                builder.add(new EspressoExternalResolvedJavaPackage(this, pkg));
+            }
+        }
+        return builder.build();
     }
 
     @Override
