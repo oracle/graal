@@ -285,7 +285,10 @@ final class EspressoExternalVMAccess implements VMAccess {
 
     @Override
     public ResolvedJavaModuleLayer bootModuleLayer() {
-        throw JVMCIError.unimplemented("bootModuleLayer() is not yet implemented");
+        // Obtain java.lang.ModuleLayer.boot() from the guest and wrap it.
+        Value moduleLayerMeta = requireMetaObject("java.lang.ModuleLayer");
+        Value bootLayer = moduleLayerMeta.getMember("boot").execute();
+        return new EspressoExternalResolvedJavaModuleLayer(this, bootLayer);
     }
 
     @Override
