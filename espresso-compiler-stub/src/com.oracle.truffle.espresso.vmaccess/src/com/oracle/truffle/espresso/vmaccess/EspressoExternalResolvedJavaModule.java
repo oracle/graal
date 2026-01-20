@@ -37,7 +37,7 @@ import jdk.vm.ci.meta.Signature;
 final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
     private final EspressoExternalVMAccess access;
     private final String name;
-    private final Value moduleValue;
+    final Value moduleValue;
 
     EspressoExternalResolvedJavaModule(EspressoExternalVMAccess access, Value moduleValue) {
         // j.l.Module?

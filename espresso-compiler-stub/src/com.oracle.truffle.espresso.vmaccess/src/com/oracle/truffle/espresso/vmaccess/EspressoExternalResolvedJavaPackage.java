@@ -23,13 +23,11 @@
 package com.oracle.truffle.espresso.vmaccess;
 
 
-
 import java.util.Objects;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.Value;
 
-import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
@@ -64,10 +62,11 @@ final class EspressoExternalResolvedJavaPackage implements ResolvedJavaPackage {
     }
 
     @Override
-    public ResolvedJavaModule module() {
-        Value moduleValue = packageValue.getMember("module");
+    public EspressoExternalResolvedJavaModule module() {
+        Value moduleValue = access.java_lang_NamedPackage_module.readValue(packageValue);
         return new  EspressoExternalResolvedJavaModule(access, moduleValue);
     }
+
 
     @Override
     public <T> T getDeclaredAnnotationInfo(Function<AnnotationsInfo, T> parser) {

@@ -114,6 +114,8 @@ final class EspressoExternalVMAccess implements VMAccess {
     final EspressoExternalResolvedJavaMethod java_lang_Module_isOpen_String_Module;
     // j.l.module.ModuleDescriptor
     final EspressoExternalResolvedJavaMethod java_lang_module_ModuleDescriptor_isAutomatic;
+    // j.l.NamedPackage
+    final EspressoExternalResolvedJavaField java_lang_NamedPackage_module;
     // java.security
     private final ResolvedJavaMethod java_security_ProtectionDomain_getCodeSource;
     private final ResolvedJavaMethod java_security_CodeSource_getLocation;
@@ -197,6 +199,9 @@ final class EspressoExternalVMAccess implements VMAccess {
         Signature isAutomaticSignature = providers.getMetaAccess().parseMethodDescriptor("()Z");
         java_lang_module_ModuleDescriptor_isAutomatic = (EspressoExternalResolvedJavaMethod) moduleDescriptorType.findMethod("isAutomatic", isAutomaticSignature);
 
+        ResolvedJavaType namedPackageType = lookupBootClassLoaderType("java.lang.NamedPackage");
+        java_lang_NamedPackage_module = (EspressoExternalResolvedJavaField) lookupField(namedPackageType, "module");
+
         JVMCIError.guarantee(java_lang_Class_forName_String_boolean_ClassLoader != null, "Required method: forName");
         JVMCIError.guarantee(jdk_internal_misc_Unsafe_allocateInstance_Class != null, "Required method: unsafeAllocateInstance");
         JVMCIError.guarantee(java_lang_Class_getProtectionDomain != null, "Required method: getProtectionDomain");
@@ -212,6 +217,17 @@ final class EspressoExternalVMAccess implements VMAccess {
         JVMCIError.guarantee(java_lang_Module_isExported_String_Module != null, "Required method: Module.isExported(String, Module)");
         JVMCIError.guarantee(java_lang_Module_isOpen_String != null, "Required method: Module.isOpen(String)");
         JVMCIError.guarantee(java_lang_Module_isOpen_String_Module != null, "Required method: Module.isOpen(String, Module)");
+        JVMCIError.guarantee(java_lang_NamedPackage_module != null, "Required field: NamedPackage.module");
+    }
+
+    private static ResolvedJavaField lookupField(ResolvedJavaType namedPackageType, String fieldName) {
+        ResolvedJavaField[] namedPackageFields = namedPackageType.getInstanceFields(false);
+        for (ResolvedJavaField field : namedPackageFields) {
+            if (fieldName.equals(field.getName())) {
+                return field;
+            }
+        }
+        return null;
     }
 
     private EspressoExternalResolvedPrimitiveType[] createPrimitiveTypes() {
