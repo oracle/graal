@@ -105,6 +105,7 @@ final class EspressoExternalVMAccess implements VMAccess {
     // j.l.Module
     final ResolvedJavaType java_lang_Module;
     private final ResolvedJavaMethod java_lang_Class_getModule;
+    private final ResolvedJavaMethod java_lang_Class_getPackage;
     final EspressoExternalResolvedJavaMethod java_lang_Module_getDescriptor;
     final EspressoExternalResolvedJavaMethod java_lang_Module_getPackages;
     final EspressoExternalResolvedJavaMethod java_lang_Module_isExported_String;
@@ -169,6 +170,9 @@ final class EspressoExternalVMAccess implements VMAccess {
         Signature getModuleSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/Module;");
         java_lang_Class_getModule = classType.findMethod("getModule", getModuleSignature);
 
+        Signature getPackageSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/Package;");
+        java_lang_Class_getPackage = classType.findMethod("getPackage", getPackageSignature);
+
         java_lang_Module = providers.getMetaAccess().lookupJavaType(Module.class);
 
         Signature getDescriptorSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/module/ModuleDescriptor;");
@@ -200,6 +204,7 @@ final class EspressoExternalVMAccess implements VMAccess {
         JVMCIError.guarantee(java_security_CodeSource_getLocation != null, "Required method: getLocation");
         JVMCIError.guarantee(java_lang_Object_toString != null, "Required method: toString");
         JVMCIError.guarantee(java_lang_Class_getModule != null, "Required method: getModule");
+        JVMCIError.guarantee(java_lang_Class_getPackage != null, "Required method: getPackage");
         JVMCIError.guarantee(java_lang_Module_getDescriptor != null, "Required method: Module.getDescriptor");
         JVMCIError.guarantee(java_lang_module_ModuleDescriptor_isAutomatic != null, "Required method: ModuleDescriptor.isAutomatic");
         JVMCIError.guarantee(java_lang_Module_getPackages != null, "Required method: Module.getPackages");
@@ -275,7 +280,13 @@ final class EspressoExternalVMAccess implements VMAccess {
 
     @Override
     public ResolvedJavaPackage getPackage(ResolvedJavaType type) {
-        throw JVMCIError.unimplemented("getPackage() is not yet implemented");
+        JavaConstant originalClass = providers.getConstantReflection().asJavaClass(type);
+        JavaConstant pkg = invoke(java_lang_Class_getPackage, originalClass);
+        if (!(pkg instanceof EspressoExternalObjectConstant espressoConstant)) {
+            throw new IllegalArgumentException("Constant has unexpected type " + pkg.getClass() + ": " + pkg);
+        }
+        Value value = espressoConstant.getValue();
+        return new EspressoExternalResolvedJavaPackage(this, value);
     }
 
     @Override
