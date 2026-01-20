@@ -49,8 +49,8 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
 import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -66,7 +66,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * This singleton is not fully layer aware because the {@link MetaspaceImpl#space} should be either
  * always relinked or properly duplicated for each layer.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class MetaspaceImpl implements Metaspace {
     private final Space space = new Space("Metaspace", "M", true, getAge());
     private final ChunkedMetaspaceMemory memory = new ChunkedMetaspaceMemory(space);

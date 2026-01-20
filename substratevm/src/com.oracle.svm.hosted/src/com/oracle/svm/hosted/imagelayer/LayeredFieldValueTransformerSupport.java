@@ -51,7 +51,6 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -69,7 +68,7 @@ import jdk.vm.ci.meta.JavaConstant;
  * properly relayed to {@link CrossLayerFieldUpdaterFeature}.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredFieldValueTransformerSupport.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredFieldValueTransformerSupport.LayeredCallbacks.class)
 public class LayeredFieldValueTransformerSupport implements InternalFeature {
 
     private final Map<AnalysisField, LayeredFieldValueTransformerImpl> fieldToLayeredTransformer = new ConcurrentHashMap<>();

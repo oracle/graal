@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
@@ -44,7 +43,7 @@ import com.oracle.svm.core.util.VMError;
  * main-class. This can be removed once GR-71358 is implemented. This ImageSingleton is registered
  * only if LibJVMFeature is enabled.
  */
-@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = PartiallyLayerAware.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public final class LibJVMMainMethodWrappers {
 
     @Platforms(Platform.HOSTED_ONLY.class)

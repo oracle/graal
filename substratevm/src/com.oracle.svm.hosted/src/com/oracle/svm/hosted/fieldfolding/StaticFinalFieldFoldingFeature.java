@@ -54,7 +54,6 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -129,7 +128,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * parsing requests may be processed by different threads and could then depend on each other.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class StaticFinalFieldFoldingFeature implements InternalFeature {
 
     public static class Options {
@@ -426,7 +425,7 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
     }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = StaticFinalFieldFoldingSingleton.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = StaticFinalFieldFoldingSingleton.LayeredCallbacks.class)
 class StaticFinalFieldFoldingSingleton {
 
     /**

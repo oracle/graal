@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
@@ -42,7 +41,7 @@ import jdk.graal.compiler.options.OptionKey;
  * However, the values themselves are only allowed to be changed in the app layer.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class SharedLayerRuntimeOptionsValues extends RuntimeOptionValues {
     public SharedLayerRuntimeOptionsValues(UnmodifiableEconomicMap<OptionKey<?>, Object> values, EconomicSet<String> allOptionNames) {
         super(values, allOptionNames);

@@ -58,7 +58,6 @@ import com.oracle.svm.core.traits.SingletonAccessSupplier;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKindSupplier;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
@@ -74,7 +73,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaConstant;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport implements LayeredImageSingletonSupport {
 
     @Override
@@ -394,7 +393,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         public HostedManagement(HostedImageLayerBuildingSupport support, AnnotationExtractor extractor) {
             this.configObjects = new ConcurrentHashMap<>();
             this.singletonToTraitMap = new ConcurrentIdentityHashMap<>();
-            forbiddenInstallationKinds = EnumSet.of(SingletonLayeredInstallationKind.InstallationKind.DISALLOWED);
+            forbiddenInstallationKinds = EnumSet.noneOf(SingletonLayeredInstallationKind.InstallationKind.class);
             if (support != null) {
                 this.layeredBuild = support.buildingImageLayer;
                 this.extensionLayerBuild = support.buildingImageLayer && !support.buildingInitialLayer;
@@ -439,6 +438,9 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                                 throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", kind, value);
                             }
                         }
+                    });
+                    traitMap.getTrait(SingletonTraitKind.DISALLOWED).ifPresent(_ -> {
+                        throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build", SingletonTraitKind.DISALLOWED);
                     });
                 }
                 /*

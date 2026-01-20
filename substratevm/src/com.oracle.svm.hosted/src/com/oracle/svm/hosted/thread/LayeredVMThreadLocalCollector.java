@@ -41,7 +41,6 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -59,7 +58,7 @@ import jdk.graal.compiler.debug.Assertions;
  * multi-layered singleton and also {@link VMThreadLocalSupport} to likely be an application layer
  * only image singleton.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredVMThreadLocalCollector.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredVMThreadLocalCollector.LayeredCallbacks.class)
 public class LayeredVMThreadLocalCollector extends VMThreadLocalCollector {
 
     record ThreadInfo(int size, int offset) {

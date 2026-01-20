@@ -42,7 +42,6 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -162,7 +161,7 @@ public final class KnownOffsets {
         return imageCodeInfoCodeStartOffset;
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = PriorKnownOffsets.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = PriorKnownOffsets.LayeredCallbacks.class)
     static class PriorKnownOffsets {
         final int[] priorValues;
 

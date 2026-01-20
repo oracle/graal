@@ -100,7 +100,6 @@ import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -158,7 +157,7 @@ import jdk.vm.ci.meta.annotation.Annotated;
 public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
     @AutomaticallyRegisteredImageSingleton(ReflectionMetadataEncoderFactory.class)
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
     static class Factory implements ReflectionMetadataEncoderFactory {
         @Override
         public RuntimeMetadataEncoder create(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders) {
@@ -1217,7 +1216,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
      * This singleton keeps track of the methods and fields registered for reflection across layers
      * and ensure they are only registered once.
      */
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredRuntimeMetadataSingleton.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredRuntimeMetadataSingleton.LayeredCallbacks.class)
     private static final class LayeredRuntimeMetadataSingleton {
         /**
          * The methods registered in previous layers. The key is the {@link AnalysisMethod} id and
@@ -1381,7 +1380,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
      * only holds the data produced by RuntimeMetadataEncoderImpl. However, the data needs to be
      * checked across layers to ensure it is consistent.
      */
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = PartiallyLayerAware.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
     record EncodedRuntimeMetadataSupplierImpl(Map<AccessibleObject, byte[]> annotationsEncodings,
                     Map<Executable, byte[]> parameterAnnotationsEncodings,
                     Map<Method, byte[]> annotationDefaultEncodings,

@@ -35,7 +35,6 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCHeapWriter;
@@ -49,7 +48,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCHeapWriter;
  * @see WasmGCPartition
  * @see WasmGCHeapWriter
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class WasmGCHeapLayouter implements ImageHeapLayouter {
 
     /**

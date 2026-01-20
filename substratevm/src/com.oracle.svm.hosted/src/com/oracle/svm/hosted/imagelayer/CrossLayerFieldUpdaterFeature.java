@@ -52,7 +52,6 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -79,7 +78,7 @@ import jdk.vm.ci.meta.JavaKind;
  * </ol>
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = CrossLayerFieldUpdaterFeature.LayeredCallbacks.class, layeredInstallationKind = SingletonLayeredInstallationKind.Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = CrossLayerFieldUpdaterFeature.LayeredCallbacks.class)
 public class CrossLayerFieldUpdaterFeature implements InternalFeature {
     private static final int INVALID = -1;
 
