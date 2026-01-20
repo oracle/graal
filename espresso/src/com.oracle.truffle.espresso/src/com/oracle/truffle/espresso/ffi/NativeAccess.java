@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -36,7 +37,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -201,7 +201,7 @@ public interface NativeAccess {
                             "A likely explanation is that a core espresso library was expected to contain bitcode but it doesn't.\n" +
                             "Core JDK libraries with LLVM bitcode are currently only available on linux-amd64 and darwin-amd64.\n" +
                             "On linux-aarch64 you could instead try to set `java.NativeBackend` to `nfi-dlmopen`.";
-            if (EspressoOptions.RUNNING_ON_SVM) {
+            if (ImageInfo.inImageRuntimeCode()) {
                 message += "\nIn a native-image, if a single espresso context is used, it's recommended to use the `nfi-native` backend.";
             } else {
                 message += "\nOn other platforms, you can try to run your embedding of espresso as a native-image if a single espresso context is used.";
