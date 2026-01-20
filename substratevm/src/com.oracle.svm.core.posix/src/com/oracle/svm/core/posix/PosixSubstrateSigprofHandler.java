@@ -100,7 +100,7 @@ public abstract class PosixSubstrateSigprofHandler extends SubstrateSigprofHandl
     @Override
     protected void installSignalHandler() {
         PosixSignalHandlerSupport.installNativeSignalHandler(Signal.SignalEnum.SIGPROF, advancedSignalDispatcher.getFunctionPointer(), Signal.SA_RESTART(),
-                        SubstrateOptions.EnableSignalHandling.getValue());
+                        SubstrateOptions.isSignalHandlingAllowed());
     }
 
     static boolean isSignalHandlerBasedExecutionSamplerEnabled() {
@@ -112,7 +112,7 @@ public abstract class PosixSubstrateSigprofHandler extends SubstrateSigprofHandl
     }
 
     private static boolean isPlatformSupported() {
-        return (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) && SubstrateOptions.EnableSignalHandling.getValue();
+        return (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) && SubstrateOptions.isSignalHandlingAllowed();
     }
 
     private static void validateSamplerOption(HostedOptionKey<Boolean> isSamplerEnabled) {

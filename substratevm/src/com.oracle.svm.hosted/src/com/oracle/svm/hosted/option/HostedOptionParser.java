@@ -132,17 +132,6 @@ public class HostedOptionParser implements HostedOptionProvider {
             throw UserError.abort(errors);
         }
 
-        /*
-         * We cannot prevent that runtime-only options are accessed during native image generation.
-         * However, we set these options to null here, so that at least they do not have a sensible
-         * value.
-         */
-        for (OptionDescriptor descriptor : allRuntimeOptions.getValues()) {
-            if (!allHostedOptions.containsKey(descriptor.getName())) {
-                hostedValues.put(descriptor.getOptionKey(), null);
-            }
-        }
-
         return remainingArgs;
     }
 
@@ -158,7 +147,6 @@ public class HostedOptionParser implements HostedOptionProvider {
         } else if (arg.startsWith(SubstrateOptionsParser.RUNTIME_OPTION_PREFIX)) {
             /* Only run-time options can be set via -R:<OptionName>. */
             OptionParseResult result = SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.RUNTIME_OPTION_PREFIX, allRuntimeOptions, runtimeValues, PLUS_MINUS, arg);
-            /* Only print non-SVM run-time options (SVM options are already printed above). */
             maybePrintOptions(result, SubstrateOptionsParser.RUNTIME_OPTION_PREFIX, allRuntimeOptions, true);
             return result;
         }

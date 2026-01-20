@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.option;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -36,10 +38,8 @@ import org.graalvm.nativeimage.RuntimeOptions.Descriptor;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AnnotateOriginal;
-import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
@@ -51,7 +51,6 @@ import com.oracle.svm.util.ClassUtil;
 import jdk.graal.compiler.options.ModifiableOptionValues;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 
 /**
@@ -66,6 +65,8 @@ public class RuntimeOptionValues extends ModifiableOptionValues {
     public RuntimeOptionValues(UnmodifiableEconomicMap<OptionKey<?>, Object> values, EconomicSet<String> allOptionNames) {
         super(values);
         this.allOptionNames = allOptionNames;
+
+        updateCache(values);
     }
 
     /**
@@ -73,6 +74,7 @@ public class RuntimeOptionValues extends ModifiableOptionValues {
      * we expose a {@link SharedLayerRuntimeOptionsValues} singleton which does not allow values to
      * be modified.
      */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static RuntimeOptionValues singleton() {
         if (!SubstrateUtil.HOSTED || ImageLayerBuildingSupport.lastImageBuild()) {
             return ImageSingletons.lookup(RuntimeOptionValues.class);
@@ -83,6 +85,50 @@ public class RuntimeOptionValues extends ModifiableOptionValues {
 
     UnmodifiableEconomicSet<String> getAllOptionNames() {
         return allOptionNames;
+    }
+
+    @Override
+    public void update(OptionKey<?> key, Object value) {
+        if (key instanceof RuntimeOptionKey<?> r) {
+            /* Update the cached value so that it is in-sync with the map. */
+            r.setRawCachedValue(value);
+        }
+        super.update(key, value);
+    }
+
+    @Override
+    public void update(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+        /* Update the cached values so that they are in-sync with the map. */
+        updateCache(values);
+        super.update(values);
+    }
+
+    /**
+     * In layered native images, {@link RuntimeOptionKey} objects can live in the base layer, while
+     * the final option values are only known to the application layer. When a user supplies a value
+     * for a runtime option at build-time, the cached value field inside the corresponding
+     * {@link RuntimeOptionKey} cannot be reliably initialized at build-time due to this separation.
+     * <p>
+     * To address this, we copy all non-default runtime option values into the cache during early VM
+     * startup, before any option parsing takes place. If an option is provided at run-time using
+     * {@code -XX:...}, the cache is later updated again during option parsing (see calls to
+     * {@link RuntimeOptionKey#setRawCachedValue}).
+     */
+    public void copyBuildTimeValuesToCache() {
+        assert !SubstrateUtil.HOSTED;
+
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            updateCache(getMap());
+        }
+    }
+
+    private static void updateCache(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+        var cursor = values.getEntries();
+        while (cursor.advance()) {
+            if (cursor.getKey() instanceof RuntimeOptionKey<?> runtimeOptionKey) {
+                runtimeOptionKey.setRawCachedValue(cursor.getValue());
+            }
+        }
     }
 }
 
@@ -165,12 +211,4 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
     public Descriptor getDescriptor(String optionName) {
         return asDescriptor(RuntimeOptionParser.singleton().getDescriptor(optionName).orElse(null));
     }
-}
-
-@TargetClass(OptionKey.class)
-final class Target_jdk_graal_compiler_options_OptionKey {
-
-    @AnnotateOriginal
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Static analysis imprecision makes all hashCode implementations reachable from this method")
-    native Object getValue(OptionValues values);
 }

@@ -32,7 +32,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
  */
 public class OptionKey<T> {
 
-    private final T defaultValue;
+    protected final T defaultValue;
 
     private OptionDescriptor descriptor;
 

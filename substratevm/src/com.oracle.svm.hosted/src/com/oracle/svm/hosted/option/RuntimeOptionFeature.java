@@ -148,9 +148,7 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
         if (firstImage) {
             IsolateArgumentParser.singleton().sealOptions();
         } else {
-            /*
-             * Ensure that the defaults values are registered and seen by the analysis.
-             */
+            /* Ensure that the default values are registered and seen by the analysis. */
             CGlobalDataFeature.singleton().registerWithGlobalSymbol(defaultValues);
             var universe = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getUniverse();
             LayeredImageUtils.registerObjectAsEmbeddedRoot(universe, defaultValues);

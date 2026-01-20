@@ -24,12 +24,10 @@
  */
 package com.oracle.svm.core;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
 import java.util.Arrays;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -40,7 +38,6 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -66,7 +63,6 @@ import com.oracle.svm.core.container.OperatingSystem;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
@@ -113,7 +109,6 @@ import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.PauseNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import org.graalvm.word.impl.ObjectAccess;
 
@@ -285,7 +280,7 @@ public class SubstrateDiagnostics {
          * In the debugger, it is possible to change the value of loopOnFatalError to false if
          * necessary.
          */
-        while (Options.shouldLoopOnFatalError()) {
+        while (Options.LoopOnFatalError.getValue()) {
             PauseNode.pause();
         }
 
@@ -1400,67 +1395,16 @@ public class SubstrateDiagnostics {
         }
     }
 
-    @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-    @AutomaticallyRegisteredImageSingleton
     public static class Options {
         @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
-        public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates) {
-            @Override
-            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-                super.onValueUpdate(values, oldValue, newValue);
-
-                /*
-                 * Copy the value to a field in the image heap so that it is safe to access. During
-                 * the image build, it can happen that the singleton does not exist yet. In that
-                 * case, the value will be copied to the image heap when executing the constructor
-                 * of the singleton. This is a bit cumbersome but necessary because we can't use a
-                 * static field. We also need to mark the option as used at run-time (see feature)
-                 * as the static analysis would otherwise remove the option from the image.
-                 */
-                if (wasConstructorExecuted()) {
-                    Options.singleton().loopOnFatalError = newValue;
-                }
-            }
-        };
+        public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates);
 
         @Option(help = "Determines if implicit exceptions are fatal if they don't have a stack trace.", type = OptionType.Debug)//
-        public static final RuntimeOptionKey<Boolean> ImplicitExceptionWithoutStacktraceIsFatal = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates) {
-            @Override
-            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-                super.onValueUpdate(values, oldValue, newValue);
-
-                /* See comment above. */
-                if (wasConstructorExecuted()) {
-                    Options.singleton().implicitExceptionWithoutStacktraceIsFatal = newValue;
-                }
-            }
-        };
-
-        private volatile boolean loopOnFatalError;
-        private boolean implicitExceptionWithoutStacktraceIsFatal;
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        public Options() {
-            this.loopOnFatalError = Options.LoopOnFatalError.getValue();
-            this.implicitExceptionWithoutStacktraceIsFatal = Options.ImplicitExceptionWithoutStacktraceIsFatal.getValue();
-        }
+        public static final RuntimeOptionKey<Boolean> ImplicitExceptionWithoutStacktraceIsFatal = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates);
 
         @Fold
         static Options singleton() {
             return ImageSingletons.lookup(Options.class);
-        }
-
-        public static boolean shouldLoopOnFatalError() {
-            return singleton().loopOnFatalError;
-        }
-
-        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public static boolean implicitExceptionWithoutStacktraceIsFatal() {
-            return singleton().implicitExceptionWithoutStacktraceIsFatal;
-        }
-
-        private static boolean wasConstructorExecuted() {
-            return (!SubstrateUtil.HOSTED || ImageSingletonsSupport.isInstalled()) && ImageSingletons.contains(Options.class);
         }
     }
 }

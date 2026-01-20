@@ -135,7 +135,7 @@ public final class IsolatedGraalUtils {
         appendArgument(builder, SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, false);
 
         /* Disable signal handling for compilation isolates. */
-        appendArgument(builder, SubstrateOptions.EnableSignalHandling, false);
+        appendArgument(builder, SubstrateOptions.ConcealedOptions.EnableSignalHandling, false);
         appendArgument(builder, SubstrateSegfaultHandler.Options.InstallSegfaultHandler, false);
     }
 

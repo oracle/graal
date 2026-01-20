@@ -24,32 +24,48 @@
  */
 package com.oracle.svm.core.option;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.Objects;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.collections.EnumBitmask;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
 
 /**
  * Defines a runtime {@link Option}, in contrast to a {@link HostedOptionKey hosted option}.
+ * <p>
+ * The option value is stored in a shared map (see {@link RuntimeOptionValues}) and additionally
+ * cached in an instance field (see below). The cache allows faster access and ensures that runtime
+ * option values can also be accessed from {@link Uninterruptible} code. Note that the cache is
+ * reset after every image build in case that multiple images are built in the same process to
+ * ensure that options don't carry over between image builds. Note that for layered images, we need
+ * to initialize the cache at run-time (see {@link RuntimeOptionValues#copyBuildTimeValuesToCache}).
  *
  * @see com.oracle.svm.core.option
  */
 public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOptionKey<T> {
+    public static final Object OPTION_NOT_SET = new Object();
+
     @Platforms(Platform.HOSTED_ONLY.class)//
     private final Consumer<RuntimeOptionKey<T>> buildTimeValidation;
     private final int flags;
+    private volatile Object cachedValue = OPTION_NOT_SET;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public RuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
@@ -63,41 +79,77 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
         this.flags = EnumBitmask.computeBitmask(flags);
     }
 
+    @Fold
+    public T getHostedValue() {
+        return getValue();
+    }
+
+    public void setRawCachedValue(Object value) {
+        this.cachedValue = value;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @SuppressWarnings("unchecked")
+    public final T getValue() {
+        Object value = cachedValue;
+        if (value == OPTION_NOT_SET) {
+            return defaultValue;
+        }
+        return (T) value;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public final T getValue(OptionValues values) {
+        VMError.guarantee(RuntimeOptionValues.singleton() == values);
+        return getValue();
+    }
+
+    @Override
+    public final T getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+        throw VMError.shouldNotReachHere("RuntimeOptionKey.getValueOrDefault() is not supported. Please use getValue() instead.");
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public final boolean hasBeenSet() {
+        return cachedValue != OPTION_NOT_SET;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public final boolean hasBeenSet(OptionValues values) {
+        VMError.guarantee(RuntimeOptionValues.singleton() == values);
+        return hasBeenSet();
+    }
+
+    public void update(T newValue) {
+        RuntimeOptionValues.singleton().update(this, newValue);
+    }
+
     /**
-     * Returns the value of this option in the {@link RuntimeOptionValues}.
+     * Note that the {@code values} argument is not necessarily the map from
+     * {@link RuntimeOptionValues#getMap()}, as a temporary map could be used instead.
      */
     @Override
-    public T getValue() {
-        return getValue(RuntimeOptionValues.singleton());
-    }
-
-    public void update(T value) {
-        RuntimeOptionValues.singleton().update(this, value);
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public void update(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
-        if (!SubstrateUtil.HOSTED && isImmutable() && !ImageSingletons.lookup(RuntimeSupport.class).isUninitialized() && isDifferentValue(values, newValue)) {
-            T value = (T) values.get(this);
-            throw new IllegalStateException("The runtime option '" + this.getName() + "' is immutable and can only be set during startup. Current value: " + value + ", new value: " + newValue);
+    public final void update(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
+        if (!SubstrateUtil.HOSTED && isImmutable() && !ImageSingletons.lookup(RuntimeSupport.class).isUninitialized() && !Objects.equals(getValue(), newValue)) {
+            throw new IllegalStateException("The runtime option '" + this.getName() + "' is immutable and can only be set during startup. Current value: " + getValue() + ", new value: " + newValue);
         }
         super.update(values, newValue);
     }
 
-    @SuppressWarnings("unchecked")
-    private boolean isDifferentValue(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
-        if (!values.containsKey(this) && !Objects.equals(getDefaultValue(), newValue)) {
-            return true;
-        }
-
-        T value = (T) values.get(this);
-        return !Objects.equals(value, newValue);
-    }
-
+    /**
+     * Note that the {@code values} argument is not necessarily the map from
+     * {@link RuntimeOptionValues#getMap()}, as a temporary map could be used instead.
+     */
     @Override
-    public boolean hasBeenSet() {
-        return hasBeenSet(RuntimeOptionValues.singleton());
+    public final void putIfAbsent(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
+        if (!SubstrateUtil.HOSTED && isImmutable() && !ImageSingletons.lookup(RuntimeSupport.class).isUninitialized() && !Objects.equals(getValue(), newValue)) {
+            throw new IllegalStateException("The runtime option '" + this.getName() + "' is immutable and can only be set during startup. Current value: " + getValue() + ", new value: " + newValue);
+        }
+        super.putIfAbsent(values, newValue);
     }
 
     @Override
@@ -123,11 +175,6 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
 
     public boolean shouldRegisterForIsolateArgumentParser() {
         return EnumBitmask.hasBit(flags, RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser);
-    }
-
-    @Fold
-    public T getHostedValue() {
-        return getValue(RuntimeOptionValues.singleton());
     }
 
     public enum RuntimeOptionKeyFlag {

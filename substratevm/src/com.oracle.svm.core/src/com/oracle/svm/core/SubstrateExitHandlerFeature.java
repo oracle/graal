@@ -54,7 +54,7 @@ public class SubstrateExitHandlerFeature implements InternalFeature {
 final class SubstrateExitHandlerStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
-        if (SubstrateOptions.EnableSignalHandling.getValue() && isFirstIsolate) {
+        if (SubstrateOptions.isSignalHandlingAllowed() && isFirstIsolate) {
             Target_java_lang_Terminator.setup();
         }
     }
