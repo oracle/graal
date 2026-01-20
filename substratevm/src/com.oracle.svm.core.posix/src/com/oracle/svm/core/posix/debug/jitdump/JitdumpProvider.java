@@ -42,6 +42,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
@@ -63,11 +64,9 @@ import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.LogUtils;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-import org.graalvm.word.impl.Word;
 
 public class JitdumpProvider {
     public static class Options {
@@ -111,7 +110,6 @@ public class JitdumpProvider {
      */
     private static final GlobalAtomicLong codeIndex = new GlobalAtomicLong("JITDUMP_CODE_INDEX", 0L);
 
-    @Fold
     static RawFileOperationSupport getFileSupport() {
         return RawFileOperationSupport.nativeByteOrder();
     }
