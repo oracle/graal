@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.jdk;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -240,10 +241,10 @@ public class VarHandleFeature implements InternalFeature {
                     /* Make sure VarForm.memberName_table is initialized. */
                     varFormGetMemberNameOrNullMethod.invoke(varForm, accessMode.ordinal());
                 }
-            } catch (IllegalArgumentException _) {
+            } catch (IllegalArgumentException | InvocationTargetException _) {
                 /*
                  * VarForm.memberName_table can be null for VarForms used by IndirectVarHandles,
-                 * which leads to IllegalArgumentException.
+                 * which leads to IllegalArgumentException or InvocationTargetException.
                  */
             }
         } catch (ReflectiveOperationException ex) {
