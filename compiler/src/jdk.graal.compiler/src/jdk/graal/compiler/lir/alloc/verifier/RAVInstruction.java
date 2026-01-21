@@ -6,8 +6,10 @@ import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -159,6 +161,9 @@ public class RAVInstruction {
         public ValueArrayPair temp;
         public ValueArrayPair alive;
 
+        public JavaKind[] kinds;
+        public ValueArrayPair stateValues;
+
         public Op(LIRInstruction instruction) {
             super(instruction);
 
@@ -175,6 +180,9 @@ public class RAVInstruction {
 
             instruction.forEachAlive(countValuesProc);
             this.alive = new ValueArrayPair(countValuesProc.getCount());
+
+            instruction.forEachState(countValuesProc);
+            this.stateValues =  new ValueArrayPair(countValuesProc.getCount());
         }
 
         public boolean hasMissingDefinitions() {

@@ -10,6 +10,7 @@ import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 public class MergedBlockVerifierState {
@@ -184,6 +185,39 @@ public class MergedBlockVerifierState {
                     // Make sure the assigned register has the correct kind for temp.
                     throw new KindsMismatchException(instruction.lirInstruction, block, orig, curr, true);
                 }
+            }
+
+            this.checkInputs(op.stateValues, op, block, labelOp);
+
+            int kindIdx = 0;
+            for (int i = 0; i < op.stateValues.count; i++) {
+                var orig = op.stateValues.orig[i];
+                var curr = op.stateValues.curr[i];
+
+                var state = this.values.get(curr);
+                if (state instanceof ValueAllocationState valueAllocationState && valueAllocationState.getValue().equals(orig)) {
+                    continue;
+                }
+
+                JavaKind kind = null;
+                while (kindIdx < op.kinds.length) {
+                    JavaKind target = op.kinds[kindIdx++];
+                    if (!JavaKind.Illegal.equals(target)) {
+                        kind = target;
+                        break;
+                    }
+                    // Illegal values are ignored when iterating over state values
+                    // but kept in the kinds array so we need to skip them.
+                }
+
+                if (!JavaKind.Object.equals(kind)) {
+                    continue;
+                }
+
+                // TODO: how to handle object kind?
+                // If the same virtual value is present in the register then there isn't anything to be done
+                // but maybe if it was changed we also maybe want to make sure that there's a pointer (Object) present?
+                // but for that we would need to track that information based on GC instructions
             }
 
             this.checkAliveConstraint(op, block);

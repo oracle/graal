@@ -4,6 +4,7 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.InstructionStateProcedure;
+import jdk.graal.compiler.lir.InstructionValueConsumer;
 import jdk.graal.compiler.lir.InstructionValueProcedure;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRFrameState;
@@ -167,6 +168,20 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
                 instruction.forEachOutput(opRAVInstr.dests.copyOriginalProc);
                 instruction.forEachTemp(opRAVInstr.temp.copyOriginalProc);
                 instruction.forEachAlive(opRAVInstr.alive.copyOriginalProc);
+                instruction.forEachState(opRAVInstr.stateValues.copyOriginalProc);
+                instruction.forEachState(new InstructionStateProcedure() {
+                    @Override
+                    public void doState(LIRInstruction instruction, LIRFrameState state) {
+                        if (state.topFrame == null) {
+                            return;
+                        }
+
+                        // Haven't found a case where there is multiple frame states on an instruction
+                        // so this will work, otherwise appending them would do the job in that case
+                        // if we could also get this information about VirtualObjects.
+                        opRAVInstr.kinds = state.topFrame.getSlotKinds();
+                    }
+                });
 
                 this.preallocMap.put(instruction, opRAVInstr);
 
@@ -226,12 +241,7 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
                 instruction.forEachOutput(opRAVInstr.dests.copyCurrentProc);
                 instruction.forEachTemp(opRAVInstr.temp.copyCurrentProc);
                 instruction.forEachAlive(opRAVInstr.alive.copyCurrentProc);
-                instruction.forEachState(new InstructionStateProcedure() {
-                    @Override
-                    public void doState(LIRInstruction instruction, LIRFrameState state) {
-
-                    }
-                });
+                instruction.forEachState(opRAVInstr.stateValues.copyCurrentProc);
 
                 instructionList.add(opRAVInstr);
                 var speculativeMoves = opRAVInstr.getSpeculativeMoveList();
