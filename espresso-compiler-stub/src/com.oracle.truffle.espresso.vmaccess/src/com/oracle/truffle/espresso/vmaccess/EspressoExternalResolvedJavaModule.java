@@ -95,6 +95,9 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
 
     @Override
     public boolean isAutomatic() {
+        if (!isNamed()) {
+            throw new IllegalArgumentException("Must not call isAutomatic() on an unnamed module");
+        }
         Value moduleDescriptor = access.java_lang_Module_getDescriptor.getMirror().execute(moduleValue);
         Value isAutomatic = access.java_lang_module_ModuleDescriptor_isAutomatic.getMirror().execute(moduleDescriptor);
         return isAutomatic.asBoolean();

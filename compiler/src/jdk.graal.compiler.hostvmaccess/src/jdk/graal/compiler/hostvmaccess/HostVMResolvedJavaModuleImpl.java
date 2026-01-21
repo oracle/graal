@@ -92,6 +92,9 @@ final class HostVMResolvedJavaModuleImpl implements ResolvedJavaModule {
 
     @Override
     public boolean isAutomatic() {
+        if (!isNamed()) {
+            throw new IllegalArgumentException("Must not call isAutomatic() on an unnamed module");
+        }
         return module.getDescriptor().isAutomatic();
     }
 

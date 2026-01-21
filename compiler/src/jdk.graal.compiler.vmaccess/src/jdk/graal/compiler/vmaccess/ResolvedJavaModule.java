@@ -75,7 +75,10 @@ public interface ResolvedJavaModule {
 
     /**
      * Returns {@code true} if this is an automatic module. See
-     * {@link ModuleDescriptor#isAutomatic()}.
+     * {@link ModuleDescriptor#isAutomatic()}. This methods must only be called on
+     * {@linkplain #isNamed() named modules}.
+     *
+     * @throws IllegalArgumentException if the module is not {@linkplain #isNamed() named}.
      */
     boolean isAutomatic();
 }
