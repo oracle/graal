@@ -1226,18 +1226,7 @@ public class CremaSupportImpl implements CremaSupport {
         JavaKind kind = TypeSymbols.getJavaKind(elementalType);
         Class<?> result;
         if (kind != JavaKind.Object) {
-            result = switch (kind) {
-                case Boolean -> boolean.class;
-                case Byte -> byte.class;
-                case Short -> short.class;
-                case Char -> char.class;
-                case Int -> int.class;
-                case Long -> long.class;
-                case Float -> float.class;
-                case Double -> double.class;
-                case Void -> void.class;
-                default -> throw VMError.shouldNotReachHere(kind.toString());
-            };
+            result = kind.toJavaClass();
         } else {
             AbstractClassRegistry registry = ClassRegistries.singleton().getRegistry(((InterpreterResolvedJavaType) accessingClass).getJavaClass().getClassLoader());
             result = registry.findLoadedClass(elementalType);
