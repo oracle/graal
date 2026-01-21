@@ -569,7 +569,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                     int bits = Integer.BYTES - 1;
                     int alignmentAdjust = ((instanceSize + bits) & ~bits) - instanceSize;
                     identityHashOffset = instanceSize + alignmentAdjust;
-                    instanceSize = identityHashOffset + Integer.BYTES;
+                    if (!ol.isIdentityHashFieldOptional()) {
+                        instanceSize = identityHashOffset + Integer.BYTES;
+                    }
                 } else {
                     throw VMError.shouldNotReachHere("Unexpected identity hash mode");
                 }
