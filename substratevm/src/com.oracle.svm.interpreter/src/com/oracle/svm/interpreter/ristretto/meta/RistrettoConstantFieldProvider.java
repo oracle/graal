@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.interpreter.ristretto.meta;
 
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.meta.SubstrateConstantFieldProvider;
 import com.oracle.svm.interpreter.InterpreterToVM;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
@@ -35,13 +36,22 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvider {
+    private static final String SystemClassName = "java.lang.System";
+
     private final SnippetReflectionProvider snippetReflectionProvider;
+    private final ResolvedJavaType systemType;
 
     public RistrettoConstantFieldProvider(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflectionProvider) {
         super(metaAccess);
         this.snippetReflectionProvider = snippetReflectionProvider;
+        try {
+            this.systemType = metaAccess.lookupJavaType(Class.forName(SystemClassName));
+        } catch (ClassNotFoundException e) {
+            throw VMError.shouldNotReachHere("Must find system type " + SystemClassName, e);
+        }
     }
 
     @Override
@@ -52,7 +62,7 @@ public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvid
         } else if (javaField instanceof InterpreterResolvedJavaField) {
             iField = (InterpreterResolvedJavaField) javaField;
         }
-        if (iField != null && isFinalField(iField, tool) && isHolderInitialized(iField)) {
+        if (iField != null && (isFinalField(iField, tool) || isStableField(iField, tool)) && !isProhibitedField(iField) && isHolderInitialized(iField)) {
             final InterpreterResolvedJavaType declaringClass = iField.getDeclaringClass();
             JavaKind kind = iField.getJavaKind();
             Object receiver;
@@ -69,6 +79,14 @@ public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvid
             }
         }
         return super.readConstantField(javaField, tool);
+    }
+
+    private boolean isProhibitedField(InterpreterResolvedJavaField iField) {
+        if (iField.isStatic()) {
+            var holder = iField.getDeclaringClass();
+            return holder.isInitialized() && holder.equals(systemType);
+        }
+        return false;
     }
 
     private JavaConstant readConstant(JavaKind kind, Object receiver, InterpreterResolvedJavaField iField) {
