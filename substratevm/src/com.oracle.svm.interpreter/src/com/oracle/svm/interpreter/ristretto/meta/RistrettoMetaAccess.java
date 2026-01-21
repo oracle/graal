@@ -26,9 +26,9 @@ package com.oracle.svm.interpreter.ristretto.meta;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.CremaMethodAccess;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
@@ -56,11 +56,7 @@ public final class RistrettoMetaAccess implements MetaAccessProvider {
 
     @Override
     public ResolvedJavaType lookupJavaType(Class<?> clazz) {
-        ResolvedJavaType svmType = decoratee.lookupJavaType(clazz);
-        assert svmType instanceof SubstrateType : Assertions.errorMessage("Must be a substrate type if it comes out of a meta access", svmType);
-        SubstrateType substrateType = (SubstrateType) svmType;
-        DynamicHub hub = substrateType.getHub();
-        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) hub.getInterpreterType();
+        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) DynamicHub.fromClass(clazz).getInterpreterType();
         return RistrettoType.create(iType);
     }
 
@@ -72,24 +68,21 @@ public final class RistrettoMetaAccess implements MetaAccessProvider {
 
     @Override
     public ResolvedJavaField lookupJavaField(Field reflectionField) {
-        ResolvedJavaField substrateField = decoratee.lookupJavaField(reflectionField);
-        assert substrateField instanceof SubstrateField : Assertions.errorMessage("Must be a substrate field if it comes out of a meta access", substrateField);
-        DynamicHub hub = ((SubstrateType) substrateField.getDeclaringClass()).getHub();
-        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) hub.getInterpreterType();
-        if (substrateField.isStatic()) {
+        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) DynamicHub.fromClass(reflectionField.getDeclaringClass()).getInterpreterType();
+        if (Modifier.isStatic(reflectionField.getModifiers())) {
             for (var iField : iType.getStaticFields()) {
-                if (iField.getName().equals(substrateField.getName())) {
+                if (iField.getName().equals(reflectionField.getName())) {
                     return RistrettoField.create((InterpreterResolvedJavaField) iField);
                 }
             }
         } else {
             for (var iField : iType.getStaticFields()) {
-                if (iField.getName().equals(substrateField.getName())) {
+                if (iField.getName().equals(reflectionField.getName())) {
                     return RistrettoField.create((InterpreterResolvedJavaField) iField);
                 }
             }
         }
-        throw GraalError.shouldNotReachHere("Should have found iField for svmField " + substrateField);
+        throw GraalError.shouldNotReachHere("Should have found iField for svmField " + reflectionField);
     }
 
     @Override

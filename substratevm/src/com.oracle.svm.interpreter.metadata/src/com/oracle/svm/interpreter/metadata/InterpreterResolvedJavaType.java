@@ -341,8 +341,8 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public final InterpreterResolvedObjectType getArrayClass() {
-        Class<?> arrayClass = java.lang.reflect.Array.newInstance(clazz, 0).getClass();
-        return (InterpreterResolvedObjectType) DynamicHub.fromClass(arrayClass).getInterpreterType();
+        DynamicHub arrayHub = DynamicHub.fromClass(clazz).getOrCreateArrayHub();
+        return (InterpreterResolvedObjectType) arrayHub.getInterpreterType();
     }
 
     @Override
@@ -398,8 +398,4 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
     }
 
     // endregion Unimplemented methods
-
-    public Class<?> getClazz() {
-        return clazz;
-    }
 }

@@ -358,8 +358,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         if (thisClazzFields.length == 0) {
             return parent;
         }
-        InterpreterResolvedJavaField[] result = new InterpreterResolvedJavaField[parent.length + thisClazzFields.length];
-        System.arraycopy(parent, 0, result, 0, parent.length);
+        InterpreterResolvedJavaField[] result = Arrays.copyOf(parent, parent.length + thisClazzFields.length);
         System.arraycopy(thisClazzFields, 0, result, parent.length, thisClazzFields.length);
         return result;
     }

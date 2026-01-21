@@ -149,11 +149,10 @@ public final class RistrettoField extends SubstrateField {
     public Object getStaticFieldBaseForRuntimeLoadedClass() {
         if (interpreterField.isStatic()) {
             InterpreterResolvedJavaType iType = interpreterField.getDeclaringClass();
-            if (!(iType instanceof CremaResolvedObjectType)) {
-                return null;
+            if (iType instanceof CremaResolvedObjectType declaringClass) {
+                return declaringClass.getStaticStorage(interpreterField.getJavaKind().isPrimitive(), interpreterField.getInstalledLayerNum());
             }
-            CremaResolvedObjectType declaringClass = (CremaResolvedObjectType) iType;
-            return declaringClass.getStaticStorage(interpreterField.getJavaKind().isPrimitive(), interpreterField.getInstalledLayerNum());
+            return null;
         }
         throw GraalError.shouldNotReachHere("Only static fields should end up here");
     }
