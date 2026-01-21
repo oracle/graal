@@ -324,6 +324,27 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return enableYield || !customYieldOperations.isEmpty();
     }
 
+    /**
+     * If boxing elimination and the uncached interpreter are used, we need to update local tags
+     * when transitioning from uncached to cached.
+     */
+    public boolean needsCachedTagsTransition() {
+        return enableUncachedInterpreter && usesBoxingElimination();
+    }
+
+    public boolean needsTransition() {
+        if (isBytecodeUpdatable()) {
+            // When the bytecode updates we need to translate the current bci to the new bytecode.
+            return true;
+        }
+        if (hasYieldOperation()) {
+            // We need to update a ContinuationRootNode's bytecode node when it transitions from
+            // uninitialized/uncached to cached.
+            return true;
+        }
+        return needsCachedTagsTransition();
+    }
+
     public InstructionModel getInvalidateInstruction(int length) {
         if (invalidateInstructions == null) {
             return null;
@@ -678,6 +699,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public boolean needsBciSlot() {
+        // Uncached does not use nodes, so the bci is necessary for identifying locations.
         return enableUncachedInterpreter || storeBciInFrame;
     }
 

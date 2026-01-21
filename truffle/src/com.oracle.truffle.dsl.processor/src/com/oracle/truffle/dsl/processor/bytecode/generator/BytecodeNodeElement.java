@@ -952,7 +952,11 @@ final class BytecodeNodeElement extends AbstractElement {
         switch (tier) {
             case UNCACHED:
             case UNINITIALIZED:
-                b.startReturn();
+                if (parent.model.isBytecodeUpdatable()) {
+                    b.startDeclaration(parent.abstractBytecodeNode.asType(), "cachedNode");
+                } else {
+                    b.startReturn();
+                }
                 b.startNew(InterpreterTier.CACHED.friendlyName + "BytecodeNode");
                 for (VariableElement var : ElementFilter.fieldsIn(parent.abstractBytecodeNode.getEnclosedElements())) {
                     b.string("this.", var.getSimpleName().toString());
@@ -961,7 +965,14 @@ final class BytecodeNodeElement extends AbstractElement {
                     b.string("createCachedTags(numLocals)");
                 }
                 b.end();
-                b.end();
+
+                if (parent.model.isBytecodeUpdatable()) {
+                    b.end();
+                    b.startAssign("cachedNode.oldBytecodesBox").string("this.allocateOldBytecodesBox()").end();
+                    b.startReturn().string("cachedNode").end();
+                } else {
+                    b.end();
+                }
                 break;
             case CACHED:
                 b.startReturn().string("this").end();
@@ -992,6 +1003,10 @@ final class BytecodeNodeElement extends AbstractElement {
             String name = var.getSimpleName().toString();
             ex.addParameter(new CodeVariableElement(var.asType(), name));
             b.statement("this.", name, " = ", name);
+        }
+        if (parent.model.isBytecodeUpdatable()) {
+            ex.addParameter(new CodeVariableElement(parent.oldBytecodesBoxElement.asType(), "oldBytecodesBox_"));
+            b.statement("this.oldBytecodesBox = oldBytecodesBox_");
         }
 
         return ex;
@@ -1083,6 +1098,9 @@ final class BytecodeNodeElement extends AbstractElement {
                 }
                 b.string("this.", e.getSimpleName().toString());
             }
+            if (parent.model.isBytecodeUpdatable()) {
+                b.string("this.allocateOldBytecodesBox()");
+            }
             b.end();
             b.end();
 
@@ -1094,6 +1112,10 @@ final class BytecodeNodeElement extends AbstractElement {
             }
             for (VariableElement e : ElementFilter.fieldsIn(this.getEnclosedElements())) {
                 b.string("this.", e.getSimpleName().toString());
+            }
+            if (tier.isUncached() && parent.model.isBytecodeUpdatable()) {
+                // If the bytecode is being reused, allocate the shared box.
+                b.string("bytecodes_ == null ? this.allocateOldBytecodesBox() : null");
             }
             b.end();
             b.end();
@@ -1400,10 +1422,7 @@ final class BytecodeNodeElement extends AbstractElement {
 
             b.startIf().string("uncachedExecuteCount_ <= 1").end().startBlock();
             b.startIf().string("uncachedExecuteCount_ != " + FORCE_UNCACHED_THRESHOLD).end().startBlock();
-            b.startStatement().startCall("$root", "transitionToCached");
-            b.string(parent.localFrame());
-            b.string(BytecodeRootNodeElement.decodeBci("startState"));
-            b.end().end();
+            b.statement("$root.transitionToCached()");
 
             b.startReturn().string("startState").end();
             b.end(2);
@@ -1498,10 +1517,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 buildInstructionCases(b, forceCachedInstruction);
             }
             b.startBlock();
-            b.startStatement().startCall("$root", "transitionToCached");
-            b.string(parent.localFrame());
-            b.string("bci");
-            b.end().end();
+            b.statement("$root.transitionToCached()");
             b.statement("return ", parent.encodeState("bci", "sp"));
             b.end();
         }
@@ -1549,6 +1565,10 @@ final class BytecodeNodeElement extends AbstractElement {
             b.statement("break");
             b.end(); // default case block
 
+        } else {
+            b.caseDefault().startCaseBlock();
+            b.tree(GeneratorUtils.createShouldNotReachHere());
+            b.end();
         }
 
         b.end(); // switch
@@ -2367,10 +2387,7 @@ final class BytecodeNodeElement extends AbstractElement {
              */
             b.startIf().string("uncachedExecuteCount_ != ", FORCE_UNCACHED_THRESHOLD).end().startBlock();
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            b.startStatement().startCall("$root", "transitionToCached");
-            b.string(parent.localFrame());
-            b.string("bci");
-            b.end().end();
+            b.statement("$root.transitionToCached()");
             b.statement("return ", parent.encodeState("bci", "sp"));
             b.end(2);
             b.startElseBlock();

@@ -3486,6 +3486,567 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         "return");
     }
 
+    /**
+     * Tests that transitioning from uncached to cached correctly adapts cached local tags to the
+     * current variables in the frame.
+     */
+    @Test
+    public void testLocalBoxingEliminationOnTransition() {
+        assumeTrue(run.hasBoxingElimination());
+        assumeTrue(run.hasUncachedInterpreter());
+        /*
+         * @formatter:off
+         * def f():
+         *   i = 30L
+         *   x;
+         *   while 0L < i:
+         *     i--
+         *   x = 42L
+         *   return x
+         *
+         * @formatter:on
+         */
+        BasicInterpreter node = parseNode("localBoxingEliminationOnTransition", b -> {
+            b.beginRoot();
+            BytecodeLocal i = b.createLocal();
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(i);
+            b.emitLoadConstant(30L);
+            b.endStoreLocal();
+
+            b.beginWhile(); // trigger cached transition while i, x are live.
+            b.beginLess();
+            b.emitLoadConstant(0L);
+            b.emitLoadLocal(i);
+            b.endLess();
+
+            b.beginStoreLocal(i);
+            b.beginAddConstantOperation(-1L);
+            b.emitLoadLocal(i);
+            b.endAddConstantOperation();
+            b.endStoreLocal();
+            b.endWhile();
+
+            // though x is not live at the transition, it should still specialize to long
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(x);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.constant",
+                        "store.local",
+                        "load.constant",
+                        "load.local",
+                        "c.Less",
+                        "branch.false",
+                        "load.local",
+                        "c.AddConstantOperation",
+                        "store.local",
+                        "branch.backward",
+                        "load.constant",
+                        "store.local",
+                        "load.local",
+                        "return");
+
+        assertEquals(42L, node.getCallTarget().call());
+        assertTrue(node.getBytecodeNode().getTier() == BytecodeTier.CACHED);
+        // call again to stabilize profiles
+        assertEquals(42L, node.getCallTarget().call());
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.constant$Long",
+                        "store.local$Long$Long",
+                        "load.constant$Long",
+                        "load.local$Long$unboxed",
+                        "c.Less$Longs$unboxed",
+                        "branch.false$Boolean",
+                        "load.local$Long$unboxed",
+                        "c.AddConstantOperation$AddLongs$unboxed",
+                        "store.local$Long$Long",
+                        "branch.backward",
+                        "load.constant$Long",
+                        "store.local$Long$Long",
+                        "load.local$Long",
+                        "return");
+    }
+
+    /**
+     * Tests that transitioning from uncached to cached because of external invalidation correctly
+     * adapts cached local tags to the current variables in the frame.
+     */
+    @Test
+    public void testLocalBoxingEliminationOnExternalTransition() {
+        assumeTrue(run.hasBoxingElimination());
+        assumeTrue(run.hasUncachedInterpreter());
+        /*
+         * @formatter:off
+         * def f(recur):
+         *   i = 30L
+         *   if recur:
+         *     x = 4L;
+         *     f(false)                 // (1) call recursively
+         *     y = i + x + 8L;          // (4) detect invalidation and transition
+         *     return y
+         *   else:
+         *     while 0L < i:            // (2) transition to cached
+         *       i--
+         *     enableInstrumentation    // (3) invalidate bytecode
+         *
+         * @formatter:on
+         */
+        BasicInterpreter node = parseNode("localBoxingEliminationOnExternalTransition", b -> {
+            b.beginRoot();
+            BytecodeLocal i = b.createLocal();
+            b.beginStoreLocal(i);
+            b.emitLoadConstant(30L);
+            b.endStoreLocal();
+
+            b.beginIfThenElse();
+            b.emitLoadArgument(0);
+
+            b.beginBlock(); // case recur == true
+
+            BytecodeLocal x = b.createLocal();
+            BytecodeLocal y = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(4L);
+            b.endStoreLocal();
+
+            b.beginInvokeRecursive(); // (1)
+            b.emitLoadConstant(false);
+            b.endInvokeRecursive();
+
+            b.beginStoreLocal(y); // (4)
+            b.beginAdd();
+            b.emitLoadLocal(i);
+            b.beginAdd();
+            b.emitLoadLocal(x);
+            b.emitLoadConstant(8L);
+            b.endAdd();
+            b.endAdd();
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(y);
+            b.endReturn();
+
+            b.endBlock();
+
+            b.beginBlock(); // case recur == false
+
+            b.beginWhile(); // (2)
+            b.beginLess();
+            b.emitLoadConstant(0L);
+            b.emitLoadLocal(i);
+            b.endLess();
+
+            b.beginStoreLocal(i);
+            b.beginAddConstantOperation(-1L);
+            b.emitLoadLocal(i);
+            b.endAddConstantOperation();
+            b.endStoreLocal();
+            b.endWhile();
+
+            b.emitEnableIncrementValueInstrumentation(); // (3)
+
+            b.beginReturn();
+            b.emitLoadNull();
+            b.endReturn();
+
+            b.endBlock();
+
+            b.endIfThenElse();
+            b.endRoot();
+        });
+
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.constant",
+                        "store.local",
+                        "load.argument",
+                        "branch.false",
+                        "load.constant",
+                        "store.local",
+                        "load.constant",
+                        "create.variadic",
+                        "c.InvokeRecursive",
+                        "pop",
+                        "load.local",
+                        "load.local",
+                        "load.constant",
+                        "c.Add",
+                        "c.Add",
+                        "store.local",
+                        "load.local",
+                        "return",
+                        "load.constant",
+                        "load.local",
+                        "c.Less",
+                        "branch.false",
+                        "load.local",
+                        "c.AddConstantOperation",
+                        "store.local",
+                        "branch.backward",
+                        "c.EnableIncrementValueInstrumentation",
+                        "load.null",
+                        "return");
+
+        assertEquals(42L, node.getCallTarget().call(true));
+        assertTrue(node.getBytecodeNode().getTier() == BytecodeTier.CACHED);
+        // call again to stabilize profiles
+        assertEquals(42L, node.getCallTarget().call(true));
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.constant$Long",
+                        "store.local$Long$Long",
+                        "load.argument$Boolean",
+                        "branch.false$Boolean",
+                        "load.constant$Long",
+                        "store.local$Long$Long",
+                        "load.constant",
+                        "create.variadic",
+                        "c.InvokeRecursive",
+                        "pop$generic",
+                        "load.local$Long$unboxed",
+                        "load.local$Long$unboxed",
+                        "load.constant$Long",
+                        "c.Add$AddLongs$unboxed",
+                        "c.Add$AddLongs$unboxed",
+                        "store.local$Long$Long",
+                        "load.local$Long",
+                        "return",
+                        "load.constant$Long",
+                        "load.local$Long$unboxed",
+                        "c.Less$Longs$unboxed",
+                        "branch.false$Boolean",
+                        "load.local$Long$unboxed",
+                        "c.AddConstantOperation$AddLongs$unboxed",
+                        "store.local$Long$Long",
+                        "branch.backward",
+                        "c.EnableIncrementValueInstrumentation",
+                        "load.null",
+                        "return");
+    }
+
+    /**
+     * Tests that invalidating bytecodes on one node causes the node it transitioned from to be
+     * invalidated and properly transition on stack.
+     */
+    @Test
+    public void testOnStackTransition1() {
+        assumeTrue(run.hasUncachedInterpreter());
+        /*
+         * @formatter:off
+         * def f(recur):
+         *   x = 21L
+         *   incrementLocalInstrumentation
+         *   ... // repeat 100x
+         *   incrementLocalInstrumentation
+         *   if recur:
+         *     a = f(false)          // (1,5) call recursively, then detect invalidation and transition
+         *     return x + a          // (6) return without executing any instrumentations
+         *   else:
+         *     i = 16
+         *     while 0 < i:          // (2) transition to cached
+         *       i--;
+         *     enableInstrumentation // (3) invalidate bytecode
+         *     return x              // (4) return
+         *
+         * @formatter:on
+         */
+        BasicInterpreter root = parseNode("onStackTransition1", b -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(21L);
+            b.endStoreLocal();
+
+            for (int i = 0; i < 100; i++) {
+                b.emitIncrementLocal(x);
+            }
+
+            b.beginIfThenElse();
+            b.emitLoadArgument(0);
+
+            b.beginBlock(); // case recur == true
+
+            BytecodeLocal a = b.createLocal();
+            b.beginStoreLocal(a); // (1,5)
+            b.beginInvokeRecursive();
+            b.emitLoadConstant(false);
+            b.endInvokeRecursive();
+            b.endStoreLocal();
+
+            b.beginReturn(); // (6)
+            b.beginAdd();
+            b.emitLoadLocal(x);
+            b.emitLoadLocal(a);
+            b.endAdd();
+            b.endReturn();
+            b.endBlock();
+
+            b.beginBlock(); // case recur == false
+
+            BytecodeLocal i = b.createLocal("i", null);
+            b.beginStoreLocal(i);
+            b.emitLoadConstant(16L);
+            b.endStoreLocal();
+            b.beginWhile(); // (2)
+            b.beginLess();
+            b.emitLoadConstant(0L);
+            b.emitLoadLocal(i);
+            b.endLess();
+
+            b.beginStoreLocal(i);
+            b.beginAddConstantOperation(-1L);
+            b.emitLoadLocal(i);
+            b.endAddConstantOperation();
+            b.endStoreLocal();
+            b.endWhile();
+
+            b.emitEnableIncrementLocalInstrumentation(); // (3)
+            b.beginReturn(); // (4)
+            b.emitLoadLocal(x);
+            b.endReturn();
+            b.endBlock();
+            b.endIfThenElse();
+            b.endRoot();
+        });
+        assertEquals(42L, root.getCallTarget().call(true));
+        assertEquals(242L, root.getCallTarget().call(true));
+    }
+
+    /**
+     * Tests that invalidating bytecodes on one node causes the nodes it transitively transitioned
+     * from to be invalidated and properly transition on stack.
+     */
+    @Test
+    public void testOnStackTransition2() {
+        assumeTrue(run.hasUncachedInterpreter());
+        /*
+         * @formatter:off
+         * def f(arg):
+         *   x = 14L
+         *   incrementLocalInstrumentation
+         *   ... // repeat 100x
+         *   incrementLocalInstrumentation
+         *   if arg == 0:
+         *     return f(1) + x       // (1, 8) call recursively, return sum
+         *   elif arg == 1:
+         *     materializeSources    // (2) transition to sources
+         *     return f(2) + x       // (3, 7) call recursively, return sum
+         *   else:
+         *     i = 16
+         *     while 0 < i:          // (4) transition to cached
+         *       i--;
+         *     enableInstrumentation // (5) invalidate bytecode
+         *     return x              // (6) return
+         *
+         * @formatter:on
+         */
+        BasicInterpreter root = parseNode("onStackTransition2", b -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(14L);
+            b.endStoreLocal();
+
+            for (int i = 0; i < 100; i++) {
+                b.emitIncrementLocal(x);
+            }
+
+            b.beginIfThenElse();
+            b.beginLess();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(1L);
+            b.endLess();
+
+            b.beginBlock(); // case arg == 0
+            b.beginReturn(); // (1, 8)
+            b.beginAdd();
+            b.beginInvokeRecursive();
+            b.emitLoadConstant(1L);
+            b.endInvokeRecursive();
+            b.emitLoadLocal(x);
+            b.endAdd();
+            b.endReturn();
+            b.endBlock();
+
+            b.beginIfThenElse();
+            b.beginLess();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(2L);
+            b.endLess();
+
+            b.beginBlock(); // case arg == 1
+            b.emitMaterializeSources(); // (2)
+            b.beginReturn(); // (3, 7)
+            b.beginAdd();
+            b.beginInvokeRecursive();
+            b.emitLoadConstant(2L);
+            b.endInvokeRecursive();
+            b.emitLoadLocal(x);
+            b.endAdd();
+            b.endReturn();
+            b.endBlock();
+
+            b.beginBlock(); // case arg == 2
+            BytecodeLocal i = b.createLocal("i", null);
+            b.beginStoreLocal(i);
+            b.emitLoadConstant(16L);
+            b.endStoreLocal();
+
+            b.beginWhile(); // (4)
+            b.beginLess();
+            b.emitLoadConstant(0L);
+            b.emitLoadLocal(i);
+            b.endLess();
+
+            b.beginStoreLocal(i);
+            b.beginAddConstantOperation(-1L);
+            b.emitLoadLocal(i);
+            b.endAddConstantOperation();
+            b.endStoreLocal();
+            b.endWhile();
+            b.emitEnableIncrementLocalInstrumentation(); // (5)
+            b.beginReturn(); // (6)
+            b.emitLoadLocal(x);
+            b.endReturn();
+            b.endBlock();
+
+            b.endIfThenElse();
+            b.endIfThenElse();
+            b.endRoot();
+        });
+        assertEquals(42L, root.getCallTarget().call(0L));
+        assertEquals(342L, root.getCallTarget().call(0L));
+    }
+
+    /**
+     * Tests that invalidating bytecodes on one node causes the node it transitioned from and a node
+     * it transitioned into to be invalidated and properly transition on stack.
+     */
+    @Test
+    public void testOnStackTransition3() {
+        assumeTrue(run.hasUncachedInterpreter());
+        /*
+         * @formatter:off
+         * def f(arg):
+         *   x = 14L
+         *   incrementLocalInstrumentation
+         *   ... // repeat 100x
+         *   incrementLocalInstrumentation
+         *   if arg == 0:
+         *     return f(1) + x       // (1, 10) call recursively, return sum
+         *   elif arg == 1:
+         *     materializeSources    // (2) transition to sources
+         *     c = f(2)              // (3) call recursively
+         *     enableInstrumentation // (6) invalidate bytecode
+         *     return resume(c) + x  // (7, 9) resume and return
+         *   else:
+         *     i = 16
+         *     while 0 < i:          // (4) transition to cached
+         *       i--;
+         *     yield                 // (5) yield back to caller
+         *     return x              // (8) return
+         *
+         * @formatter:on
+         */
+        BasicInterpreter root = parseNode("onStackTransition3", b -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(14L);
+            b.endStoreLocal();
+
+            for (int i = 0; i < 100; i++) {
+                b.emitIncrementLocal(x);
+            }
+
+            b.beginIfThenElse();
+            b.beginLess();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(1L);
+            b.endLess();
+
+            b.beginBlock(); // case arg == 0
+            b.beginReturn(); // (1, 10)
+            b.beginAdd();
+            b.beginInvokeRecursive();
+            b.emitLoadConstant(1L);
+            b.endInvokeRecursive();
+            b.emitLoadLocal(x);
+            b.endAdd();
+            b.endReturn();
+            b.endBlock();
+
+            b.beginIfThenElse();
+            b.beginLess();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(2L);
+            b.endLess();
+
+            b.beginBlock(); // case arg == 1
+            b.emitMaterializeSources(); // (2)
+            BytecodeLocal c = b.createLocal();
+            b.beginStoreLocal(c); // (3)
+            b.beginInvokeRecursive();
+            b.emitLoadConstant(2L);
+            b.endInvokeRecursive();
+            b.endStoreLocal();
+
+            b.emitEnableIncrementLocalInstrumentation(); // (6)
+            b.beginReturn(); // (7, 9)
+            b.beginAdd();
+            b.beginContinue();
+            b.emitLoadLocal(c);
+            b.emitLoadNull();
+            b.endContinue();
+            b.emitLoadLocal(x);
+            b.endAdd();
+            b.endReturn();
+            b.endBlock();
+
+            b.beginBlock(); // case arg == 2
+            BytecodeLocal i = b.createLocal("i", null);
+            b.beginStoreLocal(i);
+            b.emitLoadConstant(16L);
+            b.endStoreLocal();
+
+            b.beginWhile(); // (4)
+            b.beginLess();
+            b.emitLoadConstant(0L);
+            b.emitLoadLocal(i);
+            b.endLess();
+
+            b.beginStoreLocal(i);
+            b.beginAddConstantOperation(-1L);
+            b.emitLoadLocal(i);
+            b.endAddConstantOperation();
+            b.endStoreLocal();
+            b.endWhile();
+
+            b.beginYield(); // (5)
+            b.emitLoadNull();
+            b.endYield();
+
+            b.beginReturn(); // (8)
+            b.emitLoadLocal(x);
+            b.endReturn();
+            b.endBlock();
+
+            b.endIfThenElse();
+            b.endIfThenElse();
+            b.endRoot();
+        });
+        assertEquals(42L, root.getCallTarget().call(0L));
+        assertEquals(342L, root.getCallTarget().call(0L));
+    }
+
     @Test
     public void testInvalidBciArgument() {
         // Check that BytecodeNode methods taking a bytecode index sanitize bad inputs.

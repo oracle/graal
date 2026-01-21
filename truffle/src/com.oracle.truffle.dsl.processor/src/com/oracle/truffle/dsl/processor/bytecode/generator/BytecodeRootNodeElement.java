@@ -193,7 +193,9 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     final StackPointerElement stackPointerElement = new StackPointerElement(this);
 
     CodeTypeElement configEncoder;
+    OldBytecodesBoxElement oldBytecodesBoxElement;
     AbstractBytecodeNodeElement abstractBytecodeNode;
+
     TagNodeElement tagNode;
     TagRootNodeElement tagRootNode;
     InstructionTracerAccessImplElement instructionTracerAccessImplElement;
@@ -264,7 +266,11 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
         this.add(bytecodeDescriptorElement);
 
+        if (model.isBytecodeUpdatable()) {
+            this.oldBytecodesBoxElement = this.add(new OldBytecodesBoxElement(this));
+        }
         this.abstractBytecodeNode = this.add(new AbstractBytecodeNodeElement(this));
+
         if (model.enableTagInstrumentation) {
             tagNode.lazyInit();
         }
@@ -497,8 +503,15 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         }
 
         if (model.isBytecodeUpdatable()) {
-            // we add this last so we do not pick up this field for constructors
-            abstractBytecodeNode.add(new CodeVariableElement(Set.of(VOLATILE), arrayOf(type(byte.class)), "oldBytecodes"));
+            /*
+             * When updating bytecode, we patch "invalidate" instructions in the old bytecode array.
+             * We still need access to the original instructions, so we store it to this field
+             * before invalidating. Since multiple bytecode nodes may share this bytecode array, the
+             * field is a shared box.
+             *
+             * This field is added late to exclude it from the constructor/update method params.
+             */
+            abstractBytecodeNode.add(new CodeVariableElement(Set.of(VOLATILE), oldBytecodesBoxElement.asType(), "oldBytecodesBox"));
         }
 
         /*
@@ -780,7 +793,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         b.lineComment("Bytecode or tier changed");
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
 
-        if (model.isBytecodeUpdatable() || model.hasYieldOperation()) {
+        if (model.needsTransition()) {
             b.declaration(abstractBytecodeNode.asType(), "oldBytecode", "bc");
             b.statement("bc = this.bytecode");
 
@@ -791,8 +804,11 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             }
             b.startCall("oldBytecode.transition");
             b.string("bc");
-            if (model.isBytecodeUpdatable()) {
+            if (model.isBytecodeUpdatable() || model.needsCachedTagsTransition()) {
                 b.string("state");
+            }
+            if (model.needsCachedTagsTransition()) {
+                b.string(localFrame());
             }
             if (model.hasYieldOperation()) {
                 b.string("continuationRootNode");
@@ -1346,10 +1362,6 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
     private CodeExecutableElement createTransitionToCached() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "transitionToCached");
-        if (model.enableUncachedInterpreter) {
-            ex.addParameter(new CodeVariableElement(types.Frame, "frame"));
-            ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
-        }
         CodeTreeBuilder b = ex.createBuilder();
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
         b.declaration(abstractBytecodeNode.asType(), "oldBytecode");
@@ -1362,21 +1374,12 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         }
         b.end(3);
 
-        if (model.enableUncachedInterpreter) {
-            b.startIf().string("bci > 0").end().startBlock();
-            b.lineComment("initialize local tags");
-            b.declaration(type(int.class), "localCount", "newBytecode.getLocalCount(bci)");
-            b.startFor().string("int localOffset = 0; localOffset < localCount; localOffset++").end().startBlock();
-            b.statement("newBytecode.setLocalValue(bci, frame, localOffset, newBytecode.getLocalValue(bci, frame, localOffset))");
-            b.end();
-            b.end();
-        }
-
         emitFence(b);
         b.startIf().string("oldBytecode == newBytecode").end().startBlock();
-        b.returnStatement();
+        b.statement("break");
         b.end();
         b.end().startDoWhile().startCall("!BYTECODE_UPDATER", "compareAndSet").string("this").string("oldBytecode").string("newBytecode").end().end();
+
         return ex;
     }
 
@@ -1406,7 +1409,10 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         b.end().end(); // call, call
         b.end(); // statement
 
-        b.startIf().string("bytecodes_ == null").end().startBlock();
+        b.startIf().string("bytecodes_ != null").end().startBlock();
+        b.lineComment("Ensure old bytecodes are published before the new bytecode node.");
+        b.statement("oldBytecode.publishOldBytecodes()");
+        b.end().startElseBlock();
         b.lineComment("When bytecode doesn't change, nodes are reused and should be re-adopted.");
         b.statement("newBytecode.adoptNodesAfterUpdate()");
         b.end();
@@ -1416,6 +1422,8 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
         if (model.isBytecodeUpdatable()) {
             b.startIf().string("bytecodes_ != null").end().startBlock();
+            b.lineComment("Ensure new bytecode node is published before invalidating the old bytecode.");
+            b.startStatement().startStaticCall(type(VarHandle.class), "storeStoreFence").end().end();
             b.startStatement().startCall("oldBytecode.invalidate");
             b.string("newBytecode");
             b.string("reason");
