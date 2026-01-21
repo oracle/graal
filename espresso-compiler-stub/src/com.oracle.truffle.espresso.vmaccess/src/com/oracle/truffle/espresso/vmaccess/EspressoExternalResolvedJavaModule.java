@@ -29,10 +29,7 @@ import java.util.Set;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 
-import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.Signature;
 
 final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
     private final EspressoExternalVMAccess access;
@@ -44,18 +41,9 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
         if (!"java.lang.Module".equals(moduleValue.getMetaObject().getMetaQualifiedName())) {
             throw new IllegalArgumentException("Constant has unexpected type " + moduleValue.getMetaObject().getMetaQualifiedName() + ": " + moduleValue);
         }
-        Providers providers = access.getProviders();
-
         this.access = access;
         this.moduleValue = moduleValue;
-
-        Signature getNameSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/String;");
-        ResolvedJavaMethod getName = access.java_lang_Module.findMethod("getName", getNameSignature);
-        if (!(getName instanceof EspressoExternalResolvedJavaMethod espressoMethod)) {
-            throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaMethod, got " + safeGetClass(getName));
-        }
-        Value nameValue = espressoMethod.getMirror().execute(moduleValue);
-        this.name = nameValue.asString();
+        this.name = access.java_lang_Module_getName.getMirror().execute(moduleValue).asString();
     }
 
     @Override

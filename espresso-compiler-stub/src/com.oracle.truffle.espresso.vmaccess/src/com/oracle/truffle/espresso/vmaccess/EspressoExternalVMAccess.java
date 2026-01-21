@@ -112,6 +112,7 @@ final class EspressoExternalVMAccess implements VMAccess {
     final EspressoExternalResolvedJavaMethod java_lang_Module_isExported_String_Module;
     final EspressoExternalResolvedJavaMethod java_lang_Module_isOpen_String;
     final EspressoExternalResolvedJavaMethod java_lang_Module_isOpen_String_Module;
+    final EspressoExternalResolvedJavaMethod java_lang_Module_getName;
     // j.l.module.ModuleDescriptor
     final EspressoExternalResolvedJavaMethod java_lang_module_ModuleDescriptor_isAutomatic;
     // j.l.NamedPackage
@@ -197,6 +198,9 @@ final class EspressoExternalVMAccess implements VMAccess {
         Signature isOpenStringModuleSignature = providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/String;Ljava/lang/Module;)Z");
         java_lang_Module_isOpen_String_Module = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("isOpen", isOpenStringModuleSignature);
 
+        Signature getNameSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/String;");
+        java_lang_Module_getName = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("getName", getNameSignature);
+
         ResolvedJavaType moduleDescriptorType = providers.getMetaAccess().lookupJavaType(java.lang.module.ModuleDescriptor.class);
         Signature isAutomaticSignature = providers.getMetaAccess().parseMethodDescriptor("()Z");
         java_lang_module_ModuleDescriptor_isAutomatic = (EspressoExternalResolvedJavaMethod) moduleDescriptorType.findMethod("isAutomatic", isAutomaticSignature);
@@ -223,6 +227,7 @@ final class EspressoExternalVMAccess implements VMAccess {
         JVMCIError.guarantee(java_lang_Module_isExported_String_Module != null, "Required method: Module.isExported(String, Module)");
         JVMCIError.guarantee(java_lang_Module_isOpen_String != null, "Required method: Module.isOpen(String)");
         JVMCIError.guarantee(java_lang_Module_isOpen_String_Module != null, "Required method: Module.isOpen(String, Module)");
+        JVMCIError.guarantee(java_lang_Module_getName != null, "Required method: Module.getName");
         JVMCIError.guarantee(java_lang_Package_getPackageInfo != null, "Required method: Package.getPackageInfo()");
         JVMCIError.guarantee(java_lang_NamedPackage_module != null, "Required field: NamedPackage.module");
     }
