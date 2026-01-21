@@ -149,6 +149,16 @@ public interface VMAccess {
 
     /**
      * Gets the {@link ResolvedJavaModule} of the given {@link ResolvedJavaType}.
+     *
+     * If {@code type.isArray()}, this method returns the {@link ResolvedJavaModule} for
+     * {@code type.getElementalType()}. for the element type. If this class represents a primitive
+     * type or void, then the {@link ResolvedJavaModule} object for the {@code java.base} module is
+     * returned.
+     *
+     * If this class is in an unnamed module then the {@linkplain ClassLoader#getUnnamedModule()
+     * unnamed module} of the class loader for {@code type} is returned.
+     *
+     * This method never returns {@code null}.
      */
     ResolvedJavaModule getModule(ResolvedJavaType type);
 
