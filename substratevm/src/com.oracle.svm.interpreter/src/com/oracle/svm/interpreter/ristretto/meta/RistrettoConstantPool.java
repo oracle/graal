@@ -90,11 +90,11 @@ public final class RistrettoConstantPool implements ConstantPool {
         JavaField javaField = interpreterConstantPool.lookupField(rawIndex, method, opcode);
         /*
          * A note on wrapping AOT fields into ristretto JVMCI API: When compiling dynamically loaded
-         * types with ristretto every interpreter type is a crema resolved type that is wrapped to a
-         * ristretto type. However, when interfacing with AOT types (in stamp intersection,
-         * optimizations etc) we need ristretto types that are compatible in class with each other.
-         * Thus, we wrap here all interpreter fields (also those that are not crema resolved -> AOT
-         * fields).
+         * types with ristretto every such interpreter type is a crema resolved type. All these
+         * cream resolved types are wrapped to ristretto types. However, when interfacing with AOT
+         * types (in stamp intersection, optimizations etc) we need ristretto types that are
+         * compatible (== have the same class) with each other. Thus, we wrap here all interpreter
+         * fields (also those that are not crema resolved, i.e., AOT fields).
          */
         if (javaField instanceof InterpreterResolvedJavaField iField) {
             return RistrettoField.create(iField);
@@ -147,8 +147,8 @@ public final class RistrettoConstantPool implements ConstantPool {
         Object retVal = interpreterConstantPool.lookupConstant(cpi, resolve);
         if (retVal == null) {
             /*
-             * If the interpreter has not yet resolved this constant. However, it is an allowed
-             * result to return null. The compiler will create an unresolved deopt for these cases.
+             * Return null if the interpreter has not yet resolved this constant. The compiler will
+             * create an unresolved deopt in that case.
              */
             return null;
         } else if (retVal instanceof JavaConstant) {

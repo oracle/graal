@@ -59,43 +59,9 @@ public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvid
             if (iField.isStatic()) {
                 receiver = iField.getDeclaringClass().getStaticStorage(kind.isPrimitive(), iField.getInstalledLayerNum());
             } else {
-                receiver = snippetReflectionProvider.asObject(declaringClass.getClazz(), tool.getReceiver());
+                receiver = snippetReflectionProvider.asObject(declaringClass.getJavaClass(), tool.getReceiver());
             }
-            JavaConstant c = null;
-            switch (kind) {
-                case Boolean:
-                    c = JavaConstant.forBoolean(InterpreterToVM.getFieldBoolean(receiver, iField));
-                    break;
-                case Byte:
-                    c = JavaConstant.forByte(InterpreterToVM.getFieldByte(receiver, iField));
-                    break;
-                case Short:
-                    c = JavaConstant.forShort(InterpreterToVM.getFieldShort(receiver, iField));
-                    break;
-                case Char:
-                    c = JavaConstant.forChar(InterpreterToVM.getFieldChar(receiver, iField));
-                    break;
-                case Int:
-                    c = JavaConstant.forInt(InterpreterToVM.getFieldInt(receiver, iField));
-                    break;
-                case Long:
-                    c = JavaConstant.forLong(InterpreterToVM.getFieldLong(receiver, iField));
-                    break;
-                case Float:
-                    c = JavaConstant.forFloat(InterpreterToVM.getFieldFloat(receiver, iField));
-                    break;
-                case Double:
-                    c = JavaConstant.forDouble(InterpreterToVM.getFieldDouble(receiver, iField));
-                    break;
-                case Object: {
-                    c = snippetReflectionProvider.forObject(InterpreterToVM.getFieldObject(receiver, iField));
-                    break;
-                }
-                default: {
-                    throw GraalError.shouldNotReachHere("Unknown kind: " + kind);
-                }
-            }
-            GraalError.guarantee(c != null, "Cannot have null after preceding case distinction");
+            JavaConstant c = readConstant(kind, receiver, iField);
             if (isFinalFieldValueConstant(iField, c, tool)) {
                 return tool.foldConstant(c);
             } else {
@@ -103,6 +69,21 @@ public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvid
             }
         }
         return super.readConstantField(javaField, tool);
+    }
+
+    private JavaConstant readConstant(JavaKind kind, Object receiver, InterpreterResolvedJavaField iField) {
+        return switch (kind) {
+            case Boolean -> JavaConstant.forBoolean(InterpreterToVM.getFieldBoolean(receiver, iField));
+            case Byte -> JavaConstant.forByte(InterpreterToVM.getFieldByte(receiver, iField));
+            case Short -> JavaConstant.forShort(InterpreterToVM.getFieldShort(receiver, iField));
+            case Char -> JavaConstant.forChar(InterpreterToVM.getFieldChar(receiver, iField));
+            case Int -> JavaConstant.forInt(InterpreterToVM.getFieldInt(receiver, iField));
+            case Long -> JavaConstant.forLong(InterpreterToVM.getFieldLong(receiver, iField));
+            case Float -> JavaConstant.forFloat(InterpreterToVM.getFieldFloat(receiver, iField));
+            case Double -> JavaConstant.forDouble(InterpreterToVM.getFieldDouble(receiver, iField));
+            case Object -> snippetReflectionProvider.forObject(InterpreterToVM.getFieldObject(receiver, iField));
+            default -> throw GraalError.shouldNotReachHere("Unknown kind: " + kind);
+        };
     }
 
     private static boolean isHolderInitialized(InterpreterResolvedJavaField iField) {

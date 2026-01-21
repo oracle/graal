@@ -31,7 +31,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class RistrettoGraphBuilderPhase extends GraphBuilderPhase {
@@ -56,8 +55,4 @@ public class RistrettoGraphBuilderPhase extends GraphBuilderPhase {
         };
     }
 
-    @Override
-    protected void run(StructuredGraph graph, HighTierContext context) {
-        super.run(graph, context);
-    }
 }
