@@ -94,6 +94,7 @@ final class EspressoExternalVMAccess implements VMAccess {
     private final JavaConstant unsafe;
     private JavaConstant systemClassLoader;
 
+    // Checkstyle: stop field name check
     // j.l.Object
     private final EspressoExternalResolvedInstanceType java_lang_Object;
     private final ResolvedJavaMethod java_lang_Object_toString;
@@ -124,6 +125,7 @@ final class EspressoExternalVMAccess implements VMAccess {
     private final ResolvedJavaMethod java_security_CodeSource_getLocation;
     // jdk.internal.misc.Unsafe
     private final ResolvedJavaMethod jdk_internal_misc_Unsafe_allocateInstance_Class;
+    // Checkstyle: resume field name check
 
     @SuppressWarnings("this-escape")
     EspressoExternalVMAccess(Context context) {
