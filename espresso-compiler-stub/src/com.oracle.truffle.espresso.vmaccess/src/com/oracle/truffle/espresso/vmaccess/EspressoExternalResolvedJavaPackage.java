@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.vmaccess;
 
-
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -64,9 +63,8 @@ final class EspressoExternalResolvedJavaPackage implements ResolvedJavaPackage {
     @Override
     public EspressoExternalResolvedJavaModule module() {
         Value moduleValue = access.java_lang_NamedPackage_module.readValue(packageValue);
-        return new  EspressoExternalResolvedJavaModule(access, moduleValue);
+        return new EspressoExternalResolvedJavaModule(access, moduleValue);
     }
-
 
     @Override
     public <T> T getDeclaredAnnotationInfo(Function<AnnotationsInfo, T> parser) {
@@ -92,8 +90,8 @@ final class EspressoExternalResolvedJavaPackage implements ResolvedJavaPackage {
         if (packageInfoConstant.isNull()) {
             return null;
         }
-        return (EspressoExternalResolvedInstanceType) access.getProviders().getConstantReflection()
-                        .asJavaType(EspressoExternalConstantReflectionProvider.asObjectConstant(packageInfoConstant, access));
+        return (EspressoExternalResolvedInstanceType) access.getProviders().getConstantReflection().asJavaType(
+                        EspressoExternalConstantReflectionProvider.asObjectConstant(packageInfoConstant, access));
     }
 
     @Override
