@@ -398,8 +398,4 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
     }
 
     // endregion Unimplemented methods
-
-    public Class<?> getClazz() {
-        return clazz;
-    }
 }
