@@ -102,6 +102,7 @@ import com.oracle.svm.driver.launcher.ContainerSupport;
 import com.oracle.svm.driver.metainf.MetaInfFileType;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfResourceProcessor;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
+import com.oracle.svm.hosted.CommonPoolUncaughtExceptionHandler;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.hosted.util.JDKArgsUtils;
@@ -119,6 +120,7 @@ public class NativeImage {
 
     private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getName();
     private static final String CUSTOM_COMMON_FORK_JOIN_POOL_THREAD_FACTORY = NativeImageSystemClassLoader.NativeImageForkJoinWorkerThreadFactory.class.getName();
+    private static final String CUSTOM_COMMON_FORK_JOIN_POOL_EXCEPTION_HANDLER = CommonPoolUncaughtExceptionHandler.class.getName();
 
     static final String platform = getPlatform();
 
@@ -858,6 +860,7 @@ public class NativeImage {
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
         addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
+        addImageBuilderJavaArgs("-Djava.util.concurrent.ForkJoinPool.common.exceptionHandler=" + CUSTOM_COMMON_FORK_JOIN_POOL_EXCEPTION_HANDLER);
         addImageBuilderJavaArgs("-Djava.util.concurrent.ForkJoinPool.common.threadFactory=" + CUSTOM_COMMON_FORK_JOIN_POOL_THREAD_FACTORY);
 
         addImageBuilderJavaArgs("-D" + ImageInfo.PROPERTY_IMAGE_CODE_KEY + "=" + ImageInfo.PROPERTY_IMAGE_CODE_VALUE_BUILDTIME);
