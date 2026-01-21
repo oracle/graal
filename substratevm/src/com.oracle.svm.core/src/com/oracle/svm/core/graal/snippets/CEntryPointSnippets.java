@@ -49,6 +49,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.IsolateArgumentParser;
@@ -127,7 +128,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.internal.misc.Unsafe;
-import org.graalvm.word.impl.Word;
 
 /**
  * Snippets for calling from C to Java. See {@link CEntryPointActions} and
@@ -179,9 +179,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, IsolateThread thread);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Throwable exception);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
@@ -192,6 +189,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native boolean runtimeCallIsAttached(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate);
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    public static native void runtimeCallVerifyThread(@ConstantNodeParameter ForeignCallDescriptor descriptor, IsolateThread thread, boolean foundInThreadList);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native void runtimeCallFailFatally(@ConstantNodeParameter ForeignCallDescriptor descriptor, int code, CCharPointer message);
@@ -566,6 +566,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return attachUnattachedThread(isolate, startedByIsolate, inCrashHandler);
         } else {
             writeCurrentVMThread(thread);
+            if (runtimeAssertionsEnabled() || SubstrateOptions.CheckIsolateThreadAtEntry.getValue()) {
+                verifyIsolateThread(thread, true);
+            }
+
             if (ensureJavaThread && !PlatformThreads.isCurrentAssigned()) {
                 throw VMError.shouldNotReachHere("thread was already attached but does not have a Thread object and we would assign one");
             }
@@ -792,7 +796,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
              * Verification must happen before the thread state transition. It locks the raw
              * THREAD_MUTEX, so the thread must still be invisible to the safepoint manager.
              */
-            runtimeCall(VERIFY_ISOLATE_THREAD, thread);
+            runtimeCallVerifyThread(VERIFY_ISOLATE_THREAD, thread, false);
         }
         ThreadStatusTransition.fromNativeToJava(false);
         return CEntryPointErrors.NO_ERROR;
@@ -810,13 +814,34 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
      */
     @Uninterruptible(reason = "Thread state not set up yet")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static int verifyIsolateThread(IsolateThread thread) {
+    private static void verifyIsolateThread(IsolateThread thread, boolean foundInThreadList) {
         VMError.guarantee(CurrentIsolate.getCurrentThread() == thread, "Threads must match for the call below");
-        if (!VMThreads.singleton().verifyIsCurrentThread(thread) || !VMThreads.isAttached(thread)) {
-            throw VMError.shouldNotReachHere("A call from native code to Java code provided the wrong JNI environment or the wrong IsolateThread. " +
-                            "The JNI environment / IsolateThread is a thread-local data structure and must not be shared between threads.");
+        if (!VMThreads.singleton().verifyIsCurrentThread(thread)) {
+            if (foundInThreadList) {
+                /*-
+                 * The IsolateThread that we found in the thread list doesn't belong to the current
+                 * thread. This can for example happen in the following scenario:
+                 * - thread A exits while it is still attached to isolate X
+                 * - thread B starts after thread A already exited
+                 * - thread B reuses the OS thread identifier of thread A
+                 * - thread B attaches to isolate X
+                 * - thread B finds the IsolateThread of thread A (matching OS thread identifier)
+                 */
+                throw VMError.shouldNotReachHere("Mismatch between the current OS thread and its cached IsolateThread. " +
+                                "This error can occur if a thread terminated while it was still attached to an isolate. " +
+                                "Please ensure that threads detach from all isolates before they terminate.");
+            } else {
+                throw VMError.shouldNotReachHere("A call from native code to Java code provided a JNI environment or IsolateThread that is either corrupt or belongs to a different OS thread. " +
+                                "The JNI environment / IsolateThread is a thread-local data structure and must not be shared between threads.");
+            }
+        } else if (!VMThreads.isAttached(thread)) {
+            if (foundInThreadList) {
+                throw VMError.shouldNotReachHere("Found a detached thread in the thread list.");
+            } else {
+                throw VMError.shouldNotReachHere("A call from native code to Java code provided a JNI environment or IsolateThread that is either corrupt or belongs to a detached thread. " +
+                                "The JNI environment / IsolateThread is a thread-local data structure and must not be shared between threads.");
+            }
         }
-        return CEntryPointErrors.NO_ERROR;
     }
 
     @Snippet(allowMissingProbabilities = true)

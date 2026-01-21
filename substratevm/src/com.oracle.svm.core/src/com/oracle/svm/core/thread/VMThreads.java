@@ -655,10 +655,15 @@ public abstract class VMThreads {
         return nextThread(thread) != thread;
     }
 
+    /**
+     * Verify that the thread's OS information matches the information that is cached in the
+     * {@link IsolateThread}.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean verifyIsCurrentThread(IsolateThread thread) {
+        OSThreadHandle osThreadHandle = getCurrentOSThreadHandle();
         OSThreadId osThreadId = getCurrentOSThreadId();
-        return OSThreadIdTL.get(thread).equal(osThreadId);
+        return OSThreadHandleTL.get(thread) == osThreadHandle && OSThreadIdTL.get(thread) == osThreadId;
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
