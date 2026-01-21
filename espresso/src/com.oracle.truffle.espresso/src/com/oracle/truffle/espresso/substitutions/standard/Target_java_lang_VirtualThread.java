@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.espresso.substitutions.standard;
 
+import com.oracle.truffle.espresso.libs.EspressoLibsFilter;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Substitution;
-import com.oracle.truffle.espresso.substitutions.libs.EspressoLibsFilter;
 
 @EspressoSubstitutions
 public final class Target_java_lang_VirtualThread {
