@@ -157,11 +157,13 @@ public interface InternalResource {
         private final Class<? extends InternalResource> resourceClass;
         private final Module owner;
         private final BooleanSupplier contextPreinitializationCheck;
+        private final boolean forNativeImageBuild;
 
-        Env(InternalResource resource, BooleanSupplier contextPreinitializationCheck) {
+        Env(InternalResource resource, BooleanSupplier contextPreinitializationCheck, boolean forNativeImageBuild) {
             this.resourceClass = resource.getClass();
             this.owner = resourceClass.getModule();
             this.contextPreinitializationCheck = Objects.requireNonNull(contextPreinitializationCheck, "ContextPreinitializationCheck  must be non-null.");
+            this.forNativeImageBuild = forNativeImageBuild;
         }
 
         /**
@@ -179,9 +181,8 @@ public interface InternalResource {
          *
          * @since 23.1
          */
-        @SuppressWarnings("static-method")
         public boolean inNativeImageBuild() {
-            return ImageInfo.inImageBuildtimeCode();
+            return forNativeImageBuild;
         }
 
         /**

@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -106,7 +107,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     APIOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
-        if (NativeImage.IS_AOT) {
+        if (ImageInfo.inImageRuntimeCode()) {
             APIOptionSupport support = ImageSingletons.lookup(APIOptionSupport.class);
             groupInfos = support.groupInfos();
             pathOptions = support.pathOptions();

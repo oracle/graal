@@ -42,7 +42,9 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TimerTask;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
@@ -113,7 +115,7 @@ public class NativeImageGeneratorRunner {
         var ueh = ForkJoinPool.commonPool().getUncaughtExceptionHandler();
         if (!(ueh instanceof CommonPoolUncaughtExceptionHandler)) {
             throw VMError.shouldNotReachHere("Unable to install " + CommonPoolUncaughtExceptionHandler.class.getName() +
-                            " via java.util.concurrent.ForkJoinPool.commonPool.exceptionHandler system property");
+                            " via java.util.concurrent.ForkJoinPool.common.exceptionHandler system property");
         }
 
         if (providers.isEmpty()) {
@@ -361,7 +363,39 @@ public class NativeImageGeneratorRunner {
          */
         NativeImageOptions.setCommonPoolParallelism(nativeImageClassLoaderSupport.getParsedHostedOptions());
 
+        checkCommonPool(nativeImageClassLoader);
+
         return new ImageClassLoader(NativeImageGenerator.getTargetPlatform(nativeImageClassLoader), nativeImageClassLoaderSupport, vmAccess);
+    }
+
+    /**
+     * Check that tasks executing in the {@linkplain ForkJoinPool#commonPool() common fork-join
+     * pool} see the expected class loader as {@linkplain Thread#getContextClassLoader context class
+     * loader}.
+     */
+    private static void checkCommonPool(ClassLoader expectedLoader) {
+        Runnable check = () -> {
+            ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+            VMError.guarantee(contextClassLoader == expectedLoader,
+                            "Threads of the common fork-join pool don't see the expected context class loader. " +
+                                            "Expected %s got %s. %n" +
+                                            "To fix this error add -Djava.util.concurrent.ForkJoinPool.common.threadFactory=%s",
+                            expectedLoader, contextClassLoader, NativeImageSystemClassLoader.NativeImageForkJoinWorkerThreadFactory.class.getName());
+        };
+        int parallelism = ForkJoinPool.commonPool().getParallelism();
+        List<ForkJoinTask<?>> tasks = new ArrayList<>(parallelism);
+        for (int i = 0; i < parallelism; i++) {
+            tasks.add(ForkJoinPool.commonPool().submit(check));
+        }
+        try {
+            for (ForkJoinTask<?> task : tasks) {
+                task.get();
+            }
+        } catch (ExecutionException e) {
+            throw VMError.shouldNotReachHere(e.getCause());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     public static List<String> extractDriverArguments(List<String> args) {

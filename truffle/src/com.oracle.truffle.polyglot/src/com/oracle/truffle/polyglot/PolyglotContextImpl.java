@@ -3954,7 +3954,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     private static boolean overridesPatchContext(String languageId) {
         if (TruffleOptions.AOT) {
-            return LanguageCache.overridesPathContext(languageId);
+            return LanguageCache.overridesPatchContext(languageId);
         } else {
             // Used by context pre-initialization tests on HotSpot
             LanguageCache cache = LanguageCache.languages().get(languageId);

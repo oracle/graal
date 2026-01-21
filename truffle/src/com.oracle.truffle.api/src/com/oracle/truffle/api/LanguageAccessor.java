@@ -588,8 +588,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public InternalResource.Env createInternalResourceEnv(InternalResource resource, BooleanSupplier contextPreinitializationCheck) {
-            return new InternalResource.Env(resource, contextPreinitializationCheck);
+        public InternalResource.Env createInternalResourceEnv(InternalResource resource, BooleanSupplier contextPreinitializationCheck, boolean forNativeImageBuild) {
+            return new InternalResource.Env(resource, contextPreinitializationCheck, forNativeImageBuild);
         }
     }
 

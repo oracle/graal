@@ -43,6 +43,8 @@ package com.oracle.truffle.api;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
+import org.graalvm.nativeimage.ImageInfo;
+
 /**
  * Class containing general Truffle options.
  *
@@ -120,7 +122,7 @@ public final class TruffleOptions {
 
             @Override
             public Void run() {
-                aot = Boolean.getBoolean("com.oracle.graalvm.isaot");
+                aot = ImageInfo.inImageCode();
                 traceRewrites = Boolean.getBoolean("truffle.TraceRewrites");
                 detailedRewriteReasons = Boolean.getBoolean("truffle.DetailedRewriteReasons");
                 traceRewritesFilterClass = System.getProperty("truffle.TraceRewritesFilterClass");
