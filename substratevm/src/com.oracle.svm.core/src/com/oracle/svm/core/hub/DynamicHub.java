@@ -78,7 +78,6 @@ import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -86,6 +85,7 @@ import java.util.StringJoiner;
 import java.util.function.BiFunction;
 import java.util.function.IntFunction;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -1688,11 +1688,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     private RecordComponent[] getRecordComponents0() {
         checkClassFlag(ALL_RECORD_COMPONENTS_FLAG, "getRecordComponents");
-        int layerNum = 0;
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            for (var singleton : LayeredReflectionMetadataSingleton.singletons()) {
-                layerNum++;
-                ImageReflectionMetadata reflectionMetadata = singleton.getReflectionMetadata(this);
+            LayeredReflectionMetadataSingleton[] singletons = LayeredReflectionMetadataSingleton.singletons();
+            for (int layerNum = singletons.length - 1; layerNum >= 0; --layerNum) {
+                ImageReflectionMetadata reflectionMetadata = singletons[layerNum].getReflectionMetadata(this);
                 if (reflectionMetadata != null && reflectionMetadata.recordComponentsEncodingIndex != NO_DATA) {
                     return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseRecordComponents(this, reflectionMetadata.recordComponentsEncodingIndex, layerNum);
                 }
@@ -1703,7 +1702,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             /* See ReflectionDataBuilder.buildRecordComponents() for details. */
             throw recordsNotAvailable(this);
         }
-        return reflectionMetadata().getRecordComponents(this, layerNum);
+        return reflectionMetadata().getRecordComponents(this, 0);
     }
 
     static RuntimeException recordsNotAvailable(DynamicHub declaringClass) {
@@ -2481,12 +2480,13 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     private <T> T[] getElements(BiFunction<ReflectionMetadata, Integer, T[]> elementsAccessor, IntFunction<T[]> generator) {
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            Collection<T> elements = new ArrayList<>();
+            EconomicSet<T> elements = EconomicSet.create();
             var layeredReflectionMetadata = LayeredReflectionMetadataSingleton.singletons();
-            for (int layerNum = 0; layerNum < layeredReflectionMetadata.length; layerNum++) {
-                Collections.addAll(elements, elementsAccessor.apply(layeredReflectionMetadata[layerNum].getReflectionMetadata(this), layerNum));
+            for (int layerNum = layeredReflectionMetadata.length - 1; layerNum >= 0; layerNum--) {
+                T[] layerElements = elementsAccessor.apply(layeredReflectionMetadata[layerNum].getReflectionMetadata(this), layerNum);
+                elements.addAll(Arrays.asList(layerElements));
             }
-            return elements.toArray(generator);
+            return elements.toArray(generator.apply(elements.size()));
         } else {
             return elementsAccessor.apply(reflectionMetadata(), 0);
         }

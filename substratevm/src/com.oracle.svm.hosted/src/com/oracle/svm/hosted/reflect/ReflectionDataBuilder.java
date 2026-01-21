@@ -458,7 +458,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
         AnalysisType declaringType = analysisMethod.getDeclaringClass();
 
-        if (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isMethodRegistered(analysisMethod)) {
+        if (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isMethodRegistered(analysisMethod, queriedOnly)) {
             /* GR-66387: The runtime condition should be combined across layers. */
             return;
         }
@@ -639,7 +639,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         AnalysisField analysisField = metaAccess.lookupJavaField(reflectField);
         AnalysisType declaringClass = analysisField.getDeclaringClass();
 
-        if (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isFieldRegistered(analysisField)) {
+        if (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isFieldRegistered(analysisField, queriedOnly)) {
             /* GR-66387: The runtime condition should be combined across layers. */
             return;
         }
@@ -1498,20 +1498,22 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         public static final String REFLECTION_DATA_BUILDER_CLASSES = REFLECTION_DATA_BUILDER + " classes";
         /**
          * The methods registered for reflection in the previous layers. The key of the map is the
-         * id of the declaring type and the set contains the method ids.
+         * id of the declaring type and the value is a map from method ids to a boolean determining
+         * if the metadata is complete.
          */
-        private final Map<Integer, Set<Integer>> previousLayerRegisteredMethods;
+        private final Map<Integer, Map<Integer, Boolean>> previousLayerRegisteredMethods;
         /**
          * The fields registered for reflection in the previous layers. The key of the map is the id
-         * of the declaring type and the set contains the field ids.
+         * of the declaring type and the value is a map from field ids to a boolean determining if
+         * the metadata is complete.
          */
-        private final Map<Integer, Set<Integer>> previousLayerRegisteredFields;
+        private final Map<Integer, Map<Integer, Boolean>> previousLayerRegisteredFields;
 
         public LayeredReflectionDataBuilder() {
             this(Map.of(), Map.of());
         }
 
-        private LayeredReflectionDataBuilder(Map<Integer, Set<Integer>> previousLayerRegisteredMethods, Map<Integer, Set<Integer>> previousLayerRegisteredFields) {
+        private LayeredReflectionDataBuilder(Map<Integer, Map<Integer, Boolean>> previousLayerRegisteredMethods, Map<Integer, Map<Integer, Boolean>> previousLayerRegisteredFields) {
             this.previousLayerRegisteredMethods = previousLayerRegisteredMethods;
             this.previousLayerRegisteredFields = previousLayerRegisteredFields;
         }
@@ -1520,18 +1522,18 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return ImageSingletons.lookup(LayeredReflectionDataBuilder.class);
         }
 
-        public boolean isMethodRegistered(AnalysisMethod analysisMethod) {
-            return isElementRegistered(previousLayerRegisteredMethods, analysisMethod.getDeclaringClass(), analysisMethod.getId());
+        public boolean isMethodRegistered(AnalysisMethod analysisMethod, boolean queriedOnly) {
+            return isElementRegistered(previousLayerRegisteredMethods, analysisMethod.getDeclaringClass(), analysisMethod.getId(), queriedOnly);
         }
 
-        public boolean isFieldRegistered(AnalysisField analysisField) {
-            return isElementRegistered(previousLayerRegisteredFields, analysisField.getDeclaringClass(), analysisField.getId());
+        public boolean isFieldRegistered(AnalysisField analysisField, boolean queriedOnly) {
+            return isElementRegistered(previousLayerRegisteredFields, analysisField.getDeclaringClass(), analysisField.getId(), queriedOnly);
         }
 
-        private static boolean isElementRegistered(Map<Integer, Set<Integer>> previousLayerRegisteredElements, AnalysisType declaringClass, int elementId) {
-            Set<Integer> previousLayerRegisteredElementIds = previousLayerRegisteredElements.get(declaringClass.getId());
+        private static boolean isElementRegistered(Map<Integer, Map<Integer, Boolean>> previousLayerRegisteredElements, AnalysisType declaringClass, int elementId, boolean queriedOnly) {
+            Map<Integer, Boolean> previousLayerRegisteredElementIds = previousLayerRegisteredElements.get(declaringClass.getId());
             if (declaringClass.isInSharedLayer() && previousLayerRegisteredElementIds != null) {
-                return previousLayerRegisteredElementIds.contains(elementId);
+                return previousLayerRegisteredElementIds.containsKey(elementId) && (queriedOnly || !previousLayerRegisteredElementIds.get(elementId));
             }
             return false;
         }
@@ -1549,11 +1551,19 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             @Override
             public SingletonTrait getLayeredCallbacksTrait() {
                 return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredReflectionDataBuilder>() {
-                    private static <T, U> void persistRegisteredElements(ImageSingletonWriter writer, Map<AnalysisType, Map<T, U>> registeredElements, Function<T, Integer> getId, String element) {
+                    private static <T, U extends AnnotatedElement> void persistRegisteredElements(ImageSingletonWriter writer,
+                                    Map<AnalysisType, Map<T, RegisteredMemberData<U>>> registeredElements, Function<T, Integer> getId, String element) {
                         List<Integer> classes = new ArrayList<>();
                         for (var entry : registeredElements.entrySet()) {
                             classes.add(entry.getKey().getId());
-                            writer.writeIntList(getElementKeyName(element, entry.getKey().getId()), entry.getValue().keySet().stream().map(getId).toList());
+                            List<Integer> keys = new ArrayList<>();
+                            List<Boolean> values = new ArrayList<>();
+                            for (var innerEntry : entry.getValue().entrySet()) {
+                                keys.add(getId.apply(innerEntry.getKey()));
+                                values.add(innerEntry.getValue().queriedOnly());
+                            }
+                            writer.writeIntList(getElementKeyName(element, entry.getKey().getId()) + "Keys", keys);
+                            writer.writeBoolList(getElementKeyName(element, entry.getKey().getId()) + "Values", values);
                         }
                         writer.writeIntList(getClassesKeyName(element), classes);
                     }
@@ -1575,12 +1585,17 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
             static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredReflectionDataBuilder> {
 
-                private static Map<Integer, Set<Integer>> loadRegisteredElements(ImageSingletonLoader loader, String element) {
-                    Map<Integer, Set<Integer>> previousLayerRegisteredElements = new HashMap<>();
+                private static Map<Integer, Map<Integer, Boolean>> loadRegisteredElements(ImageSingletonLoader loader, String element) {
+                    Map<Integer, Map<Integer, Boolean>> previousLayerRegisteredElements = new HashMap<>();
                     var classes = loader.readIntList(getClassesKeyName(element));
                     for (int key : classes) {
-                        var elements = loader.readIntList(getElementKeyName(element, key)).stream().collect(Collectors.toUnmodifiableSet());
-                        previousLayerRegisteredElements.put(key, elements);
+                        var keys = loader.readIntList(getElementKeyName(element, key) + "Keys");
+                        var values = loader.readBoolList(getElementKeyName(element, key) + "Values");
+                        Map<Integer, Boolean> map = new HashMap<>();
+                        for (int i = 0; i < keys.size(); ++i) {
+                            map.put(keys.get(i), values.get(i));
+                        }
+                        previousLayerRegisteredElements.put(key, Collections.unmodifiableMap(map));
                     }
                     return Collections.unmodifiableMap(previousLayerRegisteredElements);
                 }
