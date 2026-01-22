@@ -26,6 +26,8 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -83,8 +85,15 @@ public class TestJfrStreamingCount extends JfrStreamingTest {
         };
         Stressor.execute(THREADS, eventEmitter);
 
-        waitUntilTrue(() -> emittedEventsPerType.get() == EXPECTED_EVENTS_PER_TYPE);
-        waitUntilTrue(() -> classEvents.get() == EXPECTED_EVENTS_PER_TYPE && integerEvents.get() == EXPECTED_EVENTS_PER_TYPE && stringEvents.get() == EXPECTED_EVENTS_PER_TYPE);
+        waitUntilTrue(() -> emittedEventsPerType.get() >= EXPECTED_EVENTS_PER_TYPE);
+        waitUntilTrue(() -> classEvents.get() >= EXPECTED_EVENTS_PER_TYPE);
+        waitUntilTrue(() -> integerEvents.get() >= EXPECTED_EVENTS_PER_TYPE);
+        waitUntilTrue(() -> stringEvents.get() >= EXPECTED_EVENTS_PER_TYPE);
+
+        assertEquals(EXPECTED_EVENTS_PER_TYPE, emittedEventsPerType.get());
+        assertEquals(EXPECTED_EVENTS_PER_TYPE, classEvents.get());
+        assertEquals(EXPECTED_EVENTS_PER_TYPE, integerEvents.get());
+        assertEquals(EXPECTED_EVENTS_PER_TYPE, stringEvents.get());
 
         stopStream(stream, TestJfrStreamingCount::validateEvents);
     }
