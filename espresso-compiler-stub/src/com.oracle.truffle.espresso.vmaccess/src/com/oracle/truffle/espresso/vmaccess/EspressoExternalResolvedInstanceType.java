@@ -363,7 +363,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
 
     @Override
     protected int getVtableLength() {
-        throw JVMCIError.unimplemented();
+        return access.invokeJVMCIHelper("getVTableLength", getMetaObject()).asInt();
     }
 
     @Override

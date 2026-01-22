@@ -116,6 +116,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.HAS_SIMPLE_BINARY_NAME,
                         InvokeMember.GET_TYPE_FOR_STATIC_BASE,
                         InvokeMember.IS_RECORD,
+                        InvokeMember.GET_VTABLE_LENGTH,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -172,6 +173,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String HAS_SIMPLE_BINARY_NAME = "hasSimpleBinaryName";
         static final String GET_TYPE_FOR_STATIC_BASE = "getTypeForStaticBase";
         static final String IS_RECORD = "isRecord";
+        static final String GET_VTABLE_LENGTH = "getVTableLength";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -898,6 +900,16 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             assert receiver != null;
             ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
             return klass.isRecord();
+        }
+
+        @Specialization(guards = "GET_VTABLE_LENGTH.equals(member)")
+        static int getVTableLength(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
+            return klass.getVTable().length;
         }
 
         @Fallback
