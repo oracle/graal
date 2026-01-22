@@ -44,7 +44,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
@@ -80,6 +79,7 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.JVMCIFeatureAccess;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
@@ -105,8 +105,8 @@ import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.dynamicaccess.JVMCIJNIAccess;
@@ -446,6 +446,16 @@ public class FeatureImpl {
             });
         }
 
+        @Override
+        public void registerBuildTimeBootstrapIndy(ResolvedJavaMethod method) {
+            BootstrapMethodConfiguration.singleton().addBuildTimeIndy(method);
+        }
+
+        @Override
+        public void registerBuildTimeBootstrapCondy(ResolvedJavaMethod method) {
+            BootstrapMethodConfiguration.singleton().addBuildTimeCondy(method);
+        }
+
         /**
          * Register an object replacer which may return an ImageHeapConstant. Note only one replacer
          * can be triggered for a given object; otherwise an error will be thrown. Too, if the
@@ -515,27 +525,13 @@ public class FeatureImpl {
             getHostVM().registerClassReachabilityListener(listener);
         }
 
-        /**
-         * Registers a method that is allowed to be executed at build time if called as the
-         * bootstrap method for an invokedynamic, in which case each call site outputted will be
-         * constant-folded. Other bootstrap methods will be executed at run time by default,
-         * creating the call site at run time.
-         *
-         * @since 25.1
-         */
-        public void registerBuildTimeIndyIncludeList(Executable method) {
+        @Override
+        public void registerBuildTimeBootstrapIndy(Executable method) {
             BootstrapMethodConfiguration.singleton().addBuildTimeIndy(getUniverse().getOriginalMetaAccess().lookupJavaMethod(method));
         }
 
-        /**
-         * Registers a method that is allowed to be executed at build time if called as the
-         * bootstrap method for a constantdynamic, in which case each call site outputted will be
-         * constant-folded. Other bootstrap methods will be executed at run time by default,
-         * creating the call site at run time.
-         *
-         * @since 25.1
-         */
-        public void registerBuildTimeCondyIncludeList(Executable method) {
+        @Override
+        public void registerBuildTimeBootstrapCondy(Executable method) {
             BootstrapMethodConfiguration.singleton().addBuildTimeCondy(getUniverse().getOriginalMetaAccess().lookupJavaMethod(method));
         }
 

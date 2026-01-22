@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 25.4.4
+* GR-72910: Added `Feature.DuringSetupAccess#registerBuildTimeBootstrapIndy` and `Feature.DuringSetupAccess#registerBuildTimeBootstrapCondy`, allowing frameworks to register invokedynamic and constant-dynamic bootstrap methods for execution at image build time.
+
 ## Version 25.3.4
 * GR-76904: Isolated polyglot contexts now warn when host access is enabled without host method scoping. The warning can be disabled with the `engine.WarnMethodScoping=false` option.
 

@@ -38,15 +38,15 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -120,18 +120,18 @@ public class BootstrapMethodConfiguration implements InternalFeature {
     }
 
     public void addBuildTimeIndy(ResolvedJavaMethod method) {
-        buildTimeIndy.add(method);
+        buildTimeIndy.add(OriginalMethodProvider.getOriginalMethod(method));
     }
 
     public void addBuildTimeCondy(ResolvedJavaMethod method) {
-        buildTimeCondy.add(method);
+        buildTimeCondy.add(OriginalMethodProvider.getOriginalMethod(method));
     }
 
     /**
      * Check if the provided method is allowed to be executed at build time.
      */
     public boolean isIndyAllowedAtBuildTime(ResolvedJavaMethod method) {
-        ResolvedJavaMethod m = getWrapped(method);
+        ResolvedJavaMethod m = OriginalMethodProvider.getOriginalMethod(method);
         return m != null && buildTimeIndy.contains(m);
     }
 
@@ -139,16 +139,8 @@ public class BootstrapMethodConfiguration implements InternalFeature {
      * Check if the provided method is allowed to be executed at build time.
      */
     public boolean isCondyAllowedAtBuildTime(ResolvedJavaMethod method) {
-        ResolvedJavaMethod m = getWrapped(method);
+        ResolvedJavaMethod m = OriginalMethodProvider.getOriginalMethod(method);
         return m != null && (buildTimeCondy.contains(m) || isProxyCondy(m));
-    }
-
-    private static ResolvedJavaMethod getWrapped(ResolvedJavaMethod method) {
-        if (method instanceof AnalysisMethod analysisMethod) {
-            return analysisMethod.getWrapped();
-        } else {
-            return method;
-        }
     }
 
     /**
