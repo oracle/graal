@@ -99,6 +99,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
 
     @Override
     protected AbstractEspressoResolvedJavaRecordComponent[] getRecordComponents0() {
+        // GR-73163
         throw JVMCIError.unimplemented();
     }
 
@@ -293,7 +294,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
 
     @Override
     public boolean isRecord() {
-        throw JVMCIError.unimplemented();
+        return access.invokeJVMCIHelper("isRecord", getMetaObject()).asBoolean();
     }
 
     @Override
@@ -303,7 +304,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
 
     @Override
     public String getSourceFileName() {
-        return access.invokeJVMCIHelper("getSourceFileName", metaObject).asString();
+        return access.invokeJVMCIHelper("getSourceFileName", getMetaObject()).asString();
     }
 
     private boolean isLocalOrAnonymousClass() {

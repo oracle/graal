@@ -115,6 +115,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.HAS_ENCLOSING_METHOD_INFO,
                         InvokeMember.HAS_SIMPLE_BINARY_NAME,
                         InvokeMember.GET_TYPE_FOR_STATIC_BASE,
+                        InvokeMember.IS_RECORD,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -170,6 +171,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String HAS_ENCLOSING_METHOD_INFO = "hasEnclosingMethodInfo";
         static final String HAS_SIMPLE_BINARY_NAME = "hasSimpleBinaryName";
         static final String GET_TYPE_FOR_STATIC_BASE = "getTypeForStaticBase";
+        static final String IS_RECORD = "isRecord";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -886,6 +888,16 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                 return StaticObject.NULL;
             }
             return staticBase.getKlass();
+        }
+
+        @Specialization(guards = "IS_RECORD.equals(member)")
+        static boolean isRecord(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
+            return klass.isRecord();
         }
 
         @Fallback
