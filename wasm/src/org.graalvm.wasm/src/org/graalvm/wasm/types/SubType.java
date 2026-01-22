@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,17 +38,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package org.graalvm.wasm.types;
 
-package org.graalvm.wasm.api;
+import com.oracle.truffle.api.CompilerAsserts;
 
-/**
- * On JDK 25+, this class holds an implementation of the GraalWasm SIMD proposal that uses the
- * Vector API. On older JDKs, this class throws an {@link UnsupportedOperationException} when trying
- * to instantiate it. This causes GraalWasm to use {@link Vector128OpsFallback} instead.
- */
-public final class Vector128OpsVectorAPI {
+public record SubType(boolean isFinal, DefinedType superType, CompositeType compositeType) {
 
-    public static Vector128Ops<?> create() {
-        throw new UnsupportedOperationException();
+    public void unroll(RecursiveTypes recursiveTypes) {
+        if (superType != null) {
+            superType.unroll(recursiveTypes);
+        }
+        compositeType.unroll(recursiveTypes);
+    }
+
+    @Override
+    public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (isFinal && superType == null) {
+            return compositeType.toString();
+        } else {
+            StringBuilder sb = new StringBuilder();
+            sb.append("(sub");
+            if (superType != null) {
+                sb.append(" (super ");
+                sb.append(superType);
+                sb.append(")");
+            }
+            sb.append(" ");
+            sb.append(compositeType);
+            sb.append(")");
+            return sb.toString();
+        }
     }
 }

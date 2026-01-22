@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.api;
+package org.graalvm.wasm.vector;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import jdk.incubator.vector.ByteVector;
@@ -58,7 +58,7 @@ import org.graalvm.wasm.constants.Bytecode;
 
 import java.util.function.Function;
 
-import static org.graalvm.wasm.api.Vector128.BYTES;
+import static org.graalvm.wasm.vector.Vector128.BYTES;
 
 /**
  * This is a JDK25-specific implementation of the GraalWasm SIMD proposal. It uses the {@link Vector
@@ -72,7 +72,7 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
     private static final Vector128Ops<byte[]> fallbackOps = Vector128OpsFallback.create();
 
     static Vector128Ops<ByteVector> create() {
-        return new Vector128OpsVectorAPI();
+        return new org.graalvm.wasm.vector.Vector128OpsVectorAPI();
     }
 
     private abstract static class Shape<E> {
@@ -350,21 +350,21 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
             case Bytecode.VECTOR_F32X4_NEG -> unop(x, F32X4, VectorOperators.NEG);
             case Bytecode.VECTOR_F32X4_SQRT -> unop(x, F32X4, VectorOperators.SQRT);
             case Bytecode.VECTOR_F32X4_CEIL -> ceil(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.REINTERPRET_I2F,
-                            Vector128OpsVectorAPI::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
+                            org.graalvm.wasm.vector.Vector128OpsVectorAPI::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F32X4_FLOOR -> floor(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.REINTERPRET_I2F,
-                            Vector128OpsVectorAPI::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
+                            org.graalvm.wasm.vector.Vector128OpsVectorAPI::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F32X4_TRUNC -> trunc(x, F32X4, I32X4, VectorOperators.REINTERPRET_F2I, VectorOperators.REINTERPRET_I2F,
-                            Vector128OpsVectorAPI::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
+                            org.graalvm.wasm.vector.Vector128OpsVectorAPI::getExponentFloats, FLOAT_SIGNIFICAND_WIDTH, I32X4.broadcast(FLOAT_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F32X4_NEAREST -> nearest(x, F32X4, 1 << (FLOAT_SIGNIFICAND_WIDTH - 1));
             case Bytecode.VECTOR_F64X2_ABS -> unop(x, F64X2, VectorOperators.ABS);
             case Bytecode.VECTOR_F64X2_NEG -> unop(x, F64X2, VectorOperators.NEG);
             case Bytecode.VECTOR_F64X2_SQRT -> unop(x, F64X2, VectorOperators.SQRT);
             case Bytecode.VECTOR_F64X2_CEIL -> ceil(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D,
-                            Vector128OpsVectorAPI::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
+                            org.graalvm.wasm.vector.Vector128OpsVectorAPI::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F64X2_FLOOR -> floor(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D,
-                            Vector128OpsVectorAPI::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
+                            org.graalvm.wasm.vector.Vector128OpsVectorAPI::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F64X2_TRUNC -> trunc(x, F64X2, I64X2, VectorOperators.REINTERPRET_D2L, VectorOperators.REINTERPRET_L2D,
-                            Vector128OpsVectorAPI::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
+                            org.graalvm.wasm.vector.Vector128OpsVectorAPI::getExponentDoubles, DOUBLE_SIGNIFICAND_WIDTH, I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK));
             case Bytecode.VECTOR_F64X2_NEAREST -> nearest(x, F64X2, 1L << (DOUBLE_SIGNIFICAND_WIDTH - 1));
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S -> fromArray(fallbackOps.unary(x.toArray(), vectorOpcode)); // GR-51421
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U -> fromArray(fallbackOps.unary(x.toArray(), vectorOpcode)); // GR-51421

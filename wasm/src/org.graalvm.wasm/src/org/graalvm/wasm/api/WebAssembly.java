@@ -580,7 +580,7 @@ public class WebAssembly extends Dictionary {
         assert attribute == WasmTag.Attribute.EXCEPTION;
         final int typeIndex = module.tagTypeIndex(tagIndex);
 
-        return FuncType.fromClosedFunctionType(module.closedFunctionTypeAt(typeIndex)).toString();
+        return FuncType.fromDefinedType(module.closedTypeAt(typeIndex)).toString();
     }
 
     private static Object memAlloc(Object[] args) {
@@ -780,14 +780,14 @@ public class WebAssembly extends Dictionary {
             case i64 -> WasmGlobal.alloc64(valueType, mutable, (long) value);
             case f32 -> WasmGlobal.alloc32(valueType, mutable, Float.floatToRawIntBits((float) value));
             case f64 -> WasmGlobal.alloc64(valueType, mutable, Double.doubleToRawLongBits((double) value));
-            case v128 -> throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.V128_VALUE_ACCESS);
+            case v128 -> throw WasmJsApiException.invalidValueType(WasmType.V128_TYPE);
             case anyfunc, externref -> {
                 if (!refTypes) {
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
                 }
                 yield WasmGlobal.allocRef(valueType, mutable, value);
             }
-            case exnref -> throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.EXNREF_VALUE_ACCESS);
+            case exnref -> throw WasmJsApiException.invalidValueType(WasmType.EXNREF_TYPE);
         };
     }
 
@@ -805,14 +805,14 @@ public class WebAssembly extends Dictionary {
             case WasmType.I64_TYPE -> global.loadAsLong();
             case WasmType.F32_TYPE -> Float.intBitsToFloat(global.loadAsInt());
             case WasmType.F64_TYPE -> Double.longBitsToDouble(global.loadAsLong());
-            case WasmType.V128_TYPE -> throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.V128_VALUE_ACCESS);
+            case WasmType.V128_TYPE -> throw WasmJsApiException.invalidValueType(WasmType.V128_TYPE);
             default -> {
                 assert WasmType.isReferenceType(global.getType());
                 if (!refTypes) {
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
                 }
-                if (SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null).isSupertypeOf(global.getClosedType())) {
-                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.EXNREF_VALUE_ACCESS);
+                if (global.getClosedType().isSubtypeOf(SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null))) {
+                    throw WasmJsApiException.invalidValueType(WasmType.EXNREF_TYPE);
                 }
                 yield global.loadAsReference();
             }
@@ -839,14 +839,14 @@ public class WebAssembly extends Dictionary {
             case WasmType.I64_TYPE -> global.storeLong((long) value);
             case WasmType.F32_TYPE -> global.storeInt(Float.floatToRawIntBits((float) value));
             case WasmType.F64_TYPE -> global.storeLong(Double.doubleToRawLongBits((double) value));
-            case WasmType.V128_TYPE -> throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.V128_VALUE_ACCESS);
+            case WasmType.V128_TYPE -> throw WasmJsApiException.invalidValueType(WasmType.V128_TYPE);
             default -> {
                 assert WasmType.isReferenceType(global.getType());
                 if (!refTypes) {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
                 }
-                if (SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null).isSupertypeOf(global.getClosedType())) {
-                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.EXNREF_VALUE_ACCESS);
+                if (global.getClosedType().isSubtypeOf(SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null))) {
+                    throw WasmJsApiException.invalidValueType(WasmType.EXNREF_TYPE);
                 }
                 global.storeReference(value);
             }
@@ -870,7 +870,7 @@ public class WebAssembly extends Dictionary {
     }
 
     public static WasmTag tagAlloc(FuncType type) {
-        return new WasmTag(type.toClosedFunctionType());
+        return new WasmTag(type.toDefinedType());
     }
 
     public static Object tagType(Object[] args) {
@@ -878,7 +878,7 @@ public class WebAssembly extends Dictionary {
         if (!(args[0] instanceof WasmTag tag)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be a wasm tag");
         }
-        return tag.type().toString();
+        return FuncType.fromDefinedType(tag.type()).toString();
     }
 
     public WasmRuntimeException exnAlloc(Object[] args) {
@@ -886,7 +886,7 @@ public class WebAssembly extends Dictionary {
         if (!(args[0] instanceof WasmTag tag)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be a wasm tag");
         }
-        final FuncType type = FuncType.fromClosedFunctionType(tag.type());
+        final FuncType type = FuncType.fromDefinedType(tag.type());
         final int paramCount = type.paramCount();
         checkArgumentCount(args, paramCount + 1);
         final Object[] fields = new Object[paramCount];

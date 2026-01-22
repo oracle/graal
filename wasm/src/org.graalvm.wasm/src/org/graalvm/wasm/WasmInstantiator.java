@@ -69,6 +69,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.types.DefinedType;
 
 /**
  * Creates wasm instances by converting parser nodes into Truffle nodes.
@@ -202,7 +203,7 @@ public class WasmInstantiator {
         for (int i = 0; i < module.tagCount(); i++) {
             final int tagIndex = i;
             final int typeIndex = module.tagTypeIndex(tagIndex);
-            final SymbolTable.ClosedFunctionType type = module.closedFunctionTypeAt(typeIndex);
+            final DefinedType type = module.closedTypeAt(typeIndex);
             final ImportDescriptor tagDescriptor = module.importedTag(tagIndex);
             if (tagDescriptor != null) {
                 linkActions.add((context, store, instance, imports) -> {
@@ -437,12 +438,11 @@ public class WasmInstantiator {
                 final int dataBytecodeOffset = effectiveOffset;
                 linkActions.add((context, store, instance, imports) -> {
                     store.linker().resolveDataSegment(store, instance, dataIndex, memoryIndex, dataOffsetAddress, dataOffsetBytecode, dataLength,
-                                    dataBytecodeOffset, instance.droppedDataInstanceOffset());
+                                    dataBytecodeOffset);
                 });
             } else {
-                final int dataBytecodeOffset = effectiveOffset;
                 linkActions.add((context, store, instance, imports) -> {
-                    store.linker().resolvePassiveDataSegment(store, instance, dataIndex, dataBytecodeOffset);
+                    store.linker().resolvePassiveDataSegment(instance, dataIndex);
                 });
             }
         }

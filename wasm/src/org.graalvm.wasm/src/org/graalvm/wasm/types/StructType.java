@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,29 +38,68 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.constants;
-
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
+package org.graalvm.wasm.types;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 
-public final class GlobalModifier {
-    public static final byte CONSTANT = 0x00;
-    public static final byte MUTABLE = 0x01;
+import java.util.Arrays;
 
-    public static String asString(int modifier) {
-        CompilerAsserts.neverPartOfCompilation();
-        switch (modifier) {
-            case CONSTANT:
-                return "const";
-            case MUTABLE:
-                return "var";
-            default:
-                throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Unknown modifier: 0x" + Integer.toHexString(modifier));
+public record StructType(
+                @CompilerDirectives.CompilationFinal(dimensions = 1) FieldType[] fieldTypes) implements CompositeType {
+
+    @Override
+    public CompositeKind compositeKind() {
+        return CompositeKind.Struct;
+    }
+
+    @Override
+    public boolean isSubtypeOf(HeapType thatHeapType) {
+        if (thatHeapType == AbstractHeapType.STRUCT || thatHeapType == AbstractHeapType.EQ || thatHeapType == AbstractHeapType.ANY) {
+            return true;
+        }
+        if (!(thatHeapType instanceof DefinedType thatDefinedType && thatDefinedType.expand() instanceof StructType that)) {
+            return false;
+        }
+        if (this.fieldTypes.length < that.fieldTypes.length) {
+            return false;
+        }
+        for (int i = 0; i < that.fieldTypes.length; i++) {
+            if (!this.fieldTypes[i].isSubtypeOf(that.fieldTypes[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public void unroll(RecursiveTypes recursiveTypes) {
+        for (FieldType fieldType : fieldTypes) {
+            fieldType.unroll(recursiveTypes);
         }
     }
 
-    private GlobalModifier() {
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof StructType that && Arrays.equals(this.fieldTypes, that.fieldTypes);
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(fieldTypes);
+    }
+
+    @Override
+    public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
+        StringBuilder sb = new StringBuilder();
+        sb.append("(struct");
+        for (int i = 0; i < fieldTypes.length; i++) {
+            sb.append(" (field ");
+            sb.append(fieldTypes[i]);
+            sb.append(")");
+        }
+        sb.append(")");
+        return sb.toString();
     }
 }

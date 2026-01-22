@@ -47,7 +47,7 @@ import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 
-import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.constants.Mutability;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -200,9 +200,9 @@ public abstract class BinaryStreamParser {
 
     protected byte peekMutability() {
         final byte mut = peek1();
-        if (mut == GlobalModifier.CONSTANT) {
+        if (mut == Mutability.CONSTANT) {
             return mut;
-        } else if (mut == GlobalModifier.MUTABLE) {
+        } else if (mut == Mutability.MUTABLE) {
             return mut;
         } else {
             throw Assert.fail(Failure.MALFORMED_MUTABILITY, "Invalid mutability flag: 0x%02x", mut);

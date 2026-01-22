@@ -87,15 +87,28 @@ import org.graalvm.wasm.Linker.ResolutionDag.InitializeTableSym;
 import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
 import org.graalvm.wasm.Linker.ResolutionDag.Sym;
 import org.graalvm.wasm.api.ExecuteHostFunctionNode;
-import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.vector.Vector128;
+import org.graalvm.wasm.array.WasmArray;
+import org.graalvm.wasm.array.WasmFloat32Array;
+import org.graalvm.wasm.array.WasmFloat64Array;
+import org.graalvm.wasm.array.WasmInt16Array;
+import org.graalvm.wasm.array.WasmInt32Array;
+import org.graalvm.wasm.array.WasmInt64Array;
+import org.graalvm.wasm.array.WasmInt8Array;
+import org.graalvm.wasm.array.WasmRefArray;
+import org.graalvm.wasm.array.WasmVec128Array;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
-import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.constants.Mutability;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
+import org.graalvm.wasm.struct.WasmStruct;
+import org.graalvm.wasm.struct.WasmStructAccess;
+import org.graalvm.wasm.types.DefinedType;
+import org.graalvm.wasm.types.ValueType;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -103,6 +116,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.staticobject.StaticProperty;
 
 public class Linker {
     public enum LinkState {
@@ -191,7 +205,6 @@ public class Linker {
                 ArrayList<Throwable> failures = new ArrayList<>();
                 final int maxStartFunctionIndex = runLinkActions(store, instances, importValues, failures);
                 linkTopologically(store, failures, maxStartFunctionIndex);
-                assignTypeEquivalenceClasses(store);
                 resolutionDag = null;
                 runStartFunctions(instances, failures);
                 checkFailures(failures);
@@ -235,39 +248,6 @@ public class Linker {
         for (String moduleName : moduleOrdering) {
             store.moduleInstances().get(moduleName).setStartFunctionIndex(maxStartFunctionIndex + i + 1);
             i++;
-        }
-    }
-
-    private static void assignTypeEquivalenceClasses(WasmStore store) {
-        final Map<String, WasmInstance> instances = store.moduleInstances();
-        for (WasmInstance instance : instances.values()) {
-            WasmModule module = instance.module();
-            if (instance.isLinkInProgress() && !module.isParsed()) {
-                assignTypeEquivalenceClasses(module, store.language());
-            }
-        }
-    }
-
-    private static void assignTypeEquivalenceClasses(WasmModule module, WasmLanguage language) {
-        var lock = module.getLock();
-        lock.lock();
-        try {
-            if (module.isParsed()) {
-                return;
-            }
-            final SymbolTable symtab = module.symbolTable();
-            for (int index = 0; index < symtab.typeCount(); index++) {
-                SymbolTable.ClosedFunctionType type = symtab.closedFunctionTypeAt(index);
-                int equivalenceClass = language.equivalenceClassFor(type);
-                symtab.setEquivalenceClass(index, equivalenceClass);
-            }
-            for (int index = 0; index < symtab.numFunctions(); index++) {
-                final WasmFunction function = symtab.function(index);
-                function.setTypeEquivalenceClass(symtab.equivalenceClass(function.typeIndex()));
-            }
-            module.setParsed();
-        } finally {
-            lock.unlock();
         }
     }
 
@@ -350,19 +330,19 @@ public class Linker {
 
                 externalGlobal = importedInstance.externalGlobal(exportedGlobalIndex);
             }
-            SymbolTable.ClosedValueType importType = instance.symbolTable().closedTypeOf(valueType);
-            SymbolTable.ClosedValueType exportType = externalGlobal.getClosedType();
+            ValueType importType = instance.symbolTable().closedTypeOf(valueType);
+            ValueType exportType = externalGlobal.getClosedType();
             if (mutability != externalGlobal.getMutability()) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
-                                "' with the modifier " + GlobalModifier.asString(mutability) + ", " +
-                                "but it was exported in the module '" + importedModuleName + "' with the modifier " + GlobalModifier.asString(externalGlobal.getMutability()) + ".");
+                                "' with the modifier " + Mutability.asString(mutability) + ", " +
+                                "but it was exported in the module '" + importedModuleName + "' with the modifier " + Mutability.asString(externalGlobal.getMutability()) + ".");
             }
             // matching for mutable globals does not work by subtyping, but requires equivalent
             // types
-            if (!(externalGlobal.isMutable() ? importType.equals(exportType) : importType.isSupertypeOf(exportType))) {
+            if (!(externalGlobal.isMutable() ? importType.equals(exportType) : exportType.isSubtypeOf(importType))) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
-                                "' with the type " + GlobalModifier.asString(mutability) + " " + WasmType.toString(valueType) + ", " +
-                                "but it was exported in the module '" + importedModuleName + "' with the type " + GlobalModifier.asString(externalGlobal.getMutability()) + " " +
+                                "' with the type " + Mutability.asString(mutability) + " " + WasmType.toString(valueType) + ", " +
+                                "but it was exported in the module '" + importedModuleName + "' with the type " + Mutability.asString(externalGlobal.getMutability()) + " " +
                                 WasmType.toString(externalGlobal.getType()) + ".");
             }
             instance.setExternalGlobal(globalIndex, externalGlobal);
@@ -424,7 +404,7 @@ public class Linker {
             Object externalFunctionInstance = lookupImportObject(instance, importDescriptor, imports, Object.class);
             if (externalFunctionInstance != null) {
                 if (externalFunctionInstance instanceof WasmFunctionInstance functionInstance) {
-                    if (!function.closedType().isSupertypeOf(functionInstance.function().closedType())) {
+                    if (!functionInstance.type().isSubtypeOf(function.type())) {
                         throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE);
                     }
                     instance.setTarget(function.index(), functionInstance.target());
@@ -457,7 +437,7 @@ public class Linker {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT, "The imported function '" + function.importedFunctionName() + "', referenced in the module '" + instance.name() +
                                 "', does not exist in the imported module '" + function.importedModuleName() + "'.");
             }
-            if (!function.closedType().isSupertypeOf(importedFunction.closedType())) {
+            if (!importedFunction.type().isSubtypeOf(function.type())) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE);
             }
             final CallTarget target = importedInstance.target(importedFunction.index());
@@ -530,7 +510,7 @@ public class Linker {
         });
     }
 
-    void resolveTagImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tagIndex, SymbolTable.ClosedFunctionType type, ImportValueSupplier imports) {
+    void resolveTagImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tagIndex, DefinedType type, ImportValueSupplier imports) {
         final String importedModuleName = importDescriptor.moduleName();
         final String importedTagName = importDescriptor.memberName();
         final Runnable resolveAction = () -> {
@@ -595,9 +575,13 @@ public class Linker {
     }
 
     public static Object evalConstantExpression(WasmInstance instance, byte[] bytecode) {
-        int offset = 0;
+        return evalConstantExpression(instance, bytecode, 0, bytecode.length);
+    }
+
+    public static Object evalConstantExpression(WasmInstance instance, byte[] bytecode, int start, int end) {
+        int offset = start;
         List<Object> stack = new ArrayList<>();
-        while (offset < bytecode.length) {
+        while (offset < end) {
             int opcode = rawPeekU8(bytecode, offset);
             offset++;
             switch (opcode) {
@@ -649,12 +633,6 @@ public class Linker {
                     stack.add(value);
                     break;
                 }
-                case Bytecode.VECTOR_V128_CONST: {
-                    Vector128 value = new Vector128(rawPeekI128(bytecode, offset));
-                    offset += 16;
-                    stack.add(value);
-                    break;
-                }
                 case Bytecode.REF_NULL:
                     stack.add(WasmConstant.NULL);
                     break;
@@ -693,6 +671,219 @@ public class Linker {
                     stack.add(result);
                     break;
                 }
+                case Bytecode.AGGREGATE:
+                    int aggregateOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    switch (aggregateOpcode) {
+                        case Bytecode.STRUCT_NEW: {
+                            final int structTypeIdx = rawPeekI32(bytecode, offset);
+                            offset += 4;
+
+                            SymbolTable symtab = instance.symbolTable();
+                            WasmStructAccess structAccess = symtab.structTypeAccess(structTypeIdx);
+
+                            WasmStruct struct = structAccess.shape().getFactory().create(symtab.closedTypeAt(structTypeIdx));
+                            for (int fieldIndex = symtab.structTypeFieldCount(structTypeIdx) - 1; fieldIndex >= 0; fieldIndex--) {
+                                int fieldType = symtab.structTypeFieldTypeAt(structTypeIdx, fieldIndex);
+                                StaticProperty property = structAccess.properties()[fieldIndex];
+                                Object fieldValue = stack.removeLast();
+                                switch (fieldType) {
+                                    case WasmType.I8_TYPE -> property.setByte(struct, (byte) (int) fieldValue);
+                                    case WasmType.I16_TYPE -> property.setShort(struct, (short) (int) fieldValue);
+                                    case WasmType.I32_TYPE -> property.setInt(struct, (int) fieldValue);
+                                    case WasmType.I64_TYPE -> property.setLong(struct, (long) fieldValue);
+                                    case WasmType.F32_TYPE -> property.setFloat(struct, (float) fieldValue);
+                                    case WasmType.F64_TYPE -> property.setDouble(struct, (double) fieldValue);
+                                    case WasmType.V128_TYPE -> property.setObject(struct, fieldValue);
+                                    default -> {
+                                        assert WasmType.isReferenceType(fieldType);
+                                        property.setObject(struct, fieldValue);
+                                    }
+                                }
+                            }
+                            stack.add(struct);
+                            break;
+                        }
+                        case Bytecode.STRUCT_NEW_DEFAULT: {
+                            final int structTypeIdx = rawPeekI32(bytecode, offset);
+                            offset += 4;
+
+                            SymbolTable symtab = instance.symbolTable();
+
+                            WasmStruct struct = symtab.structTypeAccess(structTypeIdx).shape().getFactory().create(symtab.closedTypeAt(structTypeIdx));
+                            int fieldCount = symtab.structTypeFieldCount(structTypeIdx);
+                            StaticProperty[] properties = symtab.structTypeAccess(structTypeIdx).properties();
+                            for (int fieldIndex = 0; fieldIndex < fieldCount; fieldIndex++) {
+                                if (WasmType.isReferenceType(symtab.structTypeFieldTypeAt(structTypeIdx, fieldIndex))) {
+                                    properties[fieldIndex].setObject(struct, WasmConstant.NULL);
+                                }
+                            }
+                            stack.add(struct);
+                            break;
+                        }
+                        case Bytecode.ARRAY_NEW: {
+                            final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                            offset += 4;
+
+                            SymbolTable symtab = instance.symbolTable();
+                            DefinedType arrayType = symtab.closedTypeAt(arrayTypeIdx);
+                            int elemType = symtab.arrayTypeElemType(arrayTypeIdx);
+
+                            int length = (int) stack.removeLast();
+                            WasmArray array = switch (elemType) {
+                                case WasmType.I8_TYPE -> {
+                                    byte initialValue = (byte) (int) stack.removeLast();
+                                    yield new WasmInt8Array(arrayType, length, initialValue);
+                                }
+                                case WasmType.I16_TYPE -> {
+                                    short initialValue = (short) (int) stack.removeLast();
+                                    yield new WasmInt16Array(arrayType, length, initialValue);
+                                }
+                                case WasmType.I32_TYPE -> {
+                                    int initialValue = (int) stack.removeLast();
+                                    yield new WasmInt32Array(arrayType, length, initialValue);
+                                }
+                                case WasmType.I64_TYPE -> {
+                                    long initialValue = (long) stack.removeLast();
+                                    yield new WasmInt64Array(arrayType, length, initialValue);
+                                }
+                                case WasmType.F32_TYPE -> {
+                                    float initialValue = (float) stack.removeLast();
+                                    yield new WasmFloat32Array(arrayType, length, initialValue);
+                                }
+                                case WasmType.F64_TYPE -> {
+                                    double initialValue = (double) stack.removeLast();
+                                    yield new WasmFloat64Array(arrayType, length, initialValue);
+                                }
+                                case WasmType.V128_TYPE -> {
+                                    Vector128 initialValue = (Vector128) stack.removeLast();
+                                    yield new WasmVec128Array(arrayType, length, initialValue);
+                                }
+                                default -> {
+                                    Object initialValue = stack.removeLast();
+                                    yield new WasmRefArray(arrayType, length, initialValue);
+                                }
+                            };
+                            stack.add(array);
+                            break;
+                        }
+                        case Bytecode.ARRAY_NEW_DEFAULT: {
+                            final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                            offset += 4;
+
+                            SymbolTable symtab = instance.symbolTable();
+                            DefinedType arrayType = symtab.closedTypeAt(arrayTypeIdx);
+                            int elemType = symtab.arrayTypeElemType(arrayTypeIdx);
+
+                            int length = (int) stack.removeLast();
+                            WasmArray array = switch (elemType) {
+                                case WasmType.I8_TYPE -> new WasmInt8Array(arrayType, length);
+                                case WasmType.I16_TYPE -> new WasmInt16Array(arrayType, length);
+                                case WasmType.I32_TYPE -> new WasmInt32Array(arrayType, length);
+                                case WasmType.I64_TYPE -> new WasmInt64Array(arrayType, length);
+                                case WasmType.F32_TYPE -> new WasmFloat32Array(arrayType, length);
+                                case WasmType.F64_TYPE -> new WasmFloat64Array(arrayType, length);
+                                case WasmType.V128_TYPE -> new WasmVec128Array(arrayType, length);
+                                default -> new WasmRefArray(arrayType, length);
+                            };
+                            stack.add(array);
+                            break;
+                        }
+                        case Bytecode.ARRAY_NEW_FIXED: {
+                            final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                            final int length = rawPeekI32(bytecode, offset + 4);
+                            offset += 8;
+
+                            SymbolTable symtab = instance.symbolTable();
+                            DefinedType arrayType = symtab.closedTypeAt(arrayTypeIdx);
+                            int elemType = symtab.arrayTypeElemType(arrayTypeIdx);
+
+                            WasmArray array = switch (elemType) {
+                                case WasmType.I8_TYPE -> {
+                                    byte[] fixedArray = new byte[length];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        fixedArray[i] = (byte) (int) stack.removeLast();
+                                    }
+                                    yield new WasmInt8Array(arrayType, fixedArray);
+                                }
+                                case WasmType.I16_TYPE -> {
+                                    short[] fixedArray = new short[length];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        fixedArray[i] = (short) (int) stack.removeLast();
+                                    }
+                                    yield new WasmInt16Array(arrayType, fixedArray);
+                                }
+                                case WasmType.I32_TYPE -> {
+                                    int[] fixedArray = new int[length];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        fixedArray[i] = (int) stack.removeLast();
+                                    }
+                                    yield new WasmInt32Array(arrayType, fixedArray);
+                                }
+                                case WasmType.I64_TYPE -> {
+                                    long[] fixedArray = new long[length];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        fixedArray[i] = (long) stack.removeLast();
+                                    }
+                                    yield new WasmInt64Array(arrayType, fixedArray);
+                                }
+                                case WasmType.F32_TYPE -> {
+                                    float[] fixedArray = new float[length];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        fixedArray[i] = (float) stack.removeLast();
+                                    }
+                                    yield new WasmFloat32Array(arrayType, fixedArray);
+                                }
+                                case WasmType.F64_TYPE -> {
+                                    double[] fixedArray = new double[length];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        fixedArray[i] = (double) stack.removeLast();
+                                    }
+                                    yield new WasmFloat64Array(arrayType, fixedArray);
+                                }
+                                case WasmType.V128_TYPE -> {
+                                    byte[] fixedArray = new byte[length << 4];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        Vector128 vec = (Vector128) stack.removeLast();
+                                        System.arraycopy(vec.getBytes(), 0, fixedArray, i << 4, 4);
+                                    }
+                                    yield new WasmVec128Array(arrayType, fixedArray);
+                                }
+                                default -> {
+                                    Object[] fixedArray = new Object[length];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        fixedArray[i] = stack.removeLast();
+                                    }
+                                    yield new WasmRefArray(arrayType, fixedArray);
+                                }
+                            };
+                            stack.add(array);
+                            break;
+                        }
+                        case Bytecode.REF_I31: {
+                            stack.add((int) stack.removeLast() & ~(1 << 31));
+                            break;
+                        }
+                        default:
+                            fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X 0x%02X", opcode, aggregateOpcode);
+                            break;
+                    }
+                    break;
+                case Bytecode.VECTOR:
+                    int vectorOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    switch (vectorOpcode) {
+                        case Bytecode.VECTOR_V128_CONST: {
+                            Vector128 value = new Vector128(rawPeekI128(bytecode, offset));
+                            offset += 16;
+                            stack.add(value);
+                            break;
+                        }
+                        default:
+                            fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X 0x%02X", opcode, vectorOpcode);
+                            break;
+                    }
+                    break;
                 default:
                     fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X", opcode);
                     break;
@@ -703,9 +894,13 @@ public class Linker {
     }
 
     private static List<Sym> dependenciesOfConstantExpression(WasmInstance instance, byte[] bytecode) {
+        return dependenciesOfConstantExpression(instance, bytecode, 0, bytecode.length);
+    }
+
+    private static List<Sym> dependenciesOfConstantExpression(WasmInstance instance, byte[] bytecode, int start, int end) {
         List<Sym> dependencies = new ArrayList<>();
-        int offset = 0;
-        while (offset < bytecode.length) {
+        int offset = start;
+        while (offset < end) {
             int opcode = rawPeekU8(bytecode, offset);
             offset++;
             switch (opcode) {
@@ -733,9 +928,6 @@ public class Linker {
                 case Bytecode.F64_CONST:
                     offset += 8;
                     break;
-                case Bytecode.VECTOR_V128_CONST:
-                    offset += 16;
-                    break;
                 case Bytecode.REF_FUNC:
                     final int functionIndex = rawPeekI32(bytecode, offset);
                     final WasmFunction function = instance.symbolTable().function(functionIndex);
@@ -752,6 +944,41 @@ public class Linker {
                 case Bytecode.I64_SUB:
                 case Bytecode.I64_MUL:
                     break;
+                case Bytecode.AGGREGATE:
+                    int aggregateOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    switch (aggregateOpcode) {
+                        case Bytecode.REF_I31: {
+                            break;
+                        }
+                        case Bytecode.STRUCT_NEW:
+                        case Bytecode.STRUCT_NEW_DEFAULT:
+                        case Bytecode.ARRAY_NEW:
+                        case Bytecode.ARRAY_NEW_DEFAULT: {
+                            offset += 4;
+                            break;
+                        }
+                        case Bytecode.ARRAY_NEW_FIXED: {
+                            offset += 8;
+                            break;
+                        }
+                        default:
+                            fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X 0x%02X", opcode, aggregateOpcode);
+                            break;
+                    }
+                    break;
+                case Bytecode.VECTOR:
+                    int vectorOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    switch (vectorOpcode) {
+                        case Bytecode.VECTOR_V128_CONST:
+                            offset += 16;
+                            break;
+                        default:
+                            fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X 0x%02X", opcode, vectorOpcode);
+                            break;
+                    }
+                    break;
                 default:
                     fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X", opcode);
                     break;
@@ -760,8 +987,7 @@ public class Linker {
         return dependencies;
     }
 
-    void resolveDataSegment(WasmStore store, WasmInstance instance, int dataSegmentId, int memoryIndex, long offsetAddress, byte[] offsetBytecode, int byteLength, int bytecodeOffset,
-                    int droppedDataInstanceOffset) {
+    void resolveDataSegment(WasmStore store, WasmInstance instance, int dataSegmentId, int memoryIndex, long offsetAddress, byte[] offsetBytecode, int byteLength, int bytecodeOffset) {
         assertUnsignedIntLess(memoryIndex, instance.symbolTable().memoryCount(), Failure.UNSPECIFIED_MALFORMED,
                         "Specified memory was not declared or imported in the module '%s'", instance.name());
         final Runnable resolveAction = () -> {
@@ -781,7 +1007,7 @@ public class Linker {
             WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
             final byte[] bytecode = instance.module().bytecode();
             memoryLib.initialize(memory, null, bytecode, bytecodeOffset, baseAddress, byteLength);
-            instance.setDataInstance(dataSegmentId, droppedDataInstanceOffset);
+            instance.dropDataInstance(dataSegmentId);
         };
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (instance.symbolTable().importedMemory(memoryIndex) != null) {
@@ -796,19 +1022,12 @@ public class Linker {
         resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    void resolvePassiveDataSegment(WasmStore store, WasmInstance instance, int dataSegmentId, int bytecodeOffset) {
-        final Runnable resolveAction = () -> {
-            if (store.getContextOptions().memoryOverheadMode()) {
-                // Do not initialize the data segment when in memory overhead mode.
-                return;
-            }
-            instance.setDataInstance(dataSegmentId, bytecodeOffset);
-        };
+    void resolvePassiveDataSegment(WasmInstance instance, int dataSegmentId) {
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (dataSegmentId > 0) {
             dependencies.add(new DataSym(instance.name(), dataSegmentId - 1));
         }
-        resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
+        resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), NO_RESOLVE_ACTION);
     }
 
     public static void initializeTable(WasmInstance instance, int tableIndex, Object initValue) {
@@ -890,25 +1109,21 @@ public class Linker {
             elementOffset++;
             final int type = opcode & BytecodeBitEncoding.ELEM_ITEM_TYPE_MASK;
             final int length = opcode & BytecodeBitEncoding.ELEM_ITEM_LENGTH_MASK;
-            if ((opcode & BytecodeBitEncoding.ELEM_ITEM_NULL_FLAG) != 0) {
-                // null constant
-                continue;
-            }
-            final int index;
+            final int value;
             switch (length) {
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_INLINE:
-                    index = opcode & BytecodeBitEncoding.ELEM_ITEM_INLINE_VALUE;
+                    value = opcode & BytecodeBitEncoding.ELEM_ITEM_INLINE_VALUE;
                     break;
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_U8:
-                    index = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
+                    value = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
                     elementOffset++;
                     break;
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_U16:
-                    index = BinaryStreamParser.rawPeekU16(bytecode, elementOffset);
+                    value = BinaryStreamParser.rawPeekU16(bytecode, elementOffset);
                     elementOffset += 2;
                     break;
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_I32:
-                    index = BinaryStreamParser.rawPeekI32(bytecode, elementOffset);
+                    value = BinaryStreamParser.rawPeekI32(bytecode, elementOffset);
                     elementOffset += 4;
                     break;
                 default:
@@ -916,13 +1131,17 @@ public class Linker {
             }
             if (type == BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX) {
                 // function index
-                final WasmFunction function = instance.module().function(index);
+                final int functionIndex = value;
+                final WasmFunction function = instance.module().function(functionIndex);
                 if (function.importDescriptor() != null) {
                     dependencies.add(new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()));
                 }
             } else {
-                // global index
-                dependencies.add(new InitializeGlobalSym(instance.name(), index));
+                // bytecode
+                assert type == BytecodeBitEncoding.ELEM_ITEM_TYPE_BYTECODE;
+                final int elementBytecodeLength = value;
+                dependencies.addAll(dependenciesOfConstantExpression(instance, bytecode, elementOffset, elementOffset + elementBytecodeLength));
+                elementOffset += elementBytecodeLength;
             }
         }
     }
@@ -936,26 +1155,21 @@ public class Linker {
             elementOffset++;
             final int type = opcode & BytecodeBitEncoding.ELEM_ITEM_TYPE_MASK;
             final int length = opcode & BytecodeBitEncoding.ELEM_ITEM_LENGTH_MASK;
-            if ((opcode & BytecodeBitEncoding.ELEM_ITEM_NULL_FLAG) != 0) {
-                // null constant
-                elemItems[elementIndex] = WasmConstant.NULL;
-                continue;
-            }
-            final int index;
+            final int value;
             switch (length) {
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_INLINE:
-                    index = opcode & BytecodeBitEncoding.ELEM_ITEM_INLINE_VALUE;
+                    value = opcode & BytecodeBitEncoding.ELEM_ITEM_INLINE_VALUE;
                     break;
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_U8:
-                    index = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
+                    value = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
                     elementOffset++;
                     break;
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_U16:
-                    index = BinaryStreamParser.rawPeekU16(bytecode, elementOffset);
+                    value = BinaryStreamParser.rawPeekU16(bytecode, elementOffset);
                     elementOffset += 2;
                     break;
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_I32:
-                    index = BinaryStreamParser.rawPeekI32(bytecode, elementOffset);
+                    value = BinaryStreamParser.rawPeekI32(bytecode, elementOffset);
                     elementOffset += 4;
                     break;
                 default:
@@ -963,11 +1177,15 @@ public class Linker {
             }
             if (type == BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX) {
                 // function index
-                final WasmFunction function = instance.module().function(index);
+                final int functionIndex = value;
+                final WasmFunction function = instance.module().function(functionIndex);
                 elemItems[elementIndex] = instance.functionInstance(function);
             } else {
-                assert type == BytecodeBitEncoding.ELEM_ITEM_TYPE_GLOBAL_INDEX;
-                elemItems[elementIndex] = instance.globals().loadAsReference(instance.module().globalAddress(index));
+                // bytecode
+                assert type == BytecodeBitEncoding.ELEM_ITEM_TYPE_BYTECODE;
+                final int elementBytecodeLength = value;
+                elemItems[elementIndex] = Linker.evalConstantExpression(instance, bytecode, elementOffset, elementOffset + elementBytecodeLength);
+                elementOffset += elementBytecodeLength;
             }
         }
         return elemItems;

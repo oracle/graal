@@ -142,6 +142,9 @@ public class WasmOptions {
     @Option(help = "Enable support for typed function references", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> TypedFunctionReferences = new OptionKey<>(false);
 
+    @Option(help = "Enable support for garbage collected types", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> GC = new OptionKey<>(false);
+
     @Option(help = "In this mode memories and tables are not initialized.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> MemoryOverheadMode = new OptionKey<>(false);
 

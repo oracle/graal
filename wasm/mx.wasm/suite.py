@@ -305,6 +305,10 @@ suite = {
           "org.graalvm.collections",
           "static jdk.incubator.vector", # Vector API
         ],
+        "exports" : [
+          # Export WasmStruct supertype to Truffle Static Object class generator
+          "org.graalvm.wasm.struct",
+        ],
       },
       "subDir" : "src",
       "dependencies" : [

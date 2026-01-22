@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.api;
+package org.graalvm.wasm.vector;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ExactMath;
@@ -49,13 +49,13 @@ import org.graalvm.wasm.constants.Bytecode;
 
 import java.util.Arrays;
 
-import static org.graalvm.wasm.api.Vector128.BYTES;
-import static org.graalvm.wasm.api.Vector128.BYTE_LENGTH;
-import static org.graalvm.wasm.api.Vector128.DOUBLE_LENGTH;
-import static org.graalvm.wasm.api.Vector128.FLOAT_LENGTH;
-import static org.graalvm.wasm.api.Vector128.INT_LENGTH;
-import static org.graalvm.wasm.api.Vector128.LONG_LENGTH;
-import static org.graalvm.wasm.api.Vector128.SHORT_LENGTH;
+import static org.graalvm.wasm.vector.Vector128.BYTES;
+import static org.graalvm.wasm.vector.Vector128.BYTE_LENGTH;
+import static org.graalvm.wasm.vector.Vector128.DOUBLE_LENGTH;
+import static org.graalvm.wasm.vector.Vector128.FLOAT_LENGTH;
+import static org.graalvm.wasm.vector.Vector128.INT_LENGTH;
+import static org.graalvm.wasm.vector.Vector128.LONG_LENGTH;
+import static org.graalvm.wasm.vector.Vector128.SHORT_LENGTH;
 
 /**
  * This is an implementation of the GraalWasm SIMD proposal. It uses {@code byte[]}s as a

@@ -108,7 +108,7 @@ public class WasmJsApiSuite {
 
     private static WasmFunctionInstance createWasmFunctionInstance(WasmContext context, int[] paramTypes, int[] resultTypes, RootNode functionRootNode) {
         WasmModule module = WasmModule.createBuiltin("dummyModule");
-        module.allocateFunctionType(paramTypes, resultTypes, context.getContextOptions().supportMultiValue());
+        module.allocateFunctionType(paramTypes, resultTypes, context.getContextOptions().supportMultiValue(), context.language());
         WasmFunction func = module.declareFunction(0);
         func.setTarget(functionRootNode.getCallTarget());
         WasmInstance moduleInstance = context.contextStore().readInstance(module);
@@ -857,11 +857,13 @@ public class WasmJsApiSuite {
             context.readModule(binaryWithMixedExports, limits);
 
             final int noLimit = Integer.MAX_VALUE;
-            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit,
+                            noLimit, noLimit, noLimit);
             context.readModule(binaryWithMixedExports, limits);
 
             try {
-                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit,
+                                noLimit, noLimit, noLimit);
                 context.readModule(binaryWithMixedExports, limits);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (WasmException ex) {

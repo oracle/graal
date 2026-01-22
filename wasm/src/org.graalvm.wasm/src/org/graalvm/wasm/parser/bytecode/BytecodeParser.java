@@ -94,14 +94,20 @@ public abstract class BytecodeParser {
             if (module.globalExternal(i)) {
                 final WasmGlobal global = instance.externalGlobal(i);
                 try {
-                    InteropLibrary interop = InteropLibrary.getUncached(global);
-                    if (!global.isMutable()) {
-                        if (!Objects.equals(interop.readMember(global, WasmGlobal.VALUE_MEMBER), initValue)) {
-                            throw CompilerDirectives.shouldNotReachHere("Value of immutable global is not equal to init value");
+                    switch (global.getClosedType().valueKind()) {
+                        case Number, Vector -> {
+                            InteropLibrary interop = InteropLibrary.getUncached(global);
+                            if (!global.isMutable()) {
+                                if (!Objects.equals(interop.readMember(global, WasmGlobal.VALUE_MEMBER), initValue)) {
+                                    throw CompilerDirectives.shouldNotReachHere("Value of immutable global is not equal to init value");
+                                }
+                                continue;
+                            }
+                            interop.writeMember(global, WasmGlobal.VALUE_MEMBER, initValue);
                         }
-                        continue;
+                        // reset structs and arrays, even if the global is immutable
+                        case Reference -> global.storeReference(initValue);
                     }
-                    interop.writeMember(global, WasmGlobal.VALUE_MEMBER, initValue);
                 } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
                     throw CompilerDirectives.shouldNotReachHere(e);
                 }
@@ -214,7 +220,7 @@ public abstract class BytecodeParser {
 
                 memoryLib.initialize(memory, null, module.bytecode(), effectiveOffset, offsetAddress, dataLength);
             } else {
-                instance.setDataInstance(i, effectiveOffset);
+                instance.resetDataInstance(i);
             }
         }
     }
@@ -793,6 +799,54 @@ public abstract class BytecodeParser {
                     }
                     break;
                 }
+                case Bytecode.AGGREGATE:
+                    int aggregateOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    switch (aggregateOpcode) {
+                        case Bytecode.ARRAY_LEN: {
+                            break;
+                        }
+                        case Bytecode.STRUCT_NEW:
+                        case Bytecode.STRUCT_NEW_DEFAULT:
+                        case Bytecode.ARRAY_NEW:
+                        case Bytecode.ARRAY_NEW_DEFAULT:
+                        case Bytecode.ARRAY_GET:
+                        case Bytecode.ARRAY_GET_S:
+                        case Bytecode.ARRAY_GET_U:
+                        case Bytecode.ARRAY_SET:
+                        case Bytecode.ARRAY_FILL:
+                        case Bytecode.REF_TEST:
+                        case Bytecode.REF_CAST:
+                        case Bytecode.ARRAY_COPY:
+                        case Bytecode.ARRAY_INIT_ELEM: {
+                            offset += 4;
+                            break;
+                        }
+                        case Bytecode.BR_ON_CAST_U8:
+                        case Bytecode.BR_ON_CAST_FAIL_U8: {
+                            offset += 7;
+                            break;
+                        }
+                        case Bytecode.STRUCT_GET:
+                        case Bytecode.STRUCT_GET_S:
+                        case Bytecode.STRUCT_GET_U:
+                        case Bytecode.STRUCT_SET:
+                        case Bytecode.ARRAY_NEW_FIXED:
+                        case Bytecode.ARRAY_NEW_DATA:
+                        case Bytecode.ARRAY_NEW_ELEM:
+                        case Bytecode.ARRAY_INIT_DATA: {
+                            offset += 8;
+                            break;
+                        }
+                        case Bytecode.BR_ON_CAST_I32:
+                        case Bytecode.BR_ON_CAST_FAIL_I32: {
+                            offset += 10;
+                            break;
+                        }
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
+                    break;
                 case Bytecode.MISC:
                     int miscOpcode = rawPeekU8(bytecode, offset);
                     offset++;
@@ -805,7 +859,8 @@ public abstract class BytecodeParser {
                         case Bytecode.I64_TRUNC_SAT_F32_U:
                         case Bytecode.I64_TRUNC_SAT_F64_S:
                         case Bytecode.I64_TRUNC_SAT_F64_U:
-                        case Bytecode.THROW_REF: {
+                        case Bytecode.THROW_REF:
+                        case Bytecode.REF_EQ: {
                             break;
                         }
                         case Bytecode.BR_ON_NULL_U8:

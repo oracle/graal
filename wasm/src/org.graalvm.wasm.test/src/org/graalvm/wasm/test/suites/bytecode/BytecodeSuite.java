@@ -608,41 +608,6 @@ public class BytecodeSuite {
     }
 
     @Test
-    public void testDataRuntimeHeaderMin() {
-        test(b -> b.addDataRuntimeHeader(1), new byte[]{0x01});
-    }
-
-    @Test
-    public void testDataRuntimeHeaderMaxInlineLength() {
-        test(b -> b.addDataRuntimeHeader(63), new byte[]{0x3F});
-    }
-
-    @Test
-    public void testDataRuntimeHeaderMinU8Length() {
-        test(b -> b.addDataRuntimeHeader(64), new byte[]{0x40, 0x40});
-    }
-
-    @Test
-    public void testDataRuntimeHeaderMaxU8Length() {
-        test(b -> b.addDataRuntimeHeader(255), new byte[]{0x40, (byte) 0xFF});
-    }
-
-    @Test
-    public void testDataRuntimeHeaderMinU16Length() {
-        test(b -> b.addDataRuntimeHeader(256), new byte[]{(byte) 0x80, 0x00, 0x01});
-    }
-
-    @Test
-    public void testDataRuntimeHeaderMaxU16Length() {
-        test(b -> b.addDataRuntimeHeader(65535), new byte[]{(byte) 0x80, (byte) 0xFF, (byte) 0xFF});
-    }
-
-    @Test
-    public void testDataRuntimeHeaderMinI32Length() {
-        test(b -> b.addDataRuntimeHeader(65536), new byte[]{(byte) 0xC0, 0x00, 0x00, 0x01, 0x00});
-    }
-
-    @Test
     public void testElemHeaderMin() {
         test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, null, -1), new byte[]{0x40, 0x10, WasmType.FUNCREF_TYPE, 0x00});
     }
@@ -793,23 +758,18 @@ public class BytecodeSuite {
     }
 
     @Test
-    public void testElemNull() {
-        test(RuntimeBytecodeGen::addElemNull, new byte[]{0x10});
-    }
-
-    @Test
     public void testElemMinFunctionIndex() {
         test(b -> b.addElemFunctionIndex(0), new byte[]{0x00});
     }
 
     @Test
     public void testElemMaxInlineFunctionIndex() {
-        test(b -> b.addElemFunctionIndex(15), new byte[]{0x0F});
+        test(b -> b.addElemFunctionIndex(31), new byte[]{0x1F});
     }
 
     @Test
     public void testElemMinU8FunctionIndex() {
-        test(b -> b.addElemFunctionIndex(16), new byte[]{0x20, 0x10});
+        test(b -> b.addElemFunctionIndex(32), new byte[]{0x20, 0x20});
     }
 
     @Test
@@ -830,11 +790,6 @@ public class BytecodeSuite {
     @Test
     public void testElemMinI32FunctionIndex() {
         test(b -> b.addElemFunctionIndex(65536), new byte[]{0x60, 0x00, 0x00, 0x01, 0x00});
-    }
-
-    @Test
-    public void testElemGlobalIndex() {
-        test(b -> b.addElemGlobalIndex(256), new byte[]{(byte) 0xC0, 0x00, 0x01});
     }
 
     @Test
