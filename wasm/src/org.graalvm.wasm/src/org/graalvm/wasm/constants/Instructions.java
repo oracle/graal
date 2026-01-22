@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Locale;
 
+/**
+ * WebAssembly instruction opcodes as defined by the spec.
+ */
 public final class Instructions {
 
     public static final int UNREACHABLE = 0x00;
@@ -686,15 +689,17 @@ public final class Instructions {
                 if (Modifier.isStatic(f.getModifiers()) && f.getType().isPrimitive()) {
                     int code = f.getInt(null);
                     String representation = f.getName().toLowerCase(Locale.ENGLISH);
+                    if (representation.startsWith("atomic") || representation.startsWith("vector")) {
+                        continue;
+                    }
                     if (representation.startsWith("i32") || representation.startsWith("i64") ||
                                     representation.startsWith("f32") || representation.startsWith("f64") ||
                                     representation.startsWith("local") || representation.startsWith("global")) {
                         representation = representation.replaceFirst("_", ".");
                     }
-                    if (representation.startsWith("atomic") || representation.startsWith("vector")) {
-                        continue;
+                    if (DECODING_TABLE[code] == null) {
+                        DECODING_TABLE[code] = representation;
                     }
-                    DECODING_TABLE[code] = representation;
                 }
             }
         } catch (IllegalAccessException e) {
@@ -713,7 +718,7 @@ public final class Instructions {
             }
             final int opcode = Byte.toUnsignedInt(instructions[i]);
             String representation = DECODING_TABLE[opcode];
-            result.append(String.format("%03d", opcode)).append(" ").append(representation).append("\n");
+            result.append(String.format("%02x", opcode)).append(" ").append(representation).append("\n");
         }
         return result.toString();
     }
