@@ -1147,12 +1147,7 @@ public class SubstrateOptions {
             if (values.containsKey(this)) {
                 return (Boolean) values.get(this);
             }
-            /*
-             * GR-70850: ImageInfo.isExecutable is inconsistent across layers. Since only an
-             * executable application layer is currently supported on Layered Images, the current
-             * solution is to enable this by default.
-             */
-            return ImageInfo.isExecutable() || ImageLayerBuildingSupport.buildingImageLayer();
+            return isExecutableHelper();
         }
 
         @Override
@@ -1562,12 +1557,16 @@ public class SubstrateOptions {
         if (value != null) {
             return value;
         }
-        /*
-         * GR-70850: ImageInfo.isExecutable is inconsistent across layers. Since only an executable
-         * application layer is currently supported on Layered Images, the current solution is to
-         * enable this by default.
-         */
-        return ImageInfo.isExecutable() || ImageLayerBuildingSupport.buildingImageLayer();
+        return isExecutableHelper();
+    }
+
+    /**
+     * When building the initial layer, it's impossible to know if the application layer will be an
+     * executable, or a shared library. For this reason, the exit handlers should always be
+     * installed in the initial layer and the decision to run it or not is delayed to run time.
+     */
+    private static boolean isExecutableHelper() {
+        return ImageLayerBuildingSupport.buildingInitialLayer() || ImageInfo.isExecutable();
     }
 
     public static class TruffleStableOptions {

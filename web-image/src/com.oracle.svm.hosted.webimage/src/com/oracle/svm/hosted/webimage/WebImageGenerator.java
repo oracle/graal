@@ -34,9 +34,6 @@ import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import com.oracle.svm.core.image.ImageHeapLayouter;
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.ImageInfo;
@@ -44,13 +41,16 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.webimage.api.JS;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.svm.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.heap.BarrierSetProvider;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
+import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.jdk.ImageKindInfoSingleton;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
@@ -72,7 +72,9 @@ import com.oracle.svm.hosted.webimage.logging.visualization.VisualizationSupport
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.wasm.annotation.WasmStartFunction;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmWebImage;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.webimage.platform.WebImagePlatformConfigurationProvider;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
 import com.oracle.svm.webimage.wasmgc.annotation.WasmExport;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -159,7 +161,9 @@ public class WebImageGenerator extends NativeImageGenerator {
     private static void setWebImageSystemProperties() {
         System.setProperty("svm.targetName", "Browser");
         System.setProperty("svm.targetArch", "ECMAScript 2015");
-        System.setProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, ImageInfo.PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE);
+        if (ImageLayerBuildingSupport.lastImageBuild()) {
+            ImageKindInfoSingleton.singleton().setImageKindInfoProperty(ImageInfo.PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE);
+        }
     }
 
     @Override

@@ -50,6 +50,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
@@ -81,7 +82,6 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
                     "java.vm.specification.name",
                     "java.vm.specification.vendor",
                     "java.vm.specification.version",
-                    ImageInfo.PROPERTY_IMAGE_KIND_KEY,
                     /*
                      * We do not support cross-compilation for now. Separators might also be cached
                      * in other classes, so changing them would be tricky.
@@ -175,6 +175,12 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT, () -> LocaleSupport.singleton().getLocale().variant()));
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT_DISPLAY, () -> LocaleSupport.singleton().getLocale().displayVariant()));
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT_FORMAT, () -> LocaleSupport.singleton().getLocale().formatVariant()));
+
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            lazyProperties.add(new LazySystemProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, () -> ImageKindInfoSingleton.singleton().getImageKindInfoProperty()));
+        } else {
+            initializeProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, System.getProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY));
+        }
 
         String targetName = System.getProperty("svm.targetName");
         if (targetName != null) {
