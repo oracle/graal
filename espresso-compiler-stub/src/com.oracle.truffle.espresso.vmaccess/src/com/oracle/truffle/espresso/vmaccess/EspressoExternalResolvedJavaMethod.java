@@ -204,10 +204,19 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
 
     @Override
     public Parameter[] getParameters() {
-        if (getSignature().getParameterCount(false) == 0) {
+        Value table = methodMirror.getMember("parameters");
+        if (table.isNull()) {
             return NO_PARAMETERS;
         }
-        throw JVMCIError.unimplemented();
+        int size = Math.toIntExact(table.getArraySize());
+        Parameter[] result = new Parameter[size];
+        for (int i = 0; i < size; i++) {
+            Value parameter = table.getArrayElement(i);
+            String name = parameter.getMember("name").asString();
+            int modifiers = parameter.getMember("modifiers").asInt();
+            result[i] = new Parameter(name, modifiers, this, i);
+        }
+        return result;
     }
 
     @Override
