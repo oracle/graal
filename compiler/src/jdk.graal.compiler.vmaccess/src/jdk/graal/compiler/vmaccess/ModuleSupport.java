@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.vmaccess;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 import jdk.internal.module.Modules;
@@ -75,7 +77,9 @@ public final class ModuleSupport {
     }
 
     public static void addOpens(Module accessingModule, Module targetModule, String... packageNames) {
-        for (String packageName : packageNames) {
+        // sort Module.getPackages() to ensure stable iteration order
+        List<String> packages = packageNames.length > 0 ? Arrays.asList(packageNames) : targetModule.getPackages().stream().sorted().toList();
+        for (String packageName : packages) {
             Modules.addOpens(targetModule, packageName, accessingModule);
         }
     }

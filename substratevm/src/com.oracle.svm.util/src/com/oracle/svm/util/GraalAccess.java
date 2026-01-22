@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,7 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
+import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.graal.compiler.vmaccess.VMAccess.Builder;
 import jdk.vm.ci.code.TargetDescription;
@@ -200,7 +200,7 @@ public final class GraalAccess {
             case Class<?> clazz -> lookupType(clazz);
             case Method method -> lookupMethod(method);
             case Constructor<?> cons -> lookupMethod(cons);
-            case Package pkg -> new ResolvedJavaPackageImpl(pkg);
+            case Package pkg -> lookupPackage(pkg);
             case Field field -> lookupField(field);
             case RecordComponent rc -> lookupRecordComponent(rc);
             default -> throw new IllegalArgumentException(String.valueOf(element));
@@ -223,11 +223,20 @@ public final class GraalAccess {
         return recordCache.computeIfAbsent(rc, r -> getOriginalProviders().getMetaAccess().lookupJavaRecordComponent(rc));
     }
 
-    public static SnippetReflectionProvider getOriginalSnippetReflection() {
-        return getOriginalProviders().getSnippetReflection();
+    private static ResolvedJavaPackage lookupPackage(Package pkg) {
+        /*
+         * All Packages should have at least the package-info.class. We convert that Class object to
+         * a ResolvedJavaType and use that to query the ResolvedJavaPackage.
+         */
+        Method getPackageInfo = ReflectionUtil.lookupMethod(Package.class, "getPackageInfo");
+        Class<?> packageInfo = ReflectionUtil.invokeMethod(getPackageInfo, pkg);
+        if (packageInfo == null) {
+            throw new NullPointerException("Package info of " + pkg.getName() + " is null");
+        }
+        return getVMAccess().getPackage(lookupType(packageInfo));
     }
 
-    public static ResolvedJavaModule lookupModule(Module module) {
-        return new ResolvedJavaModuleImpl(module);
+    public static SnippetReflectionProvider getOriginalSnippetReflection() {
+        return getOriginalProviders().getSnippetReflection();
     }
 }

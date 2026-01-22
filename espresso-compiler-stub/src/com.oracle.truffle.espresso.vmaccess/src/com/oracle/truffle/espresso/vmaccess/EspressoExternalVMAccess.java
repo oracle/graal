@@ -24,7 +24,14 @@ package com.oracle.truffle.espresso.vmaccess;
 
 import static com.oracle.truffle.espresso.vmaccess.EspressoExternalConstantReflectionProvider.safeGetClass;
 
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -52,6 +59,9 @@ import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.vmaccess.InvocationException;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
+import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -78,15 +88,44 @@ final class EspressoExternalVMAccess implements VMAccess {
     private final EspressoExternalConstantReflectionProvider constantReflection;
     private final MetaAccessExtensionProvider metaAccessExtensionProvider;
     private final Value jvmciHelper;
-    private final EspressoExternalResolvedInstanceType javaLangObject;
     private final EspressoExternalResolvedInstanceType[] arrayInterfaces;
     private final Providers providers;
     private final JavaConstant platformClassLoader;
-    private final ResolvedJavaMethod forName;
-    private final ResolvedJavaMethod unsafeAllocateInstance;
     private final JavaConstant unsafe;
-    private final ResolvedJavaType classNotFoundExceptionType;
     private JavaConstant systemClassLoader;
+
+    // Checkstyle: stop field name check
+    // j.l.Object
+    private final EspressoExternalResolvedInstanceType java_lang_Object;
+    private final ResolvedJavaMethod java_lang_Object_toString;
+    // j.l.Class
+    private final ResolvedJavaMethod java_lang_Class_forName_String_boolean_ClassLoader;
+    private final ResolvedJavaMethod java_lang_Class_getProtectionDomain;
+    // j.l.ClassNotFoundException
+    private final ResolvedJavaType java_lang_ClassNotFoundException;
+    // j.l.Module
+    final ResolvedJavaType java_lang_Module;
+    private final ResolvedJavaMethod java_lang_Class_getModule;
+    private final ResolvedJavaMethod java_lang_Class_getPackage;
+    final EspressoExternalResolvedJavaMethod java_lang_Module_getDescriptor;
+    final EspressoExternalResolvedJavaMethod java_lang_Module_getPackages;
+    final EspressoExternalResolvedJavaMethod java_lang_Module_isExported_String;
+    final EspressoExternalResolvedJavaMethod java_lang_Module_isExported_String_Module;
+    final EspressoExternalResolvedJavaMethod java_lang_Module_isOpen_String;
+    final EspressoExternalResolvedJavaMethod java_lang_Module_isOpen_String_Module;
+    final EspressoExternalResolvedJavaMethod java_lang_Module_getName;
+    // j.l.module.ModuleDescriptor
+    final EspressoExternalResolvedJavaMethod java_lang_module_ModuleDescriptor_isAutomatic;
+    // j.l.NamedPackage
+    final EspressoExternalResolvedJavaField java_lang_NamedPackage_module;
+    // j.l.Package
+    final EspressoExternalResolvedJavaMethod java_lang_Package_getPackageInfo;
+    // java.security
+    private final ResolvedJavaMethod java_security_ProtectionDomain_getCodeSource;
+    private final ResolvedJavaMethod java_security_CodeSource_getLocation;
+    // jdk.internal.misc.Unsafe
+    private final ResolvedJavaMethod jdk_internal_misc_Unsafe_allocateInstance_Class;
+    // Checkstyle: resume field name check
 
     @SuppressWarnings("this-escape")
     EspressoExternalVMAccess(Context context) {
@@ -98,7 +137,7 @@ final class EspressoExternalVMAccess implements VMAccess {
         constantReflection = new EspressoExternalConstantReflectionProvider(this);
         metaAccessExtensionProvider = new EspressoMetaAccessExtensionProvider(constantReflection);
         primitives = createPrimitiveTypes();
-        javaLangObject = new EspressoExternalResolvedInstanceType(this, requireMetaObject(context, "java.lang.Object"));
+        java_lang_Object = new EspressoExternalResolvedInstanceType(this, requireMetaObject(context, "java.lang.Object"));
         arrayInterfaces = new EspressoExternalResolvedInstanceType[]{
                         new EspressoExternalResolvedInstanceType(this, requireMetaObject(context, "java.io.Serializable")),
                         new EspressoExternalResolvedInstanceType(this, requireMetaObject(context, "java.lang.Cloneable")),
@@ -112,16 +151,97 @@ final class EspressoExternalVMAccess implements VMAccess {
 
         ResolvedJavaType classType = providers.getMetaAccess().lookupJavaType(Class.class);
         Signature forNameSignature = providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;");
-        forName = classType.findMethod("forName", forNameSignature);
-        classNotFoundExceptionType = providers.getMetaAccess().lookupJavaType(ClassNotFoundException.class);
+        java_lang_Class_forName_String_boolean_ClassLoader = classType.findMethod("forName", forNameSignature);
+        java_lang_ClassNotFoundException = providers.getMetaAccess().lookupJavaType(ClassNotFoundException.class);
 
         ResolvedJavaType unsafeType = lookupBootClassLoaderType("jdk.internal.misc.Unsafe");
-        unsafeAllocateInstance = unsafeType.findMethod("allocateInstance", providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/Class;)Ljava/lang/Object;"));
+        jdk_internal_misc_Unsafe_allocateInstance_Class = unsafeType.findMethod("allocateInstance", providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/Class;)Ljava/lang/Object;"));
         ResolvedJavaMethod unsafeGetter = unsafeType.findMethod("getUnsafe", providers.getMetaAccess().parseMethodDescriptor("()Ljdk/internal/misc/Unsafe;"));
         unsafe = invoke(unsafeGetter, null);
 
-        JVMCIError.guarantee(forName != null, "Required method: forName");
-        JVMCIError.guarantee(unsafeAllocateInstance != null, "Required method: unsafeAllocateInstance");
+        ResolvedJavaType protectionDomainType = providers.getMetaAccess().lookupJavaType(ProtectionDomain.class);
+        ResolvedJavaType codeSourceType = providers.getMetaAccess().lookupJavaType(CodeSource.class);
+
+        Signature getProtectionDomainSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/security/ProtectionDomain;");
+        java_lang_Class_getProtectionDomain = classType.findMethod("getProtectionDomain", getProtectionDomainSignature);
+
+        Signature getCodeSourceSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/security/CodeSource;");
+        java_security_ProtectionDomain_getCodeSource = protectionDomainType.findMethod("getCodeSource", getCodeSourceSignature);
+
+        Signature getLocationSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/net/URL;");
+        java_security_CodeSource_getLocation = codeSourceType.findMethod("getLocation", getLocationSignature);
+
+        Signature toStringSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/String;");
+        java_lang_Object_toString = java_lang_Object.findMethod("toString", toStringSignature);
+
+        Signature getModuleSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/Module;");
+        java_lang_Class_getModule = classType.findMethod("getModule", getModuleSignature);
+
+        Signature getPackageSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/Package;");
+        java_lang_Class_getPackage = classType.findMethod("getPackage", getPackageSignature);
+
+        java_lang_Module = providers.getMetaAccess().lookupJavaType(Module.class);
+
+        Signature getDescriptorSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/module/ModuleDescriptor;");
+        java_lang_Module_getDescriptor = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("getDescriptor", getDescriptorSignature);
+
+        Signature getPackagesSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/util/Set;");
+        java_lang_Module_getPackages = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("getPackages", getPackagesSignature);
+
+        Signature isExportedStringSignature = providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/String;)Z");
+        java_lang_Module_isExported_String = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("isExported", isExportedStringSignature);
+
+        Signature isExportedStringModuleSignature = providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/String;Ljava/lang/Module;)Z");
+        java_lang_Module_isExported_String_Module = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("isExported", isExportedStringModuleSignature);
+
+        Signature isOpenStringSignature = providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/String;)Z");
+        java_lang_Module_isOpen_String = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("isOpen", isOpenStringSignature);
+
+        Signature isOpenStringModuleSignature = providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/String;Ljava/lang/Module;)Z");
+        java_lang_Module_isOpen_String_Module = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("isOpen", isOpenStringModuleSignature);
+
+        Signature getNameSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/String;");
+        java_lang_Module_getName = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("getName", getNameSignature);
+
+        ResolvedJavaType moduleDescriptorType = providers.getMetaAccess().lookupJavaType(java.lang.module.ModuleDescriptor.class);
+        Signature isAutomaticSignature = providers.getMetaAccess().parseMethodDescriptor("()Z");
+        java_lang_module_ModuleDescriptor_isAutomatic = (EspressoExternalResolvedJavaMethod) moduleDescriptorType.findMethod("isAutomatic", isAutomaticSignature);
+
+        ResolvedJavaType namedPackageType = lookupBootClassLoaderType("java.lang.NamedPackage");
+        java_lang_NamedPackage_module = (EspressoExternalResolvedJavaField) lookupField(namedPackageType, "module");
+
+        ResolvedJavaType packageType = providers.getMetaAccess().lookupJavaType(java.lang.Package.class);
+        Signature getPackageInforSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/Class;");
+        java_lang_Package_getPackageInfo = (EspressoExternalResolvedJavaMethod) packageType.findMethod("getPackageInfo", getPackageInforSignature);
+
+        JVMCIError.guarantee(java_lang_Class_forName_String_boolean_ClassLoader != null, "Required method: forName");
+        JVMCIError.guarantee(jdk_internal_misc_Unsafe_allocateInstance_Class != null, "Required method: unsafeAllocateInstance");
+        JVMCIError.guarantee(java_lang_Class_getProtectionDomain != null, "Required method: getProtectionDomain");
+        JVMCIError.guarantee(java_security_ProtectionDomain_getCodeSource != null, "Required method: getCodeSource");
+        JVMCIError.guarantee(java_security_CodeSource_getLocation != null, "Required method: getLocation");
+        JVMCIError.guarantee(java_lang_Object_toString != null, "Required method: toString");
+        JVMCIError.guarantee(java_lang_Class_getModule != null, "Required method: getModule");
+        JVMCIError.guarantee(java_lang_Class_getPackage != null, "Required method: getPackage");
+        JVMCIError.guarantee(java_lang_Module_getDescriptor != null, "Required method: Module.getDescriptor");
+        JVMCIError.guarantee(java_lang_module_ModuleDescriptor_isAutomatic != null, "Required method: ModuleDescriptor.isAutomatic");
+        JVMCIError.guarantee(java_lang_Module_getPackages != null, "Required method: Module.getPackages");
+        JVMCIError.guarantee(java_lang_Module_isExported_String != null, "Required method: Module.isExported(String)");
+        JVMCIError.guarantee(java_lang_Module_isExported_String_Module != null, "Required method: Module.isExported(String, Module)");
+        JVMCIError.guarantee(java_lang_Module_isOpen_String != null, "Required method: Module.isOpen(String)");
+        JVMCIError.guarantee(java_lang_Module_isOpen_String_Module != null, "Required method: Module.isOpen(String, Module)");
+        JVMCIError.guarantee(java_lang_Module_getName != null, "Required method: Module.getName");
+        JVMCIError.guarantee(java_lang_Package_getPackageInfo != null, "Required method: Package.getPackageInfo()");
+        JVMCIError.guarantee(java_lang_NamedPackage_module != null, "Required field: NamedPackage.module");
+    }
+
+    private static ResolvedJavaField lookupField(ResolvedJavaType namedPackageType, String fieldName) {
+        ResolvedJavaField[] namedPackageFields = namedPackageType.getInstanceFields(false);
+        for (ResolvedJavaField field : namedPackageFields) {
+            if (fieldName.equals(field.getName())) {
+                return field;
+            }
+        }
+        return null;
     }
 
     private EspressoExternalResolvedPrimitiveType[] createPrimitiveTypes() {
@@ -177,15 +297,91 @@ final class EspressoExternalVMAccess implements VMAccess {
         return lookupType(name, JavaConstant.NULL_POINTER);
     }
 
+    @Override
+    public ResolvedJavaModule getModule(ResolvedJavaType type) {
+        JavaConstant originalClass = providers.getConstantReflection().asJavaClass(type);
+        JavaConstant module = invoke(java_lang_Class_getModule, originalClass);
+        if (!(module instanceof EspressoExternalObjectConstant espressoConstant)) {
+            throw new IllegalArgumentException("Constant has unexpected type " + module.getClass() + ": " + module);
+        }
+        Value value = espressoConstant.getValue();
+        return new EspressoExternalResolvedJavaModule(this, value);
+    }
+
+    @Override
+    public ResolvedJavaPackage getPackage(ResolvedJavaType type) {
+        JavaConstant originalClass = providers.getConstantReflection().asJavaClass(type);
+        JavaConstant pkg = invoke(java_lang_Class_getPackage, originalClass);
+        if (!(pkg instanceof EspressoExternalObjectConstant espressoConstant)) {
+            throw new IllegalArgumentException("Constant has unexpected type " + pkg.getClass() + ": " + pkg);
+        }
+        Value value = espressoConstant.getValue();
+        return new EspressoExternalResolvedJavaPackage(this, value);
+    }
+
+    @Override
+    public Stream<ResolvedJavaPackage> bootLoaderPackages() {
+        /*
+         * Obtain jdk.internal.loader.BootLoader.packages() from the guest and materialize it to an
+         * array to bridge into a Java Stream on the host.
+         */
+        Value bootLoaderMeta = requireMetaObject("jdk.internal.loader.BootLoader");
+        Value stream = bootLoaderMeta.getMember("packages").execute();
+        // Stream#toArray() -> Object[]
+        Value array = stream.invokeMember("toArray");
+        if (array == null || array.isNull()) {
+            return Stream.empty();
+        }
+        long size = array.getArraySize();
+        Stream.Builder<ResolvedJavaPackage> builder = Stream.builder();
+        for (long i = 0; i < size; i++) {
+            Value pkg = array.getArrayElement(i);
+            if (pkg != null && !pkg.isNull()) {
+                builder.add(new EspressoExternalResolvedJavaPackage(this, pkg));
+            }
+        }
+        return builder.build();
+    }
+
+    @Override
+    public ResolvedJavaModuleLayer bootModuleLayer() {
+        // Obtain java.lang.ModuleLayer.boot() from the guest and wrap it.
+        Value moduleLayerMeta = requireMetaObject("java.lang.ModuleLayer");
+        Value bootLayer = moduleLayerMeta.getMember("boot").execute();
+        return new EspressoExternalResolvedJavaModuleLayer(this, bootLayer);
+    }
+
+    @Override
+    public URL getCodeSourceLocation(ResolvedJavaType type) {
+        JavaConstant originalClass = providers.getConstantReflection().asJavaClass(type);
+
+        JavaConstant pd = invoke(java_lang_Class_getProtectionDomain, originalClass);
+        JavaConstant cs = invoke(java_security_ProtectionDomain_getCodeSource, pd);
+        if (cs.isNull()) {
+            return null;
+        }
+        JavaConstant location = invoke(java_security_CodeSource_getLocation, cs);
+        if (location.isNull()) {
+            return null;
+        }
+        JavaConstant locationStringConstant = invoke(java_lang_Object_toString, location);
+        String locationString = providers.getSnippetReflection().asObject(String.class, locationStringConstant);
+        try {
+            return new URI(locationString).toURL();
+        } catch (MalformedURLException | URISyntaxException e) {
+            throw JVMCIError.shouldNotReachHere(e);
+        }
+    }
+
     private ResolvedJavaType lookupType(String name, JavaConstant classLoader) {
         JavaConstant nameConstant = constantReflection.forString(name);
         JavaConstant cls;
         try {
-            cls = invoke(forName, null, nameConstant, JavaConstant.FALSE, classLoader);
+            cls = invoke(java_lang_Class_forName_String_boolean_ClassLoader, null, nameConstant, JavaConstant.FALSE, classLoader);
             JVMCIError.guarantee(!cls.isNull(), "forName should return a result or throw");
         } catch (InvocationException e) {
             JavaConstant exceptionObject = e.getExceptionObject();
-            if (classNotFoundExceptionType.isInstance(exceptionObject)) {
+            if (java_lang_ClassNotFoundException.isInstance(exceptionObject)) {
                 return null;
             }
             throw e;
@@ -385,7 +581,7 @@ final class EspressoExternalVMAccess implements VMAccess {
     }
 
     EspressoExternalResolvedInstanceType getJavaLangObject() {
-        return javaLangObject;
+        return java_lang_Object;
     }
 
     EspressoExternalResolvedInstanceType[] getArrayInterfaces() {
@@ -473,7 +669,7 @@ final class EspressoExternalVMAccess implements VMAccess {
     }
 
     public EspressoExternalObjectConstant unsafeAllocateInstance(EspressoExternalResolvedInstanceType type) {
-        return (EspressoExternalObjectConstant) invoke(unsafeAllocateInstance, unsafe, getProviders().getConstantReflection().asJavaClass(type));
+        return (EspressoExternalObjectConstant) invoke(jdk_internal_misc_Unsafe_allocateInstance_Class, unsafe, getProviders().getConstantReflection().asJavaClass(type));
     }
 
     byte[] getRawAnnotationBytes(Value metaObject, int category) {

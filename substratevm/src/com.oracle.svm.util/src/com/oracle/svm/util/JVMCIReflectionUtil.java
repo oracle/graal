@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -326,7 +326,7 @@ public final class JVMCIReflectionUtil {
      * primitive type or void.
      */
     public static ResolvedJavaPackage getPackage(ResolvedJavaType type) {
-        return JVMCIReflectionUtilFallback.getPackage(type);
+        return GraalAccess.getVMAccess().getPackage(OriginalClassProvider.getOriginalType(type));
     }
 
     /**
@@ -367,18 +367,16 @@ public final class JVMCIReflectionUtil {
     }
 
     public static ResolvedJavaModule getModule(ResolvedJavaType declaringClass) {
-        return JVMCIReflectionUtilFallback.getModule(declaringClass);
+        return GraalAccess.getVMAccess().getModule(OriginalClassProvider.getOriginalType(declaringClass));
     }
 
     /**
      * Returns the <em>origin</em> associated with this {@link ResolvedJavaType}.
-     * <p>
-     * This is not yet properly implemented as it falls back to the original class (GR-71068).
      *
      * @return the location (URL), or {@code null} if no URL was supplied during construction.
      */
     public static URL getOrigin(ResolvedJavaType type) {
-        return JVMCIReflectionUtilFallback.getOrigin(type);
+        return GraalAccess.getVMAccess().getCodeSourceLocation(OriginalClassProvider.getOriginalType(type));
     }
 
     /**
@@ -400,14 +398,14 @@ public final class JVMCIReflectionUtil {
      * {@code jdk.internal.loader.BootLoader#packages()}.
      */
     public static Stream<ResolvedJavaPackage> bootLoaderPackages() {
-        return JVMCIReflectionUtilFallback.bootLoaderPackages();
+        return GraalAccess.getVMAccess().bootLoaderPackages();
     }
 
     /**
      * Returns the boot layer. See {@link java.lang.ModuleLayer#boot()}.
      */
     public static ResolvedJavaModuleLayer bootModuleLayer() {
-        return JVMCIReflectionUtilFallback.bootModuleLayer();
+        return GraalAccess.getVMAccess().bootModuleLayer();
     }
 
     /**
@@ -458,7 +456,8 @@ public final class JVMCIReflectionUtil {
      * @see ReflectionUtil#newInstance
      */
     public static JavaConstant newInstance(ResolvedJavaType type) {
-        return JVMCIReflectionUtilFallback.newInstance(type);
+        ResolvedJavaMethod ctor = getDeclaredConstructor(false, type);
+        return GraalAccess.getVMAccess().invoke(ctor, null);
     }
 
     /**
@@ -467,7 +466,9 @@ public final class JVMCIReflectionUtil {
      * @see java.lang.reflect.Array#newInstance(Class, int)
      */
     public static JavaConstant newArrayInstance(ResolvedJavaType componentType, int length) {
-        return JVMCIReflectionUtilFallback.newArrayInstance(componentType, length);
+        JavaConstant[] elements = new JavaConstant[length];
+        Arrays.fill(elements, JavaConstant.defaultForKind(componentType.getJavaKind()));
+        return GraalAccess.getVMAccess().asArrayConstant(componentType, elements);
     }
 
     /**

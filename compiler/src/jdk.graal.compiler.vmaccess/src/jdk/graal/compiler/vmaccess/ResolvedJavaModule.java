@@ -74,11 +74,11 @@ public interface ResolvedJavaModule {
     boolean isNamed();
 
     /**
-     * Returns the module descriptor for this module or {@code null} if this module is an unnamed
-     * module. See {@link Module#getDescriptor()}.
-     * <p>
-     * Note that although {@link ModuleDescriptor} is a JDK class, it is OK in JVMCI because it is
-     * purely symbolic.
+     * Returns {@code true} if this is an automatic module. See
+     * {@link ModuleDescriptor#isAutomatic()}. This methods must only be called on
+     * {@linkplain #isNamed() named modules}.
+     *
+     * @throws IllegalArgumentException if the module is not {@linkplain #isNamed() named}.
      */
-    ModuleDescriptor getDescriptor();
+    boolean isAutomatic();
 }

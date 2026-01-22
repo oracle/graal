@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.util;
+package jdk.graal.compiler.hostvmaccess;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -33,11 +33,11 @@ import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
 /**
  * Fallback implementation of {@link ResolvedJavaModuleLayer} based on {@link ModuleLayer}.
  */
-final class ResolvedJavaModuleLayerImpl implements ResolvedJavaModuleLayer {
+final class HostVMResolvedJavaModuleLayerImpl implements ResolvedJavaModuleLayer {
 
     private final ModuleLayer moduleLayer;
 
-    ResolvedJavaModuleLayerImpl(ModuleLayer moduleLayer) {
+    HostVMResolvedJavaModuleLayerImpl(ModuleLayer moduleLayer) {
         this.moduleLayer = Objects.requireNonNull(moduleLayer);
     }
 
@@ -46,7 +46,7 @@ final class ResolvedJavaModuleLayerImpl implements ResolvedJavaModuleLayer {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        ResolvedJavaModuleLayerImpl that = (ResolvedJavaModuleLayerImpl) o;
+        HostVMResolvedJavaModuleLayerImpl that = (HostVMResolvedJavaModuleLayerImpl) o;
         return moduleLayer.equals(that.moduleLayer);
     }
 
@@ -57,6 +57,6 @@ final class ResolvedJavaModuleLayerImpl implements ResolvedJavaModuleLayer {
 
     @Override
     public Optional<ResolvedJavaModule> findModule(String moduleName) {
-        return moduleLayer.findModule(moduleName).map(ResolvedJavaModuleImpl::new);
+        return moduleLayer.findModule(moduleName).map(HostVMResolvedJavaModuleImpl::new);
     }
 }

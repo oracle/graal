@@ -53,12 +53,24 @@ public class LoggingFeature implements InternalFeature {
         return JVMCIReflectionUtil.bootModuleLayer().findModule("java.logging");
     }
 
-    public static class Options {
+    static class Options {
         @Option(help = "Enable the feature that provides support for logging.")//
-        public static final HostedOptionKey<Boolean> EnableLoggingFeature = new HostedOptionKey<>(requiredModule().isPresent());
+        public static final HostedOptionKey<Boolean> EnableLoggingFeature = new HostedOptionKey<>(false);
 
         @Option(help = "When enabled, logging feature details are printed.", type = OptionType.Debug) //
         public static final HostedOptionKey<Boolean> TraceLoggingFeature = new HostedOptionKey<>(false);
+    }
+
+    /**
+     * Returns {@code true} if this feature is enabled. We need this helper as querying
+     * {@link #requiredModule()} when constructing a default value for {@code EnableLoggingFeature}
+     * causes recursive initialization of the {@link jdk.vm.ci.runtime.JVMCIRuntime}.
+     */
+    private static boolean isLoggingEnabled() {
+        if (!Options.EnableLoggingFeature.hasBeenSet()) {
+            return requiredModule().isPresent();
+        }
+        return Options.EnableLoggingFeature.getValue();
     }
 
     private final boolean trace = LoggingFeature.Options.TraceLoggingFeature.getValue();
@@ -67,7 +79,7 @@ public class LoggingFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        Boolean loggingEnabled = Options.EnableLoggingFeature.getValue();
+        boolean loggingEnabled = isLoggingEnabled();
         if (loggingEnabled && requiredModule().isEmpty()) {
             throw UserError.abort("Option %s requires JDK module java.logging to be available",
                             SubstrateOptionsParser.commandArgument(Options.EnableLoggingFeature, "+"));

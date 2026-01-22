@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.util;
 
+import java.lang.reflect.Method;
+
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 
 /**
@@ -44,7 +46,10 @@ public abstract class HostModuleUtil {
      * method is not meant to change any runtime property of {@code runtimeModule}.
      */
     private static void addReads(Module hostedModule, ResolvedJavaModule runtimeModule) {
-        ResolvedJavaModuleImpl.addReads(hostedModule, runtimeModule);
+        Method addReadsMethod = ReflectionUtil.lookupMethod(true, runtimeModule.getClass(), "addReads", Module.class);
+        if (addReadsMethod != null) {
+            ReflectionUtil.invokeMethod(addReadsMethod, runtimeModule, hostedModule);
+        }
     }
 
     private HostModuleUtil() {

@@ -2468,7 +2468,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             Object result;
             if (receiver.isStatic()) {
                 result = receiver.invokeDirectStatic(convertedArguments);
-            } else if (receiver.isConstructor()) {
+            } else if (receiver.isConstructor() || receiver.isPrivate()) {
                 result = receiver.invokeDirectSpecial(convertedArguments);
             } else if (declaringKlass.isInterface()) {
                 result = receiver.invokeDirectInterface(convertedArguments);

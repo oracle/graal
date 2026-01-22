@@ -143,6 +143,7 @@ public final class HostVMAccessBuilder implements VMAccess.Builder {
                             "jdk.internal.module");
             ModuleSupport.addExports(module, "jdk.internal.vm.ci",
                             "jdk.vm.ci.meta",
+                            "jdk.vm.ci.meta.annotation",
                             "jdk.vm.ci.runtime");
             ModuleSupport.addExports(module, "jdk.graal.compiler",
                             "jdk.graal.compiler.api.replacements",

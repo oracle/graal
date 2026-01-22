@@ -335,7 +335,11 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
         try {
             result = methodMirror.execute(args);
         } catch (PolyglotException e) {
-            throw new InvocationException(new EspressoExternalObjectConstant(access, e.getGuestObject()), e);
+            Value guestException = e.getGuestObject();
+            if (guestException == null || guestException.isNull()) {
+                throw e;
+            }
+            throw new InvocationException(new EspressoExternalObjectConstant(access, guestException), e);
         }
         if (isConstructor()) {
             return new EspressoExternalObjectConstant(access, (Value) args[0]);

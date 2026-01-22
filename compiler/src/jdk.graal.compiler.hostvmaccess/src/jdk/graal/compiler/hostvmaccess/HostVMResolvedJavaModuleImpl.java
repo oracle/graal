@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.util;
+package jdk.graal.compiler.hostvmaccess;
 
-import java.lang.module.ModuleDescriptor;
 import java.util.Objects;
 import java.util.Set;
 
+import jdk.graal.compiler.vmaccess.ModuleSupport;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 
 /**
  * Fallback implementation of {@link ResolvedJavaModule} based on {@link Module}.
  */
-final class ResolvedJavaModuleImpl implements ResolvedJavaModule {
+final class HostVMResolvedJavaModuleImpl implements ResolvedJavaModule {
 
     private final Module module;
 
-    ResolvedJavaModuleImpl(Module module) {
+    HostVMResolvedJavaModuleImpl(Module module) {
         this.module = Objects.requireNonNull(module);
     }
 
@@ -51,7 +51,7 @@ final class ResolvedJavaModuleImpl implements ResolvedJavaModule {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        ResolvedJavaModuleImpl that = (ResolvedJavaModuleImpl) o;
+        HostVMResolvedJavaModuleImpl that = (HostVMResolvedJavaModuleImpl) o;
         return module.equals(that.module);
     }
 
@@ -91,22 +91,26 @@ final class ResolvedJavaModuleImpl implements ResolvedJavaModule {
     }
 
     @Override
-    public ModuleDescriptor getDescriptor() {
-        return module.getDescriptor();
+    public boolean isAutomatic() {
+        if (!isNamed()) {
+            throw new IllegalArgumentException("Must not call isAutomatic() on an unnamed module");
+        }
+        return module.getDescriptor().isAutomatic();
     }
 
-    private static ResolvedJavaModuleImpl toImpl(ResolvedJavaModule module) {
-        if (module instanceof ResolvedJavaModuleImpl moduleImpl) {
+    private static HostVMResolvedJavaModuleImpl toImpl(ResolvedJavaModule module) {
+        if (module instanceof HostVMResolvedJavaModuleImpl moduleImpl) {
             return moduleImpl;
         }
         throw new IllegalArgumentException("Unsupported ResolvedJavaModule implementation: " + module.getClass().getName());
     }
 
-    static void addReads(Module accessingModule, ResolvedJavaModule declaringModule) {
-        ModuleSupport.accessModule(ModuleSupport.Access.OPEN, accessingModule, toImpl(declaringModule).module);
-    }
-
-    static Module getJavaModule(ResolvedJavaModule m) {
-        return toImpl(m).module;
+    /**
+     * Updates a {@code accessingModule} to read {@code this} module during the image build. This
+     * method is not meant to change any runtime property of {@code this} module. This method is
+     * accessed reflectively.
+     */
+    void addReads(Module accessingModule) {
+        ModuleSupport.addOpens(accessingModule, toImpl(this).module);
     }
 }
