@@ -27,8 +27,6 @@ import java.util.Objects;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceType;
-import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaField;
-import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaMethod;
 import com.oracle.truffle.espresso.jvmci.meta.ConstantReflectionProviderWithStaticsBase;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedJavaType;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedObjectType;
@@ -40,73 +38,18 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
 
 final class EspressoExternalConstantReflectionProvider implements ConstantReflectionProviderWithStaticsBase {
     private final EspressoExternalVMAccess access;
-    private final EspressoExternalResolvedJavaMethod boxBoolean;
-    private final EspressoExternalResolvedJavaMethod boxByte;
-    private final EspressoExternalResolvedJavaMethod boxShort;
-    private final EspressoExternalResolvedJavaMethod boxChar;
-    private final EspressoExternalResolvedJavaMethod boxInt;
-    private final EspressoExternalResolvedJavaMethod boxLong;
-    private final EspressoExternalResolvedJavaMethod boxFloat;
-    private final EspressoExternalResolvedJavaMethod boxDouble;
-    private final EspressoExternalResolvedJavaMethod getArrayType;
 
     EspressoExternalConstantReflectionProvider(EspressoExternalVMAccess access) {
         this.access = access;
-        boxBoolean = lookupBoxMethod(access, "Boolean");
-        boxByte = lookupBoxMethod(access, "Byte");
-        boxShort = lookupBoxMethod(access, "Short");
-        boxChar = lookupBoxMethod(access, "Character");
-        boxInt = lookupBoxMethod(access, "Integer");
-        boxLong = lookupBoxMethod(access, "Long");
-        boxFloat = lookupBoxMethod(access, "Float");
-        boxDouble = lookupBoxMethod(access, "Double");
-        getArrayType = lookupMethod(access, "java.lang.Class", "arrayType");
-    }
-
-    private static EspressoExternalResolvedJavaMethod lookupMethod(EspressoExternalVMAccess access, String className, String methodName) {
-        ResolvedJavaType type = new EspressoExternalResolvedInstanceType(access, access.requireMetaObject(className));
-        ResolvedJavaMethod found = null;
-        for (ResolvedJavaMethod declaredMethod : type.getDeclaredMethods()) {
-            if (!declaredMethod.getName().equals(methodName) || declaredMethod.isSynthetic()) {
-                continue;
-            }
-            JVMCIError.guarantee(found == null, "More than one method found: %s and %s", found, declaredMethod);
-            found = declaredMethod;
-        }
-        JVMCIError.guarantee(found != null, "Method not found: %s.%s", className, methodName);
-        return (EspressoExternalResolvedJavaMethod) found;
-    }
-
-    private static EspressoExternalResolvedJavaMethod lookupBoxMethod(EspressoExternalVMAccess access, String name) {
-        Value typeMeta = access.requireMetaObject("java.lang." + name);
-        ResolvedJavaType type = new EspressoExternalResolvedInstanceType(access, typeMeta);
-        ResolvedJavaMethod found = null;
-        for (ResolvedJavaMethod declaredMethod : type.getDeclaredMethods()) {
-            if (!"valueOf".equals(declaredMethod.getName())) {
-                continue;
-            }
-            Signature signature = declaredMethod.getSignature();
-            if (signature.getParameterCount(false) != 1) {
-                continue;
-            }
-            if (signature.getParameterKind(0).isPrimitive()) {
-                JVMCIError.guarantee(found == null, "More than one box method found: %s and %s", found, declaredMethod);
-                found = declaredMethod;
-            }
-        }
-        JVMCIError.guarantee(found != null, "Boxing method not found for %s", name);
-        return (EspressoExternalResolvedJavaMethod) found;
     }
 
     @Override
     public Boolean constantEquals(Constant x, Constant y) {
-        throw JVMCIError.unimplemented();
+        return Objects.equals(x, y);
     }
 
     @Override
@@ -202,14 +145,14 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
             return null;
         }
         EspressoExternalResolvedJavaMethod method = switch (kind) {
-            case Boolean -> boxBoolean;
-            case Byte -> boxByte;
-            case Short -> boxShort;
-            case Char -> boxChar;
-            case Int -> boxInt;
-            case Long -> boxLong;
-            case Float -> boxFloat;
-            case Double -> boxDouble;
+            case Boolean -> access.java_lang_Boolean_valueOf;
+            case Byte -> access.java_lang_Byte_valueOf;
+            case Short -> access.java_lang_Short_valueOf;
+            case Char -> access.java_lang_Character_valueOf;
+            case Int -> access.java_lang_Integer_valueOf;
+            case Long -> access.java_lang_Long_valueOf;
+            case Float -> access.java_lang_Float_valueOf;
+            case Double -> access.java_lang_Double_valueOf;
             default -> throw JVMCIError.shouldNotReachHere(kind.toString());
         };
         return access.invoke(method, null, source);
@@ -217,7 +160,31 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
 
     @Override
     public JavaConstant unboxPrimitive(JavaConstant source) {
-        throw JVMCIError.unimplemented();
+        if (!(source instanceof EspressoExternalObjectConstant objectConstant)) {
+            return null;
+        }
+        EspressoResolvedObjectType sourceType = objectConstant.getType();
+        if (!(sourceType instanceof EspressoExternalResolvedInstanceType sourceInstanceType)) {
+            return null;
+        }
+        if (sourceInstanceType.equals(access.java_lang_Boolean)) {
+            return access.java_lang_Boolean_booleanValue.invoke(source);
+        } else if (sourceInstanceType.equals(access.java_lang_Byte)) {
+            return access.java_lang_Byte_byteValue.invoke(source);
+        } else if (sourceInstanceType.equals(access.java_lang_Short)) {
+            return access.java_lang_Short_shortValue.invoke(source);
+        } else if (sourceInstanceType.equals(access.java_lang_Character)) {
+            return access.java_lang_Character_charValue.invoke(source);
+        } else if (sourceInstanceType.equals(access.java_lang_Integer)) {
+            return access.java_lang_Integer_intValue.invoke(source);
+        } else if (sourceInstanceType.equals(access.java_lang_Long)) {
+            return access.java_lang_Long_longValue.invoke(source);
+        } else if (sourceInstanceType.equals(access.java_lang_Float)) {
+            return access.java_lang_Float_floatValue.invoke(source);
+        } else if (sourceInstanceType.equals(access.java_lang_Double)) {
+            return access.java_lang_Double_doubleValue.invoke(source);
+        }
+        throw JVMCIError.shouldNotReachHere(sourceInstanceType.toString());
     }
 
     @Override
@@ -255,14 +222,14 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
         return getNonArrayType(value, access);
     }
 
-    static AbstractEspressoResolvedJavaMethod methodAsJavaResolvedMethod(Value value, EspressoExternalVMAccess access) {
+    static EspressoExternalResolvedJavaMethod methodAsJavaResolvedMethod(Value value, EspressoExternalVMAccess access) {
         Value type = value.invokeMember("getDeclaringClass");
         EspressoExternalResolvedInstanceType holder = (EspressoExternalResolvedInstanceType) getNonArrayType(type, access);
         Value vmMethod = access.invokeJVMCIHelper("getVMMethod", value);
         return new EspressoExternalResolvedJavaMethod(holder, vmMethod);
     }
 
-    static AbstractEspressoResolvedJavaField fieldAsJavaResolvedField(Value value, EspressoExternalVMAccess access) {
+    static EspressoExternalResolvedJavaField fieldAsJavaResolvedField(Value value, EspressoExternalVMAccess access) {
         Value type = value.invokeMember("getDeclaringClass");
         EspressoExternalResolvedInstanceType holder = (EspressoExternalResolvedInstanceType) getNonArrayType(type, access);
         Value vmField = access.invokeJVMCIHelper("getVMField", value);
@@ -317,7 +284,7 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
                 EspressoExternalObjectConstant result = asJavaClass(arrayType.getElementalType());
                 int dimensions = arrayType.getDimensions();
                 for (int i = 0; i < dimensions; i++) {
-                    result = (EspressoExternalObjectConstant) access.invoke(getArrayType, result);
+                    result = (EspressoExternalObjectConstant) access.invoke(access.java_lang_Class_arrayType, result);
                 }
                 return result;
             }

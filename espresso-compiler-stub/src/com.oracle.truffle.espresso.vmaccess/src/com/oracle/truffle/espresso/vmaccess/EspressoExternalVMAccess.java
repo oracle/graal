@@ -101,10 +101,12 @@ final class EspressoExternalVMAccess implements VMAccess {
     // j.l.Class
     private final EspressoExternalResolvedJavaMethod java_lang_Class_forName_String_boolean_ClassLoader;
     private final EspressoExternalResolvedJavaMethod java_lang_Class_getProtectionDomain;
-    // j.l.ClassNotFoundException
-    private final EspressoExternalResolvedInstanceType java_lang_ClassNotFoundException;
+    final EspressoExternalResolvedJavaMethod java_lang_Class_arrayType;
     private final EspressoExternalResolvedJavaMethod java_lang_Class_getModule;
     private final EspressoExternalResolvedJavaMethod java_lang_Class_getPackage;
+    // j.l.ClassNotFoundException
+    private final EspressoExternalResolvedInstanceType java_lang_ClassNotFoundException;
+    // j.l.Module
     final EspressoExternalResolvedJavaMethod java_lang_Module_getDescriptor;
     final EspressoExternalResolvedJavaMethod java_lang_Module_getPackages;
     final EspressoExternalResolvedJavaMethod java_lang_Module_isExported_String;
@@ -123,6 +125,36 @@ final class EspressoExternalVMAccess implements VMAccess {
     private final EspressoExternalResolvedJavaMethod java_security_CodeSource_getLocation;
     // jdk.internal.misc.Unsafe
     private final EspressoExternalResolvedJavaMethod jdk_internal_misc_Unsafe_allocateInstance_Class;
+    // Boxes
+    final EspressoExternalResolvedInstanceType java_lang_Boolean;
+    final EspressoExternalResolvedInstanceType java_lang_Byte;
+    final EspressoExternalResolvedInstanceType java_lang_Short;
+    final EspressoExternalResolvedInstanceType java_lang_Character;
+    final EspressoExternalResolvedInstanceType java_lang_Integer;
+    final EspressoExternalResolvedInstanceType java_lang_Long;
+    final EspressoExternalResolvedInstanceType java_lang_Float;
+    final EspressoExternalResolvedInstanceType java_lang_Double;
+
+    final EspressoExternalResolvedJavaMethod java_lang_Boolean_valueOf;
+    final EspressoExternalResolvedJavaMethod java_lang_Byte_valueOf;
+    final EspressoExternalResolvedJavaMethod java_lang_Short_valueOf;
+    final EspressoExternalResolvedJavaMethod java_lang_Character_valueOf;
+    final EspressoExternalResolvedJavaMethod java_lang_Integer_valueOf;
+    final EspressoExternalResolvedJavaMethod java_lang_Long_valueOf;
+    final EspressoExternalResolvedJavaMethod java_lang_Float_valueOf;
+    final EspressoExternalResolvedJavaMethod java_lang_Double_valueOf;
+
+    final EspressoExternalResolvedJavaMethod java_lang_Boolean_booleanValue;
+    final EspressoExternalResolvedJavaMethod java_lang_Byte_byteValue;
+    final EspressoExternalResolvedJavaMethod java_lang_Short_shortValue;
+    final EspressoExternalResolvedJavaMethod java_lang_Character_charValue;
+    final EspressoExternalResolvedJavaMethod java_lang_Integer_intValue;
+    final EspressoExternalResolvedJavaMethod java_lang_Long_longValue;
+    final EspressoExternalResolvedJavaMethod java_lang_Float_floatValue;
+    final EspressoExternalResolvedJavaMethod java_lang_Double_doubleValue;
+
+    final Value java_lang_String_class;
+    final Value byte_array_class;
     // Checkstyle: resume field name check
 
     @SuppressWarnings("this-escape")
@@ -164,6 +196,10 @@ final class EspressoExternalVMAccess implements VMAccess {
         java_lang_Object_toString = requireMethod(java_lang_Object, "toString", "()Ljava/lang/String;", providers);
         java_lang_Class_getModule = requireMethod(classType, "getModule", "()Ljava/lang/Module;", providers);
         java_lang_Class_getPackage = requireMethod(classType, "getPackage", "()Ljava/lang/Package;", providers);
+        java_lang_Class_arrayType = requireMethod(classType, "arrayType", "()Ljava/lang/Class;", providers);
+
+        java_lang_String_class = constantReflection.asJavaClass(metaAccess.lookupJavaType(String.class)).getValue();
+        byte_array_class = constantReflection.asJavaClass(metaAccess.lookupJavaType(byte[].class)).getValue();
 
         // j.l.Module
         EspressoExternalResolvedInstanceType moduleType = (EspressoExternalResolvedInstanceType) providers.getMetaAccess().lookupJavaType(Module.class);
@@ -182,6 +218,33 @@ final class EspressoExternalVMAccess implements VMAccess {
 
         ResolvedJavaType packageType = providers.getMetaAccess().lookupJavaType(java.lang.Package.class);
         java_lang_Package_getPackageInfo = requireMethod(packageType, "getPackageInfo", "()Ljava/lang/Class;", providers);
+
+        java_lang_Boolean = (EspressoExternalResolvedInstanceType) providers.getMetaAccess().lookupJavaType(Boolean.class);
+        java_lang_Byte = (EspressoExternalResolvedInstanceType) providers.getMetaAccess().lookupJavaType(Byte.class);
+        java_lang_Short = (EspressoExternalResolvedInstanceType) providers.getMetaAccess().lookupJavaType(Short.class);
+        java_lang_Character = (EspressoExternalResolvedInstanceType) providers.getMetaAccess().lookupJavaType(Character.class);
+        java_lang_Integer = (EspressoExternalResolvedInstanceType) providers.getMetaAccess().lookupJavaType(Integer.class);
+        java_lang_Long = (EspressoExternalResolvedInstanceType) providers.getMetaAccess().lookupJavaType(Long.class);
+        java_lang_Float = (EspressoExternalResolvedInstanceType) providers.getMetaAccess().lookupJavaType(Float.class);
+        java_lang_Double = (EspressoExternalResolvedInstanceType) providers.getMetaAccess().lookupJavaType(Double.class);
+
+        java_lang_Boolean_valueOf = requireMethod(java_lang_Boolean, "valueOf", "(Z)Ljava/lang/Boolean;", providers);
+        java_lang_Byte_valueOf = requireMethod(java_lang_Byte, "valueOf", "(B)Ljava/lang/Byte;", providers);
+        java_lang_Short_valueOf = requireMethod(java_lang_Short, "valueOf", "(S)Ljava/lang/Short;", providers);
+        java_lang_Character_valueOf = requireMethod(java_lang_Character, "valueOf", "(C)Ljava/lang/Character;", providers);
+        java_lang_Integer_valueOf = requireMethod(java_lang_Integer, "valueOf", "(I)Ljava/lang/Integer;", providers);
+        java_lang_Long_valueOf = requireMethod(java_lang_Long, "valueOf", "(J)Ljava/lang/Long;", providers);
+        java_lang_Float_valueOf = requireMethod(java_lang_Float, "valueOf", "(F)Ljava/lang/Float;", providers);
+        java_lang_Double_valueOf = requireMethod(java_lang_Double, "valueOf", "(D)Ljava/lang/Double;", providers);
+
+        java_lang_Boolean_booleanValue = requireMethod(java_lang_Boolean, "booleanValue", "()Z", providers);
+        java_lang_Byte_byteValue = requireMethod(java_lang_Byte, "byteValue", "()B", providers);
+        java_lang_Short_shortValue = requireMethod(java_lang_Short, "shortValue", "()S", providers);
+        java_lang_Character_charValue = requireMethod(java_lang_Character, "charValue", "()C", providers);
+        java_lang_Integer_intValue = requireMethod(java_lang_Integer, "intValue", "()I", providers);
+        java_lang_Long_longValue = requireMethod(java_lang_Long, "longValue", "()J", providers);
+        java_lang_Float_floatValue = requireMethod(java_lang_Float, "floatValue", "()F", providers);
+        java_lang_Double_doubleValue = requireMethod(java_lang_Double, "doubleValue", "()D", providers);
     }
 
     private static EspressoExternalResolvedJavaMethod requireMethod(ResolvedJavaType type, String name, String methodDescriptor, Providers providers) {
@@ -233,7 +296,7 @@ final class EspressoExternalVMAccess implements VMAccess {
         LoweringProvider lowerer = new DummyLoweringProvider(target);
         StampProvider stampProvider = new DummyStampProvider();
         PlatformConfigurationProvider platformConfigurationProvider = new DummyPlatformConfigurationProvider();
-        SnippetReflectionProvider snippetReflection = new EspressoExternalSnippetReflectionProvider(this, metaAccess, constantReflection);
+        SnippetReflectionProvider snippetReflection = new EspressoExternalSnippetReflectionProvider(this);
         WordTypes wordTypes = new WordTypes(metaAccess, target.wordJavaKind);
         LoopsDataProvider loopsDataProvider = new LoopsDataProviderImpl();
         Providers newProviders = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls,
