@@ -546,6 +546,8 @@ final class EspressoExternalVMAccess implements VMAccess {
             case "java.lang.IndexOutOfBoundsException" -> new IndexOutOfBoundsException(e.getMessage());
             case "java.lang.IllegalArgumentException" -> new IllegalArgumentException(e.getMessage());
             case "java.lang.ClassFormatError" -> new ClassFormatError(e.getMessage());
+            case "java.lang.NoClassDefFoundError" -> new NoClassDefFoundError(e.getMessage());
+            case "java.lang.VerifyError" -> new VerifyError(e.getMessage());
             default -> e;
         };
         if (t != e) {

@@ -22,8 +22,11 @@
  */
 package com.oracle.truffle.espresso.vmaccess;
 
+import static com.oracle.truffle.espresso.vmaccess.EspressoExternalVMAccess.throwHostException;
+
 import java.util.List;
 
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedArrayType;
@@ -266,7 +269,11 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
 
     @Override
     public void link() {
-        access.invokeJVMCIHelper("link", metaObject);
+        try {
+            access.invokeJVMCIHelper("link", metaObject);
+        } catch (PolyglotException e) {
+            throw throwHostException(e);
+        }
     }
 
     @Override
