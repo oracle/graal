@@ -27,9 +27,9 @@ import java.lang.reflect.Type;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
+import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceType;
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaMethod;
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoSignature;
-import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType;
 
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.vm.ci.common.JVMCIError;
@@ -97,13 +97,13 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
     }
 
     @Override
-    protected int getVtableIndexForInterfaceMethod(EspressoResolvedInstanceType resolved) {
-        return 0;
+    protected int getVtableIndexForInterfaceMethod(AbstractEspressoResolvedInstanceType resolved) {
+        return getAccess().invokeJVMCIHelper("getVtableIndexForInterfaceMethod", getMirror(), ((EspressoExternalResolvedInstanceType) resolved).getMetaObject()).asInt();
     }
 
     @Override
     protected int getVtableIndex() {
-        return 0;
+        return methodMirror.getMember("vtableIndex").asInt();
     }
 
     @Override

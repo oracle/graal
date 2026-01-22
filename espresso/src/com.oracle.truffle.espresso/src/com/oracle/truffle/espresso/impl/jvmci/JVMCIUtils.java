@@ -206,4 +206,12 @@ public final class JVMCIUtils {
     private static boolean checkAccess(ObjectKlass accessingKlass, ObjectKlass declaringKlass, Method method) {
         return RuntimeConstantPool.memberCheckAccess(accessingKlass, declaringKlass, method);
     }
+
+    public static int getVtableIndexForInterfaceMethod(Method method, ObjectKlass klass) {
+        Method found = klass.itableLookupOrNull(method.getDeclaringKlass(), method.getITableIndex());
+        if (found != null && !found.getDeclaringKlass().isInterface()) {
+            return found.getVTableIndex();
+        }
+        return -1;
+    }
 }

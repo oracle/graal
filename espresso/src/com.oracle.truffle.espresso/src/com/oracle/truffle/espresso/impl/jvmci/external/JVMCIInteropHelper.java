@@ -118,6 +118,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.IS_RECORD,
                         InvokeMember.GET_VTABLE_LENGTH,
                         InvokeMember.RESOLVE_METHOD,
+                        InvokeMember.GET_VTABLE_INDEX_FOR_INTERFACE_METHOD,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -176,6 +177,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String IS_RECORD = "isRecord";
         static final String GET_VTABLE_LENGTH = "getVTableLength";
         static final String RESOLVE_METHOD = "resolveMethod";
+        static final String GET_VTABLE_INDEX_FOR_INTERFACE_METHOD = "getVtableIndexForInterfaceMethod";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -941,6 +943,27 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                 return StaticObject.NULL;
             }
             return resolved;
+        }
+
+        @Specialization(guards = "GET_VTABLE_INDEX_FOR_INTERFACE_METHOD.equals(member)")
+        static int getVtableIndexForInterfaceMethod(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            if (arguments.length != 2) {
+                arityError.enter(node);
+                throw ArityException.create(2, 2, arguments.length);
+            }
+            if (!(arguments[0] instanceof Method method)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected a method as first argument");
+            }
+            if (!(arguments[1] instanceof ObjectKlass klass)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an instance type as second argument");
+            }
+            return JVMCIUtils.getVtableIndexForInterfaceMethod(method, klass);
         }
 
         @Fallback

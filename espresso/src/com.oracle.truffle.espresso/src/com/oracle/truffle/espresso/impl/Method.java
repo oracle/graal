@@ -2186,6 +2186,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                         ReadMember.HAS_POISON,
                         ReadMember.HOLDER,
                         ReadMember.PARAMETERS,
+                        ReadMember.VTABLE_INDEX,
         };
         ALL_MEMBERS = new KeysArray<>(readableMembers);
         ALL_MEMBERS_SET = Set.of(readableMembers);
@@ -2209,6 +2210,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         static final String HAS_POISON = "hasPoison";
         static final String HOLDER = "holder";
         static final String PARAMETERS = "parameters";
+        static final String VTABLE_INDEX = "vtableIndex";
 
         @Specialization(guards = "FLAGS.equals(member)")
         static int getFlags(Method receiver, @SuppressWarnings("unused") String member) {
@@ -2370,6 +2372,12 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                 parameters[i] = new ParameterInteropWrapper(constantPool.utf8At(entry.getNameIndex()), entry.getAccessFlags());
             }
             return new KeysArray<>(parameters);
+        }
+
+        @Specialization(guards = "VTABLE_INDEX.equals(member)")
+        static int getVTableIndex(Method receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            return receiver.getVTableIndex();
         }
 
         @Fallback

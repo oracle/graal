@@ -225,18 +225,18 @@ public abstract class AbstractEspressoResolvedJavaMethod extends AbstractAnnotat
             if (resolved.isInterface() || !resolved.isLinked() || !getDeclaringClass().isAssignableFrom(resolved)) {
                 return -1;
             }
-            EspressoResolvedInstanceType type;
-            if (resolved instanceof EspressoResolvedArrayType) {
+            AbstractEspressoResolvedInstanceType type;
+            if (resolved.isArray()) {
                 type = runtime().getJavaLangObject();
             } else {
-                type = (EspressoResolvedInstanceType) resolved;
+                type = (AbstractEspressoResolvedInstanceType) resolved;
             }
             return getVtableIndexForInterfaceMethod(type);
         }
         return getVtableIndex();
     }
 
-    protected abstract int getVtableIndexForInterfaceMethod(EspressoResolvedInstanceType resolved);
+    protected abstract int getVtableIndexForInterfaceMethod(AbstractEspressoResolvedInstanceType resolved);
 
     protected abstract int getVtableIndex();
 
