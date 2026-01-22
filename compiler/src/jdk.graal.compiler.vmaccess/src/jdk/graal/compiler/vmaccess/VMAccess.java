@@ -210,8 +210,20 @@ public interface VMAccess {
         /**
          * Sets the list of modules to resolve in addition to the initial module. This has the
          * semantics of the {@code --add-modules} java launcher option.
+         * <p>
+         * This appends to the module(s) previously added by this method or {@link #addModule}. No
+         * checking for duplicates is performed.
          */
         Builder addModules(List<String> modules);
+
+        /**
+         * Sets the list of modules to resolve in addition to the initial module. This has the
+         * semantics of the {@code --add-modules} java launcher option.
+         * <p>
+         * This appends to the module(s) previously added by this method or {@link #addModules}. No
+         * checking for duplicates is performed.
+         */
+        Builder addModule(String module);
 
         /**
          * Sets the assertion status for application classes.
