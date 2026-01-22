@@ -97,16 +97,14 @@ final class EspressoExternalVMAccess implements VMAccess {
     // Checkstyle: stop field name check
     // j.l.Object
     private final EspressoExternalResolvedInstanceType java_lang_Object;
-    private final ResolvedJavaMethod java_lang_Object_toString;
+    private final EspressoExternalResolvedJavaMethod java_lang_Object_toString;
     // j.l.Class
-    private final ResolvedJavaMethod java_lang_Class_forName_String_boolean_ClassLoader;
-    private final ResolvedJavaMethod java_lang_Class_getProtectionDomain;
+    private final EspressoExternalResolvedJavaMethod java_lang_Class_forName_String_boolean_ClassLoader;
+    private final EspressoExternalResolvedJavaMethod java_lang_Class_getProtectionDomain;
     // j.l.ClassNotFoundException
-    private final ResolvedJavaType java_lang_ClassNotFoundException;
-    // j.l.Module
-    final ResolvedJavaType java_lang_Module;
-    private final ResolvedJavaMethod java_lang_Class_getModule;
-    private final ResolvedJavaMethod java_lang_Class_getPackage;
+    private final EspressoExternalResolvedInstanceType java_lang_ClassNotFoundException;
+    private final EspressoExternalResolvedJavaMethod java_lang_Class_getModule;
+    private final EspressoExternalResolvedJavaMethod java_lang_Class_getPackage;
     final EspressoExternalResolvedJavaMethod java_lang_Module_getDescriptor;
     final EspressoExternalResolvedJavaMethod java_lang_Module_getPackages;
     final EspressoExternalResolvedJavaMethod java_lang_Module_isExported_String;
@@ -121,10 +119,10 @@ final class EspressoExternalVMAccess implements VMAccess {
     // j.l.Package
     final EspressoExternalResolvedJavaMethod java_lang_Package_getPackageInfo;
     // java.security
-    private final ResolvedJavaMethod java_security_ProtectionDomain_getCodeSource;
-    private final ResolvedJavaMethod java_security_CodeSource_getLocation;
+    private final EspressoExternalResolvedJavaMethod java_security_ProtectionDomain_getCodeSource;
+    private final EspressoExternalResolvedJavaMethod java_security_CodeSource_getLocation;
     // jdk.internal.misc.Unsafe
-    private final ResolvedJavaMethod jdk_internal_misc_Unsafe_allocateInstance_Class;
+    private final EspressoExternalResolvedJavaMethod jdk_internal_misc_Unsafe_allocateInstance_Class;
     // Checkstyle: resume field name check
 
     @SuppressWarnings("this-escape")
@@ -150,95 +148,64 @@ final class EspressoExternalVMAccess implements VMAccess {
         platformClassLoader = invoke(getPlatformClassLoader, null);
 
         ResolvedJavaType classType = providers.getMetaAccess().lookupJavaType(Class.class);
-        Signature forNameSignature = providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;");
-        java_lang_Class_forName_String_boolean_ClassLoader = classType.findMethod("forName", forNameSignature);
-        java_lang_ClassNotFoundException = providers.getMetaAccess().lookupJavaType(ClassNotFoundException.class);
+        java_lang_Class_forName_String_boolean_ClassLoader = requireMethod(classType, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;", providers);
+        java_lang_ClassNotFoundException = (EspressoExternalResolvedInstanceType) providers.getMetaAccess().lookupJavaType(ClassNotFoundException.class);
 
         ResolvedJavaType unsafeType = lookupBootClassLoaderType("jdk.internal.misc.Unsafe");
-        jdk_internal_misc_Unsafe_allocateInstance_Class = unsafeType.findMethod("allocateInstance", providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/Class;)Ljava/lang/Object;"));
-        ResolvedJavaMethod unsafeGetter = unsafeType.findMethod("getUnsafe", providers.getMetaAccess().parseMethodDescriptor("()Ljdk/internal/misc/Unsafe;"));
-        unsafe = invoke(unsafeGetter, null);
+        jdk_internal_misc_Unsafe_allocateInstance_Class = requireMethod(unsafeType, "allocateInstance", "(Ljava/lang/Class;)Ljava/lang/Object;", providers);
+        unsafe = invoke(requireMethod(unsafeType, "getUnsafe", "()Ljdk/internal/misc/Unsafe;", providers), null);
 
         ResolvedJavaType protectionDomainType = providers.getMetaAccess().lookupJavaType(ProtectionDomain.class);
         ResolvedJavaType codeSourceType = providers.getMetaAccess().lookupJavaType(CodeSource.class);
 
-        Signature getProtectionDomainSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/security/ProtectionDomain;");
-        java_lang_Class_getProtectionDomain = classType.findMethod("getProtectionDomain", getProtectionDomainSignature);
+        java_lang_Class_getProtectionDomain = requireMethod(classType, "getProtectionDomain", "()Ljava/security/ProtectionDomain;", providers);
+        java_security_ProtectionDomain_getCodeSource = requireMethod(protectionDomainType, "getCodeSource", "()Ljava/security/CodeSource;", providers);
+        java_security_CodeSource_getLocation = requireMethod(codeSourceType, "getLocation", "()Ljava/net/URL;", providers);
+        java_lang_Object_toString = requireMethod(java_lang_Object, "toString", "()Ljava/lang/String;", providers);
+        java_lang_Class_getModule = requireMethod(classType, "getModule", "()Ljava/lang/Module;", providers);
+        java_lang_Class_getPackage = requireMethod(classType, "getPackage", "()Ljava/lang/Package;", providers);
 
-        Signature getCodeSourceSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/security/CodeSource;");
-        java_security_ProtectionDomain_getCodeSource = protectionDomainType.findMethod("getCodeSource", getCodeSourceSignature);
-
-        Signature getLocationSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/net/URL;");
-        java_security_CodeSource_getLocation = codeSourceType.findMethod("getLocation", getLocationSignature);
-
-        Signature toStringSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/String;");
-        java_lang_Object_toString = java_lang_Object.findMethod("toString", toStringSignature);
-
-        Signature getModuleSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/Module;");
-        java_lang_Class_getModule = classType.findMethod("getModule", getModuleSignature);
-
-        Signature getPackageSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/Package;");
-        java_lang_Class_getPackage = classType.findMethod("getPackage", getPackageSignature);
-
-        java_lang_Module = providers.getMetaAccess().lookupJavaType(Module.class);
-
-        Signature getDescriptorSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/module/ModuleDescriptor;");
-        java_lang_Module_getDescriptor = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("getDescriptor", getDescriptorSignature);
-
-        Signature getPackagesSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/util/Set;");
-        java_lang_Module_getPackages = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("getPackages", getPackagesSignature);
-
-        Signature isExportedStringSignature = providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/String;)Z");
-        java_lang_Module_isExported_String = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("isExported", isExportedStringSignature);
-
-        Signature isExportedStringModuleSignature = providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/String;Ljava/lang/Module;)Z");
-        java_lang_Module_isExported_String_Module = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("isExported", isExportedStringModuleSignature);
-
-        Signature isOpenStringSignature = providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/String;)Z");
-        java_lang_Module_isOpen_String = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("isOpen", isOpenStringSignature);
-
-        Signature isOpenStringModuleSignature = providers.getMetaAccess().parseMethodDescriptor("(Ljava/lang/String;Ljava/lang/Module;)Z");
-        java_lang_Module_isOpen_String_Module = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("isOpen", isOpenStringModuleSignature);
-
-        Signature getNameSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/String;");
-        java_lang_Module_getName = (EspressoExternalResolvedJavaMethod) java_lang_Module.findMethod("getName", getNameSignature);
-
+        // j.l.Module
+        EspressoExternalResolvedInstanceType moduleType = (EspressoExternalResolvedInstanceType) providers.getMetaAccess().lookupJavaType(Module.class);
+        java_lang_Module_getDescriptor = requireMethod(moduleType, "getDescriptor", "()Ljava/lang/module/ModuleDescriptor;", providers);
+        java_lang_Module_getPackages = requireMethod(moduleType, "getPackages", "()Ljava/util/Set;", providers);
+        java_lang_Module_isExported_String = requireMethod(moduleType, "isExported", "(Ljava/lang/String;)Z", providers);
+        java_lang_Module_isExported_String_Module = requireMethod(moduleType, "isExported", "(Ljava/lang/String;Ljava/lang/Module;)Z", providers);
+        java_lang_Module_isOpen_String = requireMethod(moduleType, "isOpen", "(Ljava/lang/String;)Z", providers);
+        java_lang_Module_isOpen_String_Module = requireMethod(moduleType, "isOpen", "(Ljava/lang/String;Ljava/lang/Module;)Z", providers);
+        java_lang_Module_getName = requireMethod(moduleType, "getName", "()Ljava/lang/String;", providers);
         ResolvedJavaType moduleDescriptorType = providers.getMetaAccess().lookupJavaType(java.lang.module.ModuleDescriptor.class);
-        Signature isAutomaticSignature = providers.getMetaAccess().parseMethodDescriptor("()Z");
-        java_lang_module_ModuleDescriptor_isAutomatic = (EspressoExternalResolvedJavaMethod) moduleDescriptorType.findMethod("isAutomatic", isAutomaticSignature);
+        java_lang_module_ModuleDescriptor_isAutomatic = requireMethod(moduleDescriptorType, "isAutomatic", "()Z", providers);
 
         ResolvedJavaType namedPackageType = lookupBootClassLoaderType("java.lang.NamedPackage");
-        java_lang_NamedPackage_module = (EspressoExternalResolvedJavaField) lookupField(namedPackageType, "module");
+        java_lang_NamedPackage_module = requireField(namedPackageType, "module");
 
         ResolvedJavaType packageType = providers.getMetaAccess().lookupJavaType(java.lang.Package.class);
-        Signature getPackageInforSignature = providers.getMetaAccess().parseMethodDescriptor("()Ljava/lang/Class;");
-        java_lang_Package_getPackageInfo = (EspressoExternalResolvedJavaMethod) packageType.findMethod("getPackageInfo", getPackageInforSignature);
-
-        JVMCIError.guarantee(java_lang_Class_forName_String_boolean_ClassLoader != null, "Required method: forName");
-        JVMCIError.guarantee(jdk_internal_misc_Unsafe_allocateInstance_Class != null, "Required method: unsafeAllocateInstance");
-        JVMCIError.guarantee(java_lang_Class_getProtectionDomain != null, "Required method: getProtectionDomain");
-        JVMCIError.guarantee(java_security_ProtectionDomain_getCodeSource != null, "Required method: getCodeSource");
-        JVMCIError.guarantee(java_security_CodeSource_getLocation != null, "Required method: getLocation");
-        JVMCIError.guarantee(java_lang_Object_toString != null, "Required method: toString");
-        JVMCIError.guarantee(java_lang_Class_getModule != null, "Required method: getModule");
-        JVMCIError.guarantee(java_lang_Class_getPackage != null, "Required method: getPackage");
-        JVMCIError.guarantee(java_lang_Module_getDescriptor != null, "Required method: Module.getDescriptor");
-        JVMCIError.guarantee(java_lang_module_ModuleDescriptor_isAutomatic != null, "Required method: ModuleDescriptor.isAutomatic");
-        JVMCIError.guarantee(java_lang_Module_getPackages != null, "Required method: Module.getPackages");
-        JVMCIError.guarantee(java_lang_Module_isExported_String != null, "Required method: Module.isExported(String)");
-        JVMCIError.guarantee(java_lang_Module_isExported_String_Module != null, "Required method: Module.isExported(String, Module)");
-        JVMCIError.guarantee(java_lang_Module_isOpen_String != null, "Required method: Module.isOpen(String)");
-        JVMCIError.guarantee(java_lang_Module_isOpen_String_Module != null, "Required method: Module.isOpen(String, Module)");
-        JVMCIError.guarantee(java_lang_Module_getName != null, "Required method: Module.getName");
-        JVMCIError.guarantee(java_lang_Package_getPackageInfo != null, "Required method: Package.getPackageInfo()");
-        JVMCIError.guarantee(java_lang_NamedPackage_module != null, "Required field: NamedPackage.module");
+        java_lang_Package_getPackageInfo = requireMethod(packageType, "getPackageInfo", "()Ljava/lang/Class;", providers);
     }
 
-    private static ResolvedJavaField lookupField(ResolvedJavaType namedPackageType, String fieldName) {
-        ResolvedJavaField[] namedPackageFields = namedPackageType.getInstanceFields(false);
+    private static EspressoExternalResolvedJavaMethod requireMethod(ResolvedJavaType type, String name, String methodDescriptor, Providers providers) {
+        Signature forNameSignature = providers.getMetaAccess().parseMethodDescriptor(methodDescriptor);
+        EspressoExternalResolvedJavaMethod method = (EspressoExternalResolvedJavaMethod) type.findMethod(name, forNameSignature);
+        if (method == null) {
+            throw JVMCIError.shouldNotReachHere("Could not find required method:  " + type + "." + name + " " + methodDescriptor);
+        }
+        return method;
+    }
+
+    private static EspressoExternalResolvedJavaField requireField(ResolvedJavaType type, String fieldName) {
+        EspressoExternalResolvedJavaField field = lookupField(type, fieldName);
+        if (field == null) {
+            throw JVMCIError.shouldNotReachHere("Could not find required field: " + type + "." + fieldName);
+        }
+        return field;
+    }
+
+    private static EspressoExternalResolvedJavaField lookupField(ResolvedJavaType type, String fieldName) {
+        ResolvedJavaField[] namedPackageFields = type.getInstanceFields(false);
         for (ResolvedJavaField field : namedPackageFields) {
             if (fieldName.equals(field.getName())) {
-                return field;
+                return (EspressoExternalResolvedJavaField) field;
             }
         }
         return null;
