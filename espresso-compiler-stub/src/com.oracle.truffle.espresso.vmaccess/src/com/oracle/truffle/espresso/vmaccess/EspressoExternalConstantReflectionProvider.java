@@ -42,9 +42,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 final class EspressoExternalConstantReflectionProvider implements ConstantReflectionProviderWithStaticsBase {
     private final EspressoExternalVMAccess access;
+    private final EspressoExternalMethodHandleAccessProvider methodHandleProvider;
 
     EspressoExternalConstantReflectionProvider(EspressoExternalVMAccess access) {
         this.access = access;
+        this.methodHandleProvider = new EspressoExternalMethodHandleAccessProvider(access);
     }
 
     @Override
@@ -263,7 +265,7 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
 
     @Override
     public MethodHandleAccessProvider getMethodHandleAccess() {
-        throw JVMCIError.unimplemented();
+        return methodHandleProvider;
     }
 
     @Override

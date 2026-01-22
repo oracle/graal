@@ -42,6 +42,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class JVMCIUtils {
     public static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, "JVMCI");
@@ -213,5 +214,25 @@ public final class JVMCIUtils {
             return found.getVTableIndex();
         }
         return -1;
+    }
+
+    public static Method resolveInvokeBasicTarget(StaticObject methodHandle, boolean forceBytecodeGeneration, Meta meta) {
+        if (!InterpreterToVM.instanceOf(methodHandle, meta.java_lang_invoke_MethodHandle)) {
+            return null;
+        }
+        StaticObject form = meta.java_lang_invoke_MethodHandle_form.getObject(methodHandle);
+        if (StaticObject.isNull(form)) {
+            return null;
+        }
+        StaticObject memberName = meta.java_lang_invoke_LambdaForm_vmentry.getObject(form);
+        if (StaticObject.isNull(memberName)) {
+            if (forceBytecodeGeneration) {
+                meta.java_lang_invoke_LambdaForm_compileToBytecode.invokeDirectVirtual(form);
+                memberName = meta.java_lang_invoke_LambdaForm_vmentry.getObject(form);
+            } else {
+                return null;
+            }
+        }
+        return (Method) meta.HIDDEN_VMTARGET.getHiddenObject(memberName);
     }
 }

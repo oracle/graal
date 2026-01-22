@@ -2187,6 +2187,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                         ReadMember.HOLDER,
                         ReadMember.PARAMETERS,
                         ReadMember.VTABLE_INDEX,
+                        ReadMember.METHOD_HANDLE_INTRINSIC,
         };
         ALL_MEMBERS = new KeysArray<>(readableMembers);
         ALL_MEMBERS_SET = Set.of(readableMembers);
@@ -2211,6 +2212,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         static final String HOLDER = "holder";
         static final String PARAMETERS = "parameters";
         static final String VTABLE_INDEX = "vtableIndex";
+        static final String METHOD_HANDLE_INTRINSIC = "methodHandleIntrinsic";
 
         @Specialization(guards = "FLAGS.equals(member)")
         static int getFlags(Method receiver, @SuppressWarnings("unused") String member) {
@@ -2378,6 +2380,24 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         static int getVTableIndex(Method receiver, @SuppressWarnings("unused") String member) {
             assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
             return receiver.getVTableIndex();
+        }
+
+        @Specialization(guards = "METHOD_HANDLE_INTRINSIC.equals(member)")
+        static Object getMethodHandleIntrinsic(Method receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            SignaturePolymorphicIntrinsic id = SignaturePolymorphicIntrinsic.getId(receiver);
+            if (id == null) {
+                return StaticObject.NULL;
+            }
+            return switch (id) {
+                case InvokeBasic -> "INVOKE_BASIC";
+                case LinkToStatic -> "LINK_TO_STATIC";
+                case LinkToSpecial -> "LINK_TO_SPECIAL";
+                case LinkToVirtual -> "LINK_TO_VIRTUAL";
+                case LinkToInterface -> "LINK_TO_INTERFACE";
+                case LinkToNative -> "LINK_TO_NATIVE";
+                case InvokeGeneric -> StaticObject.NULL;
+            };
         }
 
         @Fallback
