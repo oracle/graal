@@ -35,7 +35,10 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
 
 @TargetClass(className = "jdk.internal.misc.VM")
 public final class Target_jdk_internal_misc_VM {
@@ -52,6 +55,23 @@ public final class Target_jdk_internal_misc_VM {
     @NeverInline("Starting a stack walk in the caller frame")
     public static ClassLoader latestUserDefinedLoader0() {
         return StackTraceUtils.latestUserDefinedClassLoader(KnownIntrinsics.readCallerStackPointer());
+    }
+
+    @TargetElement(name = "getRuntimeArguments", onlyWith = ClassForNameSupport.RespectsClassLoader.class)
+    @Substitute
+    public static String[] getRuntimeArguments() {
+        /**
+         * This method is called by SourceLauncher to find arguments that the java launcher usually
+         * gives to the JVM rather than the application (class path, module path, etc). The current
+         * implementation is a workaround until GR-72784 is implemented.
+         */
+        return new String[0];
+    }
+
+    @TargetElement(name = "getRuntimeArguments", onlyWith = ClassForNameSupport.IgnoresClassLoader.class)
+    @Substitute
+    public static String[] getRuntimeArgumentsDefault() {
+        throw VMError.unimplemented("jdk.internal.misc.VM#getRuntimeArguments not implemented");
     }
 
     /*

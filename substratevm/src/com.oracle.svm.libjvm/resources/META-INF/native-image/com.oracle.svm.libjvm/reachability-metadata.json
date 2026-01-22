@@ -1,0 +1,26 @@
+{
+  "reflection": [
+    {
+      "type": "javax.tools.JavaCompiler$CompilationTask"
+    },
+    {
+      "type": "com.sun.tools.javac.api.JavacTrees",
+      "methods": [
+        {
+          "name": "instance",
+          "parameterTypes": [
+            "javax.tools.JavaCompiler$CompilationTask"
+          ]
+        }
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "glob": "META-INF/services/javax.tools.JavaCompiler"
+    },
+    { "bundle": "com.sun.tools.javac.resources.compiler" },
+    { "bundle": "com.sun.tools.javac.resources.launcher" },
+    { "bundle": "com.sun.tools.javac.resources.javac" }
+  ]
+}

@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.libjvm;
+package com.oracle.svm.libjvm.buildtime;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -32,8 +32,11 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
-final class LibJVMFeature extends JNIRegistrationUtil implements Feature {
+import jdk.graal.compiler.vmaccess.ModuleSupport;
+
+public final class LibJVMFeature extends JNIRegistrationUtil implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -49,6 +52,10 @@ final class LibJVMFeature extends JNIRegistrationUtil implements Feature {
         JVMCIRuntimeJNIAccess.register(fields(access, launcherHelper, "isStaticMain", "noArgMain"));
 
         JVMCIRuntimeJNIAccess.register(method(access, launcherHelper, "listModules"));
+
+        String sourceLauncherPackage = "com.sun.tools.javac.launcher";
+        JVMCIRuntimeReflection.register(method(access, sourceLauncherPackage + ".SourceLauncher", "main", String[].class));
+        ModuleSupport.addExports(LibJVMMainMethodWrappers.class.getModule(), "jdk.compiler", sourceLauncherPackage);
 
         // Workaround for GR-71358
         ImageSingletons.add(LibJVMMainMethodWrappers.class, new LibJVMMainMethodWrappers());

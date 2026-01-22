@@ -458,7 +458,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 args = RuntimeOptionParser.parseAndConsumeAllOptions(args, ignoreUnrecognized);
             } catch (IllegalArgumentException e) {
                 if (exitWhenArgumentParsingFails) {
-                    Log.logStream().println("error: " + e.getMessage());
+                    Log.logStream().println("Error: " + e.getMessage());
                     System.exit(1);
                 } else {
                     return CEntryPointErrors.ARGUMENT_PARSING_FAILED;

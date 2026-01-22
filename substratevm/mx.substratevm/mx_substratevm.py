@@ -1852,6 +1852,7 @@ lib_jvm_preserved_packages = [
     'java.util.concurrent.locks',
     'java.lang',
     'java.lang.invoke',
+    'java.lang.constant',
     'java.io'
 ]
 
@@ -1869,19 +1870,18 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     priority=0,
     library_configs=[
         mx_sdk_vm.LibraryConfig(
+            use_modules='image',
             destination='<lib:jvm>',
-            jar_distributions=[],
-            build_args=[
-                '--features=com.oracle.svm.hosted.libjvm.LibJVMFeature'
-            ] + svm_experimental_options([
-                '-H:+RuntimeClassLoading',
-                '-H:+InterpreterTraceSupport',
-                '-H:+AllowJRTFileSystem'
-                ] + ['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages]),
+            jar_distributions=['substratevm:SVM_LIBJVM'],
+            build_args=svm_experimental_options(['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages]),
             headers=False,
             home_finder=False,
         ),
     ],
+    jvm_configs=[{
+        'configs': ['-svm KNOWN'],
+        'priority': 3,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
+    }],
     support_libraries_distributions=[],
     stability="experimental",
     jlink=False,

@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted;
 
 import java.lang.reflect.Field;
+import java.util.HashMap;
 import java.util.Optional;
 
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -73,18 +74,20 @@ public class LoggingFeature implements InternalFeature {
         return Options.EnableLoggingFeature.getValue();
     }
 
+    boolean loggingEnabled;
+
     private final boolean trace = LoggingFeature.Options.TraceLoggingFeature.getValue();
 
     private Field loggersField;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        boolean loggingEnabled = isLoggingEnabled();
+        loggingEnabled = isLoggingEnabled();
         if (loggingEnabled && requiredModule().isEmpty()) {
             throw UserError.abort("Option %s requires JDK module java.logging to be available",
                             SubstrateOptionsParser.commandArgument(Options.EnableLoggingFeature, "+"));
         }
-        return loggingEnabled;
+        return requiredModule().isPresent();
     }
 
     @Override
@@ -94,28 +97,38 @@ public class LoggingFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        try {
-            /* Ensure that the log manager is initialized and the initial configuration is read. */
-            ReflectionUtil.lookupMethod(access.findClassByName("java.util.logging.LogManager"), "getLogManager").invoke(null);
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere("Reflective LogManager initialization failed", e);
+        if (loggingEnabled) {
+            try {
+                /*
+                 * Ensure that the log manager is initialized and the initial configuration is read.
+                 */
+                ReflectionUtil.lookupMethod(access.findClassByName("java.util.logging.LogManager"), "getLogManager").invoke(null);
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere("Reflective LogManager initialization failed", e);
+            }
         }
         loggersField = ((DuringSetupAccessImpl) access).findField("sun.util.logging.PlatformLogger", "loggers");
     }
 
+    @SuppressWarnings("unused")
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        access.registerReachabilityHandler((a1) -> {
-            registerForReflection(a1.findClassByName("java.util.logging.ConsoleHandler"));
-            registerForReflection(a1.findClassByName("java.util.logging.SimpleFormatter"));
-        }, access.findClassByName("java.util.logging.Logger"));
+        if (loggingEnabled) {
+            access.registerReachabilityHandler((a1) -> {
+                registerForReflection(a1.findClassByName("java.util.logging.ConsoleHandler"));
+                registerForReflection(a1.findClassByName("java.util.logging.SimpleFormatter"));
+            }, access.findClassByName("java.util.logging.Logger"));
+        } else {
+            access.registerFieldValueTransformer(loggersField, (receiver, originalValue) -> new HashMap<>());
+        }
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
-        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-
-        access.rescanRoot(loggersField, new OtherReason("Manual rescan triggered during analysis from " + LoggingFeature.class));
+        if (loggingEnabled) {
+            DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+            access.rescanRoot(loggersField, new OtherReason("Manual rescan triggered during analysis from " + LoggingFeature.class));
+        }
     }
 
     private void registerForReflection(Class<?> clazz) {
