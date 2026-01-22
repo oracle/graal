@@ -915,7 +915,7 @@ meth public static com.oracle.truffle.api.TruffleStackTrace fillIn(java.lang.Thr
 meth public static java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> getAsynchronousStackTrace(com.oracle.truffle.api.CallTarget,com.oracle.truffle.api.frame.Frame)
 meth public static java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> getStackTrace(java.lang.Throwable)
 supr java.lang.Exception
-hfds EMPTY,frames,lazyFrames,materializedHostException
+hfds EMPTY,frames,lazyFrames,materializedHostException,originatedInHostLanguage
 hcls LazyStackTrace,TracebackElement
 
 CLSS public final com.oracle.truffle.api.TruffleStackTraceElement
