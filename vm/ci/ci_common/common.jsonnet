@@ -464,7 +464,7 @@ local devkits = graal_common.devkits;
 
   build_base_graalvm_image: [
     $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
-    $.mx_vm_common + vm.vm_profiles + ['build'],
+    $.mx_vm_common + vm.vm_profiles + ['build', '--targets=GRAALVM'],
     ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
   ],
 
