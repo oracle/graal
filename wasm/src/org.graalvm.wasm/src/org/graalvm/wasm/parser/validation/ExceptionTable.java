@@ -41,6 +41,8 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import java.util.Arrays;
+
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 
 /**
@@ -72,5 +74,10 @@ public final class ExceptionTable {
                 bytecode.addExceptionHandler(from, to, handler.type(), handler.tag(), handler.target());
             }
         }
+    }
+
+    @Override
+    public String toString() {
+        return from + ":" + to + " -> " + Arrays.toString(handlers);
     }
 }
