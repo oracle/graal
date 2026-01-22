@@ -336,9 +336,13 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
 
     @Override
     public AbstractEspressoResolvedInstanceType getTypeForStaticBase(JavaConstant staticBase) {
-        if (!(staticBase instanceof EspressoExternalObjectConstant)) {
+        if (!(staticBase instanceof EspressoExternalObjectConstant objectConstant)) {
             return null;
         }
-        throw JVMCIError.unimplemented();
+        Value type = access.invokeJVMCIHelper("getTypeForStaticBase", objectConstant.getValue());
+        if (type.isNull()) {
+            return null;
+        }
+        return new EspressoExternalResolvedInstanceType(access, type);
     }
 }

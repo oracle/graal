@@ -113,8 +113,8 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.GET_VM_METHOD,
                         InvokeMember.GET_ENCLOSING_TYPE,
                         InvokeMember.HAS_ENCLOSING_METHOD_INFO,
-                        InvokeMember.HAS_SIMPLE_BINARY_NAME
-
+                        InvokeMember.HAS_SIMPLE_BINARY_NAME,
+                        InvokeMember.GET_TYPE_FOR_STATIC_BASE,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -169,6 +169,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String GET_ENCLOSING_TYPE = "getEnclosingType";
         static final String HAS_ENCLOSING_METHOD_INFO = "hasEnclosingMethodInfo";
         static final String HAS_SIMPLE_BINARY_NAME = "hasSimpleBinaryName";
+        static final String GET_TYPE_FOR_STATIC_BASE = "getTypeForStaticBase";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -865,6 +866,26 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                 throw UnsupportedTypeException.create(arguments, "Expected a byte[] as second argument");
             }
             return StaticObject.NULL;
+        }
+
+        @Specialization(guards = "GET_TYPE_FOR_STATIC_BASE.equals(member)")
+        static Object getTypeForStaticBase(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            if (arguments.length != 1) {
+                arityError.enter(node);
+                throw ArityException.create(1, 1, arguments.length);
+            }
+            if (!(arguments[0] instanceof StaticObject staticBase)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an espresso object");
+            }
+            if (!staticBase.isStaticStorage()) {
+                return StaticObject.NULL;
+            }
+            return staticBase.getKlass();
         }
 
         @Fallback

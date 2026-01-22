@@ -276,6 +276,10 @@ public final class EspressoExternalVMAccessBuilder implements VMAccess.Builder {
                             "jdk.vm.ci.aarch64",
                             "jdk.vm.ci.services",
                             "jdk.vm.ci.runtime");
+
+            ModuleSupport.addExports("jdk.graal.compiler.espresso", "jdk.internal.vm.ci",
+                            "jdk.vm.ci.meta");
+
             ModuleSupport.addExports("jdk.graal.compiler.espresso.vmaccess", "jdk.graal.compiler",
                             "jdk.graal.compiler.api.replacements",
                             "jdk.graal.compiler.core.common.spi",
