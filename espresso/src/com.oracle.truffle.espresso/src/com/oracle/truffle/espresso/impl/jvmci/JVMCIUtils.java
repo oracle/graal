@@ -172,4 +172,38 @@ public final class JVMCIUtils {
         }
         return annotations.getData();
     }
+
+    public static Method resolveMethod(ObjectKlass receiverKlass, Method method, ObjectKlass accessingKlass) {
+        if (method.isDeclaredSignaturePolymorphic() || !receiverKlass.isLinked() || receiverKlass.isInterface() || method.isStatic()) {
+            return null;
+        }
+
+        ObjectKlass declaringKlass = method.getDeclaringKlass();
+        if (!checkAccess(accessingKlass, declaringKlass, method)) {
+            return null;
+        }
+
+        Method resolved;
+        if (method.isPrivate()) {
+            resolved = method;
+        } else if (declaringKlass.isInterface()) {
+            if (!declaringKlass.isAssignableFrom(receiverKlass)) {
+                return null;
+            }
+            assert method.getITableIndex() >= 0 : method;
+            resolved = receiverKlass.itableLookupOrNull(declaringKlass, method.getITableIndex());
+            if (resolved != null && !resolved.isPublic()) {
+                return null;
+            }
+        } else {
+            assert method.getVTableIndex() >= 0 : method;
+            resolved = receiverKlass.vtableLookup(method.getVTableIndex());
+        }
+        return resolved;
+    }
+
+    @TruffleBoundary
+    private static boolean checkAccess(ObjectKlass accessingKlass, ObjectKlass declaringKlass, Method method) {
+        return RuntimeConstantPool.memberCheckAccess(accessingKlass, declaringKlass, method);
+    }
 }

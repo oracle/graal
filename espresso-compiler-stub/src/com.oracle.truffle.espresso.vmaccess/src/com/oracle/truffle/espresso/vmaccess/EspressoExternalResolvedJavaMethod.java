@@ -49,6 +49,10 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
     private final Value methodMirror;
     private final int flags;
 
+    EspressoExternalResolvedJavaMethod(Value methodMirror, EspressoExternalVMAccess access) {
+        this(new EspressoExternalResolvedInstanceType(access, methodMirror.getMember("holder")), methodMirror);
+    }
+
     EspressoExternalResolvedJavaMethod(EspressoExternalResolvedInstanceType holder, Value methodMirror) {
         super(holder, methodMirror.getMember("hasPoison").asBoolean());
         this.methodMirror = methodMirror;

@@ -117,6 +117,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.GET_TYPE_FOR_STATIC_BASE,
                         InvokeMember.IS_RECORD,
                         InvokeMember.GET_VTABLE_LENGTH,
+                        InvokeMember.RESOLVE_METHOD,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -174,6 +175,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String GET_TYPE_FOR_STATIC_BASE = "getTypeForStaticBase";
         static final String IS_RECORD = "isRecord";
         static final String GET_VTABLE_LENGTH = "getVTableLength";
+        static final String RESOLVE_METHOD = "resolveMethod";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -910,6 +912,35 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             assert receiver != null;
             ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
             return klass.getVTable().length;
+        }
+
+        @Specialization(guards = "RESOLVE_METHOD.equals(member)")
+        static Object resolveMethod(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            if (arguments.length != 3) {
+                arityError.enter(node);
+                throw ArityException.create(3, 3, arguments.length);
+            }
+            if (!(arguments[0] instanceof ObjectKlass receiverType)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an instance type as first argument");
+            }
+            if (!(arguments[1] instanceof Method method)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected a method as second argument");
+            }
+            if (!(arguments[2] instanceof ObjectKlass callerType)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an instance type as third argument");
+            }
+            Method resolved = JVMCIUtils.resolveMethod(receiverType, method, callerType);
+            if (resolved == null) {
+                return StaticObject.NULL;
+            }
+            return resolved;
         }
 
         @Fallback

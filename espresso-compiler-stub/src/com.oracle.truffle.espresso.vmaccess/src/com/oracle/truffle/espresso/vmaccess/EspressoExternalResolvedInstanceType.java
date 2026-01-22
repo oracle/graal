@@ -141,7 +141,13 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
 
     @Override
     protected EspressoExternalResolvedJavaMethod resolveMethod0(AbstractEspressoResolvedJavaMethod method, AbstractEspressoResolvedInstanceType callerType) {
-        throw JVMCIError.unimplemented();
+        EspressoExternalResolvedJavaMethod espressoMethod = (EspressoExternalResolvedJavaMethod) method;
+        EspressoExternalResolvedInstanceType espressoCallerType = (EspressoExternalResolvedInstanceType) callerType;
+        Value result = access.invokeJVMCIHelper("resolveMethod", getMetaObject(), espressoMethod.getMirror(), espressoCallerType.getMetaObject());
+        if (result.isNull()) {
+            return null;
+        }
+        return new EspressoExternalResolvedJavaMethod(result, access);
     }
 
     @Override
