@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionMap;
@@ -46,9 +45,6 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 
 @Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {
-
-    public static final boolean RUNNING_ON_SVM = ImageInfo.inImageCode();
-
     private static final Path EMPTY = Paths.get("");
     private static final String PATH_SEPARATOR_INSERT = "\" + java.io.File.pathSeparator + \"";
     private static final String SEMI_COLON = ";";

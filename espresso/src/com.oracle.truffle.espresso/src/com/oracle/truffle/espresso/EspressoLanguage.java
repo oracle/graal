@@ -35,6 +35,7 @@ import java.util.regex.Pattern;
 
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
@@ -269,10 +270,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             case compact -> new CompactGuestFieldOffsetStrategy();
             case graal -> new GraalGuestFieldOffsetStrategy();
         };
-        this.nativeBackendId = setNativeBackendId(env);
-        this.useEspressoLibs = setUseEspressoLibs(env);
-        this.checkUnsafeArrayBounds = setCheckUnsafeArrayBounds(env);
         assert guestFieldOffsetStrategy.name().equals(strategy.name());
+        this.nativeBackendId = computeNativeBackendId(env);
+        this.useEspressoLibs = computeUseEspressoLibs(env);
+        this.checkUnsafeArrayBounds = setCheckUnsafeArrayBounds(env);
     }
 
     @Override
@@ -332,21 +333,24 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         languageCache.importFrom(other.getLanguageCache());
     }
 
-    private static String setNativeBackendId(final TruffleLanguage.Env env) {
-        boolean isAllowed = env.isNativeAccessAllowed();
+    private static String computeNativeBackendId(final TruffleLanguage.Env env) {
+        boolean nativeAccessAllowed = env.isNativeAccessAllowed();
         // if the Env allows, this might be overwritten.
         String nativeBackend = NoNativeAccess.Provider.ID;
         if (env.getOptions().hasBeenSet(EspressoOptions.NativeBackend)) {
             String userNativeBackend = env.getOptions().get(EspressoOptions.NativeBackend);
-            if (!isAllowed && !userNativeBackend.equals(nativeBackend)) {
+            if (!nativeAccessAllowed && !userNativeBackend.equals(nativeBackend)) {
                 throw EspressoError.fatal("trying to set NativeBackend to: " + userNativeBackend + ", even though NativeAccess is disabled");
             }
             return userNativeBackend;
 
-        } else if (isAllowed) {
+        } else if (nativeAccessAllowed) {
             // Pick a sane "default" native backend depending on the platform.
-            boolean isInPreInit = (boolean) env.getConfig().getOrDefault("preinit", false);
-            if (isInPreInit || !EspressoOptions.RUNNING_ON_SVM) {
+            if (env.isPreInitialization() || ImageInfo.inImageRuntimeCode()) {
+                // This is on SVM or the outer context during pre-initialization
+                nativeBackend = NFINativeAccess.Provider.ID;
+            } else {
+                // This is on HotSpot
                 if (OS.getCurrent() == OS.Linux) {
                     nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
                 } else if (OS.getCurrent() == OS.Darwin) {
@@ -354,14 +358,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                 } else {
                     nativeBackend = NFISulongNativeAccess.Provider.ID;
                 }
-            } else {
-                nativeBackend = NFINativeAccess.Provider.ID;
             }
         }
         return nativeBackend;
     }
 
-    private boolean setUseEspressoLibs(final TruffleLanguage.Env env) {
+    private boolean computeUseEspressoLibs(final TruffleLanguage.Env env) {
         // For no-native we turn on espressoLibs by default
         boolean flagSet = env.getOptions().hasBeenSet(EspressoOptions.UseEspressoLibs);
         boolean userFlag = env.getOptions().get(EspressoOptions.UseEspressoLibs);
@@ -399,6 +401,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         if (!areOptionsCompatible(context.getEnv().getOptions(), newEnv.getOptions())) {
             return false;
         }
+        if (!computeNativeBackendId(newEnv).equals(nativeBackendId)) {
+            return false;
+        }
+        assert computeUseEspressoLibs(newEnv) == useEspressoLibs : "In new env: " + computeUseEspressoLibs(newEnv) + " before: " + useEspressoLibs;
         context.patchContext(newEnv);
         try {
             context.initializeContext();
@@ -750,6 +756,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     }
 
     public static Path getEspressoLibs(TruffleLanguage.Env env) {
+        Path resourceLibs = getEspressoLibsFromResource(env);
+        if (resourceLibs != null) {
+            return resourceLibs;
+        }
         Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
         if (espressoHome != null) {
             Path libs = espressoHome.resolve("lib");
@@ -758,10 +768,16 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                 return libs;
             }
         }
+        throw EspressoError.shouldNotReachHere("Could not find required espresso libraries.");
+    }
+
+    private static Path getEspressoLibsFromResource(Env env) {
         try {
-            String resources = env.getInternalResource("espresso-libs").getAbsoluteFile().toString();
-            Path libs = Path.of(resources, "lib");
-            assert Files.isDirectory(libs);
+            TruffleFile resource = env.getInternalResource("espresso-libs");
+            if (resource == null || !resource.isDirectory()) {
+                return null;
+            }
+            Path libs = Path.of(resource.getAbsoluteFile().toString(), "lib");
             env.getLogger(EspressoContext.class).config(() -> "Using espresso libs from resources at " + libs);
             return libs;
         } catch (IOException e) {
@@ -834,7 +850,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             }
         }
         if (OS.getCurrent() == OS.Linux && JavaVersion.HOST_VERSION.compareTo(JavaVersion.latestSupported()) <= 0) {
-            if (!EspressoOptions.RUNNING_ON_SVM || (boolean) env.getConfig().getOrDefault("preinit", false)) {
+            if (!ImageInfo.inImageRuntimeCode() || (boolean) env.getConfig().getOrDefault("preinit", false)) {
                 // we might be able to use the host runtime libraries
                 env.getLogger(EspressoContext.class).config("Trying to use the host's runtime libraries");
                 return Paths.get(System.getProperty("java.home"));
