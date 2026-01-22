@@ -25,6 +25,20 @@
  */
 package com.oracle.svm.test;
 
+import static java.lang.constant.ConstantDescs.CD_CallSite;
+import static java.lang.constant.ConstantDescs.CD_Class;
+import static java.lang.constant.ConstantDescs.CD_MethodHandles_Lookup;
+import static java.lang.constant.ConstantDescs.CD_MethodType;
+import static java.lang.constant.ConstantDescs.CD_Object;
+import static java.lang.constant.ConstantDescs.CD_String;
+
+import java.lang.classfile.ClassFile;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.DirectMethodHandleDesc;
+import java.lang.constant.DynamicCallSiteDesc;
+import java.lang.constant.DynamicConstantDesc;
+import java.lang.constant.MethodHandleDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
@@ -39,23 +53,6 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
-
-import java.lang.classfile.ClassFile;
-import java.lang.constant.ClassDesc;
-import java.lang.constant.DirectMethodHandleDesc;
-import java.lang.constant.DynamicCallSiteDesc;
-import java.lang.constant.DynamicConstantDesc;
-import java.lang.constant.MethodHandleDesc;
-import java.lang.constant.MethodTypeDesc;
-
-import com.oracle.svm.hosted.FeatureImpl;
-
-import static java.lang.constant.ConstantDescs.CD_CallSite;
-import static java.lang.constant.ConstantDescs.CD_Class;
-import static java.lang.constant.ConstantDescs.CD_MethodHandles_Lookup;
-import static java.lang.constant.ConstantDescs.CD_MethodType;
-import static java.lang.constant.ConstantDescs.CD_Object;
-import static java.lang.constant.ConstantDescs.CD_String;
 
 /**
  * Tests the {@code registerBuildTimeIndyIncludeList} and {@code registerBuildTimeCondyIncludeList}
@@ -114,9 +111,8 @@ public class BootstrapMethodTest {
                 Method condyBsm = BootstrapMethodTest.class.getDeclaredMethod("myCondyBootstrap",
                                 MethodHandles.Lookup.class, String.class, Class.class);
 
-                FeatureImpl.DuringSetupAccessImpl impl = (FeatureImpl.DuringSetupAccessImpl) access;
-                impl.registerBuildTimeIndyIncludeList(indyBsm);
-                impl.registerBuildTimeCondyIncludeList(condyBsm);
+                access.registerBuildTimeIndyIncludeList(indyBsm);
+                access.registerBuildTimeCondyIncludeList(condyBsm);
             } catch (NoSuchMethodException e) {
                 throw new RuntimeException(e);
             }
