@@ -95,18 +95,18 @@ final class EspressoExternalSnippetReflectionProvider implements SnippetReflecti
     @Override
     public Class<?> originalClass(ResolvedJavaType type) {
         Objects.requireNonNull(type);
-        throw JVMCIError.shouldNotReachHere("Cannot extract class for external JVMCI");
+        throw JVMCIError.shouldNotReachHere("Cannot extract class for external JVMCI (" + type + ")");
     }
 
     @Override
     public Executable originalMethod(ResolvedJavaMethod method) {
         Objects.requireNonNull(method);
-        throw JVMCIError.shouldNotReachHere("Cannot extract method for external JVMCI");
+        throw JVMCIError.shouldNotReachHere("Cannot extract method for external JVMCI (" + method + ")");
     }
 
     @Override
     public Field originalField(ResolvedJavaField field) {
         Objects.requireNonNull(field);
-        throw JVMCIError.shouldNotReachHere("Cannot extract field for external JVMCI");
+        throw JVMCIError.shouldNotReachHere("Cannot extract field for external JVMCI (" + field + ")");
     }
 }
