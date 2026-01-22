@@ -130,6 +130,12 @@ public final class GraalAccess {
                             origin,
                             available);
         }
+        if ("espresso-context".equals(selected.getVMAccessName())) {
+            // Make sure we use the modules prepared for GraalVM
+            selected.vmOption("JavaHome=" + System.getProperty("java.home"));
+            // This is needed for Word types:
+            selected.addModule("org.graalvm.word");
+        }
         return selected;
     }
 
