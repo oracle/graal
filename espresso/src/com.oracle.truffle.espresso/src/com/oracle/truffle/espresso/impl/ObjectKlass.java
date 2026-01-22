@@ -75,6 +75,7 @@ import com.oracle.truffle.espresso.classfile.attributes.SourceDebugExtensionAttr
 import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.descriptors.Descriptor;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -743,9 +744,133 @@ public final class ObjectKlass extends Klass implements AttributedElement {
         return false;
     }
 
+    /**
+     * Returns the binary name of this class without the leading enclosing class name. Returns null
+     * if this class is a top level class.
+     */
+    @SuppressWarnings("unchecked")
+    public Symbol<Name> getSimpleBinaryName() {
+        RuntimeConstantPool pool = getConstantPool();
+        InnerClassesAttribute inner = getInnerClasses();
+        if (inner == null) {
+            return null;
+        }
+        for (int i = 0; i < inner.entryCount(); i++) {
+            InnerClassesAttribute.Entry entry = inner.entryAt(i);
+            int innerClassIndex = entry.innerClassIndex;
+            if (innerClassIndex != 0) {
+                if (pool.className(innerClassIndex) == getName() && pool.resolvedKlassAt(this, innerClassIndex) == this) {
+                    if (entry.innerNameIndex == 0) {
+                        break;
+                    } else {
+                        return (Symbol<Name>) pool.utf8At(entry.innerNameIndex, "inner class name");
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the class in which this class is declared.
+     *
+     * @return null if {@code klass} is a top level class or anonymous (i.e. declared inside a
+     *         method or constructor)
+     * @see Class#getDeclaringClass()
+     */
+    public Klass getDeclaringClass() {
+        InnerClassesAttribute innerClasses = getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
+        if (innerClasses == null) {
+            return null;
+        }
+        RuntimeConstantPool pool = getConstantPool();
+
+        for (int i = 0; i < innerClasses.entryCount(); i++) {
+            InnerClassesAttribute.Entry entry = innerClasses.entryAt(i);
+            if (entry.innerClassIndex != 0) {
+                Symbol<Name> innerDescriptor = pool.className(entry.innerClassIndex);
+                // Check descriptors/names before resolving.
+                if (innerDescriptor.equals(getName())) {
+                    Klass innerKlass = pool.resolvedKlassAt(this, entry.innerClassIndex);
+                    if (innerKlass == this) {
+                        if (entry.outerClassIndex != 0) {
+                            Klass outerKlass = pool.resolvedKlassAt(this, entry.outerClassIndex);
+                            if (!(outerKlass instanceof ObjectKlass)) {
+                                // If the outer class is not an instance klass then it cannot have
+                                // declared any inner classes.
+                                Meta meta = outerKlass.getMeta();
+                                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError,
+                                                "%s and %s disagree on InnerClasses attribute", getName(), outerKlass.getName());
+                            }
+                            checkOuterAndInnerClassAgree(outerKlass, this);
+                            return outerKlass;
+                        } else {
+                            return null;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Checks that {@code outerKlass} has declared {@code innerKlass} as an inner klass.
+     *
+     * @throws IncompatibleClassChangeError if the check fails
+     */
+    @SuppressWarnings("unused")
+    private void checkOuterAndInnerClassAgree(Klass outerKlass, Klass innerKlass) {
+        // TODO: GR-72144
+    }
+
+    public record EnclosingMethodInfo(
+                    Klass enclosingClass,
+                    Symbol<Name> name,
+                    Symbol<? extends Descriptor> descriptor) {
+        public boolean isPartial() {
+            return name == null || descriptor == null;
+        }
+
+        boolean isConstructor() {
+            return !isPartial() && name == Names._init_;
+        }
+
+        boolean isMethod() {
+            return !isPartial() && !isConstructor() && name != Names._clinit_;
+        }
+    }
+
+    public EnclosingMethodInfo getEnclosingMethodInfo() {
+        EnclosingMethodAttribute enclosingMethodAttr = getEnclosingMethod();
+        if (enclosingMethodAttr == null) {
+            return null;
+        }
+        int classIndex = enclosingMethodAttr.getClassIndex();
+        if (classIndex == 0) {
+            return null;
+        }
+        RuntimeConstantPool pool = getConstantPool();
+        Klass enclosingKlass = pool.resolvedKlassAt(this, classIndex);
+
+        // Not a method, but a NameAndType entry.
+        int nameAndTypeIndex = enclosingMethodAttr.getNameAndTypeIndex();
+        Symbol<Name> methodName = null;
+        Symbol<? extends Descriptor> methodDesc = null;
+        if (nameAndTypeIndex != 0) {
+            methodName = pool.nameAndTypeName(nameAndTypeIndex);
+            methodDesc = pool.nameAndTypeDescriptor(nameAndTypeIndex);
+        }
+        return new EnclosingMethodInfo(enclosingKlass, methodName, methodDesc);
+    }
+
     @Override
     public Klass getEnclosingType() {
-        return null;
+        EnclosingMethodInfo info = getEnclosingMethodInfo();
+        if (info == null) {
+            return getDeclaringClass();
+        }
+        return info.enclosingClass();
     }
 
     @Override
@@ -1574,7 +1699,7 @@ public final class ObjectKlass extends Klass implements AttributedElement {
                     Klass outerKlass = pool.resolvedKlassAt(this, entry.outerClassIndex);
                     if (outerKlass == this) {
                         Klass innerKlass = pool.resolvedKlassAt(this, entry.innerClassIndex);
-                        // TODO: Consider implementing extra checks as performed by HotSpot GR-72144
+                        checkOuterAndInnerClassAgree(outerKlass, innerKlass);
                         innerKlasses.add(innerKlass);
                     }
                 }

@@ -110,7 +110,11 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.GET_DECLARED_TYPES,
                         InvokeMember.COPY_BYTE_ARRAY,
                         InvokeMember.GET_VM_FIELD,
-                        InvokeMember.GET_VM_METHOD
+                        InvokeMember.GET_VM_METHOD,
+                        InvokeMember.GET_ENCLOSING_TYPE,
+                        InvokeMember.HAS_ENCLOSING_METHOD_INFO,
+                        InvokeMember.HAS_SIMPLE_BINARY_NAME
+
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -162,6 +166,9 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String COPY_BYTE_ARRAY = "copyByteArray";
         static final String GET_VM_FIELD = "getVMField";
         static final String GET_VM_METHOD = "getVMMethod";
+        static final String GET_ENCLOSING_TYPE = "getEnclosingType";
+        static final String HAS_ENCLOSING_METHOD_INFO = "hasEnclosingMethodInfo";
+        static final String HAS_SIMPLE_BINARY_NAME = "hasSimpleBinaryName";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -421,6 +428,40 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
             assert receiver != null;
             return getSingleMethodArgument(arguments, node, typeError, arityError);
+        }
+
+        @Specialization(guards = "GET_ENCLOSING_TYPE.equals(member)")
+        static Object getEnclosingType(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
+            Klass enclosingType = klass.getEnclosingType();
+            if (enclosingType == null) {
+                return StaticObject.NULL;
+            }
+            return enclosingType;
+        }
+
+        @Specialization(guards = "HAS_ENCLOSING_METHOD_INFO.equals(member)")
+        static boolean hasEnclosingMethodInfo(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
+            return klass.getEnclosingMethod() != null;
+        }
+
+        @Specialization(guards = "HAS_SIMPLE_BINARY_NAME.equals(member)")
+        static boolean hasSimpleBinaryName(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
+            return klass.getSimpleBinaryName() != null;
         }
 
         // This would be less awkward if we could return Klass as non-statics JVMCI object like
