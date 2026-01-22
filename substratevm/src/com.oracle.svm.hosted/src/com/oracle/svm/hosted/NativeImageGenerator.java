@@ -159,6 +159,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.core.image.ImageHeapObjectSorter;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.jdk.ImageKindInfoSingleton;
@@ -782,7 +783,7 @@ public class NativeImageGenerator {
                     HostedImageLayerBuildingSupport.singleton().archiveLayer();
                 }
             }
-            reporter.printCreationEnd(image.getImageFileSize(), heap.getLayerObjectCount(), image.getImageHeapSize(), codeCache.getCodeAreaSize(), numCompilations, image.getDebugInfoSize(),
+            reporter.printCreationEnd(image.getImageFileSize(), heap.getCurrentLayerObjectCount(), image.getImageHeapSize(), codeCache.getCodeAreaSize(), numCompilations, image.getDebugInfoSize(),
                             imageDiskFileSize);
         }
     }
@@ -822,7 +823,8 @@ public class NativeImageGenerator {
     }
 
     protected ImageHeapLayoutInfo layoutNativeImageHeap(NativeImageHeap heap) {
-        return heap.getLayouter().layout(heap, SubstrateOptions.getPageSize(), ImageHeapLayouter.ImageHeapLayouterCallback.NONE);
+        ImageHeapObjectSorter objectSorter = ImageSingletons.lookup(ImageHeapObjectSorter.class);
+        return heap.getLayouter().layout(heap, SubstrateOptions.getPageSize(), objectSorter, ImageHeapLayouter.ImageHeapLayouterCallback.NONE);
     }
 
     protected void createAbstractImage(NativeImageKind k, List<HostedMethod> hostedEntryPoints, NativeImageHeap heap, ImageHeapLayoutInfo heapLayout,

@@ -49,6 +49,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.util.EconomicHashMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -129,7 +130,7 @@ import jdk.vm.ci.meta.VMConstant;
 
 public abstract class NativeImageCodeCache {
 
-    private final Map<Constant, Object> embeddedConstants = new HashMap<>();
+    private final Map<Constant, Object> embeddedConstants = new EconomicHashMap<>();
 
     public static class Options {
         @Option(help = "Verify that all possible deoptimization entry points have been properly compiled and registered in the metadata")//

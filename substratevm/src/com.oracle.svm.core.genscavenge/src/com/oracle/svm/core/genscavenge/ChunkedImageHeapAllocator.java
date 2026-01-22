@@ -163,31 +163,22 @@ class ChunkedImageHeapAllocator {
         return chunkBegin + UnsignedUtils.safeToInt(UnalignedHeapChunk.calculateObjectStartOffset(Word.unsigned(objSize)));
     }
 
-    public void maybeStartAlignedChunk() {
-        if (currentAlignedChunk == null) {
-            startNewAlignedChunk();
-        }
+    public AlignedChunk maybeStartAlignedChunk() {
+        return currentAlignedChunk != null ? currentAlignedChunk : startNewAlignedChunk();
     }
 
-    public void startNewAlignedChunk() {
+    public AlignedChunk startNewAlignedChunk() {
         finishAlignedChunk();
         alignBetweenChunks(alignedChunkAlignment);
         long chunkBegin = allocateRaw(alignedChunkSize);
         currentAlignedChunk = new AlignedChunk(chunkBegin);
         alignedChunks.add(currentAlignedChunk);
+        return currentAlignedChunk;
     }
 
     private void alignBetweenChunks(int multiple) {
         assert currentAlignedChunk == null;
         allocateRaw(computePadding(position, multiple));
-    }
-
-    public long getRemainingBytesInAlignedChunk() {
-        return currentAlignedChunk.getUnallocatedBytes();
-    }
-
-    public long allocateObjectInAlignedChunk(ImageHeapObject obj, boolean writable) {
-        return currentAlignedChunk.allocate(obj, writable);
     }
 
     public void finishAlignedChunk() {

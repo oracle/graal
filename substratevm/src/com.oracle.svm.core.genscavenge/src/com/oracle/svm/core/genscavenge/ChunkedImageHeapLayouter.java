@@ -42,6 +42,7 @@ import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.image.ImageHeapObjectSorter;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -173,12 +174,12 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
     }
 
     @Override
-    public ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize, ImageHeapLayouterCallback callback) {
+    public ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize, ImageHeapObjectSorter objectSorter, ImageHeapLayouterCallback callback) {
         ImageHeapLayouterControl control = new ImageHeapLayouterControl(callback);
         int objectAlignment = ConfigurationValues.getObjectLayout().getAlignment();
         assert pageSize % objectAlignment == 0 : "Page size does not match object alignment";
 
-        ImageHeapLayoutInfo layoutInfo = doLayout(imageHeap, pageSize, control);
+        ImageHeapLayoutInfo layoutInfo = doLayout(imageHeap, pageSize, objectSorter, control);
 
         /*
          * In case there is a need for more alignment between partitions or between objects in a
@@ -191,11 +192,11 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         return layoutInfo;
     }
 
-    private ImageHeapLayoutInfo doLayout(ImageHeap imageHeap, int pageSize, ImageHeapLayouterControl control) {
+    private ImageHeapLayoutInfo doLayout(ImageHeap imageHeap, int pageSize, ImageHeapObjectSorter objectSorter, ImageHeapLayouterControl control) {
         allocator = new ChunkedImageHeapAllocator(startOffset);
         for (ChunkedImageHeapPartition partition : getPartitions()) {
             control.poll();
-            partition.layout(allocator, control);
+            partition.layout(allocator, objectSorter, control);
         }
         return populateInfoObjects(imageHeap.countPatchAndVerifyDynamicHubs(), pageSize, control);
     }

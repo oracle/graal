@@ -113,7 +113,7 @@ public class ImageHeapConnectedComponentsPrinter {
             reachabilityGroups.put(group, new GroupEntry());
         }
         Set<ObjectInfo> objects = Collections.newSetFromMap(new IdentityHashMap<>());
-        heap.getObjects().stream()
+        heap.streamObjects()
                         .filter(this::shouldIncludeObjectInTheReport)
                         .forEach(objects::add);
 
@@ -259,7 +259,7 @@ public class ImageHeapConnectedComponentsPrinter {
             totalHeaderGroupSize += groupSize;
         }
         out.printf("\tIn connected components report: %s%n", ByteFormattingUtil.bytesToHuman(totalHeapSizeInBytes - totalHeaderGroupSize));
-        out.printf("Total number of objects in the heap: %d%n", this.heap.getObjects().size());
+        out.printf("Total number of objects in the heap: %d%n", this.heap.getObjectCount());
         out.printf("Number of connected components in the report %d", this.connectedComponents.size());
         for (int i = 0; i < connectedComponents.size(); i++) {
             ConnectedComponent connectedComponent = connectedComponents.get(i);
