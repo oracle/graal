@@ -194,7 +194,7 @@ public enum Encoding {
                 return !(min < 0x80 && max >= 0x80 || min < 0x800 && max >= 0x800 || min < 0x10000 && max >= 0x10000);
             }
             case UTF_16, UTF_16BE -> {
-                return !(min < 0x10000 && max > 0x10000);
+                return !(min < 0x10000 && max >= 0x10000);
             }
             default -> {
                 assert this != UTF_16_RAW || max <= 0xffff : set;
