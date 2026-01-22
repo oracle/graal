@@ -26,7 +26,6 @@ import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaField;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
@@ -67,7 +66,7 @@ final class EspressoExternalResolvedJavaField extends AbstractEspressoResolvedJa
 
     @Override
     protected int getConstantValueIndex() {
-        throw JVMCIError.unimplemented();
+        return fieldMirror.getMember("constantValueIndex").asInt();
     }
 
     @Override
