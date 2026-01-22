@@ -1546,10 +1546,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             traceMethodLookup(methodName, parameterTypes, method, publicOnly);
         }
 
-        boolean isConstructor = methodName.equals(CONSTRUCTOR_NAME);
-        int allDeclaredFlag = isConstructor ? ALL_DECLARED_CONSTRUCTORS_FLAG : ALL_DECLARED_METHODS_FLAG;
-        int allPublicFlag = isConstructor ? ALL_CONSTRUCTORS_FLAG : ALL_METHODS_FLAG;
         if (method == null) {
+            boolean isConstructor = methodName.equals(CONSTRUCTOR_NAME);
+            int allDeclaredFlag = isConstructor ? ALL_DECLARED_CONSTRUCTORS_FLAG : ALL_DECLARED_METHODS_FLAG;
+            int allPublicFlag = isConstructor ? ALL_CONSTRUCTORS_FLAG : ALL_METHODS_FLAG;
             if (throwMissingErrors && !allElementsRegistered(publicOnly, allDeclaredFlag, allPublicFlag) &&
                             !(isConstructor && isInterface())) {
                 MissingReflectionRegistrationUtils.reportMethodQuery(clazz, methodName, parameterTypes);
@@ -1563,17 +1563,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         } else if (SubstrateUtil.cast(method.getDeclaringClass(), DynamicHub.class).isRuntimeLoaded()) {
             return true;
         } else {
-            if (publicOnly && method.getDeclaringClass() != clazz && !allElementsRegistered(publicOnly, allDeclaredFlag, allPublicFlag)) {
-                /*
-                 * Method queries on a type which was not registered for reflection are not allowed,
-                 * as they may return superclass methods instead of the method override in the
-                 * subclass.
-                 */
-                if (throwMissingErrors) {
-                    MissingReflectionRegistrationUtils.reportMethodQuery(clazz, methodName, parameterTypes);
-                }
-                return false;
-            }
             RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
             int methodModifiers = RuntimeMetadataDecoderImpl.getRawModifiers(method);
             boolean negative = decoder.isNegative(methodModifiers);

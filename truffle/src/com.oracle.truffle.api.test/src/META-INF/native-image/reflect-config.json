@@ -291,11 +291,5 @@
   {
     "name": "com.oracle.truffle.api.test.polyglot.ContextBuilderExtendAPITest$ShouldBeAccessible",
     "allPublicMethods": true
-  },
-  {
-    "name": "com.oracle.truffle.api.test.polyglot.GR40903Outer"
-  },
-  {
-    "name": "com.oracle.truffle.api.test.polyglot.TruffleFileTest$EmptyPathTestFs"
   }
 ]

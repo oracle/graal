@@ -385,6 +385,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         analysisAccess = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         metaAccess = analysisAccess.getMetaAccess();
+        reflectionData.setAnalysisAccess(analysisAccess);
         /* duplicated to reduce the number of analysis iterations */
         reflectionData.setAnalysisAccess(access);
 

@@ -108,6 +108,8 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
+import com.oracle.svm.hosted.DeadlockWatchdog;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
@@ -168,6 +170,7 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 public class ReflectionDataBuilder extends ConditionalConfigurationRegistry implements RuntimeReflectionSupport, ReflectionHostedSupport {
     private AnalysisMetaAccess metaAccess;
     private final SubstrateAnnotationExtractor annotationExtractor;
+    private BeforeAnalysisAccessImpl analysisAccess;
     private final ClassForNameSupport classForNameSupport;
     private LayeredReflectionDataBuilder layeredReflectionDataBuilder;
     private SubstitutionReflectivityFilter reflectivityFilter;
@@ -204,6 +207,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             layeredReflectionDataBuilder = LayeredReflectionDataBuilder.singleton();
         }
         reflectivityFilter = SubstitutionReflectivityFilter.singleton();
+    }
+
+    void setAnalysisAccess(BeforeAnalysisAccessImpl beforeAnalysisAccess) {
+        this.analysisAccess = beforeAnalysisAccess;
     }
 
     @Override
@@ -273,12 +280,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             types.compute(analysisType, (_, td) -> {
                 TypeData typeData = td == null ? new TypeData() : td;
 
-                ConfigurationMemberAccessibility previous = typeData.accessibility;
-                if (previous == null || !previous.includes(accessibility)) {
-                    typeData.accessibility = accessibility;
-                    if (previous == null) {
-                        registerTypesForHeapType(analysisType);
-                    }
+                ConfigurationMemberAccessibility previous = typeData.registerAs(accessibility);
+                if (previous == null) {
+                    registerTypesForHeapType(analysisType);
                 }
 
                 if (accessibility == NONE) {
@@ -371,7 +375,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * Without hiding methods, the declaring class of the method has to be registered to allow
          * individual queries at run-time.
          */
-        registerMethodDeclaringType(condition, method.getDeclaringClass(), method.isConstructor());
+        if (throwMissingRegistrationErrors()) {
+            registerMethodDeclaringType(condition, method.getDeclaringClass(), method.isConstructor());
+        }
         registerMethod(condition, ACCESSED, preserved, method);
     }
 
@@ -465,32 +471,55 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             methods.compute(analysisMethod, (aMethod, md) -> {
                 ElementData data = md != null ? md : new ElementData();
 
-                ConfigurationMemberAccessibility previous = data.accessibility;
-                if (previous == null || !previous.includes(accessibility)) {
-                    data.accessibility = accessibility;
-                    if (previous == null) {
-                        registerTypesForMethod(aMethod);
-                    }
-                    if (accessibility.includes(QUERIED) && (previous == null || !previous.includes(QUERIED))) {
-                        if (!aMethod.isConstructor() && aMethod.getDeclaringClass().isAnnotation()) {
-                            processAnnotationMethod(accessibility, aMethod);
-                        }
-                    }
-                    if (accessibility.includes(ACCESSED)) {
-                        registerMethodAccessor(aMethod);
-                    }
+                ConfigurationMemberAccessibility previous = data.registerAs(accessibility);
+                if (previous == null) {
+                    registerTypesForMethod(aMethod);
                 }
-
                 if (accessibility == NONE) {
                     data.inHeap = true;
                 }
+                if (accessibility.includes(QUERIED) && (previous == null || !previous.includes(QUERIED))) {
+                    if (!aMethod.isConstructor() && aMethod.getDeclaringClass().isAnnotation()) {
+                        processAnnotationMethod(accessibility, aMethod);
+                    }
+                    if (!throwMissingRegistrationErrors()) {
+                        checkHidingMethods(aMethod);
+                    }
+                }
                 if (accessibility.includes(ACCESSED)) {
                     data.updateDynamicAccessMetadata(cnd, preserved);
+                    if ((previous == null || !previous.includes(ACCESSED))) {
+                        registerMethodAccessor(aMethod);
+                    }
                 }
 
                 return data;
             });
         });
+    }
+
+    private void checkHidingMethods(AnalysisMethod analysisMethod) {
+        AnalysisType declaringType = analysisMethod.getDeclaringClass();
+        if (!registerHidingElementsReachabilityHandler(declaringType)) {
+            for (AnalysisType subtype : AnalysisUniverse.reachableSubtypes(declaringType)) {
+                runConditionalTask(unconditional(), _ -> checkSubtypeForOverridingMethod(analysisMethod, subtype));
+            }
+        }
+    }
+
+    private void checkSubtypeForOverridingMethod(AnalysisMethod supertypeMethod, AnalysisType subtype) {
+        if (methods.containsKey(supertypeMethod) && methods.get(supertypeMethod).isRegisteredAs(QUERIED)) {
+            for (AnalysisMethod subtypeMethod : subtype.getDeclaredMethods(false)) {
+                if (supertypeMethod.getName().equals(subtypeMethod.getName()) &&
+                                supertypeMethod.getSignature().equals(subtypeMethod.getSignature())) {
+                    methods.compute(subtypeMethod, (_, td) -> {
+                        ElementData data = td == null ? new TypeData() : td;
+                        data.hiding = true;
+                        return data;
+                    });
+                }
+            }
+        }
     }
 
     @Override
@@ -502,7 +531,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * Without hiding fields, the declaring class of the field has to be registered to allow
          * individual queries at run-time.
          */
-        registerFieldDeclaringType(condition, field.getDeclaringClass(), preserved);
+        if (throwMissingRegistrationErrors()) {
+            registerFieldDeclaringType(condition, field.getDeclaringClass(), preserved);
+        }
         registerField(condition, ACCESSED, preserved, field);
     }
 
@@ -582,18 +613,25 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 abortIfSealed();
                 ElementData data = fd != null ? fd : new ElementData();
 
-                ConfigurationMemberAccessibility previous = data.accessibility;
-                if (previous == null || !previous.includes(accessibility)) {
-                    data.accessibility = accessibility;
-                    if (previous == null) {
-                        registerTypesForField(analysisField);
+                ConfigurationMemberAccessibility previous = data.registerAs(accessibility);
+                if (previous == null) {
+                    registerTypesForField(analysisField);
+                }
+                if (accessibility == NONE) {
+                    data.inHeap = true;
+                    analysisField.registerAsUnsafeAccessed("is registered for reflection.");
+                }
+                if (accessibility.includes(QUERIED) && (previous == null || !previous.includes(QUERIED))) {
+                    if (analysisField.getDeclaringClass().isAnnotation()) {
+                        processAnnotationField(accessibility, analysisField);
                     }
-                    if (accessibility.includes(QUERIED) && (previous == null || !previous.includes(QUERIED))) {
-                        if (analysisField.getDeclaringClass().isAnnotation()) {
-                            processAnnotationField(accessibility, analysisField);
-                        }
+                    if (!throwMissingRegistrationErrors()) {
+                        checkHidingFields(analysisField);
                     }
-                    if (accessibility.includes(ACCESSED)) {
+                }
+                if (accessibility.includes(ACCESSED)) {
+                    data.updateDynamicAccessMetadata(cnd, preserved);
+                    if (previous == null || !previous.includes(ACCESSED)) {
                         /*
                          * Reflection accessors use Unsafe, so ensure that all reflectively
                          * accessible fields are registered as unsafe-accessible.
@@ -602,17 +640,34 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     }
                 }
 
-                if (accessibility == NONE) {
-                    data.inHeap = true;
-                    analysisField.registerAsUnsafeAccessed("is registered for reflection.");
-                }
-                if (accessibility.includes(ACCESSED)) {
-                    data.updateDynamicAccessMetadata(cnd, preserved);
-                }
-
                 return data;
             });
         });
+    }
+
+    private void checkHidingFields(AnalysisField analysisField) {
+        AnalysisType declaringType = analysisField.getDeclaringClass();
+        if (!registerHidingElementsReachabilityHandler(declaringType)) {
+            for (AnalysisType subtype : AnalysisUniverse.reachableSubtypes(declaringType)) {
+                runConditionalTask(unconditional(), _ -> checkSubtypeForOverridingField(analysisField, subtype));
+            }
+        }
+    }
+
+    private void checkSubtypeForOverridingField(AnalysisField supertypeField, AnalysisType subtype) {
+        if (fields.containsKey(supertypeField) && fields.get(supertypeField).isRegisteredAs(QUERIED)) {
+            for (ResolvedJavaField javaField : JVMCIReflectionUtil.getAllFields(subtype)) {
+                AnalysisField subtypeField = (AnalysisField) javaField;
+                if (subtypeField.getName().equals(supertypeField.getName())) {
+                    fields.compute(subtypeField, (_, td) -> {
+                        ElementData data = td == null ? new TypeData() : td;
+                        data.hiding = true;
+                        return data;
+                    });
+                    subtypeField.getType().registerAsReachable("Is the declared type of a hiding Field used by reflection");
+                }
+            }
+        }
     }
 
     @Override
@@ -627,6 +682,45 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 // Field lookup errors will be handled by the declaring class registration
             }
         });
+    }
+
+    private boolean registerHidingElementsReachabilityHandler(AnalysisType type) {
+        TypeData data = types.computeIfAbsent(type, _ -> new TypeData());
+        if (!data.reachabilityHandlerRegistered) {
+            data.reachabilityHandlerRegistered = true;
+            analysisAccess.registerSubtypeReachabilityHandler((_, subtype) -> runConditionalTask(unconditional(), _ -> checkSubtypeForOverridingElements(type, metaAccess.lookupJavaType(subtype))),
+                            type.getJavaClass());
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private void checkSubtypeForOverridingElements(AnalysisType declaringType, AnalysisType subtype) {
+        /* All fields and methods are already registered, no need for hiding elements */
+        if (!types.containsKey(subtype) || !types.get(subtype).isRegisteredAs(QUERIED)) {
+            DeadlockWatchdog.singleton().recordActivity();
+            try {
+                for (AnalysisMethod supertypeMethod : declaringType.getDeclaredMethods(false)) {
+                    checkSubtypeForOverridingMethod(supertypeMethod, subtype);
+                }
+            } catch (UnsupportedFeatureException | LinkageError e) {
+                /*
+                 * A method that is not supposed to end up in the image is considered as being
+                 * absent for reflection purposes.
+                 */
+            }
+            try {
+                for (ResolvedJavaField supertypeField : JVMCIReflectionUtil.getAllFields(declaringType)) {
+                    checkSubtypeForOverridingField((AnalysisField) supertypeField, subtype);
+                }
+            } catch (UnsupportedFeatureException | LinkageError e) {
+                /*
+                 * A field that is not supposed to end up in the image is considered as being absent
+                 * for reflection purposes.
+                 */
+            }
+        }
     }
 
     /*
@@ -1006,7 +1100,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         assert isSealed();
         Map<Class<?>, Set<Class<?>>> innerClasses = new HashMap<>();
         types.forEach((type, typeData) -> {
-            if (typeData.accessibility.includes(QUERIED)) {
+            if (typeData.isRegisteredAs(QUERIED)) {
                 try {
                     var innerTypes = innerClasses.computeIfAbsent(type.getJavaClass(), _ -> new HashSet<>());
                     for (var innerType : type.getDeclaredTypes()) {
@@ -1020,6 +1114,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             }
                         }
                     });
+                    if (!throwMissingRegistrationErrors()) {
+                        AnalysisType enclosingType = type.getEnclosingType();
+                        if (enclosingType != null) {
+                            innerClasses.computeIfAbsent(enclosingType.getJavaClass(), _ -> new HashSet<>()).add(type.getJavaClass());
+                        }
+                    }
                 } catch (LinkageError ignored) {
                     // The linkage error is handled in registerAllDeclaredClasses
                 }
@@ -1034,7 +1134,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * no members.
          */
         AnalysisType type = metaAccess.lookupJavaType(clazz);
-        if (type.isPrimitive() || type.isArray() || types.get(type).accessibility.includes(QUERIED)) {
+        if (type.isPrimitive() || type.isArray() || types.get(type).isRegisteredAs(QUERIED)) {
             return ALL_DECLARED_CLASSES_FLAG | ALL_CLASSES_FLAG | ALL_DECLARED_CONSTRUCTORS_FLAG | ALL_CONSTRUCTORS_FLAG | ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG |
                             ALL_DECLARED_FIELDS_FLAG | ALL_FIELDS_FLAG | ALL_RECORD_COMPONENTS_FLAG | ALL_PERMITTED_SUBCLASSES_FLAG | ALL_NEST_MEMBERS_FLAG | ALL_SIGNERS_FLAG;
         } else {
@@ -1057,7 +1157,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         assert isSealed();
         Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> registeredFields = new HashMap<>();
         fields.forEach((field, data) -> {
-            if (data.accessibility.includes(QUERIED)) {
+            if (data.isRegisteredAs(QUERIED)) {
                 if (ClassAccess.getJavaField(field) != null) {
                     registeredFields.computeIfAbsent(field.getDeclaringClass(), _ -> new HashMap<>()).put(field,
                                     new ConditionalRuntimeValue<>(data.getDynamicAccessMetadata(), ClassAccess.getJavaField(field)));
@@ -1072,7 +1172,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         assert isSealed();
         Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> registeredMethods = new HashMap<>();
         methods.forEach((method, data) -> {
-            if (data.accessibility.includes(QUERIED)) {
+            if (data.isRegisteredAs(QUERIED)) {
                 if (method.getJavaMethod() != null) {
                     registeredMethods.computeIfAbsent(method.getDeclaringClass(), _ -> new HashMap<>()).put(method,
                                     new ConditionalRuntimeValue<>(data.getDynamicAccessMetadata(), method.getJavaMethod()));
@@ -1085,7 +1185,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public Object getAccessor(AnalysisMethod method) {
         assert isSealed();
-        if (!methods.containsKey(method) || !methods.get(method).accessibility.includes(ACCESSED)) {
+        if (!methods.containsKey(method) || !methods.get(method).isRegisteredAs(ACCESSED)) {
             return null;
         }
         return ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(method.getJavaMethod());
@@ -1094,19 +1194,31 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public Set<ResolvedJavaField> getHidingReflectionFields() {
         assert isSealed();
-        return Collections.emptySet();
+        Set<ResolvedJavaField> hidingFields = new HashSet<>();
+        fields.forEach((field, data) -> {
+            if (data.hiding) {
+                hidingFields.add(field);
+            }
+        });
+        return Collections.unmodifiableSet(hidingFields);
     }
 
     @Override
     public Set<ResolvedJavaMethod> getHidingReflectionMethods() {
         assert isSealed();
-        return Collections.emptySet();
+        Set<ResolvedJavaMethod> hidingMethods = new HashSet<>();
+        methods.forEach((method, data) -> {
+            if (data.hiding) {
+                hidingMethods.add(method);
+            }
+        });
+        return Collections.unmodifiableSet(hidingMethods);
     }
 
     @Override
     public RecordComponent[] getRecordComponents(Class<?> clazz) {
         assert isSealed();
-        return types.get(metaAccess.lookupJavaType(clazz)).accessibility.includes(QUERIED) ? ClassAccess.getRecordComponents(clazz) : null;
+        return types.get(metaAccess.lookupJavaType(clazz)).isRegisteredAs(QUERIED) ? ClassAccess.getRecordComponents(clazz) : null;
     }
 
     @Override
@@ -1277,7 +1389,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private static int countElements(Map<? extends AnalysisElement, ElementData> elements) {
         return (int) elements.values().stream()
-                        .filter(data -> data.accessibility.includes(ACCESSED))
+                        .filter(data -> data.isRegisteredAs(ACCESSED))
                         .count();
     }
 
@@ -1296,6 +1408,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         private boolean methodsRegistered = false;
         private boolean constructorsRegistered = false;
         private boolean fieldsRegistered = false;
+        private boolean reachabilityHandlerRegistered = false;
         /*
          * Linkage errors caught when registering class metadata need to be stored in the image and
          * rethrown at runtime.
@@ -1345,9 +1458,22 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private static class ElementData {
-        ConfigurationMemberAccessibility accessibility = null;
-        RuntimeDynamicAccessMetadata dynamicAccess = null;
+        private ConfigurationMemberAccessibility accessibility = null;
+        private RuntimeDynamicAccessMetadata dynamicAccess = null;
         boolean inHeap = false;
+        boolean hiding = false;
+
+        ConfigurationMemberAccessibility registerAs(ConfigurationMemberAccessibility newAccessibility) {
+            ConfigurationMemberAccessibility previous = accessibility;
+            if (previous == null || !previous.includes(newAccessibility)) {
+                accessibility = newAccessibility;
+            }
+            return previous;
+        }
+
+        boolean isRegisteredAs(ConfigurationMemberAccessibility target) {
+            return accessibility != null && accessibility.includes(target);
+        }
 
         void updateDynamicAccessMetadata(AccessCondition condition, boolean preserved) {
             if (dynamicAccess == null) {
@@ -1546,7 +1672,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
                     private <T extends AnalysisElement> Set<T> getRegisteredElements(Map<T, ElementData> elements) {
                         return elements.entrySet().stream()
-                                        .filter(e -> e.getValue().accessibility.includes(ACCESSED))
+                                        .filter(e -> e.getValue().isRegisteredAs(ACCESSED))
                                         .map(Map.Entry::getKey)
                                         .collect(Collectors.toUnmodifiableSet());
                     }
