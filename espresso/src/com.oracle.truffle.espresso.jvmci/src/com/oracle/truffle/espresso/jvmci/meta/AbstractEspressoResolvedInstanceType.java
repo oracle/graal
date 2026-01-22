@@ -110,6 +110,11 @@ public abstract class AbstractEspressoResolvedInstanceType extends EspressoResol
     }
 
     @Override
+    public final boolean isHidden() {
+        return (getFlags() & ExtendedModifiers.HIDDEN_CLASS) != 0;
+    }
+
+    @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
         requireNonNull(other);
         if (other instanceof AbstractEspressoResolvedInstanceType espressoInstanceType) {

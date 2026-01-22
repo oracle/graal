@@ -283,11 +283,6 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
     }
 
     @Override
-    public boolean isHidden() {
-        throw JVMCIError.unimplemented();
-    }
-
-    @Override
     public List<? extends JavaType> getPermittedSubclasses() {
         throw JVMCIError.unimplemented();
     }
