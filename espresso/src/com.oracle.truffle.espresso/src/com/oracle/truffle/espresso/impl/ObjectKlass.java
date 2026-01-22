@@ -734,16 +734,6 @@ public final class ObjectKlass extends Klass implements AttributedElement {
         return getKlassVersion().pool;
     }
 
-    @Override
-    public boolean isLocal() {
-        return false;
-    }
-
-    @Override
-    public boolean isMember() {
-        return false;
-    }
-
     /**
      * Returns the binary name of this class without the leading enclosing class name. Returns null
      * if this class is a top level class.
