@@ -28,6 +28,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 
 import org.graalvm.polyglot.Value;
@@ -157,7 +158,21 @@ final class EspressoExternalMetaAccessProvider implements MetaAccessProvider {
 
     @Override
     public ResolvedJavaField lookupJavaField(Field reflectionField) {
-        throw JVMCIError.unimplemented();
+        EspressoResolvedJavaType declaringType = lookupJavaType(reflectionField.getDeclaringClass());
+        String name = reflectionField.getName();
+        ResolvedJavaField[] fields;
+        if (Modifier.isStatic(reflectionField.getModifiers())) {
+            fields = declaringType.getStaticFields();
+        } else {
+            fields = declaringType.getInstanceFields(false);
+        }
+        EspressoResolvedJavaType type = lookupJavaType(reflectionField.getType());
+        for (ResolvedJavaField field : fields) {
+            if (field.getName().equals(name) && field.getType().equals(type)) {
+                return field;
+            }
+        }
+        throw new NoSuchFieldError(reflectionField.toString());
     }
 
     @Override
