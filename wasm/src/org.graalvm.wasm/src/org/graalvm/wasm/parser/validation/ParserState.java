@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,13 +48,13 @@ import java.util.ArrayList;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.vector.Vector128;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen.BranchOp;
+import org.graalvm.wasm.vector.Vector128;
 
 /**
  * Represents the values and stack frames of a Wasm code section during validation. Stores
@@ -344,7 +344,7 @@ public class ParserState {
     public void enterTryTable(int[] paramTypes, int[] resultTypes, ExceptionHandler[] handlers) {
         final TryTableFrame frame = new TryTableFrame(paramTypes, resultTypes, valueStack.size(), controlStack.peek(), bytecode.location(), handlers);
         controlStack.push(frame);
-
+        pushAll(paramTypes);
         exceptionTables.add(frame.table());
     }
 
