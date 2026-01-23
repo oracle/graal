@@ -26,7 +26,7 @@ package com.oracle.svm.core.thread;
 
 import jdk.graal.compiler.nodes.PauseNode;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.internal.misc.Unsafe;
 

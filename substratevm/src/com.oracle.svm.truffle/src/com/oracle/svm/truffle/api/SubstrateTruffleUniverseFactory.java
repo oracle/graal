@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.UninterruptibleUtils;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.hub.DynamicHub;

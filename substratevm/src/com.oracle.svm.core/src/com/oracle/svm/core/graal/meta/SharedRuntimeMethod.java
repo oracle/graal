@@ -26,7 +26,7 @@ package com.oracle.svm.core.graal.meta;
 
 import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.meta.SharedMethod;

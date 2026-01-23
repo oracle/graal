@@ -46,7 +46,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.aarch64.AArch64InterpreterStubs;
 import com.oracle.svm.core.graal.amd64.AMD64InterpreterStubs;

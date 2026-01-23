@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.guest.staging;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -30,8 +30,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.graalvm.word.WordBase;
-
-import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Any method with this annotation must not have a safepoint in it.
@@ -43,7 +41,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * Methods annotated with {@link Uninterruptible} can only call
  * <ul>
  * <li>Other methods annotated with {@link Uninterruptible}.</li>
- * <li>Methods annotated with {@link Fold}.</li>
+ * <li>Methods annotated with {@code Fold}.</li>
  * <li>Methods from {@code KnownIntrinsics}.</li>
  * <li>Operations on {@link WordBase}.</li>
  * </ul>

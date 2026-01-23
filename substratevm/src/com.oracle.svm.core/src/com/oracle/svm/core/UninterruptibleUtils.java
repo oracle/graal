@@ -26,6 +26,7 @@ package com.oracle.svm.core;
 
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.svm.guest.staging.Uninterruptible;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;

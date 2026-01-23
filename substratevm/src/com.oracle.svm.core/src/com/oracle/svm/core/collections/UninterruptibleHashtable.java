@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.collections;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * Common interface for all uninterruptible hashtable implementations. Please note that we don't use

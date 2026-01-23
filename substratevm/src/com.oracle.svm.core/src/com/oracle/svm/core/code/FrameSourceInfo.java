@@ -27,7 +27,7 @@ package com.oracle.svm.core.code;
 import java.lang.module.ModuleDescriptor;
 import java.util.Optional;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 
 import jdk.graal.compiler.nodes.FrameState;

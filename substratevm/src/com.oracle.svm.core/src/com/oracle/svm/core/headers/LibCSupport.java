@@ -30,7 +30,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.memory.NativeMemory;
 
 /** Platform-independent LibC support. Don't use this class directly, use {@link LibC} instead. */
