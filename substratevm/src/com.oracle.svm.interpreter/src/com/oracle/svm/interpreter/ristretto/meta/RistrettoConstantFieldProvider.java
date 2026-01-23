@@ -54,7 +54,7 @@ public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvid
              * runtime via System.setIn/Out/Err.
              *
              * In SubstrateVM (SVM), this guard typically does not trigger because these fields are
-             * aliased to non-constant representations. We keep the check regardless to future‑proof
+             * aliased to non-constant representations. We keep the check regardless to future-proof
              * this code and to maintain semantics aligned with the Graal/HotSpot constant-folding
              * implementation so they can be unified later.
              */

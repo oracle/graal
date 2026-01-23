@@ -214,10 +214,10 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     @Override
     public ExceptionHandler[] getExceptionHandlers() {
-        ExceptionHandler[] IHandlers = interpreterMethod.getExceptionHandlers();
-        ExceptionHandler[] rHandlers = new ExceptionHandler[IHandlers.length];
-        for (int i = 0; i < IHandlers.length; i++) {
-            final ExceptionHandler iHandler = IHandlers[i];
+        ExceptionHandler[] iHandlers = interpreterMethod.getExceptionHandlers();
+        ExceptionHandler[] rHandlers = new ExceptionHandler[iHandlers.length];
+        for (int i = 0; i < iHandlers.length; i++) {
+            final ExceptionHandler iHandler = iHandlers[i];
             final JavaType catchType = iHandler.getCatchType();
             if (catchType instanceof ResolvedJavaType) {
                 assert catchType instanceof InterpreterResolvedJavaType;
