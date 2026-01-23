@@ -2049,7 +2049,7 @@ suite = {
 
         "LIBRARY_SUPPORT": {
             "subDir": "src",
-            "description" : "SubstrateVM basic library-support components",
+            "description" : "Native Image feature-based support for important non-JDK libraries and languages (e.g. gson, Scala, Groovy)",
             "dependencies": [
                 "com.oracle.svm.polyglot",
                 "com.oracle.svm.thirdparty",
