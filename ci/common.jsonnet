@@ -291,7 +291,6 @@ local common_json = import "../common.json";
       capabilities+: if self.os == "darwin" then ["!darwin_bigsur", "!darwin_monterey", "!darwin_ventura"] else [],
       packages+: if self.os == "linux" then {
         cmake: "==3.22.2",
-        "00:devtoolset": "==12",
       } else {},
       environment+: if self.os == "windows" then {
         local devkits_version = std.filterMap(
@@ -538,11 +537,9 @@ local common_json = import "../common.json";
   local common = self.deps.mx + self.deps.common_catch_files + self.deps.common_env,
 
   local ol_devtoolset = {
-    packages+: (if self.arch == "aarch64" then {
-      "00:devtoolset": "==10", # GCC 10.2.1, make 4.2.1, binutils 2.35, valgrind 3.16.1
-    } else {
-      "00:devtoolset": "==11", # GCC 11.2, make 4.3, binutils 2.36, valgrind 3.17
-    }),
+    packages+: {
+      "00:devtoolset": "==12", # GCC 12.2.1, make 4.3, binutils 2.36, valgrind 3.19
+    },
   },
 
   linux_amd64: self.linux_amd64_ol7,
