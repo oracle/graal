@@ -58,7 +58,7 @@ public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvid
              * this code and to maintain semantics aligned with the Graal/HotSpot constant-folding
              * implementation so they can be unified later.
              */
-            RistrettoType rTypeSystem = (RistrettoType) metaAccess.lookupJavaType(Class.forName(SystemClassName));
+            RistrettoType rTypeSystem = (RistrettoType) metaAccess.lookupJavaType(Class.forName(SystemClassName, false, ClassLoader.getSystemClassLoader()));
             this.systemType = rTypeSystem.getInterpreterType();
             assert systemFieldsFound(systemType);
         } catch (ClassNotFoundException e) {
