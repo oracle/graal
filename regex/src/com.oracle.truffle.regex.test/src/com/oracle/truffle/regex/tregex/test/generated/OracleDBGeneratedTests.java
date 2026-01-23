@@ -1677,6 +1677,8 @@ public class OracleDBGeneratedTests {
         testCase("((b\\2{1400,1400})+|)*a", "", UTF_8, match("a", 0, 0, 1, 0, 0, -1, -1)),
         testCase("\\S(\\w?\\W){8,9}\\Z", "", UTF_8, match("-a---------  ---------", 0, 13, 22, 21, 22)),
         testCase("[q[=\ud800\udc00=]]", "", UTF_16BE, match("\ud800\udc00\ud800\udc00", 0, 0, 2)),
+        testCase("((\\2a|b|)*?)+o", "", UTF_16BE, match("bao", 0, 0, 3, 2, 2, 1, 2)),
+        testCase("((\\2a|b|)*?)+o|", "", UTF_16BE, match("bao", 0, 0, 3, 2, 2, 1, 2)),
         testCase("(a{1100,1100})\\1", "i", UTF_8, match("a".repeat(2400), 0, 0, 2200, 0, 1100)),
         testCase("[a]\\S{213,213}bcdz", "", UTF_8, noMatch("a".repeat(215) + ("bcxd" + "a".repeat(213)).repeat(3), 0)),
 

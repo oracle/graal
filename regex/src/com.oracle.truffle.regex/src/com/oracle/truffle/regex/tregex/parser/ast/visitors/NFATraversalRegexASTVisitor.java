@@ -795,7 +795,9 @@ public abstract class NFATraversalRegexASTVisitor {
             dedupKeyAddGroupBoundaries(getCaptureGroupClears());
         }
         for (long guard : getTransitionGuards()) {
-            if (!TransitionGuard.is(guard, TransitionGuard.Kind.updateCG)) {
+            // the order of capture group updates only matters for recursively referenced groups
+            if (!TransitionGuard.is(guard, TransitionGuard.Kind.updateCG) ||
+                            ast.getProperties().hasRecursiveBackReferences() && ast.isGroupRecursivelyReferenced(TransitionGuard.getGroupBoundaryIndex(guard) >> 1)) {
                 dedupKey.add(guard);
             }
         }
