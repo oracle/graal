@@ -132,10 +132,10 @@
   },
 
   hotspot_interpreter:: {
-    platform:: "c2-xint",
+    platform:: "xint",
     environment+: {
       "JVM": "server",
-      "JVM_CONFIG": "default-xint"
+      "JVM_CONFIG": "xint"
     }
   },
 
