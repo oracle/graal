@@ -40,8 +40,8 @@ import com.oracle.svm.core.util.UnsignedUtils;
  *
  * This serves as our best estimate of a future unknown.
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/shared/gcUtil.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/shared/gcUtil.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gcUtil.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gcUtil.cpp")
 class AdaptiveWeightedAverage {
     static final int OLD_THRESHOLD = 100;
 
