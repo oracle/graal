@@ -362,6 +362,9 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
             for (int i = 0; i < ncmds && offset + 8 <= sizeofcmds; i++) {
                 int cmd = cmds.getInt(offset);
                 int cmdsize = cmds.getInt(offset + 4);
+                if (cmdsize <= 0 || offset + cmdsize > sizeofcmds) {
+                    break;
+                }
 
                 if (cmd == LC_UUID && cmdsize >= 24) {
                     info.uuid = new byte[16];
@@ -436,11 +439,20 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
             for (int i = 0; i < ncmds; i++) {
                 int cmd = cmds.getInt(offset);
                 int cmdsize = cmds.getInt(offset + 4);
+                if (cmdsize <= 0 || offset + cmdsize > sizeofcmds) {
+                    break;
+                }
 
                 if (cmd == LC_SEGMENT_64) {
+                    if (offset + 72 > sizeofcmds) {
+                        break;
+                    }
                     int nsects = cmds.getInt(offset + 64);
                     for (int j = 0; j < nsects; j++) {
                         int sectOffset = offset + 72 + j * 80;
+                        if (sectOffset + 80 > sizeofcmds) {
+                            break;
+                        }
                         byte[] nameBytes = new byte[16];
                         cmds.position(sectOffset);
                         cmds.get(nameBytes);
@@ -482,10 +494,19 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
         loadCmdsSize += 72 + dwarfSections.size() * 80;  // __DWARF segment
 
         int headerAndCmds = 32 + loadCmdsSize;
-        int dwarfDataOffset = (headerAndCmds + 7) & ~7;  // Align to 8
+        int maxSectionAlign = 1;
+        for (DwarfSectionData ds : dwarfSections) {
+            int alignment = 1 << ds.align;
+            if (alignment > maxSectionAlign) {
+                maxSectionAlign = alignment;
+            }
+        }
+
+        int dwarfDataOffset = alignUp(headerAndCmds, Math.max(8, maxSectionAlign));
 
         int totalDwarfSize = 0;
         for (DwarfSectionData ds : dwarfSections) {
+            totalDwarfSize = alignUp(totalDwarfSize, 1 << ds.align);
             totalDwarfSize += ds.content.length;
         }
 
@@ -530,8 +551,14 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
         }
 
         // Write DWARF section data
+        int currentOffset = dwarfDataOffset;
         for (DwarfSectionData ds : dwarfSections) {
+            int alignedOffset = alignUp(currentOffset, 1 << ds.align);
+            while (buf.position() < alignedOffset) {
+                buf.put((byte) 0);
+            }
             buf.put(ds.content);
+            currentOffset = alignedOffset + ds.content.length;
         }
 
         return buf.array();
@@ -591,6 +618,7 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
 
         int currentOffset = fileoff;
         for (DwarfSectionData ds : sections) {
+            currentOffset = alignUp(currentOffset, 1 << ds.align);
             writeFixedString(buf, ds.name, 16);
             writeFixedString(buf, "__DWARF", 16);
             buf.putLong(0);  // addr
@@ -605,6 +633,11 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
             buf.putInt(0);  // reserved3
             currentOffset += ds.content.length;
         }
+    }
+
+    private static int alignUp(int value, int alignment) {
+        int mask = alignment - 1;
+        return (value + mask) & ~mask;
     }
 
     /**
