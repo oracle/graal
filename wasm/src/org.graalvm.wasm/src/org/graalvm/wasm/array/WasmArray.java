@@ -47,16 +47,20 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.memory.ByteArraySupport;
+import org.graalvm.wasm.EmbedderDataHolder;
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmTypedHeapObject;
 import org.graalvm.wasm.constants.Mutability;
 import org.graalvm.wasm.types.DefinedType;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class WasmArray extends WasmTypedHeapObject {
+public abstract class WasmArray extends WasmTypedHeapObject implements EmbedderDataHolder {
 
     protected static final ByteArraySupport byteArraySupport = ByteArraySupport.littleEndian();
 
     protected final int size;
+
+    private Object embedderData = WasmConstant.VOID;
 
     protected WasmArray(DefinedType type, int size) {
         super(type);
@@ -133,5 +137,15 @@ public abstract class WasmArray extends WasmTypedHeapObject {
     @ExportMessage
     protected String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return toString();
+    }
+
+    @Override
+    public void setEmbedderData(Object embedderData) {
+        this.embedderData = embedderData;
+    }
+
+    @Override
+    public Object getEmbedderData() {
+        return embedderData;
     }
 }

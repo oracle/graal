@@ -47,6 +47,8 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.staticobject.StaticProperty;
+import org.graalvm.wasm.EmbedderDataHolder;
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmTypedHeapObject;
 import org.graalvm.wasm.api.InteropArray;
 import org.graalvm.wasm.constants.Mutability;
@@ -57,7 +59,9 @@ import org.graalvm.wasm.types.StorageType;
 import org.graalvm.wasm.types.ValueType;
 
 @ExportLibrary(InteropLibrary.class)
-public class WasmStruct extends WasmTypedHeapObject {
+public class WasmStruct extends WasmTypedHeapObject implements EmbedderDataHolder {
+
+    private Object embedderData = WasmConstant.VOID;
 
     public WasmStruct(DefinedType type) {
         super(type);
@@ -218,5 +222,15 @@ public class WasmStruct extends WasmTypedHeapObject {
     @TruffleBoundary
     private static String integerToString(int fieldIndex) {
         return Integer.toString(fieldIndex);
+    }
+
+    @Override
+    public void setEmbedderData(Object embedderData) {
+        this.embedderData = embedderData;
+    }
+
+    @Override
+    public Object getEmbedderData() {
+        return embedderData;
     }
 }
