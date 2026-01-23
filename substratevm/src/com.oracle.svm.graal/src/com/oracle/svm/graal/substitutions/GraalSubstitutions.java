@@ -45,7 +45,9 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -101,12 +103,29 @@ final class Target_jdk_graal_compiler_nodes_graphbuilderconf_InvocationPlugins {
 
     @Alias//
     private List<Runnable> deferredRegistrations = new ArrayList<>();
+    @Inject//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = PluginTransformer.class)//
+    private boolean allocatedAtBuildTime;
 
     @Substitute
     private void flushDeferrables() {
-        if (deferredRegistrations != null) {
+        /*
+         * Ristretto allocates plugins at runtime.
+         */
+        if (allocatedAtBuildTime && deferredRegistrations != null) {
             throw VMError.shouldNotReachHere("not initialized during image generation");
+        } else {
+            assert SubstrateOptions.useRistretto();
         }
+    }
+
+    private static final class PluginTransformer implements FieldValueTransformer {
+
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            return SubstrateUtil.HOSTED;
+        }
+
     }
 }
 
