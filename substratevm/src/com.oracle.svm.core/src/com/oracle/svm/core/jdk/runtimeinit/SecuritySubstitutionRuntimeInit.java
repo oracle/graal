@@ -167,9 +167,9 @@ final class Target_sun_security_jca_ProviderConfig {
                      */
                     if (debug != null) {
                         debug.println("Recursion loading provider: " + this);
-                        // Checkstyle: allow Throwable.printStackTrace() (for JDK compatibility)
-                        new Exception("Call trace").printStackTrace();
-                        // Checkstyle: disallow Throwable.printStackTrace()
+                        // Checkstyle: allow System.err (for JDK compatibility)
+                        new Exception("Call trace").printStackTrace(System.err);
+                        // Checkstyle: disallow System.err
                     }
                     return null;
                 }

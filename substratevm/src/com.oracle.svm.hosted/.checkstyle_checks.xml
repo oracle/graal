@@ -25,7 +25,7 @@
       <metadata name="net.sf.eclipsecs.core.comment" value="Disallow calls to System.err."/>
       <property name="severity" value="error"/>
       <property name="format" value="System\.err"/>
-      <property name="message" value="Calls to System.err are restricted. Please use logging or System.out instead. (Use &quot;// Checkstyle: allow System.err ... // Checkstyle: disallow System.err&quot; to disable this check.)"/>
+      <property name="message" value="Calls to System.err are restricted in the builder. Instead, please use LogUtils or System.out to ensure warnings and errors are printed together with the build output."/>
       <property name="ignoreComments" value="true"/>
     </module>
     <module name="SuppressionCommentFilter">
@@ -40,14 +40,8 @@
       <metadata name="net.sf.eclipsecs.core.comment" value="Disallow calls to Throwable.printStackTrace()."/>
       <property name="severity" value="error"/>
       <property name="format" value="\.printStackTrace\(\)"/>
-      <property name="message" value="Calls to Throwable.printStackTrace() are restricted. Please use .printStackTrace(PrintStream s) instead. (Use &quot;// Checkstyle: allow Throwable.printStackTrace() ... // Checkstyle: disallow Throwable.printStackTrace()&quot; to disable this check.)"/>
+      <property name="message" value="Calls to Throwable.printStackTrace() are restricted in the builder. Instead, please use .printStackTrace(System.out) to ensure stack traces are printed together with other warnings, errors, and the build output."/>
       <property name="ignoreComments" value="true"/>
-    </module>
-    <module name="SuppressionCommentFilter">
-      <property name="offCommentFormat" value="Checkstyle: allow Throwable.printStackTrace()"/>
-      <property name="onCommentFormat" value="Checkstyle: disallow Throwable.printStackTrace()"/>
-      <property name="idFormat" value="printStackTrace"/>
-      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable Throwable.printStackTrace() calls"/>
     </module>
 
     <module name="RegexpSinglelineJava">
@@ -73,7 +67,7 @@
       <metadata name="net.sf.eclipsecs.core.comment" value="Raw info or warning printing."/>
       <property name="severity" value="error"/> 
       <property name="format" value="(?i)&quot;(Info|Warning):"/>
-      <property name="message" value="Raw info or warning printing detected. Please use LogUtils#info or #LogUtils#warning"/>
+      <property name="message" value="Raw info or warning printing detected. Please use LogUtils#info or LogUtils#warning"/>
       <property name="ignoreComments" value="true"/>
     </module>
     <module name="SuppressionCommentFilter">
