@@ -256,7 +256,9 @@ class ReflectionProcessor extends AbstractProcessor {
                 break;
             }
             default:
-                System.out.println("Unsupported reflection method: " + function);
+                // Checkstyle: allow System.err (agent class)
+                System.err.println("Unsupported reflection method: " + function);
+                // Checkstyle: disallow System.err
         }
     }
 
