@@ -37,7 +37,6 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolvedInstanceType implements EspressoExternalVMAccess.Element {
     private final EspressoExternalVMAccess access;
@@ -300,14 +299,25 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
         return access.invokeJVMCIHelper("getSourceFileName", metaObject).asString();
     }
 
+    private boolean isLocalOrAnonymousClass() {
+        // JVM Spec 4.7.7: A class must have an EnclosingMethod
+        // attribute if and only if it is a local class or an
+        // anonymous class.
+        return access.invokeJVMCIHelper("hasEnclosingMethodInfo", metaObject).asBoolean();
+    }
+
     @Override
     public boolean isLocal() {
-        throw JVMCIError.unimplemented();
+        return isLocalOrAnonymousClass() &&
+                        (isArray() || access.invokeJVMCIHelper("hasSimpleBinaryName", metaObject).asBoolean());
     }
 
     @Override
     public boolean isMember() {
-        throw JVMCIError.unimplemented();
+        if (isLocalOrAnonymousClass()) {
+            return false;
+        }
+        return !access.invokeJVMCIHelper("getEnclosingType", getMetaObject()).isNull();
     }
 
     @Override
@@ -321,8 +331,12 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
     }
 
     @Override
-    public ResolvedJavaType getEnclosingType() {
-        throw JVMCIError.unimplemented();
+    public EspressoExternalResolvedInstanceType getEnclosingType() {
+        Value value = access.invokeJVMCIHelper("getEnclosingType", getMetaObject());
+        if (value.isNull()) {
+            return null;
+        }
+        return new EspressoExternalResolvedInstanceType(access, value);
     }
 
     @Override

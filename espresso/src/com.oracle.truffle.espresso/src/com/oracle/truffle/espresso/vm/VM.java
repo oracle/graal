@@ -98,8 +98,6 @@ import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
-import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
@@ -1129,55 +1127,19 @@ public final class VM extends NativeEnv {
         });
     }
 
-    /**
-     * Return the enclosing class; or null for: primitives, arrays, anonymous classes (declared
-     * inside methods).
-     */
-    private static Klass computeEnclosingClass(ObjectKlass klass) {
-        InnerClassesAttribute innerClasses = klass.getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
-        if (innerClasses == null) {
-            return null;
-        }
-        RuntimeConstantPool pool = klass.getConstantPool();
-
-        // TODO(peterssen): Follow HotSpot implementation described below.
-        // Throws an exception if outer klass has not declared k as an inner klass
-        // We need evidence that each klass knows about the other, or else
-        // the system could allow a spoof of an inner class to gain access rights.
-        for (int i = 0; i < innerClasses.entryCount(); i++) {
-            InnerClassesAttribute.Entry entry = innerClasses.entryAt(i);
-            if (entry.innerClassIndex != 0) {
-                Symbol<Name> innerDescriptor = pool.className(entry.innerClassIndex);
-                // Check decriptors/names before resolving.
-                if (innerDescriptor.equals(klass.getName())) {
-                    Klass innerKlass = pool.resolvedKlassAt(klass, entry.innerClassIndex);
-                    if (innerKlass == klass) {
-                        if (entry.outerClassIndex != 0) {
-                            return pool.resolvedKlassAt(klass, entry.outerClassIndex);
-                        } else {
-                            return null;
-                        }
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
     @VmImpl(isJni = true)
     public @JavaType(Class.class) StaticObject JVM_GetDeclaringClass(@JavaType(Class.class) StaticObject self) {
         // Primitives and arrays are not "enclosed".
         if (!(self.getMirrorKlass(getMeta()) instanceof ObjectKlass k)) {
             return StaticObject.NULL;
         }
-        Klass outerKlass = computeEnclosingClass(k);
+        Klass outerKlass = k.getDeclaringClass();
         if (outerKlass == null) {
             return StaticObject.NULL;
         }
         return outerKlass.mirror();
     }
 
-    @SuppressWarnings("unchecked")
     @VmImpl(isJni = true)
     public @JavaType(String.class) StaticObject JVM_GetSimpleBinaryName(@JavaType(Class.class) StaticObject self) {
         Klass k = self.getMirrorKlass(getMeta());
@@ -1185,27 +1147,7 @@ public final class VM extends NativeEnv {
             return StaticObject.NULL;
         }
         ObjectKlass klass = (ObjectKlass) k;
-        RuntimeConstantPool pool = klass.getConstantPool();
-        InnerClassesAttribute inner = klass.getInnerClasses();
-        if (inner == null) {
-            return StaticObject.NULL;
-        }
-        for (int i = 0; i < inner.entryCount(); i++) {
-            InnerClassesAttribute.Entry entry = inner.entryAt(i);
-            int innerClassIndex = entry.innerClassIndex;
-            if (innerClassIndex != 0) {
-                if (pool.className(innerClassIndex) == klass.getName() && pool.resolvedKlassAt(klass, innerClassIndex) == k) {
-                    if (entry.innerNameIndex == 0) {
-                        break;
-                    } else {
-                        // Cast is safe-ish
-                        Symbol<Name> innerName = (Symbol<Name>) pool.utf8At(entry.innerNameIndex, "inner class name");
-                        return getMeta().toGuestString(innerName);
-                    }
-                }
-            }
-        }
-        return StaticObject.NULL;
+        return getMeta().toGuestString(klass.getSimpleBinaryName());
     }
 
     @VmImpl(isJni = true)
@@ -1270,30 +1212,19 @@ public final class VM extends NativeEnv {
         Meta meta = getMeta();
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (self.getMirrorKlass(getMeta()) instanceof ObjectKlass klass) {
-            EnclosingMethodAttribute enclosingMethodAttr = klass.getEnclosingMethod();
-            if (enclosingMethodAttr == null) {
-                return StaticObject.NULL;
-            }
-            int classIndex = enclosingMethodAttr.getClassIndex();
-            if (classIndex == 0) {
+            ObjectKlass.EnclosingMethodInfo enclosingMethodInfo = klass.getEnclosingMethodInfo();
+            if (enclosingMethodInfo == null) {
                 return StaticObject.NULL;
             }
             StaticObject arr = meta.java_lang_Object.allocateReferenceArray(3);
-            RuntimeConstantPool pool = klass.getConstantPool();
-            Klass enclosingKlass = pool.resolvedKlassAt(klass, classIndex);
-
-            vm.setArrayObject(language, enclosingKlass.mirror(), 0, arr);
-
-            // Not a method, but a NameAndType entry.
-            int nameAndTypeIndex = enclosingMethodAttr.getNameAndTypeIndex();
-            if (nameAndTypeIndex != 0) {
-                StaticObject name = meta.toGuestString(pool.nameAndTypeName(nameAndTypeIndex));
-                StaticObject desc = meta.toGuestString(pool.nameAndTypeDescriptor(nameAndTypeIndex));
+            vm.setArrayObject(language, enclosingMethodInfo.enclosingClass().mirror(), 0, arr);
+            if (!enclosingMethodInfo.isPartial()) {
+                StaticObject name = meta.toGuestString(enclosingMethodInfo.name());
+                StaticObject desc = meta.toGuestString(enclosingMethodInfo.descriptor());
 
                 vm.setArrayObject(language, name, 1, arr);
                 vm.setArrayObject(language, desc, 2, arr);
             }
-
             return arr;
         }
         return StaticObject.NULL;
@@ -1408,7 +1339,7 @@ public final class VM extends NativeEnv {
         }
         /*
          * From HotSpot:
-         * 
+         *
          * Return the current class's class file version. The low order 16 bits of the returned jint
          * contain the class's major version. The high order 16 bits contain the class's minor
          * version.
