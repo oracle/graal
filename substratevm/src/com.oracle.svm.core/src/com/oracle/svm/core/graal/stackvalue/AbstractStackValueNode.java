@@ -29,7 +29,7 @@ import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleUtils;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 
 import jdk.graal.compiler.graph.IterableNodeType;
@@ -88,7 +88,7 @@ public abstract class AbstractStackValueNode extends AbstractStateSplit implemen
          * around in a caller, but these are difficult to ensure across multiple callers and
          * callees.
          */
-        return disallowVirtualThread && !Uninterruptible.Utils.isUninterruptible(method);
+        return disallowVirtualThread && !UninterruptibleUtils.isUninterruptible(method);
     }
 
     protected static StackSlotIdentity createStackSlotIdentity(ResolvedJavaMethod method, int bci) {

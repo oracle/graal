@@ -44,6 +44,7 @@ import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleUtils;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -147,7 +148,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
         SubstrateCallingConventionKind callingConventionKind = ExplicitCallingConvention.Util.getCallingConventionKind(original, original.isNativeEntryPoint());
         flags = makeFlag(original.isBridge(), FLAG_BIT_BRIDGE) |
                         makeFlag(original.hasNeverInlineDirective(), FLAG_BIT_NEVER_INLINE) |
-                        makeFlag(Uninterruptible.Utils.isUninterruptible(original), FLAG_BIT_UNINTERRUPTIBLE) |
+                        makeFlag(UninterruptibleUtils.isUninterruptible(original), FLAG_BIT_UNINTERRUPTIBLE) |
                         makeFlag(SubstrateSafepointInsertionPhase.needSafepointCheck(original), FLAG_BIT_NEEDS_SAFEPOINT_CHECK) |
                         makeFlag(original.isNativeEntryPoint(), FLAG_BIT_ENTRY_POINT) |
                         makeFlag(AnnotationUtil.isAnnotationPresent(original, Snippet.class), FLAG_BIT_SNIPPET) |

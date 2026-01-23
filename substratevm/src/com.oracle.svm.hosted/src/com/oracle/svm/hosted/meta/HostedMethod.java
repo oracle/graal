@@ -45,7 +45,7 @@ import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SkipStackOverflowCheck;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleUtils;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.CustomCallingConventionMethod;
@@ -362,7 +362,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean isUninterruptible() {
-        return Uninterruptible.Utils.isUninterruptible(wrapped);
+        return UninterruptibleUtils.isUninterruptible(wrapped);
     }
 
     @Override

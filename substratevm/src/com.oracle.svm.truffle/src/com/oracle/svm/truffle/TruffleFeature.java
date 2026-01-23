@@ -111,6 +111,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleUtils;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -558,8 +559,8 @@ public class TruffleFeature implements InternalFeature {
     private static boolean runtimeCompilationForbidden(ResolvedJavaMethod method) {
         if (AnnotationUtil.getAnnotation(method, TruffleBoundary.class) != null) {
             return true;
-        } else if (Uninterruptible.Utils.isUninterruptible(method)) {
-            Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
+        } else if (UninterruptibleUtils.isUninterruptible(method)) {
+            Uninterruptible uninterruptibleAnnotation = UninterruptibleUtils.getAnnotation(method);
             if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
                 /* The semantics of Uninterruptible would get lost during partial evaluation. */
                 return true;

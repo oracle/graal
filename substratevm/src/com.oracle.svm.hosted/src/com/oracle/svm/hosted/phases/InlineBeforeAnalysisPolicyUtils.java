@@ -34,7 +34,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleUtils;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -262,7 +262,7 @@ public class InlineBeforeAnalysisPolicyUtils {
              */
             return false;
         }
-        if (!Uninterruptible.Utils.inliningAllowed(caller, callee)) {
+        if (!UninterruptibleUtils.inliningAllowed(caller, callee)) {
             return false;
         }
         if (callee.hasOpaqueReturn()) {

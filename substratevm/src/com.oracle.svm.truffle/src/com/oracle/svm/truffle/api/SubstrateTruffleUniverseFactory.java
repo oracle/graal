@@ -28,10 +28,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.graal.meta.SubstrateType;
-import com.oracle.svm.util.OriginalClassProvider;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -39,20 +35,25 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleUtils;
 import com.oracle.svm.core.code.ImageCodeInfo;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
+import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.truffle.ConstantFieldInfo;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
-import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.PartialEvaluationMethodInfo;
+import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -102,8 +103,8 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
         SubstrateAnnotationExtractor extractor = (SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class);
         Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues(method);
         var info = PartialEvaluator.computePartialEvaluationMethodInfo(runtime, method, annotations, types, OriginalClassProvider::getOriginalType);
-        if (Uninterruptible.Utils.isUninterruptible(method)) {
-            Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
+        if (UninterruptibleUtils.isUninterruptible(method)) {
+            Uninterruptible uninterruptibleAnnotation = UninterruptibleUtils.getAnnotation(method);
             if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
                 /* The semantics of Uninterruptible would get lost during partial evaluation. */
                 info = new PartialEvaluationMethodInfo(info.loopExplosion(),

@@ -42,6 +42,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleUtils;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.foreign.AbiUtils;
@@ -171,7 +172,7 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         assert ExplicitCallingConvention.Util.getCallingConventionKind(method, false) == SubstrateCallingConventionKind.Custom;
-        assert Uninterruptible.Utils.isUninterruptible(method);
+        assert UninterruptibleUtils.isUninterruptible(method);
         ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method);
 
         /*

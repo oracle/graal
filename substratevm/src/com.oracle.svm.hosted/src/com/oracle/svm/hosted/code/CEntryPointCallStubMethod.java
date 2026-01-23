@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
-import static com.oracle.svm.core.Uninterruptible.Utils.isUninterruptible;
+import static com.oracle.svm.core.UninterruptibleUtils.isUninterruptible;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;

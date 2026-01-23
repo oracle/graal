@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleUtils;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -89,7 +90,7 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
 
     @Override
     public boolean mustNotAllocate(ResolvedJavaMethod method) {
-        return isRestricted(method) || Uninterruptible.Utils.isUninterruptible(method);
+        return isRestricted(method) || UninterruptibleUtils.isUninterruptible(method);
     }
 
     private boolean isRestricted(ResolvedJavaMethod method) {
