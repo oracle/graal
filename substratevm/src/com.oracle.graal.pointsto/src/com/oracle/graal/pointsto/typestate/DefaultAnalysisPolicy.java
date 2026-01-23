@@ -250,7 +250,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public MethodFlowsGraphInfo staticRootMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod method) {
+    public MethodFlowsGraphInfo getOrCreateMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod method) {
         return method.getTypeFlow().getOrCreateMethodFlowsGraphInfo(bb, null);
     }
 

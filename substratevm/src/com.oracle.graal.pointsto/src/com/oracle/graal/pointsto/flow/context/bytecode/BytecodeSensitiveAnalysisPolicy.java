@@ -347,7 +347,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public MethodFlowsGraphInfo staticRootMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod method) {
+    public MethodFlowsGraphInfo getOrCreateMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod method) {
         return ((CallSiteSensitiveMethodTypeFlow) method.getTypeFlow()).addContext(bb, contextPolicy.emptyContext(), null);
     }
 

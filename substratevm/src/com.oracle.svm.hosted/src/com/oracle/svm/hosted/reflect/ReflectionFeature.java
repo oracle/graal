@@ -49,6 +49,7 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -159,11 +160,11 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public SubstrateAccessor getOrCreateAccessor(Executable member) {
-        return getOrCreateConstructorAccessor(member.getDeclaringClass(), member);
+        return getOrCreateAccessor(member.getDeclaringClass(), member);
     }
 
     @Override
-    public SubstrateAccessor getOrCreateConstructorAccessor(Class<?> targetClass, Executable member) {
+    public SubstrateAccessor getOrCreateAccessor(Class<?> targetClass, Executable member) {
         AccessorKey key = new AccessorKey(member, targetClass);
         SubstrateAccessor existing = accessors.get(key);
         if (existing != null) {
@@ -200,7 +201,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         MethodRef directTarget = null;
         AnalysisMethod targetMethod = null;
         DynamicHub initializeBeforeInvoke = null;
-        if (member instanceof Method) {
+        if (member instanceof Method target) {
             int vtableIndex = SubstrateMethodAccessor.VTABLE_INDEX_STATICALLY_BOUND;
             Class<?> receiverType = null;
             boolean callerSensitiveAdapter = false;
@@ -209,7 +210,6 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                 /* Method handles must not be invoked via reflection. */
                 expandSignature = asMethodRef(analysisAccess.getMetaAccess().lookupJavaMethod(methodHandleInvokeErrorMethod));
             } else {
-                Method target = (Method) member;
                 try {
                     Method adapter = (Method) findCallerSensitiveAdapterMethod.invoke(null, member);
                     if (adapter != null) {
@@ -249,12 +249,20 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
             Class<?> holder = targetClass;
             MethodRef factoryMethodTarget = null;
             ResolvedJavaMethod factoryMethod = null;
-            if (Modifier.isAbstract(holder.getModifiers()) || holder.isInterface() || holder.isPrimitive() || holder.isArray()) {
+            if (Modifier.isAbstract(holder.getModifiers())) {
+                if (!aUniverse.hostVM().isClosedTypeWorld()) {
+                    /* In open-world analysis assume there could be an instantiated subtype. */
+                    aUniverse.getBigbang().forcedAddRootMethod(analysisAccess.getMetaAccess().lookupJavaMethod(member), true, "Constructor of abstract class registered for reflection.");
+                }
                 /*
-                 * Invoking the constructor of an abstract class always throws an
-                 * InstantiationException. It should not be possible to get a Constructor object for
-                 * an interface, array, or primitive type, but we are defensive and throw the
-                 * exception in that case too.
+                 * Directly invoking the constructor of an abstract class always throws an
+                 * InstantiationException.
+                 */
+                expandSignature = asMethodRef(analysisAccess.getMetaAccess().lookupJavaMethod(newInstanceErrorMethod));
+            } else if (holder.isInterface() || holder.isPrimitive() || holder.isArray()) {
+                /*
+                 * It should not be possible to get a Constructor object for an interface, array, or
+                 * primitive type, but we are defensive and throw the exception in that case too.
                  */
                 expandSignature = asMethodRef(analysisAccess.getMetaAccess().lookupJavaMethod(newInstanceErrorMethod));
             } else {
@@ -361,7 +369,12 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         ResolvedJavaMethod targetMethod = accessor.getTargetMethod();
         if (targetMethod != null) {
             if (!targetMethod.isAbstract()) {
-                access.registerAsRoot((AnalysisMethod) targetMethod, true, reason);
+                if (PointsToAnalysis.isConcreteMethodInAbstractType(targetMethod) && !access.getHostVM().isClosedTypeWorld()) {
+                    /* In open-world analysis assume there could be an instantiated subtype. */
+                    access.getBigBang().forcedAddRootMethod((AnalysisMethod) targetMethod, true, reason.toString());
+                } else {
+                    access.registerAsRoot((AnalysisMethod) targetMethod, true, reason);
+                }
             }
             /* If the accessor can be used for a virtual call, register virtual root method. */
             if (accessor instanceof SubstrateMethodAccessor mAccessor && mAccessor.getVTableIndex() != SubstrateMethodAccessor.VTABLE_INDEX_STATICALLY_BOUND) {
