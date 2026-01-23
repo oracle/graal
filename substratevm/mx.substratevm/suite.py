@@ -1379,12 +1379,17 @@ suite = {
             "jacoco" : "exclude",
         },
 
-        "com.oracle.svm.guest.features": {
+        "com.oracle.svm.guest": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
                 "sdk:NATIVEIMAGE",
             ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.misc"
+                ],
+            },
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "21+",
             "workingSets": "SVM",
@@ -1979,7 +1984,7 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM image guest context components",
             "dependencies": [
-                "com.oracle.svm.guest.features",
+                "com.oracle.svm.guest",
             ],
             "distDependencies": [
                 "sdk:NATIVEIMAGE",
