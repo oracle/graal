@@ -50,11 +50,13 @@ public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvid
         this.snippetReflectionProvider = snippetReflectionProvider;
         try {
             /*
-             * We must not fold the System.in/out/err fields because they are commonly set in java
-             * programs. Note however, this code will not trigger on svm because the fields are
-             * normally aliased with non.constant versions. However, we still keep the code here in
-             * case this ever changes. Additionally, we want to keep the semantic close to the graal
-             * hotspot version of constant folding so they can be unified in the future.
+             * Do not constant-fold System.{in,out,err}. These fields are commonly reassigned at
+             * runtime via System.setIn/Out/Err.
+             *
+             * In SubstrateVM (SVM), this guard typically does not trigger because these fields are
+             * aliased to non-constant representations. We keep the check regardless to future‑proof
+             * this code and to maintain semantics aligned with the Graal/HotSpot constant-folding
+             * implementation so they can be unified later.
              */
             RistrettoType rTypeSystem = (RistrettoType) metaAccess.lookupJavaType(Class.forName(SystemClassName));
             this.systemType = rTypeSystem.getInterpreterType();
