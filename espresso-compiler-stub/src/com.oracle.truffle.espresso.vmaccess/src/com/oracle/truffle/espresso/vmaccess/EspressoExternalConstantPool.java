@@ -212,7 +212,32 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
             throw throwHostException(e);
         }
         assert !value.isNull();
-        throw JVMCIError.unimplemented();
+        return asEspressoBootstrapMethodInvocation(value);
+    }
+
+    private EspressoBootstrapMethodInvocation asEspressoBootstrapMethodInvocation(Value value) {
+        boolean isIndy = value.getMember("isIndy").asBoolean();
+        int cpi = value.getMember("cpi").asInt();
+        Value methodMirror = value.getMember("bootstrapMethod");
+        EspressoExternalVMAccess access = holder.getAccess();
+        EspressoExternalResolvedJavaMethod method = new EspressoExternalResolvedJavaMethod(methodMirror, access);
+        String name = value.getMember("name").asString();
+        EspressoExternalObjectConstant type = new EspressoExternalObjectConstant(access, value.getMember("type"));
+        int staticArgCount = (int) value.getArraySize() / 2;
+        JavaConstant[] staticArguments = new JavaConstant[staticArgCount];
+        for (int i = 0; i < staticArgCount; i++) {
+            Value maybeEntryCPI = value.getArrayElement(2 * i + 1);
+            JavaConstant staticArgument;
+            if (maybeEntryCPI.isNull()) {
+                staticArgument = new EspressoExternalObjectConstant(access, value.getArrayElement(2 * i));
+            } else {
+                // unresolved dynamic entry
+                int entryCpi = maybeEntryCPI.asInt();
+                staticArgument = JavaConstant.forInt(entryCpi);
+            }
+            staticArguments[i] = staticArgument;
+        }
+        return new EspressoBootstrapMethodInvocation(isIndy, method, name, type, staticArguments, cpi, this);
     }
 
     @Override
@@ -226,7 +251,7 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
         if (value.isNull()) {
             return null;
         }
-        throw JVMCIError.unimplemented();
+        return asEspressoBootstrapMethodInvocation(value);
     }
 
     @Override

@@ -471,7 +471,7 @@ public class InteropConstantPoolWrapper implements TruffleObject {
                 arityError.enter(node);
                 throw ArityException.create(2, 2, arguments.length);
             }
-            if (!(arguments[0] instanceof Integer index)) {
+            if (!(arguments[0] instanceof Integer cpi)) {
                 typeError.enter(node);
                 throw UnsupportedTypeException.create(arguments);
             }
@@ -480,8 +480,8 @@ public class InteropConstantPoolWrapper implements TruffleObject {
                 throw UnsupportedTypeException.create(arguments);
             }
             EspressoContext context = EspressoContext.get(node);
-            InteropBootstrapMethodInvocation builder = new InteropBootstrapMethodInvocation();
-            JVMCIConstantPoolUtils.lookupBootstrapMethodInvocation(receiver.constantPool, index, opcode, context, builder);
+            InteropBootstrapMethodInvocation builder = new InteropBootstrapMethodInvocation(cpi);
+            JVMCIConstantPoolUtils.lookupBootstrapMethodInvocation(receiver.constantPool, cpi, opcode, context, builder);
             if (builder.isInitialised()) {
                 return builder;
             }
@@ -498,17 +498,17 @@ public class InteropConstantPoolWrapper implements TruffleObject {
                 arityError.enter(node);
                 throw ArityException.create(1, 1, arguments.length);
             }
-            if (!(arguments[0] instanceof Integer index)) {
+            if (!(arguments[0] instanceof Integer siteIndex)) {
                 typeError.enter(node);
                 throw UnsupportedTypeException.create(arguments);
             }
             EspressoContext context = EspressoContext.get(node);
             JVMCIIndyData indyData = JVMCIIndyData.getExisting(receiver.constantPool.getHolder(), context.getMeta());
-            if (index < 0 || index >= indyData.getLocationCount()) {
-                context.getMeta().throwIndexOutOfBoundsExceptionBoundary("Invalid site index", index, indyData.getLocationCount());
+            if (siteIndex < 0 || siteIndex >= indyData.getLocationCount()) {
+                context.getMeta().throwIndexOutOfBoundsExceptionBoundary("Invalid site index", siteIndex, indyData.getLocationCount());
             }
-            int indyCpi = indyData.recoverFullCpi(index);
-            InteropBootstrapMethodInvocation builder = new InteropBootstrapMethodInvocation();
+            int indyCpi = indyData.recoverFullCpi(siteIndex);
+            InteropBootstrapMethodInvocation builder = new InteropBootstrapMethodInvocation(indyCpi);
             JVMCIConstantPoolUtils.lookupBootstrapMethodInvocation(receiver.constantPool, indyCpi, INVOKEDYNAMIC, context, builder);
             assert builder.isInitialised();
             return builder;
