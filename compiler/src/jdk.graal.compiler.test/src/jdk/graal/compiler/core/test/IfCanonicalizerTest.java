@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Test;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -40,7 +43,6 @@ import jdk.graal.compiler.phases.common.GuardLoweringPhase;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.common.MidTierLoweringPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
-import org.junit.Test;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant
@@ -255,5 +257,60 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
         }
         StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET, AllowAssumptions.YES);
         assertEquals(referenceGraph, graph);
+    }
+
+    public static int test12Snippet() {
+        int sum = 0;
+        int i = 0;
+        while (true) {
+            int j;
+            if (i < 100) {
+                j = 0;
+                GraalDirectives.controlFlowAnchor();
+            } else {
+                j = 1;
+                GraalDirectives.controlFlowAnchor();
+            }
+            if (j == 1) {
+                break;
+            }
+            GraalDirectives.controlFlowAnchor();
+            sum += i++;
+        }
+        return sum;
+    }
+
+    @Test
+    public void test12() {
+        StructuredGraph graph = parseEager("test12Snippet", AllowAssumptions.YES);
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        canonicalizer.apply(graph, getEagerHighTierContext());
+        assertTrue(graph.getNodes().filter(IfNode.class).count() == 1);
+    }
+
+    public static int test13Snippet() {
+        int sum = 0;
+        int i = 0;
+        while (true) {
+            int j = switch (i) {
+                case 100 -> 2;
+                case 10 -> 1;
+                default -> 0;
+            };
+            if (j >= 2) {
+                break;
+            }
+            GraalDirectives.controlFlowAnchor();
+            sum += i++;
+        }
+        return sum;
+    }
+
+    @Test
+    public void test13() {
+        StructuredGraph graph = parseEager("test13Snippet", AllowAssumptions.YES);
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        canonicalizer.apply(graph, getEagerHighTierContext());
+        assertTrue(graph.getNodes().filter(IfNode.class).count() == 0);
     }
 }

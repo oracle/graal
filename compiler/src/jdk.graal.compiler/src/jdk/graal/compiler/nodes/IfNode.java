@@ -327,12 +327,15 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return;
         }
 
+        if (splitIfWithLoopExit(this, tool)) {
+            return;
+        }
+
         if (this.graph().isAfterStage(StageFlag.HIGH_TIER_LOWERING)) {
             if (splitIfAtPhi(this, tool)) {
                 return;
             }
         }
-
     }
 
     public static boolean isWorthPerformingSplit(LogicNode newCondition, LogicNode originalCondition) {
@@ -358,20 +361,227 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     /**
+     * Splits an {@link IfNode} that is preceded by a {@link MergeNode} and followed by a
+     * {@link LoopExitNode} on one of the successor branch, if the condition can be evaluated to a
+     * constant for each incoming path of the merge.
+     *
+     * <pre>
+     * Before:
+     * Pred0 Pred1 Pred2
+     *      \   |   /
+     *        Merge  0 1 2
+     *          |  \ \ | /
+     *          |    Phi
+     *          |     |
+     *          |   [< 2]
+     *          |  /
+     *          If
+     *         /   \
+     *      Succ0 LoopExit
+     *
+     * After:
+     * Pred0  Pred1  Pred2
+     *   \     /       |
+     *    Merge        |
+     *      |          |
+     *    Succ0     LoopExit
+     * </pre>
+     *
+     * @return true if the IfNode was successfully split
+     */
+    private boolean splitIfWithLoopExit(IfNode ifNode, SimplifierTool tool) {
+        if (!(ifNode.predecessor() instanceof MergeNode merge)) {
+            return false;
+        }
+        if (merge.forwardEndCount() == 1) {
+            // This is a degenerate merge which will go away on its own.
+            return false;
+        }
+        if (merge.getUsageCount() != merge.phis().count()) {
+            // This merge might have InputType.Anchor or InputType.Guard usages.
+            return false;
+        }
+
+        AbstractBeginNode survivingSuccessor;
+        LoopExitNode loopExitNode;
+        boolean loopExitAtTrueBranch = false;
+
+        if (ifNode.trueSuccessor() instanceof LoopExitNode temp) {
+            loopExitNode = temp;
+            survivingSuccessor = ifNode.falseSuccessor();
+            loopExitAtTrueBranch = true;
+        } else if (ifNode.falseSuccessor() instanceof LoopExitNode temp) {
+            loopExitNode = temp;
+            survivingSuccessor = ifNode.trueSuccessor();
+        } else {
+            // Only split if one of the successor is a loop exit
+            return false;
+        }
+
+        if (ifNode.graph().getGuardsStage().areFrameStatesAtSideEffects() && merge.stateAfter() != null && loopExitNode.stateAfter() == null) {
+            /*
+             * We are detaching the loop exit from the merge node, it is crucial to ensure that a
+             * dominating FrameState remains available for assignment to prevent potential issues
+             * with the resulting graph.
+             */
+            return false;
+        }
+
+        ValuePhiNode phi = ifNode.condition().inputs().filter(ValuePhiNode.class).first();
+        if (phi == null || phi.merge() != merge) {
+            return false;
+        }
+
+        EndNode forwardEndRewiredToLoopExit = null;
+
+        // Evaluate ifNode's condition for each forward end.
+        for (int i = 0; i < merge.forwardEndCount(); i++) {
+            ValueNode value = phi.valueAt(i);
+            if (computeCondition(tool, ifNode.condition(), phi, value) instanceof LogicConstantNode result) {
+                if (result.getValue() == loopExitAtTrueBranch) {
+                    if (forwardEndRewiredToLoopExit == null) {
+                        forwardEndRewiredToLoopExit = merge.forwardEndAt(i);
+                    } else {
+                        /*
+                         * We could support multiple forward ends being rewired to the loop exit by
+                         * duplicating all phis and creating a new merge with a duplicated
+                         * stateAfter (and its input VirtualStates). However, this is complex for a
+                         * simplification and is better handled in a dedicated CFG optimization
+                         * pass.
+                         */
+                        return false;
+                    }
+                }
+            } else {
+                // Only proceed if ifNode can be eliminated.
+                return false;
+            }
+        }
+
+        if (forwardEndRewiredToLoopExit == null) {
+            return false;
+        }
+
+        final NodeColor loopExitBranch = loopExitAtTrueBranch ? NodeColor.TRUE_BRANCH : NodeColor.FALSE_BRANCH;
+        final NodeColor loopBodyBranch = loopExitAtTrueBranch ? NodeColor.FALSE_BRANCH : NodeColor.TRUE_BRANCH;
+
+        EconomicMap<Node, NodeColor> coloredNodes = EconomicMap.create(Equivalence.IDENTITY, 8);
+        coloredNodes.put(ifNode.condition(), NodeColor.CONDITION_USAGE);
+
+        FrameState stateAfterMerge = merge.stateAfter();
+        if (stateAfterMerge != null) {
+            coloredNodes.put(stateAfterMerge, loopBodyBranch);
+        }
+
+        FrameState stateAfterLoopExit = loopExitNode.stateAfter();
+        if (stateAfterLoopExit != null) {
+            coloredNodes.put(stateAfterLoopExit, loopExitBranch);
+        }
+
+        /*
+         * This merge is within the loop and its associated phis are likely used by loop phis. Mark
+         * the loop begin as the loopBodyBranch color to avoid mixed NodeColor and reduce coloring
+         * cost.
+         */
+        coloredNodes.put(loopExitNode.loopBegin(), loopBodyBranch);
+
+        EconomicMap<PhiNode, ValueNode> phiReplacements = EconomicMap.create(merge.phis().count());
+
+        for (PhiNode existingPhi : merge.phis()) {
+            for (Node usage : existingPhi.usages()) {
+                NodeColor color = colorUsage(coloredNodes, usage, merge, ifNode.trueSuccessor(), ifNode.falseSuccessor());
+                if (color == NodeColor.MIXED) {
+                    // Require complex rewiring
+                    return false;
+                }
+            }
+            phiReplacements.put(existingPhi, existingPhi.valueAt(forwardEndRewiredToLoopExit));
+        }
+
+        // Start modifying the graph
+        ifNode.graph().removeSplit(ifNode, survivingSuccessor);
+
+        for (PhiNode existingPhi : phiReplacements.getKeys()) {
+            for (Node usage : existingPhi.usages().snapshot()) {
+                if (coloredNodes.get(usage) == loopExitBranch) {
+                    usage.replaceAllInputs(existingPhi, phiReplacements.get(existingPhi));
+                }
+            }
+        }
+
+        merge.removeEnd(forwardEndRewiredToLoopExit);
+        ((FixedWithNextNode) forwardEndRewiredToLoopExit.predecessor()).setNext(loopExitNode);
+        forwardEndRewiredToLoopExit.safeDelete();
+
+        if (Assertions.detailedAssertionsEnabled(ifNode.graph().getOptions())) {
+            checkNoPhiUsagesAtLoopExit(merge, loopExitNode, coloredNodes, loopExitBranch, loopBodyBranch);
+        }
+
+        // Propagate injected profile data as this is critical for calculating loop frequency
+        if (ifNode.profileData.getProfileSource().isInjected()) {
+            FixedNode current = loopExitNode;
+            for (FixedNode predecessor : GraphUtil.predecessorIterable((FixedNode) current.predecessor())) {
+                if (predecessor instanceof ControlSplitNode controlSplitNode) {
+                    if (controlSplitNode.getProfileData().getProfileSource().isUnknown() && current instanceof AbstractBeginNode successor) {
+                        controlSplitNode.setProbability(successor, loopExitAtTrueBranch ? ifNode.profileData : ifNode.profileData.negated());
+                    }
+                    break;
+                }
+                current = predecessor;
+            }
+        }
+
+        cleanupMerge(merge);
+        return true;
+    }
+
+    private static void checkNoPhiUsagesAtLoopExit(MergeNode merge, LoopExitNode loopExitNode,
+                    EconomicMap<Node, NodeColor> coloredNodes, NodeColor loopExitBranch, NodeColor loopBodyBranch) {
+        List<PhiNode> phis = merge.phis().snapshot();
+        for (ProxyNode proxy : loopExitNode.proxies()) {
+            for (PhiNode input : proxy.inputs().filter(PhiNode.class)) {
+                GraalError.guarantee(!phis.contains(input), "%s using %s", proxy, input);
+            }
+        }
+
+        FrameState stateAfterLoopExit = loopExitNode.stateAfter();
+        if (stateAfterLoopExit != null) {
+            List<VirtualState> worklist = new ArrayList<>();
+            worklist.add(stateAfterLoopExit);
+
+            while (!worklist.isEmpty()) {
+                VirtualState current = worklist.removeFirst();
+                NodeColor color = coloredNodes.get(current);
+                GraalError.guarantee(color == loopExitBranch, "Illegal color %s for %s", color, current);
+
+                for (PhiNode input : current.inputs().filter(PhiNode.class)) {
+                    GraalError.guarantee(!phis.contains(input), "%s using %s", current, input);
+                }
+
+                for (VirtualState input : current.inputs().filter(VirtualState.class)) {
+                    NodeColor inputColor = coloredNodes.get(input);
+                    if (inputColor == loopExitBranch) {
+                        worklist.add(input);
+                    } else {
+                        GraalError.guarantee(inputColor != loopBodyBranch, "Illegal color %s for %s", loopBodyBranch, input);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Take an if that is immediately dominated by a merge with a single phi and split off any paths
      * where the test would be statically decidable creating a new merge below the appropriate side
      * of the IfNode. Any undecidable tests will continue to use the original IfNode.
-     *
-     * @param tool
      */
     @SuppressWarnings("try")
     private boolean splitIfAtPhi(IfNode ifNode, SimplifierTool tool) {
-        if (!(ifNode.predecessor() instanceof MergeNode)) {
+        if (!(ifNode.predecessor() instanceof MergeNode merge)) {
             return false;
         }
-        MergeNode merge = (MergeNode) ifNode.predecessor();
         if (merge.forwardEndCount() == 1) {
-            // Don't bother.
+            // This is a degenerate merge which will go away on its own.
             return false;
         }
         if (merge.getUsageCount() != 1 || merge.phis().count() != 1) {
@@ -555,8 +765,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             } else if (node == falseSucc) {
                 color = NodeColor.FALSE_BRANCH;
             } else {
-                if (node instanceof AbstractMergeNode) {
-                    AbstractMergeNode mergeNode = (AbstractMergeNode) node;
+                if (node instanceof AbstractMergeNode mergeNode) {
                     NodeColor combinedColor = null;
                     for (int i = 0; i < mergeNode.forwardEndCount(); ++i) {
                         NodeColor curColor = colorUsage(coloredNodes, mergeNode.forwardEndAt(i), merge, trueSucc, falseSucc);
@@ -570,13 +779,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     color = combinedColor;
                 } else if (node instanceof StartNode) {
                     color = NodeColor.MIXED;
-                } else if (node instanceof FixedNode) {
-                    FixedNode fixedNode = (FixedNode) node;
+                } else if (node instanceof FixedNode fixedNode) {
                     Node predecessor = fixedNode.predecessor();
                     assert predecessor != null : fixedNode;
                     color = colorUsage(coloredNodes, predecessor, merge, trueSucc, falseSucc);
-                } else if (node instanceof PhiNode) {
-                    PhiNode phiNode = (PhiNode) node;
+                } else if (node instanceof PhiNode phiNode) {
                     AbstractMergeNode phiMerge = phiNode.merge();
 
                     if (phiMerge instanceof LoopBeginNode) {
@@ -595,9 +802,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                             // Each of the inputs to the phi are either coming unambigously from
                             // true or false branch.
                             color = NodeColor.PHI_MIXED;
-                            assert node instanceof PhiNode : Assertions.errorMessage(node);
                         }
                     }
+                } else if (node instanceof ProxyNode proxyNode) {
+                    Node loopExit = proxyNode.proxyPoint();
+                    assert loopExit != null : proxyNode;
+                    color = colorUsage(coloredNodes, loopExit, merge, trueSucc, falseSucc);
                 } else {
                     NodeColor combinedColor = null;
                     for (Node n : node.usages()) {
