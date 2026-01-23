@@ -27,8 +27,8 @@ package com.oracle.svm.core.genscavenge;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 /** LinearLeastSquareFit performs linear least-squares fitting and regression estimation. */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/shared/gcUtil.hpp#L185-L213")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/shared/gcUtil.cpp#L110-L168")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gcUtil.hpp#L185-L213")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gcUtil.cpp#L110-L168")
 public class LinearLeastSquareFit {
     /** Sum of all independent data points x. */
     private double sumX = 0;

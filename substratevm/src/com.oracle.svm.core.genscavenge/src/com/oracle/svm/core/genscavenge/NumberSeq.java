@@ -33,8 +33,8 @@ import com.oracle.svm.core.util.VMError;
  *
  * This class and its subclasses are ported from HotSpot. This class is named {@code AbsSeq} there.
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/utilities/numberSeq.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/utilities/numberSeq.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/utilities/numberSeq.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/utilities/numberSeq.cpp")
 abstract class AbstractSeq {
     /** The number of elements in the sequence. */
     protected int num = 0;

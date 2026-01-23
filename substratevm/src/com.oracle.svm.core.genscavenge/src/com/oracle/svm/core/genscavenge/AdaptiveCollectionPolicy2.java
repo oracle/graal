@@ -44,7 +44,7 @@ interface AdaptiveCollectionPolicy2Tunables {
      * collections and tenuring at startup especially with {@link #YOUNG_GENERATION_SIZE_SUPPLEMENT}
      * disabled. (The HotSpot NewRatio default is 2, so 1:2 for young:old)
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/shared/gc_globals.hpp#L489-L493") //
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gc_globals.hpp#L553-L557") //
     int INITIAL_NEW_RATIO = 1;
 
     /*
@@ -57,7 +57,7 @@ interface AdaptiveCollectionPolicy2Tunables {
      *
      */
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/shared/gc_globals.hpp#L308-L353") //
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gc_globals.hpp#L325-L401") // actually:jdk-26+25#L308-L353
     int ADAPTIVE_SIZE_POLICY_READY_THRESHOLD = 5;
     int ADAPTIVE_SIZE_POLICY_WEIGHT = 10;
     int PROMOTED_PADDING = 3;
@@ -89,14 +89,14 @@ interface AdaptiveCollectionPolicy2Tunables {
      * The tenuring threshold at startup (HotSpot default: 7). The policy intentionally never
      * reduces the tenuring threshold, so this is also its minimum value.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/shared/gc_globals.hpp#L512-L517") //
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/gc_globals.hpp#L576-L581") //
     int INITIAL_TENURING_THRESHOLD = 7;
 
     /*
      * We don't want to limit our freedom to adjust the heap. (Unless set explicitly, these options
      * are set to these values in ParallelArguments::initialize on HotSpot)
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/parallel/parallelArguments.cpp#L57-L68") //
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/parallel/parallelArguments.cpp#L57-L68") //
     int MIN_HEAP_FREE_RATIO = 0; // %
     int MAX_HEAP_FREE_RATIO = 100; // %
     /** On HotSpot, this is the behavior if {@link #MIN_HEAP_FREE_RATIO} is not set explicitly. */
@@ -149,12 +149,12 @@ interface AdaptiveCollectionPolicy2Tunables {
  * been kept mostly the same for comparability. Initial tweaking focused on {@link #GC_TIME_RATIO}
  * and {@link #MIN_GC_DISTANCE_SECOND}, further ideas are tracked in GR-73130.
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/parallel/psScavenge.cpp#L311-L508")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/parallel/psParallelCompact.cpp#L934-L1055")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/parallel/psYoungGen.cpp#L325-L423")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/parallel/parallelScavengeHeap.cpp#L824-L916")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.hpp") // actually:jdk-26+25
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.cpp") // actually:jdk-26+25
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/parallel/psScavenge.cpp") // actually:jdk-26+25#L311-L508
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/parallel/psParallelCompact.cpp") // actually:jdk-26+25#L934-L1055
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/parallel/psYoungGen.cpp") // actually:jdk-26+25#L325-L423
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/parallel/parallelScavengeHeap.cpp") // actually:jdk-26+25#L824-L916
 class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
 
     private final AdaptivePaddedAverage avgPromoted = new AdaptivePaddedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT, PROMOTED_PADDING, true);
@@ -180,7 +180,7 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/parallel/parallelScavengeHeap.cpp#L372-L421")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/parallel/parallelScavengeHeap.cpp") // actually:jdk-26+25#L372-L421
     public boolean shouldCollectCompletely(boolean followingIncrementalCollection, boolean forcedCompleteCollection) { // ParallelScavengeHeap::should_attempt_young_gc
         guaranteeSizeParametersInitialized();
 
@@ -625,8 +625,8 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
  * Code in this class has been adapted from HotSpot class {@code AdaptiveSizePolicy}. Names have
  * been kept mostly the same for comparability.
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/shared/adaptiveSizePolicy.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/shared/adaptiveSizePolicy.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/adaptiveSizePolicy.hpp") // actually:jdk-26+25
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/adaptiveSizePolicy.cpp") // actually:jdk-26+25
 abstract class AdaptiveCollectionPolicy2Base extends AbstractCollectionPolicy implements AdaptiveCollectionPolicy2Tunables {
 
     // pause and interval times for collections
@@ -793,7 +793,7 @@ abstract class AdaptiveCollectionPolicy2Base extends AbstractCollectionPolicy im
  * A ring buffer with fixed size to record the most recent samples of GC duration (minor and major)
  * so that we can calculate mutator-wall-clock-time percentage for the given window.
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+25/src/hotspot/share/gc/shared/adaptiveSizePolicy.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/gc/shared/adaptiveSizePolicy.hpp") // actually:jdk-26+25
 final class GCSampleRingBuffer {
     private final double[] startInstants = new double[NUM_OF_GC_SAMPLE];
     private final double[] durations = new double[NUM_OF_GC_SAMPLE];
