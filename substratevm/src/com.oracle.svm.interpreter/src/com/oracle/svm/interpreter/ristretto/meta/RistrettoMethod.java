@@ -34,6 +34,7 @@ import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
 import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
@@ -42,10 +43,12 @@ import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfilingInfo;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
@@ -211,7 +214,21 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     @Override
     public ExceptionHandler[] getExceptionHandlers() {
-        return interpreterMethod.getExceptionHandlers();
+        ExceptionHandler[] IHandlers = interpreterMethod.getExceptionHandlers();
+        ExceptionHandler[] rHandlers = new ExceptionHandler[IHandlers.length];
+        for (int i = 0; i < IHandlers.length; i++) {
+            final ExceptionHandler iHandler = IHandlers[i];
+            final JavaType catchType = iHandler.getCatchType();
+            if (catchType instanceof ResolvedJavaType) {
+                assert catchType instanceof InterpreterResolvedJavaType;
+                InterpreterResolvedJavaType iCatchType = (InterpreterResolvedJavaType) catchType;
+                RistrettoType rType = RistrettoType.create(iCatchType);
+                rHandlers[i] = new ExceptionHandler(iHandler.getStartBCI(), iHandler.getEndBCI(), iHandler.getHandlerBCI(), iHandler.catchTypeCPI(), rType);
+            } else {
+                rHandlers[i] = iHandler;
+            }
+        }
+        return rHandlers;
     }
 
     @Override
