@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.Threading.RecurringCallbackAccess;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -189,8 +188,14 @@ public class RecurringCallbackSupport {
         if (!isCallbackTimerSuspended()) {
             RecurringCallbackTimer timer = timerTL.get();
             if (timer != null) {
-                timer.updateStatistics();
-                timer.setCounter(1);
+                long nowNanos = System.nanoTime();
+                /*
+                 * A lot of time can have passed since callbacks were suspended. Update the
+                 * statistics and the counter so that the callback can trigger at the next safepoint
+                 * if necessary.
+                 */
+                timer.updateStatistics(nowNanos);
+                timer.updateCounter(nowNanos);
             }
         }
     }
@@ -253,6 +258,8 @@ public class RecurringCallbackSupport {
     }
 
     /**
+     * Instances of this class are always only used by a single thread.
+     *
      * The timer starts with an initial {@link #INITIAL_CHECKS number of safepoint check operations}
      * for the interval and then measures how frequently check operations occur to determine the
      * period of check operations for the requested time intervals. The timer uses an exponentially
@@ -270,7 +277,6 @@ public class RecurringCallbackSupport {
         private static final double EWMA_LAMBDA = 0.3;
         private static final double TARGET_INTERVAL_FLEXIBILITY = 0.95;
         private static final int INITIAL_CHECKS = 100;
-        private static final long MINIMUM_INTERVAL_NANOS = 1_000;
 
         private final long targetIntervalNanos;
         private final long flexibleTargetIntervalNanos;
@@ -278,19 +284,25 @@ public class RecurringCallbackSupport {
 
         private int requestedChecks;
         private double ewmaChecksPerNano;
-        private long lastCapture;
-        private long lastCallbackExecution;
+        private long lastCaptureNanos;
+        private long lastCallbackExecutionNanos;
 
-        private volatile boolean isExecuting = false;
+        /**
+         * This field does not need to be volatile because it is only used by a single thread and
+         * only modified in uninterruptible code to prevent recursive recurring callback invocation.
+         * As recurring callbacks can only be invoked at safepoint checks, there is never the risk
+         * that we see a stale value because of read elimination.
+         */
+        private boolean isExecuting = false;
 
         RecurringCallbackTimer(long targetIntervalNanos, RecurringCallback callback) {
-            this.targetIntervalNanos = Math.max(MINIMUM_INTERVAL_NANOS, targetIntervalNanos);
+            this.targetIntervalNanos = targetIntervalNanos;
             this.flexibleTargetIntervalNanos = (long) (targetIntervalNanos * TARGET_INTERVAL_FLEXIBILITY);
             this.callback = callback;
 
-            long now = System.nanoTime();
-            this.lastCapture = now;
-            this.lastCallbackExecution = now;
+            long nowNanos = System.nanoTime();
+            this.lastCaptureNanos = nowNanos;
+            this.lastCallbackExecutionNanos = nowNanos;
             this.requestedChecks = INITIAL_CHECKS;
         }
 
@@ -304,18 +316,14 @@ public class RecurringCallbackSupport {
 
         @Uninterruptible(reason = "Must not contain safepoint checks.")
         void evaluate() {
-            updateStatistics();
-            try {
-                maybeExecuteCallback();
-            } finally {
-                updateCounter();
-            }
+            long nowNanos = System.nanoTime();
+            updateStatistics(nowNanos);
+            maybeExecuteCallback(nowNanos);
         }
 
         @Uninterruptible(reason = "Must be uninterruptible to avoid races with the safepoint code.")
-        void updateStatistics() {
-            long now = System.nanoTime();
-            long elapsedNanos = now - lastCapture;
+        void updateStatistics(long nowNanos) {
+            long elapsedNanos = nowNanos - lastCaptureNanos;
 
             int skippedChecks = getSkippedChecks(CurrentIsolate.getCurrentThread());
             int executedChecks = requestedChecks - skippedChecks;
@@ -327,7 +335,7 @@ public class RecurringCallbackSupport {
                 } else {
                     ewmaChecksPerNano = EWMA_LAMBDA * checksPerNano + (1 - EWMA_LAMBDA) * ewmaChecksPerNano;
                 }
-                lastCapture = now;
+                lastCaptureNanos = nowNanos;
             }
         }
 
@@ -338,47 +346,51 @@ public class RecurringCallbackSupport {
         }
 
         @Uninterruptible(reason = "Must not contain safepoint checks.")
-        private void maybeExecuteCallback() {
-            if (isCallbackDisabled()) {
+        private void maybeExecuteCallback(long nowNanos) {
+            if (!shouldExecute(nowNanos)) {
+                updateCounter(nowNanos);
                 return;
             }
 
-            isExecuting = true;
+            /*
+             * Before executing the callback, reset the safepoint requested counter as we don't want
+             * to trigger another callback execution in the near future. Note that we already called
+             * updateStatistics() in the caller, so this doesn't skew the recurring callback
+             * statistics.
+             *
+             * Recurring callbacks typically execute VM-internal code that performs hardly any
+             * safepoint checks. The number of performed safepoint checks can be very different from
+             * the application code. Therefore, we explicitly don't update the recurring callback
+             * statistics anywhere in this method as this could skew the numbers.
+             */
+            setCounter(SafepointCheckCounter.MAX_VALUE);
             try {
+                invokeCallback();
                 /*
-                 * Allow the callback to trigger a bit early - otherwise, it can happen that we
-                 * enter the slowpath multiple times while closing in on the deadline.
+                 * The callback is allowed to throw an exception (e.g., to stop or interrupt
+                 * long-running code). All code that must run to reinitialize the recurring callback
+                 * state must therefore be in a finally-block.
                  */
-                if (System.nanoTime() >= lastCallbackExecution + flexibleTargetIntervalNanos) {
-                    /*
-                     * Before executing the callback, reset the safepoint requested counter as we
-                     * don't want to trigger another callback execution in the near future.
-                     *
-                     * Recurring callbacks typically execute VM-internal code that performs hardly
-                     * any safepoint checks. We explicitly don't update the recurring callback
-                     * statistics anywhere in this method as this could skew the numbers.
-                     */
-                    setCounter(SafepointCheckCounter.MAX_VALUE);
-                    try {
-                        invokeCallback();
-                        /*
-                         * The callback is allowed to throw an exception (e.g., to stop or interrupt
-                         * long-running code). All code that must run to reinitialize the recurring
-                         * callback state must therefore be in a finally-block.
-                         */
-                    } finally {
-                        lastCallbackExecution = System.nanoTime();
-                    }
-                }
             } finally {
-                isExecuting = false;
+                long afterNanos = System.nanoTime();
+                lastCallbackExecutionNanos = afterNanos;
+                updateCounter(afterNanos);
             }
         }
 
         @Uninterruptible(reason = "Must not contain safepoint checks.")
-        private void updateCounter() {
-            long nextDeadline = lastCallbackExecution + targetIntervalNanos;
-            long remainingNanos = nextDeadline - System.nanoTime();
+        private boolean shouldExecute(long nowNanos) {
+            /*
+             * Allow the callback to trigger a bit early - otherwise, it can happen that we enter
+             * the slowpath many times while closing in on the deadline.
+             */
+            return !isCallbackDisabled() && nowNanos >= lastCallbackExecutionNanos + flexibleTargetIntervalNanos;
+        }
+
+        @Uninterruptible(reason = "Must not contain safepoint checks.")
+        private void updateCounter(long nowNanos) {
+            long nextDeadline = lastCallbackExecutionNanos + targetIntervalNanos;
+            long remainingNanos = nextDeadline - nowNanos;
             if (remainingNanos < 0 && isCallbackDisabled()) {
                 /*
                  * If we are already behind the deadline and recurring callbacks are disabled for
@@ -388,9 +400,9 @@ public class RecurringCallbackSupport {
                  */
                 setCounter(SafepointCheckCounter.MAX_VALUE);
             } else {
-                remainingNanos = UninterruptibleUtils.Math.max(remainingNanos, MINIMUM_INTERVAL_NANOS);
                 double checks = ewmaChecksPerNano * remainingNanos;
-                setCounter(checks > SafepointCheckCounter.MAX_VALUE ? SafepointCheckCounter.MAX_VALUE : ((checks < 1) ? 1 : (int) checks));
+                int value = checks > SafepointCheckCounter.MAX_VALUE ? SafepointCheckCounter.MAX_VALUE : ((checks < 1) ? 1 : (int) checks);
+                setCounter(value);
             }
         }
 
@@ -413,6 +425,11 @@ public class RecurringCallbackSupport {
         @Uninterruptible(reason = "Required by caller, but does not apply to callee.", calleeMustBe = false)
         @RestrictHeapAccess(reason = "Recurring callbacks must not allocate.", access = NO_ALLOCATION)
         private void invokeCallback() {
+            /*
+             * The callback that is invoked below may contain interruptible code. So, we explicitly
+             * need to prevent recursive recurring callback invocations.
+             */
+            isExecuting = true;
             try {
                 callback.run(CALLBACK_ACCESS);
             } catch (SafepointException e) {
@@ -424,6 +441,8 @@ public class RecurringCallbackSupport {
                  * We cannot even log the exception because that could lead to a StackOverflowError
                  * (especially when the recurring callback failed with a StackOverflowError).
                  */
+            } finally {
+                isExecuting = false;
             }
         }
 
