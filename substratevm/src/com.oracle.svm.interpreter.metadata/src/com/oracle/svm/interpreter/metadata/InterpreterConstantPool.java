@@ -40,6 +40,7 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
@@ -184,10 +185,17 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
                 return JavaConstant.forDouble(this.doubleAt(cpi));
             }
         }
+        Object result;
         if (resolve) {
-            return resolvedAt(cpi, holder);
+            result = resolvedAt(cpi, holder);
+        } else {
+            result = objAt(cpi);
         }
-        return objAt(cpi);
+        if (result instanceof String) {
+            assert tag == Tag.STRING;
+            return SubstrateObjectConstant.forObject(result);
+        }
+        return result;
     }
 
     @Override
