@@ -48,6 +48,7 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.FunctionPointerHolder;
@@ -87,7 +88,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
-import org.graalvm.word.impl.Word;
 
 /**
  * Encapsulates resolved methods used under close-world assumptions, compiled and interpretable, but
@@ -870,13 +870,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Override
     public final boolean canBeStaticallyBound() {
-        return ((hasReceiver() && getDeclaringClass().isArray()) ||
-                        isFinal() ||
-                        isPrivate() ||
-                        isStatic() ||
-                        getDeclaringClass().isLeaf() ||
-                        isConstructor()) &&
-                        isConcrete();
+        return (isFinal() || isPrivate() || isStatic() || getDeclaringClass().isLeaf() || isConstructor()) && isConcrete();
     }
 
     @Override
