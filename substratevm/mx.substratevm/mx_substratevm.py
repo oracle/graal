@@ -1019,6 +1019,7 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
     env['debuginfotest_layered'] = 'no'
 
     testhello_py = join(sourcepath, 'gdb-tests', 'testhello.py')
+    lldb_test_py = join(sourcepath, 'lldb-tests', 'testhello.py')
     testhello_args = [
         # We do not want to step into class initializer, so initialize everything at build time.
         '--initialize-at-build-time=hello',
@@ -1032,11 +1033,17 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
         if mx.get_os() == 'linux' and not build_only:
             env['debuginfotest_isolates'] = 'no'
             mx.run(gdb_base_command() + ['-x', testhello_py, hello_binary], env=env)
+        if mx.get_os() == 'darwin' and not build_only:
+            env['debuginfotest_isolates'] = 'no'
+            mx.run([sys.executable, lldb_test_py, hello_binary], env=env)
 
     hello_binary = build_debug_test('isolates_on', 'hello_image', testhello_args + svm_experimental_options(['-H:+SpawnIsolates']))
     if mx.get_os() == 'linux' and not build_only:
         env['debuginfotest_isolates'] = 'yes'
         mx.run(gdb_base_command() + ['-x', testhello_py, hello_binary], env=env)
+    if mx.get_os() == 'darwin' and not build_only:
+        env['debuginfotest_isolates'] = 'yes'
+        mx.run([sys.executable, lldb_test_py, hello_binary], env=env)
 
 
 def _layereddebuginfotest(native_image, output_path, skip_base_layer, with_isolates_only, args):
