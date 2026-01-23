@@ -844,7 +844,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "checkstyle": "com.oracle.svm.hosted",
+            "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
             # disable coverage as long it cannot run on JDK latest [GR-59586]
             "jacoco" : "exclude",
