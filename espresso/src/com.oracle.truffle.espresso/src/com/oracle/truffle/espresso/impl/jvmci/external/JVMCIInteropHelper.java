@@ -918,6 +918,9 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
             assert receiver != null;
             ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
+            if (klass.isInterface()) {
+                return 0;
+            }
             return klass.getVTable().length;
         }
 
