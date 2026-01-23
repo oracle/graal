@@ -119,7 +119,7 @@ public @interface Uninterruptible {
      * other uninterruptible code (see {@link #CALLED_FROM_UNINTERRUPTIBLE_CODE}).
      * <p>
      * If false, the compiler may still inline this method into uninterruptible code. If inlining of
-     * a specific method is undesirable in general, refer to {@link NeverInline}.
+     * a specific method is undesirable in general, refer to {@code NeverInline}.
      */
     boolean mayBeInlined() default false;
 

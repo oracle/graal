@@ -345,6 +345,7 @@ suite = {
                 "com.oracle.svm.common",
                 "com.oracle.objectfile",
                 "SVM_CONFIGURE",
+                "SVM_GUEST_STAGING",
                 "espresso-shared:ESPRESSO_SVM",
             ],
             "requires" : [
@@ -1366,6 +1367,18 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.guest.staging": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "sdk:NATIVEIMAGE",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance" : "21+",
+            "workingSets": "SVM",
+            "jacoco" : "exclude",
+        },
+
         "com.oracle.svm.guest.features": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1820,6 +1833,7 @@ suite = {
                 "compiler:GRAAL",
                 "NATIVE_IMAGE_BASE",
                 "SVM_CONFIGURE",
+                "SVM_GUEST_STAGING",
                 "compiler:HOSTVMACCESS",
                 "espresso-shared:ESPRESSO_SVM",
             ],
@@ -1871,6 +1885,7 @@ suite = {
                     "transitive org.graalvm.nativeimage.base",
                     "transitive org.graalvm.nativeimage.objectfile",
                     "transitive org.graalvm.nativeimage.pointsto",
+                    "transitive org.graalvm.nativeimage.guest.staging",
                     "org.graalvm.collections",
                     "org.graalvm.truffle.compiler",
                     "org.graalvm.nativeimage.configure",
@@ -1929,6 +1944,37 @@ suite = {
             },
         },
 
+        "SVM_GUEST_STAGING": {
+            "subDir": "src",
+            "description" : "Transitional module that is loaded in the builder and the guest context",
+            "dependencies": [
+                "com.oracle.svm.guest.staging",
+            ],
+            "distDependencies": [
+                "sdk:NATIVEIMAGE",
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.guest.staging",
+                "exports" : [
+                    """* to org.graalvm.nativeimage.builder,
+                            org.graalvm.nativeimage.guest,
+                            org.graalvm.nativeimage.foreign,
+                            org.graalvm.truffle.runtime.svm""",
+                ],
+                "opens" : [],
+                "requires": [
+                    "transitive org.graalvm.nativeimage",
+                ],
+                "uses" : [
+                    "org.graalvm.nativeimage.Platform",
+                ],
+            },
+            "noMavenJavadoc": True,
+            "maven": {
+                "tag": ["default", "public"],
+            },
+        },
+
         "SVM_GUEST": {
             "subDir": "src",
             "description" : "SubstrateVM image guest context components",
@@ -1937,6 +1983,7 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:NATIVEIMAGE",
+                "SVM_GUEST_STAGING",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.guest",
@@ -1944,6 +1991,7 @@ suite = {
                 "opens" : [],
                 "requires": [
                     "transitive org.graalvm.nativeimage",
+                    "transitive org.graalvm.nativeimage.guest.staging",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
