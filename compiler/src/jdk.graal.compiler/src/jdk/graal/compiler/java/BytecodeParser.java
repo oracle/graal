@@ -3693,14 +3693,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         }
     }
 
-    /**
-     * Hook for subclasses to decorate {@link ExceptionHandler#getCatchType} with an additional
-     * type.
-     */
-    protected JavaType decorateCatchType(JavaType type) {
-        return type;
-    }
-
     @SuppressWarnings("try")
     protected void createExceptionDispatch(ExceptionDispatchBlock block) {
         try (DebugCloseable context = openNodeContext(frameState, BytecodeFrame.AFTER_EXCEPTION_BCI)) {
@@ -3712,7 +3704,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 return;
             }
 
-            JavaType catchType = decorateCatchType(block.handler.getCatchType());
+            JavaType catchType = block.handler.getCatchType();
             if (graphBuilderConfig.eagerResolving()) {
                 catchType = lookupType(block.handler.catchTypeCPI(), INSTANCEOF);
             }
@@ -5092,7 +5084,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             ExceptionDispatchBlock edb = (ExceptionDispatchBlock) currentBlock.exceptionDispatchBlock();
             ExceptionHandler handler = edb.handler;
             if (handler != null) {
-                JavaType catchType = decorateCatchType(handler.getCatchType());
+                JavaType catchType = handler.getCatchType();
                 // catch type can be null for java.lang.Throwable which catches everything
                 inOOMETry = catchType != null && catchType.getName().equals("Ljava/lang/OutOfMemoryError;");
             }
