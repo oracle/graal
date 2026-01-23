@@ -1756,7 +1756,9 @@ public class NativeImage {
             p = pb.start();
             if (useBundle()) {
                 ProcessOutputTransformer.attach(p.getInputStream(), bundleSupport::cleanupBuilderOutput, System.out);
+                // Checkstyle: allow System.err (stderr support)
                 ProcessOutputTransformer.attach(p.getErrorStream(), bundleSupport::cleanupBuilderOutput, System.err);
+                // Checkstyle: disallow System.err
             }
             imageBuilderPid = p.pid();
             return p.waitFor();
@@ -1935,15 +1937,15 @@ public class NativeImage {
         } catch (NativeImageError e) {
             String message = e.getMessage();
             if (message != null) {
-                NativeImage.show(System.err::println, "Error: " + message);
+                NativeImage.show(System.out::println, "Error: " + message);
             }
             Throwable cause = e.getCause();
             while (cause != null) {
-                NativeImage.show(System.err::println, "Caused by: " + cause);
+                NativeImage.show(System.out::println, "Caused by: " + cause);
                 cause = cause.getCause();
             }
             if (config.getBuildArgs().contains("--verbose")) {
-                e.printStackTrace();
+                e.printStackTrace(System.out);
             }
             System.exit(e.exitCode);
         }

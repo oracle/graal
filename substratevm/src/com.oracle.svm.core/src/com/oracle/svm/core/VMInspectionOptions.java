@@ -189,8 +189,10 @@ public final class VMInspectionOptions {
             try {
                 HeapDumping.singleton().dumpHeap(absoluteHeapDumpPath, true);
             } catch (IOException e) {
-                System.err.println("Failed to create heap dump:");
-                e.printStackTrace();
+                // Checkstyle: allow System.err (for JDK compatibility)
+                System.err.println("Failed to create heap dump file:");
+                e.printStackTrace(System.err);
+                // Checkstyle: disallow System.err
                 return false;
             }
             System.out.println("Heap dump created at '" + absoluteHeapDumpPath + "'.");

@@ -164,7 +164,9 @@ public final class SecurityProvidersSupport {
                 } catch (Exception ex) {
                     if (debug != null) {
                         debug.println("Error loading provider Apple");
-                        ex.printStackTrace();
+                        // Checkstyle: allow System.err (for JDK compatibility)
+                        ex.printStackTrace(System.err);
+                        // Checkstyle: disallow System.err
                     }
                 }
                 yield null;

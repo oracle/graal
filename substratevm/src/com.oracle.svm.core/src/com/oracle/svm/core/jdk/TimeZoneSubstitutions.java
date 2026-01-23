@@ -159,7 +159,7 @@ final class TimeZoneFeature implements InternalFeature {
         };
 
         private static void printWarning() {
-            System.err.println("-H:IncludeAllTimeZones and -H:IncludeTimeZones are now deprecated. Native-image includes all timezones" +
+            System.out.println("-H:IncludeAllTimeZones and -H:IncludeTimeZones are now deprecated. Native-image includes all timezones" +
                             " by default.");
         }
     }

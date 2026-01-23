@@ -143,13 +143,15 @@ public class WasmDebug {
             }
         }
 
+        // Checkstyle: allow System.err (run time code)
         System.err.println(header);
         for (String s : extraInfo) {
             System.err.println("\t" + s);
         }
 
         if (o instanceof Throwable throwable) {
-            throwable.printStackTrace();
+            throwable.printStackTrace(System.err);
         }
+        // Checkstyle: disallow System.err
     }
 }

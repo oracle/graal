@@ -94,6 +94,8 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
  * {@link NativeImageDiagnosticsAgent#maybeInstrumentClassWithClinit(String, byte[])}.
  */
 public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagnosticsAgentJNIHandleSet> {
+    // Checkstyle: allow System.err (agent class)
+
     private static final CEntryPointLiteral<CFunctionPointer> ON_CLASS_PREPARE = CEntryPointLiteral.create(NativeImageDiagnosticsAgent.class, "onClassPrepare",
                     JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIObjectHandle.class);
 

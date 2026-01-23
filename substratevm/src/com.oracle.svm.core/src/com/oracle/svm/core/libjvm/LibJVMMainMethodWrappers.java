@@ -101,7 +101,9 @@ public final class LibJVMMainMethodWrappers {
         }
 
         if (throwable != null) {
-            throwable.printStackTrace();
+            // Checkstyle: allow System.err (run time code expected to print to stderr)
+            throwable.printStackTrace(System.err);
+            // Checkstyle: disallow System.err
         }
     }
 
@@ -130,7 +132,9 @@ public final class LibJVMMainMethodWrappers {
         }
 
         if (throwable != null) {
-            throwable.printStackTrace();
+            // Checkstyle: allow System.err (run time code expected to print to stderr)
+            throwable.printStackTrace(System.err);
+            // Checkstyle: disallow System.err
         }
     }
 

@@ -635,7 +635,9 @@ public final class NativeImageClassLoaderSupport {
      */
     private static void warn(String message) {
         // Checkstyle: Allow raw info or warning printing - begin
+        // Checkstyle: allow System.err (for JDK compatibility)
         System.err.println("WARNING: " + message);
+        // Checkstyle: disallow System.err
         // Checkstyle: Allow raw info or warning printing - end
     }
 

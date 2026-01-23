@@ -55,6 +55,30 @@
     </module>
 
     <module name="RegexpSinglelineJava">
+      <property name="id" value="systemErr"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Disallow calls to System.err."/>
+      <property name="severity" value="error"/>
+      <property name="format" value="System\.err"/>
+      <property name="message" value="Calls to System.err are restricted. Please use Log for run time logging, LogUtils in the builder and driver, or System.out. If System.err is required for JDK compatibility, use &quot;// Checkstyle: allow System.err (&lt;reason&gt;) ... // Checkstyle: disallow System.err&quot; to disable this check."/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: allow System.err"/>
+      <property name="onCommentFormat" value="Checkstyle: disallow System.err"/>
+      <property name="idFormat" value="systemErr"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable System.err calls"/>
+    </module>
+
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="printStackTrace"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Disallow calls to Throwable.printStackTrace()."/>
+      <property name="severity" value="error"/>
+      <property name="format" value="\.printStackTrace\(\)"/>
+      <property name="message" value="Calls to Throwable.printStackTrace() are restricted. Please use .printStackTrace(PrintStream s) instead and explicitly choose a PrintStream."/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+
+    <module name="RegexpSinglelineJava">
       <property name="id" value="userError"/>
       <metadata name="net.sf.eclipsecs.core.comment" value="Consistent format strings for UserError."/>
       <property name="severity" value="error"/> 
@@ -83,7 +107,7 @@
       <metadata name="net.sf.eclipsecs.core.comment" value="Raw info or warning printing."/>
       <property name="severity" value="error"/> 
       <property name="format" value="(?i)&quot;(Info|Warning):"/>
-      <property name="message" value="Raw info or warning printing detected. Please use LogUtils#info or #LogUtils#warning"/>
+      <property name="message" value="Raw info or warning printing detected. Please use LogUtils#info or LogUtils#warning"/>
       <property name="ignoreComments" value="true"/>
     </module>
     <module name="SuppressionCommentFilter">
