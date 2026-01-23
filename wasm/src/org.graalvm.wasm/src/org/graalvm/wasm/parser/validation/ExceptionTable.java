@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,8 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import java.util.Arrays;
+
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 
 /**
@@ -53,7 +55,7 @@ public final class ExceptionTable {
 
     ExceptionTable(int from, ExceptionHandler[] handlers) {
         this.from = from;
-        this.to = 0;
+        this.to = -1;
         this.handlers = handlers;
     }
 
@@ -62,7 +64,7 @@ public final class ExceptionTable {
     }
 
     void generateExceptionTable(RuntimeBytecodeGen bytecode) {
-        assert to != 0 && to >= from : "Invalid exception table range";
+        assert to >= from : "Invalid exception table range " + from + ":" + to;
         for (ExceptionHandler handler : handlers) {
             if (handler.tag() == -1) {
                 // from (4 byte) | to (4 byte) | type (1 byte) | 0x0000_0000 | target (4 byte)
@@ -72,5 +74,10 @@ public final class ExceptionTable {
                 bytecode.addExceptionHandler(from, to, handler.type(), handler.tag(), handler.target());
             }
         }
+    }
+
+    @Override
+    public String toString() {
+        return from + ":" + to + " -> " + Arrays.toString(handlers);
     }
 }
