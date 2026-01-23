@@ -83,9 +83,9 @@ public class RuntimeInstanceReferenceMapSupport {
          * Add the object fields that are declared and inherited in the super class to the bitmap,
          * except for the monitor field, which is not inherited by subclasses.
          */
-        MarkBitmapVisitor markBitmapVisitor = new MarkBitmapVisitor(map, superHub.getMonitorOffset());
+        MarkInheritedFieldsInBitmapVisitor markInheritedFields = new MarkInheritedFieldsInBitmapVisitor(map, superHub.getMonitorOffset());
         InstanceReferenceMap superMap = DynamicHubSupport.getInstanceReferenceMap(superHub);
-        InstanceReferenceMapDecoder.walkReferences(Word.nullPointer(), superMap, markBitmapVisitor, null);
+        InstanceReferenceMapDecoder.walkReferences(Word.nullPointer(), superMap, markInheritedFields, null);
 
         /* Mark object fields declared in this class. */
         for (int offset : declaredInstanceReferenceFieldsOffsets) {
@@ -147,7 +147,7 @@ public class RuntimeInstanceReferenceMapSupport {
         }
     }
 
-    private record MarkBitmapVisitor(SubstrateReferenceMap map, int monitorOffset) implements ObjectReferenceVisitor {
+    public record MarkInheritedFieldsInBitmapVisitor(SubstrateReferenceMap map, int monitorOffset) implements ObjectReferenceVisitor {
         @Override
         public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
             Pointer pos = firstObjRef;
