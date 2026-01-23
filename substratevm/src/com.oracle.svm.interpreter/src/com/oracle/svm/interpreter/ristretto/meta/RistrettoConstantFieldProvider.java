@@ -40,6 +40,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvider {
     private static final String SystemClassName = "java.lang.System";
+    private static final String[] ProhibitedSystemFields = {"in", "err", "out"};
 
     private final SnippetReflectionProvider snippetReflectionProvider;
     private final ResolvedJavaType systemType;
@@ -48,10 +49,32 @@ public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvid
         super(metaAccess);
         this.snippetReflectionProvider = snippetReflectionProvider;
         try {
-            this.systemType = metaAccess.lookupJavaType(Class.forName(SystemClassName));
+            /*
+             * We must not fold the System.in/out/err fields because they are commonly set in java
+             * programs. Note however, this code will not trigger on svm because the fields are
+             * normally aliased with non.constant versions. However, we still keep the code here in
+             * case this ever changes. Additionally, we want to keep the semantic close to the graal
+             * hotspot version of constant folding so they can be unified in the future.
+             */
+            RistrettoType rTypeSystem = (RistrettoType) metaAccess.lookupJavaType(Class.forName(SystemClassName));
+            this.systemType = rTypeSystem.getInterpreterType();
+            assert systemFieldsFound(systemType);
         } catch (ClassNotFoundException e) {
             throw VMError.shouldNotReachHere("Must find system type " + SystemClassName, e);
         }
+    }
+
+    private static boolean systemFieldsFound(ResolvedJavaType systemType) {
+        int found = 0;
+        for (var staticField : systemType.getStaticFields()) {
+            for (String prohibitedName : ProhibitedSystemFields) {
+                if (staticField.getName().equals(prohibitedName)) {
+                    found++;
+                }
+            }
+        }
+        assert found == ProhibitedSystemFields.length;
+        return true;
     }
 
     @Override
@@ -62,20 +85,33 @@ public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvid
         } else if (javaField instanceof InterpreterResolvedJavaField) {
             iField = (InterpreterResolvedJavaField) javaField;
         }
-        if (iField != null && (isFinalField(iField, tool) || isStableField(iField, tool)) && !isProhibitedField(iField) && isHolderInitialized(iField)) {
-            final InterpreterResolvedJavaType declaringClass = iField.getDeclaringClass();
-            JavaKind kind = iField.getJavaKind();
-            Object receiver;
-            if (iField.isStatic()) {
-                receiver = iField.getDeclaringClass().getStaticStorage(kind.isPrimitive(), iField.getInstalledLayerNum());
-            } else {
-                receiver = snippetReflectionProvider.asObject(declaringClass.getJavaClass(), tool.getReceiver());
-            }
-            JavaConstant c = readConstant(kind, receiver, iField);
-            if (isFinalFieldValueConstant(iField, c, tool)) {
-                return tool.foldConstant(c);
-            } else {
-                return null;
+        if (iField != null) {
+            final boolean finalField = isFinalField(iField, tool);
+            final boolean stableField = isStableField(iField, tool);
+            final boolean prohibited = isProhibitedField(iField);
+            final boolean initialized = isHolderInitialized(iField);
+            if ((finalField || stableField) && initialized && !prohibited) {
+                final InterpreterResolvedJavaType declaringClass = iField.getDeclaringClass();
+                JavaKind kind = iField.getJavaKind();
+                Object receiver;
+                if (iField.isStatic()) {
+                    receiver = iField.getDeclaringClass().getStaticStorage(kind.isPrimitive(), iField.getInstalledLayerNum());
+                } else {
+                    receiver = snippetReflectionProvider.asObject(declaringClass.getJavaClass(), tool.getReceiver());
+                }
+                JavaConstant value = readConstant(kind, receiver, iField);
+                if (isStableField(iField, tool)) {
+                    if (value != null) {
+                        onStableFieldRead(iField, value, tool);
+                        if (isStableFieldValueConstant(iField, value, tool)) {
+                            return foldStableArray(value, iField, tool);
+                        }
+                    }
+                } else if (isFinalField(iField, tool)) {
+                    if (value != null && isFinalFieldValueConstant(iField, value, tool)) {
+                        return tool.foldConstant(value);
+                    }
+                }
             }
         }
         return super.readConstantField(javaField, tool);
@@ -84,7 +120,16 @@ public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvid
     private boolean isProhibitedField(InterpreterResolvedJavaField iField) {
         if (iField.isStatic()) {
             var holder = iField.getDeclaringClass();
-            return holder.isInitialized() && holder.equals(systemType);
+            return holder.isInitialized() && holder.equals(systemType) && isProhibitedSystemField(iField);
+        }
+        return false;
+    }
+
+    private static boolean isProhibitedSystemField(InterpreterResolvedJavaField iField) {
+        for (String prohibitedName : ProhibitedSystemFields) {
+            if (iField.getName().equals(prohibitedName)) {
+                return true;
+            }
         }
         return false;
     }
