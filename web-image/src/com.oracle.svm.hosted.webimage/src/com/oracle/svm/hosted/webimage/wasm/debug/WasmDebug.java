@@ -143,7 +143,7 @@ public class WasmDebug {
             }
         }
 
-        // Checkstyle: allow System.err
+        // Checkstyle: allow System.err (run time code)
         System.err.println(header);
         for (String s : extraInfo) {
             System.err.println("\t" + s);

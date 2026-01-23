@@ -417,7 +417,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     }
 
     private static void inform(String message) {
-        // Checkstyle: allow System.err
+        // Checkstyle: allow System.err (Agent class)
         System.err.println(AGENT_NAME + ": " + message);
         // Checkstyle: disallow System.err
     }

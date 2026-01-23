@@ -489,7 +489,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         try {
             RuntimeSupport.executeInitializationHooks();
         } catch (Throwable t) {
-            // Checkstyle: allow System.err
+            // Checkstyle: allow System.err (run time code expected to print to stderr)
             System.err.println("Uncaught exception while running isolate initialization hooks:");
             t.printStackTrace(System.err);
             // Checkstyle: disallow System.err
@@ -500,7 +500,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         try {
             ThreadListenerSupport.get().beforeThreadRun();
         } catch (Throwable t) {
-            // Checkstyle: allow System.err
+            // Checkstyle: allow System.err (run time code expected to print to stderr)
             System.err.println("Uncaught exception in beforeThreadRun():");
             t.printStackTrace(System.err);
             // Checkstyle: disallow System.err

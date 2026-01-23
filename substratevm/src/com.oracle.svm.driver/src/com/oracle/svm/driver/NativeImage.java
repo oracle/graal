@@ -1753,7 +1753,7 @@ public class NativeImage {
             p = pb.start();
             if (useBundle()) {
                 ProcessOutputTransformer.attach(p.getInputStream(), bundleSupport::cleanupBuilderOutput, System.out);
-                // Checkstyle: allow System.err
+                // Checkstyle: allow System.err (stderr support)
                 ProcessOutputTransformer.attach(p.getErrorStream(), bundleSupport::cleanupBuilderOutput, System.err);
                 // Checkstyle: disallow System.err
             }

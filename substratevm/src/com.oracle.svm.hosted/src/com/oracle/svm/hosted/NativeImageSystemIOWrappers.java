@@ -40,7 +40,7 @@ public class NativeImageSystemIOWrappers {
 
     NativeImageSystemIOWrappers() {
         outWrapper = new StdioWrapper(System.out);
-        // Checkstyle: allow System.err
+        // Checkstyle: allow System.err (stderr support)
         errWrapper = new StdioWrapper(System.err);
         // Checkstyle: disallow System.err
     }
@@ -48,7 +48,7 @@ public class NativeImageSystemIOWrappers {
     void verifySystemOutErrReplacement() {
         String format = "%s was changed during image building. This is not allowed.";
         UserError.guarantee(System.out == outWrapper, format, "System.out");
-        // Checkstyle: allow System.err
+        // Checkstyle: allow System.err (stderr support)
         UserError.guarantee(System.err == errWrapper, format, "System.err");
         // Checkstyle: disallow System.err
     }
