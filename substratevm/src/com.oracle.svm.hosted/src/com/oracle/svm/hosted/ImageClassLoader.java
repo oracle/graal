@@ -34,7 +34,6 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
@@ -59,6 +58,7 @@ import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.TypeResult;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -180,8 +180,8 @@ public final class ImageClassLoader {
      */
     private boolean isInPlatform(Annotated element) {
         try {
-            Platforms platformAnnotation = classLoaderSupport.annotationExtractor.getAnnotation(element, Platforms.class);
-            return NativeImageGenerator.includedIn(platform, platformAnnotation);
+            AnnotationValue av = classLoaderSupport.annotationExtractor.getAnnotationValue(element, Platforms.class);
+            return av == null || NativeImageGenerator.includedIn(GraalAccess.lookupType(platform.getClass()), av.getList("value", ResolvedJavaType.class));
         } catch (LinkageError t) {
             handleClassLoadingError(t, "getting @Platforms annotation value for %s", element);
             return false;
@@ -312,11 +312,12 @@ public final class ImageClassLoader {
         if (thePlatform == null) {
             return PlatformSupportResult.YES;
         }
-        Platforms platforms = classLoaderSupport.annotationExtractor.getAnnotation(element, Platforms.class);
-        if (platforms != null) {
-            if (Arrays.asList(platforms.value()).contains(Platform.HOSTED_ONLY.class)) {
+        AnnotationValue av = classLoaderSupport.annotationExtractor.getAnnotationValue(element, Platforms.class);
+        if (av != null) {
+            List<ResolvedJavaType> platforms = av.getList("value", ResolvedJavaType.class);
+            if (platforms.contains(GraalAccess.lookupType(Platform.HOSTED_ONLY.class))) {
                 return PlatformSupportResult.HOSTED;
-            } else if (!NativeImageGenerator.includedIn(thePlatform, platforms)) {
+            } else if (!NativeImageGenerator.includedIn(GraalAccess.lookupType(thePlatform.getClass()), platforms)) {
                 return PlatformSupportResult.NO;
             }
         }

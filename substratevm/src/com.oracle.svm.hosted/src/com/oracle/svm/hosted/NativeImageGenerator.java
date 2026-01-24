@@ -275,7 +275,6 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 import com.oracle.svm.util.StringUtil;
 
-import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
@@ -449,6 +448,18 @@ public class NativeImageGenerator {
         }
         for (Class<? extends Platform> platformGroup : platformsAnnotation.value()) {
             if (includedIn(platform, platformGroup)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns whether {@code platform} is assignable to at least one entry in {@code platforms}.
+     */
+    public static boolean includedIn(ResolvedJavaType platform, List<ResolvedJavaType> platforms) {
+        for (ResolvedJavaType platformGroup : platforms) {
+            if (platformGroup.isAssignableFrom(platform)) {
                 return true;
             }
         }
