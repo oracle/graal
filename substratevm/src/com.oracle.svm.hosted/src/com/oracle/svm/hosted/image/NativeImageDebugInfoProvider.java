@@ -391,7 +391,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
      */
     @Override
     protected Stream<Object> dataInfo() {
-        return heap.getObjects().stream().map(obj -> obj);
+        return heap.streamObjects().map(obj -> obj);
     }
 
     @Override

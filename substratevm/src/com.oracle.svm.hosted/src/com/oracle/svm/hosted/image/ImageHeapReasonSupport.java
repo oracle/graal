@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.image;
 
-import java.util.Collection;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -414,7 +412,7 @@ public class ImageHeapReasonSupport {
         return msg.append("    root: ").append(reason).append(System.lineSeparator());
     }
 
-    public void dumpMetadata(@SuppressWarnings("unused") ImageHeapLayoutInfo heapLayout, @SuppressWarnings("unused") Collection<NativeImageHeap.ObjectInfo> objects) {
+    public void dumpMetadata(@SuppressWarnings("unused") ImageHeapLayoutInfo heapLayout, @SuppressWarnings("unused") Iterable<NativeImageHeap.ObjectInfo> objects) {
         // no metadata to dump
     }
 }

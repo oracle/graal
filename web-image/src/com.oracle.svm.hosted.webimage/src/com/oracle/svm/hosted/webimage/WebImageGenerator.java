@@ -49,6 +49,7 @@ import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.core.image.ImageHeapObjectSorter;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.ImageKindInfoSingleton;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -235,7 +236,8 @@ public class WebImageGenerator extends NativeImageGenerator {
 
     @Override
     protected ImageHeapLayoutInfo layoutNativeImageHeap(NativeImageHeap heap) {
-        return heap.getLayouter().layout(heap, WasmUtil.PAGE_SIZE, ImageHeapLayouter.ImageHeapLayouterCallback.NONE);
+        ImageHeapObjectSorter objectSorter = ImageSingletons.lookup(ImageHeapObjectSorter.class);
+        return heap.getLayouter().layout(heap, WasmUtil.PAGE_SIZE, objectSorter, ImageHeapLayouter.ImageHeapLayouterCallback.NONE);
     }
 
     @Override
