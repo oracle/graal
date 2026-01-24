@@ -2455,7 +2455,7 @@ suite = {
 
         "POINTSTO": {
             "subDir": "src",
-            "description" : "SubstrateVM static analysis to find ahead-of-time the code",
+            "description" : "SubstrateVM static analysis to find reachable code for ahead-of-time compilation",
             "dependencies": [
                 "com.oracle.svm.util",
                 "com.oracle.graal.pointsto",
@@ -2492,6 +2492,7 @@ suite = {
                 "jdk.management",
                 "org.graalvm.collections",
                 "org.graalvm.nativeimage",
+                "jdk.graal.compiler.vmaccess",
               ],
               "requiresConcealed" : {
                 "java.management": [

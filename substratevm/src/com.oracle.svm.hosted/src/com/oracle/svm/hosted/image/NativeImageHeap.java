@@ -421,10 +421,13 @@ public final class NativeImageHeap implements ImageHeap {
         int identityHashCode = computeIdentityHashCode(uncompressed);
         VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
 
+        /* This unwrapping of JavaConstants should be removed once GR-72922 is done. */
         Object objectConstant = hUniverse.getSnippetReflection().asObject(Object.class, uncompressed);
-        ImageHeapScanner.maybeForceHashCodeComputation(objectConstant);
-        if (objectConstant instanceof String stringConstant) {
-            handleImageString(stringConstant);
+        if (objectConstant != null) {
+            aUniverse.getHeapScanner().maybeForceHashCodeComputation(uncompressed);
+            if (objectConstant instanceof String stringConstant) {
+                handleImageString(stringConstant);
+            }
         }
 
         final ObjectInfo existing = getConstantInfo(uncompressed);
