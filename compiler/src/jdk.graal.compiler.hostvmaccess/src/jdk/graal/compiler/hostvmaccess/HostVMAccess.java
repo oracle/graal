@@ -160,7 +160,7 @@ final class HostVMAccess implements VMAccess {
         } catch (InstantiationException e) {
             throw new IllegalArgumentException(e);
         } catch (InvocationTargetException e) {
-            throw new InvocationException(snippetReflection.forObject(e.getCause()), e);
+            throw new InvocationException(snippetReflection.forObject(e.getCause()), e.getCause());
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
         }

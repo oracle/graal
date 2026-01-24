@@ -530,14 +530,22 @@ public final class ImageClassLoader {
         }
     }
 
-    public List<Method> findAnnotatedMethods(Class<? extends Annotation> annotationClass) {
-        ArrayList<Method> result = new ArrayList<>();
+    public List<ResolvedJavaMethod> findAnnotatedResolvedJavaMethods(Class<? extends Annotation> annotationClass) {
+        ArrayList<ResolvedJavaMethod> result = new ArrayList<>();
         for (ResolvedJavaMethod method : applicationMethods) {
             if (classLoaderSupport.annotationExtractor.getAnnotation(method, annotationClass) != null) {
-                Method javaMethod = (Method) OriginalMethodProvider.getJavaMethod(method);
-                if (javaMethod != null) {
-                    result.add(javaMethod);
-                }
+                result.add(method);
+            }
+        }
+        return result;
+    }
+
+    public List<Method> findAnnotatedMethods(Class<? extends Annotation> annotationClass) {
+        ArrayList<Method> result = new ArrayList<>();
+        for (ResolvedJavaMethod method : findAnnotatedResolvedJavaMethods(annotationClass)) {
+            Method javaMethod = (Method) OriginalMethodProvider.getJavaMethod(method);
+            if (javaMethod != null) {
+                result.add(javaMethod);
             }
         }
         return result;
@@ -578,10 +586,6 @@ public final class ImageClassLoader {
 
     public ClassLoader getClassLoader() {
         return classLoaderSupport.getClassLoader();
-    }
-
-    public static Optional<String> getMainClassFromModule(Object module) {
-        return NativeImageClassLoaderSupport.getMainClassFromModule(module);
     }
 
     public Optional<Module> findModule(String moduleName) {

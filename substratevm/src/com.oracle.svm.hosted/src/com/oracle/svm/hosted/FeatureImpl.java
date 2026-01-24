@@ -47,7 +47,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
 import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
@@ -91,7 +90,6 @@ import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
@@ -205,9 +203,10 @@ public class FeatureImpl {
 
     public static class AfterRegistrationAccessImpl extends FeatureAccessImpl implements Feature.AfterRegistrationAccess {
         private final MetaAccessProvider metaAccess;
-        private Pair<Method, CEntryPointData> mainEntryPoint;
+        private MainEntryPoint mainEntryPoint;
 
-        public AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, Pair<Method, CEntryPointData> mainEntryPoint,
+        public AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess,
+                        MainEntryPoint mainEntryPoint,
                         DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
             this.metaAccess = metaAccess;
@@ -219,11 +218,11 @@ public class FeatureImpl {
             return metaAccess;
         }
 
-        public void setMainEntryPoint(Pair<Method, CEntryPointData> mainEntryPoint) {
+        public void setMainEntryPoint(MainEntryPoint mainEntryPoint) {
             this.mainEntryPoint = mainEntryPoint;
         }
 
-        public Pair<Method, CEntryPointData> getMainEntryPoint() {
+        public MainEntryPoint getMainEntryPoint() {
             return mainEntryPoint;
         }
 
@@ -580,7 +579,7 @@ public class FeatureImpl {
         }
 
         public void registerHierarchyForReflectiveInstantiation(Class<?> c) {
-            findSubclasses(c).stream().filter(clazz -> !Modifier.isAbstract(clazz.getModifiers())).forEach(clazz -> RuntimeReflection.registerForReflectiveInstantiation(clazz));
+            findSubclasses(c).stream().filter(clazz -> !Modifier.isAbstract(clazz.getModifiers())).forEach(RuntimeReflection::registerForReflectiveInstantiation);
         }
 
         @Override

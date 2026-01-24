@@ -864,11 +864,6 @@ public final class NativeImageClassLoaderSupport {
         }
     }
 
-    static Optional<String> getMainClassFromModule(Object module) {
-        assert module instanceof Module : "Argument `module` is not an instance of java.lang.Module";
-        return ((Module) module).getDescriptor().mainClass();
-    }
-
     private static UnmodifiableEconomicSet<Path> parseImageProvidedJarsProperty() {
         EconomicSet<Path> imageProvidedJars = EconomicSet.create();
         String args = System.getProperty(SharedConstants.IMAGE_PROVIDED_JARS_ENV_VARIABLE, "");

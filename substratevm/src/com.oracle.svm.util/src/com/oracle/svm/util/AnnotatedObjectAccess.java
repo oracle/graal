@@ -64,6 +64,22 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 public class AnnotatedObjectAccess {
 
     /**
+     * Gets the annotation of type {@code annotationType} from {@code element} as an
+     * {@link AnnotationValue} object.
+     *
+     * @param element the annotated element to retrieve the annotation value from
+     * @param annotationType the type of annotation to retrieve
+     * @return the annotation value of the specified type, or null if no such annotation exists
+     */
+    public <T extends Annotation> AnnotationValue getAnnotationValue(Annotated element, Class<T> annotationType) {
+        // Checkstyle: allow direct annotation access
+        Inherited inherited = annotationType.getAnnotation(Inherited.class);
+        // Checkstyle: disallow direct annotation access
+        Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, inherited == null);
+        return annotationValues.get(GraalAccess.lookupType(annotationType));
+    }
+
+    /**
      * Gets the annotation of type {@code annotationType} from {@code element}.
      *
      * @param element the annotated element to retrieve the annotation value from
@@ -71,11 +87,7 @@ public class AnnotatedObjectAccess {
      * @return the annotation value of the specified type, or null if no such annotation exists
      */
     public <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType) {
-        // Checkstyle: allow direct annotation access
-        Inherited inherited = annotationType.getAnnotation(Inherited.class);
-        // Checkstyle: disallow direct annotation access
-        Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, inherited == null);
-        AnnotationValue annotationValue = annotationValues.get(GraalAccess.lookupType(annotationType));
+        AnnotationValue annotationValue = getAnnotationValue(element, annotationType);
         if (annotationValue != null) {
             return asAnnotation(annotationValue, annotationType);
         }

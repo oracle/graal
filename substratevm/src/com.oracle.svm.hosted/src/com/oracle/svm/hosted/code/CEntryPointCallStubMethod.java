@@ -190,7 +190,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
-        if (entryPointData.getBuiltin() != CEntryPointData.DEFAULT_BUILTIN) {
+        if (entryPointData.getBuiltin() != CEntryPointData.NO_BUILTIN) {
             return buildBuiltinGraph(debug, method, providers);
         }
 
@@ -221,12 +221,12 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
                 /* Prologue returned non-zero, start the error handling. */
                 kit.elsePart();
 
-                Class<?> bailoutCustomizer = entryPointData.getPrologueBailout();
+                ResolvedJavaType bailoutCustomizer = entryPointData.getPrologueBailout();
                 JavaKind targetMethodReturnKind = targetMethod.getSignature().getReturnKind();
 
                 /* Generate the default bailout logic if no custom bailout logic was registered. */
                 boolean createdReturnNode = false;
-                if (bailoutCustomizer == CEntryPointOptions.AutomaticPrologueBailout.class) {
+                if (bailoutCustomizer.equals(CEntryPointData.AUTOMATIC_PROLOGUE_BAILOUT)) {
                     if (targetMethodReturnKind == JavaKind.Int) {
                         /* Directly return the error code that was returned from the prologue. */
                         kit.createReturn(invokePrologue, JavaKind.Int);
@@ -242,7 +242,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
                 /* Invoke the custom bailout logic if necessary. */
                 if (!createdReturnNode) {
-                    AnalysisMethod[] bailoutMethods = kit.getMetaAccess().lookupJavaType(bailoutCustomizer).getDeclaredMethods(false);
+                    AnalysisMethod[] bailoutMethods = kit.getMetaAccess().getUniverse().lookup(bailoutCustomizer).getDeclaredMethods(false);
                     UserError.guarantee(bailoutMethods.length == 1 && bailoutMethods[0].isStatic(), "Prologue bailout customization class must declare exactly one static method: %s -> %s",
                                     targetMethod, bailoutCustomizer);
 
@@ -315,11 +315,11 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         AnalysisMethod aTargetMethod = kit.getMetaAccess().getUniverse().lookup(targetMethod);
 
-        UserError.guarantee(entryPointData.getPrologue() == CEntryPointData.DEFAULT_PROLOGUE,
+        UserError.guarantee(entryPointData.getPrologue().equals(CEntryPointData.AUTOMATIC_PROLOGUE),
                         "@%s method declared as built-in must not have a custom prologue: %s", CEntryPoint.class.getSimpleName(), aTargetMethod);
-        UserError.guarantee(entryPointData.getEpilogue() == CEntryPointData.DEFAULT_EPILOGUE,
+        UserError.guarantee(entryPointData.getEpilogue().equals(CEntryPointData.DEFAULT_EPILOGUE),
                         "@%s method declared as built-in must not have a custom epilogue: %s", CEntryPoint.class.getSimpleName(), aTargetMethod);
-        UserError.guarantee(entryPointData.getExceptionHandler() == CEntryPointData.DEFAULT_EXCEPTION_HANDLER,
+        UserError.guarantee(entryPointData.getExceptionHandler().equals(CEntryPointData.FATAL_EXCEPTION_HANDLER),
                         "@%s method declared as built-in must not have a custom exception handler: %s", CEntryPoint.class.getSimpleName(), aTargetMethod);
 
         if (ImageSingletons.contains(CInterfaceWrapper.class)) {
@@ -458,16 +458,16 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     }
 
     private InvokeWithExceptionNode generatePrologue(HostedGraphKit kit, List<AnalysisType> parameterTypes, Annotation[][] parameterAnnotations, ValueNode[] args) {
-        Class<?> prologueClass = entryPointData.getPrologue();
-        if (prologueClass == NoPrologue.class) {
+        ResolvedJavaType prologueClass = entryPointData.getPrologue();
+        if (prologueClass.equals(CEntryPointData.NO_PROLOGUE)) {
             UserError.guarantee(isUninterruptible(targetMethod), "%s.%s is allowed only for methods annotated with @%s: %s",
                             CEntryPointOptions.class.getSimpleName(), NoPrologue.class.getSimpleName(), Uninterruptible.class.getSimpleName(), targetMethod);
             return null;
         }
 
         /* Generate a call to a custom prologue method, if one is registered. */
-        if (prologueClass != CEntryPointOptions.AutomaticPrologue.class) {
-            AnalysisType prologue = kit.getMetaAccess().lookupJavaType(prologueClass);
+        if (!prologueClass.equals(CEntryPointData.AUTOMATIC_PROLOGUE)) {
+            AnalysisType prologue = kit.getMetaAccess().getUniverse().lookup(prologueClass);
             AnalysisMethod[] prologueMethods = prologue.getDeclaredMethods(false);
             UserError.guarantee(prologueMethods.length == 1 && prologueMethods[0].isStatic(), "Prologue class must declare exactly one static method: %s -> %s", targetMethod, prologue);
             ValueNode[] prologueArgs = matchPrologueParameters(kit, parameterTypes, args, prologueMethods[0]);
@@ -487,8 +487,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
         /* Generate the call to EnterPrologue.enter(...). */
         ValueNode contextValue = args[contextIndex];
-        prologueClass = CEntryPointSetup.EnterPrologue.class;
-        AnalysisMethod[] prologueMethods = kit.getMetaAccess().lookupJavaType(prologueClass).getDeclaredMethods(false);
+        AnalysisMethod[] prologueMethods = kit.getMetaAccess().lookupJavaType(CEntryPointSetup.EnterPrologue.class).getDeclaredMethods(false);
         assert prologueMethods.length == 1 && prologueMethods[0].isStatic() : "Prologue class must declare exactly one static method";
         return createInvokeStaticWithFatalExceptionHandler(kit, prologueMethods[0], contextValue);
     }
@@ -588,7 +587,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     }
 
     private void generateExceptionHandler(ResolvedJavaMethod method, HostedGraphKit kit, ExceptionObjectNode exception, JavaKind returnKind) {
-        if (entryPointData.getExceptionHandler() == CEntryPoint.FatalExceptionHandler.class) {
+        if (entryPointData.getExceptionHandler().equals(CEntryPointData.FATAL_EXCEPTION_HANDLER)) {
             /* Exceptions are fatal errors by default. */
             CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, exception);
             kit.append(leave);
@@ -598,7 +597,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
         /* Determine which method was registered as the exception handler. */
         AnalysisType throwable = kit.getMetaAccess().lookupJavaType(Throwable.class);
-        AnalysisType handler = kit.getMetaAccess().lookupJavaType(entryPointData.getExceptionHandler());
+        AnalysisType handler = kit.getMetaAccess().getUniverse().lookup(entryPointData.getExceptionHandler());
         AnalysisMethod[] handlerMethods = handler.getDeclaredMethods(false);
         UserError.guarantee(handlerMethods.length == 1 && handlerMethods[0].isStatic(), "Exception handler class must declare exactly one static method: %s -> %s", targetMethod, handler);
         UserError.guarantee(isUninterruptible(handlerMethods[0]), "Exception handler method must be annotated with @%s: %s", Uninterruptible.class.getSimpleName(), handlerMethods[0]);
@@ -664,14 +663,14 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     }
 
     private void generateEpilogue(HostedGraphKit kit) {
-        Class<?> epilogueClass = entryPointData.getEpilogue();
-        if (epilogueClass == NoEpilogue.class) {
+        ResolvedJavaType epilogueClass = entryPointData.getEpilogue();
+        if (epilogueClass.equals(CEntryPointData.NO_EPILOGUE)) {
             UserError.guarantee(isUninterruptible(targetMethod), "%s.%s is allowed only for methods annotated with @%s: %s",
                             CEntryPointOptions.class.getSimpleName(), NoEpilogue.class.getSimpleName(), Uninterruptible.class.getSimpleName(), targetMethod);
             return;
         }
 
-        AnalysisType epilogue = kit.getMetaAccess().lookupJavaType(epilogueClass);
+        AnalysisType epilogue = kit.getMetaAccess().getUniverse().lookup(epilogueClass);
         AnalysisMethod[] epilogueMethods = epilogue.getDeclaredMethods(false);
         UserError.guarantee(epilogueMethods.length == 1 && epilogueMethods[0].isStatic() && epilogueMethods[0].getSignature().getParameterCount(false) == 0,
                         "Epilogue class must declare exactly one static method without parameters: %s -> %s", targetMethod, epilogue);

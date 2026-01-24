@@ -60,11 +60,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.annotation.Annotated;
 
 /**
- * This class provides methods for converting core reflection objects into their JVMCI counterparts
- * using the host VM implementation of JVMCI (e.g. converts {@link Class} to
- * {@code HotSpotResolvedObjectTypeImpl} when running on HotSpot). There are methods for going in
- * the opposite direction in {@link OriginalClassProvider}, {@link OriginalMethodProvider} and
- * {@link OriginalFieldProvider}.
+ * This class provides methods for converting core reflection objects into JVMCI counterparts
+ * wrapping elements in a {@linkplain VMAccess guest context}. More helpers for working with these
+ * JVMCI values are in {@link VMAccessHelper}.
  * <p>
  * This class is also used to access the JVMCI and {@linkplain #getOriginalProviders compiler
  * providers}.
@@ -76,6 +74,8 @@ public final class GraalAccess {
      * The {@link VMAccess} used to implement the functionality in this class.
      */
     private static VMAccess vmAccess;
+
+    private static VMAccessHelper vmAccessHelper;
 
     /**
      * Guards against multiple calls to {@link #plantConfiguration(VMAccess)}. The value is a stack
@@ -160,6 +160,7 @@ public final class GraalAccess {
         } else {
             vmAccess = access;
         }
+        vmAccessHelper = new VMAccessHelper(vmAccess);
         StringWriter sw = new StringWriter();
         new Exception("providers previously planted here:").printStackTrace(new PrintWriter(sw));
         providersInit = sw.toString();
@@ -189,6 +190,14 @@ public final class GraalAccess {
     public static VMAccess getVMAccess() {
         ensureInitialized();
         return vmAccess;
+    }
+
+    /**
+     * Gets the {@link VMAccessHelper} used to configure this class.
+     */
+    public static VMAccessHelper getVMAccessHelper() {
+        ensureInitialized();
+        return vmAccessHelper;
     }
 
     private static final Map<Class<?>, ResolvedJavaType> typeCache = new ConcurrentHashMap<>();
