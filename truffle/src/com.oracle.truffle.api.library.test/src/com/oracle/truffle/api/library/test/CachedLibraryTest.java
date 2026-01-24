@@ -78,6 +78,7 @@ import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.FromCached2N
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.ReplaceCachedLibraryTestNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.SimpleDispatchedNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.SimpleNodeGen;
+import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.TestBoundaryAndVirtualFrame3NodeGen;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 import com.oracle.truffle.api.test.ExpectError;
@@ -680,6 +681,26 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         @SuppressWarnings("unused")
         @Specialization(limit = "3")
         String doDefault(Object arg, @CachedLibrary("arg") SomethingLibrary interop) {
+            return null;
+        }
+    }
+
+    @Test
+    public void testTestBoundaryAndFrame3() {
+        var node = adopt(TestBoundaryAndVirtualFrame3NodeGen.create());
+        node.execute(null, new Something());
+        node.execute(null, new Something());
+        node.execute(null, new Something());
+        node.execute(null, new Something());
+    }
+
+    public abstract static class TestBoundaryAndVirtualFrame3 extends Node {
+
+        public abstract Object execute(VirtualFrame frame, Object arg);
+
+        @SuppressWarnings("unused")
+        @Specialization(limit = "1")
+        String doDefault(VirtualFrame frame, Object arg, @CachedLibrary("arg") SomethingLibrary interop) {
             return null;
         }
     }
