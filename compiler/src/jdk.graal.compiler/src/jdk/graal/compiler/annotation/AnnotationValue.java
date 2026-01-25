@@ -155,39 +155,40 @@ public final class AnnotationValue {
     }
 
     // @formatter:off
-    /**
-     * Gets the annotation element denoted by {@code name}. The following table shows the
-     * correspondence between the type of an element as declared by a method in the annotation
-     * interface and the type of value returned by this method:
-     * <table>
-     * <thead>
-     * <tr><th>Annotation</th> <th>AnnotationValue</th></tr>
-     * </thead><tbody>
-     * <tr><td>boolean</td>    <td>Boolean</td></tr>
-     * <tr><td>byte</td>       <td>Byte</td></tr>
-     * <tr><td>char</td>       <td>Character</td></tr>
-     * <tr><td>short</td>      <td>Short</td></tr>
-     * <tr><td>int</td>        <td>Integer</td></tr>
-     * <tr><td>float</td>      <td>Float</td></tr>
-     * <tr><td>long</td>       <td>Long</td></tr>
-     * <tr><td>double</td>     <td>Double</td></tr>
-     * <tr><td>String</td>     <td>String</td></tr>
-     * <tr><td>Class</td>      <td>ResolvedJavaType</td></tr>
-     * <tr><td>Enum</td>       <td>EnumElement</td></tr>
-     * <tr><td>Annotation</td> <td>AnnotationValue</td></tr>
-     * <tr><td>T[]</td><td>unmodifiable List&lt;T&gt; where T is one of the above types</td></tr>
-     * </tbody>
-     * </table>
-     *
-     * @param <V> the type of the element as per the {@code AnnotationValue} column in the above
-     *            table or {@link Object}
-     * @param elementType the class for the type of the element or {@code Object.class}
-     * @return the annotation element denoted by {@code name}
-     * @throws ClassCastException if the element is not of type {@code elementType}
-     * @throws IllegalArgumentException if this annotation has no element named {@code name}
-     *            if {@code elementType != Object.class} and the element is of type
-     *            {@link ErrorElement}
-     */
+    /// Gets the annotation element denoted by `name`.
+    ///
+    /// _A type specialized method (i.e. `get<type>(String name)`) should be
+    /// preferred over this method._
+    ///
+    ///
+    ///  The following table shows the
+    /// correspondence between the type of an element as declared by a method in the annotation
+    /// interface and the type of value returned by this method:
+    ///
+    /// | Annotation | AnnotationValue  |
+    /// |------------|------------------|
+    /// | boolean    | Boolean          |
+    /// | byte       | Byte             |
+    /// | char       | Character        |
+    /// | short      | Short            |
+    /// | int        | Integer          |
+    /// | float      | Float            |
+    /// | long       | Long             |
+    /// | double     | Double           |
+    /// | String     | String           |
+    /// | Class      | ResolvedJavaType |
+    /// | Enum       | EnumElement      |
+    /// | Annotation | AnnotationValue  |
+    /// | T[]        | unmodifiable List<T> where `T` is one of the above types |
+    ///
+    /// @param <V> the type of the element as per the `AnnotationValue` column in the above
+    ///            table or [Object]
+    /// @param elementType the class for the type of the element or `Object.class`
+    /// @return the annotation element denoted by `name`
+    /// @throws ClassCastException if the element is not of type `elementType`
+    /// @throws IllegalArgumentException if this annotation has no element named `name`
+    ///            or if `elementType != Object.class` and the element is of type
+    ///            [ErrorElement]
     // @formatter:on
     public <V> V get(String name, Class<V> elementType) {
         checkError();
@@ -199,6 +200,25 @@ public final class AnnotationValue {
             throw ee.generateException();
         }
         return elementType.cast(val);
+    }
+
+    /**
+     * Gets the array element denoted by {@code name} as an unmodifiable list.
+     *
+     * @throws ClassCastException if the element is not an array, or it's a non-empty array whose
+     *             first element does not have type {@code componentType}
+     * @throws IllegalArgumentException if this annotation has no element named {@code name}
+     *
+     * @param <V> the component type of the array as per the {@code AnnotationValue} column in the
+     *            table {@linkplain #get(String, Class) here}
+     */
+    @SuppressWarnings("unchecked")
+    public <V> List<V> getList(String name, Class<V> componentType) {
+        List<V> list = get(name, List.class);
+        if (!list.isEmpty()) {
+            componentType.cast(list.getFirst());
+        }
+        return list;
     }
 
     /**

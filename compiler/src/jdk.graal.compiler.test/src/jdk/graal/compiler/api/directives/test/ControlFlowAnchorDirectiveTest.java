@@ -227,12 +227,11 @@ public class ControlFlowAnchorDirectiveTest extends GraalCompilerTest {
         g.copy(g.getDebug());
     }
 
-    @SuppressWarnings("unchecked")
     private static List<AnnotationValue> getNodeCountAnnotations(StructuredGraph graph) {
         ResolvedJavaMethod method = graph.method();
         AnnotationValue snippet = AnnotationValueSupport.getAnnotationValue(method, AnchorSnippet.class);
         if (snippet != null) {
-            return (List<AnnotationValue>) snippet.get("value", List.class);
+            return snippet.getList("value", AnnotationValue.class);
         }
 
         AnnotationValue single = AnnotationValueSupport.getAnnotationValue(method, NodeCount.class);

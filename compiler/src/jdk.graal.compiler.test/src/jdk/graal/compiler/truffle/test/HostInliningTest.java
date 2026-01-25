@@ -35,7 +35,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
@@ -61,6 +60,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 
@@ -174,7 +174,6 @@ public class HostInliningTest extends TruffleCompilerImplTest {
         return o;
     }
 
-    @SuppressWarnings("unchecked")
     void runTest(String methodName) {
         // initialize the Truffle runtime to ensure that all intrinsics are applied
         Truffle.getRuntime();
@@ -219,8 +218,8 @@ public class HostInliningTest extends TruffleCompilerImplTest {
                 assertEquals(compareGraph, graph);
             }
 
-            assertInvokesFound(graph, notInlined != null ? (List<String>) notInlined.get("name", List.class) : null,
-                            notInlined != null ? (List<Integer>) notInlined.get("count", List.class) : null);
+            assertInvokesFound(graph, notInlined != null ? notInlined.getList("name", String.class) : null,
+                            notInlined != null ? notInlined.getList("count", Integer.class) : null);
 
         } catch (Throwable e) {
             graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "error graph");
