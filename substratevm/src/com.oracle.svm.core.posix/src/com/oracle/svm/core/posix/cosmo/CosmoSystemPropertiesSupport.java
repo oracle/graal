@@ -34,7 +34,7 @@ import com.oracle.svm.core.posix.cosmo.headers.Limits;
 import com.oracle.svm.core.posix.cosmo.headers.Stdlib;
 import com.oracle.svm.core.posix.cosmo.headers.Unistd;
 import com.oracle.svm.core.posix.cosmo.headers.Utsname;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;

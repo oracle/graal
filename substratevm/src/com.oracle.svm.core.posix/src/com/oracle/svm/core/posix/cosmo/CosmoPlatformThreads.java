@@ -52,7 +52,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import jdk.internal.misc.Unsafe;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;

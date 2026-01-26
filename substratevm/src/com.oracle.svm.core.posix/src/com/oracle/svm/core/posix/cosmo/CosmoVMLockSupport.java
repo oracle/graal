@@ -42,7 +42,7 @@ import com.oracle.svm.core.posix.cosmo.headers.Semaphore;
 import com.oracle.svm.core.posix.cosmo.headers.Time;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;

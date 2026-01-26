@@ -89,7 +89,7 @@ class CosmoSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
 
     @Override
     public void install() {
-        boolean isSignalHandlingAllowed = SubstrateOptions.EnableSignalHandling.getValue();
+        boolean isSignalHandlingAllowed = SubstrateOptions.isSignalHandlingAllowed();
         CosmoSignalHandlerSupport.installNativeSignalHandler(Signal.SignalEnum.SIGSEGV, SIGNAL_HANDLER.getFunctionPointer(), Signal.SA_NODEFER(), isSignalHandlingAllowed);
         CosmoSignalHandlerSupport.installNativeSignalHandler(Signal.SignalEnum.SIGBUS, SIGNAL_HANDLER.getFunctionPointer(), Signal.SA_NODEFER(), isSignalHandlingAllowed);
     }

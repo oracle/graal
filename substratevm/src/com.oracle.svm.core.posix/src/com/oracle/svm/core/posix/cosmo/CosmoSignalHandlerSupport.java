@@ -52,7 +52,7 @@ import com.oracle.svm.core.thread.NativeSpinLockUtils;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -134,7 +134,7 @@ public final class CosmoSignalHandlerSupport implements SignalHandlerSupport {
         assert MonitorSupport.singleton().isLockedByCurrentThread(Target_jdk_internal_misc_Signal.class);
         ensureInitialized();
 
-        return installJavaSignalHandler0(sig, nativeH, SubstrateOptions.EnableSignalHandling.getValue());
+        return installJavaSignalHandler0(sig, nativeH, SubstrateOptions.isSignalHandlingAllowed());
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
@@ -509,7 +509,7 @@ final class IgnoreSignalsStartupHook implements RuntimeSupport.Hook {
      */
     @Override
     public void execute(boolean isFirstIsolate) {
-        boolean isSignalHandlingAllowed = SubstrateOptions.EnableSignalHandling.getValue();
+        boolean isSignalHandlingAllowed = SubstrateOptions.isSignalHandlingAllowed();
         if (isSignalHandlingAllowed && isFirst()) {
             installNoopHandler(SignalEnum.SIGPIPE, isSignalHandlingAllowed);
             installNoopHandler(SignalEnum.SIGXFSZ, isSignalHandlingAllowed);

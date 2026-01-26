@@ -43,7 +43,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -109,7 +109,7 @@ public final class CosmoSubstrateSigprofHandler extends SubstrateSigprofHandler 
     @Override
     protected void installSignalHandler() {
         CosmoSignalHandlerSupport.installNativeSignalHandler(Signal.SignalEnum.SIGPROF, advancedSignalDispatcher.getFunctionPointer(), Signal.SA_RESTART(),
-                        SubstrateOptions.EnableSignalHandling.getValue());
+                        SubstrateOptions.isSignalHandlingAllowed());
     }
 
     static boolean isSignalHandlerBasedExecutionSamplerEnabled() {
@@ -121,7 +121,7 @@ public final class CosmoSubstrateSigprofHandler extends SubstrateSigprofHandler 
     }
 
     private static boolean isPlatformSupported() {
-        return SubstrateOptions.EnableSignalHandling.getValue();
+        return SubstrateOptions.isSignalHandlingAllowed();
     }
 
     private static void validateSamplerOption(HostedOptionKey<Boolean> isSamplerEnabled) {

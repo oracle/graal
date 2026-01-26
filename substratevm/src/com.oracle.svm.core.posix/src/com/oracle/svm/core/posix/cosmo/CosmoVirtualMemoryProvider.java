@@ -35,7 +35,7 @@ import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.cosmo.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -55,7 +55,7 @@ import static com.oracle.svm.core.posix.cosmo.headers.Mman.PROT_EXEC;
 import static com.oracle.svm.core.posix.cosmo.headers.Mman.PROT_NONE;
 import static com.oracle.svm.core.posix.cosmo.headers.Mman.PROT_READ;
 import static com.oracle.svm.core.posix.cosmo.headers.Mman.PROT_WRITE;
-import static jdk.graal.compiler.word.Word.nullPointer;
+import static org.graalvm.word.impl.Word.nullPointer;
 
 @AutomaticallyRegisteredFeature
 class CosmoVirtualMemoryProviderFeature implements InternalFeature {
