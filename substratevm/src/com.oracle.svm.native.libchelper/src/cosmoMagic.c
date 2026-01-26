@@ -6,6 +6,7 @@
 #include "libc/sysv/consts/lock.h"
 #include "libc/sysv/consts/map.h"
 #include "libc/sysv/consts/mremap.h"
+#include "libc/sysv/consts/sa.h"
 #include "libc/sysv/consts/sig.h"
 #include "libc/dce.h"
 #include <stdbool.h>
@@ -48,6 +49,18 @@ int stubNAME_MAX() {
 
 int stubPATH_MAX() {
     return _PATH_MAX;
+}
+
+int stubSA_RESTART() {
+    return (int)SA_RESTART;
+}
+
+int stubSA_SIGINFO() {
+    return (int)SA_SIGINFO;
+}
+
+int stubSA_NODEFER() {
+    return (int)SA_NODEFER;
 }
 
 int stubSIG_BLOCK() {
