@@ -50,8 +50,6 @@ import static com.oracle.svm.core.posix.cosmo.headers.Mman.MAP_FIXED;
 import static com.oracle.svm.core.posix.cosmo.headers.Mman.MAP_JIT;
 import static com.oracle.svm.core.posix.cosmo.headers.Mman.MAP_NORESERVE;
 import static com.oracle.svm.core.posix.cosmo.headers.Mman.MAP_PRIVATE;
-import static com.oracle.svm.core.posix.cosmo.headers.Mman.NoTransitions.mmap;
-import static com.oracle.svm.core.posix.cosmo.headers.Mman.NoTransitions.mprotect;
 import static com.oracle.svm.core.posix.cosmo.headers.Mman.NoTransitions.munmap;
 import static com.oracle.svm.core.posix.cosmo.headers.Mman.PROT_EXEC;
 import static com.oracle.svm.core.posix.cosmo.headers.Mman.PROT_NONE;
@@ -124,22 +122,22 @@ public class CosmoVirtualMemoryProvider implements VirtualMemoryProvider {
         }
         mappingSize = UnsignedUtils.roundUp(mappingSize, granularity);
         int flags = MAP_ANON() | MAP_PRIVATE() | MAP_NORESERVE();
-        assert !(executable && Platform.includedIn(Platform.MACOS_AARCH64.class)) : "Memory reserved with MAP_JIT cannot be committed with MAP_FIXED later";
-        Pointer mappingBegin = mmap(nullPointer(), mappingSize, PROT_NONE(), flags, NO_FD, NO_FD_OFFSET);
+        Pointer mappingBegin = CosmoLibCHelper.vmemReserve(nullPointer(), mappingSize, PROT_NONE(), flags, NO_FD, NO_FD_OFFSET);
         if (mappingBegin.equal(MAP_FAILED())) {
             return nullPointer();
         }
+
         if (!customAlignment) {
             return mappingBegin;
         }
         Pointer begin = PointerUtils.roundUp(mappingBegin, alignment);
         UnsignedWord clippedBegin = begin.subtract(mappingBegin);
-        if (clippedBegin.aboveOrEqual(granularity)) {
+        if (clippedBegin.aboveOrEqual(granularity) && !CosmoLibCHelper.isWindows()) {
             munmap(mappingBegin, UnsignedUtils.roundDown(clippedBegin, granularity));
         }
         Pointer mappingEnd = mappingBegin.add(mappingSize);
         UnsignedWord clippedEnd = mappingEnd.subtract(begin.add(nbytes));
-        if (clippedEnd.aboveOrEqual(granularity)) {
+        if (clippedEnd.aboveOrEqual(granularity) && !CosmoLibCHelper.isWindows()) {
             UnsignedWord rounded = UnsignedUtils.roundDown(clippedEnd, granularity);
             munmap(mappingEnd.subtract(rounded), rounded);
         }
@@ -158,7 +156,7 @@ public class CosmoVirtualMemoryProvider implements VirtualMemoryProvider {
             flags |= MAP_FIXED();
         }
         int fd = (int) fileHandle.rawValue();
-        Pointer result = mmap(start, nbytes, accessAsProt(access), flags, fd, offset.rawValue());
+        Pointer result = CosmoLibCHelper.vmemMapFile(start, nbytes, accessAsProt(access), flags, fd, offset.rawValue());
         return result.notEqual(MAP_FAILED()) ? result : Word.nullPointer();
     }
 
@@ -174,11 +172,8 @@ public class CosmoVirtualMemoryProvider implements VirtualMemoryProvider {
             flags |= MAP_FIXED();
         }
 
-        if (Platform.includedIn(Platform.MACOS_AARCH64.class) && (access & Access.FUTURE_EXECUTE) != 0) {
-            flags |= MAP_JIT();
-        }
         /* The memory returned by mmap is guaranteed to be zeroed. */
-        final Pointer result = mmap(start, nbytes, accessAsProt(access), flags, NO_FD, NO_FD_OFFSET);
+        Pointer result = CosmoLibCHelper.vmemCommit(start, nbytes, accessAsProt(access), flags, NO_FD, NO_FD_OFFSET);
         return result.notEqual(MAP_FAILED()) ? result : nullPointer();
     }
 
@@ -188,8 +183,7 @@ public class CosmoVirtualMemoryProvider implements VirtualMemoryProvider {
         if (start.isNull() || !isAligned(start) || nbytes.equal(0)) {
             return -1;
         }
-
-        return mprotect(start, nbytes, accessAsProt(access));
+        return CosmoLibCHelper.vmemProtect(start, nbytes, accessAsProt(access));
     }
 
     @Override
@@ -198,9 +192,7 @@ public class CosmoVirtualMemoryProvider implements VirtualMemoryProvider {
         if (start.isNull() || !isAligned(start) || nbytes.equal(0)) {
             return -1;
         }
-
-        final Pointer result = mmap(start, nbytes, PROT_NONE(), MAP_FIXED() | MAP_ANON() | MAP_PRIVATE() | MAP_NORESERVE(), NO_FD, NO_FD_OFFSET);
-        return result.notEqual(MAP_FAILED()) ? 0 : -1;
+        return CosmoLibCHelper.vmemUncommit(start, nbytes, PROT_NONE(), MAP_FIXED() | MAP_ANON() | MAP_PRIVATE() | MAP_NORESERVE(), NO_FD, NO_FD_OFFSET);
     }
 
     @Override
@@ -209,11 +201,10 @@ public class CosmoVirtualMemoryProvider implements VirtualMemoryProvider {
         if (start.isNull() || !isAligned(start) || nbytes.equal(0)) {
             return -1;
         }
-
         UnsignedWord granularity = getGranularity();
         Pointer mappingBegin = PointerUtils.roundDown(start, granularity);
         UnsignedWord mappingSize = UnsignedUtils.roundUp(nbytes, granularity);
-        return munmap(mappingBegin, mappingSize);
+        return CosmoLibCHelper.vmemFree(mappingBegin, mappingSize);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

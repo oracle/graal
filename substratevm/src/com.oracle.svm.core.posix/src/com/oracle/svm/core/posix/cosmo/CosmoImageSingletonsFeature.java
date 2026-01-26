@@ -39,7 +39,7 @@ class CosmoImageSingletonsFeature implements InternalFeature {
         if (LibCBase.singleton() instanceof CosmoLibC) {
             ImageSingletons.add(LibCSupport.class, new CosmoLibCSupport());
             if (!ImageSingletons.contains(ImageHeapProvider.class)) {
-                ImageSingletons.add(ImageHeapProvider.class, new CosmoImageHeapProvider());
+                ImageSingletons.add(ImageHeapProvider.class, new CosmoSimpleImageHeapProvider());
             }
         }
     }
