@@ -27,44 +27,20 @@ package com.oracle.svm.libjvm.buildtime;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
-import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
-
-import jdk.graal.compiler.vmaccess.ModuleSupport;
 
 public final class LibJVMFeature extends JNIRegistrationUtil implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
 
-        JVMCIRuntimeJNIAccess.register(method(access, "java.lang.VersionProps", "print", boolean.class));
-
-        RuntimeResourceAccess.addResourceBundle(Object.class.getModule(), "sun.launcher.resources.launcher");
-
-        String launcherHelper = "sun.launcher.LauncherHelper";
-        JVMCIRuntimeJNIAccess.register(method(access, launcherHelper, "checkAndLoadMain", boolean.class, int.class, String.class));
-        JVMCIRuntimeJNIAccess.register(method(access, launcherHelper, "makePlatformString", boolean.class, byte[].class));
-        JVMCIRuntimeJNIAccess.register(method(access, launcherHelper, "getApplicationClass"));
-        JVMCIRuntimeJNIAccess.register(fields(access, launcherHelper, "isStaticMain", "noArgMain"));
-
-        JVMCIRuntimeJNIAccess.register(method(access, launcherHelper, "listModules"));
-
-        String sourceLauncherPackage = "com.sun.tools.javac.launcher";
-        JVMCIRuntimeReflection.register(method(access, sourceLauncherPackage + ".SourceLauncher", "main", String[].class));
-        ModuleSupport.addExports(LibJVMMainMethodWrappers.class.getModule(), "jdk.compiler", sourceLauncherPackage);
-
         // Workaround for GR-71358
         ImageSingletons.add(LibJVMMainMethodWrappers.class, new LibJVMMainMethodWrappers());
         var libJVMMainMethodWrappersName = LibJVMMainMethodWrappers.class.getName();
         JVMCIRuntimeJNIAccess.register(method(access, libJVMMainMethodWrappersName, "main", String[].class));
         JVMCIRuntimeJNIAccess.register(method(access, libJVMMainMethodWrappersName, "main"));
-
-        // This is needed so that the jdk.internal.loader.ClassLoaders fields get set via
-        // ArchivedClassLoaders and adjusted with BuiltinClassLoader.setClassPath(URLClassPath)
-        initializeAtRunTime(access, "jdk.internal.loader.ClassLoaders");
     }
 }

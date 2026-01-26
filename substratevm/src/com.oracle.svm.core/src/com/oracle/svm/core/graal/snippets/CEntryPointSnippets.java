@@ -56,7 +56,7 @@ import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.IsolateArguments;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.JavaMainWrapper;
+import com.oracle.svm.core.JavaMainWrapper.ArgsSupport;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
@@ -453,9 +453,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 exitWhenArgumentParsingFails = parameters.getExitWhenArgumentParsingFails();
             }
 
-            String[] args = JavaMainWrapper.ArgsSupport.convertCToJavaArgs(parameters.getArgc(), parameters.getArgv());
+            String[] initialArgs = ArgsSupport.convertCToJavaArgs(parameters.getArgc(), parameters.getArgv());
+            ArgsSupport.singleton().setInitialArgs(initialArgs);
             try {
-                args = RuntimeOptionParser.parseAndConsumeAllOptions(args, ignoreUnrecognized);
+                String[] remainingArgs = RuntimeOptionParser.parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
+                if (ImageSingletons.contains(JavaMainSupport.class)) {
+                    ImageSingletons.lookup(JavaMainSupport.class).mainArgs = remainingArgs;
+                }
             } catch (IllegalArgumentException e) {
                 if (exitWhenArgumentParsingFails) {
                     Log.logStream().println("Error: " + e.getMessage());
@@ -463,10 +467,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 } else {
                     return CEntryPointErrors.ARGUMENT_PARSING_FAILED;
                 }
-            }
-
-            if (ImageSingletons.contains(JavaMainSupport.class)) {
-                ImageSingletons.lookup(JavaMainSupport.class).mainArgs = args;
             }
         }
 
