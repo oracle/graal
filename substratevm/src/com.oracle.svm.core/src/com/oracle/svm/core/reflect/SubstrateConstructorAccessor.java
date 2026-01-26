@@ -31,9 +31,9 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 
 import jdk.internal.reflect.ConstructorAccessor;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

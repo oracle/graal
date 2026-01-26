@@ -24,15 +24,16 @@
  */
 package com.oracle.svm.jdwp.resident.impl;
 
+import org.graalvm.nativeimage.IsolateThread;
+
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.PlatformThreads;
-import org.graalvm.nativeimage.IsolateThread;
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 
 public final class SafeStackWalker {
     @NeverInline("Starting a stack walk in the caller frame")

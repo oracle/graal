@@ -27,8 +27,8 @@ package com.oracle.svm.core.jni;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 
 /** Holder class for generated {@code JNICallTrampolineMethod} code. */
 @InternalVMMethod

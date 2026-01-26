@@ -26,7 +26,7 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 
 /**
  * Holder class for generated Java-to-native call stubs for calling {@link CEntryPoint} methods from

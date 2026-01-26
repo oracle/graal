@@ -25,7 +25,7 @@
 package com.oracle.svm.core.reflect;
 
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
