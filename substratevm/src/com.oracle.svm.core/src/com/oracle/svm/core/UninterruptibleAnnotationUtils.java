@@ -26,17 +26,17 @@ package com.oracle.svm.core;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class UninterruptibleUtils {
+public class UninterruptibleAnnotationUtils {
 
     /**
      * The {@link Uninterruptible} annotation returned for C function calls with NO_TRANSITION.

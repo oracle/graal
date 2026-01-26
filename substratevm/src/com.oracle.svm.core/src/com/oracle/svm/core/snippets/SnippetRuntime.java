@@ -32,7 +32,7 @@ import java.lang.reflect.Method;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.UninterruptibleUtils;
+import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.GraalAccess;
@@ -77,7 +77,7 @@ public class SnippetRuntime {
         SubstrateForeignCallTarget foreignCallTargetAnnotation = AnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
         VMError.guarantee(foreignCallTargetAnnotation != null, "Add missing @SubstrateForeignCallTarget to %s.%s", declaringClass.getName(), methodName);
 
-        boolean isUninterruptible = UninterruptibleUtils.isUninterruptible(GraalAccess.lookupMethod(method));
+        boolean isUninterruptible = UninterruptibleAnnotationUtils.isUninterruptible(GraalAccess.lookupMethod(method));
         boolean isFullyUninterruptible = foreignCallTargetAnnotation.fullyUninterruptible();
         return findForeignCall(methodName, method, callSideEffect, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);
     }

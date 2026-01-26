@@ -36,8 +36,7 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.guest.staging.Uninterruptible;
-import com.oracle.svm.core.UninterruptibleUtils;
+import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.HostedStringDeduplication;
@@ -45,6 +44,7 @@ import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
@@ -103,8 +103,8 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
         SubstrateAnnotationExtractor extractor = (SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class);
         Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues(method);
         var info = PartialEvaluator.computePartialEvaluationMethodInfo(runtime, method, annotations, types, OriginalClassProvider::getOriginalType);
-        if (UninterruptibleUtils.isUninterruptible(method)) {
-            Uninterruptible uninterruptibleAnnotation = UninterruptibleUtils.getAnnotation(method);
+        if (UninterruptibleAnnotationUtils.isUninterruptible(method)) {
+            Uninterruptible uninterruptibleAnnotation = UninterruptibleAnnotationUtils.getAnnotation(method);
             if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
                 /* The semantics of Uninterruptible would get lost during partial evaluation. */
                 info = new PartialEvaluationMethodInfo(info.loopExplosion(),

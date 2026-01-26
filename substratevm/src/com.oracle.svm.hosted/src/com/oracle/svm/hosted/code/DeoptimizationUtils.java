@@ -38,7 +38,7 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.svm.core.UninterruptibleUtils;
+import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
@@ -166,7 +166,7 @@ public class DeoptimizationUtils {
         if (method.isIntrinsicMethod()) {
             return false;
         }
-        if (UninterruptibleUtils.isUninterruptible(method)) {
+        if (UninterruptibleAnnotationUtils.isUninterruptible(method)) {
             return false;
         }
         if (AnnotationUtil.getAnnotation(method, RestrictHeapAccess.class) != null) {
