@@ -548,8 +548,8 @@ public class CustomYieldTest {
         ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(2);
         assertEquals(42, cont.getResult());
         AbstractInstructionTest.assertInstructions(root,
-                        "load.argument$Int",
-                        "c.AddConstantsYield$Int",
+                        "load.argument",
+                        "c.AddConstantsYield",
                         "return");
         assertEquals(123, cont.continueWith(123));
 
@@ -678,6 +678,7 @@ public class CustomYieldTest {
 
             ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(0);
             assertEquals(2, cont.getResult());
+
             assertEquals(123, cont.continueWith(123));
 
             cont = (ContinuationResult) root.getCallTarget().call(0);

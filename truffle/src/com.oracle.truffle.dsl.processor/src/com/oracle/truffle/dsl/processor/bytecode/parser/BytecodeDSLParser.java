@@ -957,6 +957,15 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
                 // inject custom signatures.
                 InstructionModel baseInstruction = quickening.operation().instruction;
+
+                if (baseInstruction.isYield()) {
+                    /*
+                     * We must not support boxing elimination or quickening for custom yields as all
+                     * yield inputs would need to be boxing eliminated the same way to be safe.
+                     */
+                    continue;
+                }
+
                 List<TypeMirror> genericSignature = baseInstruction.signature.dynamicOperandTypes();
                 if (quickening.types().size() != genericSignature.size()) {
                     throw new AssertionError("Invalid signature size in quickening " + quickening.types() + " : " + genericSignature);
