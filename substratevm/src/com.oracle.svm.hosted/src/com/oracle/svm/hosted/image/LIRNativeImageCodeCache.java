@@ -36,7 +36,7 @@ import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.collections.Pair;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -379,7 +379,6 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
          * case, the caller will pass a null rodataDisplacecmentFromText, and we behave accordingly
          * by generating extra relocation records.
          */
-        int spaceForNops = getFirstCompilation().getRight().getNopCodeSize() * SubstrateOptions.nopsBeforeFunctionEntry();
         for (Pair<HostedMethod, CompilationResult> entry : compilations) {
             DeadlockWatchdog.singleton().recordActivity();
             HostedMethod method = entry.getLeft();
@@ -414,6 +413,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     private void processDirectCallSites(HostedMethod method, CompilationResult compilation, Map<Integer, HostedPatcher> patches) {
         Map<HostedMethod, Integer> trampolineOffsetMap = trampolineMap.get(method);
         int compStart = method.getCodeAddressOffset();
+        int spaceForNops = compilation.getNopCodeSize() * SubstrateOptions.nopsBeforeFunctionEntry();
         for (Infopoint infopoint : compilation.getInfopoints()) {
             if (infopoint instanceof Call call && ((Call) infopoint).direct) {
                 // NOTE that for the moment, we don't make static calls to external
