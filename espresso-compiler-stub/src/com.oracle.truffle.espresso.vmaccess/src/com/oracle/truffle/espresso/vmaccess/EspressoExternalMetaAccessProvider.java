@@ -122,7 +122,7 @@ final class EspressoExternalMetaAccessProvider implements MetaAccessProvider {
                 sb.append('[');
                 t = t.getComponentType();
             } while (t.isArray());
-            appendNonArrayType(sb, clazz);
+            appendNonArrayType(sb, t);
         } else {
             appendNonArrayType(sb, clazz);
         }
