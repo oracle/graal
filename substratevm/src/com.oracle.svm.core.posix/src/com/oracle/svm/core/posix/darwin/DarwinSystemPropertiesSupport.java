@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import java.nio.file.Path;
+import java.util.List;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CLibrary;
@@ -32,6 +35,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -48,11 +52,15 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonTraits;
-import org.graalvm.word.impl.Word;
+import com.oracle.svm.hosted.NativeImageOptions;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 @CLibrary(value = "darwin", requireStatic = true)
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
+
+    public DarwinSystemPropertiesSupport(boolean compatibilityMode, List<Path> applicationClassPath, List<Path> applicationModulePath) {
+        super(compatibilityMode, applicationClassPath, applicationModulePath);
+    }
 
     @Override
     protected String javaIoTmpdirValue() {
@@ -143,7 +151,8 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
 class DarwinSystemPropertiesFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(RuntimeSystemPropertiesSupport.class, new DarwinSystemPropertiesSupport());
+        ImageSingletons.add(RuntimeSystemPropertiesSupport.class,
+                        new DarwinSystemPropertiesSupport(NativeImageOptions.compatibilityMode(), access.getApplicationClassPath(), access.getApplicationModulePath()));
         ImageSingletons.add(SystemPropertiesSupport.class, (SystemPropertiesSupport) ImageSingletons.lookup(RuntimeSystemPropertiesSupport.class));
     }
 }

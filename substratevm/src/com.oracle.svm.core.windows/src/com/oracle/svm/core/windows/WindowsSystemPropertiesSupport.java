@@ -27,6 +27,8 @@ package com.oracle.svm.core.windows;
 import java.nio.ByteOrder;
 import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -37,6 +39,7 @@ import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -60,7 +63,7 @@ import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinVer;
 import com.oracle.svm.core.windows.headers.WindowsLibC;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
-import org.graalvm.word.impl.Word;
+import com.oracle.svm.hosted.NativeImageOptions;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
@@ -73,6 +76,10 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
     private static final int VER_NT_WORKSTATION = 0x0000001;
     private static final int VER_PLATFORM_WIN32_WINDOWS = 1;
     private static final int VER_PLATFORM_WIN32_NT = 2;
+
+    public WindowsSystemPropertiesSupport(boolean compatibilityMode, List<Path> applicationClassPath, List<Path> applicationModulePath) {
+        super(compatibilityMode, applicationClassPath, applicationModulePath);
+    }
 
     @Override
     protected String userNameValue() {
@@ -406,7 +413,8 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 class WindowsSystemPropertiesFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(RuntimeSystemPropertiesSupport.class, new WindowsSystemPropertiesSupport());
+        ImageSingletons.add(RuntimeSystemPropertiesSupport.class,
+                        new WindowsSystemPropertiesSupport(NativeImageOptions.compatibilityMode(), access.getApplicationClassPath(), access.getApplicationModulePath()));
         ImageSingletons.add(SystemPropertiesSupport.class, (SystemPropertiesSupport) ImageSingletons.lookup(RuntimeSystemPropertiesSupport.class));
     }
 }

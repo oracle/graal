@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.svm.core.jdk.JRTSupport.Options.AllowJRTFileSystem;
+import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.IncludeAllLocales;
 import static jdk.graal.compiler.options.OptionType.Debug;
 import static jdk.graal.compiler.options.OptionType.User;
 
@@ -33,10 +35,13 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.ForkJoinPool;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
@@ -301,4 +306,24 @@ public class NativeImageOptions {
             }
         }
     };
+
+    @Option(help = "Remove all Native-Image-specific behavior from build time or runtime for classpath/module-path classes.", stability = OptionStability.EXPERIMENTAL)//
+    public static final HostedOptionKey<Boolean> CompatibilityMode = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            super.onValueUpdate(values, oldValue, newValue);
+            if (newValue) {
+                FutureDefaultsOptions.FutureDefaults.update(values, "all");
+                RuntimeClassLoading.Options.RuntimeClassLoading.update(values, true);
+                AllowJRTFileSystem.update(values, true);
+                IncludeAllLocales.update(values, true);
+            }
+        }
+    };
+
+    @Fold
+    public static boolean compatibilityMode() {
+        return CompatibilityMode.getValue();
+    }
+
 }

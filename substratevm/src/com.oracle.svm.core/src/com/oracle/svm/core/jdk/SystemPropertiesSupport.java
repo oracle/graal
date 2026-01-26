@@ -24,12 +24,15 @@
  */
 package com.oracle.svm.core.jdk;
 
+import static java.util.stream.Collectors.joining;
 import static jdk.graal.compiler.core.common.LibGraalSupport.LIBGRAAL_SETTING_PROPERTY_PREFIX;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
@@ -59,7 +62,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * This class maintains the system properties at run time.
- *
+ * <p>
  * Some of the standard system properties can just be taken from the image generator, see
  * {@link #HOSTED_PROPERTIES}. Other system properties need to be computed at run time. However, we
  * want to do the computation lazily to reduce the startup cost. For example, getting the current
@@ -121,7 +124,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("this-escape")
-    protected SystemPropertiesSupport() {
+    protected SystemPropertiesSupport(boolean compatibilityMode, List<Path> applicationClassPath, List<Path> applicationModulePath) {
         for (String key : HOSTED_PROPERTIES) {
             String value = System.getProperty(key);
             if (value != null) {
@@ -140,19 +143,26 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         initializeProperty("java.vm.name", "Substrate VM");
         initializeProperty("java.vm.vendor", vm.vendor);
         initializeProperty("java.vm.version", vm.version);
-
-        initializeProperty("java.class.path", "");
+        if (compatibilityMode) {
+            initializeProperty("java.class.path", applicationClassPath.stream().map(Path::toString).collect(joining(File.pathSeparator)));
+            initializeProperty("jdk.module.path", applicationModulePath.stream().map(Path::toString).collect(joining(File.pathSeparator)));
+        } else {
+            initializeProperty("java.class.path", "");
+            initializeProperty("jdk.module.path", "");
+        }
         initializeProperty("java.endorsed.dirs", "");
         initializeProperty("java.ext.dirs", "");
         initializeProperty("sun.arch.data.model", Integer.toString(ConfigurationValues.getTarget().wordJavaKind.getBitCount()));
 
-        initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
+        if (!compatibilityMode) {
+            initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
 
-        for (String futureDefault : FutureDefaultsOptions.getFutureDefaults()) {
-            initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
-        }
-        for (String futureDefault : FutureDefaultsOptions.getRetiredFutureDefaults()) {
-            initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
+            for (String futureDefault : FutureDefaultsOptions.getFutureDefaults()) {
+                initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
+            }
+            for (String futureDefault : FutureDefaultsOptions.getRetiredFutureDefaults()) {
+                initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
+            }
         }
 
         ArrayList<LazySystemProperty> lazyProperties = new ArrayList<>();

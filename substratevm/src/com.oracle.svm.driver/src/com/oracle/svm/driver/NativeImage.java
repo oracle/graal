@@ -104,6 +104,7 @@ import com.oracle.svm.driver.metainf.NativeImageMetaInfResourceProcessor;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 import com.oracle.svm.hosted.CommonPoolUncaughtExceptionHandler;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.hosted.util.JDKArgsUtils;
 import com.oracle.svm.util.LogUtils;
@@ -123,6 +124,9 @@ public class NativeImage {
     private static final String CUSTOM_COMMON_FORK_JOIN_POOL_EXCEPTION_HANDLER = CommonPoolUncaughtExceptionHandler.class.getName();
 
     static final String platform = getPlatform();
+
+    // to avoid pulling in hosted classes
+    public static final String COMPATIBILITY_MODE_FLAG_NAME = NativeImageOptions.CompatibilityMode.getName();
 
     private static String getPlatform() {
         return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase(Locale.ROOT);
@@ -719,9 +723,11 @@ public class NativeImage {
                 if (imageNameValue != null) {
                     addPlainImageBuilderArg(oHName + resolver.apply(imageNameValue), resourcePath.toUri().toString());
                 }
-                forEachPropertyValue(properties.get("JavaArgs"), NativeImage.this::addImageBuilderJavaArgs, resolver);
-                forEachPropertyValue(properties.get("Args"), args, resolver);
-                forEachPropertyValue(properties.get("ProvidedHostedOptions"), apiOptionHandler::injectKnownHostedOption, resolver);
+                if (!isCompatibilityModeEnabled()) {
+                    forEachPropertyValue(properties.get("JavaArgs"), NativeImage.this::addImageBuilderJavaArgs, resolver);
+                    forEachPropertyValue(properties.get("Args"), args, resolver);
+                    forEachPropertyValue(properties.get("ProvidedHostedOptions"), apiOptionHandler::injectKnownHostedOption, resolver);
+                }
             } else {
                 args.accept(oH(type.optionKey) + resourceRoot.relativize(resourcePath));
             }
@@ -1420,7 +1426,12 @@ public class NativeImage {
     }
 
     private static Boolean getHostedOptionBooleanArgumentValue(List<String> args, OptionKey<Boolean> option) {
-        String locationAgnosticBooleanPattern = "^" + oH + "[+-]" + option.getName() + "(@[^=]*)?$";
+        String name = option.getName();
+        return getHostedOptionBooleanArgumentValue(args, name);
+    }
+
+    private static Boolean getHostedOptionBooleanArgumentValue(List<String> args, String optionName) {
+        String locationAgnosticBooleanPattern = "^" + oH + "[+-]" + optionName + "(@[^=]*)?$";
         Pattern pattern = Pattern.compile(locationAgnosticBooleanPattern);
         Boolean result = null;
         for (String arg : args) {
@@ -1430,6 +1441,10 @@ public class NativeImage {
             }
         }
         return result;
+    }
+
+    private boolean isCompatibilityModeEnabled() {
+        return Boolean.TRUE.equals(getHostedOptionBooleanArgumentValue(imageBuilderArgs, COMPATIBILITY_MODE_FLAG_NAME));
     }
 
     private boolean shouldAddCWDToCP() {

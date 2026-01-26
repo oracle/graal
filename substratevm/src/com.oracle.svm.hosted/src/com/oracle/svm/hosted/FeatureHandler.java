@@ -51,6 +51,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -78,7 +79,10 @@ public class FeatureHandler {
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> Features = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         private static List<String> userEnabledFeatures() {
-            return Options.Features.getValue().values();
+            return Options.Features.getValue().getValuesWithOrigins()
+                            .filter(v -> !(v.origin().commandLineLike() && NativeImageOptions.compatibilityMode()))
+                            .map(LocatableMultiOptionValue.ValueWithOrigin::value)
+                            .collect(Collectors.toList());
         }
 
         @Option(help = "Allow using deprecated @AutomaticFeature annotation. If set to false, an error is shown instead of a warning.", //

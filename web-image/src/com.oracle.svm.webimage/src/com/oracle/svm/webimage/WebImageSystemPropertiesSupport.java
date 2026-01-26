@@ -25,10 +25,16 @@
 
 package com.oracle.svm.webimage;
 
+import java.util.List;
+
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
 
 public class WebImageSystemPropertiesSupport extends SystemPropertiesSupport {
+
+    public WebImageSystemPropertiesSupport() {
+        super(false, List.of(), List.of());
+    }
 
     @Override
     protected String userNameValue() {
