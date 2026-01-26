@@ -128,7 +128,9 @@
 # include <stdint.h>
 # include <inttypes.h>
 # include <sys/ioctl.h>
+#if !defined(__COSMOPOLITAN__)
 # include <linux/elf-em.h>
+#endif
 # include <sys/prctl.h>
 #ifdef __GLIBC__
 # include <malloc.h>
@@ -281,7 +283,11 @@ julong os::Linux::available_memory() {
     return avail_mem;
   }
 
+#if !defined(__COSMOPOLITAN__)
   FILE *fp = os::fopen("/proc/meminfo", "r");
+#else
+  FILE *fp = nullptr;
+#endif
   if (fp != nullptr) {
     char buf[80];
     do {
@@ -458,6 +464,9 @@ bool os::Linux::get_tick_information(CPUPerfTicks* pticks, int which_logical_cpu
   const int     required_tickinfo_count = (which_logical_cpu == -1) ? 4 : 5;
   int           n;
 
+#if defined(__COSMOPOLITAN__)
+  return false;
+#else
   memset(pticks, 0, sizeof(CPUPerfTicks));
 
   if ((fh = os::fopen("/proc/stat", "r")) == nullptr) {
@@ -506,6 +515,7 @@ bool os::Linux::get_tick_information(CPUPerfTicks* pticks, int which_logical_cpu
   }
 
   return true;
+#endif
 }
 
 #ifndef SYS_gettid
@@ -1289,6 +1299,9 @@ bool os::is_primordial_thread(void) {
 
 // Find the virtual memory area that contains addr
 static bool find_vma(address addr, address* vma_low, address* vma_high) {
+#if defined(__COSMOPOLITAN__)
+  return false;
+#else
   FILE *fp = os::fopen("/proc/self/maps", "r");
   if (fp) {
     address low, high;
@@ -1309,6 +1322,7 @@ static bool find_vma(address addr, address* vma_low, address* vma_high) {
     fclose(fp);
   }
   return false;
+#endif
 }
 
 // Locate primordial thread stack. This special handling of primordial thread stack
@@ -2679,12 +2693,14 @@ static void print_sys_devices_cpu_info(outputStream* st) {
 }
 
 void os::pd_print_cpu_info(outputStream* st, char* buf, size_t buflen) {
+#if !defined(__COSMOPOLITAN__)
   // Only print the model name if the platform provides this as a summary
   if (!print_model_name_and_flags(st, buf, buflen)) {
     _print_ascii_file_h("/proc/cpuinfo", "/proc/cpuinfo", st, false);
   }
   st->cr();
   print_sys_devices_cpu_info(st);
+#endif
 }
 
 #if INCLUDE_JFR
@@ -2725,6 +2741,7 @@ const char* search_string = "Processor";
 
 // Parses the cpuinfo file for string representing the model name.
 void os::get_summary_cpu_info(char* cpuinfo, size_t length) {
+#if !defined(__COSMOPOLITAN__)
   FILE* fp = os::fopen("/proc/cpuinfo", "r");
   if (fp != nullptr) {
     while (!feof(fp)) {
@@ -2754,6 +2771,7 @@ void os::get_summary_cpu_info(char* cpuinfo, size_t length) {
     }
     fclose(fp);
   }
+#endif
   // cpuinfo not found or parsing failed, just print generic string.  The entire
   // /proc/cpuinfo file will be printed later in the file (or enough of it for x86)
 #if   defined(AARCH64)
@@ -3850,7 +3868,11 @@ static void set_coredump_filter(CoredumpFilterBit bit) {
   FILE *f;
   long cdm;
 
+#if defined(__COSMOPOLITAN__)
+  if (1) {
+#else
   if ((f = os::fopen("/proc/self/coredump_filter", "r+")) == nullptr) {
+#endif
     return;
   }
 
@@ -4262,6 +4284,7 @@ size_t os::vm_min_address() {
   // Most distros set this value to 64 KB. It *can* be zero, but rarely is. Here,
   // we impose a minimum value if vm.mmap_min_addr is too low, for increased protection.
   static size_t value = 0;
+#if !defined(__COSMOPOLITAN__)
   if (value == 0) {
     assert(is_aligned(_vm_min_address_default, os::vm_allocation_granularity()), "Sanity");
     FILE* f = os::fopen("/proc/sys/vm/mmap_min_addr", "r");
@@ -4273,6 +4296,7 @@ size_t os::vm_min_address() {
     }
     value = MAX2(_vm_min_address_default, value);
   }
+#endif
   return value;
 }
 
@@ -4682,7 +4706,7 @@ jint os::init_2(void) {
     return JNI_ERR;
   }
 
-#if defined(IA32) && !defined(ZERO)
+#if defined(IA32) && !defined(ZERO) && !defined(__COSMOPOLITAN__)
   // Need to ensure we've determined the process's initial stack to
   // perform the workaround
   Linux::capture_initial_stack(JavaThread::stack_size_at_create());
@@ -5172,6 +5196,9 @@ static jlong slow_thread_cpu_time(Thread *thread, bool user_sys_cpu_time) {
   long ldummy;
   FILE *fp;
 
+#if defined(__COSMOPOLITAN__)
+  return -1;
+#else
   snprintf(proc_name, 64, "/proc/self/task/%d/stat", tid);
   fp = os::fopen(proc_name, "r");
   if (fp == nullptr) return -1;
@@ -5201,6 +5228,7 @@ static jlong slow_thread_cpu_time(Thread *thread, bool user_sys_cpu_time) {
   } else {
     return (jlong)user_time * (1000000000 / clock_tics_per_sec);
   }
+#endif
 }
 
 void os::current_thread_cpu_time_info(jvmtiTimerInfo *info_ptr) {
@@ -5218,7 +5246,11 @@ void os::thread_cpu_time_info(jvmtiTimerInfo *info_ptr) {
 }
 
 bool os::is_thread_cpu_time_supported() {
+#if defined(__COSMOPOLITAN__)
+  return false;
+#else
   return true;
+#endif
 }
 
 // System loadavg support.  Returns -1 if load average cannot be obtained.
@@ -5231,6 +5263,9 @@ int os::loadavg(double loadavg[], int nelem) {
 // Get the default path to the core file
 // Returns the length of the string
 int os::get_core_path(char* buffer, size_t bufferSize) {
+#if defined(__COSMOPOLITAN__)
+  return -1;
+#else
   /*
    * Max length of /proc/sys/kernel/core_pattern is 128 characters.
    * See https://www.kernel.org/doc/Documentation/sysctl/kernel.txt
@@ -5310,6 +5345,7 @@ int os::get_core_path(char* buffer, size_t bufferSize) {
   }
 
   return checked_cast<int>(strlen(buffer));
+#endif
 }
 
 bool os::start_debugging(char *buf, int buflen) {
@@ -5445,6 +5481,7 @@ bool os::supports_map_sync() {
 }
 
 void os::print_memory_mappings(char* addr, size_t bytes, outputStream* st) {
+#if !defined(__COSMOPOLITAN__)
   // Note: all ranges are "[..)"
   unsigned long long start = (unsigned long long)addr;
   unsigned long long end = start + bytes;
@@ -5469,6 +5506,7 @@ void os::print_memory_mappings(char* addr, size_t bytes, outputStream* st) {
       st->print_cr("nothing.");
     }
   }
+#endif
 }
 
 #ifdef __GLIBC__
