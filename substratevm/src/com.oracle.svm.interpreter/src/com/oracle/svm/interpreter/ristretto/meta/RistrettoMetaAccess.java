@@ -29,6 +29,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.graal.meta.SubstrateMetaAccess;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.CremaMethodAccess;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
@@ -47,7 +48,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public final class RistrettoMetaAccess implements MetaAccessProvider {
+public final class RistrettoMetaAccess extends SubstrateMetaAccess {
     private final MetaAccessProvider decoratee;
 
     public RistrettoMetaAccess(MetaAccessProvider decoratee) {
@@ -55,7 +56,7 @@ public final class RistrettoMetaAccess implements MetaAccessProvider {
     }
 
     @Override
-    public ResolvedJavaType lookupJavaType(Class<?> clazz) {
+    public SubstrateType lookupJavaType(Class<?> clazz) {
         InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) DynamicHub.fromClass(clazz).getInterpreterType();
         return RistrettoType.create(iType);
     }

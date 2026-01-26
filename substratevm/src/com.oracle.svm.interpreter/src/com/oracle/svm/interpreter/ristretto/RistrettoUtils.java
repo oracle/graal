@@ -47,6 +47,7 @@ import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.meta.RuntimeCodeInstaller;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
+import com.oracle.svm.graal.meta.SubstrateMetaAccess;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
@@ -55,7 +56,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPhase;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoNoDeoptPhase;
-import com.oracle.svm.interpreter.ristretto.meta.RistrettoConstantFieldProvider;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoConstantReflectionProvider;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoField;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMetaAccess;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
@@ -302,8 +303,8 @@ public class RistrettoUtils {
                             // use our ristretto meta access
                             providers = providers.copyWith(new RistrettoMetaAccess(providers.getMetaAccess()));
 
-                            // and the ristretto field provider
-                            providers = providers.copyWith(new RistrettoConstantFieldProvider(providers.getMetaAccess(), providers.getSnippetReflection()));
+                            // and the ristretto constant reflection
+                            providers = providers.copyWith(new RistrettoConstantReflectionProvider((SubstrateMetaAccess) providers.getMetaAccess(), providers.getSnippetReflection()));
                         }
 
                         GraalCompiler.compile(new GraalCompiler.Request<>(graph,
