@@ -39,7 +39,7 @@ public class PosixFile {
     @CConstant
     public static native int LOCK_EX();
 
-    @CConstant
+    @CFunction(value = "stubLOCK_NB", transition = CFunction.Transition.NO_TRANSITION)
     public static native int LOCK_NB();
 
     @CFunction

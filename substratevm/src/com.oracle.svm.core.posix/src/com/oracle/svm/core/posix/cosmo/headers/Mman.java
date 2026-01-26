@@ -66,14 +66,13 @@ public class Mman {
     @CConstant
     public static native int MAP_FIXED();
 
-    @CConstant
+    @CFunction(value = "stubMAP_ANON", transition = Transition.NO_TRANSITION)
     public static native int MAP_ANON();
 
-    @CConstant
+    @CFunction(value = "stubMAP_NORESERVE", transition = Transition.NO_TRANSITION)
     public static native int MAP_NORESERVE();
 
-    @CConstant
-    @Platforms(Platform.MACOS_AARCH64.class)
+    @CFunction(value = "stubMAP_JIT", transition = Transition.NO_TRANSITION)
     public static native int MAP_JIT();
 
     @CConstant
