@@ -486,11 +486,26 @@ public class JavaMainWrapper {
         }
     }
 
-    /** Support for platform-specific conversion of the command line to Java main arguments. */
+    /**
+     * Support for platform-specific conversion of the command line to Java main arguments. This
+     * singleton is also used to store the initial Java args that have been passed to create the
+     * current VM.
+     */
     @AutomaticallyRegisteredImageSingleton(ArgsSupport.class)
     public static class ArgsSupport {
-        private static ArgsSupport singleton() {
+        public static ArgsSupport singleton() {
             return ImageSingletons.lookup(ArgsSupport.class);
+        }
+
+        private String[] initialArgs;
+
+        public void setInitialArgs(String[] initialArgs) {
+            VMError.guarantee(this.initialArgs == null, "The initial Java args this VM was started with, can only be set once.");
+            this.initialArgs = initialArgs;
+        }
+
+        public String[] getInitialArgs() {
+            return initialArgs;
         }
 
         /**

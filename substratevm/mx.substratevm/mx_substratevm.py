@@ -1853,7 +1853,8 @@ lib_jvm_preserved_packages = [
     'java.lang',
     'java.lang.invoke',
     'java.lang.constant',
-    'java.io'
+    'java.io',
+    'jdk.internal.misc'
 ]
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
