@@ -168,8 +168,17 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     }
 
     @Override
+    @SuppressWarnings("fallthrough")
     public Object lookupConstant(int cpi, boolean resolve) {
         final Tag tag = tagAt(cpi);
+        final boolean primitive = tag.isPrimitive();
+        Object nonPrimitiveResult = primitive ? null : queryConstantPool(cpi, resolve);
+        if (!primitive && nonPrimitiveResult == null) {
+            // a non-primitive constant was requested but the entry was null, this can only mean the
+            // entry was not resolved
+            assert !resolve;
+            return null;
+        }
         // check primitive tags first, they are not cached in the cp in crema
         switch (tag) {
             case INTEGER: {
@@ -184,18 +193,31 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             case DOUBLE: {
                 return JavaConstant.forDouble(this.doubleAt(cpi));
             }
+            case STRING: {
+                assert nonPrimitiveResult != null;
+                return SubstrateObjectConstant.forObject(nonPrimitiveResult);
+            }
+            case FIELD_REF:
+            case INTERFACE_METHOD_REF:
+            case METHOD_REF:
+            case CLASS:
+            case METHODTYPE:
+            case METHODHANDLE:
+            case INVOKEDYNAMIC: {
+                return nonPrimitiveResult;
+            }
+            default: {
+                throw VMError.shouldNotReachHere("Unknown tag " + tag);
+            }
         }
-        Object result;
+    }
+
+    private Object queryConstantPool(int cpi, boolean resolve) {
         if (resolve) {
-            result = resolvedAt(cpi, holder);
+            return resolvedAt(cpi, holder);
         } else {
-            result = objAt(cpi);
+            return objAt(cpi);
         }
-        if (result instanceof String) {
-            assert tag == Tag.STRING;
-            return SubstrateObjectConstant.forObject(result);
-        }
-        return result;
     }
 
     @Override
