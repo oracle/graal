@@ -53,6 +53,7 @@ import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.debug.ControlFlowAnchorNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
@@ -420,6 +421,9 @@ public final class TruffleBytecodeHandlerCallsite {
         // Invoke original handler
         ValueNode[] argumentsToOriginalHandler = createCalleeArguments(kit, parameterNodes);
         ValueNode handlerResult = appendInvoke(targetMethod, argumentsToOriginalHandler, frameStateBuilder, kit);
+
+        // Avoid multiple ReturnNodes
+        kit.append(new ControlFlowAnchorNode());
 
         TruffleBytecodeHandlerDispatchAddressNode tailCallTarget = null;
         if (threading) {
