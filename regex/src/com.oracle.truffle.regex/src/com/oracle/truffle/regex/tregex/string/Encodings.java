@@ -238,7 +238,7 @@ public final class Encodings {
                 }
                 int min = set.getMin();
                 int max = set.getMax();
-                return !(min < 0x10000 && max > 0x10000);
+                return !(min < 0x10000 && max >= 0x10000);
             }
 
             @Override
