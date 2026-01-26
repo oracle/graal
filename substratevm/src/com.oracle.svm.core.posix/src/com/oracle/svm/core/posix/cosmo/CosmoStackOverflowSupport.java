@@ -28,7 +28,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.cosmo.headers.Pthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;

@@ -33,7 +33,7 @@ import com.oracle.svm.core.posix.cosmo.headers.Dlfcn;
 import com.oracle.svm.core.posix.cosmo.headers.Signal;
 import com.oracle.svm.core.posix.cosmo.headers.Stdlib;
 import com.oracle.svm.core.posix.cosmo.headers.Unistd;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;

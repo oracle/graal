@@ -36,7 +36,7 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.cosmo.headers.Dlfcn;
 import com.oracle.svm.core.posix.cosmo.headers.Resource;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

@@ -28,7 +28,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.os.AbstractCopyingImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.UnsignedUtils;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -64,7 +64,7 @@ public class CosmoSimpleImageHeapProvider extends AbstractCopyingImageHeapProvid
         Pointer selfReservedMemory = Word.nullPointer();
         UnsignedWord requiredSize = getTotalRequiredAddressSpaceSize();
         if (reservedAddressSpace.isNull()) {
-            UnsignedWord alignment = Word.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
+            UnsignedWord alignment = Word.unsigned(Heap.getHeap().getImageHeapAlignment());
             selfReservedMemory = VirtualMemoryProvider.get().reserve(requiredSize, alignment, false);
             if (selfReservedMemory.isNull()) {
                 return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;

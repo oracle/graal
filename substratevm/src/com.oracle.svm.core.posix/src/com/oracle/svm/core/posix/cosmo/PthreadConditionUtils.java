@@ -32,7 +32,7 @@ import com.oracle.svm.core.posix.cosmo.headers.Time;
 import com.oracle.svm.core.posix.cosmo.headers.Time.timespec;
 import com.oracle.svm.core.util.TimeUtils;
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 

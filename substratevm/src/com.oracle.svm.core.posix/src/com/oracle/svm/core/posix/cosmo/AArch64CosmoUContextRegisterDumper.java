@@ -33,7 +33,7 @@ import com.oracle.svm.core.posix.cosmo.headers.Signal.GregsPointer;
 import com.oracle.svm.core.posix.cosmo.headers.Signal.mcontext_linux_aarch64_t;
 import com.oracle.svm.core.posix.cosmo.headers.Signal.ucontext_t;
 import com.oracle.svm.core.util.VMError;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import jdk.vm.ci.aarch64.AArch64;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

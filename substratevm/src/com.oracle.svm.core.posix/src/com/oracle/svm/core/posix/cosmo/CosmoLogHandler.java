@@ -31,10 +31,11 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.traits.BuiltinTraits;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
@@ -51,8 +52,8 @@ class CosmoLogHandlerFeature implements InternalFeature {
         }
     }
 }
-
-public class CosmoLogHandler implements LogHandler, InitialLayerOnlyImageSingleton {
+@SingletonTraits(access = BuiltinTraits.RuntimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
+public class CosmoLogHandler implements LogHandler {
 
     @Override
     public void log(CCharPointer bytes, UnsignedWord length) {
@@ -94,15 +95,5 @@ public class CosmoLogHandler implements LogHandler, InitialLayerOnlyImageSinglet
 
     private static FileDescriptor getOutputFile() {
         return FileDescriptor.err;
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
-    }
-
-    @Override
-    public boolean accessibleInFutureLayers() {
-        return true;
     }
 }
