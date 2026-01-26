@@ -73,6 +73,8 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
+import com.oracle.svm.core.c.libc.CosmoLibC;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.core.config.ObjectLayout;
@@ -163,8 +165,11 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
          *
          * https://developer.android.com/ndk/guides/abis#arm64-v8a
          */
-        if (Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) || Platform.includedIn(Platform.ANDROID.class)) {
+        if (LibCBase.targetLibCIs(CosmoLibC.class) || Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) || Platform.includedIn(Platform.ANDROID.class)) {
             regs.remove(r18);
+        }
+        if (LibCBase.targetLibCIs(CosmoLibC.class)) {
+            regs.remove(r28);
         }
         allocatableRegs = List.copyOf(regs);
 
