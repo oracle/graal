@@ -70,6 +70,7 @@ import jdk.graal.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.ObjectEqualsNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
@@ -517,22 +518,67 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             checkNoPhiUsagesAtLoopExit(merge, loopExitNode, coloredNodes, loopExitBranch, loopBodyBranch);
         }
 
-        // Propagate injected profile data as this is critical for calculating loop frequency
+        propagateBranchProfile(ifNode, loopExitNode, loopExitAtTrueBranch ? ifNode.profileData : ifNode.profileData.negated());
+
+        cleanupMerge(merge);
+        return true;
+    }
+
+    /**
+     * Propagates the branch profile of an eliminated {@code IfNode} to its preceding {@code IfNode}
+     * when one of the successors is a loop exit. This ensures that the original loop frequency is
+     * retained, which is crucial for subsequent loop optimizations.
+     *
+     * Consider the following example:
+     *
+     * <pre>
+     * int hasNext() {
+     *   if (cond) { // Profile may be polluted by different calling contexts
+     *     return 1;
+     *   }
+     *   return 0;
+     * }
+     *
+     * void iterate() {
+     *   while (true) {
+     *     int i = hasNext();
+     *     if (i == 0) { // Profile is eliminated with if simplification after inlining
+     *       break;
+     *     }
+     *     ...
+     *   }
+     * }
+     * </pre>
+     *
+     * After inlining, the if simplification at {@link #splitIfWithLoopExit} is triggered,
+     * eliminating the {@code IfNode} originating from {@code iterate()} along with its profile. The
+     * loop exit is then wired to the preceding {@code IfNode} inlined from {@code hasNext()}.
+     * However, the profile of this {@code IfNode} may be polluted by different calling contexts,
+     * leading to an imprecise loop frequency that affects subsequent loop optimization decisions.
+     *
+     * To mitigate this issue, this method propagates the branch profile of the eliminated
+     * {@code IfNode} to the preceding {@code IfNode}. Currently, propagation is limited to profiles
+     * with {@link ProfileSource#UNKNOWN} and {@link ProfileSource#INJECTED} sources.
+     *
+     * @see #splitIfWithLoopExit
+     * @see ControlFlowGraph#computeFrequencies
+     */
+    private static void propagateBranchProfile(IfNode ifNode, LoopExitNode loopExitNode, BranchProbabilityData profile) {
         if (ifNode.profileData.getProfileSource().isInjected()) {
             FixedNode current = loopExitNode;
             for (FixedNode predecessor : GraphUtil.predecessorIterable((FixedNode) current.predecessor())) {
-                if (predecessor instanceof ControlSplitNode controlSplitNode) {
-                    if (controlSplitNode.getProfileData().getProfileSource().isUnknown() && current instanceof AbstractBeginNode successor) {
-                        controlSplitNode.setProbability(successor, loopExitAtTrueBranch ? ifNode.profileData : ifNode.profileData.negated());
+                if (predecessor instanceof IfNode precedingIf) {
+                    ProfileSource source = precedingIf.getProfileData().getProfileSource();
+                    if (source.isUnknown() || source.isInjected()) {
+                        if (current instanceof AbstractBeginNode successor) {
+                            precedingIf.setProbability(successor, profile);
+                        }
                     }
                     break;
                 }
                 current = predecessor;
             }
         }
-
-        cleanupMerge(merge);
-        return true;
     }
 
     private static void checkNoPhiUsagesAtLoopExit(MergeNode merge, LoopExitNode loopExitNode,
