@@ -66,9 +66,9 @@ public final class PthreadConditionUtils {
      * {@link Time#CLOCK_MONOTONIC}. Therefore, we use {@link Time#CLOCK_REALTIME} for both
      * absolute and relative waits on Darwin.
      */
-    @Fold
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean useMonotonicClockForRelativeWait() {
-        return Platform.includedIn(Platform.LINUX.class);
+        return !CosmoLibCHelper.isXnu();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

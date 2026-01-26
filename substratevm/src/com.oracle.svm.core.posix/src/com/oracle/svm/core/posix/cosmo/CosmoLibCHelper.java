@@ -25,6 +25,7 @@
 package com.oracle.svm.core.posix.cosmo;
 
 import com.oracle.svm.core.posix.cosmo.headers.CosmoDirectives;
+import com.oracle.svm.core.posix.cosmo.headers.Pthread;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
@@ -38,6 +39,13 @@ import org.graalvm.word.UnsignedWord;
 @CLibrary(value = "libchelper", requireStatic = true)
 @CContext(CosmoDirectives.class)
 public class CosmoLibCHelper {
+
+    @CFunction(value = "stubIsWindows", transition = Transition.NO_TRANSITION)
+    public static native boolean isWindows();
+
+    @CFunction(value = "stubIsXnu", transition = Transition.NO_TRANSITION)
+    public static native boolean isXnu();
+
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int getThreadId();
 
@@ -50,11 +58,30 @@ public class CosmoLibCHelper {
     @CFunction(value = "stubMREMAP_MAYMOVE", transition = Transition.NO_TRANSITION)
     public static native int MREMAP_MAYMOVE();
 
-    @CFunction(value = "stubMREMAP_DONTUNMAP", transition = Transition.NO_TRANSITION)
-    public static native int MREMAP_DONTUNMAP();
+    public static int MREMAP_DONTUNMAP() {
+        return 4;
+    }
 
     public static class NoTransitions {
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native Pointer mremapP(PointerBase oldAddress, UnsignedWord oldSize, UnsignedWord newSize, int flags, PointerBase newAddress);
     }
+
+    @CFunction(value ="cosmo_vmem_reserve", transition = Transition.NO_TRANSITION)
+    public static native Pointer vmemReserve(PointerBase addr, UnsignedWord len, int prot, int flags, int fd, long offset);
+
+    @CFunction(value ="cosmo_vmem_commit", transition = Transition.NO_TRANSITION)
+    public static native Pointer vmemCommit(PointerBase addr, UnsignedWord len, int prot, int flags, int fd, long offset);
+
+    @CFunction(value ="cosmo_vmem_mapfile", transition = Transition.NO_TRANSITION)
+    public static native Pointer vmemMapFile(PointerBase addr, UnsignedWord len, int prot, int flags, int fd, long offset);
+
+    @CFunction(value = "cosmo_vmem_protect", transition = Transition.NO_TRANSITION)
+    public static native int vmemProtect(PointerBase addr, UnsignedWord len, int prot);
+
+    @CFunction(value ="cosmo_vmem_uncommit", transition = Transition.NO_TRANSITION)
+    public static native int vmemUncommit(PointerBase addr, UnsignedWord len, int prot, int flags, int fd, long offset);
+
+    @CFunction(value ="cosmo_vmem_free", transition = Transition.NO_TRANSITION)
+    public static native int vmemFree(PointerBase addr, UnsignedWord len);
 }

@@ -47,8 +47,8 @@ final class Target_java_lang_System_Cosmo {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long currentTimeMillis() {
         Time.timespec ts = StackValue.get(Time.timespec.class);
-        int status = CosmoUtils.clock_gettime(Time.CLOCK_REALTIME(), ts);
-        CosmoUtils.checkStatusIs0(status, "System.currentTimeMillis(): clock_gettime(CLOCK_REALTIME) failed.");
+        int status = CosmoUtils.clock_gettime(Time.CLOCK_MONOTONIC(), ts);
+        CosmoUtils.checkStatusIs0(status, "System.currentTimeMillis(): clock_gettime(CLOCK_MONOTONIC) failed.");
         return ts.tv_sec() * TimeUtils.millisPerSecond + ts.tv_nsec() / TimeUtils.nanosPerMilli;
     }
 }
