@@ -63,6 +63,9 @@ static inline int cg_v2_controller_index(const char* name) {
 }
 
 CgroupSubsystem* CgroupSubsystemFactory::create() {
+#if defined(__COSMOPOLITAN__)
+  return nullptr;
+#else
   CgroupV1MemoryController* memory = nullptr;
   CgroupV1Controller* cpuset = nullptr;
   CgroupV1CpuController* cpu = nullptr;
@@ -166,6 +169,7 @@ CgroupSubsystem* CgroupSubsystemFactory::create() {
   }
   cleanup(cg_infos);
   return new CgroupV1Subsystem(cpuset, cpu, cpuacct, pids, memory);
+#endif
 }
 
 void CgroupSubsystemFactory::set_controller_paths(CgroupInfo* cg_infos,
@@ -259,6 +263,9 @@ bool CgroupSubsystemFactory::determine_type(CgroupInfo* cg_infos,
                                             const char* proc_self_cgroup,
                                             const char* proc_self_mountinfo,
                                             u1* flags) {
+#if defined(__COSMOPOLITAN__)
+  return false;
+#else
   FILE *mntinfo = nullptr;
   FILE* controllers = nullptr;
   FILE *cgroup = nullptr;
@@ -594,6 +601,7 @@ bool CgroupSubsystemFactory::determine_type(CgroupInfo* cg_infos,
   // Cgroups v1 case, we have all the info we need.
   *flags = CGROUPS_V1;
   return true;
+#endif
 };
 
 void CgroupSubsystemFactory::cleanup(CgroupInfo* cg_infos) {
