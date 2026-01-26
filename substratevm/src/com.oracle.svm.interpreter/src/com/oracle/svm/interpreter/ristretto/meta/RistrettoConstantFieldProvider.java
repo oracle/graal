@@ -58,7 +58,7 @@ public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvid
              * this code and to maintain semantics aligned with the Graal/HotSpot constant-folding
              * implementation so they can be unified later.
              */
-            RistrettoType rTypeSystem = (RistrettoType) metaAccess.lookupJavaType(Class.forName(SystemClassName, false, ClassLoader.getSystemClassLoader()));
+            RistrettoType rTypeSystem = (RistrettoType) metaAccess.lookupJavaType(Class.forName(SystemClassName, false, null));
             this.systemType = rTypeSystem.getInterpreterType();
             assert systemFieldsFound(systemType);
         } catch (ClassNotFoundException e) {
@@ -102,14 +102,14 @@ public class RistrettoConstantFieldProvider extends SubstrateConstantFieldProvid
                     receiver = snippetReflectionProvider.asObject(declaringClass.getJavaClass(), tool.getReceiver());
                 }
                 JavaConstant value = readConstant(kind, receiver, iField);
-                if (isStableField(iField, tool)) {
+                if (stableField) {
                     if (value != null) {
                         onStableFieldRead(iField, value, tool);
                         if (isStableFieldValueConstant(iField, value, tool)) {
                             return foldStableArray(value, iField, tool);
                         }
                     }
-                } else if (isFinalField(iField, tool)) {
+                } else if (finalField) {
                     if (value != null && isFinalFieldValueConstant(iField, value, tool)) {
                         return tool.foldConstant(value);
                     }
