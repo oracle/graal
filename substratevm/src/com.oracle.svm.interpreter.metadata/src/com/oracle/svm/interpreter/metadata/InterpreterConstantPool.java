@@ -171,15 +171,6 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     @SuppressWarnings("fallthrough")
     public Object lookupConstant(int cpi, boolean resolve) {
         final Tag tag = tagAt(cpi);
-        final boolean primitive = tag.isPrimitive();
-        Object nonPrimitiveResult = primitive ? null : queryConstantPool(cpi, resolve);
-        if (!primitive && nonPrimitiveResult == null) {
-            // a non-primitive constant was requested but the entry was null, this can only mean the
-            // entry was not resolved
-            assert !resolve;
-            return null;
-        }
-        // check primitive tags first, they are not cached in the cp in crema
         switch (tag) {
             case INTEGER: {
                 return JavaConstant.forInt(this.intAt(cpi));
@@ -194,18 +185,19 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
                 return JavaConstant.forDouble(this.doubleAt(cpi));
             }
             case STRING: {
-                assert nonPrimitiveResult != null;
-                return SubstrateObjectConstant.forObject(nonPrimitiveResult);
+                return SubstrateObjectConstant.forObject(resolvedAt(cpi, holder));
             }
-            case FIELD_REF:
-            case INTERFACE_METHOD_REF:
-            case METHOD_REF:
-            case CLASS:
-            case METHODTYPE:
+            case CLASS: {
+                return objAt(cpi);
+            }
             case METHODHANDLE:
-            case INVOKEDYNAMIC: {
-                return nonPrimitiveResult;
-            }
+            case METHODTYPE:
+            case DYNAMIC:
+                Object ret = queryConstantPool(cpi, resolve);
+                if (ret == null) {
+                    return ret;
+                }
+                return SubstrateObjectConstant.forObject(ret);
             default: {
                 throw VMError.shouldNotReachHere("Unknown tag " + tag);
             }
