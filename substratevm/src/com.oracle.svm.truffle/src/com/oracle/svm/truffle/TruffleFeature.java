@@ -25,6 +25,7 @@
 
 package com.oracle.svm.truffle;
 
+import static com.oracle.svm.core.UninterruptibleAnnotationUtils.UninterruptibleGuestValue;
 import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINE;
 import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
 import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.NO_DECISION;
@@ -133,7 +134,6 @@ import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationCandidat
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethod;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethodSupport;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -560,7 +560,7 @@ public class TruffleFeature implements InternalFeature {
         if (AnnotationUtil.getAnnotation(method, TruffleBoundary.class) != null) {
             return true;
         } else if (UninterruptibleAnnotationUtils.isUninterruptible(method)) {
-            Uninterruptible uninterruptibleAnnotation = UninterruptibleAnnotationUtils.getAnnotation(method);
+            UninterruptibleGuestValue uninterruptibleAnnotation = UninterruptibleAnnotationUtils.getAnnotation(method);
             if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
                 /* The semantics of Uninterruptible would get lost during partial evaluation. */
                 return true;

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.core.UninterruptibleAnnotationUtils.UninterruptibleGuestValue;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
@@ -46,7 +47,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.aarch64.AArch64InterpreterStubs;
 import com.oracle.svm.core.graal.amd64.AMD64InterpreterStubs;
@@ -113,7 +114,7 @@ public class InterpreterFeature implements InternalFeature {
         if (AnnotationUtil.getAnnotation(m, CEntryPoint.class) != null) {
             return false;
         }
-        Uninterruptible uninterruptible = AnnotationUtil.getAnnotation(m, Uninterruptible.class);
+        UninterruptibleGuestValue uninterruptible = UninterruptibleAnnotationUtils.getAnnotation(m);
         if (uninterruptible != null) {
             if (uninterruptible.mayBeInlined() && !uninterruptible.callerMustBe()) {
                 /*

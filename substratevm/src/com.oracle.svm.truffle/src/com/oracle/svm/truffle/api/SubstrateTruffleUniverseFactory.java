@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.truffle.api;
 
+import static com.oracle.svm.core.UninterruptibleAnnotationUtils.UninterruptibleGuestValue;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -44,7 +46,6 @@ import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
@@ -104,7 +105,7 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
         Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues(method);
         var info = PartialEvaluator.computePartialEvaluationMethodInfo(runtime, method, annotations, types, OriginalClassProvider::getOriginalType);
         if (UninterruptibleAnnotationUtils.isUninterruptible(method)) {
-            Uninterruptible uninterruptibleAnnotation = UninterruptibleAnnotationUtils.getAnnotation(method);
+            UninterruptibleGuestValue uninterruptibleAnnotation = UninterruptibleAnnotationUtils.getAnnotation(method);
             if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
                 /* The semantics of Uninterruptible would get lost during partial evaluation. */
                 info = new PartialEvaluationMethodInfo(info.loopExplosion(),
