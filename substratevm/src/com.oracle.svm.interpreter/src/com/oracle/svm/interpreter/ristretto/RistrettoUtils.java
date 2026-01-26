@@ -31,6 +31,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.core.Uninterruptible;
@@ -81,7 +82,6 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.word.impl.Word;
 
 public class RistrettoUtils {
 
@@ -170,7 +170,7 @@ public class RistrettoUtils {
             StructuredGraph graph = new StructuredGraph.Builder(options, debug, allowAssumptions).method(method).speculationLog(speculationLog)
                             .profileProvider(profileProvider).compilationId(compilationId).build();
             assert graph != null;
-            parseFromBytecode(graph, runtimeConfig);
+            parseFromBytecode(graph, runtimeConfig, OptimisticOptimizations.ALL);
             return graph;
         }
         return null;
@@ -182,7 +182,7 @@ public class RistrettoUtils {
 
     public static SubstrateInstalledCodeImpl compileAndInstall(SubstrateMethod method, SubstrateInstalledCode.Factory installedCodeFactory) {
         if (RistrettoOptions.JITTraceCompilation.getValue()) {
-            Log.log().string("[Ristretto Compiler] Starting compilation of").string(method.format("%H.%n(%p)")).newline();
+            Log.log().string("[Ristretto Compiler] Starting compilation of ").string(method.format("%H.%n(%p)")).newline();
         }
         RuntimeConfiguration runtimeConfiguration = RuntimeCompilationSupport.getRuntimeConfig();
         DebugContext debug = new DebugContext.Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(runtimeConfiguration.getProviders().getSnippetReflection())).build();
@@ -243,7 +243,7 @@ public class RistrettoUtils {
                         }
                         assert graph != null;
                         suites = adaptSuitesForRistretto(RuntimeCompilationSupport.getMatchingSuitesForGraph(graph));
-                        parseFromBytecode(graph, runtimeConfig);
+                        parseFromBytecode(graph, runtimeConfig, OptimisticOptimizations.NONE);
                         if (TestingBackdoor.shouldRememberGraph()) {
                             // override the suites with graph capturing phases
                             suites = suites.copy();
@@ -285,7 +285,7 @@ public class RistrettoUtils {
         return effectiveSuites;
     }
 
-    private static void parseFromBytecode(StructuredGraph graph, RuntimeConfiguration runtimeConfig) {
+    private static void parseFromBytecode(StructuredGraph graph, RuntimeConfiguration runtimeConfig, OptimisticOptimizations optimisticOptimizations) {
         Providers runtimeProviders = runtimeConfig.getProviders();
         Replacements runtimeReplacements = runtimeProviders.getReplacements();
         GraphBuilderConfiguration.Plugins gbp = runtimeReplacements.getGraphBuilderPlugins();
@@ -293,7 +293,7 @@ public class RistrettoUtils {
         if (!RistrettoOptions.getJITUseDeoptimization()) {
             gpc = gpc.withBytecodeExceptionMode(GraphBuilderConfiguration.BytecodeExceptionMode.CheckAll);
         }
-        HighTierContext hc = new HighTierContext(runtimeConfig.getProviders(), null, OptimisticOptimizations.ALL);
+        HighTierContext hc = new HighTierContext(runtimeConfig.getProviders(), null, optimisticOptimizations);
         RistrettoGraphBuilderPhase graphBuilderPhase = new RistrettoGraphBuilderPhase(gpc);
         graphBuilderPhase.apply(graph, hc);
         assert graph.getNodeCount() > 1 : "Must have nodes after parsing";

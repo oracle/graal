@@ -228,6 +228,15 @@ public abstract class InterpreterStubSection {
     @Deoptimizer.DeoptStub(stubType = Deoptimizer.StubType.InterpreterEnterStub)
     @NeverInline("needs ABI boundary")
     @Uninterruptible(reason = REASON_REFERENCES_ON_STACK)
+    public static Pointer enterDirectInterpreterStub(InterpreterResolvedJavaMethod interpreterMethod, Pointer enterData) {
+        VMError.guarantee(interpreterMethod != null);
+
+        return enterHelper(interpreterMethod, enterData);
+    }
+
+    @Deoptimizer.DeoptStub(stubType = Deoptimizer.StubType.InterpreterEnterStub)
+    @NeverInline("needs ABI boundary")
+    @Uninterruptible(reason = REASON_REFERENCES_ON_STACK)
     public static Pointer enterVTableInterpreterStub(int vTableIndex, Pointer enterData) {
         InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
 

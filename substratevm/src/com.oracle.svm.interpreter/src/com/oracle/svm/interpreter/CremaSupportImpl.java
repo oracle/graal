@@ -64,16 +64,20 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.DynamicHubUtils.TypeCheckData;
@@ -136,11 +140,13 @@ import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.word.impl.Word;
 
 public class CremaSupportImpl implements CremaSupport {
     private static final int[] EMPTY_INT_ARRAY = new int[0];
     private final MethodHandleIntrinsics<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> methodHandleIntrinsics = new MethodHandleIntrinsics<>();
+
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
+    private CFunctionPointer enterDirectInterpreterStubEntryPoint;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
@@ -1593,5 +1599,17 @@ public class CremaSupportImpl implements CremaSupport {
         }
         // GR-70363
         throw VMError.unimplemented("computeEnclosingClass");
+    }
+
+    @Override
+    public CFunctionPointer getEnterDirectInterpreterStubEntryPoint() {
+        VMError.guarantee(enterDirectInterpreterStubEntryPoint.isNonNull(), "entry point for enterDirectInterpreterStub was not setup at build-time");
+        return enterDirectInterpreterStubEntryPoint;
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setEnterDirectInterpreterStubEntryPoint(CFunctionPointer stubEntryPoint) {
+        enterDirectInterpreterStubEntryPoint = stubEntryPoint;
     }
 }

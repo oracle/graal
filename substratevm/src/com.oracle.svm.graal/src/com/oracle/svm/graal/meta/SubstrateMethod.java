@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
@@ -68,12 +69,12 @@ import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
-import org.graalvm.word.impl.Word;
 
 public class SubstrateMethod implements SharedRuntimeMethod {
 
@@ -517,6 +518,11 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     @Override
     public CFunctionPointer getAOTEntrypoint() {
         return Word.nullPointer();
+    }
+
+    @Override
+    public ResolvedJavaMethod getInterpreterMethod() {
+        return null;
     }
 
     @Override

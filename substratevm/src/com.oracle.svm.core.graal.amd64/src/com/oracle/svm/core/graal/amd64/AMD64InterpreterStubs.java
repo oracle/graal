@@ -69,8 +69,6 @@ public class AMD64InterpreterStubs {
                         SubstrateOptions.PreserveFramePointer.getValue());
     }
 
-    public static final Register TRAMPOLINE_ARGUMENT = AMD64.rax;
-
     public static class InterpreterEnterStubContext extends SubstrateAMD64Backend.SubstrateAMD64FrameContext {
 
         public InterpreterEnterStubContext(SharedMethod method, CallingConvention callingConvention) {
@@ -86,7 +84,7 @@ public class AMD64InterpreterStubs {
         public void enter(CompilationResultBuilder crb) {
             AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
 
-            Register trampArg = TRAMPOLINE_ARGUMENT;
+            Register trampArg = SubstrateAMD64Backend.HIDDEN_ARGUMENT_REGISTER;
             Register spCopy = AMD64.r11;
 
             masm.movq(spCopy, rsp);
