@@ -126,7 +126,7 @@ public final class TruffleBytecodeHandlerCallsite {
         this.targetMethod = targetMethod;
 
         AnnotationValue configAnnotation = AnnotationValueSupport.getDeclaredAnnotationValue(truffleTypes.typeBytecodeInterpreterHandlerConfig, enclosingMethod);
-        List<?> argumentConfigs = configAnnotation.get("arguments", List.class);
+        List<AnnotationValue> argumentConfigs = configAnnotation.getList("arguments", AnnotationValue.class);
 
         ResolvedJavaType enclosingClass = targetMethod.getDeclaringClass();
         Signature signature = targetMethod.getSignature();
@@ -136,7 +136,7 @@ public final class TruffleBytecodeHandlerCallsite {
         int originalIndex = 0;
         int currentIndex = 0;
         if (!targetMethod.isStatic()) {
-            AnnotationValue receiverConfig = (AnnotationValue) argumentConfigs.get(originalIndex);
+            AnnotationValue receiverConfig = argumentConfigs.get(originalIndex);
             boolean nonNull = receiverConfig.getBoolean("nonNull");
 
             String name = receiverConfig.getEnum("expand").name;
@@ -146,10 +146,9 @@ public final class TruffleBytecodeHandlerCallsite {
                 case "MATERIALIZED" -> {
                     // @Argument(expand = MATERIALIZED, fields = {...})
                     localArguments.add(new ArgumentInfo(enclosingClass, currentIndex++, originalIndex, false, true, false, null, null, false, true, nonNull));
-                    List<?> fields = receiverConfig.get("fields", List.class);
+                    List<AnnotationValue> fields = receiverConfig.getList("fields", AnnotationValue.class);
                     for (ResolvedJavaField javaField : enclosingClass.getInstanceFields(true)) {
-                        for (Object field : fields) {
-                            AnnotationValue fieldConfig = (AnnotationValue) field;
+                        for (AnnotationValue fieldConfig : fields) {
                             if (javaField.getName().equals(fieldConfig.getString("name"))) {
                                 ResolvedJavaType fieldType = javaField.getType().resolve(enclosingClass);
                                 localArguments.add(new ArgumentInfo(fieldType, currentIndex++, originalIndex, false, false, true, enclosingClass, javaField, false, javaField.isFinal(),
@@ -167,7 +166,7 @@ public final class TruffleBytecodeHandlerCallsite {
         final int length = signature.getParameterCount(false);
         for (int i = 0; i < length; i++, originalIndex++) {
             ResolvedJavaType parameterType = signature.getParameterType(i, enclosingClass).resolve(enclosingClass);
-            AnnotationValue parameterConfig = (AnnotationValue) argumentConfigs.get(originalIndex);
+            AnnotationValue parameterConfig = argumentConfigs.get(originalIndex);
             boolean copyFromReturn = parameterConfig.getBoolean("returnValue");
             boolean nonNull = !parameterType.isPrimitive() && parameterConfig.getBoolean("nonNull");
 
@@ -176,14 +175,13 @@ public final class TruffleBytecodeHandlerCallsite {
                 case "NONE" -> localArguments.add(new ArgumentInfo(parameterType, currentIndex++, originalIndex, copyFromReturn, false, false, null, null, false, !copyFromReturn, nonNull));
                 case "VIRTUAL" -> {
                     // @Argument(expand = VIRTUAL, fields = {...})
-                    List<?> fields = parameterConfig.get("fields", List.class);
+                    List<AnnotationValue> fields = parameterConfig.getList("fields", AnnotationValue.class);
 
                     for (ResolvedJavaField javaField : parameterType.getInstanceFields(true)) {
                         ResolvedJavaType fieldType = javaField.getType().resolve(enclosingClass);
                         boolean fieldNonNull = false;
                         if (!fieldType.isPrimitive()) {
-                            for (Object field : fields) {
-                                AnnotationValue fieldConfig = (AnnotationValue) field;
+                            for (AnnotationValue fieldConfig : fields) {
                                 if (javaField.getName().equals(fieldConfig.getString("name"))) {
                                     fieldNonNull = fieldConfig.getBoolean("nonNull");
                                     break;
@@ -196,11 +194,10 @@ public final class TruffleBytecodeHandlerCallsite {
                 case "MATERIALIZED" -> {
                     // @Argument(expand = MATERIALIZED, fields = {...})
                     localArguments.add(new ArgumentInfo(parameterType, currentIndex++, originalIndex, copyFromReturn, true, false, null, null, false, true, nonNull));
-                    List<?> fields = parameterConfig.get("fields", List.class);
+                    List<AnnotationValue> fields = parameterConfig.getList("fields", AnnotationValue.class);
 
                     for (ResolvedJavaField javaField : parameterType.getInstanceFields(true)) {
-                        for (Object field : fields) {
-                            AnnotationValue fieldConfig = (AnnotationValue) field;
+                        for (AnnotationValue fieldConfig : fields) {
                             if (javaField.getName().equals(fieldConfig.getString("name"))) {
                                 ResolvedJavaType fieldType = javaField.getType().resolve(enclosingClass);
                                 localArguments.add(new ArgumentInfo(fieldType, currentIndex++, originalIndex, false, false, true, enclosingClass, javaField, false, javaField.isFinal(),

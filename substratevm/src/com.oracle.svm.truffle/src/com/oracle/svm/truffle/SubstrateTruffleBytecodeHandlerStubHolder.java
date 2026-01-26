@@ -29,7 +29,6 @@ import static com.oracle.svm.truffle.SubstrateTruffleBytecodeHandlerStub.unwrap;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
 import java.util.Arrays;
-import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
@@ -107,7 +106,7 @@ public final class SubstrateTruffleBytecodeHandlerStubHolder {
             if (handlerTable == null) {
                 // Creates a table large enough to host all opcodes
                 AnnotationValue bytecodeInterpreterHandlerConfigAnnotation = AnnotationValueSupport.getDeclaredAnnotationValue(typeBytecodeInterpreterHandlerConfig, caller);
-                int maxOpcode = bytecodeInterpreterHandlerConfigAnnotation.get("maximumOperationCode", Integer.class);
+                int maxOpcode = bytecodeInterpreterHandlerConfigAnnotation.getInt("maximumOperationCode");
                 GraalError.guarantee(maxOpcode >= 0 && maxOpcode < Integer.MAX_VALUE, "maximumOperationCode is %d", maxOpcode);
                 handlerTable = new MethodPointer[maxOpcode + 1];
                 // By default, all bytecode handlers point to defaultHandler
@@ -116,9 +115,9 @@ public final class SubstrateTruffleBytecodeHandlerStubHolder {
             }
 
             AnnotationValue annotation = AnnotationValueSupport.getDeclaredAnnotationValue(typeBytecodeInterpreterHandler, handler);
-            for (Object opcode : annotation.get("value", List.class)) {
+            for (Integer opcode : annotation.getList("value", Integer.class)) {
                 // Assumes BytecodeInterpreterHandlerConfig is with a large enough maxOpcode
-                handlerTable[(Integer) opcode] = new MethodPointer(stubWrapper);
+                handlerTable[opcode] = new MethodPointer(stubWrapper);
             }
         }
     }
