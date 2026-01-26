@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageInfo;
@@ -86,17 +87,37 @@ public final class GraalAccess {
     private GraalAccess() {
     }
 
-    public static final String PROPERTY_NAME = ImageInfo.PROPERTY_NATIVE_IMAGE_PREFIX + "vmaccessname";
+    private static final String PROPERTY_PREFIX = ImageInfo.PROPERTY_NATIVE_IMAGE_PREFIX + "vmaccess.";
+
+    /// Name of the property for selecting the guest context implementation.
+    private static final String NAME_PROPERTY = PROPERTY_PREFIX + "name";
+
+    //@formatter:off
+    /// Name of the property for setting guest context options. If the value of the option
+    /// starts with a non-alphanumeric character other than [File#separatorChar], then that
+    /// character is used as the delimiter between multiple options. Empty options are silently
+    /// ignored. For example:
+    ///
+    /// | option value                | options sent to [Builder#vmOption] |
+    /// |-----------------------------|------------------------------------|
+    /// | `log.level=ALL`             | "log.level=ALL"                    |
+    /// | `,log.level=ALL,foo=bar,,,` | "log.level=ALL", "foo=bar"         |
+    //@formatter:on
+    private static final String OPTIONS_PROPERTY = PROPERTY_PREFIX + "options";
 
     /**
      * Gets a {@link VMAccess} builder whose {@linkplain Builder#getVMAccessName() name} is
-     * specified by the {@value #PROPERTY_NAME} system property. If no name is specified, then
+     * specified by the {@value #NAME_PROPERTY} system property. If no name is specified, then
      * {@code "host"} is used.
      *
      * @throws GraalError if the requested builder cannot be found
      */
     public static VMAccess.Builder getVmAccessBuilder() {
-        String requestedAccessName = GraalServices.getSavedProperty(PROPERTY_NAME);
+        String oldProp = NAME_PROPERTY.replace(".name", "name");
+        if (System.getProperty(oldProp) != null) {
+            throw new GraalError("Use %s instead of %s to select VMAccess implementation", NAME_PROPERTY, oldProp);
+        }
+        String requestedAccessName = GraalServices.getSavedProperty(NAME_PROPERTY);
         String accessName = requestedAccessName == null ? "host" : requestedAccessName;
         Module vmAccessModule = Builder.class.getModule();
         ModuleLayer vmAccessLayer = vmAccessModule.getLayer();
@@ -123,18 +144,31 @@ public final class GraalAccess {
                 throw new GraalError("No %s service providers found", VMAccess.Builder.class.getName());
             }
             String available = builders.stream().map(b -> "'" + b.getVMAccessName() + "'").collect(Collectors.joining(", "));
-            String origin = requestedAccessName == null ? "" : "specified by system property %s ".formatted(PROPERTY_NAME);
+            String origin = requestedAccessName == null ? "" : "specified by system property %s ".formatted(NAME_PROPERTY);
             throw new GraalError("%s service provider '%s' %snot found. Available providers: %s",
                             VMAccess.Builder.class.getName(),
                             accessName,
                             origin,
                             available);
         }
-        if ("espresso-context".equals(selected.getVMAccessName())) {
+        if ("espresso".equals(selected.getVMAccessName())) {
             // Make sure we use the modules prepared for GraalVM
             selected.vmOption("JavaHome=" + System.getProperty("java.home"));
             // This is needed for Word types:
             selected.addModule("org.graalvm.word");
+        }
+        String options = GraalServices.getSavedProperty(OPTIONS_PROPERTY);
+        if (options != null && !options.isEmpty()) {
+            char char0 = options.charAt(0);
+            if (!Character.isLetterOrDigit(char0) && char0 != File.separatorChar) {
+                for (var option : options.substring(1).split(Pattern.quote(String.valueOf(char0)))) {
+                    if (!option.isEmpty()) {
+                        selected.vmOption(option);
+                    }
+                }
+            } else {
+                selected.vmOption(options);
+            }
         }
         return selected;
     }

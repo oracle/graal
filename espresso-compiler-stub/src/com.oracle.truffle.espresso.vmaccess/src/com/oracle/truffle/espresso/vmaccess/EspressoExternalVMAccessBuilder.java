@@ -58,7 +58,7 @@ public final class EspressoExternalVMAccessBuilder implements VMAccess.Builder {
 
     @Override
     public String getVMAccessName() {
-        return "espresso-context";
+        return "espresso";
     }
 
     @Override
