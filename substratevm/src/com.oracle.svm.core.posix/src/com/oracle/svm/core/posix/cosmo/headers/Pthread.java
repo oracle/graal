@@ -108,7 +108,7 @@ public class Pthread {
     @CFunction(value = "pthread_attr_init", transition = Transition.NO_TRANSITION)
     public static native int pthread_attr_init_no_transition(pthread_attr_t attr);
 
-    @CFunction(transition = Transition.NO_TRANSITION)
+    @CFunction(value = "pthread_attr_destroy")
     public static native int pthread_attr_destroy(pthread_attr_t attr);
 
     @CFunction(value = "pthread_attr_destroy", transition = Transition.NO_TRANSITION)

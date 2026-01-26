@@ -31,9 +31,11 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.posix.cosmo.headers.Errno;
+import com.oracle.svm.core.posix.cosmo.headers.PosixLibC;
 import com.oracle.svm.core.posix.cosmo.headers.Pthread;
 import com.oracle.svm.core.posix.cosmo.headers.Pthread.pthread_attr_t;
 import com.oracle.svm.core.posix.cosmo.headers.Pthread.pthread_cond_t;
@@ -153,21 +155,6 @@ public final class CosmoPlatformThreads extends PlatformThreads {
      */
     @Override
     protected void setNativeName(Thread thread, String name) {
-        if (!hasThreadIdentifier(thread)) {
-            /*
-             * The thread was a. not started yet, b. not started from Java code (i.e., only attached
-             * to SVM). We do not want to interfere with such threads.
-             */
-            return;
-        }
-
-        /* Use at most 15 characters from the right end of the name. */
-        final int startIndex = Math.max(0, name.length() - 15);
-        final String pthreadName = name.substring(startIndex);
-        assert pthreadName.length() < 16 : "thread name for pthread has a maximum length of 16 characters including the terminating 0";
-        try (CCharPointerHolder threadNameHolder = CTypeConversion.toCString(pthreadName)) {
-            Pthread.pthread_setname_np(getPthreadIdentifier(thread), threadNameHolder.get());
-        }
     }
 
     @Override
@@ -379,10 +366,7 @@ final class CosmoParker extends Parker {
         try {
             int s;
             pthread_cond_t p;
-            int status = Pthread.pthread_mutex_trylock_no_transition(mutex);
-            if (status == Errno.EBUSY()) { // more expensive transition when potentially blocking:
-                status = Pthread.pthread_mutex_lock(mutex);
-            }
+            int status = Pthread.pthread_mutex_lock(mutex);
             CosmoUtils.checkStatusIs0(status, "CosmoParker.unpark(): mutex lock");
             try {
                 s = event;

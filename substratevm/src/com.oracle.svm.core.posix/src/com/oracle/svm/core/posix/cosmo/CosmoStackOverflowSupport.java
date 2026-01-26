@@ -79,7 +79,7 @@ final class CosmoStackOverflowSupport implements StackOverflowCheck.PlatformSupp
         stackBasePtr.write(stackBase);
         stackEndPtr.write(stackEnd);
 
-        CosmoUtils.checkStatusIs0(Pthread.pthread_attr_destroy(attr), "CosmoStackOverflowSupport: pthread_attr_destroy");
+        CosmoUtils.checkStatusIs0(Pthread.pthread_attr_destroy_no_transition(attr), "CosmoStackOverflowSupport: pthread_attr_destroy");
         return true;
     }
 }
