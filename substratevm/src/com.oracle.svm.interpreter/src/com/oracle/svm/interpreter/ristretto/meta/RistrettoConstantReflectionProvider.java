@@ -36,6 +36,12 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
+/**
+ * Ristretto-specific constant reflection provider that enables runtime access to Crema fields. For
+ * instance fields, Crema mirrors the AOT layout used by Native Image. For static fields, however,
+ * Crema stores them in a special array within
+ * {@link com.oracle.svm.interpreter.metadata.CremaResolvedObjectType}.
+ */
 public class RistrettoConstantReflectionProvider extends SubstrateConstantReflectionProvider {
 
     private final SnippetReflectionProvider snippetReflectionProvider;
