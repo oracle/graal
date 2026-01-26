@@ -1495,7 +1495,6 @@ public class CaseFoldData {
     });
     private static final CaseFoldTable UNICODE_15_0_0_ODB_AI = new CaseFoldTable(null, new int[]{
                     0x000041, 0x00005a, INTEGER_OFFSET, 32,
-                    0x000084, 0x000084, ALTERNATING_AL, 0,
                     0x0000a9, 0x0000a9, INTEGER_OFFSET, -70,
                     0x0000aa, 0x0000aa, INTEGER_OFFSET, -73,
                     0x0000ae, 0x0000ae, INTEGER_OFFSET, -60,
