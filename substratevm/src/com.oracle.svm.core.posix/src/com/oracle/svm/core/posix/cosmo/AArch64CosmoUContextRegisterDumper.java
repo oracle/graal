@@ -22,38 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.aarch64;
-
-import static com.oracle.svm.core.RegisterDumper.dumpReg;
-
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.PointerBase;
+package com.oracle.svm.core.posix.cosmo;
 
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.aarch64.AArch64ReservedRegisters;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.posix.UContextRegisterDumper;
-import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
-import com.oracle.svm.core.posix.headers.Signal.GregsPointer;
-import com.oracle.svm.core.posix.headers.Signal.mcontext_linux_aarch64_t;
-import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
-import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.posix.cosmo.headers.Signal.GregsPointer;
+import com.oracle.svm.core.posix.cosmo.headers.Signal.mcontext_linux_aarch64_t;
+import com.oracle.svm.core.posix.cosmo.headers.Signal.ucontext_t;
 import com.oracle.svm.core.util.VMError;
-
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.aarch64.AArch64;
-import org.graalvm.word.impl.Word;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.PointerBase;
 
-@AutomaticallyRegisteredImageSingleton(value = RegisterDumper.class, onlyWith = NotCosmoLibCSupplier.class)
+import static com.oracle.svm.core.RegisterDumper.dumpReg;
+
+@AutomaticallyRegisteredImageSingleton(value = RegisterDumper.class, onlyWith = CosmoLibCSupplier.class)
 @Platforms(Platform.LINUX_AARCH64_BASE.class)
-@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, other = Disallowed.class)
-class AArch64LinuxUContextRegisterDumper implements UContextRegisterDumper {
-    AArch64LinuxUContextRegisterDumper() {
+class AArch64CosmoUContextRegisterDumper implements UContextRegisterDumper {
+    AArch64CosmoUContextRegisterDumper() {
         VMError.guarantee(AArch64.r27.equals(AArch64ReservedRegisters.HEAP_BASE_REGISTER));
         VMError.guarantee(AArch64.r25.equals(AArch64ReservedRegisters.THREAD_REGISTER));
     }
