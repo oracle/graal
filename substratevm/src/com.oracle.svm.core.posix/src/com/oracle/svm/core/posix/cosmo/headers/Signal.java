@@ -59,13 +59,13 @@ public class Signal {
     @CFunction
     public static native int kill(int pid, int sig);
 
-    @CConstant
+    @CFunction(value = "stubSIG_BLOCK", transition = CFunction.Transition.NO_TRANSITION)
     public static native int SIG_BLOCK();
 
-    @CConstant
+    @CFunction(value = "stubSIG_UNBLOCK", transition = CFunction.Transition.NO_TRANSITION)
     public static native int SIG_UNBLOCK();
 
-    @CConstant
+    @CFunction(value = "stubSIG_SETMASK", transition = CFunction.Transition.NO_TRANSITION)
     public static native int SIG_SETMASK();
 
     @CConstant

@@ -26,6 +26,7 @@ package com.oracle.svm.core.posix.cosmo.headers;
 
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
+import org.graalvm.nativeimage.c.function.CFunction;
 
 // Checkstyle: stop
 
@@ -35,13 +36,12 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 @CContext(CosmoDirectives.class)
 public class Limits {
 
-    @CConstant
+    @CFunction(value = "stubNAME_MAX", transition = CFunction.Transition.NO_TRANSITION)
     public static native int NAME_MAX();
 
-    @CConstant
+    @CFunction(value = "stubPATH_MAX", transition = CFunction.Transition.NO_TRANSITION)
     public static native int PATH_MAX();
 
-    /* MAXPATHLEN is defined in param.h to the same value as PATH_MAX. */
-    @CConstant("PATH_MAX")
+    @CFunction(value = "stubPATH_MAX", transition = CFunction.Transition.NO_TRANSITION)
     public static native int MAXPATHLEN();
 }

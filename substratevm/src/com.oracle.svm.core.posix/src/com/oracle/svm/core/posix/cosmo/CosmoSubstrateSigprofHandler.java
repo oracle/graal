@@ -35,7 +35,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.posix.cosmo.headers.Signal;
-import com.oracle.svm.core.posix.cosmo.headers.linux.LinuxTime;
+import com.oracle.svm.core.posix.cosmo.headers.Time;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
@@ -147,7 +147,7 @@ public final class CosmoSubstrateSigprofHandler extends SubstrateSigprofHandler 
     @Uninterruptible(reason = "Prevent VM operations that modify thread-local execution sampler state.")
     protected void install0(IsolateThread thread) {
         assert !hasSamplerTimerId(thread);
-        assert SizeOf.get(LinuxTime.timer_t.class) == Integer.BYTES || SizeOf.get(LinuxTime.timer_t.class) == Long.BYTES;
+        assert SizeOf.get(Time.timer_t.class) == Integer.BYTES || SizeOf.get(Time.timer_t.class) == Long.BYTES;
 
         com.oracle.svm.core.posix.cosmo.headers.Signal.sigevent sigevent = StackValue.get(com.oracle.svm.core.posix.cosmo.headers.Signal.sigevent.class);
         sigevent.sigev_notify(com.oracle.svm.core.posix.cosmo.headers.Signal.SIGEV_SIGNAL());
@@ -155,7 +155,7 @@ public final class CosmoSubstrateSigprofHandler extends SubstrateSigprofHandler 
         WordPointer timerPointer = StackValue.get(WordPointer.class);
         timerPointer.write(Word.zero());
 
-        int status = LinuxTime.NoTransitions.timer_create(LinuxTime.CLOCK_MONOTONIC(), sigevent, timerPointer);
+        int status = Time.NoTransitions.timer_create(Time.CLOCK_MONOTONIC(), sigevent, timerPointer);
         CosmoUtils.checkStatusIs0(status, "timer_create(clockid, sevp, timerid): wrong arguments.");
         setSamplerTimerId(thread, timerPointer.read());
         updateInterval(thread);
@@ -166,7 +166,7 @@ public final class CosmoSubstrateSigprofHandler extends SubstrateSigprofHandler 
     protected void uninstall0(IsolateThread thread) {
         assert hasSamplerTimerId(thread);
 
-        int status = LinuxTime.NoTransitions.timer_delete(getSamplerTimerId(thread));
+        int status = Time.NoTransitions.timer_delete(getSamplerTimerId(thread));
         CosmoUtils.checkStatusIs0(status, "timer_delete(clockid): wrong arguments.");
         clearSamplerTimerId(thread);
     }
@@ -176,13 +176,13 @@ public final class CosmoSubstrateSigprofHandler extends SubstrateSigprofHandler 
         assert hasSamplerTimerId(thread);
 
         long ns = TimeUtils.millisToNanos(newIntervalMillis);
-        LinuxTime.itimerspec newTimerSpec = UnsafeStackValue.get(LinuxTime.itimerspec.class);
+        Time.itimerspec newTimerSpec = UnsafeStackValue.get(Time.itimerspec.class);
         newTimerSpec.it_value().set_tv_sec(ns / TimeUtils.nanosPerSecond);
         newTimerSpec.it_value().set_tv_nsec(ns % TimeUtils.nanosPerSecond);
         newTimerSpec.it_interval().set_tv_sec(ns / TimeUtils.nanosPerSecond);
         newTimerSpec.it_interval().set_tv_nsec(ns % TimeUtils.nanosPerSecond);
 
-        int status = LinuxTime.NoTransitions.timer_settime(getSamplerTimerId(thread), 0, newTimerSpec, Word.nullPointer());
+        int status = Time.NoTransitions.timer_settime(getSamplerTimerId(thread), 0, newTimerSpec, Word.nullPointer());
         CosmoUtils.checkStatusIs0(status, "timer_settime(timerid, flags, newTimerSpec, oldValue): wrong arguments.");
     }
 
