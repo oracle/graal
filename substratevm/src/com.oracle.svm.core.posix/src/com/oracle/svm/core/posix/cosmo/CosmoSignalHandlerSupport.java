@@ -449,12 +449,6 @@ class CosmoSignalHandlerFeature implements InternalFeature {
             signalNameToSignalNum.put(getJavaSignalName(sig.name()), sigNum);
         }
 
-        for (Signal.LinuxSignalEnum sig : Signal.LinuxSignalEnum.values()) {
-            int sigNum = sig.getCValue();
-            maxSigNum = Math.max(sigNum, maxSigNum);
-            signalNameToSignalNum.put(getJavaSignalName(sig.name()), sigNum);
-        }
-
         boolean[] supportedSignals = new boolean[maxSigNum + 1];
         for (var entry : signalNameToSignalNum.entrySet()) {
             supportedSignals[entry.getValue()] = true;

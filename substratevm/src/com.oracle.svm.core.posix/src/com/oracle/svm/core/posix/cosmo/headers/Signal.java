@@ -204,7 +204,6 @@ public class Signal {
         SIGHUP,
         SIGILL,
         SIGINT,
-        SIGIO,
         SIGIOT,
         SIGKILL,
         SIGPIPE,
@@ -225,25 +224,6 @@ public class Signal {
         SIGWINCH,
         SIGXCPU,
         SIGXFSZ;
-
-        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public int getCValue() {
-            if (SubstrateUtil.HOSTED) {
-                return CConstant.ValueAccess.get(this, "getCValue0");
-            }
-            return getCValue0();
-        }
-
-        @CEnumValue
-        private native int getCValue0();
-    }
-
-    @Platforms(Platform.LINUX.class)
-    @CEnum
-    @CContext(CosmoDirectives.class)
-    public enum LinuxSignalEnum {
-        SIGPOLL,
-        SIGPWR;
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public int getCValue() {
