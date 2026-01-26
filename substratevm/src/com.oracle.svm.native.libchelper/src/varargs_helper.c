@@ -58,9 +58,14 @@ int openatISII(int dirfd, const char *pathname, int flags, int mode)
     return openat(dirfd, pathname, flags, mode);
 }
 
-#ifdef __linux__
+#if defined(__linux__)
 void *mremapP(void *old_address, size_t old_size, size_t new_size, int flags, void *new_address) {
     return mremap(old_address, old_size, new_size, flags, new_address);
+}
+#elif defined(__COSMOPOLITAN__)
+#include "libc/runtime/runtime.h"
+void *mremapP(void *old_address, size_t old_size, size_t new_size, int flags, void *new_address) {
+    return cosmo_mremap(old_address, old_size, new_size, flags, new_address);
 }
 #endif
 
