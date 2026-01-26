@@ -28,6 +28,7 @@ import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.posix.cosmo.CosmoSignalHandlerSupport;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
@@ -37,6 +38,8 @@ import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
+import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
+import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
@@ -73,6 +76,11 @@ public class Signal {
 
     @CPointerTo(nameOfCType = "sigset_t")
     public interface sigset_tPointer extends PointerBase {
+    }
+
+    public interface VoidFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        void dispatch();
     }
 
     /**
@@ -119,17 +127,13 @@ public class Signal {
 
     @CStruct
     public interface ucontext_t extends RegisterDumper.Context {
-        @CFieldAddress("uc_mcontext.gregs")
-        @Platforms({Platform.LINUX_AMD64.class})
-        GregsPointer uc_mcontext_linux_amd64_gregs();
+        @CFieldAddress("uc_mcontext")
+        @Platforms({Platform.LINUX_AMD64_BASE.class})
+        mcontext_linux_x86_64_t uc_mcontext_linux_x86_64();
 
         @CFieldAddress("uc_mcontext")
         @Platforms({Platform.LINUX_AARCH64_BASE.class})
         mcontext_linux_aarch64_t uc_mcontext_linux_aarch64();
-
-        @CFieldAddress("uc_mcontext")
-        @Platforms({Platform.LINUX_RISCV64.class})
-        mcontext_linux_riscv64_t uc_mcontext_linux_riscv64();
     }
 
     public interface AdvancedSignalDispatcher extends CFunctionPointer {
@@ -137,13 +141,13 @@ public class Signal {
         void dispatch(int signum, siginfo_t siginfo, WordPointer opaque);
     }
 
-    @CConstant
+    @CFunction(value = "stubSA_RESTART", transition = CFunction.Transition.NO_TRANSITION)
     public static native int SA_RESTART();
 
-    @CConstant
+    @CFunction(value = "stubSA_SIGINFO", transition = CFunction.Transition.NO_TRANSITION)
     public static native int SA_SIGINFO();
 
-    @CConstant
+    @CFunction(value = "stubSA_NODEFER", transition = CFunction.Transition.NO_TRANSITION)
     public static native int SA_NODEFER();
 
     @CStruct(addStructKeyword = true)
@@ -161,10 +165,15 @@ public class Signal {
         void sa_sigaction(AdvancedSignalDispatcher value);
 
         @CField
-        int sa_flags();
+        @AllowWideningCast
+        long sa_flags();
 
         @CField
-        void sa_flags(int value);
+        @AllowNarrowingCast
+        void sa_flags(long value);
+
+        @CField
+        VoidFunctionPointer sa_restorer();
 
         @CFieldAddress
         sigset_tPointer sa_mask();
@@ -179,7 +188,7 @@ public class Signal {
         void sigev_signo(int value);
     }
 
-    /** Don't call this function directly, use {@link PosixSignalHandlerSupport} instead. */
+    /** Don't call this function directly, use {@link CosmoSignalHandlerSupport} instead. */
     @CFunction(transition = NO_TRANSITION)
     public static native int sigaction(int signum, sigaction act, sigaction oldact);
 
@@ -249,86 +258,6 @@ public class Signal {
     }
 
     /**
-     * Used in {@link SubstrateSegfaultHandler}. So, this must not be a {@link CEnum} as this would
-     * result in machine code that needs a proper a heap base.
-     *
-     * Information about Linux's AMD64 struct sigcontext_64 uc_mcontext can be found at
-     * https://github.com/torvalds/linux/blob/9e1ff307c779ce1f0f810c7ecce3d95bbae40896/arch/x86/include/uapi/asm/sigcontext.h#L238
-     */
-    @Platforms({Platform.LINUX_AMD64.class})
-    @CContext(CosmoDirectives.class)
-    public static final class GregEnumLinuxAMD64 {
-        @CConstant
-        public static native int REG_R8();
-
-        @CConstant
-        public static native int REG_R9();
-
-        @CConstant
-        public static native int REG_R10();
-
-        @CConstant
-        public static native int REG_R11();
-
-        @CConstant
-        public static native int REG_R12();
-
-        @CConstant
-        public static native int REG_R13();
-
-        @CConstant
-        public static native int REG_R14();
-
-        @CConstant
-        public static native int REG_R15();
-
-        @CConstant
-        public static native int REG_RDI();
-
-        @CConstant
-        public static native int REG_RSI();
-
-        @CConstant
-        public static native int REG_RBP();
-
-        @CConstant
-        public static native int REG_RBX();
-
-        @CConstant
-        public static native int REG_RDX();
-
-        @CConstant
-        public static native int REG_RAX();
-
-        @CConstant
-        public static native int REG_RCX();
-
-        @CConstant
-        public static native int REG_RSP();
-
-        @CConstant
-        public static native int REG_RIP();
-
-        @CConstant
-        public static native int REG_EFL();
-
-        @CConstant
-        public static native int REG_CSGSFS();
-
-        @CConstant
-        public static native int REG_ERR();
-
-        @CConstant
-        public static native int REG_TRAPNO();
-
-        @CConstant
-        public static native int REG_OLDMASK();
-
-        @CConstant
-        public static native int REG_CR2();
-    }
-
-    /**
      * Information about Linux's AArch64 struct sigcontext uc_mcontext can be found at
      * https://github.com/torvalds/linux/blob/9e1ff307c779ce1f0f810c7ecce3d95bbae40896/arch/arm64/include/uapi/asm/sigcontext.h#L28
      */
@@ -351,15 +280,62 @@ public class Signal {
         long pstate();
     }
 
-    /**
-     * Information about Linux's RISCV64 struct sigcontext uc_mcontext can be found at
-     * https://github.com/torvalds/linux/blob/9e1ff307c779ce1f0f810c7ecce3d95bbae40896/arch/riscv/include/uapi/asm/sigcontext.h#L17
-     */
     @CStruct(value = "mcontext_t")
-    @Platforms({Platform.LINUX_RISCV64.class})
-    public interface mcontext_linux_riscv64_t extends PointerBase {
-        @CFieldAddress(value = "__gregs")
-        GregsPointer gregs();
+    @Platforms({Platform.LINUX_AMD64_BASE.class})
+    public interface mcontext_linux_x86_64_t extends PointerBase {
+        @CField
+        long r8();
+
+        @CField
+        long r9();
+
+        @CField
+        long r10();
+
+        @CField
+        long r11();
+
+        @CField
+        long r12();
+
+        @CField
+        long r13();
+
+        @CField
+        long r14();
+
+        @CField
+        long r15();
+
+        @CField
+        long rdi();
+
+        @CField
+        long rsi();
+
+        @CField
+        long rbp();
+
+        @CField
+        long rbx();
+
+        @CField
+        long rdx();
+
+        @CField
+        long rax();
+
+        @CField
+        long rcx();
+
+        @CField
+        long rsp();
+
+        @CField
+        long rip();
+
+        @CField
+        long eflags();
     }
 
     public static class NoTransitions {
