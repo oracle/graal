@@ -39,6 +39,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
+import com.oracle.svm.core.c.libc.CosmoLibC;
+import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
@@ -93,7 +95,23 @@ public abstract class NativeImageViaCC extends NativeImage {
             codeCache.purge();
 
             // 1. write the relocatable file
-            write(debug, tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));
+            Path objFilePath = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix());
+            write(debug, objFilePath);
+            if (LibCBase.targetLibCIs(CosmoLibC.class)) {
+                try {
+                    // TODO: get fixupobj from $PATH
+                    ArrayList<String> fixupList = new ArrayList<>();
+                    fixupList.add("fixupobj");
+                    fixupList.add(objFilePath.toAbsolutePath().toString());
+                    ProcessBuilder fixupCommand = FileUtils.prepareCommand(fixupList, tempDirectory);
+                    fixupCommand.redirectErrorStream(true);
+                    FileUtils.traceCommand(fixupCommand);
+                    fixupCommand.start();
+                    System.out.println("successfully ran fixupobj");
+                } catch (IOException e) {
+                    throw new RuntimeException("there was an error running fixupobj:" + e);
+                }
+            }
             if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
                 return null;
             }
