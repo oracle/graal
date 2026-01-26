@@ -24,19 +24,22 @@
  */
 package com.oracle.svm.core.posix;
 
+import java.nio.file.Path;
+import java.util.List;
+
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Unistd;
-import org.graalvm.word.impl.Word;
 
 public abstract class PosixSystemPropertiesSupport extends SystemPropertiesSupport {
 
-    public PosixSystemPropertiesSupport(boolean compatibilityMode) {
-        super(compatibilityMode);
+    public PosixSystemPropertiesSupport(boolean compatibilityMode, List<Path> applicationClassPath, List<Path> applicationModulePath) {
+        super(compatibilityMode, applicationClassPath, applicationModulePath);
     }
 
     @Override

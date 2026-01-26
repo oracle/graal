@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import java.nio.file.Path;
+import java.util.List;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CLibrary;
@@ -55,8 +58,8 @@ import com.oracle.svm.hosted.NativeImageOptions;
 @CLibrary(value = "darwin", requireStatic = true)
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
-    public DarwinSystemPropertiesSupport(boolean compatibilityMode) {
-        super(compatibilityMode);
+    public DarwinSystemPropertiesSupport(boolean compatibilityMode, List<Path> applicationClassPath, List<Path> applicationModulePath) {
+        super(compatibilityMode, applicationClassPath, applicationModulePath);
     }
 
     @Override
@@ -148,7 +151,8 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
 class DarwinSystemPropertiesFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(RuntimeSystemPropertiesSupport.class, new DarwinSystemPropertiesSupport(NativeImageOptions.compatibilityMode()));
+        ImageSingletons.add(RuntimeSystemPropertiesSupport.class,
+                        new DarwinSystemPropertiesSupport(NativeImageOptions.compatibilityMode(), access.getApplicationClassPath(), access.getApplicationModulePath()));
         ImageSingletons.add(SystemPropertiesSupport.class, (SystemPropertiesSupport) ImageSingletons.lookup(RuntimeSystemPropertiesSupport.class));
     }
 }

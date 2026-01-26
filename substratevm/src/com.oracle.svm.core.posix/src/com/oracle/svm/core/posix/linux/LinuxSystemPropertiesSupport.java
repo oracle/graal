@@ -45,11 +45,14 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerO
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.NativeImageOptions;
 
+import java.nio.file.Path;
+import java.util.List;
+
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
-    public LinuxSystemPropertiesSupport(boolean compatibilityMode) {
-        super(compatibilityMode);
+    public LinuxSystemPropertiesSupport(boolean compatibilityMode, List<Path> applicationClassPath, List<Path> applicationModulePath) {
+        super(compatibilityMode, applicationClassPath, applicationModulePath);
     }
 
     @Override
@@ -115,7 +118,7 @@ class LinuxSystemPropertiesFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        LinuxSystemPropertiesSupport singleton = new LinuxSystemPropertiesSupport(NativeImageOptions.compatibilityMode());
+        LinuxSystemPropertiesSupport singleton = new LinuxSystemPropertiesSupport(NativeImageOptions.compatibilityMode(), access.getApplicationClassPath(), access.getApplicationModulePath());
         ImageSingletons.add(RuntimeSystemPropertiesSupport.class, singleton);
         ImageSingletons.add(SystemPropertiesSupport.class, singleton);
     }
