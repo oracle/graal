@@ -36,6 +36,7 @@ import static org.graalvm.nativeimage.impl.InternalPlatform.PLATFORM_JNI;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -520,6 +521,43 @@ public class SubstrateOptions {
     @Platforms(HOSTED_ONLY.class)
     public static Path getImagePath() {
         return getImagePath(HostedOptionValues.singleton());
+    }
+
+    @Option(help = "Insert NOPs before/after function entry label", type=Expert)
+    public static final HostedOptionKey<String> PatchableFunctionEntry = new HostedOptionKey<>("0,0") {
+
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            int N = 0;
+            int M = 0;
+            int[] parts = Arrays.stream(newValue.split(","))
+                    .map(String::trim)
+                    .mapToInt(Integer::parseInt)
+                    .toArray();
+            if (parts.length > 2 || parts.length == 0) {
+                throw UserError.invalidOptionValue(PatchableFunctionEntry, newValue, "takes upto 2 integers N[,M]");
+            }
+            N = parts[0];
+            if (parts.length == 2) {
+                M = parts[1];
+            }
+            if (N < 0 || M < 0) {
+                throw UserError.invalidOptionValue(PatchableFunctionEntry, newValue, "takes nonnegative N[,M]");
+            }
+            if (N - M < 0) {
+                throw UserError.invalidOptionValue(PatchableFunctionEntry, newValue, "requires N >= M");
+            }
+            SubstrateOptions.ConcealedOptions.NOPsBeforeFunctionEntryLabel.update(values, M);
+            SubstrateOptions.ConcealedOptions.NOPsAfterFunctionEntryLabel.update(values, N-M);
+        }
+    };
+
+    public static int nopsBeforeFunctionEntry() {
+        return ConcealedOptions.NOPsBeforeFunctionEntryLabel.getValue();
+    }
+
+    public static int nopsAfterFunctionEntry() {
+        return ConcealedOptions.NOPsAfterFunctionEntryLabel.getValue();
     }
 
     public static final class GCGroup implements APIOptionGroup {
@@ -1304,6 +1342,12 @@ public class SubstrateOptions {
                 }
             }
         });
+
+        @Option(help = "Insert NOPs before function entry label for instrumentation", type = OptionType.Expert)
+        public static final HostedOptionKey<Integer> NOPsBeforeFunctionEntryLabel = new HostedOptionKey<>(0);
+
+        @Option(help = "Insert NOPs after function entry label for instrumentation", type = OptionType.Expert)
+        public static final HostedOptionKey<Integer> NOPsAfterFunctionEntryLabel = new HostedOptionKey<>(0);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
