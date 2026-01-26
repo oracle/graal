@@ -13,14 +13,34 @@
           ]
         }
       ]
+    },
+    {
+      "type": "sun.launcher.LauncherHelper",
+      "jniAccessible": true,
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true,
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.sun.tools.javac.launcher.SourceLauncher",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "main",
+          "parameterTypes": [
+            "java.lang.String[]"
+          ]
+        }
+      ]
     }
   ],
   "resources": [
     {
       "glob": "META-INF/services/javax.tools.JavaCompiler"
     },
-    { "bundle": "com.sun.tools.javac.resources.compiler" },
-    { "bundle": "com.sun.tools.javac.resources.launcher" },
-    { "bundle": "com.sun.tools.javac.resources.javac" }
+    { "module": "java.base", "bundle": "sun.launcher.resources.launcher" },
+    { "module": "jdk.compiler", "bundle": "com.sun.tools.javac.resources.compiler" },
+    { "module": "jdk.compiler", "bundle": "com.sun.tools.javac.resources.launcher" },
+    { "module": "jdk.compiler", "bundle": "com.sun.tools.javac.resources.javac" }
   ]
 }
