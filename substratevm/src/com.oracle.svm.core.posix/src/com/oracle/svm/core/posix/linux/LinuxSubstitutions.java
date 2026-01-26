@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -36,7 +37,7 @@ import com.oracle.svm.core.util.TimeUtils;
 
 import java.util.Objects;
 
-@TargetClass(java.lang.System.class)
+@TargetClass(value = java.lang.System.class, onlyWith = NotCosmoLibCSupplier.class)
 final class Target_java_lang_System_Linux {
 
     @Substitute

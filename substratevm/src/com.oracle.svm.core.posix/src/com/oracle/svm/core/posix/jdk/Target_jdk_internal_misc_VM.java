@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.jdk;
 
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
@@ -33,7 +34,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.PlatformTimeUtils;
 import com.oracle.svm.core.util.PlatformTimeUtils.SecondsNanos;
 
-@TargetClass(className = "jdk.internal.misc.VM")
+@TargetClass(className = "jdk.internal.misc.VM", onlyWith = NotCosmoLibCSupplier.class)
 final class Target_jdk_internal_misc_VM {
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)

@@ -31,6 +31,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.PosixUtils;
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
@@ -40,7 +41,7 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import org.graalvm.word.impl.Word;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.PlatformSupport.class)
+@AutomaticallyRegisteredImageSingleton(value = StackOverflowCheck.PlatformSupport.class, onlyWith = NotCosmoLibCSupplier.class)
 final class LinuxStackOverflowSupport implements StackOverflowCheck.PlatformSupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
