@@ -98,6 +98,7 @@ final class PolyglotExceptionImpl {
     private final Object guestObject;
     private final String qualifiedName;
     private final String message;
+    private final PolyglotExceptionImpl causeImpl;
 
     PolyglotExceptionImpl(PolyglotEngineImpl engine, PolyglotContextImpl.State polyglotContextState, boolean polyglotContextResourceExhausted, int exitCode, Throwable original) {
         this(engine.impl, engine, polyglotContextState, polyglotContextResourceExhausted, exitCode, null, original, false, false);
@@ -163,6 +164,19 @@ final class PolyglotExceptionImpl {
                 } else {
                     this.guestObject = null;
                 }
+                if (interop.hasExceptionCause(exception)) {
+                    Object guestCause = interop.getExceptionCause(exception);
+                    Throwable causeTruffleWrapper;
+                    try {
+                        throw interop.throwException(guestCause);
+                    } catch (Throwable t) {
+                        causeTruffleWrapper = t;
+                    }
+                    this.causeImpl = new PolyglotExceptionImpl(polyglot, engine, polyglotContextState, polyglotContextResourceExhausted, 0, languageContext, causeTruffleWrapper, allowInterop,
+                                    entered);
+                } else {
+                    this.causeImpl = null;
+                }
             } catch (UnsupportedMessageException ume) {
                 throw CompilerDirectives.shouldNotReachHere(ume);
             }
@@ -207,6 +221,7 @@ final class PolyglotExceptionImpl {
                 location = ((CancelExecution) exception).getSourceLocation();
             }
             this.sourceLocation = location != null ? newSourceSection(location) : null;
+            this.causeImpl = null;
         }
         if (exceptionMessage == null) {
             exceptionMessage = isHostException() ? asHostException().getMessage() : internal ? exception.toString() : exception.getMessage();
@@ -341,6 +356,10 @@ final class PolyglotExceptionImpl {
                 s.println("Polyglot Exception Creation Stacktrace:");
                 s.printStackTrace(creationStackTrace);
             }
+            if (causeImpl != null) {
+                s.print("Caused by: ");
+                causeImpl.printStackTrace(s);
+            }
         }
     }
 
@@ -432,6 +451,10 @@ final class PolyglotExceptionImpl {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         e.printStackTrace(new PrintStream(out));
         return new String(out.toByteArray());
+    }
+
+    public PolyglotExceptionImpl getCause() {
+        return causeImpl;
     }
 
     @SuppressWarnings("serial")
@@ -774,5 +797,4 @@ final class PolyglotExceptionImpl {
             }
         }
     }
-
 }

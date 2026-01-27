@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,6 +87,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
  */
 @SuppressWarnings("serial")
 public final class PolyglotException extends RuntimeException {
+    private static final int MAX_CAUSE_DEPTH = 16;
 
     final AbstractExceptionDispatch dispatch;
     final Object impl;
@@ -105,6 +106,10 @@ public final class PolyglotException extends RuntimeException {
     final Object anchor;
 
     PolyglotException(String message, AbstractExceptionDispatch dispatch, Object receiver, Object anchor) {
+        this(message, dispatch, receiver, anchor, 0);
+    }
+
+    private PolyglotException(String message, AbstractExceptionDispatch dispatch, Object receiver, Object anchor, int causeDepth) {
         super(message);
         this.dispatch = dispatch;
         this.impl = receiver;
@@ -113,6 +118,12 @@ public final class PolyglotException extends RuntimeException {
         // we need to materialize the stack if this exception is printed as cause of another error.
         // unfortunately we cannot detect this easily
         super.setStackTrace(getStackTrace());
+        if (causeDepth < MAX_CAUSE_DEPTH) {
+            Object causeImpl = dispatch.getCauseImpl(impl);
+            if (causeImpl != null) {
+                initCause(new PolyglotException(dispatch.getMessage(causeImpl), dispatch, causeImpl, anchor, causeDepth + 1));
+            }
+        }
     }
 
     /**

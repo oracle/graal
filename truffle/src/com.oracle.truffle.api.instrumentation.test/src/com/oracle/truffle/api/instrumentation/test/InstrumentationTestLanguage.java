@@ -1592,11 +1592,17 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
             private final String type;
             private final transient Object metaObject;
+            private final TestLanguageException cause;
 
             TestLanguageException(String type, String message, ThrowNode throwNode) {
                 super(message, throwNode);
                 this.type = type;
                 this.metaObject = new InstrumentationMetaObject(this, type);
+                if ("with_cause".equals(type)) {
+                    cause = new TestLanguageException("cause", "Root cause", throwNode);
+                } else {
+                    cause = null;
+                }
             }
 
             @ExportMessage
@@ -1639,6 +1645,16 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             @TruffleBoundary
             String asString() {
                 return type + ": " + getMessage();
+            }
+
+            @ExportMessage
+            boolean hasExceptionCause() {
+                return cause != null;
+            }
+
+            @ExportMessage
+            Object getExceptionCause() {
+                return cause;
             }
         }
 
