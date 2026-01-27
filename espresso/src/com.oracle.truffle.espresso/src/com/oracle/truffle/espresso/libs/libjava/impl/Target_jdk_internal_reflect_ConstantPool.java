@@ -39,16 +39,14 @@ import com.oracle.truffle.espresso.vm.VM;
 @EspressoSubstitutions(group = LibJava.class)
 public final class Target_jdk_internal_reflect_ConstantPool {
     @Substitution(hasReceiver = true)
-    public static int getSize0(@JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, @Inject VM vm) {
-        return vm.JVM_ConstantPoolGetSize(unused, jcpool);
+    public static int getSize0(@JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, @Inject Meta meta) {
+        return VM.JVM_ConstantPoolGetSize(unused, jcpool, meta);
     }
 
     @Substitution(hasReceiver = true)
     public static @JavaType(Class.class) StaticObject getClassAt0(@JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
-                    @Inject VM vm,
-                    @Inject Meta meta,
-                    @Inject SubstitutionProfiler profiler) {
-        return vm.JVM_ConstantPoolGetClassAt(unused, jcpool, index, meta, profiler);
+                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+        return VM.JVM_ConstantPoolGetClassAt(unused, jcpool, index, meta, profiler);
     }
 
     @Substitution(hasReceiver = true)
@@ -116,50 +114,38 @@ public final class Target_jdk_internal_reflect_ConstantPool {
 
     @Substitution(hasReceiver = true)
     public static int getIntAt0(@JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
-                    @Inject VM vm,
-                    @Inject Meta meta,
-                    @Inject SubstitutionProfiler profiler) {
-        return vm.JVM_ConstantPoolGetIntAt(unused, jcpool, index, meta, profiler);
+                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+        return VM.JVM_ConstantPoolGetIntAt(unused, jcpool, index, meta, profiler);
     }
 
     @Substitution(hasReceiver = true)
     public static long getLongAt0(@JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
-                    @Inject VM vm,
-                    @Inject Meta meta,
-                    @Inject SubstitutionProfiler profiler) {
-        return vm.JVM_ConstantPoolGetLongAt(unused, jcpool, index, meta, profiler);
+                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+        return VM.JVM_ConstantPoolGetLongAt(unused, jcpool, index, meta, profiler);
     }
 
     @Substitution(hasReceiver = true)
     public static float getFloatAt0(@JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
-                    @Inject VM vm,
-                    @Inject Meta meta,
-                    @Inject SubstitutionProfiler profiler) {
-        return vm.JVM_ConstantPoolGetFloatAt(unused, jcpool, index, meta, profiler);
+                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+        return VM.JVM_ConstantPoolGetFloatAt(unused, jcpool, index, meta, profiler);
     }
 
     @Substitution(hasReceiver = true)
     public static double getDoubleAt0(@JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
-                    @Inject VM vm,
-                    @Inject Meta meta,
-                    @Inject SubstitutionProfiler profiler) {
-        return vm.JVM_ConstantPoolGetDoubleAt(unused, jcpool, index, meta, profiler);
+                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+        return VM.JVM_ConstantPoolGetDoubleAt(unused, jcpool, index, meta, profiler);
     }
 
     @Substitution(hasReceiver = true)
     public static @JavaType(String.class) StaticObject getStringAt0(@JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
-                    @Inject VM vm,
-                    @Inject Meta meta,
-                    @Inject SubstitutionProfiler profiler) {
-        return vm.JVM_ConstantPoolGetStringAt(unused, jcpool, index, meta, profiler);
+                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+        return VM.JVM_ConstantPoolGetStringAt(unused, jcpool, index, meta, profiler);
     }
 
     @Substitution(hasReceiver = true)
     public static @JavaType(String.class) StaticObject getUTF8At0(@JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
-                    @Inject VM vm,
-                    @Inject Meta meta,
-                    @Inject SubstitutionProfiler profiler) {
-        return vm.JVM_ConstantPoolGetUTF8At(unused, jcpool, index, meta, profiler);
+                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+        return VM.JVM_ConstantPoolGetUTF8At(unused, jcpool, index, meta, profiler);
     }
 
     @Substitution(hasReceiver = true)
