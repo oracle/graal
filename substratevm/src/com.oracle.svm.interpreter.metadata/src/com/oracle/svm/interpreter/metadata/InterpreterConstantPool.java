@@ -172,24 +172,18 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     public Object lookupConstant(int cpi, boolean resolve) {
         final Tag tag = tagAt(cpi);
         switch (tag) {
-            case INTEGER: {
+            case INTEGER:
                 return JavaConstant.forInt(this.intAt(cpi));
-            }
-            case FLOAT: {
+            case FLOAT:
                 return JavaConstant.forFloat(this.floatAt(cpi));
-            }
-            case LONG: {
+            case LONG:
                 return JavaConstant.forLong(this.longAt(cpi));
-            }
-            case DOUBLE: {
+            case DOUBLE:
                 return JavaConstant.forDouble(this.doubleAt(cpi));
-            }
-            case STRING: {
+            case STRING:
                 return SubstrateObjectConstant.forObject(resolvedAt(cpi, holder));
-            }
-            case CLASS: {
+            case CLASS:
                 return objAt(cpi);
-            }
             case METHODHANDLE:
             case METHODTYPE:
             case DYNAMIC:
