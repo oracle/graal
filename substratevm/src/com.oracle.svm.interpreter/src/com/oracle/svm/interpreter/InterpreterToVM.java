@@ -891,10 +891,14 @@ public final class InterpreterToVM {
             /* arguments to Log methods might have side-effects */
             if (InterpreterTraceSupport.getValue() && !quiet) {
                 traceInterpreter("found oneImpl: ").string(targetMethod.toString());
-                if (callCompiledTarget) {
-                    calleeFtnPtr = targetMethod.getNativeEntryPoint();
+            }
+            if (callCompiledTarget) {
+                calleeFtnPtr = targetMethod.getNativeEntryPoint();
+                if (InterpreterTraceSupport.getValue() && !quiet) {
                     traceInterpreter(" ... with compiled entry=").hex(calleeFtnPtr);
                 }
+            }
+            if (InterpreterTraceSupport.getValue() && !quiet) {
                 traceInterpreter("").newline();
             }
             VMError.guarantee(targetMethod != null, "VTBL_ONE_IMPL implies that oneImplementation is available in seedMethod");
