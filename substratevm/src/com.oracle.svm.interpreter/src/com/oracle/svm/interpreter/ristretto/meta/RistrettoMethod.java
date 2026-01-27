@@ -66,6 +66,11 @@ import jdk.vm.ci.meta.Signature;
 public final class RistrettoMethod extends SubstrateMethod {
     private final InterpreterResolvedJavaMethod interpreterMethod;
     private RistrettoConstantPool ristrettoConstantPool;
+    /**
+     * Cached exception handlers for this method. Propagated the first time
+     * {@link #getExceptionHandlers()} is called.
+     */
+    private volatile ExceptionHandler[] rHandlers;
 
     // JIT COMPILER SUPPORT START
     /**
@@ -214,18 +219,25 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     @Override
     public ExceptionHandler[] getExceptionHandlers() {
-        ExceptionHandler[] iHandlers = interpreterMethod.getExceptionHandlers();
-        ExceptionHandler[] rHandlers = new ExceptionHandler[iHandlers.length];
-        for (int i = 0; i < iHandlers.length; i++) {
-            final ExceptionHandler iHandler = iHandlers[i];
-            final JavaType catchType = iHandler.getCatchType();
-            if (catchType instanceof ResolvedJavaType) {
-                assert catchType instanceof InterpreterResolvedJavaType;
-                InterpreterResolvedJavaType iCatchType = (InterpreterResolvedJavaType) catchType;
-                RistrettoType rType = RistrettoType.create(iCatchType);
-                rHandlers[i] = new ExceptionHandler(iHandler.getStartBCI(), iHandler.getEndBCI(), iHandler.getHandlerBCI(), iHandler.catchTypeCPI(), rType);
-            } else {
-                rHandlers[i] = iHandler;
+        if (rHandlers == null) {
+            synchronized (this) {
+                if (rHandlers == null) {
+                    ExceptionHandler[] iHandlers = interpreterMethod.getExceptionHandlers();
+                    ExceptionHandler[] effectiveRHandlers = new ExceptionHandler[iHandlers.length];
+                    for (int i = 0; i < iHandlers.length; i++) {
+                        final ExceptionHandler iHandler = iHandlers[i];
+                        final JavaType catchType = iHandler.getCatchType();
+                        if (catchType instanceof ResolvedJavaType) {
+                            assert catchType instanceof InterpreterResolvedJavaType;
+                            InterpreterResolvedJavaType iCatchType = (InterpreterResolvedJavaType) catchType;
+                            RistrettoType rType = RistrettoType.create(iCatchType);
+                            effectiveRHandlers[i] = new ExceptionHandler(iHandler.getStartBCI(), iHandler.getEndBCI(), iHandler.getHandlerBCI(), iHandler.catchTypeCPI(), rType);
+                        } else {
+                            effectiveRHandlers[i] = iHandler;
+                        }
+                    }
+                    rHandlers = effectiveRHandlers;
+                }
             }
         }
         return rHandlers;
