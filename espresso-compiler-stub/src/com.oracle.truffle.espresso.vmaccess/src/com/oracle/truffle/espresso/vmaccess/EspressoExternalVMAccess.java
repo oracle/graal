@@ -530,30 +530,59 @@ final class EspressoExternalVMAccess implements VMAccess {
     }
 
     static RuntimeException throwHostException(PolyglotException e) {
+        throw sneakyThrow(asHostException(e));
+    }
+
+    private static Throwable asHostException(PolyglotException e) {
         if (!e.isGuestException()) {
-            throw e;
+            return e;
         }
         Value guestException = e.getGuestObject();
         if (guestException == null || guestException.isNull()) {
-            throw e;
+            return e;
         }
         Value guestExceptionMetaobject = guestException.getMetaObject();
         if (guestExceptionMetaobject == null || guestExceptionMetaobject.isNull()) {
-            throw e;
+            return e;
         }
         String guestExceptionQualifiedType = guestExceptionMetaobject.getMetaQualifiedName();
         Throwable t = switch (guestExceptionQualifiedType) {
             case "java.lang.IndexOutOfBoundsException" -> new IndexOutOfBoundsException(e.getMessage());
             case "java.lang.IllegalArgumentException" -> new IllegalArgumentException(e.getMessage());
-            case "java.lang.ClassFormatError" -> new ClassFormatError(e.getMessage());
+            case "java.lang.ClassNotFoundException" -> new ClassNotFoundException(e.getMessage());
+
+            // LinkageError and its sub-classes
+            case "java.lang.LinkageError" -> new LinkageError(e.getMessage());
+            case "java.lang.ClassCircularityError" -> new ClassCircularityError(e.getMessage());
+            case "java.lang.UnsatisfiedLinkError" -> new UnsatisfiedLinkError(e.getMessage());
+            case "java.lang.ExceptionInInitializerError" -> new ExceptionInInitializerError(e.getMessage());
             case "java.lang.NoClassDefFoundError" -> new NoClassDefFoundError(e.getMessage());
             case "java.lang.VerifyError" -> new VerifyError(e.getMessage());
+            case "java.lang.BootstrapMethodError" -> new BootstrapMethodError(e.getMessage());
+            // -> IncompatibleClassChangeError and its sub-classes
+            case "java.lang.IncompatibleClassChangeError" -> new IncompatibleClassChangeError(e.getMessage());
+            case "java.lang.AbstractMethodError" -> new AbstractMethodError(e.getMessage());
+            case "java.lang.IllegalAccessError" -> new IllegalAccessError(e.getMessage());
+            case "java.lang.InstantiationError" -> new InstantiationError(e.getMessage());
+            case "java.lang.NoSuchFieldError" -> new NoSuchFieldError(e.getMessage());
+            case "java.lang.NoSuchMethodError" -> new NoSuchMethodError(e.getMessage());
+            // -> ClassFormatError and its sub-classes
+            case "java.lang.ClassFormatError" -> new ClassFormatError(e.getMessage());
+            case "java.lang.UnsupportedClassVersionError" -> new UnsupportedClassVersionError(e.getMessage());
             default -> e;
         };
         if (t != e) {
-            t.initCause(e);
+            t.setStackTrace(e.getStackTrace());
+            Throwable cause = e.getCause();
+            if (cause != null) {
+                if (cause instanceof PolyglotException polyglotCause) {
+                    t.initCause(asHostException(polyglotCause));
+                } else {
+                    t.initCause(cause);
+                }
+            }
         }
-        throw sneakyThrow(t);
+        return t;
     }
 
     @SuppressWarnings("unchecked")
