@@ -32,6 +32,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.svm.core.meta.MethodPointer;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -69,6 +70,7 @@ import com.oracle.svm.util.ReflectionUtil;
 @AutomaticallyRegisteredFeature
 public class CremaFeature implements InternalFeature {
     private AnalysisMethod enterVTableInterpreterStub;
+    private AnalysisMethod enterDirectInterpreterStub;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -91,9 +93,14 @@ public class CremaFeature implements InternalFeature {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         try {
             AnalysisType declaringClass = accessImpl.getMetaAccess().lookupJavaType(InterpreterStubSection.class);
+
             enterVTableInterpreterStub = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(accessImpl.getMetaAccess(), declaringClass,
                             "enterVTableInterpreterStub", int.class, Pointer.class);
             accessImpl.registerAsRoot(enterVTableInterpreterStub, true, "stub for interpreter");
+
+            enterDirectInterpreterStub = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(accessImpl.getMetaAccess(), declaringClass,
+                            "enterDirectInterpreterStub", InterpreterResolvedJavaMethod.class, Pointer.class);
+            accessImpl.registerAsRoot(enterDirectInterpreterStub, true, "stub for interpreter");
         } catch (NoSuchMethodError e) {
             throw VMError.shouldNotReachHere(e);
         }
@@ -136,6 +143,9 @@ public class CremaFeature implements InternalFeature {
         }
 
         InterpreterFeature.prepareSignatures();
+
+        accessImpl.registerAsImmutable(CremaSupport.singleton());
+        CremaSupport.singleton().setEnterDirectInterpreterStubEntryPoint(new MethodPointer(hUniverse.lookup(enterDirectInterpreterStub)));
     }
 
     @Override

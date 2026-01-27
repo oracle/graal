@@ -102,6 +102,7 @@ public final class RistrettoMethod extends SubstrateMethod {
         return RistrettoUtils.wasAOTCompiled(interpreterMethod);
     }
 
+    @Override
     public InterpreterResolvedJavaMethod getInterpreterMethod() {
         return interpreterMethod;
     }

@@ -137,4 +137,11 @@ public interface SharedMethod extends ResolvedJavaMethod {
      *         compiled entry point is available.
      */
     CFunctionPointer getAOTEntrypoint();
+
+    /**
+     * Returns the interpreter method representation for this method at runtime.
+     *
+     * @return interpreter method for target method, or {@code null} if not applicable
+     */
+    ResolvedJavaMethod getInterpreterMethod();
 }

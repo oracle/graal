@@ -644,7 +644,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                         callTarget.signature(), gen);
         frameMapBuilder.callsMethod(invokeCc);
 
-        Value[] parameters = visitInvokeArguments(invokeCc, callTarget.arguments());
+        Value[] parameters = visitInvokeArguments(invokeCc, callTarget.arguments(), callTarget);
 
         LabelRef exceptionEdge = null;
         if (x instanceof InvokeWithExceptionNode) {
@@ -714,7 +714,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
 
-    public Value[] visitInvokeArguments(CallingConvention invokeCc, Collection<ValueNode> arguments) {
+    public Value[] visitInvokeArguments(CallingConvention invokeCc, Collection<ValueNode> arguments, @SuppressWarnings("unused") LoweredCallTargetNode callTargetNode) {
         // for each argument, load it into the correct location
         Value[] result = new Value[arguments.size()];
         int j = 0;

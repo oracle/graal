@@ -73,8 +73,6 @@ import org.graalvm.word.impl.Word;
 
 public class AArch64InterpreterStubs {
 
-    public static final Register TRAMPOLINE_ARGUMENT = AArch64.r12;
-
     public static class InterpreterEnterStubContext extends SubstrateAArch64Backend.SubstrateAArch64FrameContext {
 
         public InterpreterEnterStubContext(SharedMethod method) {
@@ -90,7 +88,7 @@ public class AArch64InterpreterStubs {
         public void enter(CompilationResultBuilder crb) {
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
 
-            Register trampArg = TRAMPOLINE_ARGUMENT;
+            Register trampArg = SubstrateAArch64Backend.HIDDEN_ARGUMENT_REGISTER;
             Register spCopy = AArch64.r11;
 
             masm.mov(64, spCopy, sp);

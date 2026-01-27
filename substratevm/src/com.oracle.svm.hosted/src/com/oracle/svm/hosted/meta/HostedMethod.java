@@ -709,4 +709,9 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     public CFunctionPointer getAOTEntrypoint() {
         throw VMError.intentionallyUnimplemented();
     }
+
+    @Override
+    public ResolvedJavaMethod getInterpreterMethod() {
+        return null;
+    }
 }
