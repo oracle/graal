@@ -328,6 +328,11 @@ public class NativeImageGeneratorRunner {
             @SuppressWarnings("unchecked")
             List<String> addExports = ((LocatableMultiOptionValue<String>) options.get(NativeImageClassLoaderOptions.AddExports)).values();
             builder.vmOption("java.AddExports=" + String.join(File.pathSeparator, addExports));
+
+            // Guest version of -XX:+EnableJVMCI that is currently passed by
+            // the driver to the builder VM as part of the "graal compiler flags".
+            // See `mx_substratevm.py:compute_graal_compiler_flags_map`
+            builder.vmOption("java.EnableJVMCI=true");
         }
         return builder.build();
     }
