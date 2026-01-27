@@ -776,6 +776,11 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         return preparedSignature;
     }
 
+    @Override
+    public final boolean canBeStaticallyBound() {
+        return (isFinal() || isPrivate() || isStatic() || getDeclaringClass().isLeaf() || isConstructor()) && isConcrete();
+    }
+
     // region Unimplemented methods
 
     @Override
@@ -866,11 +871,6 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     @Override
     public final boolean isDefault() {
         throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final boolean canBeStaticallyBound() {
-        return (isFinal() || isPrivate() || isStatic() || getDeclaringClass().isLeaf() || isConstructor()) && isConcrete();
     }
 
     @Override
