@@ -164,8 +164,7 @@ public final class Target_jdk_internal_reflect_ConstantPool {
 
     @Substitution(hasReceiver = true)
     @SuppressWarnings("unused")
-    public static byte getTagAt0(@JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index) {
-        throw JavaSubstitution.unimplemented();
-
+    public static byte getTagAt0(@JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index, @Inject VM vm) {
+        return (byte) vm.JVM_ConstantPoolGetTagAt(unused, jcpool, index);
     }
 }

@@ -1910,6 +1910,11 @@ public final class VM extends NativeEnv {
         return jcpool.getMirrorKlass(getMeta()).getConstantPool().longAt(index);
     }
 
+    @VmImpl(isJni = true)
+    public int JVM_ConstantPoolGetTagAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index) {
+        return jcpool.getMirrorKlass(getMeta()).getConstantPool().tagAt(index).getValue();
+    }
+
     // endregion ConstantPool
 
     // region class loading
