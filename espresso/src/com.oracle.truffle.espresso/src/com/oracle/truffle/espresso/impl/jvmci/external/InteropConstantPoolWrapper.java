@@ -78,7 +78,7 @@ public class InteropConstantPoolWrapper implements TruffleObject {
                         InvokeMember.LOOKUP_NAME,
                         InvokeMember.LOOKUP_APPENDIX,
                         InvokeMember.LOOKUP_CONSTANT,
-                        InvokeMember.LOOKUP_DYNAMIC_KIND,
+                        InvokeMember.LOOKUP_RESOLVED_DYNAMIC_KIND,
                         InvokeMember.GET_TAG_BYTE_AT,
                         InvokeMember.LOOKUP_REFERENCED_TYPE,
                         InvokeMember.LOOKUP_TYPE,
@@ -138,7 +138,7 @@ public class InteropConstantPoolWrapper implements TruffleObject {
         static final String LOOKUP_NAME = "lookupName";
         static final String LOOKUP_APPENDIX = "lookupAppendix";
         static final String LOOKUP_CONSTANT = "lookupConstant";
-        static final String LOOKUP_DYNAMIC_KIND = "lookupDynamicKind";
+        static final String LOOKUP_RESOLVED_DYNAMIC_KIND = "lookupResolvedDynamicKind";
         static final String GET_TAG_BYTE_AT = "getTagByteAt";
         static final String LOOKUP_REFERENCED_TYPE = "lookupReferencedType";
         static final String LOOKUP_TYPE = "lookupType";
@@ -299,8 +299,8 @@ public class InteropConstantPoolWrapper implements TruffleObject {
             return JVMCIConstantPoolUtils.lookupAppendix(receiver.constantPool, index, opcode, context);
         }
 
-        @Specialization(guards = "LOOKUP_DYNAMIC_KIND.equals(member)")
-        static int lookupDynamicKind(InteropConstantPoolWrapper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+        @Specialization(guards = "LOOKUP_RESOLVED_DYNAMIC_KIND.equals(member)")
+        static int lookupResolvedDynamicKind(InteropConstantPoolWrapper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
                         @Bind Node node,
                         @Cached @Exclusive InlinedBranchProfile typeError,
                         @Cached @Exclusive InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
@@ -312,6 +312,11 @@ public class InteropConstantPoolWrapper implements TruffleObject {
             if (!(arguments[0] instanceof Integer cpi)) {
                 typeError.enter(node);
                 throw UnsupportedTypeException.create(arguments);
+            }
+            Meta meta = EspressoContext.get(node).getMeta();
+            ResolvedConstant resolvedConstant = receiver.constantPool.peekResolvedOrNull(cpi, meta);
+            if (resolvedConstant == null) {
+                return '-';
             }
             return TypeSymbols.getJavaKind(receiver.constantPool.dynamicType(cpi)).getTypeChar();
         }
@@ -333,11 +338,11 @@ public class InteropConstantPoolWrapper implements TruffleObject {
             }
             boolean resolve = false;
             if (arguments.length > 1) {
-                if (!(arguments[1] instanceof Boolean shouldDesolve)) {
+                if (!(arguments[1] instanceof Boolean shouldResolve)) {
                     typeError.enter(node);
                     throw UnsupportedTypeException.create(arguments);
                 }
-                resolve = shouldDesolve;
+                resolve = shouldResolve;
             }
             if (cpi < 0 || cpi >= receiver.constantPool.length()) {
                 indexError.enter(node);
@@ -365,7 +370,12 @@ public class InteropConstantPoolWrapper implements TruffleObject {
                 }
                 case DYNAMIC -> {
                     Meta meta = EspressoContext.get(node).getMeta();
-                    ResolvedConstant resolvedConstant = receiver.constantPool.peekResolvedOrNull(cpi, meta);
+                    ResolvedConstant resolvedConstant;
+                    if (resolve) {
+                        resolvedConstant = receiver.constantPool.resolvedAt(receiver.constantPool.getHolder(), cpi);
+                    } else {
+                        resolvedConstant = receiver.constantPool.peekResolvedOrNull(cpi, meta);
+                    }
                     if (resolvedConstant == null) {
                         yield StaticObject.NULL;
                     }
