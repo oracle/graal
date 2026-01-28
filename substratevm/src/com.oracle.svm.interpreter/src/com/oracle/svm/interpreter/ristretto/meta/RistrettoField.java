@@ -26,6 +26,10 @@ package com.oracle.svm.interpreter.ristretto.meta;
 
 import java.util.function.Function;
 
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.CremaResolvedObjectType;
@@ -97,10 +101,30 @@ public final class RistrettoField extends SubstrateField {
         if (fieldType instanceof InterpreterResolvedJavaType iType) {
             return RistrettoType.create(iType);
         }
-        if (fieldType instanceof UnresolvedJavaType) {
-            return fieldType;
+        if (fieldType instanceof UnresolvedJavaType unresolvedJavaType) {
+            return queryAOTTypes(unresolvedJavaType);
         }
         throw GraalError.shouldNotReachHere("Must have a ristretto type available at this point for " + interpreterField + " but is " + fieldType);
+    }
+
+    private JavaType queryAOTTypes(UnresolvedJavaType unresolvedJavaType) {
+        // crema does not preserve the resolved type of aot fields - query by class
+        try {
+            RistrettoType declaringClass = (RistrettoType) getDeclaringClass();
+            AbstractClassRegistry registry = ClassRegistries.singleton().getRegistry((declaringClass.getInterpreterType()).getJavaClass().getClassLoader());
+
+            Class<?> result = registry.findLoadedClass(SymbolsSupport.getTypes().lookupValidType(unresolvedJavaType.getName()));
+            if (result != null) {
+                DynamicHub hub = DynamicHub.fromClass(result);
+                if (hub.isInitialized()) {
+                    // must be aot type
+                    return RistrettoType.create((InterpreterResolvedJavaType) hub.getInterpreterType());
+                }
+            }
+        } catch (Throwable t) {
+            // swallow
+        }
+        return unresolvedJavaType;
     }
 
     @Override
