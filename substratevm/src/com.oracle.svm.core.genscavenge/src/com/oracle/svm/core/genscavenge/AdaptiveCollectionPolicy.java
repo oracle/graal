@@ -28,11 +28,6 @@ import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoun
 
 import org.graalvm.word.UnsignedWord;
 
-<<<<<<< HEAD
-import com.oracle.svm.core.Uninterruptible;
-=======
-import com.oracle.svm.core.Isolates;
->>>>>>> 40b566ff15b (Remove the Java heap allocation in AbstractCollectionPolicy.updateSizeParameters().)
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
@@ -428,21 +423,13 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
         if (completeCollection) {
             updateCollectionEndAverages(avgMajorGcCost, avgMajorPause, majorCostEstimator, avgMajorIntervalSeconds,
-<<<<<<< HEAD
-                            cause, latestMajorMutatorIntervalNanos, timer.totalNanos(), promoSize);
-=======
-                            cause, latestMajorMutatorIntervalNanos, timer.lastIntervalNanos(), sizes.getPromoSize());
->>>>>>> 40b566ff15b (Remove the Java heap allocation in AbstractCollectionPolicy.updateSizeParameters().)
+                            cause, latestMajorMutatorIntervalNanos, timer.totalNanos(), sizes.getPromoSize());
             majorCount++;
             minorCountSinceMajorCollection = 0;
 
         } else {
             updateCollectionEndAverages(avgMinorGcCost, avgMinorPause, minorCostEstimator, null,
-<<<<<<< HEAD
-                            cause, latestMinorMutatorIntervalNanos, timer.totalNanos(), edenSize);
-=======
-                            cause, latestMinorMutatorIntervalNanos, timer.lastIntervalNanos(), sizes.getEdenSize());
->>>>>>> 40b566ff15b (Remove the Java heap allocation in AbstractCollectionPolicy.updateSizeParameters().)
+                            cause, latestMinorMutatorIntervalNanos, timer.totalNanos(), sizes.getEdenSize());
             minorCount++;
             minorCountSinceMajorCollection++;
 

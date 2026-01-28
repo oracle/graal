@@ -218,16 +218,8 @@ public final class HeapImpl extends Heap {
     public boolean tearDown() {
         youngGeneration.tearDown();
         oldGeneration.tearDown();
-<<<<<<< HEAD
-        getChunkProvider().tearDown();
-=======
         chunkProvider.tearDown();
         gcImpl.tearDown();
-
-        if (Metaspace.isSupported()) {
-            MetaspaceImpl.singleton().tearDown();
-        }
->>>>>>> 40b566ff15b (Remove the Java heap allocation in AbstractCollectionPolicy.updateSizeParameters().)
         return true;
     }
 
