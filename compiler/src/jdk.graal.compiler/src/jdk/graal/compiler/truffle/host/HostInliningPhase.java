@@ -1061,8 +1061,9 @@ public class HostInliningPhase extends AbstractInliningPhase {
         }
 
         // seems to be quite expensive so do this last
-        ProfilingInfo info = context.graph.getProfilingInfo(targetMethod);
-        if (info != null && new OptimisticOptimizations(context.graph.getProfilingInfo(targetMethod), context.options).lessOptimisticThan(context.highTierContext.getOptimisticOptimizations())) {
+        ProfilingInfo info = context.graph.getProfilingInfo(context.graph.getCallerContext(), targetMethod);
+        if (info != null && new OptimisticOptimizations(context.graph.getProfilingInfo(context.graph.getCallerContext(), targetMethod), context.options).lessOptimisticThan(
+                        context.highTierContext.getOptimisticOptimizations())) {
             call.reason = "the callee uses less optimistic optimizations than caller";
             return false;
         }

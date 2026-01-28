@@ -351,7 +351,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
          */
         private void performRecompilationCheck(OptionValues options, HotSpotResolvedJavaMethod method) {
             if (checkRecompileCycle && (MethodRecompilationLimit.getValue(options) >= 0 && decompileCount >= MethodRecompilationLimit.getValue(options))) {
-                ProfilingInfo info = profileProvider.getProfilingInfo(method);
+                ProfilingInfo info = profileProvider.getProfilingInfo(null, method);
                 throw new ForceDeoptSpeculationPhase.TooManyDeoptimizationsError("too many decompiles: " + decompileCount + " " + ForceDeoptSpeculationPhase.getDeoptSummary(info));
             }
         }

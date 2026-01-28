@@ -984,7 +984,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         this.optimisticOpts = graphBuilderInstance.optimisticOpts;
         assert code.getCode() != null : method;
         this.stream = new BytecodeStream(code.getCode());
-        this.profilingInfo = graph.getProfilingInfo(method);
+        this.profilingInfo = parent == null ? graph.getProfilingInfo(graph.getCallerContext(), method) : graph.getProfilingInfo(getCallerPosition(parent), method);
         this.constantPool = code.getConstantPool();
         this.intrinsicContext = intrinsicContext;
         this.entryBCI = entryBCI;
@@ -1023,6 +1023,30 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         this.disableExplicitAllocationExceptionEdges = !userUseAllocWithException || graphBuilderConfig.oomeExceptionEdges() == ExplicitOOMEExceptionEdges.DisableOOMEExceptionEdges;
         this.calleeInOOMEBlock = graphBuilderConfig.oomeExceptionEdges() == ExplicitOOMEExceptionEdges.ForceOOMEExceptionEdges;
         assert !disableExplicitAllocationExceptionEdges || !calleeInOOMEBlock : Assertions.errorMessage("Cannot force callee to have exception edges if we explicitly disable them everywhere");
+    }
+
+    private static NodeSourcePosition getCallerPosition(BytecodeParser parent) {
+        BytecodeParser cur = parent;
+        // we use a list here to avoid iterating the call chain multiple times when building the
+        // context
+        List<NodeSourcePosition> callChain = null;
+        while (cur != null) {
+            if (callChain == null) {
+                callChain = new ArrayList<>();
+            }
+            NodeSourcePosition p = new NodeSourcePosition(null, cur.method, cur.bci());
+            callChain.add(p);
+            cur = cur.parent;
+        }
+        if (callChain == null) {
+            return null;
+        }
+        // callChain(0) is the leaf and callChain(size-1) is the start of the call chain
+        NodeSourcePosition toLeaf = callChain.getLast();
+        for (int i = callChain.size() - 2; i >= 0; i--) {
+            toLeaf = callChain.get(i).addCaller(toLeaf);
+        }
+        return toLeaf;
     }
 
     /**
@@ -2804,9 +2828,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         FixedWithNextNode calleeBeforeUnwindNode = null;
         ValueNode calleeUnwindValue = null;
 
-        try (InliningScope s = parsingIntrinsic() ? null
-                        : (calleeIntrinsicContext != null ? new IntrinsicScope(this, targetMethod, args)
-                                        : new InliningScope(this, targetMethod, args))) {
+        try (InliningScope s = parsingIntrinsic() ? null : (calleeIntrinsicContext != null ? new IntrinsicScope(this, targetMethod, args) : new InliningScope(this, targetMethod, args))) {
             BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
             if (currentBlockCatchesOOME()) {
                 parser.calleeInOOMEBlock = true;

@@ -24,20 +24,45 @@
  */
 package jdk.graal.compiler.nodes.spi;
 
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * An interface to abstract away the source of profile information used during compilation.
+ * Supplies profiling data for methods to the Graal compiler.
+ * <p>
+ * A ProfileProvider abstracts where profiles come from (e.g., runtime counters, recorded metadata,
+ * synthetic defaults) and how they are combined. The returned {@link ProfilingInfo} is a stable
+ * snapshot suitable for consumption by compiler phases and nodes. If no information is available,
+ * implementations should return a non-null {@link ProfilingInfo} that reports "not
+ * recorded"/"unknown" rather than {@code null}.
+ * <p>
+ * Thread-safety: Implementations must be safe to call from compilation threads. Returned
+ * {@code ProfilingInfo} should be immutable or otherwise safe for concurrent read-only use.
+ * <p>
+ * Performance: Calls to this interface may be frequent; implementations should avoid expensive
+ * recomputation and unnecessary allocation where practical.
  */
 public interface ProfileProvider {
-    /**
-     * @see ResolvedJavaMethod#getProfilingInfo()
-     */
-    ProfilingInfo getProfilingInfo(ResolvedJavaMethod method);
 
     /**
      * @see ResolvedJavaMethod#getProfilingInfo(boolean, boolean)
      */
-    ProfilingInfo getProfilingInfo(ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR);
+    ProfilingInfo getProfilingInfo(NodeSourcePosition callingContext, ResolvedJavaMethod method);
+
+    /**
+     * Returns profiling information for the given method in the specified context. The
+     * {@code callingContext} key selects a context-sensitive partition of the profiling data, i.e.,
+     * the context under which the profile should be injected into the graph. Implementations must
+     * return a non-null {@link ProfilingInfo}. If no data is available for the requested
+     * method-and-context pair, the returned object represents a context-insensitive aggregation of
+     * all the profiles under the prefix of the specified calling context.
+     * <p>
+     * <strong>If context sensitivity is not available in the current virtual machine or call chain
+     * the returned profiles are a context insensitive view of profiling data.</strong>
+     * <p>
+     * If {@code callingContext==null} returns a context insensitive profile.
+     */
+    ProfilingInfo getProfilingInfo(NodeSourcePosition callingContext, ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR);
+
 }

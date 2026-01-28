@@ -24,21 +24,26 @@
  */
 package jdk.graal.compiler.nodes.spi;
 
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * A {@link ProfileProvider} that requests the information directly from the
- * {@link ResolvedJavaMethod}.
+ * {@link ResolvedJavaMethod}. This ignores any context and always returns a context insensitive
+ * version of the profile.
  */
 public class ResolvedJavaMethodProfileProvider implements ProfileProvider {
+
     @Override
-    public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method) {
+    public ProfilingInfo getProfilingInfo(NodeSourcePosition callingContext, ResolvedJavaMethod method) {
+        // context-insensitive result
         return method.getProfilingInfo();
     }
 
     @Override
-    public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
+    public ProfilingInfo getProfilingInfo(NodeSourcePosition callingContext, ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
+        // context-insensitive result
         return method.getProfilingInfo(includeNormal, includeOSR);
     }
 }

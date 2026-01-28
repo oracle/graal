@@ -89,6 +89,7 @@ import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeMap;
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.hotspot.HotSpotGraphBuilderPhase;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
@@ -1570,12 +1571,12 @@ public abstract class GraalCompilerTest extends GraalTest {
     public static final ProfileProvider NO_PROFILE_PROVIDER = new ProfileProvider() {
 
         @Override
-        public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method) {
-            return getProfilingInfo(method, true, true);
+        public ProfilingInfo getProfilingInfo(NodeSourcePosition callingContext, ResolvedJavaMethod method) {
+            return getProfilingInfo(callingContext, method, true, true);
         }
 
         @Override
-        public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
+        public ProfilingInfo getProfilingInfo(NodeSourcePosition callingContext, ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
             return DefaultProfilingInfo.get(TriState.FALSE);
         }
 

@@ -31,9 +31,8 @@ import java.util.Map;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.Replacements;
-import jdk.graal.compiler.phases.common.inlining.info.elem.Inlineable;
 import jdk.graal.compiler.phases.common.inlining.info.InlineInfo;
-
+import jdk.graal.compiler.phases.common.inlining.info.elem.Inlineable;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -89,7 +88,7 @@ public abstract class AbstractInliningPolicy implements InliningPolicy {
         int size = 0;
         for (int i = 0; i < info.numberOfMethods(); i++) {
             ResolvedJavaMethod m = info.methodAt(i);
-            ProfilingInfo profile = info.graph().getProfilingInfo(m);
+            ProfilingInfo profile = info.graph().getProfilingInfo(info.graph().getCallerContext(), m);
             if (profile != null) {
                 int compiledGraphSize = profile.getCompilerIRSize(StructuredGraph.class);
                 if (compiledGraphSize > 0) {
