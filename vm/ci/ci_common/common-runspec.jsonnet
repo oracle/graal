@@ -160,6 +160,10 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     ['set-export', 'GRAALVM_HOME', self.mx_vm_common + (if with_profiles then vm.vm_profiles else []) + ['--quiet', '--no-warning', 'graalvm-home']],
   ]}),
 
+  local mx_env_next = mx_env + task_spec({
+    mx_env:: vm.edition + '-next',
+  }),
+
   local deploy_sdk_base = task_spec({
     run +: [
       self.mx_vm_common + vm.vm_profiles + maven_deploy(),
@@ -181,7 +185,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       ],
       notify_groups:: ['deploy'],
     },
-  ) + deploy_sdk_base + check_base_graalvm_image + timelimit("1:00:00"),
+  ) + deploy_sdk_base + timelimit("1:00:00"),
 
   local espresso_java_home(major_version, with_llvm=false) = task_spec({
     espresso_java_version:: major_version,
@@ -222,7 +226,19 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     # Deploy GraalVM Base
     # NOTE: After adding or removing deploy jobs, please make sure you modify ce-release-artifacts.json accordingly.
     #
-    "vm-base": mx_env + deploy_graalvm_base + default_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
+    "vm-base": mx_env + deploy_graalvm_base + check_base_graalvm_image + default_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
+      "linux:amd64:jdk-latest": post_merge,
+      "linux:aarch64:jdk-latest": daily + capabilities('!xgene3') + timelimit('1:30:00'),
+      "darwin:aarch64:jdk-latest": daily + capabilities('darwin_ventura') + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
+      "windows:amd64:jdk-latest": daily + timelimit('1:30:00'),
+    }),
+  },
+
+  local deploy_vm_next_base_task_dict = {
+    #
+    # Deploy GraalVM "next" Base
+    #
+    "vm-next-base": mx_env_next + deploy_graalvm_base + default_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk-latest": post_merge,
       "linux:aarch64:jdk-latest": daily + capabilities('!xgene3') + timelimit('1:30:00'),
       "darwin:aarch64:jdk-latest": daily + capabilities('darwin_ventura') + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
@@ -250,6 +266,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
   builds: utils.add_defined_in(std.flattenArrays([run_spec.process(task_dict).list for task_dict in [
     deploy_vm_base_task_dict,
+    deploy_vm_next_base_task_dict,
     deploy_vm_espresso_task_dict,
   ]]), std.thisFile),
 }
