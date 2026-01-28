@@ -94,19 +94,11 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
     }
 
     @Override
-<<<<<<< HEAD
     public SubstrateForeignCallDescriptor getNewDynamicHub() {
         return NEW_DYNAMICHUB;
     }
 
     @Override
-    public boolean useTLAB() {
-        return SubstrateGCOptions.TlabOptions.UseTLAB.getValue();
-    }
-
-    @Override
-=======
->>>>>>> 4873ef60555 (Allocation and write barrier refactorings.)
     public boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray) {
         return !isArray || arrayAllocatedInAlignedChunk(size);
     }
