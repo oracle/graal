@@ -67,6 +67,7 @@ import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.core.common.util.FrequencyEncoder;
 import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
@@ -802,7 +803,7 @@ public class FrameInfoEncoder {
                 }
 
                 if (field.getLocation() >= 0) {
-                    assert curOffset <= field.getLocation() : field;
+                    assert curOffset <= field.getLocation() : Assertions.errorMessage(field, curOffset);
                     while (curOffset + 7 < field.getLocation()) {
                         valueList.add(makeValueInfo(data, JavaKind.Long, JavaConstant.LONG_0, isDeoptEntry));
                         curOffset += 8;
