@@ -397,7 +397,7 @@ public class TlabSupport {
      */
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/hotspot/share/gc/shared/threadLocalAllocBuffer.cpp#L154-L172")
     public static void resize(IsolateThread thread) {
-        assert SubstrateGCOptions.TlabOptions.ResizeTLAB.getValue();
+        assert SubstrateGCOptions.ResizeTLAB.getValue();
         assert VMOperation.isGCInProgress();
 
         UnsignedWord allocatedAvg = Word.unsigned((long) AdaptiveWeightedAverageStruct.getAverage(allocatedBytesAvg.getAddress(thread)));

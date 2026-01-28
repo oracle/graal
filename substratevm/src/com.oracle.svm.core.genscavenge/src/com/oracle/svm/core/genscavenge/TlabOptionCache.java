@@ -57,7 +57,7 @@ public class TlabOptionCache {
     @Platforms(Platform.HOSTED_ONLY.class)
     public TlabOptionCache() {
         minTlabSize = getAbsoluteMinTlabSize();
-        tlabSize = SubstrateGCOptions.TlabOptions.TLABSize.getHostedValue();
+        tlabSize = SubstrateGCOptions.TLABSize.getHostedValue();
         initialTLABSize = SerialAndEpsilonGCOptions.InitialTLABSize.getHostedValue();
     }
 
@@ -93,11 +93,11 @@ public class TlabOptionCache {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void cacheOptionValues() {
-        int minTlabSizeIdx = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.TlabOptions.MinTLABSize);
+        int minTlabSizeIdx = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MinTLABSize);
         long minTlabSizeValue = IsolateArgumentParser.singleton().getLongOptionValue(minTlabSizeIdx);
         cacheMinTlabSize(minTlabSizeValue);
 
-        int tlabSizeIdx = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.TlabOptions.TLABSize);
+        int tlabSizeIdx = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.TLABSize);
         long tlabSizeValue = IsolateArgumentParser.singleton().getLongOptionValue(tlabSizeIdx);
         cacheTlabSize(tlabSizeValue);
 
@@ -121,25 +121,25 @@ public class TlabOptionCache {
             if (minTlabSizeValue > maxSize) {
                 throw new IllegalArgumentException(String.format("MinTLABSize (%d) must be less than or equal to ergonomic TLAB maximum (%d).", minTlabSizeValue, maxSize));
             }
-        }, SubstrateGCOptions.TlabOptions.MinTLABSize));
+        }, SubstrateGCOptions.MinTLABSize));
 
         validationSupport.register(new RuntimeOptionValidationSupport.RuntimeOptionValidation<>(optionKey -> {
             // Check that TLABSize is still the default value or size >= abs min && size <= abs max.
             long tlabSizeValue = optionKey.getValue();
-            if (optionKey.hasBeenSet() && tlabSizeValue < SubstrateGCOptions.TlabOptions.MinTLABSize.getValue()) {
+            if (optionKey.hasBeenSet() && tlabSizeValue < SubstrateGCOptions.MinTLABSize.getValue()) {
                 throw new IllegalArgumentException(
-                                String.format("TLABSize (%d) must be greater than or equal to MinTLABSize (%d).", tlabSizeValue, SubstrateGCOptions.TlabOptions.MinTLABSize.getValue()));
+                                String.format("TLABSize (%d) must be greater than or equal to MinTLABSize (%d).", tlabSizeValue, SubstrateGCOptions.MinTLABSize.getValue()));
             }
             if (tlabSizeValue > maxSize) {
                 throw new IllegalArgumentException(String.format("TLABSize (%d) must be less than or equal to ergonomic TLAB maximum size (%d).", tlabSizeValue, maxSize));
             }
-        }, SubstrateGCOptions.TlabOptions.TLABSize));
+        }, SubstrateGCOptions.TLABSize));
 
         validationSupport.register(new RuntimeOptionValidationSupport.RuntimeOptionValidation<>(optionKey -> {
             long initialTlabSizeValue = optionKey.getValue();
-            if (initialTlabSizeValue < SubstrateGCOptions.TlabOptions.MinTLABSize.getValue()) {
+            if (initialTlabSizeValue < SubstrateGCOptions.MinTLABSize.getValue()) {
                 throw new IllegalArgumentException(
-                                String.format("InitialTLABSize (%d) must be greater than or equal to MinTLABSize (%d).", initialTlabSizeValue, SubstrateGCOptions.TlabOptions.MinTLABSize.getValue()));
+                                String.format("InitialTLABSize (%d) must be greater than or equal to MinTLABSize (%d).", initialTlabSizeValue, SubstrateGCOptions.MinTLABSize.getValue()));
             }
             if (initialTlabSizeValue > maxSize) {
                 throw new IllegalArgumentException(String.format("TLABSize (%d) must be less than or equal to ergonomic TLAB maximum size (%d).", initialTlabSizeValue, maxSize));

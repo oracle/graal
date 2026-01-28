@@ -137,7 +137,7 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
 
         // We do not need to compile a GC because the JavaScript environment provides one.
         optionProvider.getHostedValues().put(SubstrateOptions.SupportedGCs, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter());
-        optionProvider.getHostedValues().put(SubstrateGCOptions.TlabOptions.UseTLAB, false);
+        optionProvider.getHostedValues().put(SubstrateGCOptions.UseTLAB, false);
 
         // Forcibly turn off CAnnotation processor cache
         optionProvider.getHostedValues().put(CAnnotationProcessorCache.Options.UseCAPCache, false);
