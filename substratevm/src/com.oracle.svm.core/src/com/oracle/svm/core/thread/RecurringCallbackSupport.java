@@ -86,6 +86,10 @@ public class RecurringCallbackSupport {
         return new RecurringCallbackTimer(intervalNanos, callback);
     }
 
+    public static RecurringCallbackTimer createUninitializedCallbackTimer() {
+        return new RecurringCallbackTimer();
+    }
+
     @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
     public static void installCallback(IsolateThread thread, RecurringCallbackTimer timer, boolean overwriteExisting) {
         if (overwriteExisting) {
@@ -98,7 +102,7 @@ public class RecurringCallbackSupport {
     public static void installCallback(IsolateThread thread, RecurringCallbackTimer timer) {
         assert isEnabled();
         assert timer != null;
-        assert timer.targetIntervalNanos > 0;
+        assert timer.isInitialized();
         assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
         assert timerTL.get(thread) == null : "only one callback can be installed at a time";
 
@@ -278,9 +282,9 @@ public class RecurringCallbackSupport {
         private static final double TARGET_INTERVAL_FLEXIBILITY = 0.95;
         private static final int INITIAL_CHECKS = 100;
 
-        private final long targetIntervalNanos;
-        private final long flexibleTargetIntervalNanos;
-        private final RecurringCallback callback;
+        private long targetIntervalNanos;
+        private long flexibleTargetIntervalNanos;
+        private RecurringCallback callback;
 
         private int requestedChecks;
         private double ewmaChecksPerNano;
@@ -295,7 +299,19 @@ public class RecurringCallbackSupport {
          */
         private boolean isExecuting = false;
 
+        RecurringCallbackTimer() {
+        }
+
         RecurringCallbackTimer(long targetIntervalNanos, RecurringCallback callback) {
+            initialize(targetIntervalNanos, callback);
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        @SuppressWarnings("hiding")
+        public void initialize(long targetIntervalNanos, RecurringCallback callback) {
+            assert !isInitialized() : "initialize() may only be called once";
+            assert targetIntervalNanos > 0;
+
             this.targetIntervalNanos = targetIntervalNanos;
             this.flexibleTargetIntervalNanos = (long) (targetIntervalNanos * TARGET_INTERVAL_FLEXIBILITY);
             this.callback = callback;
@@ -304,6 +320,11 @@ public class RecurringCallbackSupport {
             this.lastCaptureNanos = nowNanos;
             this.lastCallbackExecutionNanos = nowNanos;
             this.requestedChecks = INITIAL_CHECKS;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        private boolean isInitialized() {
+            return targetIntervalNanos > 0;
         }
 
         @Uninterruptible(reason = "Prevent recurring callback execution.", callerMustBe = true)

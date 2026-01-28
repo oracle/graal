@@ -77,7 +77,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
 
     private volatile boolean isSampling;
     private long curIntervalMillis;
-    protected long newIntervalMillis;
+    protected volatile long newIntervalMillis;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public AbstractJfrExecutionSampler() {
