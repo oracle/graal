@@ -414,6 +414,9 @@ final class EspressoExternalVMAccess implements VMAccess {
             if (java_lang_ClassNotFoundException.isInstance(exceptionObject)) {
                 return null;
             }
+            if (e.getCause() instanceof PolyglotException pe) {
+                throw throwHostException(pe);
+            }
             throw e;
         }
         return constantReflection.asJavaType(cls);
