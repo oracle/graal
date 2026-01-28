@@ -1701,6 +1701,12 @@ public final class ObjectKlass extends Klass implements AttributedElement {
         return innerKlasses;
     }
 
+    /**
+     * The versioned, immutable backbone of class metadata in Espresso. It encapsulates all
+     * execution-critical state (dispatch tables, methods, hierarchy, flags, attributes) with a
+     * Truffle Assumption for safe speculative compilation and seamless class redefinition by
+     * swapping versions and invalidating previous ones.
+     */
     public final class KlassVersion implements AttributedElement {
         final Assumption assumption;
         final RuntimeConstantPool pool;
