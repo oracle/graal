@@ -53,8 +53,17 @@ Repeat the same for the `PATH` environment variable.
 
 ## Prerequisites for Native Image on Windows
 
-On Windows, Native Image requires Visual Studio and Microsoft Visual C++(MSVC).
-Use **Visual Studio 2022 version 17.6.0 or later**.
+On Windows, Native Image requires Visual Studio and Microsoft Visual C++ (MSVC).
+
+### Minimum Version Requirements
+
+The following minimum versions are required for Native Image compilation:
+
+- **Visual Studio**: 2022 version 17.6.0 or later
+- **MSVC**: Version 14.0 or later  
+- **Windows SDK**: Windows 11 SDK (or compatible later version)
+
+> **Note**: Earlier versions of Visual Studio may not provide the required compiler features. Use Visual Studio 2022 version 17.13.2 or later for best compatibility.
 
 ### Install Visual Studio Build Tools and Windows SDK
 

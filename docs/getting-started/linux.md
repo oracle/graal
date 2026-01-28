@@ -10,9 +10,10 @@ redirect_from: /docs/getting-started/linux/
 
 GraalVM is available for Linux on x64 and AArch64 architectures.
 You can install GraalVM on Linux:
-* [using SDKMAN!](#sdkman)
-* [from an archive](#from-an-archive)
-* [using script-friendly URLs](#script-friendly-urls)
+
+- [using SDKMAN!](#sdkman)
+- [from an archive](#from-an-archive)
+- [using script-friendly URLs](#script-friendly-urls)
 
 Select the installation option that you prefer.
 
@@ -92,6 +93,19 @@ For other installation options, visit the [GraalVM Downloads page](https://www.g
 ## Prerequisites for Native Image on Linux
 
 Native Image depends on the local toolchain, including header files for the C library, `glibc-devel`, `zlib`, `gcc`, and/or `libstdc++-static`.
+
+### Minimum Version Requirements
+
+The following minimum versions are required for Native Image compilation:
+
+- **glibc**: Version 2.17 or later  
+- **zlib**: Version 1.2.3 or later
+- **GNU Compiler Collection (GCC)**: Version 10.3.0 or later
+- **cmake**: Version 3.22.2 or later (if building from source)
+
+> **Note**: GCC versions prior to 10.x may cause build failures. Check your version if compilation fails.
+
+### Installing Dependencies
 
 These dependencies can be installed (if not yet installed) using a package manager on your Linux machine.
 
