@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter.ristretto;
 
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
@@ -472,11 +473,20 @@ public class RistrettoUtils {
     }
 
     public static RistrettoField[] toRFields(ResolvedJavaField[] iFields) {
-        RistrettoField[] rFields = new RistrettoField[iFields.length];
+        ArrayList<RistrettoField> rFields = new ArrayList<>();
         for (int i = 0; i < iFields.length; i++) {
-            rFields[i] = RistrettoField.create((InterpreterResolvedJavaField) iFields[i]);
+            RistrettoField rField = RistrettoField.create((InterpreterResolvedJavaField) iFields[i]);
+            if (rField.getOffset() < 0) {
+                /*
+                 * TODO GR-73029: Hosted fields that are not needed at runtime might still have
+                 * interpreter fields associated with them.
+                 */
+                continue;
+            }
+            rFields.add(rField);
         }
-        return rFields;
+        rFields.sort((x, y) -> Integer.compare(x.getOffset(), y.getOffset()));
+        return rFields.toArray(new RistrettoField[0]);
     }
 
 }
