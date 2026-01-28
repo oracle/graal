@@ -371,27 +371,6 @@ public class RecurringCallbackSupport {
                  * long-running code). All code that must run to reinitialize the recurring callback
                  * state must therefore be in a finally-block.
                  */
-<<<<<<< HEAD
-                if (System.nanoTime() >= lastCallbackExecution + flexibleTargetIntervalNanos) {
-                    /*
-                     * Before executing the callback, reset the safepoint requested counter as we
-                     * don't want to trigger another callback execution in the near future.
-                     */
-                    setCounter(SafepointCheckCounter.MAX_VALUE);
-                    try {
-                        invokeCallback();
-                        /*
-                         * The callback is allowed to throw an exception (e.g., to stop or interrupt
-                         * long-running code). All code that must run to reinitialize the recurring
-                         * callback state must therefore be in a finally-block.
-                         */
-                    } finally {
-                        lastCallbackExecution = System.nanoTime();
-                        updateStatistics();
-                    }
-                }
-=======
->>>>>>> 5e5d98f2757 (Improve recurring callback performance.)
             } finally {
                 long afterNanos = System.nanoTime();
                 lastCallbackExecutionNanos = afterNanos;
