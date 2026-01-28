@@ -15,7 +15,6 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-71402: Added `Value#hasStaticScope` and `Value#getStaticScope` returning the static scope representing static or class-level members associated with the meta object.
 * GR-71643: Added `Context.Builder#exceptionHandler(Consumer<PolyglotException>)` to customize how polyglot exceptions are handled before they are propagated to the host.
 * GR-69929: Reset a `CallTarget`’s execution profile when its associated nmethod is invalidated by HotSpot due to code cache “cold” flushing heuristics.
-* GR-35913: Added the `HostStackFrames` enum to define the visibility of host stack frames as observed by guest applications. Host stack frame visibility can be configured using `HostAccess.Builder#allowHostStackFrames(HostStackFrames)`. By default, `HostStackFrames.NONE` is used, which hides all host stack frames from guest applications. The predefined `HostAccess#ALL` configuration and the `HostAccess.Builder#allowPublicAccess()` method enable host stack frame visibility.
 
 ## Version 25.0.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.

@@ -268,7 +268,6 @@ innr public abstract interface static !annotation DisableMethodScoping
 innr public abstract interface static !annotation Export
 innr public abstract interface static !annotation Implementable
 innr public final Builder
-innr public final static !enum HostStackFrames
 innr public final static !enum MutableTargetMapping
 innr public final static !enum TargetMappingPrecedence
 meth public boolean equals(java.lang.Object)
@@ -277,7 +276,7 @@ meth public java.lang.String toString()
 meth public static org.graalvm.polyglot.HostAccess$Builder newBuilder()
 meth public static org.graalvm.polyglot.HostAccess$Builder newBuilder(org.graalvm.polyglot.HostAccess)
 supr java.lang.Object
-hfds EMPTY,accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllInterfaceImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,hostStackFrames,impl,implementableAnnotations,implementableTypes,members,methodLookup,methodScopingDefault,name,targetMappings
+hfds EMPTY,accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllInterfaceImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,impl,implementableAnnotations,implementableTypes,members,methodLookup,methodScopingDefault,name,targetMappings
 
 CLSS public final org.graalvm.polyglot.HostAccess$Builder
  outer org.graalvm.polyglot.HostAccess
@@ -294,7 +293,6 @@ meth public org.graalvm.polyglot.HostAccess$Builder allowAllImplementations(bool
 meth public org.graalvm.polyglot.HostAccess$Builder allowArrayAccess(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder allowBigIntegerNumberAccess(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder allowBufferAccess(boolean)
-meth public org.graalvm.polyglot.HostAccess$Builder allowHostStackFrames(org.graalvm.polyglot.HostAccess$HostStackFrames)
 meth public org.graalvm.polyglot.HostAccess$Builder allowImplementations(java.lang.Class<?>)
 meth public org.graalvm.polyglot.HostAccess$Builder allowImplementationsAnnotatedBy(java.lang.Class<? extends java.lang.annotation.Annotation>)
 meth public org.graalvm.polyglot.HostAccess$Builder allowIterableAccess(boolean)
@@ -309,7 +307,7 @@ meth public org.graalvm.polyglot.HostAccess$Builder disableMethodScopingAnnotate
 meth public org.graalvm.polyglot.HostAccess$Builder methodScoping(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder useModuleLookup(java.lang.invoke.MethodHandles$Lookup)
 supr java.lang.Object
-hfds accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,hostStackFrames,implementableTypes,implementationAnnotations,members,methodLookup,methodScopingDefault,name,targetMappings
+hfds accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,implementableTypes,implementationAnnotations,members,methodLookup,methodScopingDefault,name,targetMappings
 
 CLSS public abstract interface static !annotation org.graalvm.polyglot.HostAccess$DisableMethodScoping
  outer org.graalvm.polyglot.HostAccess
@@ -322,14 +320,6 @@ CLSS public abstract interface static !annotation org.graalvm.polyglot.HostAcces
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, METHOD])
 intf java.lang.annotation.Annotation
-
-CLSS public final static !enum org.graalvm.polyglot.HostAccess$HostStackFrames
- outer org.graalvm.polyglot.HostAccess
-fld public final static org.graalvm.polyglot.HostAccess$HostStackFrames ALL
-fld public final static org.graalvm.polyglot.HostAccess$HostStackFrames NONE
-meth public static org.graalvm.polyglot.HostAccess$HostStackFrames valueOf(java.lang.String)
-meth public static org.graalvm.polyglot.HostAccess$HostStackFrames[] values()
-supr java.lang.Enum<org.graalvm.polyglot.HostAccess$HostStackFrames>
 
 CLSS public abstract interface static !annotation org.graalvm.polyglot.HostAccess$Implementable
  outer org.graalvm.polyglot.HostAccess

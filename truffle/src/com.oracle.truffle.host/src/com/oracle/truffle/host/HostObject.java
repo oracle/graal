@@ -62,6 +62,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import com.oracle.truffle.api.interop.HeapIsolationException;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
@@ -2740,7 +2741,7 @@ final class HostObject implements TruffleObject {
         if (isException()) {
             // Using HostException here allows us to make use of its getLocation(), if available.
             Object hostExceptionOrOriginal = extraInfo != null ? extraInfo : obj;
-            return HostAccessor.EXCEPTION.getExceptionStackTrace(hostExceptionOrOriginal, context.internalContext);
+            return HostAccessor.EXCEPTION.getExceptionStackTrace((Throwable) hostExceptionOrOriginal, context.internalContext);
         }
         throw UnsupportedMessageException.create();
     }
@@ -3921,8 +3922,7 @@ final class HostObject implements TruffleObject {
      * which can throw an exception the call must be done in the {@link GuestToHostCalls} to
      * correctly merge host an guest stack frames.
      *
-     * @see PolyglotExceptionImpl.MergedHostGuestIterator#isGuestToHost(StackTraceElement,
-     *      StackTraceElement[], int)
+     * @see AbstractPolyglotImpl.AbstractHostLanguageService#isGuestToHostCallFromHostInterop(StackTraceElement)
      */
     abstract static class GuestToHostCalls {
 
