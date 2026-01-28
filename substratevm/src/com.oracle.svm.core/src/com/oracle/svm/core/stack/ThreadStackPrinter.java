@@ -92,7 +92,12 @@ public class ThreadStackPrinter {
     }
 
     /**
-     * With every retry, the output is reduced a bit.
+     * Infrastructure for printing stack traces. This code is primarily used when printing stack
+     * traces for crash logs, but it is also used by other VM-internal code such as monitoring
+     * features.
+     * <p>
+     * Specifically for printing crash logs, the output is reduced a bit with every retry (see
+     * {@link #invocationCount}):
      * <ul>
      * <li>1st invocation: maximum details for AOT and JIT compiled code</li>
      * <li>2nd invocation: reduced details for JIT compiled code</li>
@@ -108,17 +113,7 @@ public class ThreadStackPrinter {
         private Pointer expectedSP;
 
         public StackFramePrintVisitor() {
-            FrameInfoDecoder.ValueInfoAllocator valueInfoAllocator;
-            if (InterpreterSupport.isEnabled()) {
-                /*
-                 * This helps print interpreter frames: InterpreterSupportImpl needs value info for
-                 * the method and bci.
-                 */
-                valueInfoAllocator = new CodeInfoDecoder.SingleShotValueInfoAllocator(NUM_INTERPRETER_PREALLOCATED_VALUE_INFO);
-            } else {
-                valueInfoAllocator = CodeInfoDecoder.DummyValueInfoAllocator.SINGLETON;
-            }
-            frameInfoCursor = new CodeInfoDecoder.FrameInfoCursor(valueInfoAllocator);
+            frameInfoCursor = new CodeInfoDecoder.FrameInfoCursor(newValueInfoAllocator());
         }
 
         @SuppressWarnings("hiding")
@@ -314,6 +309,14 @@ public class ThreadStackPrinter {
             } else {
                 return 'J';
             }
+        }
+
+        private static FrameInfoDecoder.ValueInfoAllocator newValueInfoAllocator() {
+            if (InterpreterSupport.isEnabled()) {
+                /* InterpreterSupportImpl needs ValueInfo objects for the method and bci. */
+                return new CodeInfoDecoder.SingleShotValueInfoAllocator(NUM_INTERPRETER_PREALLOCATED_VALUE_INFO);
+            }
+            return CodeInfoDecoder.DummyValueInfoAllocator.SINGLETON;
         }
     }
 }
