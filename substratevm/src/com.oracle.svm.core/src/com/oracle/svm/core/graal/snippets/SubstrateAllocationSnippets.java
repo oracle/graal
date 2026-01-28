@@ -802,13 +802,13 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         }
 
         public static boolean shouldUseTLAB(StructuredGraph graph) {
-            Boolean useTLAB = SubstrateGCOptions.UseTLAB.getValue();
+            Boolean useTLAB = SubstrateGCOptions.TlabOptions.UseTLAB.getValue();
             if (!useTLAB) {
                 /* Never use a TLAB. */
                 return false;
             }
 
-            TLABPolicy policy = SubstrateGCOptions.TLABUsagePolicy.getValue();
+            TLABPolicy policy = SubstrateGCOptions.TlabOptions.TLABUsagePolicy.getValue();
             if (policy == TLABPolicy.Always) {
                 return true;
             }

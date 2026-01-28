@@ -129,7 +129,7 @@ public class SubstrateGCOptions {
         public static final HostedOptionKey<Boolean> UseTLAB = new HostedOptionKey<>(true);
 
         @Option(help = "Determines when to use thread-local object allocation.")//
-        public static final HostedOptionKey<TLABPolicy> TLABUsagePolicy = new HostedOptionKey<>(TLABPolicy.Auto, SubstrateGCOptions::verifyTLABUsagePolicy, DoNotPassToNativeGC);
+        public static final HostedOptionKey<TLABPolicy> TLABUsagePolicy = new HostedOptionKey<>(TLABPolicy.Auto, TlabOptions::verifyTLABUsagePolicy, DoNotPassToNativeGC);
 
         @Option(help = "Dynamically resize TLAB size for threads.", type = OptionType.Expert)//
         public static final RuntimeOptionKey<Boolean> ResizeTLAB = new RuntimeOptionKey<>(true, IsolateCreationOnly);
