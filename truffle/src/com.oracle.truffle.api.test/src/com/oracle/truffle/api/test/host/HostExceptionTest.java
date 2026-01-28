@@ -977,14 +977,19 @@ public class HostExceptionTest {
     }
 
     @Test
-    public void testExplicitHideHostStackFramesInHostAccessPublic() {
-        HostAccess baseHostAccess = HostAccess.newBuilder(HostAccess.ALL).allowHostStackFrames(HostAccess.HostStackFrames.NONE).build();
+    public void testDisabledStackFramesInHostAccessAll() {
+        HostAccess baseHostAccess = HostAccess.newBuilder(HostAccess.ALL).//
+                        allowAccessAnnotatedBy(HostAccess.Export.class).//
+                        allowPublicAccess(false).//
+                        build();
         testHostStackFrames(baseHostAccess, false);
     }
 
     @Test
-    public void testExplicitShowHostStackFramesInHostAccessExplicit() {
-        HostAccess baseHostAccess = HostAccess.newBuilder(HostAccess.EXPLICIT).allowHostStackFrames(HostAccess.HostStackFrames.ALL).build();
+    public void testEnabledStackFramesInHostAccessExplicit() {
+        HostAccess baseHostAccess = HostAccess.newBuilder(HostAccess.EXPLICIT).//
+                        allowPublicAccess(true).//
+                        build();
         testHostStackFrames(baseHostAccess, true);
     }
 

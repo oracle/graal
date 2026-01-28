@@ -157,6 +157,7 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #hasExceptionCause(Object) exception cause}
  * <li>{@link #hasExceptionStackTrace(Object) exception stack trace}
  * <li>{@link #hasIterator(Object) iterator}
+ * <li>{@link #hasBytecodeIndex(Object) bytecode index}
  * </ul>
  * <h3>Naive and aware dates and times</h3>
  * <p>
@@ -289,6 +290,7 @@ public abstract class InteropLibrary extends Library {
      * Returns executable name of the receiver. Throws {@code UnsupportedMessageException} when the
      * receiver is has no {@link #hasExecutableName(Object) executable name}. The return value is an
      * interop value that is guaranteed to return <code>true</code> for {@link #isString(Object)}.
+     * This method must not cause any observable side-effects.
      *
      * @see #hasExecutableName(Object)
      * @since 20.3
@@ -2290,7 +2292,7 @@ public abstract class InteropLibrary extends Library {
     public Object getExceptionStackTrace(Object receiver) throws UnsupportedMessageException {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
-            return InteropAccessor.EXCEPTION.getExceptionStackTrace(receiver, null);
+            return InteropAccessor.EXCEPTION.getExceptionStackTrace((Throwable) receiver, null);
         } else {
             throw UnsupportedMessageException.create();
         }

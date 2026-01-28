@@ -43,6 +43,7 @@ package com.oracle.truffle.api.exception;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import java.io.PrintStream;
@@ -55,6 +56,20 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.function.Function;
 
+/**
+ * An {@link Iterator} that produces a merged view of host and guest stack frames.
+ * <p>
+ * Truffle exceptions may contain two independent stack traces:
+ * <ul>
+ * <li>a host stack trace represented by {@link StackTraceElement} instances, and</li>
+ * <li>a guest language stack trace represented by {@link TruffleStackTraceElement} instances.</li>
+ * </ul>
+ * This iterator walks both traces and yields a single ordered sequence of frames as observed by
+ * guest applications.
+ *
+ * @param <T> the element type produced by this iterator
+ * @param <G> the guest frame element type
+ */
 final class MergedHostGuestIterator<T, G> implements Iterator<T> {
 
     private static final boolean TRACE_STACK_TRACE_WALKING = false;
@@ -70,9 +85,13 @@ final class MergedHostGuestIterator<T, G> implements Iterator<T> {
     private T fetchedNext;
     private boolean firstFrame;
 
+    /**
+     * Returns the merged host/guest stack trace for {@code throwable} as an interop array-like
+     * object. The returned object exposes {@link InteropLibrary#hasArrayElements(Object) array
+     * elements}, where each element represents an individual stack frame.
+     */
     @TruffleBoundary
-    static Object getExceptionStackTrace(Object receiver, Object vmObject, boolean forceInHost, boolean includeHostStack) {
-        Throwable throwable = (Throwable) receiver;
+    static Object getExceptionStackTrace(Throwable throwable, Object vmObject, boolean forceInHost, boolean includeHostStack) {
         List<TruffleStackTraceElement> stack = TruffleStackTrace.getStackTrace(throwable);
         if (stack == null) {
             stack = Collections.emptyList();

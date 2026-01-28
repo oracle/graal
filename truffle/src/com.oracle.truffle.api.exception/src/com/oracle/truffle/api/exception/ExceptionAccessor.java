@@ -143,13 +143,13 @@ final class ExceptionAccessor extends Accessor {
         }
 
         @Override
-        public Object getExceptionStackTrace(Object receiver, Object polyglotContext) {
-            return MergedHostGuestIterator.getExceptionStackTrace(receiver, polyglotContext, false, false);
+        public Object getExceptionStackTrace(Throwable throwable, Object polyglotContext) {
+            return MergedHostGuestIterator.getExceptionStackTrace(throwable, polyglotContext, false, false);
         }
 
         @Override
-        public Object getEmbedderStackTrace(Object receiver, Object vmObject, boolean inHost) {
-            return MergedHostGuestIterator.getExceptionStackTrace(receiver, vmObject, inHost, true);
+        public Object getEmbedderStackTrace(Throwable throwable, Object vmObject, boolean inHost) {
+            return MergedHostGuestIterator.getExceptionStackTrace(throwable, vmObject, inHost, true);
         }
 
         @Override
