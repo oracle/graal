@@ -261,6 +261,8 @@ public class InterpreterFeature implements InternalFeature {
         Method leaveMethod = ReflectionUtil.lookupMethod(InterpreterStubSection.class, "leaveInterpreterStub", CFunctionPointer.class, Pointer.class, long.class);
         leaveStub = metaAccess.lookupJavaMethod(leaveMethod);
         accessImpl.registerAsRoot(leaveStub, true, "low level entry point");
+
+        InterpreterOptions.registerInterpreterTraceOptionValidation();
     }
 
     @Override
