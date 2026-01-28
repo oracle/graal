@@ -43,32 +43,22 @@ import jdk.graal.compiler.options.OptionKey;
  * @see com.oracle.svm.core.option
  */
 public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionKey<T> {
-<<<<<<< HEAD
     private final Consumer<HostedOptionKey<T>> validation;
-=======
-    private final Consumer<HostedOptionKey<T>> buildTimeValidation;
     private final int flags;
->>>>>>> a1079903ebb (Add option TLABUsagePolicy.)
     private OptionOrigin lastOrigin;
 
     public HostedOptionKey(T defaultValue, HostedOptionKeyFlag... flags) {
         this(defaultValue, null, flags);
     }
 
-<<<<<<< HEAD
-    public HostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> validation) {
+    public HostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> validation, HostedOptionKeyFlag... flags) {
         super(defaultValue);
         this.validation = validation;
-=======
-    public HostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> buildTimeValidation, HostedOptionKeyFlag... flags) {
-        super(defaultValue);
-        this.buildTimeValidation = buildTimeValidation;
         this.flags = EnumBitmask.computeBitmask(flags);
     }
 
     public boolean shouldPassToNativeGC() {
         return !EnumBitmask.hasBit(flags, HostedOptionKeyFlag.DoNotPassToNativeGC);
->>>>>>> a1079903ebb (Add option TLABUsagePolicy.)
     }
 
     /**
