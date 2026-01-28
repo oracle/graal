@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateMetadata;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
@@ -207,7 +208,11 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public final boolean hasSameDefiningClassLoader(InterpreterResolvedJavaType other) {
-        return this.clazz.getClassLoader() == other.clazz.getClassLoader();
+        return this.getClassLoader() == other.getClassLoader();
+    }
+
+    public final ClassLoader getClassLoader() {
+        return SubstrateUtil.cast(getJavaClass(), DynamicHub.class).getClassLoader();
     }
 
     @Override

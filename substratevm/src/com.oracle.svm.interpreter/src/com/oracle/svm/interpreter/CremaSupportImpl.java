@@ -252,7 +252,9 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     @Override
-    public DynamicHub createHub(ParserKlass parsed, ClassDefinitionInfo info, int typeID, String externalName, Module module, ClassLoader classLoader, Class<?> superClass,
+    public DynamicHub createHub(ParserKlass parsed, ClassDefinitionInfo info, int typeID, String externalName,
+                    Module module, ClassLoader classLoader,
+                    Class<?> superClass,
                     Class<?>[] superInterfaces) {
         String simpleBinaryName = getSimpleBinaryName(parsed);
         String sourceFile = getSourceFile(parsed);
@@ -281,7 +283,7 @@ public class CremaSupportImpl implements CremaSupport {
         Object interfacesEncoding = getInterfaceEncodings(superInterfaces);
 
         Class<?>[] transitiveSuperInterfaces = getSortedTransitiveSuperInterfaces(superClass, superInterfaces);
-        AbstractCremaDispatchTable dispatchTable = createDispatchTable(parsed, superClass, transitiveSuperInterfaces);
+        AbstractCremaDispatchTable dispatchTable = createDispatchTable(parsed, classLoader, superClass, transitiveSuperInterfaces);
 
         /*
          * Compute the type check slots depending on the kind of type
@@ -518,8 +520,8 @@ public class CremaSupportImpl implements CremaSupport {
         }
     }
 
-    private static AbstractCremaDispatchTable createDispatchTable(ParserKlass parsed, Class<?> superClass, Class<?>[] transitiveSuperInterfaces) {
-        CremaPartialType partialType = new CremaPartialType(parsed, superClass, transitiveSuperInterfaces);
+    private static AbstractCremaDispatchTable createDispatchTable(ParserKlass parsed, ClassLoader loader, Class<?> superClass, Class<?>[] transitiveSuperInterfaces) {
+        CremaPartialType partialType = new CremaPartialType(parsed, loader, superClass, transitiveSuperInterfaces);
         try {
             if (Modifier.isInterface(parsed.getFlags())) {
                 return new CremaInterfaceDispatchTable(partialType);
@@ -873,14 +875,18 @@ public class CremaSupportImpl implements CremaSupport {
 
     static final class CremaPartialType implements PartialType<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> {
         private final ParserKlass parserKlass;
+        private final ClassLoader loader;
+        private final Symbol<Name> symbolicRuntimePackage;
         private final List<CremaPartialMethod> declared;
         private final List<InterpreterResolvedJavaMethod> parentTable;
         private final EconomicMap<InterpreterResolvedJavaType, List<InterpreterResolvedJavaMethod>> interfacesData = EconomicMap.create(Equivalence.IDENTITY);
         private InterpreterResolvedObjectType thisJavaType;
 
         @SuppressWarnings("this-escape")
-        CremaPartialType(ParserKlass parsed, Class<?> superClass, Class<?>[] superInterfaces) {
+        CremaPartialType(ParserKlass parsed, ClassLoader loader, Class<?> superClass, Class<?>[] superInterfaces) {
             this.parserKlass = parsed;
+            this.loader = loader;
+            this.symbolicRuntimePackage = SymbolsSupport.getNames().getOrCreate(TypeSymbols.getRuntimePackage(parsed.getType()));
             parentTable = computeParentTable(superClass);
             for (Class<?> intf : superInterfaces) {
                 DynamicHub intfHub = DynamicHub.fromClass(intf);
@@ -927,10 +933,8 @@ public class CremaSupportImpl implements CremaSupport {
 
         @Override
         public boolean sameRuntimePackage(InterpreterResolvedJavaType otherType) {
-            // GR-62339 runtime packages
-            ByteSequence thisRuntimePackage = TypeSymbols.getRuntimePackage(parserKlass.getType());
-            Symbol<Name> thatRuntimePackage = otherType.getSymbolicRuntimePackage();
-            return thisRuntimePackage.equals(thatRuntimePackage);
+            return loader == otherType.getClassLoader() &&
+                            symbolicRuntimePackage == otherType.getSymbolicRuntimePackage();
         }
 
         @Override
