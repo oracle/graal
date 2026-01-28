@@ -107,7 +107,7 @@ mx_sdk_vm.register_vm_config('libgraal', ['cmp', 'lg', 'sdkc', 'tflc'], _suite)
 mx_sdk_vm.register_vm_config('libgraal-bash', llvm_components + ['cmp', 'gvm', 'lg', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file=False)
 
 # GraalVM variant with NI-based libjvm as default
-mx_sdk_vm.register_vm_config('ce-next', ce_unchained_components_next, _suite, env_file='ce-next')
+mx_sdk_vm.register_vm_config('community-next', ce_unchained_components_next, _suite, env_file='ce-next')
 
 if mx.get_os() == 'windows':
     mx_sdk_vm.register_vm_config('svm', ['bnative-image', 'bnative-image-utils', 'cmp', 'gvm', 'nfi-libffi', 'nfi', 'ni', 'nil', 'nju', 'nic', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmt', 'svmnfi', 'svmsl', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file=False)
