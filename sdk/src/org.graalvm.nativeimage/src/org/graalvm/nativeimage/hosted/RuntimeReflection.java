@@ -104,7 +104,7 @@ public final class RuntimeReflection {
      */
     public static void register(Executable... methods) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, false, methods);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, methods);
     }
 
     /**
@@ -119,7 +119,9 @@ public final class RuntimeReflection {
      */
     public static void registerAsQueried(Executable... methods) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), true, false, methods);
+        for (Executable method : methods) {
+            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, method.getDeclaringClass());
+        }
     }
 
     /**
@@ -133,9 +135,10 @@ public final class RuntimeReflection {
      *
      * @since 23.0
      */
+    @SuppressWarnings("unused")
     public static void registerMethodLookup(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), false, declaringClass, methodName, parameterTypes);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
@@ -150,9 +153,10 @@ public final class RuntimeReflection {
      *
      * @since 23.0
      */
+    @SuppressWarnings("unused")
     public static void registerConstructorLookup(Class<?> declaringClass, Class<?>... parameterTypes) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerConstructorLookup(AccessCondition.unconditional(), false, declaringClass, parameterTypes);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
@@ -179,8 +183,10 @@ public final class RuntimeReflection {
      *
      * @since 19.0
      */
+    @SuppressWarnings("unused")
     public static void registerFieldLookup(Class<?> declaringClass, String fieldName) {
         deprecationFlag.printDeprecationWarning();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, declaringClass);
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerFieldLookup(AccessCondition.unconditional(), false, declaringClass, fieldName);
     }
 
@@ -193,7 +199,7 @@ public final class RuntimeReflection {
      */
     public static void registerAllClasses(Class<?> declaringClass) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllClassesQuery(AccessCondition.unconditional(), false, declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
@@ -205,7 +211,7 @@ public final class RuntimeReflection {
      */
     public static void registerAllDeclaredClasses(Class<?> declaringClass) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredClassesQuery(AccessCondition.unconditional(), false, declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
@@ -218,7 +224,7 @@ public final class RuntimeReflection {
      */
     public static void registerAllMethods(Class<?> declaringClass) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllMethodsQuery(AccessCondition.unconditional(), true, false, declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
@@ -231,7 +237,7 @@ public final class RuntimeReflection {
      */
     public static void registerAllDeclaredMethods(Class<?> declaringClass) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredMethodsQuery(AccessCondition.unconditional(), true, false, declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
@@ -244,7 +250,7 @@ public final class RuntimeReflection {
      */
     public static void registerAllConstructors(Class<?> declaringClass) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllConstructorsQuery(AccessCondition.unconditional(), true, false, declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
@@ -257,7 +263,7 @@ public final class RuntimeReflection {
      */
     public static void registerAllDeclaredConstructors(Class<?> declaringClass) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(AccessCondition.unconditional(), true, false, declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
@@ -270,6 +276,7 @@ public final class RuntimeReflection {
      */
     public static void registerAllFields(Class<?> declaringClass) {
         deprecationFlag.printDeprecationWarning();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, declaringClass);
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllFields(AccessCondition.unconditional(), false, declaringClass);
     }
 
@@ -283,6 +290,7 @@ public final class RuntimeReflection {
      */
     public static void registerAllDeclaredFields(Class<?> declaringClass) {
         deprecationFlag.printDeprecationWarning();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, declaringClass);
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredFields(AccessCondition.unconditional(), false, declaringClass);
     }
 
@@ -295,7 +303,7 @@ public final class RuntimeReflection {
      */
     public static void registerAllNestMembers(Class<?> declaringClass) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllNestMembersQuery(AccessCondition.unconditional(), false, declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
@@ -307,7 +315,7 @@ public final class RuntimeReflection {
      */
     public static void registerAllPermittedSubclasses(Class<?> declaringClass) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllPermittedSubclassesQuery(AccessCondition.unconditional(), false, declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
@@ -319,7 +327,7 @@ public final class RuntimeReflection {
      */
     public static void registerAllRecordComponents(Class<?> declaringClass) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllRecordComponentsQuery(AccessCondition.unconditional(), declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), declaringClass);
     }
 
     /**
@@ -331,7 +339,7 @@ public final class RuntimeReflection {
      */
     public static void registerAllSigners(Class<?> declaringClass) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllSignersQuery(AccessCondition.unconditional(), declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), declaringClass);
     }
 
     /**

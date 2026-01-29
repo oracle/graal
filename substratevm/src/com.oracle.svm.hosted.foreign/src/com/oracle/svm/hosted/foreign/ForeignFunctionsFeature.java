@@ -258,7 +258,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
                 LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
                 DirectUpcallDesc directUpcallDesc = new DirectUpcallDesc(target, directMethodHandleDesc, desc, linkerOptions);
                 runConditionalTask(condition, _ -> {
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, false, method);
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, method);
                     createStub(UpcallStubFactory.INSTANCE, directUpcallDesc.toSharedDesc());
                     createStub(DirectUpcallStubFactory.INSTANCE, directUpcallDesc);
                 });
@@ -717,7 +717,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        accessSupport.sealed();
+        accessSupport.seal();
         if (!ForeignFunctionsRuntime.areFunctionCallsSupported() && stubsRegistered) {
             assert getCreatedDowncallStubsCount() == 0;
             assert getCreatedUpcallStubsCount() == 0;

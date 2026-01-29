@@ -90,6 +90,6 @@ public final class DynamicProxyFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        proxyRegistry.sealed();
+        proxyRegistry.seal();
     }
 }

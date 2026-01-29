@@ -719,6 +719,7 @@ public class IsolateArgumentParser {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredOptionInfo> {
         @Override
         public LayeredOptionInfo createFromLoader(ImageSingletonLoader loader) {

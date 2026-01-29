@@ -321,7 +321,6 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
 
     @Override
     public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
-        VMError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return annotated.getDeclaredConstructors(forceLink);
     }
 
@@ -332,7 +331,6 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
 
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
-        VMError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
         return annotated.getDeclaredMethods(forceLink);
     }
 
