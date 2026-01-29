@@ -31,14 +31,15 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.util.ImageHeapList;
-
-import jdk.graal.compiler.api.replacements.Fold;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.ImageHeapList;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Allows to register commands for validating runtime options at run time.
@@ -60,7 +61,9 @@ public class RuntimeOptionValidationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public synchronized void register(RuntimeOptionValidation<?> validation) {
+        assert !BuildPhaseProvider.isAnalysisStarted() : "registration must finish before the static analysis is started";
         assert validation != null;
+
         validations.add(validation);
     }
 
