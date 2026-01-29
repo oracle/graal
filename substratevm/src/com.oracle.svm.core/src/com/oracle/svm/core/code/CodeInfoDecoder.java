@@ -839,7 +839,6 @@ public final class CodeInfoDecoder {
         private final FrameInfoQueryResult.ValueInfo[] preAllocatedValueInfos;
         private int nextPreAllocatedValueInfo;
 
-        @Platforms(Platform.HOSTED_ONLY.class)
         public SingleShotValueInfoAllocator(int numValueInfos) {
             valueInfos = new FrameInfoQueryResult.ValueInfo[numValueInfos];
             preAllocatedValueInfos = new FrameInfoQueryResult.ValueInfo[valueInfos.length];
