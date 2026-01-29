@@ -24,7 +24,7 @@
  * questions.
  */
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__COSMOPOLITAN__)
 
 #include <ctype.h>
 #include <stdio.h>
@@ -48,7 +48,10 @@ long getThreadUserTimeSlow(pid_t tid) {
   int idummy;
   long ldummy;
   FILE *fp;
-  
+
+#if defined(__COSMOPOLITAN__)
+  return -1;
+#else
   static long clock_tics_per_sec = -1;
 
   if (clock_tics_per_sec == -1) {
@@ -81,6 +84,7 @@ long getThreadUserTimeSlow(pid_t tid) {
   if (count != 13) return -1;
 
   return user_time * (1000000000 / clock_tics_per_sec);
+#endif
 }
 
 #endif

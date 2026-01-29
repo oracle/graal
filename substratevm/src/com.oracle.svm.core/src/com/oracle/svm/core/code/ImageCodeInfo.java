@@ -57,6 +57,7 @@ public class ImageCodeInfo {
     private final HostedImageCodeInfo hostedImageCodeInfo = new HostedImageCodeInfo();
 
     @UnknownPrimitiveField(availability = AfterCompilation.class) private CodePointer codeStart;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord nopsBeforeEntry;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord entryPointOffset;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord codeSize;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord dataOffset;
@@ -107,6 +108,7 @@ public class ImageCodeInfo {
         infoImpl.setObjectFields(NonmovableArrays.fromImageHeap(imageCodeInfo.objectFields));
         infoImpl.setCodeStart(imageCodeInfo.codeStart);
         infoImpl.setCodeSize(imageCodeInfo.codeSize);
+        infoImpl.setNopsBeforeEntry(imageCodeInfo.nopsBeforeEntry);
         infoImpl.setDataOffset(imageCodeInfo.dataOffset);
         infoImpl.setDataSize(imageCodeInfo.dataSize);
         infoImpl.setCodeAndDataMemorySize(imageCodeInfo.codeAndDataMemorySize);
@@ -204,6 +206,11 @@ public class ImageCodeInfo {
         }
 
         @Override
+        public UnsignedWord getNopsBeforeEntry() {
+            return nopsBeforeEntry;
+        }
+
+        @Override
         public void setCodeSize(UnsignedWord value) {
             codeSize = value;
         }
@@ -211,6 +218,11 @@ public class ImageCodeInfo {
         @Override
         public void setCodeEntryPointOffset(UnsignedWord offset) {
             entryPointOffset = offset;
+        }
+
+        @Override
+        public void setNopsBeforeEntry(UnsignedWord offset) {
+            nopsBeforeEntry = offset;
         }
 
         @Override

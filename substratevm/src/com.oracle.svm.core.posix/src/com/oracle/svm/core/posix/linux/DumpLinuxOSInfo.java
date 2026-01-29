@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import com.oracle.svm.core.posix.cosmo.CosmoLibCSupplier;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
@@ -45,6 +46,7 @@ import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.core.common.NumUtil;
+import java.util.function.BooleanSupplier;
 import org.graalvm.word.impl.Word;
 
 class DumpLinuxOSInfo extends SubstrateDiagnostics.DiagnosticThunk {
@@ -116,6 +118,8 @@ class DumpLinuxOSInfoFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        BooleanSupplier x = new CosmoLibCSupplier();
+        if(x.getAsBoolean()) return;
         if (!SubstrateOptions.AsyncSignalSafeDiagnostics.getValue()) {
             DiagnosticThunkRegistry.singleton().addAfter(new DumpLinuxOSInfo(), SubstrateDiagnostics.DumpRuntimeInfo.class);
         }

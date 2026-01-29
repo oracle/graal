@@ -33,7 +33,10 @@ import static com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal.Constants.
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.core.posix.cosmo.CosmoLibCSupplier;
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -97,7 +100,7 @@ import org.graalvm.word.impl.Word;
  * NOTE: when installing or querying native signal handlers, we use a process-wide lock to avoid
  * races between isolates.
  */
-@AutomaticallyRegisteredImageSingleton({SignalHandlerSupport.class, PosixSignalHandlerSupport.class})
+@AutomaticallyRegisteredImageSingleton(value = {SignalHandlerSupport.class, PosixSignalHandlerSupport.class}, onlyWith = NotCosmoLibCSupplier.class)
 public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
     static final CGlobalData<CIntPointer> LOCK = CGlobalDataFactory.createBytes(() -> SizeOf.get(CIntPointer.class));
 
@@ -440,11 +443,15 @@ class PosixSignalHandlerFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
+        BooleanSupplier x = new CosmoLibCSupplier();
+        if(x.getAsBoolean()) return;
         setSignalData();
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        BooleanSupplier x = new CosmoLibCSupplier();
+        if(x.getAsBoolean()) return;
         RuntimeSupport.getRuntimeSupport().addStartupHook(new IgnoreSignalsStartupHook());
     }
 

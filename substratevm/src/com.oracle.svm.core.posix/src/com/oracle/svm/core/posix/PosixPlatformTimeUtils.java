@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix;
 
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -32,7 +33,7 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.PlatformTimeUtils;
 
-@AutomaticallyRegisteredImageSingleton(PlatformTimeUtils.class)
+@AutomaticallyRegisteredImageSingleton(value = PlatformTimeUtils.class, onlyWith = NotCosmoLibCSupplier.class)
 public final class PosixPlatformTimeUtils extends PlatformTimeUtils {
 
     @Override

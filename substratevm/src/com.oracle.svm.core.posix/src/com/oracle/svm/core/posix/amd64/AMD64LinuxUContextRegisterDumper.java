@@ -36,6 +36,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.amd64.AMD64ReservedRegisters;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.UContextRegisterDumper;
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import com.oracle.svm.core.posix.headers.Signal.GregEnumLinuxAMD64;
 import com.oracle.svm.core.posix.headers.Signal.GregsPointer;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
@@ -48,7 +49,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.vm.ci.amd64.AMD64;
 import org.graalvm.word.impl.Word;
 
-@AutomaticallyRegisteredImageSingleton(RegisterDumper.class)
+@AutomaticallyRegisteredImageSingleton(value = RegisterDumper.class, onlyWith = NotCosmoLibCSupplier.class)
 @Platforms(Platform.LINUX_AMD64.class)
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 class AMD64LinuxUContextRegisterDumper implements UContextRegisterDumper {

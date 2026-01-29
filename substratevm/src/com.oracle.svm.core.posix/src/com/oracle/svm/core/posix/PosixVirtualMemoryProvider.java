@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix;
 
+import java.util.function.BooleanSupplier;
+
 import static com.oracle.svm.core.posix.headers.Mman.MAP_ANON;
 import static com.oracle.svm.core.posix.headers.Mman.MAP_FAILED;
 import static com.oracle.svm.core.posix.headers.Mman.MAP_FIXED;
@@ -55,6 +57,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.posix.cosmo.CosmoLibCSupplier;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -74,6 +77,8 @@ class PosixVirtualMemoryProviderFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        BooleanSupplier x = new CosmoLibCSupplier();
+        if(x.getAsBoolean()) return;
         if (!ImageSingletons.contains(VirtualMemoryProvider.class)) {
             ImageSingletons.add(VirtualMemoryProvider.class, new PosixVirtualMemoryProvider());
         }

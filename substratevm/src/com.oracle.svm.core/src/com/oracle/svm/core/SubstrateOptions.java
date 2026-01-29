@@ -36,6 +36,7 @@ import static org.graalvm.nativeimage.impl.InternalPlatform.PLATFORM_JNI;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -51,6 +52,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
+import com.oracle.svm.core.c.libc.CosmoLibC;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
@@ -72,6 +74,7 @@ import com.oracle.svm.core.option.ReplacingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -139,14 +142,14 @@ public class SubstrateOptions {
             throw UserError.invalidOptionValue(key, key.getValue(),
                             "Building static executable images is currently only supported on Linux. Remove the '--static' option or build on a Linux machine");
         }
-        if (!LibCBase.targetLibCIs(MuslLibC.class)) {
+        if (!LibCBase.targetLibCIs(MuslLibC.class) && !LibCBase.targetLibCIs(CosmoLibC.class)) {
             throw UserError.invalidOptionValue(key, key.getValue(),
-                            "Building static executable images is only supported with musl libc. Remove the '--static' option or add the '--libc=musl' option.");
+                            "Building static executable images is only supported with musl or cosmo libc. Remove the '--static' option or add the '--libc=musl' or '--libc=cosmo'option.");
         }
     });
 
     @APIOption(name = "libc")//
-    @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
+    @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic, cosmo")//
     public static final HostedOptionKey<String> UseLibC = new HostedOptionKey<>(null) {
         @Override
         public String getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
@@ -156,6 +159,17 @@ public class SubstrateOptions {
                                 : System.getProperty("substratevm.HostLibC", "glibc");
             }
             return (String) values.get(this);
+        }
+
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            if (newValue.equals("cosmo")) {
+                PreserveFramePointer.update(values, true);
+                StripDebugInfo.update(values, false);
+                DeleteLocalSymbols.update(values, false);
+                StackOverflowCheck.Options.StackRedZoneSize.update(values, 0);
+            }
+            super.onValueUpdate(values, oldValue, newValue);
         }
 
         @Override
@@ -507,6 +521,43 @@ public class SubstrateOptions {
     @Platforms(HOSTED_ONLY.class)
     public static Path getImagePath() {
         return getImagePath(HostedOptionValues.singleton());
+    }
+
+    @Option(help = "Insert NOPs before/after function entry label", type=Expert)
+    public static final HostedOptionKey<String> PatchableFunctionEntry = new HostedOptionKey<>("0,0") {
+
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            int N = 0;
+            int M = 0;
+            int[] parts = Arrays.stream(newValue.split(","))
+                    .map(String::trim)
+                    .mapToInt(Integer::parseInt)
+                    .toArray();
+            if (parts.length > 2 || parts.length == 0) {
+                throw UserError.invalidOptionValue(PatchableFunctionEntry, newValue, "takes upto 2 integers N[,M]");
+            }
+            N = parts[0];
+            if (parts.length == 2) {
+                M = parts[1];
+            }
+            if (N < 0 || M < 0) {
+                throw UserError.invalidOptionValue(PatchableFunctionEntry, newValue, "takes nonnegative N[,M]");
+            }
+            if (N - M < 0) {
+                throw UserError.invalidOptionValue(PatchableFunctionEntry, newValue, "requires N >= M");
+            }
+            SubstrateOptions.ConcealedOptions.NOPsBeforeFunctionEntryLabel.update(values, M);
+            SubstrateOptions.ConcealedOptions.NOPsAfterFunctionEntryLabel.update(values, N-M);
+        }
+    };
+
+    public static int nopsBeforeFunctionEntry() {
+        return ConcealedOptions.NOPsBeforeFunctionEntryLabel.getValue();
+    }
+
+    public static int nopsAfterFunctionEntry() {
+        return ConcealedOptions.NOPsAfterFunctionEntryLabel.getValue();
     }
 
     public static final class GCGroup implements APIOptionGroup {
@@ -1291,6 +1342,12 @@ public class SubstrateOptions {
                 }
             }
         });
+
+        @Option(help = "Insert NOPs before function entry label for instrumentation", type = OptionType.Expert)
+        public static final HostedOptionKey<Integer> NOPsBeforeFunctionEntryLabel = new HostedOptionKey<>(0);
+
+        @Option(help = "Insert NOPs after function entry label for instrumentation", type = OptionType.Expert)
+        public static final HostedOptionKey<Integer> NOPsAfterFunctionEntryLabel = new HostedOptionKey<>(0);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
@@ -1354,6 +1411,14 @@ public class SubstrateOptions {
     public static int getPageSize() {
         int value = ConcealedOptions.PageSize.getValue();
         if (value == 0) {
+            if (LibCBase.targetLibCIs(CosmoLibC.class)) {
+                if (Platform.includedIn(Platform.AMD64.class)) {
+                    return 4096;
+                }
+                else if (Platform.includedIn(Platform.AARCH64.class)) {
+                    return 16384;
+                }
+            }
             /*
              * Assume at least a 64k page size if none was specified. This maximizes compatibility
              * because images can be executed as long as run-time page size <= build-time page size.

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -41,7 +42,7 @@ import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 
-@AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
+@AutomaticallyRegisteredImageSingleton(value = ThreadCpuTimeSupport.class, onlyWith = NotCosmoLibCSupplier.class)
 public class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     @Override

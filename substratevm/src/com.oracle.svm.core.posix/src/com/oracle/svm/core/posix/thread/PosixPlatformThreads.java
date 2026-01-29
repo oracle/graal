@@ -51,6 +51,7 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.posix.PosixUtils;
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_attr_t;
@@ -78,7 +79,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.internal.misc.Unsafe;
 
-@AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
+@AutomaticallyRegisteredImageSingleton(value = PlatformThreads.class, onlyWith = NotCosmoLibCSupplier.class)
 public final class PosixPlatformThreads extends PlatformThreads {
 
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
@@ -293,7 +294,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
     }
 }
 
-@TargetClass(Thread.class)
+@TargetClass(value = Thread.class, onlyWith = NotCosmoLibCSupplier.class)
 final class Target_java_lang_Thread {
     @Inject //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
@@ -447,7 +448,7 @@ final class PosixParker extends Parker {
 }
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-@AutomaticallyRegisteredImageSingleton(ParkerFactory.class)
+@AutomaticallyRegisteredImageSingleton(value = ParkerFactory.class, onlyWith = NotCosmoLibCSupplier.class)
 class PosixParkerFactory implements Parker.ParkerFactory {
     @Override
     public Parker acquire() {
