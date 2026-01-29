@@ -40,6 +40,7 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
@@ -163,18 +164,47 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
 
     @Override
     public Object lookupConstant(int cpi) {
-        Object entry = objAt(cpi);
-        if (entry instanceof JavaConstant) {
-            return entry;
-        } else if (entry instanceof JavaType) {
-            return entry;
-        }
-        throw VMError.shouldNotReachHereAtRuntime();
+        return lookupConstant(cpi, true);
     }
 
     @Override
+    @SuppressWarnings("fallthrough")
     public Object lookupConstant(int cpi, boolean resolve) {
-        throw VMError.intentionallyUnimplemented();
+        final Tag tag = tagAt(cpi);
+        switch (tag) {
+            case INTEGER:
+                return JavaConstant.forInt(this.intAt(cpi));
+            case FLOAT:
+                return JavaConstant.forFloat(this.floatAt(cpi));
+            case LONG:
+                return JavaConstant.forLong(this.longAt(cpi));
+            case DOUBLE:
+                return JavaConstant.forDouble(this.doubleAt(cpi));
+            case STRING:
+                return SubstrateObjectConstant.forObject(resolvedAt(cpi, holder));
+            case CLASS:
+                return objAt(cpi);
+            case METHODHANDLE:
+            case METHODTYPE:
+            case DYNAMIC:
+                Object ret = queryConstantPool(cpi, resolve);
+                if (ret == null) {
+                    // TODO GR-70200: support DYNAMIC resolving to null ?
+                    return ret;
+                }
+                return SubstrateObjectConstant.forObject(ret);
+            default: {
+                throw VMError.shouldNotReachHere("Unknown tag " + tag);
+            }
+        }
+    }
+
+    private Object queryConstantPool(int cpi, boolean resolve) {
+        if (resolve) {
+            return resolvedAt(cpi, holder);
+        } else {
+            return objAt(cpi);
+        }
     }
 
     @Override

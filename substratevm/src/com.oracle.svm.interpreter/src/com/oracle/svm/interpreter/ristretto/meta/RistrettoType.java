@@ -27,10 +27,14 @@ package com.oracle.svm.interpreter.ristretto.meta;
 import java.util.function.Function;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
+import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -70,7 +74,6 @@ public final class RistrettoType extends SubstrateType {
             GraalError.guarantee(iComponentType != null, "Must find component type if we are dealing with an array, this %s component type %s", this, iComponentType);
             return create(iComponentType);
         } else {
-
             return null;
         }
     }
@@ -87,5 +90,44 @@ public final class RistrettoType extends SubstrateType {
          * all resolved (==loaded) types successfully linked as well
          */
         return true;
+    }
+
+    @Override
+    public ResolvedJavaField[] getStaticFields() {
+        return RistrettoUtils.toRFields(interpreterType.getStaticFields());
+    }
+
+    @Override
+    public SubstrateField[] getInstanceFields(boolean includeSuperclasses) {
+        return RistrettoUtils.toRFields(interpreterType.getInstanceFields(includeSuperclasses));
+    }
+
+    @Override
+    public boolean isAssignableFrom(ResolvedJavaType other) {
+        assert other instanceof RistrettoType : Assertions.errorMessage("Must already be wrapped", this, other);
+        RistrettoType rTypeOther = (RistrettoType) other;
+        return this.interpreterType.isAssignableFrom(rTypeOther.interpreterType);
+    }
+
+    @Override
+    public ResolvedJavaType getArrayClass() {
+        InterpreterResolvedJavaType iArrayType = interpreterType.getArrayClass();
+        assert iArrayType != null;
+        return RistrettoType.create(iArrayType);
+    }
+
+    @Override
+    public SubstrateType getSuperclass() {
+        DynamicHub superHub = getHub().getSuperHub();
+        return RistrettoType.create((InterpreterResolvedJavaType) superHub.getInterpreterType());
+    }
+
+    @Override
+    protected SubstrateType getSuperType() {
+        if (isArray() || isInterface()) {
+            return RistrettoType.create((InterpreterResolvedJavaType) DynamicHub.fromClass(Object.class).getInterpreterType());
+        } else {
+            return getSuperclass();
+        }
     }
 }

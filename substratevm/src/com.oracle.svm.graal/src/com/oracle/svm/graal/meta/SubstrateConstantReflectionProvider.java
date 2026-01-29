@@ -26,11 +26,12 @@ package com.oracle.svm.graal.meta;
 
 import java.util.Objects;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.SignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -46,14 +47,13 @@ import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.word.impl.Word;
 
 public class SubstrateConstantReflectionProvider extends SharedConstantReflectionProvider {
     private final MetaAccessProvider metaAccess;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateConstantReflectionProvider(SubstrateMetaAccess metaAccess) {
         this.metaAccess = metaAccess;
+        assert SubstrateUtil.HOSTED || SubstrateOptions.useRistretto();
     }
 
     @Override

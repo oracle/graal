@@ -29,17 +29,19 @@ import java.util.function.Function;
 
 import com.oracle.svm.interpreter.Interpreter;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
-import com.oracle.svm.interpreter.metadata.CremaResolvedJavaFieldImpl;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.UnresolvedJavaMethod;
 
@@ -85,7 +87,15 @@ public final class RistrettoConstantPool implements ConstantPool {
     @Override
     public JavaField lookupField(int rawIndex, ResolvedJavaMethod method, int opcode) {
         JavaField javaField = interpreterConstantPool.lookupField(rawIndex, method, opcode);
-        if (javaField instanceof CremaResolvedJavaFieldImpl iField) {
+        /*
+         * A note on wrapping AOT fields into ristretto JVMCI API: When compiling dynamically loaded
+         * types with ristretto every such interpreter type is a crema resolved type. All these
+         * cream resolved types are wrapped to ristretto types. However, when interfacing with AOT
+         * types (in stamp intersection, optimizations etc) we need ristretto types that are
+         * compatible (== have the same class) with each other. Thus, we wrap here all interpreter
+         * fields (also those that are not crema resolved, i.e., AOT fields).
+         */
+        if (javaField instanceof InterpreterResolvedJavaField iField) {
             return RistrettoField.create(iField);
         }
         return javaField;
@@ -133,7 +143,25 @@ public final class RistrettoConstantPool implements ConstantPool {
 
     @Override
     public Object lookupConstant(int cpi, boolean resolve) {
-        return interpreterConstantPool.lookupConstant(cpi, resolve);
+        Object retVal = interpreterConstantPool.lookupConstant(cpi, resolve);
+        if (retVal == null) {
+            /*
+             * Return null if the interpreter has not yet resolved this constant. The compiler will
+             * create an unresolved deopt in that case.
+             */
+            return null;
+        } else if (retVal instanceof JavaConstant) {
+            return retVal;
+        } else if (retVal instanceof JavaType) {
+            if (retVal instanceof ResolvedJavaType) {
+                GraalError.guarantee(retVal instanceof InterpreterResolvedJavaType, "Must be an interpreter resolved java type but is %s", retVal);
+                return RistrettoType.create((InterpreterResolvedJavaType) retVal);
+            } else {
+                // unresolved entry, just return it
+                return retVal;
+            }
+        }
+        throw GraalError.shouldNotReachHere(String.format("Unknown value for constant lookup, cpi=%s resolve=%s this=%s", cpi, resolve, this));
     }
 
     @Override

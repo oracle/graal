@@ -170,4 +170,11 @@ public class Providers implements CoreProviders {
         return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider, substitution,
                         snippetReflection, wordTypes, loopsDataProvider);
     }
+
+    public Providers copyWith(MetaAccessProvider substitution) {
+        assert this.getClass() == Providers.class : getClass() + " must override";
+        return new Providers(substitution, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider,
+                        metaAccessExtensionProvider,
+                        snippetReflection, wordTypes, loopsDataProvider);
+    }
 }

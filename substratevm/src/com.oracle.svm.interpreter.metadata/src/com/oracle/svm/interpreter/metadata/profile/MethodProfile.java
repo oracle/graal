@@ -137,7 +137,7 @@ public final class MethodProfile {
     }
 
     public long profileMethodEntry() {
-        return ((CountingProfile) getAtBCI(JVMCI_METHOD_ENTRY_BCI, CountingProfile.class)).counter++;
+        return ++((CountingProfile) getAtBCI(JVMCI_METHOD_ENTRY_BCI, CountingProfile.class)).counter;
     }
 
     public long getProfileEntryCount() {
