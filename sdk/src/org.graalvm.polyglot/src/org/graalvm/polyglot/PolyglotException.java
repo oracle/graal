@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,6 +112,8 @@ public final class PolyglotException extends RuntimeException {
         dispatch.onCreate(receiver, this);
         // we need to materialize the stack if this exception is printed as cause of another error.
         // unfortunately we cannot detect this easily
+        // We require eager materialization also for polyglot isolates because the isolate
+        // may be disposed by a try-with-resources block before the exception handler runs.
         super.setStackTrace(getStackTrace());
     }
 
