@@ -732,7 +732,11 @@ final class EspressoExternalVMAccess implements VMAccess {
     }
 
     Value invokeJVMCIHelper(String method, Object... args) {
-        return jvmciHelper.invokeMember(method, args);
+        try {
+            return jvmciHelper.invokeMember(method, args);
+        } catch (PolyglotException e) {
+            throw throwHostException(e);
+        }
     }
 
     JavaType toJavaType(Value value) {
