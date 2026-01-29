@@ -189,6 +189,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             case DYNAMIC:
                 Object ret = queryConstantPool(cpi, resolve);
                 if (ret == null) {
+                    // TODO GR-70200: support DYNAMIC resolving to null ?
                     return ret;
                 }
                 return SubstrateObjectConstant.forObject(ret);
