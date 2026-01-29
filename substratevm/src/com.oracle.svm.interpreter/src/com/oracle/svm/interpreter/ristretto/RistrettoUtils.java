@@ -54,7 +54,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPhase;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoNoDeoptPhase;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
-import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileProvider;
+import com.oracle.svm.interpreter.ristretto.profile.RistrettoContextAgnosticProfileProvider;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationWatchDog;
@@ -164,7 +164,7 @@ public class RistrettoUtils {
             final DebugContext debug = new DebugContext.Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(runtimeConfig.getProviders().getSnippetReflection())).build();
             final OptionValues options = debug.getOptions();
             final SpeculationLog speculationLog = new SubstrateSpeculationLog();
-            final ProfileProvider profileProvider = new RistrettoProfileProvider(rMethod);
+            final ProfileProvider profileProvider = new RistrettoContextAgnosticProfileProvider(rMethod);
             final StructuredGraph.AllowAssumptions allowAssumptions = StructuredGraph.AllowAssumptions.NO;
             SubstrateCompilationIdentifier compilationId = new SubstrateCompilationIdentifier(method);
             StructuredGraph graph = new StructuredGraph.Builder(options, debug, allowAssumptions).method(method).speculationLog(speculationLog)
@@ -231,7 +231,7 @@ public class RistrettoUtils {
                         final OptionValues options = debug.getOptions();
                         // final int entryBCI = 0;
                         final SpeculationLog speculationLog = new SubstrateSpeculationLog();
-                        final ProfileProvider profileProvider = new RistrettoProfileProvider(rMethod);
+                        final ProfileProvider profileProvider = new RistrettoContextAgnosticProfileProvider(rMethod);
                         final StructuredGraph.AllowAssumptions allowAssumptions = StructuredGraph.AllowAssumptions.NO;
                         // TODO GR-71494 - OSR support will require setting the entry BCI for
                         // parsing

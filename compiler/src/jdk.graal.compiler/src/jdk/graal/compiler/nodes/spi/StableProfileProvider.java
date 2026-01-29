@@ -27,6 +27,7 @@ package jdk.graal.compiler.nodes.spi;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
@@ -34,6 +35,7 @@ import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaMethodProfile;
@@ -191,18 +193,15 @@ public class StableProfileProvider implements ProfileProvider {
     private boolean frozen;
     private boolean warnNonCachedLoadAccess;
 
-    @Override
-    public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method) {
-        return getProfilingInfo(method, true, true);
-    }
-
     public static class ProfileKey {
         final ResolvedJavaMethod method;
         final boolean includeNormal;
         final boolean includeOSR;
+        final NodeSourcePosition context;
 
-        ProfileKey(ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
+        ProfileKey(ResolvedJavaMethod method, NodeSourcePosition context, boolean includeNormal, boolean includeOSR) {
             this.method = method;
+            this.context = context;
             this.includeNormal = includeNormal;
             this.includeOSR = includeOSR;
         }
@@ -228,20 +227,51 @@ public class StableProfileProvider implements ProfileProvider {
                 return false;
             }
             ProfileKey that = (ProfileKey) o;
-            return includeNormal == that.includeNormal && includeOSR == that.includeOSR && method.equals(that.method);
+            return Objects.equals(context, that.context) && includeNormal == that.includeNormal && includeOSR == that.includeOSR && method.equals(that.method);
         }
 
         @Override
         public int hashCode() {
-            return method.hashCode() + (includeNormal ? 1 : 0) + (includeOSR ? 2 : 0);
+            return method.hashCode() + (context != null ? context.hashCode() : 0) + (includeNormal ? 1 : 0) + (includeOSR ? 2 : 0);
         }
     }
 
+    /**
+     * Note: This method only exists so implementations have a fast path to decide whether the
+     * context parameter of {@link #getProfilingInfo(NodeSourcePosition, ResolvedJavaMethod)} can be
+     * safely ignored. It is a mere performance optimization.
+     *
+     * @return {@code true} if this profile provider can return calling context-sensitive view on
+     *         profiling data for methods
+     *
+     * @see #deriveForContext(NodeSourcePosition, ResolvedJavaMethod, boolean, boolean)
+     */
+    public boolean supportsContext() {
+        return false;
+    }
+
+    public ProfilingInfo deriveForContext(@SuppressWarnings("unused") NodeSourcePosition callingContext, ResolvedJavaMethod callee, boolean includeNormal, boolean includeOSR) {
+        /*
+         * The default implementation of the stable profile provider does not preserve any context,
+         * however it can properly cache with context. So it is a matter of implementing
+         * deriveContext for StableProfileProvider to return context-sensitive results.
+         */
+        return callee.getProfilingInfo(includeNormal, includeOSR);
+    }
+
     @Override
-    public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
+    public ProfilingInfo getProfilingInfo(NodeSourcePosition callingContext, ResolvedJavaMethod method) {
+        return getProfilingInfo(callingContext, method, true, true);
+    }
+
+    @Override
+    public ProfilingInfo getProfilingInfo(NodeSourcePosition callingContext, ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
+
         // In the normal case true is passed for both arguments but the root method of the compile
         // will pass true for only one of these flags.
-        ProfileKey key = new ProfileKey(method, includeNormal, includeOSR);
+
+        // we only use context keys if the provider supports them
+        ProfileKey key = new ProfileKey(method, supportsContext() ? callingContext : null, includeNormal, includeOSR);
 
         CachingProfilingInfo profile = profiles.get(key);
         if (profile == null && loaded != null) {
@@ -266,7 +296,7 @@ public class StableProfileProvider implements ProfileProvider {
                     TTY.printf("Requesting not cached profile for %s%n", method.format(METHOD_FORMAT));
                 }
             }
-            profile = new CachingProfilingInfo(method, includeNormal, includeOSR);
+            profile = new CachingProfilingInfo(this, callingContext, method, includeNormal, includeOSR);
             profiles.put(key, profile);
         }
         return profile;
@@ -374,9 +404,9 @@ public class StableProfileProvider implements ProfileProvider {
 
         private boolean materialized;
 
-        CachingProfilingInfo(ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
-            this.method = method;
-            this.realProfile = method.getProfilingInfo(includeNormal, includeOSR);
+        CachingProfilingInfo(StableProfileProvider provider, NodeSourcePosition callerContext, ResolvedJavaMethod callee, boolean includeNormal, boolean includeOSR) {
+            this.method = callee;
+            this.realProfile = provider.deriveForContext(callerContext, callee, includeNormal, includeOSR);
             this.bytecodeProfiles = EconomicMap.create();
         }
 

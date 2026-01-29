@@ -290,19 +290,19 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             List<ResolvedJavaMethod> inlinedMethods = recordInlinedMethods ? new ArrayList<>() : null;
             // @formatter:off
             return new StructuredGraph(name,
-                            rootMethod,
-                            entryBCI,
-                            assumptions,
-                            profileProvider,
-                            newGraphState.copyWith(isSubstitution, speculationLog),
-                            isSubstitution,
-                            inlinedMethods,
-                            trackNodeSourcePosition,
-                            compilationId,
-                            options,
-                            debug,
-                            cancellable,
-                            callerContext);
+                    rootMethod,
+                    entryBCI,
+                    assumptions,
+                    profileProvider,
+                    newGraphState.copyWith(isSubstitution, speculationLog),
+                    isSubstitution,
+                    inlinedMethods,
+                    trackNodeSourcePosition,
+                    compilationId,
+                    options,
+                    debug,
+                    cancellable,
+                    callerContext);
             // @formatter:on
         }
     }
@@ -472,6 +472,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.cacheInvalidationListener = cacheCompilerDataStructures ? new CacheInvalidationListener() : null;
     }
 
+    /**
+     * @return the calling context of this graph if it is available, else {@code null}
+     */
+    public NodeSourcePosition getCallerContext() {
+        return callerContext;
+    }
+
     public void setLastSchedule(ScheduleResult result) {
         GraalError.guarantee(result == null || result.cfg.getStartBlock().isModifiable(), "Schedule must use blocks that can be modified");
         lastSchedule = result;
@@ -534,7 +541,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         properties.put("edgeModificationCount", getEdgeModificationCount());
         properties.put("assumptions", String.valueOf(getAssumptions()));
         if (method() != null && profileProvider != null) {
-            ProfilingInfo profilingInfo = profileProvider.getProfilingInfo(method());
+            ProfilingInfo profilingInfo = profileProvider.getProfilingInfo(callerContext, method());
             if (profilingInfo != null) {
                 for (DeoptimizationReason reason : DeoptimizationReason.values()) {
                     if (reason != DeoptimizationReason.None) {
@@ -1159,16 +1166,16 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * Gets the profiling info for the {@linkplain #method() root method} of this graph.
      */
     public ProfilingInfo getProfilingInfo() {
-        return getProfilingInfo(method());
+        return getProfilingInfo(getCallerContext(), method());
     }
 
     /**
      * Gets the profiling info for a given method that is or will be part of this graph, taking into
      * account the {@link #getProfileProvider()}.
      */
-    public ProfilingInfo getProfilingInfo(ResolvedJavaMethod m) {
+    public ProfilingInfo getProfilingInfo(NodeSourcePosition context, ResolvedJavaMethod m) {
         if (profileProvider != null && m != null) {
-            return profileProvider.getProfilingInfo(m);
+            return profileProvider.getProfilingInfo(context, m);
         } else {
             return null;
         }
