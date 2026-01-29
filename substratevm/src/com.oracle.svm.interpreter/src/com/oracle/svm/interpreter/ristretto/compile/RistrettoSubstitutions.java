@@ -26,34 +26,20 @@ package com.oracle.svm.interpreter.ristretto.compile;
 
 import static com.oracle.svm.interpreter.ristretto.RistrettoFeature.RistrettoEnabled;
 
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
 
 @TargetClass(value = ReplacementsImpl.class, onlyWith = RistrettoEnabled.class)
 final class Target_jdk_graal_compiler_replacements_ReplacementsImpl {
 
     @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = RistrettoGraphBuilderPluginTransformer.class) //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private GraphBuilderConfiguration.Plugins graphBuilderPlugins;
 
-    private static final class RistrettoGraphBuilderPluginTransformer implements FieldValueTransformer {
-
-        @Override
-        public Object transform(Object receiver, Object originalValue) {
-            GraphBuilderConfiguration.Plugins runtimeParseGraphBuilderPlugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
-            RistrettoGraphBuilderPlugins.setRuntimeGraphBuilderPlugins(runtimeParseGraphBuilderPlugins);
-            runtimeParseGraphBuilderPlugins.getInvocationPlugins().closeRegistration();
-            return runtimeParseGraphBuilderPlugins;
-        }
-
-    }
 }
 
 public class RistrettoSubstitutions {
