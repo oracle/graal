@@ -554,13 +554,14 @@ public final class TypeCheckBuilder {
 
             HostedType subtypeStampType = null;
             for (HostedType child : subtypeMap.get(type)) {
+                VMError.guarantee(child.strengthenStampType != HostedType.UNINITIALIZED);
                 if (child.strengthenStampType != null) {
                     if (subtypeStampType != null && !subtypeStampType.equals(child.strengthenStampType)) {
                         /* The join of instantiated subtypes is this type. */
                         subtypeStampType = type;
                         break;
                     } else {
-                        subtypeStampType = child.strengthenStampType;
+                        subtypeStampType = (HostedType) child.strengthenStampType;
                     }
                 }
             }
@@ -596,6 +597,7 @@ public final class TypeCheckBuilder {
                     type.uniqueConcreteImplementation = null;
                 } else {
                     type.strengthenStampType = subtypeStampType;
+                    VMError.guarantee(subtypeStampType.uniqueConcreteImplementation != HostedType.UNINITIALIZED);
                     type.uniqueConcreteImplementation = subtypeStampType.uniqueConcreteImplementation;
                 }
             }
