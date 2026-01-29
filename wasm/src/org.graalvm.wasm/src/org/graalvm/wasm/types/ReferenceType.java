@@ -48,6 +48,7 @@ public record ReferenceType(boolean nullable, HeapType heapType) implements Valu
     public static ReferenceType FUNCREF = new ReferenceType(true, AbstractHeapType.FUNC);
     public static ReferenceType EXTERNREF = new ReferenceType(true, AbstractHeapType.EXTERN);
     public static ReferenceType EXNREF = new ReferenceType(true, AbstractHeapType.EXN);
+    public static ReferenceType ANYREF = new ReferenceType(true, AbstractHeapType.ANY);
 
     @Override
     public boolean isSubtypeOf(ValueType thatValueType) {

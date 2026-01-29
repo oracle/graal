@@ -87,6 +87,7 @@ import org.graalvm.wasm.Linker.ResolutionDag.InitializeTableSym;
 import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
 import org.graalvm.wasm.Linker.ResolutionDag.Sym;
 import org.graalvm.wasm.api.ExecuteHostFunctionNode;
+import org.graalvm.wasm.types.ReferenceType;
 import org.graalvm.wasm.vector.Vector128;
 import org.graalvm.wasm.array.WasmArray;
 import org.graalvm.wasm.array.WasmFloat32Array;
@@ -331,7 +332,7 @@ public class Linker {
                 externalGlobal = importedInstance.externalGlobal(exportedGlobalIndex);
             }
             ValueType importType = instance.symbolTable().closedTypeOf(valueType);
-            ValueType exportType = externalGlobal.getClosedType();
+            ValueType exportType = externalGlobal.getValueType();
             if (mutability != externalGlobal.getMutability()) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
                                 "' with the modifier " + Mutability.asString(mutability) + ", " +
@@ -343,7 +344,7 @@ public class Linker {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
                                 "' with the type " + Mutability.asString(mutability) + " " + WasmType.toString(valueType) + ", " +
                                 "but it was exported in the module '" + importedModuleName + "' with the type " + Mutability.asString(externalGlobal.getMutability()) + " " +
-                                WasmType.toString(externalGlobal.getType()) + ".");
+                                externalGlobal.getValueType() + ".");
             }
             instance.setExternalGlobal(globalIndex, externalGlobal);
             instance.globals().setInitialized(globalIndex, true);
@@ -1052,7 +1053,7 @@ public class Linker {
         resolutionDag.resolveLater(new InitializeTableSym(instance.name(), tableIndex), dependencies, resolveAction);
     }
 
-    void resolveTableImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tableIndex, int declaredMinSize, int declaredMaxSize, int elemType,
+    void resolveTableImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tableIndex, int declaredMinSize, int declaredMaxSize, ReferenceType elemType,
                     ImportValueSupplier imports) {
         final Runnable resolveAction = () -> {
             WasmTable importedTable = lookupImportObject(instance, importDescriptor, imports, WasmTable.class);
@@ -1087,7 +1088,7 @@ public class Linker {
             assertUnsignedIntGreaterOrEqual(declaredMaxSize, importedTable.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
             // when matching element types of imported tables, we need to check for type equivalence
             // instead of subtyping, as tables have read/write access
-            assertTrue(instance.symbolTable().closedTypeOf(elemType).equals(importedTable.closedElemType()), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            assertTrue(elemType.equals(importedTable.elemType()), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setTable(tableIndex, importedTable);
         };
         final ImportTableSym importTableSym = new ImportTableSym(instance.name(), importDescriptor);

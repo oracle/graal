@@ -1350,15 +1350,18 @@ public abstract class SymbolTable {
     public void declareTable(int index, int declaredMinSize, int declaredMaxSize, int elemType, byte[] initBytecode, Object initValue, boolean referenceTypes) {
         checkNotParsed();
         addTable(index, declaredMinSize, declaredMaxSize, elemType, initValue, initBytecode, referenceTypes);
+        ValueType elementValueType = closedTypeOf(elemType);
+        assert elementValueType.isReferenceType();
+        ReferenceType elementType = (ReferenceType) elementValueType;
         module().addLinkAction((context, store, instance, imports) -> {
             final int maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().tableInstanceSizeLimit());
             module().limits().checkTableInstanceSize(declaredMinSize);
             final WasmTable wasmTable;
             if (context.getContextOptions().memoryOverheadMode()) {
                 // Initialize an empty table in memory overhead mode.
-                wasmTable = new WasmTable(0, 0, 0, elemType, this);
+                wasmTable = new WasmTable(0, 0, 0, elementType);
             } else {
-                wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize, elemType, this);
+                wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize, elementType);
             }
             instance.setTable(index, wasmTable);
 
@@ -1372,9 +1375,12 @@ public abstract class SymbolTable {
         final ImportDescriptor importedTable = new ImportDescriptor(moduleName, tableName, ImportIdentifier.TABLE, index, numImportedSymbols());
         importedTables.put(index, importedTable);
         importSymbol(importedTable);
+        ValueType elementValueType = closedTypeOf(elemType);
+        assert elementValueType.isReferenceType();
+        ReferenceType elementType = (ReferenceType) elementValueType;
         module().addLinkAction((context, store, instance, imports) -> {
             instance.setTable(index, null);
-            store.linker().resolveTableImport(store, instance, importedTable, index, initSize, maxSize, elemType, imports);
+            store.linker().resolveTableImport(store, instance, importedTable, index, initSize, maxSize, elementType, imports);
         });
     }
 
