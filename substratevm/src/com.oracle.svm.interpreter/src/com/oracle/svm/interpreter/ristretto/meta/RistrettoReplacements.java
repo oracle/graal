@@ -93,7 +93,14 @@ public class RistrettoReplacements implements Replacements {
             public Object apply(Object o) {
                 if (o instanceof SubstrateType substrateType) {
                     return RistrettoType.create((InterpreterResolvedJavaType) substrateType.getHub().getInterpreterType());
-                } else if (o instanceof SubstrateMethod substrateMethod) {
+                } else if (o instanceof SubstrateMethod substrateMethod &&
+                                /*
+                                 * Note that we exclude native methods and other snippets here. If
+                                 * we call a native methods its normally a node intrinsic, if we
+                                 * call another snippet method we also will not have interpreter
+                                 * methods for it.
+                                 */
+                                !isSnippet(substrateMethod) && !substrateMethod.isNative()) {
                     InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) substrateMethod.getDeclaringClass().getHub().getInterpreterType();
                     for (var iMeth : iType.getDeclaredMethods()) {
                         if (iMeth.getName().equals(substrateMethod.getName()) && iMeth.getSignature().toString().equals(substrateMethod.getSignature().toString())) {
