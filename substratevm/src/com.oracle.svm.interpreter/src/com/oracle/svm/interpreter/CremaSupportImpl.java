@@ -1225,7 +1225,7 @@ public class CremaSupportImpl implements CremaSupport {
         }
         JavaKind kind = TypeSymbols.getJavaKind(elementalType);
         Class<?> result;
-        if (kind != JavaKind.Object) {
+        if (kind.isPrimitive()) {
             result = kind.toJavaClass();
         } else {
             AbstractClassRegistry registry = ClassRegistries.singleton().getRegistry(((InterpreterResolvedJavaType) accessingClass).getJavaClass().getClassLoader());

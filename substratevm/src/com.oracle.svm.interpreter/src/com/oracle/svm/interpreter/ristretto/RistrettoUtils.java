@@ -485,6 +485,10 @@ public class RistrettoUtils {
             }
             rFields.add(rField);
         }
+        /*
+         * TODO GR-73047: Sort the fields in all interpreter types already by offset, then no resort
+         * is ever necessary.
+         */
         rFields.sort((x, y) -> Integer.compare(x.getOffset(), y.getOffset()));
         return rFields.toArray(new RistrettoField[0]);
     }
