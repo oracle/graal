@@ -41,6 +41,7 @@ import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.option.RuntimeOptionValues;
@@ -62,6 +63,7 @@ import com.oracle.svm.interpreter.ristretto.meta.RistrettoConstantReflectionProv
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoField;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMetaAccess;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoReplacements;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.code.CompilationResult;
@@ -309,6 +311,8 @@ public class RistrettoUtils {
 
                             // and the ristretto constant reflection
                             providers = providers.copyWith(new RistrettoConstantReflectionProvider((SubstrateMetaAccess) providers.getMetaAccess(), providers.getSnippetReflection()));
+
+                            providers = providers.copyWith(new RistrettoReplacements((SubstrateReplacements) providers.getReplacements()));
                         }
 
                         GraalCompiler.compile(new GraalCompiler.Request<>(graph,
