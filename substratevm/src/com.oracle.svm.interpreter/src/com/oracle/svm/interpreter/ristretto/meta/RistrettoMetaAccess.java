@@ -77,7 +77,7 @@ public final class RistrettoMetaAccess extends SubstrateMetaAccess {
                 }
             }
         } else {
-            for (var iField : iType.getStaticFields()) {
+            for (var iField : iType.getInstanceFields(true)) {
                 if (iField.getName().equals(reflectionField.getName())) {
                     return RistrettoField.create((InterpreterResolvedJavaField) iField);
                 }
