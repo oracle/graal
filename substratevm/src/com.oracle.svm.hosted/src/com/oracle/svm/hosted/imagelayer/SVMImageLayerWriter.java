@@ -1077,7 +1077,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                  * reachable constants. They can be created in the extension image, but should not
                  * be used.
                  */
-                Set<Integer> relinkedFields = imageLayerSnapshotUtil.getRelinkedFields(parentType, aUniverse.getBigbang().getMetaAccess());
+                Set<Integer> relinkedFields = imageLayerSnapshotUtil.getRelinkedFields(parentType, aUniverse);
                 ConstantParent parent = relinkedFields.contains(i) ? new ConstantParent(ImageHeapConstant.getConstantID(constant), i) : ConstantParent.NONE;
 
                 discoveredConstants.add(con);
