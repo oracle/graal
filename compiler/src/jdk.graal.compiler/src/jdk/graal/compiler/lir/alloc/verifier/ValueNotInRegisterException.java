@@ -29,7 +29,7 @@ public class ValueNotInRegisterException extends RAVException {
                 .append(variable)
                 .append(" not found in ")
                 .append(location)
-                .append("for instruction ")
+                .append(" for instruction ")
                 .append(instruction)
                 .append(" in ")
                 .append(block)
