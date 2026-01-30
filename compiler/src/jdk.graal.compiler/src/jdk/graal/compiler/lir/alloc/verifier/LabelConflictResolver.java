@@ -120,7 +120,7 @@ public class LabelConflictResolver implements ConflictResolver {
     }
 
     @Override
-    public ValueAllocationState resolveConflictedState(Variable target, ConflictedAllocationState conflictedState) {
+    public ValueAllocationState resolveConflictedState(Variable target, ConflictedAllocationState conflictedState, Value location) {
         if (!this.expandedRules.containsKey(target)) {
             return null;
         }
@@ -136,7 +136,7 @@ public class LabelConflictResolver implements ConflictResolver {
     }
 
     @Override
-    public ValueAllocationState resolveValueState(Variable target, ValueAllocationState valueState) {
+    public ValueAllocationState resolveValueState(Variable target, ValueAllocationState valueState, Value location) {
         if (!this.expandedRules.containsKey(target)) {
             return null;
         }

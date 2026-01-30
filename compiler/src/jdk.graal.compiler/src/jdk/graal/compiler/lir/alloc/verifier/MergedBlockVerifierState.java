@@ -95,10 +95,10 @@ public class MergedBlockVerifierState {
 
             if (state.isConflicted()) {
                 var variable = LIRValueUtil.asVariable(orig);
-                var resolvedState = this.conflictConstantResolver.resolveConflictedState(variable, (ConflictedAllocationState) state);
+                var resolvedState = this.conflictConstantResolver.resolveConflictedState(variable, (ConflictedAllocationState) state, curr);
 
                 if (phiResolution == PhiResolution.FromConflicts && resolvedState == null) {
-                    resolvedState = this.labelConflictResolver.resolveConflictedState(variable, (ConflictedAllocationState) state);
+                    resolvedState = this.labelConflictResolver.resolveConflictedState(variable, (ConflictedAllocationState) state, curr);
                     if (resolvedState == null) {
                         throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
                     }
@@ -120,7 +120,7 @@ public class MergedBlockVerifierState {
 
                     if (valAllocState.value instanceof ConstantValue) {
                         var variable = LIRValueUtil.asVariable(orig);
-                        var resolvedState = this.conflictConstantResolver.resolveValueState(variable, valAllocState);
+                        var resolvedState = this.conflictConstantResolver.resolveValueState(variable, valAllocState, curr);
                         if (resolvedState != null) {
                             this.values.put(curr, resolvedState);
                             continue;
@@ -129,7 +129,7 @@ public class MergedBlockVerifierState {
 
                     if (phiResolution == PhiResolution.FromConflicts && LIRValueUtil.isVariable(orig)) {
                         var variable = LIRValueUtil.asVariable(orig);
-                        var resolvedState = labelConflictResolver.resolveValueState(variable, valAllocState);
+                        var resolvedState = labelConflictResolver.resolveValueState(variable, valAllocState, curr);
                         if (resolvedState != null) {
                             this.values.put(curr, resolvedState);
                             continue;
