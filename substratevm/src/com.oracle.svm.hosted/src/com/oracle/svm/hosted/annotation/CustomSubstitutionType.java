@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.annotation;
 
 import java.util.List;
 
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.AnnotatedWrapper;
 import com.oracle.svm.util.OriginalClassProvider;
 
@@ -271,6 +272,7 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
 
     @Override
     public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
+        VMError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return original.getDeclaredConstructors(forceLink);
     }
 

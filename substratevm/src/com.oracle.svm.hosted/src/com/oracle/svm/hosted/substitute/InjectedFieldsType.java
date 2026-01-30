@@ -282,6 +282,7 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
 
     @Override
     public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
+        VMError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return original.getDeclaredConstructors(forceLink);
     }
 
@@ -292,6 +293,7 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
 
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
+        VMError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
         return original.getDeclaredMethods(forceLink);
     }
 

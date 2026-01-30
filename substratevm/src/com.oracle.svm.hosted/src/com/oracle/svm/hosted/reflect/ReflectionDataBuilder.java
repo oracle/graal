@@ -66,7 +66,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -104,7 +103,6 @@ import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
@@ -149,9 +147,9 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 ///    with the necessary information.
 /// 3. Private `registerTypesFor...` methods then perform the necessary registrations for the registered elements to
 ///    be accessible at runtime. This can include making elements reachable, rescanning objects on the heap, etc. In
-///    particular, [#registerTypesForTypeQuery(AccessCondition, AnalysisType, boolean)] registers the complete metadata
-///    for a given type, including fields, methods, inner types, etc. The fields and methods are not registered for
-///    reflective access themselves.
+///    particular, [#registerTypesForTypeQuery(AccessCondition, AnalysisType, boolean, boolean)] registers the complete
+///    metadata for a given type, including fields, methods, inner types, etc. The fields and methods are not registered
+///    for reflective access themselves.
 /// 4. The contents of the metadata maps are queried from NativeImageCodeCache using the [ReflectionHostedSupport]
 ///    API. Temporary code is currently used to match the existing [ReflectionHostedSupport] API, which will eventually
 ///    be replaced by an interface matching the structure of [ReflectionDataBuilder] (GR-72062)
@@ -233,7 +231,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     }
                 }
             } catch (LinkageError e) {
-                registerLinkageError(t, e, TypeData::registerClassLookupError);
+                // LinkageError will be handled by registerAllDeclaredClasses
             }
         });
     }
@@ -247,7 +245,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 }
             }
         } catch (LinkageError e) {
-            registerLinkageError(type, e, TypeData::registerClassLookupError);
+            types.get(type).classLookupLinkageError = e;
         }
     }
 
@@ -283,6 +281,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 ConfigurationMemberAccessibility previous = typeData.registerAs(accessibility);
                 if (previous == null) {
                     registerTypesForHeapType(analysisType);
+                    typeData.linkageError = linkType(analysisType);
                 }
 
                 if (accessibility == NONE) {
@@ -293,7 +292,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                      * We need to register the type again if the condition changes. This will go
                      * away with GR-72063
                      */
-                    registerTypesForTypeQuery(cnd, analysisType, preserved);
+                    registerTypesForTypeQuery(cnd, analysisType, preserved, typeData.linkageError != null);
                     typeData.updateDynamicAccessMetadata(cnd, preserved);
                 }
                 return typeData;
@@ -301,25 +300,46 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
-    private void registerTypesForTypeQuery(AccessCondition condition, AnalysisType type, boolean preserved) {
+    private void registerTypesForTypeQuery(AccessCondition condition, AnalysisType type, boolean preserved, boolean linkageError) {
         type.registerAsReachable("Is registered for reflection.");
         /* GR-72063: Integrate in ReflectionDataBuilder */
         classForNameSupport.registerClass(condition, type.getJavaClass(), ClassLoaderFeature.getRuntimeClassLoader(ClassAccess.getClassLoader(type)), preserved);
 
         runConditionalTask(unconditional(), _ -> {
-            registerAllDeclaredFieldsQuery(type, preserved, QUERIED);
-            registerAllFieldsQuery(type, preserved, QUERIED);
-            registerAllDeclaredMethodsQuery(type);
-            registerAllMethodsQuery(type);
-            registerAllDeclaredConstructorsQuery(type);
-            registerAllConstructorsQuery(type);
+            if (!linkageError) {
+                registerAllDeclaredFieldsQuery(type, preserved, QUERIED);
+                registerAllFieldsQuery(type, preserved, QUERIED);
+                registerAllDeclaredMethodsQuery(type);
+                registerAllMethodsQuery(type);
+                registerAllDeclaredConstructorsQuery(type);
+                registerAllConstructorsQuery(type);
+                registerRecordComponents(type);
+            }
             registerAllDeclaredClasses(type, preserved);
             registerAllClasses(type, preserved);
-            registerRecordComponents(type);
             registerPermittedSubclasses(type);
             registerNestMembers(type);
             registerSigners(type);
         });
+    }
+
+    /**
+     * The JVM links types in a lazy way, which means that a different linkage error may be thrown
+     * when calling {@link Class#getDeclaredMethods()} and {@link Class#getDeclaredFields()}, for
+     * example. The JVM specification however allows implementations to perform eager linking
+     * (https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-5.html), which we do to limit the
+     * size of the runtime metadata.
+     */
+    private static LinkageError linkType(AnalysisType type) {
+        try {
+            type.link();
+        } catch (LinkageError e) {
+            if (LinkAtBuildTimeSupport.singleton().linkAtBuildTime(type)) {
+                throw e;
+            }
+            return e;
+        }
+        return null;
     }
 
     @Override
@@ -414,47 +434,31 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private void registerAllMethodsQuery(AnalysisType type) {
         forAllSuperTypes(type, t -> {
-            try {
-                for (var method : t.getDeclaredMethods()) {
-                    if (method.isPublic()) {
-                        registerMethod(unconditional(), QUERIED, false, method);
-                    }
+            for (var method : t.getDeclaredMethods(false)) {
+                if (method.isPublic()) {
+                    registerMethod(unconditional(), QUERIED, false, method);
                 }
-            } catch (LinkageError e) {
-                registerLinkageError(t, e, TypeData::registerMethodLookupError);
             }
         });
     }
 
     private void registerAllDeclaredMethodsQuery(AnalysisType type) {
-        try {
-            for (var method : type.getDeclaredMethods()) {
-                registerMethod(unconditional(), QUERIED, false, method);
-            }
-        } catch (LinkageError e) {
-            registerLinkageError(type, e, TypeData::registerMethodLookupError);
+        for (var method : type.getDeclaredMethods(false)) {
+            registerMethod(unconditional(), QUERIED, false, method);
         }
     }
 
     private void registerAllConstructorsQuery(AnalysisType type) {
-        try {
-            for (var constructor : type.getDeclaredConstructors()) {
-                if (constructor.isPublic()) {
-                    registerMethod(unconditional(), QUERIED, false, constructor);
-                }
+        for (var constructor : type.getDeclaredConstructors(false)) {
+            if (constructor.isPublic()) {
+                registerMethod(unconditional(), QUERIED, false, constructor);
             }
-        } catch (LinkageError e) {
-            registerLinkageError(type, e, TypeData::registerConstructorLookupError);
         }
     }
 
     private void registerAllDeclaredConstructorsQuery(AnalysisType type) {
-        try {
-            for (var constructor : type.getDeclaredConstructors()) {
-                registerMethod(unconditional(), QUERIED, false, constructor);
-            }
-        } catch (LinkageError e) {
-            registerLinkageError(type, e, TypeData::registerConstructorLookupError);
+        for (var constructor : type.getDeclaredConstructors(false)) {
+            registerMethod(unconditional(), QUERIED, false, constructor);
         }
     }
 
@@ -579,24 +583,16 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private void registerAllFieldsQuery(AnalysisType type, boolean preserved, ConfigurationMemberAccessibility accessibility) {
         forAllSuperTypes(type, t -> {
-            try {
-                JVMCIReflectionUtil.getAllFields(t).forEach(field -> {
-                    if (field.isPublic()) {
-                        registerField(unconditional(), accessibility, preserved, field);
-                    }
-                });
-            } catch (LinkageError e) {
-                registerLinkageError(t, e, TypeData::registerFieldLookupError);
-            }
+            JVMCIReflectionUtil.getAllFields(t).forEach(field -> {
+                if (field.isPublic()) {
+                    registerField(unconditional(), accessibility, preserved, field);
+                }
+            });
         });
     }
 
     private void registerAllDeclaredFieldsQuery(AnalysisType type, boolean preserved, ConfigurationMemberAccessibility accessibility) {
-        try {
-            JVMCIReflectionUtil.getAllFields(type).forEach(field -> registerField(unconditional(), accessibility, preserved, field));
-        } catch (LinkageError e) {
-            registerLinkageError(type, e, TypeData::registerFieldLookupError);
-        }
+        JVMCIReflectionUtil.getAllFields(type).forEach(field -> registerField(unconditional(), accessibility, preserved, field));
     }
 
     private void registerField(AccessCondition condition, ConfigurationMemberAccessibility accessibility, boolean preserved, ResolvedJavaField field) {
@@ -759,15 +755,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerRecordComponents(AnalysisType type) {
-        try {
-            List<? extends ResolvedJavaRecordComponent> recordComponents = type.getRecordComponents();
-            if (recordComponents != null) {
-                for (ResolvedJavaRecordComponent recordComponent : recordComponents) {
-                    registerTypesForRecordComponent(recordComponent);
-                }
+        List<? extends ResolvedJavaRecordComponent> recordComponents = type.getRecordComponents();
+        if (recordComponents != null) {
+            for (ResolvedJavaRecordComponent recordComponent : recordComponents) {
+                registerTypesForRecordComponent(recordComponent);
             }
-        } catch (LinkageError le) {
-            registerLinkageError(type, le, TypeData::registerRecordComponentLookupError);
         }
     }
 
@@ -1082,14 +1074,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return reflectivityFilter.shouldExclude(type);
     }
 
-    private void registerLinkageError(AnalysisType type, LinkageError error, BiConsumer<TypeData, LinkageError> register) {
-        if (LinkAtBuildTimeSupport.singleton().linkAtBuildTime(type)) {
-            throw error;
-        } else {
-            register.accept(types.computeIfAbsent(type, _ -> new TypeData()), error);
-        }
-    }
-
     void afterAnalysis() {
         seal();
         processedTypes = null;
@@ -1301,8 +1285,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public Map<Class<?>, Throwable> getClassLookupErrors() {
         Map<Class<?>, Throwable> classLookupExceptions = new HashMap<>();
         types.forEach((type, data) -> {
-            if (data.classLookupError != null) {
-                classLookupExceptions.put(type.getJavaClass(), data.classLookupError);
+            if (data.classLookupLinkageError != null) {
+                classLookupExceptions.put(type.getJavaClass(), data.classLookupLinkageError);
             }
         });
         return Collections.unmodifiableMap(classLookupExceptions);
@@ -1312,8 +1296,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public Map<Class<?>, Throwable> getFieldLookupErrors() {
         Map<Class<?>, Throwable> fieldLookupExceptions = new HashMap<>();
         types.forEach((type, data) -> {
-            if (data.fieldLookupError != null) {
-                fieldLookupExceptions.put(type.getJavaClass(), data.fieldLookupError);
+            if (data.linkageError != null) {
+                fieldLookupExceptions.put(type.getJavaClass(), data.linkageError);
             }
         });
         return Collections.unmodifiableMap(fieldLookupExceptions);
@@ -1323,8 +1307,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public Map<Class<?>, Throwable> getMethodLookupErrors() {
         Map<Class<?>, Throwable> methodLookupExceptions = new HashMap<>();
         types.forEach((type, data) -> {
-            if (data.methodLookupError != null) {
-                methodLookupExceptions.put(type.getJavaClass(), data.methodLookupError);
+            if (data.linkageError != null) {
+                methodLookupExceptions.put(type.getJavaClass(), data.linkageError);
             }
         });
         return Collections.unmodifiableMap(methodLookupExceptions);
@@ -1334,8 +1318,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public Map<Class<?>, Throwable> getConstructorLookupErrors() {
         Map<Class<?>, Throwable> constructorLookupExceptions = new HashMap<>();
         types.forEach((type, data) -> {
-            if (data.constructorLookupError != null) {
-                constructorLookupExceptions.put(type.getJavaClass(), data.constructorLookupError);
+            if (data.linkageError != null) {
+                constructorLookupExceptions.put(type.getJavaClass(), data.linkageError);
             }
         });
         return Collections.unmodifiableMap(constructorLookupExceptions);
@@ -1345,8 +1329,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public Map<Class<?>, Throwable> getRecordComponentLookupErrors() {
         Map<Class<?>, Throwable> recordComponentLookupExceptions = new HashMap<>();
         types.forEach((type, data) -> {
-            if (data.recordComponentLookupError != null) {
-                recordComponentLookupExceptions.put(type.getJavaClass(), data.recordComponentLookupError);
+            if (data.linkageError != null) {
+                recordComponentLookupExceptions.put(type.getJavaClass(), data.linkageError);
             }
         });
         return Collections.unmodifiableMap(recordComponentLookupExceptions);
@@ -1399,7 +1383,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
-    private final class TypeData extends ElementData {
+    private static final class TypeData extends ElementData {
         /*
          * These flags are set to true when a class is not registered for reflection, but its
          * methods or fields are, to ensure that individual queries on the type return the correct
@@ -1413,48 +1397,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * Linkage errors caught when registering class metadata need to be stored in the image and
          * rethrown at runtime.
          */
-        private LinkageError classLookupError = null;
-        private LinkageError fieldLookupError = null;
-        private LinkageError methodLookupError = null;
-        private LinkageError constructorLookupError = null;
-        private LinkageError recordComponentLookupError = null;
-
-        /*
-         * These methods are synchronized instead of using AtomicReference to improve readability
-         * since concurrent access is expected to be limited
-         */
-        public synchronized void registerClassLookupError(LinkageError error) {
-            checkPreviousError(classLookupError, error);
-            classLookupError = error;
-        }
-
-        public synchronized void registerFieldLookupError(LinkageError error) {
-            checkPreviousError(fieldLookupError, error);
-            fieldLookupError = error;
-        }
-
-        public synchronized void registerMethodLookupError(LinkageError error) {
-            checkPreviousError(methodLookupError, error);
-            methodLookupError = error;
-        }
-
-        public synchronized void registerConstructorLookupError(LinkageError error) {
-            checkPreviousError(constructorLookupError, error);
-            constructorLookupError = error;
-        }
-
-        public synchronized void registerRecordComponentLookupError(LinkageError error) {
-            checkPreviousError(recordComponentLookupError, error);
-            recordComponentLookupError = error;
-        }
-
-        private void checkPreviousError(Throwable existing, Throwable error) {
-            if (existing == null) {
-                universe.getHeapScanner().rescanObject(error, scanReason);
-            } else {
-                UserError.guarantee(existing.toString().equals(error.toString()), "Attempting to replace %s with %s", existing, error);
-            }
-        }
+        private LinkageError linkageError = null;
+        private LinkageError classLookupLinkageError = null;
     }
 
     private static class ElementData {

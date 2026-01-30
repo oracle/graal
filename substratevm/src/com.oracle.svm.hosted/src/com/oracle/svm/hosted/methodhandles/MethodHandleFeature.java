@@ -384,7 +384,7 @@ public class MethodHandleFeature implements InternalFeature {
 
     private static void registerVarHandleMethodsForReflection(FeatureAccess access, Class<?> subtype) {
         if (subtype.getPackage().getName().equals("java.lang.invoke") && subtype != VarHandle.class) {
-            JVMCIRuntimeReflection.register(((DuringAnalysisAccessImpl) access).getMetaAccess().lookupJavaType(subtype).getDeclaredMethods());
+            JVMCIRuntimeReflection.register(((DuringAnalysisAccessImpl) access).getMetaAccess().lookupJavaType(subtype).getDeclaredMethods(false));
         }
     }
 
