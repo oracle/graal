@@ -211,7 +211,8 @@ public abstract class AnalysisPolicy {
     public abstract InvokeTypeFlow createDeoptInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey);
 
-    public abstract MethodFlowsGraphInfo staticRootMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod method);
+    /** Get the method flows graph; trigger parsing and create the flows graph if necessary. */
+    public abstract MethodFlowsGraphInfo getOrCreateMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod method);
 
     public abstract AnalysisContext allocationContext(PointsToAnalysis bb, MethodFlowsGraph callerGraph);
 
