@@ -312,6 +312,10 @@ public class NativeImageGeneratorRunner {
         VMAccess.Builder builder = GraalAccess.getVmAccessBuilder();
         builder.classPath(List.of(classpath));
         builder.modulePath(List.of(modulepath));
+        if ("espresso".equals(builder.getVMAccessName())) {
+            // Needed to resolve types in org.graalvm.nativeimage.guest
+            builder.addModule("org.graalvm.nativeimage.guest");
+        }
         return builder.build();
     }
 
