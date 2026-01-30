@@ -408,9 +408,9 @@ public class DeoptimizationUtils {
          * is no reason to make this method's flowgraph a stub on creation.
          */
         Iterable<ResolvedJavaMethod> recomputeMethods = DeoptimizationUtils.registerDeoptEntries(graph, true,
-                        (deoptEntryMethod -> ((PointsToAnalysisMethod) deoptEntryMethod).getOrCreateMultiMethod(DEOPT_TARGET_METHOD)));
+                        (deoptEntryMethod -> ((PointsToAnalysisMethod) deoptEntryMethod).getOrCreateMethodVariant(DEOPT_TARGET_METHOD)));
 
-        AnalysisMethod deoptMethod = aMethod.getMultiMethod(DEOPT_TARGET_METHOD);
+        AnalysisMethod deoptMethod = aMethod.getMethodVariant(DEOPT_TARGET_METHOD);
         if (deoptMethod != null && SubstrateCompilationDirectives.singleton().isRegisteredDeoptTarget(deoptMethod)) {
             /*
              * If there exists a deopt target for this method, then it is allowed to deopt.

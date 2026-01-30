@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,25 +29,26 @@ import java.util.Collection;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Multi-methods can have multiple implementations of the original Java method. This functionality
- * is used to create the different variants needed for different compilation scenarios.
+ * A method variant is an alternative implementation of the original Java method. This functionality
+ * is used to create the different graph shapes based on the original graph needed for different
+ * compilation scenarios.
  */
-public interface MultiMethod {
+public interface MethodVariant {
 
     static boolean isOriginalMethod(ResolvedJavaMethod method) {
-        if (method instanceof MultiMethod multiMethod) {
-            return multiMethod.isOriginalMethod();
+        if (method instanceof MethodVariant methodVariant) {
+            return methodVariant.isOriginalMethod();
         }
         return false;
     }
 
     /**
-     * Key for accessing a multi-method.
+     * Key for accessing a method variant.
      */
-    interface MultiMethodKey {
+    interface MethodVariantKey {
     }
 
-    MultiMethodKey ORIGINAL_METHOD = new MultiMethodKey() {
+    MethodVariantKey ORIGINAL_METHOD = new MethodVariantKey() {
         @Override
         public String toString() {
             return "O";
@@ -57,24 +58,24 @@ public interface MultiMethod {
     /**
      * Each method is assigned a unique key which denotes the purpose of the method.
      */
-    MultiMethodKey getMultiMethodKey();
+    MethodVariantKey getMethodVariantKey();
 
     /**
      * @return method implementation with the requested key, creating it if necessary.
      */
-    MultiMethod getOrCreateMultiMethod(MultiMethodKey key);
+    MethodVariant getOrCreateMethodVariant(MethodVariantKey key);
 
     /**
      * @return method implementation with the requested key, or null if it does not exist.
      */
-    MultiMethod getMultiMethod(MultiMethodKey key);
+    MethodVariant getMethodVariant(MethodVariantKey key);
 
     /**
      * @return all implementations of this method.
      */
-    Collection<MultiMethod> getAllMultiMethods();
+    Collection<MethodVariant> getAllMethodVariants();
 
     default boolean isOriginalMethod() {
-        return getMultiMethodKey() == ORIGINAL_METHOD;
+        return getMethodVariantKey() == ORIGINAL_METHOD;
     }
 }

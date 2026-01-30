@@ -63,7 +63,7 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
@@ -94,7 +94,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public abstract class AnalysisMethod extends AnalysisElement implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider, MultiMethod {
+public abstract class AnalysisMethod extends AnalysisElement implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider, MethodVariant {
     private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isVirtualRootMethodUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Object.class, "isVirtualRootMethod");
 
@@ -152,21 +152,20 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     protected final ResolvedSignature<AnalysisType> signature;
     private final int parsingContextMaxDepth;
 
-    private final MultiMethodKey multiMethodKey;
+    private final MethodVariantKey methodVariantKey;
 
     /**
-     * Map from a key to the corresponding implementation. All multi-method implementations for a
-     * given Java method share the same map. This allows one to easily switch between different
-     * implementations when needed. When {@code multiMethodMap} is null, then
-     * {@link #multiMethodKey} points to {@link #ORIGINAL_METHOD} and no other implementations exist
-     * for the method. This is done to reduce the memory overhead in the common case when only this
-     * one implementation is present.
+     * Map from a method variant key to the corresponding method variant implementation. All method
+     * variants for a given Java method share the same map. This allows one to easily switch between
+     * different implementations when needed. When {@code methodVariantsMap} is {@code null}, then
+     * {@link #methodVariantKey} points to {@link #ORIGINAL_METHOD} and no other implementations
+     * exist for the method. This is done to reduce the memory overhead in the common case when only
+     * this one implementation is present.
      */
-    private volatile Map<MultiMethodKey, MultiMethod> multiMethodMap;
+    private volatile Map<MethodVariantKey, MethodVariant> methodVariantsMap;
 
     @SuppressWarnings("rawtypes") //
-    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Map> MULTIMETHOD_MAP_UPDATER = AtomicReferenceFieldUpdater.newUpdater(AnalysisMethod.class, Map.class,
-                    "multiMethodMap");
+    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Map> METHOD_VARIANTS_UPDATER = AtomicReferenceFieldUpdater.newUpdater(AnalysisMethod.class, Map.class, "methodVariantsMap");
 
     /** Virtually invoked method registered as root. */
     @SuppressWarnings("unused") private volatile Object isVirtualRootMethod;
@@ -211,7 +210,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private LayeredCompilationBehavior.Behavior compilationBehavior;
 
     @SuppressWarnings({"this-escape", "unchecked"})
-    protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
+    protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MethodVariantKey methodVariantKey, Map<MethodVariantKey, MethodVariant> methodVariantsMap) {
         super(universe.hostVM.enableTrackAcrossLayers());
         HostVM hostVM = universe.hostVM();
         this.wrapped = wrapped;
@@ -231,7 +230,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         hasNeverInlineDirective = hostVM.hasNeverInlineDirective(wrapped);
         hasNeverStrengthenGraphWithConstantsDirective = hostVM.hasNeverStrengthenGraphWithConstantsDirective(wrapped);
 
-        name = createName(wrapped, multiMethodKey);
+        name = createName(wrapped, methodVariantKey);
         qualifiedName = format("%H.%n(%P)");
         modifiers = wrapped.getModifiers();
 
@@ -282,8 +281,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         }
         localVariableTable = analysisLocalVariableTable;
 
-        this.multiMethodKey = multiMethodKey;
-        this.multiMethodMap = multiMethodMap;
+        this.methodVariantKey = methodVariantKey;
+        this.methodVariantsMap = methodVariantsMap;
 
         if (universe.analysisPolicy().trackAccessChain()) {
             startTrackInvocations();
@@ -306,7 +305,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @SuppressWarnings("this-escape")
-    protected AnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
+    protected AnalysisMethod(AnalysisMethod original, MethodVariantKey methodVariantKey) {
         super(original.enableTrackAcrossLayers);
         wrapped = original.wrapped;
         id = original.id;
@@ -321,13 +320,13 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         localVariableTable = original.localVariableTable;
         parsingContextMaxDepth = original.parsingContextMaxDepth;
 
-        name = createName(wrapped, multiMethodKey);
+        name = createName(wrapped, methodVariantKey);
         qualifiedName = format("%H.%n(%P)");
         modifiers = original.modifiers;
 
-        this.multiMethodKey = multiMethodKey;
-        assert original.multiMethodMap != null;
-        multiMethodMap = original.multiMethodMap;
+        this.methodVariantKey = methodVariantKey;
+        assert original.methodVariantsMap != null;
+        methodVariantsMap = original.methodVariantsMap;
         hasOpaqueReturn = original.hasOpaqueReturn;
 
         if (original.getUniverse().analysisPolicy().trackAccessChain()) {
@@ -397,10 +396,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return compilationBehavior == LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER;
     }
 
-    private static String createName(ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey) {
+    private static String createName(ResolvedJavaMethod wrapped, MethodVariantKey methodVariantKey) {
         String aName = wrapped.getName();
-        if (multiMethodKey != ORIGINAL_METHOD) {
-            aName += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + multiMethodKey;
+        if (methodVariantKey != ORIGINAL_METHOD) {
+            aName += StableMethodNameFormatter.METHOD_VARIANT_KEY_SEPARATOR + methodVariantKey;
         }
         return aName;
     }
@@ -1396,50 +1395,50 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    public MultiMethodKey getMultiMethodKey() {
-        return multiMethodKey;
+    public MethodVariantKey getMethodVariantKey() {
+        return methodVariantKey;
     }
 
     @Override
-    public AnalysisMethod getOrCreateMultiMethod(MultiMethodKey key) {
-        return getOrCreateMultiMethod(key,
+    public AnalysisMethod getOrCreateMethodVariant(MethodVariantKey key) {
+        return getOrCreateMethodVariant(key,
                         (k) -> {
                         });
     }
 
     @Override
-    public AnalysisMethod getMultiMethod(MultiMethodKey key) {
-        if (key == multiMethodKey) {
+    public AnalysisMethod getMethodVariant(MethodVariantKey key) {
+        if (key == methodVariantKey) {
             return this;
-        } else if (multiMethodMap == null) {
+        } else if (methodVariantsMap == null) {
             return null;
         } else {
-            return (AnalysisMethod) multiMethodMap.get(key);
+            return (AnalysisMethod) methodVariantsMap.get(key);
         }
     }
 
     @Override
-    public Collection<MultiMethod> getAllMultiMethods() {
-        if (multiMethodMap == null) {
+    public Collection<MethodVariant> getAllMethodVariants() {
+        if (methodVariantsMap == null) {
             return Collections.singleton(this);
         } else {
-            return multiMethodMap.values();
+            return methodVariantsMap.values();
         }
     }
 
-    public AnalysisMethod getOrCreateMultiMethod(MultiMethodKey key, Consumer<AnalysisMethod> createAction) {
-        if (key == multiMethodKey) {
+    public AnalysisMethod getOrCreateMethodVariant(MethodVariantKey key, Consumer<AnalysisMethod> createAction) {
+        if (key == methodVariantKey) {
             return this;
         }
 
-        if (multiMethodMap == null) {
-            ConcurrentHashMap<MultiMethodKey, MultiMethod> newMultiMethodMap = new ConcurrentHashMap<>();
-            newMultiMethodMap.put(multiMethodKey, this);
-            MULTIMETHOD_MAP_UPDATER.compareAndSet(this, null, newMultiMethodMap);
+        if (methodVariantsMap == null) {
+            ConcurrentHashMap<MethodVariantKey, MethodVariant> newMethodVariantsMap = new ConcurrentHashMap<>();
+            newMethodVariantsMap.put(methodVariantKey, this);
+            METHOD_VARIANTS_UPDATER.compareAndSet(this, null, newMethodVariantsMap);
         }
 
-        return (AnalysisMethod) multiMethodMap.computeIfAbsent(key, (k) -> {
-            AnalysisMethod newMethod = createMultiMethod(AnalysisMethod.this, k);
+        return (AnalysisMethod) methodVariantsMap.computeIfAbsent(key, (k) -> {
+            AnalysisMethod newMethod = createMethodVariant(AnalysisMethod.this, k);
             createAction.accept(newMethod);
             return newMethod;
         });
@@ -1457,5 +1456,5 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return hasOpaqueReturn;
     }
 
-    protected abstract AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey);
+    protected abstract AnalysisMethod createMethodVariant(AnalysisMethod analysisMethod, MethodVariantKey newMethodVariantKey);
 }

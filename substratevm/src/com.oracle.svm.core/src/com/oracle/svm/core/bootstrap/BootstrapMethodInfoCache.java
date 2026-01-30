@@ -48,7 +48,7 @@ public class BootstrapMethodInfoCache {
      * Map used to cache the {@link BootstrapMethodInfo} and reuse it for duplicated bytecode,
      * avoiding execution of the bootstrap method for the same bci and method pair. This can happen
      * during bytecode parsing as some blocks are duplicated, or for methods that are parsed
-     * multiple times (see MultiMethod).
+     * multiple times (see MethodVariant).
      */
     private final ConcurrentMap<BootstrapMethodRecord, BootstrapMethodInfo> bootstrapMethodInfoCache = new ConcurrentHashMap<>();
 

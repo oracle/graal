@@ -47,7 +47,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -315,7 +315,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     @Override
-    public final HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
+    public final HostedProviders getProviders(MethodVariant.MethodVariantKey key) {
         return getHostVM().getProviders(key);
     }
 

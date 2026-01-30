@@ -170,7 +170,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                 }
                 bb.numParsedGraphs.incrementAndGet();
 
-                boolean computeIndex = !method.hasOpaqueReturn() && bb.getHostVM().getMultiMethodAnalysisPolicy().canComputeReturnedParameterIndex(method.getMultiMethodKey());
+                boolean computeIndex = !method.hasOpaqueReturn() && bb.getHostVM().getMethodVariantsAnalysisPolicy().canComputeReturnedParameterIndex(method.getMethodVariantKey());
                 returnedParameterIndex = computeIndex ? computeReturnedParameterIndex(builder.graph) : -1;
 
                 /* Set the flows graph after fully built. */

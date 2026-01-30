@@ -65,7 +65,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.JavaMemoryUtil;
@@ -836,7 +836,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
                 if (!checkValidState.equals(method)) {
                     return false;
                 }
-                if (MultiMethod.isOriginalMethod(b.getMethod())) { // not for hosted compilation
+                if (MethodVariant.isOriginalMethod(b.getMethod())) { // not for hosted compilation
                     return false;
                 }
                 if (!AnnotationUtil.isAnnotationPresent(b.getMethod(), SharedArenaSupport.SCOPED_ANNOTATION)) {

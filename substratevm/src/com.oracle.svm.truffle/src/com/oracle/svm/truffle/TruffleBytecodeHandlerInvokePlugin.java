@@ -30,12 +30,12 @@ import static com.oracle.svm.truffle.SubstrateTruffleBytecodeHandlerStub.unwrap;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.svm.common.meta.MethodVariant;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
@@ -85,7 +85,7 @@ public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
     @Override
     public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod target, ValueNode[] oldArguments) {
         ResolvedJavaMethod enclosingMethod = b.getMethod();
-        if (enclosingMethod instanceof MultiMethod sm && !sm.isOriginalMethod()) {
+        if (enclosingMethod instanceof MethodVariant sm && !sm.isOriginalMethod()) {
             return false;
         }
 

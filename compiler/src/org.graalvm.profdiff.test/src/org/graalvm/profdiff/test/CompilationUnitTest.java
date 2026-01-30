@@ -40,11 +40,11 @@ public class CompilationUnitTest {
         CompilationUnit cu1 = experiment1.addCompilationUnit("foo.Bar()", "10", 0, null);
         assertEquals("Compilation unit    10 in experiment 1", cu1.toString());
         CompilationUnit cu2 = experiment1.addCompilationUnit("foo.Bar%%Baz()", "200", 0, null);
-        assertEquals("Compilation unit   200 of multi-method Baz in experiment 1", cu2.toString());
+        assertEquals("Compilation unit   200 of method variant Baz in experiment 1", cu2.toString());
         Experiment experiment2 = new Experiment("1000", ExperimentId.TWO, Experiment.CompilationKind.JIT, 100, List.of());
         CompilationUnit cu3 = experiment2.addCompilationUnit("foo.Bar()", "3000", 20, null);
         assertEquals("Compilation unit  3000 consumed 100.00% of Graal execution, 20.00% of total in experiment 2", cu3.toString());
         CompilationUnit cu4 = experiment2.addCompilationUnit("foo.Bar%%Baz()", "40000", 20, null);
-        assertEquals("Compilation unit 40000 of multi-method Baz consumed 50.00% of Graal execution, 20.00% of total in experiment 2", cu4.toString());
+        assertEquals("Compilation unit 40000 of method variant Baz consumed 50.00% of Graal execution, 20.00% of total in experiment 2", cu4.toString());
     }
 }

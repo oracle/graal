@@ -31,7 +31,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 
 /**
  * Interface to be used to query and change the state of the static analysis in Native Image.
@@ -60,7 +60,7 @@ public interface ReachabilityAnalysis {
     AnalysisType addRootField(AnalysisField field);
 
     /**
-     * Registers the method as root. Must be an {@link MultiMethod#ORIGINAL_METHOD}.
+     * Registers the method as root. Must be an {@link MethodVariant#ORIGINAL_METHOD}.
      *
      * Static methods are immediately analyzed and marked as implementation-invoked which will also
      * trigger their compilation.
@@ -80,21 +80,21 @@ public interface ReachabilityAnalysis {
      *            it is itself an override. If the method is static this flag is ignored.
      * @param otherRoots other versions of this method to also register as roots.
      */
-    AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots);
+    AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, Object reason, MethodVariant.MethodVariantKey... otherRoots);
 
     /**
      * @see ReachabilityAnalysis#addRootMethod(AnalysisMethod, boolean, Object,
-     *      MultiMethod.MultiMethodKey...)
+     *      MethodVariant.MethodVariantKey...)
      */
-    AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots);
+    AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MethodVariant.MethodVariantKey... otherRoots);
 
     /**
      * In addition to registering the method as a root, saturate all the parameters.
      *
      * @see ReachabilityAnalysis#addRootMethod(AnalysisMethod, boolean, Object,
-     *      MultiMethod.MultiMethodKey...)
+     *      MethodVariant.MethodVariantKey...)
      */
-    AnalysisMethod forcedAddRootMethod(AnalysisMethod method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots);
+    AnalysisMethod forcedAddRootMethod(AnalysisMethod method, boolean invokeSpecial, Object reason, MethodVariant.MethodVariantKey... otherRoots);
 
     /**
      * Waits until the analysis is done.

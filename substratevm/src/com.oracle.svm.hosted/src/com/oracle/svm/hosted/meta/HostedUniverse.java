@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
+import static com.oracle.svm.common.meta.MethodVariant.ORIGINAL_METHOD;
 
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.oracle.svm.common.meta.MethodVariant;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -59,7 +60,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -422,8 +422,8 @@ public class HostedUniverse implements Universe {
     }
 
     private static void ensureOriginalMethod(JavaMethod method) {
-        if (method instanceof MultiMethod) {
-            MultiMethod.MultiMethodKey key = ((MultiMethod) method).getMultiMethodKey();
+        if (method instanceof MethodVariant) {
+            MethodVariant.MethodVariantKey key = ((MethodVariant) method).getMethodVariantKey();
             VMError.guarantee(key == ORIGINAL_METHOD, "looking up method with wrong id: %s", key);
         }
     }

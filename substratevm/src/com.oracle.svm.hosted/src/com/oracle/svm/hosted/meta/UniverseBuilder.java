@@ -42,6 +42,7 @@ import java.util.concurrent.ForkJoinTask;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.common.meta.MethodVariant;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
@@ -63,7 +64,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.BaseLayerMethod;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -169,17 +169,17 @@ public class UniverseBuilder {
             }
             for (AnalysisMethod aMethod : aUniverse.getMethods()) {
                 assert aMethod.isOriginalMethod();
-                Collection<MultiMethod> allMethods = aMethod.getAllMultiMethods();
+                Collection<MethodVariant> allMethods = aMethod.getAllMethodVariants();
                 HostedMethod origHMethod = null;
                 if (allMethods.size() == 1) {
                     origHMethod = makeMethod(aMethod);
                 } else {
-                    ConcurrentHashMap<MultiMethod.MultiMethodKey, MultiMethod> multiMethodMap = new ConcurrentHashMap<>();
-                    for (MultiMethod method : aMethod.getAllMultiMethods()) {
+                    ConcurrentHashMap<MethodVariant.MethodVariantKey, MethodVariant> methodVariantsMap = new ConcurrentHashMap<>();
+                    for (MethodVariant method : aMethod.getAllMethodVariants()) {
                         HostedMethod hMethod = makeMethod((AnalysisMethod) method);
-                        hMethod.setMultiMethodMap(multiMethodMap);
-                        MultiMethod previous = multiMethodMap.put(hMethod.getMultiMethodKey(), hMethod);
-                        assert previous == null : "Overwriting multimethod key";
+                        hMethod.setMethodVariantsMap(methodVariantsMap);
+                        MethodVariant previous = methodVariantsMap.put(hMethod.getMethodVariantKey(), hMethod);
+                        assert previous == null : "Overwriting method variant key";
                         if (method.equals(aMethod)) {
                             origHMethod = hMethod;
                         }
@@ -447,8 +447,8 @@ public class UniverseBuilder {
                         .forEach(method -> {
                             assert method.isOriginalMethod();
                             watchdog.recordActivity();
-                            for (MultiMethod multiMethod : method.getAllMultiMethods()) {
-                                HostedMethod hMethod = (HostedMethod) multiMethod;
+                            for (MethodVariant methodVariant : method.getAllMethodVariants()) {
+                                HostedMethod hMethod = (HostedMethod) methodVariant;
                                 strengthenGraphs.applyResults(hMethod.getWrapped());
                             }
                         });

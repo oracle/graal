@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.hosted.runtimecompilation;
 
-import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
+import static com.oracle.svm.common.meta.MethodVariant.ORIGINAL_METHOD;
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
@@ -63,7 +63,7 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.ParallelExecutionException;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -319,7 +319,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         SubstrateMethod sMethod = objectReplacer.createMethod(aMethod);
 
         assert aMethod.isOriginalMethod();
-        AnalysisMethod deoptTarget = aMethod.getOrCreateMultiMethod(DEOPT_TARGET_METHOD);
+        AnalysisMethod deoptTarget = aMethod.getOrCreateMethodVariant(DEOPT_TARGET_METHOD);
         SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(aMethod, deoptTarget);
         if (registerAsRoot) {
             config.registerAsRoot(aMethod, true, "Frame information required, registered in " + RuntimeCompilationFeature.class, DEOPT_TARGET_METHOD);
@@ -371,7 +371,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         substrateAnalysisMethods.add(sMethod);
 
         if (registeredRuntimeCompilations.add(aMethod)) {
-            aMethod.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD);
+            aMethod.getOrCreateMethodVariant(RUNTIME_COMPILED_METHOD);
             /*
              * For static methods it is important to also register the runtime and deopt targets as
              * roots to ensure the methods will be linked appropriately. However, we do not need to
@@ -393,7 +393,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     @Override
     public void afterRegistration(Feature.AfterRegistrationAccess access) {
         ImageSingletons.add(SVMParsingSupport.class, new RuntimeCompilationParsingSupport());
-        ImageSingletons.add(HostVM.MultiMethodAnalysisPolicy.class, new RuntimeCompilationAnalysisPolicy());
+        ImageSingletons.add(HostVM.MethodVariantsAnalysisPolicy.class, new RuntimeCompilationAnalysisPolicy());
         ImageSingletons.add(RuntimeCompilationCallbacks.class, this);
     }
 
@@ -611,7 +611,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     @Override
     public void onCompileQueueCreation(BigBang bb, HostedUniverse hUniverse, CompileQueue compileQueue) {
         graphEncoder = null;
-        Stream<HostedMethod> methodsToCompile = hUniverse.getMethods().stream().map(method -> method.getMultiMethod(RUNTIME_COMPILED_METHOD)).filter(method -> {
+        Stream<HostedMethod> methodsToCompile = hUniverse.getMethods().stream().map(method -> method.getMethodVariant(RUNTIME_COMPILED_METHOD)).filter(method -> {
             if (method != null) {
                 AnalysisMethod aMethod = method.getWrapped();
                 return aMethod.isImplementationInvoked() && !invalidForRuntimeCompilation.containsKey(aMethod);
@@ -668,7 +668,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                         if (SubstrateCompilationDirectives.isRuntimeCompiledMethod(errorMethod)) {
                             failingRuntimeMethod = errorMethod;
                         } else if (SubstrateCompilationDirectives.isDeoptTarget(errorMethod)) {
-                            failingRuntimeMethod = errorMethod.getMultiMethod(RUNTIME_COMPILED_METHOD);
+                            failingRuntimeMethod = errorMethod.getMethodVariant(RUNTIME_COMPILED_METHOD);
                         }
                         printFailingRuntimeMethodTrace(treeInfo, failingRuntimeMethod, errorMethod);
                         System.out.println("error: " + e.getMessage());
@@ -692,7 +692,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         RuntimeCompilationInlineBeforeAnalysisPolicy runtimeInlineBeforeAnalysisPolicy = null;
 
         @Override
-        public HostedProviders getHostedProviders(MultiMethod.MultiMethodKey key) {
+        public HostedProviders getHostedProviders(MethodVariant.MethodVariantKey key) {
             if (key == RUNTIME_COMPILED_METHOD) {
                 assert analysisProviders != null;
                 return analysisProviders;
@@ -702,18 +702,18 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         @Override
         public boolean allowAssumptions(AnalysisMethod method) {
-            return method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
+            return method.getMethodVariantKey() == RUNTIME_COMPILED_METHOD;
         }
 
         @Override
         public boolean recordInlinedMethods(AnalysisMethod method) {
-            return method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
+            return method.getMethodVariantKey() == RUNTIME_COMPILED_METHOD;
         }
 
         @Override
         public Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method) {
             // want to have a couple more checks here that are in DeoptimizationUtils
-            if (method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD) {
+            if (method.getMethodVariantKey() == RUNTIME_COMPILED_METHOD) {
                 return parseRuntimeCompiledMethod(bb, debug, method);
             }
             return HostVM.PARSING_UNHANDLED;
@@ -824,10 +824,10 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         @Override
         public boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph) {
             PointsToAnalysisMethod aMethod = (PointsToAnalysisMethod) graph.method();
-            MultiMethod.MultiMethodKey multiMethodKey = aMethod.getMultiMethodKey();
+            MethodVariant.MethodVariantKey methodVariantKey = aMethod.getMethodVariantKey();
             Supplier<Boolean> graphChecker = DeoptimizationUtils.createGraphChecker(graph,
-                            multiMethodKey == RUNTIME_COMPILED_METHOD ? DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES : DeoptimizationUtils.AOT_COMPILATION_INVALID_NODES);
-            if (multiMethodKey != ORIGINAL_METHOD) {
+                            methodVariantKey == RUNTIME_COMPILED_METHOD ? DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES : DeoptimizationUtils.AOT_COMPILATION_INVALID_NODES);
+            if (methodVariantKey != ORIGINAL_METHOD) {
                 if (!graphChecker.get()) {
                     recordFailed(aMethod);
                     return false;
@@ -836,11 +836,11 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 DeoptimizationUtils.registerDeoptEntriesForDeoptTesting(bb, graph, aMethod);
                 return true;
             }
-            if (multiMethodKey == RUNTIME_COMPILED_METHOD) {
+            if (methodVariantKey == RUNTIME_COMPILED_METHOD) {
                 /*
                  * Register all FrameStates as DeoptEntries.
                  */
-                AnalysisMethod origMethod = aMethod.getMultiMethod(ORIGINAL_METHOD);
+                AnalysisMethod origMethod = aMethod.getMethodVariant(ORIGINAL_METHOD);
 
                 /*
                  * Because this graph will have its flowgraph immediately updated after this, there
@@ -850,7 +850,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                  * all deopt entries are registered before triggering the flow update.
                  */
                 Iterable<ResolvedJavaMethod> recomputeMethods = DeoptimizationUtils.registerDeoptEntries(graph, registeredRuntimeCompilations.contains(origMethod),
-                                (deoptEntryMethod -> ((PointsToAnalysisMethod) deoptEntryMethod).getOrCreateMultiMethod(DEOPT_TARGET_METHOD)));
+                                (deoptEntryMethod -> ((PointsToAnalysisMethod) deoptEntryMethod).getOrCreateMethodVariant(DEOPT_TARGET_METHOD)));
 
                 /*
                  * If new frame states are found, then redo the type flow
@@ -863,7 +863,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 // Note that this will be made thread-safe in the future
                 synchronized (this) {
                     newRuntimeMethodsSeen = true;
-                    var origAMethod = aMethod.getMultiMethod(ORIGINAL_METHOD);
+                    var origAMethod = aMethod.getMethodVariant(ORIGINAL_METHOD);
                     assert origAMethod != null;
                     var sMethod = objectReplacer.createMethod(origAMethod);
                     substrateAnalysisMethods.add(sMethod);
@@ -889,21 +889,21 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
 
         @Override
-        public InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey, InlineBeforeAnalysisPolicy defaultPolicy) {
-            if (multiMethodKey == ORIGINAL_METHOD) {
+        public InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy(MethodVariant.MethodVariantKey methodVariantKey, InlineBeforeAnalysisPolicy defaultPolicy) {
+            if (methodVariantKey == ORIGINAL_METHOD) {
                 return defaultPolicy;
-            } else if (multiMethodKey == DEOPT_TARGET_METHOD) {
+            } else if (methodVariantKey == DEOPT_TARGET_METHOD) {
                 return InlineBeforeAnalysisPolicy.NO_INLINING;
-            } else if (multiMethodKey == RUNTIME_COMPILED_METHOD) {
+            } else if (methodVariantKey == RUNTIME_COMPILED_METHOD) {
                 assert runtimeInlineBeforeAnalysisPolicy != null;
                 return runtimeInlineBeforeAnalysisPolicy;
             } else {
-                throw VMError.shouldNotReachHere("Unexpected method key: %s", multiMethodKey);
+                throw VMError.shouldNotReachHere("Unexpected method key: %s", methodVariantKey);
             }
         }
 
         @Override
-        public Predicate<AnalysisType> getStrengthenGraphsTypePredicate(MultiMethod.MultiMethodKey key) {
+        public Predicate<AnalysisType> getStrengthenGraphsTypePredicate(MethodVariant.MethodVariantKey key) {
             if (key == RUNTIME_COMPILED_METHOD) {
                 /*
                  * For runtime compiled methods, we must be careful to ensure new SubstrateTypes are
@@ -927,7 +927,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
      * enabled as long as the cumulative number of nodes inlined stays within the specified limits.
      *
      * Note that this policy is used exclusively by the runtime compiled methods, so there is no
-     * need to check multi-method keys; all callers (and callees) should be
+     * need to check method variant keys; all callers (and callees) should be
      * {@code RUNTIME_COMPILED_METHOD}s.
      */
     private class RuntimeCompilationInlineBeforeAnalysisPolicy extends InlineBeforeAnalysisPolicy {
@@ -1052,12 +1052,12 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
     @SuppressWarnings("unchecked")
     private static <T extends AnalysisMethod> T getStubDeoptVersion(T implementation) {
-        return (T) implementation.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
+        return (T) implementation.getOrCreateMethodVariant(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
     }
 
     @SuppressWarnings("unchecked")
     private static <T extends AnalysisMethod> T getFullDeoptVersion(BigBang bb, T implementation, InvokeTypeFlow parsingReason) {
-        PointsToAnalysisMethod runtimeMethod = (PointsToAnalysisMethod) implementation.getOrCreateMultiMethod(DEOPT_TARGET_METHOD);
+        PointsToAnalysisMethod runtimeMethod = (PointsToAnalysisMethod) implementation.getOrCreateMethodVariant(DEOPT_TARGET_METHOD);
         PointsToAnalysis analysis = (PointsToAnalysis) bb;
         runtimeMethod.getTypeFlow().updateFlowsGraph(analysis, MethodFlowsGraph.GraphKind.FULL, parsingReason, true);
         return (T) runtimeMethod;
@@ -1065,21 +1065,21 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
     @SuppressWarnings("unchecked")
     private static <T extends AnalysisMethod> T getStubRuntimeVersion(T implementation) {
-        return (T) implementation.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
+        return (T) implementation.getOrCreateMethodVariant(RUNTIME_COMPILED_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
     }
 
     @SuppressWarnings("unchecked")
     private static <T extends AnalysisMethod> T getFullRuntimeVersion(BigBang bb, T implementation, InvokeTypeFlow parsingReason) {
-        PointsToAnalysisMethod runtimeMethod = (PointsToAnalysisMethod) implementation.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD);
+        PointsToAnalysisMethod runtimeMethod = (PointsToAnalysisMethod) implementation.getOrCreateMethodVariant(RUNTIME_COMPILED_METHOD);
         PointsToAnalysis analysis = (PointsToAnalysis) bb;
         runtimeMethod.getTypeFlow().updateFlowsGraph(analysis, MethodFlowsGraph.GraphKind.FULL, parsingReason, false);
         return (T) runtimeMethod;
     }
 
-    private final class RuntimeCompilationAnalysisPolicy implements HostVM.MultiMethodAnalysisPolicy {
+    private final class RuntimeCompilationAnalysisPolicy implements HostVM.MethodVariantsAnalysisPolicy {
 
         @Override
-        public <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MultiMethod.MultiMethodKey callerMultiMethodKey, InvokeTypeFlow invokeFlow) {
+        public <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MethodVariant.MethodVariantKey callerMethodVariantKey, InvokeTypeFlow invokeFlow) {
             if (invokeFlow.isDeoptInvokeTypeFlow()) {
                 /*
                  * When the type flow represents a deopt invoke, then the arguments only need to be
@@ -1087,7 +1087,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                  * other linking is necessary.
                  */
                 assert SubstrateCompilationDirectives.isRuntimeCompiledMethod(implementation);
-                var originalTarget = implementation.getMultiMethod(ORIGINAL_METHOD);
+                var originalTarget = implementation.getMethodVariant(ORIGINAL_METHOD);
                 assert originalTarget != null;
                 runtimeCompilationCandidates.add(new RuntimeCompilationCandidate(originalTarget, originalTarget));
                 return List.of(getStubDeoptVersion(implementation));
@@ -1095,7 +1095,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             assert implementation.isOriginalMethod() && target.isOriginalMethod();
 
             boolean registeredRuntimeCompilation = registeredRuntimeCompilations.contains(implementation);
-            if (callerMultiMethodKey == ORIGINAL_METHOD) {
+            if (callerMethodVariantKey == ORIGINAL_METHOD) {
                 /*
                  * Unless the method is a registered runtime compilation, it is not possible for an
                  * original variant to call a runtime variant (and indirectly the deoptimiztation
@@ -1120,7 +1120,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             } else {
                 boolean runtimeCompilationCandidate = registeredRuntimeCompilation || runtimeCompilationCandidatePredicate.allowRuntimeCompilation(implementation);
 
-                if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD) {
+                if (callerMethodVariantKey == RUNTIME_COMPILED_METHOD) {
                     // recording compilation candidate
                     runtimeCompilationCandidates.add(new RuntimeCompilationCandidate(implementation, target));
                     /*
@@ -1138,7 +1138,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                         return List.of(implementation);
                     }
                 } else {
-                    assert callerMultiMethodKey == DEOPT_TARGET_METHOD;
+                    assert callerMethodVariantKey == DEOPT_TARGET_METHOD;
                     /*
                      * A deoptimization target will always call the original method. However, the
                      * return can also be from a deoptimized version when a deoptimization is
@@ -1163,59 +1163,59 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
 
         @Override
-        public boolean performParameterLinking(MultiMethod.MultiMethodKey callerMultiMethodKey, MultiMethod.MultiMethodKey calleeMultiMethodKey) {
-            if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD) {
+        public boolean performParameterLinking(MethodVariant.MethodVariantKey callerMethodVariantKey, MethodVariant.MethodVariantKey calleeMethodVariantKey) {
+            if (callerMethodVariantKey == RUNTIME_COMPILED_METHOD) {
                 /* A runtime method can call all three. */
                 return true;
-            } else if (callerMultiMethodKey == DEOPT_TARGET_METHOD) {
+            } else if (callerMethodVariantKey == DEOPT_TARGET_METHOD) {
                 /* A deopt method can call the original version only. */
-                return calleeMultiMethodKey == ORIGINAL_METHOD;
+                return calleeMethodVariantKey == ORIGINAL_METHOD;
             }
-            assert callerMultiMethodKey == ORIGINAL_METHOD;
+            assert callerMethodVariantKey == ORIGINAL_METHOD;
             /* An original method can call all three. */
             return true;
         }
 
         @Override
-        public boolean performReturnLinking(MultiMethod.MultiMethodKey callerMultiMethodKey, MultiMethod.MultiMethodKey calleeMultiMethodKey) {
-            if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD) {
+        public boolean performReturnLinking(MethodVariant.MethodVariantKey callerMethodVariantKey, MethodVariant.MethodVariantKey calleeMethodVariantKey) {
+            if (callerMethodVariantKey == RUNTIME_COMPILED_METHOD) {
                 /*
                  * A runtime method can be returned to from either a runtime or original method.
                  */
-                return calleeMultiMethodKey == RUNTIME_COMPILED_METHOD || calleeMultiMethodKey == ORIGINAL_METHOD;
-            } else if (callerMultiMethodKey == DEOPT_TARGET_METHOD) {
+                return calleeMethodVariantKey == RUNTIME_COMPILED_METHOD || calleeMethodVariantKey == ORIGINAL_METHOD;
+            } else if (callerMethodVariantKey == DEOPT_TARGET_METHOD) {
                 /* A deopt method can be returned to from all three. */
                 return true;
             }
-            assert callerMultiMethodKey == ORIGINAL_METHOD;
+            assert callerMethodVariantKey == ORIGINAL_METHOD;
             /* An original method can can be returned to from all three. */
             return true;
         }
 
         @Override
-        public boolean canComputeReturnedParameterIndex(MultiMethod.MultiMethodKey multiMethodKey) {
+        public boolean canComputeReturnedParameterIndex(MethodVariant.MethodVariantKey methodVariantKey) {
             /*
              * Since Deopt Target Methods may have their flow created multiple times, this
              * optimization is not allowed.
              */
-            return multiMethodKey != DEOPT_TARGET_METHOD;
+            return methodVariantKey != DEOPT_TARGET_METHOD;
         }
 
         @Override
-        public boolean insertPlaceholderParamAndReturnFlows(MultiMethod.MultiMethodKey multiMethodKey) {
-            return multiMethodKey == DEOPT_TARGET_METHOD || multiMethodKey == RUNTIME_COMPILED_METHOD;
+        public boolean insertPlaceholderParamAndReturnFlows(MethodVariant.MethodVariantKey methodVariantKey) {
+            return methodVariantKey == DEOPT_TARGET_METHOD || methodVariantKey == RUNTIME_COMPILED_METHOD;
         }
 
         @Override
-        public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation) {
-            if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD || SubstrateCompilationDirectives.isDeoptTarget(implementation)) {
+        public boolean unknownReturnValue(BigBang bb, MethodVariant.MethodVariantKey callerMethodVariantKey, AnalysisMethod implementation) {
+            if (callerMethodVariantKey == RUNTIME_COMPILED_METHOD || SubstrateCompilationDirectives.isDeoptTarget(implementation)) {
                 /*
                  * If the method may be intrinsified later, the implementation can change.
                  *
                  * We also must ensure deopt methods always return a superset of the original
                  * method.
                  */
-                var origImpl = implementation.getMultiMethod(ORIGINAL_METHOD);
+                var origImpl = implementation.getMethodVariant(ORIGINAL_METHOD);
                 var options = bb.getOptions();
                 return (hostedProviders.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(origImpl, options) != null) ||
                                 hostedProviders.getReplacements().hasSubstitution(origImpl, options);

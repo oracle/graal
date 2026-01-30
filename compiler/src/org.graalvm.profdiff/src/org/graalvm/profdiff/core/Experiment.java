@@ -300,16 +300,16 @@ public class Experiment {
      * Creates and adds a compilation unit to this experiment. Creates a {@link Method} (if
      * necessary) and adds the compilation unit to the method.
      *
-     * @param multiMethodName the name of the root method of the compilation unit (including a
-     *            multi-method key if applicable)
+     * @param methodVariantName the name of the root method of the compilation unit (including a
+     *            method variant key if applicable)
      * @param compilationId compilation ID of the compilation unit
      * @param period the number of cycles spent executing the method (collected by proftool)
      * @param treeLoader a loader of the compilation unit's optimization and inlining tree
      * @return the added compilation unit
      */
-    public CompilationUnit addCompilationUnit(String multiMethodName, String compilationId, long period, CompilationUnit.TreeLoader treeLoader) {
+    public CompilationUnit addCompilationUnit(String methodVariantName, String compilationId, long period, CompilationUnit.TreeLoader treeLoader) {
         graalPeriod = null;
-        Pair<String, String> splitName = Method.splitMultiMethodName(multiMethodName);
+        Pair<String, String> splitName = Method.splitMethodVariantName(methodVariantName);
         return getMethodOrCreate(splitName.getLeft()).addCompilationUnit(compilationId, period, treeLoader, splitName.getRight());
     }
 

@@ -39,13 +39,13 @@ public interface InvokeInfo {
     AnalysisMethod getTargetMethod();
 
     /**
-     * Retrieves a list of all callees whose MultiMethodKey is {@code ORIGINAL_METHOD}. All of these
-     * callees will also be {@link AnalysisMethod#isImplementationInvoked()}.
+     * Retrieves a list of all callees whose MethodVariantKey is {@code ORIGINAL_METHOD}. All of
+     * these callees will also be {@link AnalysisMethod#isImplementationInvoked()}.
      */
     Collection<AnalysisMethod> getOriginalCallees();
 
     /**
-     * Retrieves list of all callees. Note that callees in this list can have a MultiMethodKey
+     * Retrieves list of all callees. Note that callees in this list can have a MethodVariantKey
      * different from ORIGINAL_METHOD and also may not be
      * {@link AnalysisMethod#isImplementationInvoked()}.
      */

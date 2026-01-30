@@ -135,14 +135,14 @@ final class EnumSwitchPlugin implements NodePlugin {
 final class EnumSwitchFeature implements InternalFeature {
 
     private static final String METHODS_ID = "methodsId";
-    private static final String METHODS_MULTI_METHOD_KEY_NAME = "methodsMultiMethodKeyName";
+    private static final String METHODS_METHOD_VARIANT_KEY_NAME = "methodsMethodVariantKeyName";
     private static final String METHODS_SAFE = "methodsSafe";
 
     private BigBang bb;
 
     private ConcurrentMap<AnalysisMethodKey, Boolean> methodsSafeForExecution = new ConcurrentHashMap<>();
 
-    private record AnalysisMethodKey(int id, String multiMethodKeyName) {
+    private record AnalysisMethodKey(int id, String methodVariantKeyName) {
     }
 
     @Override
@@ -155,7 +155,7 @@ final class EnumSwitchFeature implements InternalFeature {
     private void onMethodParsed(AnalysisMethod method, StructuredGraph graph) {
         boolean methodSafeForExecution = graph.getNodes().filter(node -> node instanceof EnsureClassInitializedNode).isEmpty();
 
-        Boolean existingValue = methodsSafeForExecution.put(new AnalysisMethodKey(method.getId(), method.getMultiMethodKey().toString()), methodSafeForExecution);
+        Boolean existingValue = methodsSafeForExecution.put(new AnalysisMethodKey(method.getId(), method.getMethodVariantKey().toString()), methodSafeForExecution);
         if (!(existingValue == null || SubstrateCompilationDirectives.isDeoptTarget(method))) {
             System.out.println("f");
         }
@@ -180,7 +180,7 @@ final class EnumSwitchFeature implements InternalFeature {
     }
 
     Boolean isMethodsSafeForExecution(AnalysisMethod method) {
-        return methodsSafeForExecution.get(new AnalysisMethodKey(method.getId(), method.getMultiMethodKey().toString()));
+        return methodsSafeForExecution.get(new AnalysisMethodKey(method.getId(), method.getMethodVariantKey().toString()));
     }
 
     public BigBang getBigBang() {
@@ -194,16 +194,16 @@ final class EnumSwitchFeature implements InternalFeature {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, EnumSwitchFeature singleton) {
                     List<Integer> methodsId = new ArrayList<>();
-                    List<String> methodsMultiMethodKey = new ArrayList<>();
+                    List<String> methodsMethodVariantKey = new ArrayList<>();
                     List<Boolean> methodsSafe = new ArrayList<>();
                     for (var entry : singleton.methodsSafeForExecution.entrySet()) {
                         AnalysisMethodKey key = entry.getKey();
                         methodsId.add(key.id());
-                        methodsMultiMethodKey.add(key.multiMethodKeyName());
+                        methodsMethodVariantKey.add(key.methodVariantKeyName());
                         methodsSafe.add(entry.getValue());
                     }
                     writer.writeIntList(METHODS_ID, methodsId);
-                    writer.writeStringList(METHODS_MULTI_METHOD_KEY_NAME, methodsMultiMethodKey);
+                    writer.writeStringList(METHODS_METHOD_VARIANT_KEY_NAME, methodsMethodVariantKey);
                     writer.writeBoolList(METHODS_SAFE, methodsSafe);
                     return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
                 }
@@ -211,11 +211,11 @@ final class EnumSwitchFeature implements InternalFeature {
                 @Override
                 public void onSingletonRegistration(ImageSingletonLoader loader, EnumSwitchFeature singleton) {
                     List<Integer> methodsId = loader.readIntList(METHODS_ID);
-                    List<String> methodsMultiMethodKeyName = loader.readStringList(METHODS_MULTI_METHOD_KEY_NAME);
+                    List<String> methodsMethodVariantKeyName = loader.readStringList(METHODS_METHOD_VARIANT_KEY_NAME);
                     List<Boolean> methodsSafe = loader.readBoolList(METHODS_SAFE);
                     ConcurrentMap<AnalysisMethodKey, Boolean> methodsSafeForExecution = singleton.methodsSafeForExecution;
                     for (int i = 0; i < methodsId.size(); ++i) {
-                        methodsSafeForExecution.put(new AnalysisMethodKey(methodsId.get(i), methodsMultiMethodKeyName.get(i)), methodsSafe.get(i));
+                        methodsSafeForExecution.put(new AnalysisMethodKey(methodsId.get(i), methodsMethodVariantKeyName.get(i)), methodsSafe.get(i));
                     }
                 }
             });

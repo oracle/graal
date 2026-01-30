@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
+import com.oracle.svm.common.meta.MethodVariant;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 
@@ -39,7 +40,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateMetadata;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.ImageCodeInfo;
@@ -262,7 +262,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         } else {
             aMethod = aUniverse.lookup(original);
         }
-        aMethod = aMethod.getMultiMethod(MultiMethod.ORIGINAL_METHOD);
+        aMethod = aMethod.getMethodVariant(MethodVariant.ORIGINAL_METHOD);
         assert aMethod != null;
 
         SubstrateMethod sMethod = methods.get(aMethod);
