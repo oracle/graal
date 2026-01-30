@@ -12,6 +12,7 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 public class MergedBlockVerifierState {
     public MergedAllocationStateMap values;
@@ -20,18 +21,21 @@ public class MergedBlockVerifierState {
     protected RegisterAllocationConfig registerAllocationConfig;
 
     protected ConflictResolver conflictConstantResolver;
+    protected ConflictResolver labelConflictResolver;
 
-    public MergedBlockVerifierState(RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, ConflictResolver constantConflictResolver) {
+    public MergedBlockVerifierState(RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, ConflictResolver constantConflictResolver, ConflictResolver labelConflictResolver) {
         this.values = new MergedAllocationStateMap();
         this.phiResolution = phiResolution;
         this.registerAllocationConfig = registerAllocationConfig;
         this.conflictConstantResolver = constantConflictResolver;
+        this.labelConflictResolver = labelConflictResolver;
     }
 
-    protected MergedBlockVerifierState(MergedBlockVerifierState other, RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, ConflictResolver constantConflictResolver) {
+    protected MergedBlockVerifierState(MergedBlockVerifierState other, RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, ConflictResolver constantConflictResolver, ConflictResolver labelConflictResolver) {
         this.phiResolution = phiResolution;
         this.registerAllocationConfig = registerAllocationConfig;
         this.conflictConstantResolver = constantConflictResolver;
+        this.labelConflictResolver = labelConflictResolver;
 
         if (other == null) {
             this.values = new MergedAllocationStateMap();
@@ -57,10 +61,15 @@ public class MergedBlockVerifierState {
 
             assert orig != null;
 
+            boolean isJump = op.lirInstruction instanceof StandardOp.JumpOp;
             if (curr == null) {
-                if (op.lirInstruction instanceof StandardOp.JumpOp) {
-                    if (phiResolution == PhiResolution.FromUsage) {
+                if (isJump) {
+                    if (phiResolution == PhiResolution.FromUsage || phiResolution == PhiResolution.FromUsageGlobal) {
                         // Variable has no usage, thus no location present.
+                        continue;
+                    }
+
+                    if (phiResolution == PhiResolution.ByAllocator || phiResolution == PhiResolution.FromConflicts) {
                         continue;
                     }
 
@@ -75,7 +84,7 @@ public class MergedBlockVerifierState {
                 continue;
             }
 
-            if (!kindsEqual(orig, curr)) {
+            if (!kindsEqual(orig, curr) && !isJump) {
                 throw new KindsMismatchException(op.lirInstruction, block, orig, curr, true);
             }
 
@@ -87,39 +96,44 @@ public class MergedBlockVerifierState {
             if (state.isConflicted()) {
                 var variable = LIRValueUtil.asVariable(orig);
                 var resolvedState = this.conflictConstantResolver.resolveConflictedState(variable, (ConflictedAllocationState) state);
-                if (resolvedState == null) {
-                    throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+
+                if (phiResolution == PhiResolution.FromConflicts && resolvedState == null) {
+                    resolvedState = this.labelConflictResolver.resolveConflictedState(variable, (ConflictedAllocationState) state);
+                    if (resolvedState == null) {
+                        throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+                    }
                 }
 
-                this.values.put(curr, new ValueAllocationState(variable, op.lirInstruction));
+                this.values.put(curr, resolvedState);
                 continue;
             }
 
             if (state instanceof ValueAllocationState valAllocState) {
-                if (!kindsEqual(orig, valAllocState.value) && !(op.lirInstruction instanceof StandardOp.JumpOp)) {
-                    if (!(orig instanceof CastValue castOrig && kindsEqual(castOrig.underlyingValue(), valAllocState.value))) {
-                        // If orig was recast, it does not matter for this validation
-                        // as we just check that the type before is correct
-                        // TODO: sort this code better
-                        throw new KindsMismatchException(op.lirInstruction, block, orig, valAllocState.value, false);
-                    }
+                if (!kindsEqualFromState(orig, valAllocState.value)) {
+                    throw new KindsMismatchException(op.lirInstruction, block, orig, valAllocState.value, false);
                 }
 
                 if (!valAllocState.value.equals(orig)) {
                     if (orig instanceof CastValue castValue && valAllocState.value.equals(castValue.underlyingValue())) {
-                        // check for underlying value for CastValue.
-                        continue;
+                        continue; // They aren't equal here because of the CastValue, so if they are equal afterwards, we skip next part.
                     }
 
                     if (valAllocState.value instanceof ConstantValue) {
                         var variable = LIRValueUtil.asVariable(orig);
                         var resolvedState = this.conflictConstantResolver.resolveValueState(variable, valAllocState);
-                        if (resolvedState == null) {
-                            throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+                        if (resolvedState != null) {
+                            this.values.put(curr, resolvedState);
+                            continue;
                         }
+                    }
 
-                        this.values.put(curr, new ValueAllocationState(variable, op.lirInstruction));
-                        continue;
+                    if (phiResolution == PhiResolution.FromConflicts && LIRValueUtil.isVariable(orig)) {
+                        var variable = LIRValueUtil.asVariable(orig);
+                        var resolvedState = labelConflictResolver.resolveValueState(variable, valAllocState);
+                        if (resolvedState != null) {
+                            this.values.put(curr, resolvedState);
+                            continue;
+                        }
                     }
 
                     throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
@@ -144,11 +158,23 @@ public class MergedBlockVerifierState {
             // TestCase: BoxingTest.boxShort
             // MOV (x: [v11|QWORD[.] + 12], y: reinterpret: v0|DWORD as: WORD) size: WORD
             // MOV (x: [rax|QWORD[.] + 12], y: r10|WORD(DWORD)) size: WORD
-            // TODO: figure out the correct semantics for these casts
             return origKind.getPlatformKind().equals(currKind.getPlatformKind());
         }
 
+        // TODO: maybe we should also look at the type before cast
+        // LIRKindWithCast.getActualKind()
+        // CastValue.underlyingValue().getValueKind()
         return false;
+    }
+
+    protected boolean kindsEqualFromState(Value orig, Value fromState) {
+        ValueKind<?> origKind = orig.getValueKind();
+        ValueKind<?> currKind = fromState.getValueKind();
+        if (orig instanceof CastValue castOrig) {
+            origKind = castOrig.underlyingValue().getValueKind();
+        }
+
+        return origKind.equals(currKind);
     }
 
     protected void checkAliveConstraint(RAVInstruction.Op instruction, BasicBlock<?> block) {

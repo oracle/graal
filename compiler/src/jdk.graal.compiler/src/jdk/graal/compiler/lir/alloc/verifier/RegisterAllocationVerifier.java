@@ -4,66 +4,50 @@ import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRValueUtil;
-import jdk.graal.compiler.lir.StandardOp;
-import jdk.graal.compiler.lir.Variable;
-import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Queue;
-import java.util.Set;
 
-public final class RegisterAllocationVerifier {
-    public BlockMap<List<RAVInstruction.Base>> blockInstructions;
-    public BlockMap<MergedBlockVerifierState> blockStates; // Current states
-    public BlockMap<MergedBlockVerifierState> blockEntryStates; // State on entry to block
+public class RegisterAllocationVerifier {
+    protected BlockMap<List<RAVInstruction.Base>> blockInstructions;
+    protected BlockMap<MergedBlockVerifierState> blockStates;
+    protected BlockMap<MergedBlockVerifierState> blockEntryStates;
 
-    public LIR lir;
-    public PhiResolution phiResolution;
-
-    // FromUsage resolver
-    public Map<Variable, RAVInstruction.Op> labelMap;
-    public Map<Variable, RegisterValue> variableRegisterMap;
-    public Map<Variable, Variable> usageAliasMap;
-
-    // FromPredecessors resolver
-    public BlockMap<DefinitionSet> blockDefinitions;
-
-    public FromUsageResolverGlobal fromUsageResolver;
-
+    protected LIR lir;
     protected RegisterAllocationConfig registerAllocationConfig;
+    protected PhiResolution phiResolution;
+
+    protected FromPredecessorsResolver fromPredecessorsResolver;
+    protected FromJumpResolver fromJumpResolver;
+    protected FromUsageResolver fromUsageResolver;
+    protected FromUsageResolverGlobal fromUsageResolverGlobal;
 
     protected ConflictResolver constantMaterializationConflictResolver;
+    protected ConflictResolver labelConflictResolver;
 
     public RegisterAllocationVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, PhiResolution phiResolution, RegisterAllocationConfig registerAllocationConfig) {
         this.lir = lir;
+        this.registerAllocationConfig = registerAllocationConfig;
 
         this.constantMaterializationConflictResolver = new ConstantMaterializationConflictResolver();
+        this.labelConflictResolver = new LabelConflictResolver();
 
         var cfg = lir.getControlFlowGraph();
         this.blockInstructions = blockInstructions;
         this.blockEntryStates = new BlockMap<>(cfg);
-        this.blockEntryStates.put(cfg.getStartBlock(), new MergedBlockVerifierState(registerAllocationConfig, phiResolution, constantMaterializationConflictResolver));
+
         this.blockStates = new BlockMap<>(cfg);
         this.phiResolution = phiResolution;
 
-        this.blockDefinitions = new BlockMap<>(cfg);
-
-        this.labelMap = new HashMap<>();
-        this.variableRegisterMap = new HashMap<>();
-        this.usageAliasMap = new HashMap<>();
-
-        this.fromUsageResolver = new FromUsageResolverGlobal(lir, blockInstructions);
-        this.registerAllocationConfig = registerAllocationConfig;
+        this.fromPredecessorsResolver = new FromPredecessorsResolver(lir, blockInstructions, blockStates, blockEntryStates);
+        this.fromJumpResolver = new FromJumpResolver(lir, blockInstructions, blockStates);
+        this.fromUsageResolver = new FromUsageResolver(lir, blockInstructions);
+        this.fromUsageResolverGlobal = new FromUsageResolverGlobal(lir, blockInstructions);
     }
 
     private boolean doPrecessorsHaveStates(BasicBlock<?> block) {
@@ -123,383 +107,6 @@ public final class RegisterAllocationVerifier {
         return blockDefinitions;
     }
 
-    /**
-     * Fill in missing variable locations for current block's label instruction and predecessor
-     * jump instructions.
-     * <p>
-     * We are looking for intersection between locations of individual processors, this should
-     * give us a single register that is used for the phi, and is necessary for jump to verify
-     * that contents are alive that that point and for label to define where the result of phi
-     * will be held to used in said block.
-     *
-     * @param block      Block that needs phi function output
-     * @param labelInstr Label instruction of said block
-     */
-    private boolean resolvePhiFromPredecessors(BasicBlock<?> block, RAVInstruction.Op labelInstr) {
-        for (int i = 0; i < labelInstr.dests.count; i++) {
-            Set<Value> locations = null;
-            for (int j = 0; j < block.getPredecessorCount(); j++) {
-                var pred = block.getPredecessorAt(j);
-                var state = this.blockStates.get(pred);
-                var jump = (RAVInstruction.Op) blockInstructions.get(pred).getLast();
-                var inputValue = jump.alive.orig[i];
-
-                var varLoc = state.values.getValueLocations(inputValue);
-                if (locations == null) {
-                    locations = varLoc;
-                    continue;
-                }
-
-                locations.retainAll(varLoc);
-            }
-
-            Value location = null;
-            if (locations.size() != 1) {
-                if (locations.isEmpty()) {
-                    return false;
-                }
-
-                for (int j = 0; j < block.getPredecessorCount(); j++) {
-                    int time = -1;
-                    Value blockReg = null;
-                    for (var loc : locations) {
-                        var pred = block.getPredecessorAt(j);
-                        var state = this.blockStates.get(pred);
-
-                        var regTime = state.values.getKeyTime(loc);
-                        if (regTime > time) {
-                            // TODO: replace time with priority of Moves inserted by the Register Allocator.
-                            time = regTime; // Max time
-                            blockReg = loc;
-                        }
-                    }
-
-                    if (location == null) {
-                        location = blockReg;
-                    } else if (!location.equals(blockReg)) {
-                        // Not same for all blocks, so none choosen.
-                        return false;
-                    }
-                }
-            } else {
-                location = locations.stream().findFirst().get();
-            }
-
-            var registerValue = location;
-            // var registerValue = location.asValue(labelInstr.dests.orig[i].getValueKind());
-
-            labelInstr.dests.curr[i] = registerValue;
-            for (int j = 0; j < block.getPredecessorCount(); j++) {
-                var pred = block.getPredecessorAt(j);
-                var jump = (RAVInstruction.Op) blockInstructions.get(pred).getLast();
-                jump.alive.curr[i] = registerValue;
-            }
-        }
-
-        return true;
-    }
-
-    class VariableLocations implements Iterable<Value> {
-        protected Set<String> internalList;
-        protected Map<String, Value> valueMap;
-
-        public VariableLocations() {
-            this.internalList = new HashSet<>();
-            this.valueMap = new HashMap<>();
-        }
-
-        public VariableLocations(VariableLocations other) {
-            this.internalList = new HashSet<>(other.internalList);
-            this.valueMap = new HashMap<>(other.valueMap);
-        }
-
-        public void add(Value location) {
-            var locString = getValueKeyString(location);
-            internalList.add(locString);
-            valueMap.put(locString, location);
-        }
-
-        public void remove(Value location) {
-            var locString = getValueKeyString(location);
-            internalList.remove(locString);
-            valueMap.remove(locString);
-        }
-
-        public boolean isEmpty() {
-            return internalList.isEmpty();
-        }
-
-        public boolean contains(Value location) {
-            var locString = getValueKeyString(location);
-            return valueMap.containsKey(locString);
-        }
-
-        protected String getValueKeyString(Value value) {
-            if (value instanceof RegisterValue regValue) {
-                return regValue.getRegister().toString();
-            }
-
-            return value.toString();
-        }
-
-        @Override
-        public Iterator<Value> iterator() {
-            return internalList.stream().map(valueMap::get).iterator();
-        }
-    }
-
-    private void propagateLabelChangeFromPredecessors(BasicBlock<?> defBlock) {
-        var labelInstr = (RAVInstruction.Op) this.blockInstructions.get(defBlock).getFirst();
-
-        // Definition block needs to have this set.
-        var propagateMap = new HashMap<BasicBlock<?>, List<Variable>>();
-        var locationMap = new HashMap<BasicBlock<?>, Map<Variable, VariableLocations>>();
-
-        var defVariableToLocations = new HashMap<Variable, VariableLocations>();
-        var defBlockVariablesToPropagate = new LinkedList<Variable>();
-        for (int i = 0; i < labelInstr.dests.count; i++) {
-            var register = labelInstr.dests.curr[i];
-            var variable = LIRValueUtil.asVariable(labelInstr.dests.orig[i]);
-
-            defBlockVariablesToPropagate.add(variable);
-
-            var variableLocationList = new VariableLocations();
-            variableLocationList.add(register);
-            defVariableToLocations.put(variable, variableLocationList);
-        }
-
-        Queue<BasicBlock<?>> worklist = new LinkedList<>();
-        Set<BasicBlock<?>> processed = new HashSet<>();
-        worklist.add(defBlock);
-        propagateMap.put(defBlock, defBlockVariablesToPropagate);
-        locationMap.put(defBlock, defVariableToLocations);
-
-        while (!worklist.isEmpty()) {
-            var curr = worklist.remove();
-            if (processed.contains(curr)) {
-                continue;
-            }
-            processed.add(curr);
-
-            var state = this.blockStates.get(curr);
-            var variablesToPropagate = propagateMap.get(curr);
-            var variableToLocations = locationMap.get(curr);
-
-            var instructions = blockInstructions.get(curr);
-            for (var instruction : instructions) {
-                if (curr.equals(defBlock) && instruction.lirInstruction instanceof StandardOp.LabelOp) {
-                    continue;
-                }
-
-                Value fromLocation;
-                Value toLocation;
-
-                switch (instruction) {
-                    case RAVInstruction.Move move -> {
-                        fromLocation = move.from;
-                        toLocation = move.to;
-                    }
-                    case RAVInstruction.Spill spill -> {
-                        fromLocation = spill.from;
-                        toLocation = spill.to;
-                    }
-                    case RAVInstruction.StackMove stack -> {
-                        fromLocation = stack.from;
-                        toLocation = stack.to;
-                    }
-                    case RAVInstruction.Reload reload -> {
-                        fromLocation = reload.from;
-                        toLocation = reload.to;
-                    }
-                    case RAVInstruction.VirtualMove virtMove -> {
-                        toLocation = virtMove.location;
-                        fromLocation = null;
-                    }
-                    case RAVInstruction.Op op -> {
-                        for (int i = 0; i < op.dests.count; i++) {
-                            var location = op.dests.curr[i];
-                            if (location == null) {
-                                continue;
-                            }
-
-                            var itToPropagate = variablesToPropagate.iterator();
-                            while (itToPropagate.hasNext()) {
-                                var variable = LIRValueUtil.asVariable(itToPropagate.next());
-                                var locations = variableToLocations.get(variable);
-                                locations.remove(location);
-                            }
-                        }
-
-                        continue;
-                    }
-                    default -> {
-                        continue;
-                    }
-                }
-
-                var itToPropagate = variablesToPropagate.iterator();
-                while (itToPropagate.hasNext()) {
-                    var variable = LIRValueUtil.asVariable(itToPropagate.next());
-                    var locations = variableToLocations.get(variable);
-                    if (fromLocation != null && locations.contains(fromLocation)) {
-                        locations.add(toLocation);
-                    } else if (locations.contains(toLocation)) {
-                        locations.remove(toLocation); // Overwritten
-                    }
-                }
-            }
-
-            var variablesToBePropagated = new LinkedList<Variable>();
-            var iterator = variablesToPropagate.iterator();
-            while (iterator.hasNext()) {
-                var variable = LIRValueUtil.asVariable(iterator.next());
-                var locations = variableToLocations.get(variable);
-                if (locations.isEmpty()) {
-                    continue;
-                }
-
-                variablesToBePropagated.add(variable);
-                for (var location : locations) {
-                    if (state != null) {
-                        state.values.put(location, new ValueAllocationState(variable, labelInstr.lirInstruction));
-                    }
-                }
-            }
-
-            if (variablesToBePropagated.isEmpty()) {
-                continue;
-            }
-
-            for (int i = 0; i < curr.getSuccessorCount(); i++) {
-                var succ = curr.getSuccessorAt(i);
-                var succEntryState = this.blockEntryStates.get(succ);
-                if (succEntryState == null) {
-                    continue;
-                }
-
-                if (succ.equals(defBlock)) {
-                    // This means that the definition block would have same value as predecessor
-                    // for example: B0 defines [v0] in label, B1 is it's successor as well as it's
-                    // predecessor, and if it does not overwrite this register, it would change
-                    // entry state for B0 to include v0, which is defined by B0.
-
-                    for (int j = 0; j < labelInstr.dests.count; j++) {
-                        var variable = LIRValueUtil.asVariable(labelInstr.dests.orig[j]);
-
-                        if (!variablesToPropagate.contains(variable)) {
-                            continue;
-                        }
-
-                        var location = labelInstr.dests.curr[j];
-                        var locations = variableToLocations.get(variable);
-                        if (locations.contains(location)) {
-                            // Only throw this error if location in label was not overwritten.
-                            throw new CircularDefinitionError(defBlock, curr, labelInstr, variablesToBePropagated);
-                        }
-                    }
-
-                    continue;
-                }
-
-                boolean dominates = succ.dominates(defBlock);
-                if (dominates) {
-                    continue;
-                }
-
-                Map<Variable, VariableLocations> newLoc = new HashMap<>();
-                var itToBePropagated = variablesToBePropagated.iterator();
-                while (itToBePropagated.hasNext()) {
-                    var variable = LIRValueUtil.asVariable(itToBePropagated.next());
-                    var locations = variableToLocations.get(variable);
-                    for (var location : locations) {
-                        succEntryState.values.put(location, new ValueAllocationState(variable, labelInstr.lirInstruction));
-                    }
-
-                    newLoc.put(variable, new VariableLocations(locations));
-                }
-
-                locationMap.put(succ, newLoc);
-                propagateMap.put(succ, variablesToBePropagated);
-                worklist.add(succ);
-            }
-        }
-    }
-
-    /**
-     * Resolve phi registers from this jump point, can only be done if
-     * the phi variables/constants only have one location.
-     *
-     * <p>
-     * This way we can handle phi arguments before we reach said block.
-     * But cannot really be done for loops, if their initial values
-     * are the same and there are multiple ones.
-     * </p>
-     *
-     * @param block From whom we are jumping from
-     */
-    private void resolvePhiFromJump(BasicBlock<?> block) {
-        var state = this.blockStates.get(block);
-        var jumpInstr = (RAVInstruction.Op) this.blockInstructions.get(block).getLast();
-
-        for (int i = 0; i < jumpInstr.alive.count; i++) {
-            if (jumpInstr.alive.curr[i] != null) {
-                continue;
-            }
-
-            var inputValue = jumpInstr.alive.orig[i];
-            if (!LIRValueUtil.isVariable(inputValue) && !(inputValue instanceof ConstantValue)) {
-                continue;
-            }
-
-            var registerValue = this.getRegisterBeforeJump(state, inputValue);
-            if (registerValue == null) {
-                return;
-            }
-
-            jumpInstr.alive.curr[i] = registerValue;
-            for (int j = 0; j < block.getSuccessorCount(); j++) {
-                var succ = block.getSuccessorAt(j);
-                var labelInstr = (RAVInstruction.Op) this.blockInstructions.get(succ).getFirst();
-
-                labelInstr.dests.curr[i] = jumpInstr.alive.curr[i];
-
-                for (int k = 0; k < succ.getPredecessorCount(); k++) {
-                    // Sibling jumps need to be updated as well in order to pass input checks.
-                    var sibling = succ.getPredecessorAt(k);
-                    if (sibling.equals(block)) {
-                        continue;
-                    }
-
-                    var siblingJumpInstr = (RAVInstruction.Op) this.blockInstructions.get(sibling).getLast();
-                    siblingJumpInstr.alive.curr[i] = jumpInstr.alive.curr[i];
-                }
-            }
-        }
-    }
-
-    private Value getRegisterBeforeJump(MergedBlockVerifierState state, Value inputValue) {
-        // Does not work for constants if there is more of them
-        var locations = state.values.getValueLocations(inputValue);
-        if (locations.isEmpty()) {
-            return null;
-        }
-
-        var register = locations.stream().findFirst().get();
-        if (locations.size() != 1) {
-            int time = -1;
-            for (var location : locations) {
-                var locTime = state.values.getKeyTime(location);
-                if (locTime > time) {
-                    register = location;
-                    time = locTime;
-                }
-            }
-        }
-
-        return register;
-        // return register.asValue(inputValue.getValueKind());
-    }
-
     private boolean hasMissingRegistersInLabel(RAVInstruction.Op op) {
         return op.hasMissingDefinitions();
     }
@@ -513,6 +120,8 @@ public final class RegisterAllocationVerifier {
      */
     public void calculateEntryBlocks() {
         Queue<BasicBlock<?>> worklist = new LinkedList<>();
+
+        this.blockEntryStates.put(this.lir.getControlFlowGraph().getStartBlock(), new MergedBlockVerifierState(registerAllocationConfig, phiResolution, constantMaterializationConflictResolver, labelConflictResolver));
         worklist.add(this.lir.getControlFlowGraph().getStartBlock());
 
         while (!worklist.isEmpty()) {
@@ -522,7 +131,7 @@ public final class RegisterAllocationVerifier {
             boolean resolvedPhi = false;
             var labelInstr = (RAVInstruction.Op) instructions.getFirst();
             if (this.phiResolution == PhiResolution.FromPredecessors && this.doPrecessorsHaveStates(block) && this.hasMissingRegistersInLabel(labelInstr)) {
-                resolvedPhi = this.resolvePhiFromPredecessors(block, labelInstr);
+                resolvedPhi = this.fromPredecessorsResolver.resolvePhiFromPredecessors(block, labelInstr);
             }
 
             if (this.phiResolution == PhiResolution.FromJump && this.hasMissingRegistersInLabel(labelInstr)) {
@@ -533,18 +142,19 @@ public final class RegisterAllocationVerifier {
             }
 
             // Create new entry state for successor blocks out of current block state
-            var state = new MergedBlockVerifierState(this.blockEntryStates.get(block), registerAllocationConfig, phiResolution, constantMaterializationConflictResolver);
+            var state = new MergedBlockVerifierState(this.blockEntryStates.get(block), registerAllocationConfig, phiResolution, constantMaterializationConflictResolver, labelConflictResolver);
             for (var instr : instructions) {
                 state.update(instr, block);
             }
             this.blockStates.put(block, state);
 
             if (this.phiResolution == PhiResolution.FromJump) {
-                this.resolvePhiFromJump(block);
+                // TODO: Sibling in worklist, then process and select resolut in cooperation
+                this.fromJumpResolver.resolvePhiFromJump(block);
             }
 
             if (resolvedPhi) {
-                this.propagateLabelChangeFromPredecessors(block);
+                this.fromPredecessorsResolver.propagateLabelChangeFromPredecessors(block);
             }
 
             for (int i = 0; i < block.getSuccessorCount(); i++) {
@@ -552,7 +162,7 @@ public final class RegisterAllocationVerifier {
 
                 MergedBlockVerifierState succState;
                 if (this.blockEntryStates.get(succ) == null) {
-                    succState = new MergedBlockVerifierState(registerAllocationConfig, phiResolution, constantMaterializationConflictResolver);
+                    succState = new MergedBlockVerifierState(registerAllocationConfig, phiResolution, constantMaterializationConflictResolver, labelConflictResolver);
 
                     // Either there's no state because it was not yet processed first part of the condition
                     // or, we need to reset it because label changed, second part of the condition
@@ -673,16 +283,16 @@ public final class RegisterAllocationVerifier {
 
     public void run() {
         this.constantMaterializationConflictResolver.prepare(lir, blockInstructions);
+        if (this.phiResolution == PhiResolution.FromConflicts) {
+            this.labelConflictResolver.prepare(lir, blockInstructions);
+        }
 
         if (this.phiResolution == PhiResolution.FromUsage) {
             this.fromUsageResolver.resolvePhiFromUsage();
         }
 
-        if (this.phiResolution == PhiResolution.FromPredecessors) {
-            // Currently only useful to this resolution type, but later
-            // we should only go through instructions once and then just merge
-            // with entry state and successors.
-            this.blockDefinitions = this.getDefinitionSets();
+        if (this.phiResolution == PhiResolution.FromUsageGlobal) {
+            this.fromUsageResolverGlobal.resolvePhiFromUsage();
         }
 
         this.calculateEntryBlocks();

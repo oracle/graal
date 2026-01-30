@@ -25,14 +25,14 @@ class FromUsageResolverGlobal {
     protected LIR lir;
     protected BlockMap<List<RAVInstruction.Base>> blockInstructions;
 
-    public Map<RAVInstruction.Op, BasicBlock<?>> instrToBlockMap;
     public Map<Variable, RAVInstruction.Op> labelMap;
     public Map<Variable, Boolean> defined;
     public Map<Variable, Boolean> reached;
     public Map<RAVInstruction.Op, Set<Variable>> firstUsages;
     public Map<Variable, Value> initialLocations;
     public Map<Variable, Variable> aliasMap;
-    public BlockMap<BlockUsage> blockUsageMap;
+    public Map<Variable, BasicBlock<?>> aliasBlockMap;
+    public BlockMap<BlockUsage> blockUsageMap; // Entry blocks!
     public List<BasicBlock<?>> endBlocks;
 
     class BlockUsage {
@@ -60,6 +60,11 @@ class FromUsageResolverGlobal {
             while (iterator.hasNext()) {
                 var variable = LIRValueUtil.asVariable(iterator.next());
                 var defValue = other.locations.get(variable);
+
+                if (Value.ILLEGAL.equals(defValue) && newDefs.locations.containsKey(variable)) {
+                    continue;
+                }
+
                 newDefs.locations.put(variable, defValue);
             }
 
@@ -71,13 +76,13 @@ class FromUsageResolverGlobal {
         this.lir = lir;
         this.blockInstructions = blockInstructions;
 
-        this.instrToBlockMap = new HashMap<>();
         this.labelMap = new HashMap<>();
         this.defined = new HashMap<>();
         this.reached = new HashMap<>();
         this.firstUsages = new HashMap<>();
         this.initialLocations = new HashMap<>();
         this.aliasMap = new HashMap<>();
+        this.aliasBlockMap = new HashMap<>();
         this.endBlocks = new ArrayList<>();
 
         this.blockUsageMap = new BlockMap<>(lir.getControlFlowGraph());
@@ -99,7 +104,7 @@ class FromUsageResolverGlobal {
         while (!worklist.isEmpty()) {
             var block = worklist.remove();
 
-            var usage = blockUsageMap.get(block);
+            var usage = new BlockUsage(blockUsageMap.get(block));
             var instructions = blockInstructions.get(block);
             for (var instruction : instructions.reversed()) {
                 switch (instruction) {
@@ -109,26 +114,10 @@ class FromUsageResolverGlobal {
                     case RAVInstruction.StackMove stackMove -> handleMove(usage, stackMove.from, stackMove.to);
                     case RAVInstruction.Op op -> {
                         if (op.lirInstruction instanceof StandardOp.LabelOp) {
-                            for (int i = 0; i < op.dests.count; i++) {
-                                if (!LIRValueUtil.isVariable(op.dests.orig[i])) {
-                                    continue;
-                                }
-
-                                var variable = LIRValueUtil.asVariable(op.dests.orig[i]);
-                                if (usage.locations.get(variable) == null) {
-                                    continue;
-                                }
-
-                                if (op.dests.curr[i] != null) {
-                                    continue;
-                                }
-
-                                resolveVariable(usage, variable);
-                                usage.locations.put(variable, null);
-                            }
-
+                            this.resolveLabel(usage, op, block);
                             continue;
                         }
+                        // TODO: decide how to deal with locations being overwritten.
 
                         if (firstUsages.containsKey(op)) {
                             var iterator = firstUsages.get(op).iterator();
@@ -184,8 +173,6 @@ class FromUsageResolverGlobal {
             var instructions = blockInstructions.get(block);
             var label = (RAVInstruction.Op) instructions.getFirst();
 
-            instrToBlockMap.put(label, block);
-
             for (var i = 0; i < label.dests.count; i++) {
                 if (LIRValueUtil.isVariable(label.dests.orig[i])) {
                     var variable = LIRValueUtil.asVariable(label.dests.orig[i]);
@@ -202,6 +189,7 @@ class FromUsageResolverGlobal {
 
                     handleUsages(op.uses, op, block);
                     handleUsages(op.alive, op, block);
+                    handleUsages(op.stateValues, op, block);
                 }
             }
 
@@ -217,6 +205,7 @@ class FromUsageResolverGlobal {
                     var succ = block.getSuccessorAt(0);
                     var succLabel = (RAVInstruction.Op) blockInstructions.get(succ).getFirst();
 
+                    aliasBlockMap.put(variable, block);
                     aliasMap.put(variable, LIRValueUtil.asVariable(succLabel.dests.orig[i]));
                 }
             }
@@ -252,7 +241,6 @@ class FromUsageResolverGlobal {
                 }
 
                 firstUsages.get(op).add(variable);
-                instrToBlockMap.put(op, block);
                 initialLocations.put(variable, values.curr[i]);
 
                 aliasMap.remove(variable);
@@ -264,7 +252,7 @@ class FromUsageResolverGlobal {
         for (var entry : usage.locations.entrySet()) {
             var variable = LIRValueUtil.asVariable(entry.getKey());
             var location = entry.getValue();
-            if (location == null) {
+            if (location == null || Value.ILLEGAL.equals(location)) {
                 continue;
             }
 
@@ -274,19 +262,24 @@ class FromUsageResolverGlobal {
         }
     }
 
-    protected void resolveVariable(BlockUsage usage, Variable variable) {
-        var label = labelMap.get(variable);
-        var block = instrToBlockMap.get(label);
-        var location = usage.locations.get(variable);
-
+    protected void resolveLabel(BlockUsage usage, RAVInstruction.Op label, BasicBlock<?> block) {
         for (int i = 0; i < label.dests.count; i++) {
             if (!LIRValueUtil.isVariable(label.dests.orig[i])) {
                 continue;
             }
 
-            var labelVar = LIRValueUtil.asVariable(label.dests.orig[i]);
-            if (!labelVar.equals(variable)) {
+            var variable = LIRValueUtil.asVariable(label.dests.orig[i]);
+            if (usage.locations.get(variable) == null) {
                 continue;
+            }
+
+            if (label.dests.curr[i] != null) {
+                continue;
+            }
+
+            var location = usage.locations.get(variable);
+            if (location == null || Value.ILLEGAL.equals(location)) {
+                throw new IllegalStateException();
             }
 
             label.dests.curr[i] = location;
@@ -297,20 +290,26 @@ class FromUsageResolverGlobal {
                 jump.alive.curr[i] = location;
             }
 
-            break;
-        }
+            // Variables that are passed into jumps without any other usage are aliases
+            // for same variable in successor label, whenever said variable is resolved
+            // we now have a location for this variable and can take other moves into account.
+            for (var entry : aliasMap.entrySet()) {
+                var aliased = LIRValueUtil.asVariable(entry.getValue());
+                if (variable.equals(aliased)) {
+                    var alias = LIRValueUtil.asVariable(entry.getKey());
+                    var aliasBlock = aliasBlockMap.get(alias);
 
-        // Variables that are passed into jumps without any other usage are aliases
-        // for same variable in successor label, whenever said variable is resolved
-        // we now have a location for this variable and can take other moves into account.
-        for (var entry : aliasMap.entrySet()) {
-            var aliased = LIRValueUtil.asVariable(entry.getValue());
-            if (variable.equals(aliased)) {
-                var alias = LIRValueUtil.asVariable(entry.getKey());
+                    if (blockUsageMap.get(aliasBlock) == null) {
+                        this.blockUsageMap.put(aliasBlock, new BlockUsage());
+                    }
 
-                usage.locations.put(alias, location);
-                usage.reached.add(alias);
+                    var aliasBlockUsage = blockUsageMap.get(aliasBlock);
+                    aliasBlockUsage.locations.put(alias, location);
+                    aliasBlockUsage.reached.add(alias);
+                }
             }
+
+            usage.locations.put(variable, null);
         }
     }
 }
