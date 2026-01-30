@@ -35,7 +35,6 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -67,6 +66,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import com.oracle.svm.util.GraalAccess;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -172,7 +172,6 @@ import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.shaded.org.capnproto.Void;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.OriginalFieldProvider;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
@@ -712,11 +711,6 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsWritten(field.getWrittenReason() != null);
         builder.setIsFolded(field.getFoldedReason() != null);
         builder.setIsUnsafeAccessed(field.isUnsafeAccessed());
-
-        Field originalField = OriginalFieldProvider.getJavaField(field);
-        if (originalField != null && !originalField.getDeclaringClass().equals(field.getDeclaringClass().getJavaClass())) {
-            builder.setClassName(originalField.getDeclaringClass().getName());
-        }
         builder.setIsStatic(field.isStatic());
         builder.setIsInternal(field.isInternal());
         builder.setIsSynthetic(field.isSynthetic());
@@ -878,20 +872,20 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private void persistConstantRelinkingInfo(PersistedConstant.Builder builder, ImageHeapConstant imageHeapConstant, Set<Integer> constantsToRelink, BigBang bb) {
-        Class<?> clazz = imageHeapConstant.getType().getJavaClass();
+        AnalysisType type = imageHeapConstant.getType();
         JavaConstant hostedObject = imageHeapConstant.getHostedObject();
         boolean simulated = hostedObject == null;
         builder.setIsSimulated(simulated);
         if (!simulated) {
             Relinking.Builder relinkingBuilder = builder.getObject().getRelinking();
             int id = ImageHeapConstant.getConstantID(imageHeapConstant);
-            ResolvedJavaType type = bb.getConstantReflectionProvider().asJavaType(hostedObject);
             boolean tryStaticFinalFieldRelink = true;
-            if (type instanceof AnalysisType analysisType) {
-                relinkingBuilder.initClassConstant().setTypeId(analysisType.getId());
+            if (bb.getMetaAccess().lookupJavaType(Class.class).equals(type)) {
+                AnalysisType constantType = (AnalysisType) bb.getConstantReflectionProvider().asJavaType(hostedObject);
+                relinkingBuilder.initClassConstant().setTypeId(constantType.getId());
                 constantsToRelink.add(id);
                 tryStaticFinalFieldRelink = false;
-            } else if (clazz.equals(String.class)) {
+            } else if (bb.getMetaAccess().lookupJavaType(String.class).equals(type)) {
                 StringConstant.Builder stringConstantBuilder = relinkingBuilder.initStringConstant();
                 String value = bb.getSnippetReflectionProvider().asObject(String.class, hostedObject);
                 if (internedStringsIdentityMap.containsKey(value)) {
@@ -902,7 +896,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                     constantsToRelink.add(id);
                     tryStaticFinalFieldRelink = false;
                 }
-            } else if (Enum.class.isAssignableFrom(clazz)) {
+            } else if (bb.getMetaAccess().lookupJavaType(Enum.class).isAssignableFrom(type)) {
                 EnumConstant.Builder enumBuilder = relinkingBuilder.initEnumConstant();
                 Enum<?> value = bb.getSnippetReflectionProvider().asObject(Enum.class, hostedObject);
                 enumBuilder.setEnumClass(value.getDeclaringClass().getName());
@@ -960,7 +954,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 default -> throw new IllegalArgumentException("Unsupported kind: " + componentKind);
             }
         } else {
-            assert componentKind.toJavaClass().equals(array.getClass().getComponentType()) : "%s != %s".formatted(componentKind.toJavaClass(), array.getClass().getComponentType());
+            assert GraalAccess.lookupType(componentKind.toJavaClass()).equals(GraalAccess.lookupType(array.getClass()).getComponentType()) : "%s != %s"
+                            .formatted(GraalAccess.lookupType(componentKind.toJavaClass()), GraalAccess.lookupType(array.getClass()).getComponentType());
             switch (array) {
                 case boolean[] a -> persistArray(a, builder::initZ, (b, i) -> b.set(i, a[i]));
                 case byte[] a -> persistArray(a, builder::initB, (b, i) -> b.set(i, a[i]));
