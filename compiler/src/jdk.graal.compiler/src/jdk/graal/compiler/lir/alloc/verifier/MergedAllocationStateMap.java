@@ -35,39 +35,12 @@ public class MergedAllocationStateMap {
     protected Map<String, Boolean> prioritizedLocations;
     protected int time;
 
-    // The idea behind this is that we do not care where the address is going
-    // we care about if we ever saw this in memory, then we return ValueAllocationState
-    // CompositeValue AMD64AddressValue&AArch64AddressValue
-    protected Set<Value> inMemoryValues;
-
-    protected class ValueWrapper {
-        protected Value value;
-
-        protected ValueWrapper(Value value) {
-            this.value = value;
-        }
-
-        protected Value getValue() {
-            return this.value;
-        }
-
-        @Override
-        public String toString() {
-            if (value instanceof RegisterValue regValue) {
-                return regValue.getRegister().toString();
-            }
-
-            return value.toString();
-        }
-    }
-
     public MergedAllocationStateMap() {
         valueMap = new HashMap<>();
         internalMap = new HashMap<>();
         locationTimings = new HashMap<>();
         prioritizedLocations = new HashMap<>();
         time = 0;
-        inMemoryValues = new HashSet<>();
     }
 
     public MergedAllocationStateMap(MergedAllocationStateMap other) {
@@ -76,7 +49,6 @@ public class MergedAllocationStateMap {
         locationTimings = new HashMap<>(other.locationTimings);
         prioritizedLocations = new HashMap<>(other.prioritizedLocations);
         time = other.time + 1;
-        inMemoryValues = new HashSet<>(other.inMemoryValues);
     }
 
     public AllocationState get(Value key) {
