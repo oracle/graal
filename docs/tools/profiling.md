@@ -183,7 +183,8 @@ The current set of available options is as follows.
 
 <!-- BEGIN: cpu-sampler-options -->
 - `--cpusampler=true|false|<Output>` : Enable/Disable the CPU sampler, or enable with specific Output - as specified by the Output option (default: false). Choosing an output with this options defaults to printing the output to std out, except for the flamegraph which is printed to a flamegraph.svg file.
-- `--cpusampler.Delay=<ms>` : Delay the sampling for this many milliseconds (default: 0).
+- `--cpusampler.Delay=[0, inf)ms|s|m|h|d` : Delay sampling for the specified time. Example: 500ms. The default unit is milliseconds, and the default value is 0 (no delay), meaning sampling starts immediately.
+- `--cpusampler.DumpInterval=[0, inf)ms|s|m|h|d` : Dump the sampler output at the specified interval. Example: 10s. The default unit is milliseconds, and the default value is 0 (no interval-based dumping), meaning output is only produced at the end of execution.
 - `--cpusampler.FilterFile=<filter>` : Wildcard filter for source file paths. (for example, *program*.sl) (default: no filter).
 - `--cpusampler.FilterLanguage=<languageId>` : Only profile the language with given ID. (for example, js) (default: profile all).
 - `--cpusampler.FilterMimeType=<mime-type>` : Only profile the language with given mime-type. (for example, application/javascript) (default: profile all)
@@ -193,7 +194,8 @@ The current set of available options is as follows.
 - `--cpusampler.MinSamples=[0, inf)` : Remove elements from output if they have less samples than this value (default: 0)
 - `--cpusampler.Output=histogram|calltree|json|flamegraph` : Specify the output format to one of: histogram, calltree, json or flamegraph (default: histogram).
 - `--cpusampler.OutputFile=<path>` : Save output to the given file. Output is printed to output stream by default.
-- `--cpusampler.Period=<ms>` : Period in milliseconds to sample the stack (default: 10)
+- `--cpusampler.Period=[1, inf)ms|s|m|h|d` : Sampling period for the stack. Example: 5ms. The default unit is milliseconds, and the default value is 10, meaning the stack is sampled every 10 ms.
+- `--cpusampler.ResetAfterIntervalDump` : Specifies whether to clear the sampler data after each interval-based dump. The default value is false (do not clear).
 - `--cpusampler.SampleContextInitialization` : Enables sampling of code executed during context initialization
 - `--cpusampler.ShowTiers=true|false|0,1,2` : Specify whether to show compilation information for entries. You can specify 'true' to show all compilation information, 'false' for none, or a comma separated list of compilation tiers. Note: Interpreter is considered Tier 0. (default: false)
 - `--cpusampler.StackLimit=[1, inf)` : Maximum number of maximum stack elements (default: 10000).

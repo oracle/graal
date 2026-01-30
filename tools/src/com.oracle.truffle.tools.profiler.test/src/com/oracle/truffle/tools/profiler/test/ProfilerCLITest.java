@@ -30,6 +30,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -49,7 +51,8 @@ import com.oracle.truffle.tools.profiler.ProfilerNode;
 
 public class ProfilerCLITest {
 
-    public static final String SAMPLING_HISTOGRAM_REGEX = "Sampling Histogram. Recorded [0-9]* samples with period [0-9]*ms. Missed [0-9]* samples.";
+    public static final String SAMPLING_HISTOGRAM_REGEX = "Sampling Histogram. Recorded ([0-9]+) samples with period ([0-9]+)ms. Missed ([0-9]+) samples.";
+    public static final Pattern SAMPLING_HISTOGRAM_REGEX_PATTERN = Pattern.compile(SAMPLING_HISTOGRAM_REGEX);
     public static final String SAMPLING_CALLTREE_REGEX = "Sampling Call Tree. Recorded [0-9]* samples with period [0-9]*ms. Missed [0-9]* samples.";
     public static final int EXEC_COUNT = 10;
     public static final int LOOP_COUNT = 10;
@@ -157,6 +160,59 @@ public class ProfilerCLITest {
         //            |             1900ms ||                0ms || test~1:0-161
         // -------------------------------------------------------------------------------
         // @formatter:on
+    }
+
+    @Test
+    public void testSampleHistogramWithIntervalDump() {
+        Assume.assumeTrue(checkRuntime());
+        HashMap<String, String> options = new HashMap<>();
+        options.put("cpusampler", "true");
+        options.put("cpusampler.DumpInterval", "10");
+        String[] output = runSampler(options, 10);
+        int dumpCount = 0;
+        int samplesCount = 0;
+        int samplesCountIncreaseCount = 0;
+        int missedSamples = 0;
+        for (String outputLine : output) {
+            Matcher matcher = SAMPLING_HISTOGRAM_REGEX_PATTERN.matcher(outputLine);
+            if (matcher.matches()) {
+                dumpCount++;
+                int s = Integer.parseInt(matcher.group(1));
+                int m = Integer.parseInt(matcher.group(3));
+                Assert.assertTrue(s >= samplesCount);
+                Assert.assertTrue(m >= missedSamples);
+                if (s > samplesCount) {
+                    samplesCountIncreaseCount++;
+                }
+                samplesCount = s;
+                missedSamples = m;
+            }
+        }
+        Assert.assertTrue(dumpCount > 1);
+        Assert.assertTrue(samplesCountIncreaseCount > 1);
+    }
+
+    @Test
+    public void testSampleHistogramWithIntervalDumpWithReset() {
+        Assume.assumeTrue(checkRuntime());
+        HashMap<String, String> options = new HashMap<>();
+        options.put("cpusampler", "true");
+        options.put("cpusampler.DumpInterval", "10");
+        options.put("cpusampler.ResetAfterIntervalDump", "true");
+        String[] output = runSampler(options, 10);
+        int dumpCount = 0;
+        int samplesCountSum = 0;
+        int lastSamplesCount = 0;
+        for (String outputLine : output) {
+            Matcher matcher = SAMPLING_HISTOGRAM_REGEX_PATTERN.matcher(outputLine);
+            if (matcher.matches()) {
+                dumpCount++;
+                lastSamplesCount = Integer.parseInt(matcher.group(1));
+                samplesCountSum += lastSamplesCount;
+            }
+        }
+        Assert.assertTrue(dumpCount > 1);
+        Assert.assertTrue(lastSamplesCount * EXEC_COUNT < samplesCountSum);
     }
 
     @Test
@@ -290,6 +346,10 @@ public class ProfilerCLITest {
     }
 
     private String[] runSampler(Map<String, String> options) {
+        return runSampler(options, 0);
+    }
+
+    private String[] runSampler(Map<String, String> options, long delayBetweenExecutions) {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
         try (Context context = Context.newBuilder().in(System.in).out(out).err(err).options(options).build()) {
@@ -300,6 +360,13 @@ public class ProfilerCLITest {
                             "CALL(baz),CALL(bar)" +
                             ")");
             for (int i = 0; i < EXEC_COUNT; i++) {
+                if (i > 0 && delayBetweenExecutions > 0) {
+                    try {
+                        Thread.sleep(delayBetweenExecutions);
+                    } catch (InterruptedException ie) {
+                        throw new AssertionError(ie);
+                    }
+                }
                 context.eval(source);
             }
         }
