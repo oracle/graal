@@ -81,7 +81,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
-import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -189,7 +188,7 @@ public class RistrettoUtils {
             StructuredGraph graph = new StructuredGraph.Builder(options, debug, allowAssumptions).method(method).speculationLog(speculationLog)
                             .profileProvider(profileProvider).compilationId(compilationId).build();
             assert graph != null;
-            PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite(runtimeConfig);
+            PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite();
             HighTierContext hc = new HighTierContext(runtimeConfig.getProviders(), null, OptimisticOptimizations.ALL);
             parseFromBytecode(graph, ristrettoGraphBuilderSuite, hc);
             return graph;
@@ -280,7 +279,7 @@ public class RistrettoUtils {
                                 graph.getGraphState().configureExplicitExceptionsNoDeopt();
                             }
                             assert graph != null;
-                            PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite(runtimeConfig);
+                            PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite();
                             suites = adaptSuitesForRistretto(RuntimeCompilationSupport.getMatchingSuitesForGraph(graph));
                             if (TestingBackdoor.shouldRememberGraph()) {
                                 // override the suites with graph capturing phases
@@ -359,9 +358,9 @@ public class RistrettoUtils {
         return effectiveSuites;
     }
 
-    private static PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite(RuntimeConfiguration runtimeConfig) {
+    private static PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite() {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
-        suite.appendPhase(createRistrettoGraphBuilder(createRistrettoGraphBuilderConfiguration(runtimeConfig)));
+        suite.appendPhase(createRistrettoGraphBuilder(createRistrettoGraphBuilderConfiguration()));
         return suite;
     }
 
@@ -369,10 +368,7 @@ public class RistrettoUtils {
         return new RistrettoGraphBuilderPhase(gpc);
     }
 
-    private static GraphBuilderConfiguration createRistrettoGraphBuilderConfiguration(RuntimeConfiguration runtimeConfig) {
-        Providers runtimeProviders = runtimeConfig.getProviders();
-        Replacements runtimeReplacements = runtimeProviders.getReplacements();
-
+    private static GraphBuilderConfiguration createRistrettoGraphBuilderConfiguration() {
         // init fresh graph builder plugins
         GraphBuilderConfiguration.Plugins runtimeParseGraphBuilderPlugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
         RistrettoGraphBuilderPlugins.setRuntimeGraphBuilderPlugins(runtimeParseGraphBuilderPlugins);

@@ -54,142 +54,139 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class RistrettoReplacements implements Replacements {
-    private final SubstrateReplacements original;
+    private final SubstrateReplacements svmReplacements;
 
-    public RistrettoReplacements(SubstrateReplacements original) {
-        this.original = original;
+    public RistrettoReplacements(SubstrateReplacements svmReplacements) {
+        this.svmReplacements = svmReplacements;
     }
 
     @Override
     public CoreProviders getProviders() {
-        return original.getProviders();
+        return svmReplacements.getProviders();
     }
 
     @Override
     public GraphBuilderConfiguration.Plugins getGraphBuilderPlugins() {
-        return original.getGraphBuilderPlugins();
+        return svmReplacements.getGraphBuilderPlugins();
     }
 
     @Override
     public Map<SnippetTemplate.CacheKey, SnippetTemplate> getTemplatesCache() {
-        return original.getTemplatesCache();
+        return svmReplacements.getTemplatesCache();
     }
 
     @Override
     public Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method) {
-        return original.getIntrinsifyingPlugin(method);
+        return svmReplacements.getIntrinsifyingPlugin(method);
     }
 
     @Override
     public DebugContext openSnippetDebugContext(String idPrefix, ResolvedJavaMethod method, DebugContext outer, OptionValues options) {
-        return original.openSnippetDebugContext(idPrefix, method, outer, options);
+        return svmReplacements.openSnippetDebugContext(idPrefix, method, outer, options);
     }
 
     @Override
     public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
                     NodeSourcePosition replaceePosition, OptionValues options) {
-        Function<Object, Object> t = new Function<Object, Object>() {
-            @Override
-            public Object apply(Object o) {
-                if (o instanceof SubstrateType substrateType) {
-                    return RistrettoType.create((InterpreterResolvedJavaType) substrateType.getHub().getInterpreterType());
-                } else if (o instanceof SubstrateMethod substrateMethod &&
-                                /*
-                                 * Note that we exclude native methods and other snippets here. If
-                                 * we call a native methods its normally a node intrinsic, if we
-                                 * call another snippet method we also will not have interpreter
-                                 * methods for it.
-                                 */
-                                !isSnippet(substrateMethod) && !substrateMethod.isNative()) {
-                    InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) substrateMethod.getDeclaringClass().getHub().getInterpreterType();
-                    for (var iMeth : iType.getDeclaredMethods()) {
-                        if (iMeth.getName().equals(substrateMethod.getName()) && iMeth.getSignature().toString().equals(substrateMethod.getSignature().toString())) {
-                            return RistrettoMethod.create(iMeth);
-                        }
+        Function<Object, Object> t = o -> {
+            if (o instanceof SubstrateType substrateType) {
+                return RistrettoType.create((InterpreterResolvedJavaType) substrateType.getHub().getInterpreterType());
+            } else if (o instanceof SubstrateMethod substrateMethod &&
+                            /*
+                             * Note that we exclude native methods and other snippets here. If we
+                             * call a native methods its normally a node intrinsic, if we call
+                             * another snippet method we also will not have interpreter methods for
+                             * it.
+                             */
+                            !isSnippet(substrateMethod) && !substrateMethod.isNative()) {
+                InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) substrateMethod.getDeclaringClass().getHub().getInterpreterType();
+                for (var iMeth : iType.getDeclaredMethods()) {
+                    if (iMeth.getName().equals(substrateMethod.getName()) && iMeth.getSignature().toString().equals(substrateMethod.getSignature().toString())) {
+                        return RistrettoMethod.create(iMeth);
                     }
-                    throw GraalError.shouldNotReachHere("Cannot find iMethod for " + substrateMethod.getName());
-                } else if (o instanceof SubstrateField substrateField) {
-                    InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) substrateField.getDeclaringClass().getHub().getInterpreterType();
-                    if (substrateField.isStatic()) {
-                        for (var iField : iType.getStaticFields()) {
-                            if (iField.getName().equals(substrateField.getName())) {
-                                return RistrettoField.create((InterpreterResolvedJavaField) iField);
-                            }
-                        }
-                    } else {
-                        for (var iField : iType.getInstanceFields(true)) {
-                            if (iField.getName().equals(substrateField.getName())) {
-                                return RistrettoField.create((InterpreterResolvedJavaField) iField);
-                            }
-                        }
-                    }
-                    throw GraalError.shouldNotReachHere("Cannot find iField for " + substrateField.getName());
                 }
-                return o;
+                throw GraalError.shouldNotReachHere("Cannot find iMethod for " + substrateMethod.getName());
+            } else if (o instanceof SubstrateField substrateField) {
+                InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) substrateField.getDeclaringClass().getHub().getInterpreterType();
+                if (substrateField.isStatic()) {
+                    for (var iField : iType.getStaticFields()) {
+                        if (iField.getName().equals(substrateField.getName())) {
+                            return RistrettoField.create((InterpreterResolvedJavaField) iField);
+                        }
+                    }
+                } else {
+                    for (var iField : iType.getInstanceFields(true)) {
+                        if (iField.getName().equals(substrateField.getName())) {
+                            return RistrettoField.create((InterpreterResolvedJavaField) iField);
+                        }
+                    }
+                }
+                throw GraalError.shouldNotReachHere("Cannot find iField for " + substrateField.getName());
             }
+            return o;
         };
-        return original.getSnippet(method, args, trackNodeSourcePosition, options, t);
+        return svmReplacements.getSnippet(method, args, trackNodeSourcePosition, options, t);
     }
 
     @Override
     public SnippetParameterInfo getSnippetParameterInfo(ResolvedJavaMethod method) {
-        return original.getSnippetParameterInfo(method);
+        return svmReplacements.getSnippetParameterInfo(method);
     }
 
     @Override
     public boolean isSnippet(ResolvedJavaMethod method) {
-        return original.isSnippet(method);
+        return svmReplacements.isSnippet(method);
     }
 
     @Override
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
-
+        svmReplacements.registerSnippet(method, original, receiver, trackNodeSourcePosition, options);
     }
 
     @Override
     public StructuredGraph getInlineSubstitution(ResolvedJavaMethod method, int invokeBci, boolean isInOOMETry, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition,
                     NodeSourcePosition replaceePosition, StructuredGraph.AllowAssumptions allowAssumptions, OptionValues options) {
-        return original.getInlineSubstitution(method, invokeBci, isInOOMETry, inlineControl, trackNodeSourcePosition,
+        return svmReplacements.getInlineSubstitution(method, invokeBci, isInOOMETry, inlineControl, trackNodeSourcePosition,
                         replaceePosition, allowAssumptions, options);
     }
 
     @Override
     public boolean hasSubstitution(ResolvedJavaMethod method, OptionValues options) {
-        return original.hasSubstitution(method, options);
+        return svmReplacements.hasSubstitution(method, options);
     }
 
     @Override
     public BytecodeProvider getDefaultReplacementBytecodeProvider() {
-        return original.getDefaultReplacementBytecodeProvider();
+        return svmReplacements.getDefaultReplacementBytecodeProvider();
     }
 
     @Override
     public void registerSnippetTemplateCache(SnippetTemplateCache snippetTemplates) {
-        original.registerSnippetTemplateCache(snippetTemplates);
+        svmReplacements.registerSnippetTemplateCache(snippetTemplates);
     }
 
     @Override
     public <T extends SnippetTemplateCache> T getSnippetTemplateCache(Class<T> templatesClass) {
-        return original.getSnippetTemplateCache(templatesClass);
+        return svmReplacements.getSnippetTemplateCache(templatesClass);
     }
 
     @Override
     public void closeSnippetRegistration() {
-        original.closeSnippetRegistration();
+        svmReplacements.closeSnippetRegistration();
     }
 
     @Override
     public JavaKind getWordKind() {
-        return original.getWordKind();
+        return svmReplacements.getWordKind();
     }
 
     @Override
     public <T> T getInjectedArgument(Class<T> type) {
-        return original.getInjectedArgument(type);
+        return svmReplacements.getInjectedArgument(type);
     }
 
     @Override
     public Stamp getInjectedStamp(Class<?> type) {
-        return original.getInjectedStamp(type);
+        return svmReplacements.getInjectedStamp(type);
     }
 }
