@@ -1,10 +1,8 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.InstructionStateProcedure;
-import jdk.graal.compiler.lir.InstructionValueConsumer;
 import jdk.graal.compiler.lir.InstructionValueProcedure;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRFrameState;
@@ -13,7 +11,6 @@ import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.ValueProcedure;
 import jdk.graal.compiler.lir.Variable;
-import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGenerator;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
@@ -27,23 +24,17 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class PreRegisterAllocationPhase extends AllocationPhase {
-    protected Map<LIRInstruction, RAVInstruction.Base> preallocMap;
-    protected PhiResolution phiResolution;
     protected TaggedConstantFactory taggedConstantFactory;
-    protected boolean moveConstants;
+    protected RegisterAllocationVerifierPhaseState state;
 
-    protected PreRegisterAllocationPhase(PhiResolution phiResolution, boolean moveConstants) {
-        this.preallocMap = new HashMap<>();
-        this.phiResolution = phiResolution;
+    public PreRegisterAllocationPhase(RegisterAllocationVerifierPhaseState state) {
         this.taggedConstantFactory = new TaggedConstantFactory();
-        this.moveConstants = moveConstants;
+        this.state = state;
     }
 
     public static class ConstantOverrideValueProcedure implements ValueProcedure {
@@ -100,14 +91,15 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
         }
     };
 
-    public Map<LIRInstruction, RAVInstruction.Base> getPreallocMap() {
-        return preallocMap;
-    }
-
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
-        LIR lir = lirGenRes.getLIR();
+        var compUnitName = lirGenRes.getCompilationUnitName();
+        if (state.filterStr != null && !compUnitName.contains(state.filterStr)) {
+            return;
+        }
 
+        var preallocMap = state.createInstructionMap(lirGenRes);
+        LIR lir = lirGenRes.getLIR();
         Map<Variable, ConstantValue> constantValueMap = new HashMap<>();
         var constOverwriteProc = new ConstantOverrideValueProcedure(lir, constantValueMap);
 
@@ -120,8 +112,8 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
 
             RAVInstruction.Base previousInstr = null;
             for (var instruction : instructions) {
-                if (instruction instanceof StandardOp.JumpOp && this.phiResolution == PhiResolution.FromJump) {
-                    if (this.moveConstants) {
+                if (instruction instanceof StandardOp.JumpOp && this.state.phiResolution == PhiResolution.FromJump) {
+                    if (this.state.moveConstants) {
                         instruction.forEachAlive(constOverwriteProc);
                     } else {
                         instruction.forEachAlive(taggedConstantValueProc);
@@ -183,7 +175,7 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
                     }
                 });
 
-                this.preallocMap.put(instruction, opRAVInstr);
+                preallocMap.put(instruction, opRAVInstr);
 
                 if (!speculative) {
                     previousInstr = opRAVInstr;
@@ -201,117 +193,12 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
                 var mov = context.spillMoveFactory.createMove(v, constantValueMap.get(v));
                 var ravInstr = new RAVInstruction.Op(mov);
                 mov.forEachOutput(ravInstr.dests.copyOriginalProc);
-                this.preallocMap.put(mov, ravInstr);
+                preallocMap.put(mov, ravInstr);
                 instructions.add(mov);
             }
 
             instructions.add(j);
         }
-    }
-
-    public BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir) {
-        Set<LIRInstruction> presentInstructions = new HashSet<>();
-        for (var blockId : lir.getBlocks()) {
-            BasicBlock<?> block = lir.getBlockById(blockId);
-            ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
-            presentInstructions.addAll(instructions);
-        }
-
-        BlockMap<List<RAVInstruction.Base>> blockInstructions = new BlockMap<>(lir.getControlFlowGraph());
-        for (var blockId : lir.getBlocks()) {
-            BasicBlock<?> block = lir.getBlockById(blockId);
-            var instructionList = new LinkedList<RAVInstruction.Base>();
-
-            ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
-            for (var instruction : instructions) {
-                var rAVInstr = preallocMap.get(instruction);
-                if (rAVInstr == null) {
-                    var movOp = this.getRAVMoveInstruction(instruction);
-                    if (movOp != null) {
-                        instructionList.add(movOp);
-                        continue;
-                    }
-
-                    throw new UnknownInstructionError(instruction, block);
-                }
-
-                var opRAVInstr = (RAVInstruction.Op) rAVInstr;
-
-                instruction.forEachInput(opRAVInstr.uses.copyCurrentProc);
-                instruction.forEachOutput(opRAVInstr.dests.copyCurrentProc);
-                instruction.forEachTemp(opRAVInstr.temp.copyCurrentProc);
-                instruction.forEachAlive(opRAVInstr.alive.copyCurrentProc);
-                instruction.forEachState(opRAVInstr.stateValues.copyCurrentProc);
-
-                instructionList.add(opRAVInstr);
-                var speculativeMoves = opRAVInstr.getSpeculativeMoveList();
-
-                if (!speculativeMoves.isEmpty()) {
-                    for (var speculativeMove : speculativeMoves) {
-                        if (!presentInstructions.contains(speculativeMove.getLIRInstruction())) {
-                            instructionList.add(speculativeMove);
-                        }
-                    }
-                }
-
-                var virtualMoves = opRAVInstr.getVirtualMoveList();
-                instructionList.addAll(virtualMoves);
-            }
-
-            blockInstructions.put(block, instructionList);
-        }
-        return blockInstructions;
-    }
-
-    /**
-     * Create Register Verifier Instruction that was created by the Register Allocator.
-     * Generally speaking, it's always a move instruction, other ones return null.
-     *
-     * @param instruction LIRInstruction newly created by Register Allocator
-     * @return Spill, Reload, Move or null if instruction is not a move
-     */
-    protected RAVInstruction.Base getRAVMoveInstruction(LIRInstruction instruction) {
-        if (!instruction.isValueMoveOp()) {
-            if (instruction.isLoadConstantOp()) {
-                var constatLoad = StandardOp.LoadConstantOp.asLoadConstantOp(instruction);
-                var constant = constatLoad.getConstant();
-                var result = constatLoad.getResult(); // Can be RegisterValue or VirtualStackSlot
-
-                // This isn't really a virtual move, but it currently acts the same, so we keep it,
-                // we take constants as variables. TODO: maybe remove virtual move altogether for Move(reg, var/constant)
-                return new RAVInstruction.VirtualMove(instruction, new ConstantValue(result.getValueKind(), constant), result);
-            }
-
-            return null;
-        }
-        var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
-
-        var input = valueMov.getInput();
-        var result = valueMov.getResult();
-
-        if (input instanceof VirtualStackSlot stackSlot && result instanceof RegisterValue reg) {
-            return new RAVInstruction.Reload(instruction, reg, stackSlot);
-        } else if (result instanceof VirtualStackSlot stackSlot && input instanceof RegisterValue reg) {
-            return new RAVInstruction.Spill(instruction, stackSlot, reg);
-        } else if (input instanceof RegisterValue reg1 && result instanceof RegisterValue reg2) {
-            return new RAVInstruction.Move(instruction, reg1, reg2);
-        } else if (input instanceof StackSlot stackSlot && result instanceof RegisterValue reg) {
-            return new RAVInstruction.Reload(instruction, reg, stackSlot);
-        } else if (input instanceof RegisterValue reg && result instanceof StackSlot stackSlot) {
-            return new RAVInstruction.Spill(instruction, stackSlot, reg);
-        }
-
-        if (input instanceof StackSlot stackSlot1 && result instanceof StackSlot stackSlot2) {
-            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
-        } else if (input instanceof VirtualStackSlot stackSlot1 && result instanceof VirtualStackSlot stackSlot2) {
-            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
-        } else if (input instanceof StackSlot stackSlot1 && result instanceof VirtualStackSlot stackSlot2) {
-            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
-        } else if (input instanceof VirtualStackSlot stackSlot1 && result instanceof StackSlot stackSlot2) {
-            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
-        }
-
-        return null;
     }
 
     /**

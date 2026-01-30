@@ -1,13 +1,30 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.lir.ConstantValue;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRValueUtil;
+import jdk.graal.compiler.lir.StandardOp;
+import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
 import jdk.graal.compiler.options.EnumOptionKey;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.options.OptionValues;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class RegisterAllocationVerifierPhase extends AllocationPhase {
     public static class Options {
@@ -19,60 +36,166 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
 
         @Option(help = "Should constants be moved to variables when needed", type = OptionType.Debug)
         public static final OptionKey<Boolean> MoveConstants = new OptionKey<>(true);
+
+        @Option(help = "Substring necessary to be found for method to be verified", type = OptionType.Debug)
+        public static final OptionKey<String> RAFilter = new OptionKey<>(null);
     }
 
-    public static String[] ignoredTestCases = {
-            // Disable Truffle Related Tests
-            // New instructions being added makes the verifier not work, investigate why prealloc is not run.
-            "truffle", "Truffle", "polyglot", "Polyglot", "Root[]", "InstrumentationTestLanguage", "NFITest", "intCaller1", "callee"};
+    private RegisterAllocationVerifierPhaseState state;
 
-    public static boolean isIgnored(String compUnitName) {
-        for (String ignoredTest : ignoredTestCases) {
-            if (compUnitName.contains(ignoredTest)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private PhiResolution phiResolution;
-    private boolean moveConstants;
-
-    public RegisterAllocationVerifierPhase(OptionValues options) {
-        this.phiResolution = Options.RAPhiResolution.getValue(options);
-        this.moveConstants = Options.MoveConstants.getValue(options);
-    }
-
-    protected PreRegisterAllocationPhase preallocPhaseRAVerifier;
-
-    public AllocationPhase getPreAllocPhase() {
-        this.preallocPhaseRAVerifier = new PreRegisterAllocationPhase(phiResolution, moveConstants);
-        return this.preallocPhaseRAVerifier;
+    public RegisterAllocationVerifierPhase(RegisterAllocationVerifierPhaseState state) {
+        this.state = state;
     }
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         var compUnitName = lirGenRes.getCompilationUnitName();
-        // if (!compUnitName.contains("DirectByteBufferTest.unalignedWriteSnippet")) {
-        //     return;
-        // }
-
-        if (RegisterAllocationVerifierPhase.isIgnored(compUnitName)) {
-            // Skipping truffle test cases because they cause trouble with
-            // prealloc and getVerifierInstructions, because blocks and
-            // instructions that aren't made only by the RA are added.
+        if (state.filterStr != null && !compUnitName.contains(state.filterStr)) {
+            // Filter for compilation unit substring to run verification only on
+            // certain methods, cannot use MethodFilter here because I cannot
+            // access JavaMethod here.
             return;
         }
 
-        assert this.preallocPhaseRAVerifier != null : "Phase before register allocation was not run, cannot verify it.";
+        var instructions = getVerifierInstructions(lirGenRes);
+        var verifier = new RegisterAllocationVerifier(lirGenRes.getLIR(), instructions, this.state.phiResolution, context.registerAllocationConfig);
 
-        var instructions = this.preallocPhaseRAVerifier.getVerifierInstructions(lirGenRes.getLIR());
-        var verifier = new RegisterAllocationVerifier(lirGenRes.getLIR(), instructions, this.phiResolution, context.registerAllocationConfig);
+        verifier.run();
+    }
 
-        try {
-            verifier.run();
-        } catch (RAVException e) {
-            System.err.println("Verification failed - " + compUnitName);
+    protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIRGenerationResult lirGenRes) {
+        var lir = lirGenRes.getLIR();
+        var preallocMap = state.getInstructionMap(lirGenRes);
+
+        Map<Variable, RAVInstruction.Op> definedVariables = new HashMap<>();
+        Set<LIRInstruction> presentInstructions = new HashSet<>();
+        for (var blockId : lir.getBlocks()) {
+            BasicBlock<?> block = lir.getBlockById(blockId);
+            ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
+
+            for (var instruction : instructions) {
+                presentInstructions.add(instruction);
+
+                var rAVInstr = preallocMap.get(instruction);
+                if (rAVInstr instanceof RAVInstruction.Op op) {
+                    for (int i = 0; i < op.dests.count; i++) {
+                        if (LIRValueUtil.isVariable(op.dests.orig[i])) {
+                            var variable = LIRValueUtil.asVariable(op.dests.orig[i]);
+                            definedVariables.put(variable, op);
+                        }
+                    }
+                }
+            }
         }
+
+        BlockMap<List<RAVInstruction.Base>> blockInstructions = new BlockMap<>(lir.getControlFlowGraph());
+        for (var blockId : lir.getBlocks()) {
+            BasicBlock<?> block = lir.getBlockById(blockId);
+            var instructionList = new LinkedList<RAVInstruction.Base>();
+
+            ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
+            for (var instruction : instructions) {
+                var rAVInstr = preallocMap.get(instruction);
+                if (rAVInstr == null) {
+                    var movOp = this.getRAVMoveInstruction(instruction);
+                    if (movOp != null) {
+                        instructionList.add(movOp);
+                        continue;
+                    }
+
+                    // TestCase: TruffleHotSpotCompilation-75393[TruffleSafepointTest.TestRootNode@f25a8e].cfg
+                    throw new UnknownInstructionError(instruction, block);
+                }
+
+                var opRAVInstr = (RAVInstruction.Op) rAVInstr;
+
+                instruction.forEachInput(opRAVInstr.uses.copyCurrentProc);
+                instruction.forEachOutput(opRAVInstr.dests.copyCurrentProc);
+                instruction.forEachTemp(opRAVInstr.temp.copyCurrentProc);
+                instruction.forEachAlive(opRAVInstr.alive.copyCurrentProc);
+                instruction.forEachState(opRAVInstr.stateValues.copyCurrentProc);
+
+                instructionList.add(opRAVInstr);
+                var speculativeMoves = opRAVInstr.getSpeculativeMoveList();
+
+                if (!speculativeMoves.isEmpty()) {
+                    for (var speculativeMove : speculativeMoves) {
+                        if (presentInstructions.contains(speculativeMove.getLIRInstruction())) {
+                            continue;
+                        }
+
+                        if (!LIRValueUtil.isVariable(speculativeMove.location) && LIRValueUtil.isVariable(speculativeMove.variableOrConstant)) {
+                            var variable = LIRValueUtil.asVariable(speculativeMove.variableOrConstant);
+                            if (definedVariables.containsKey(variable)) {
+                                continue;
+                            }
+                        }
+
+                        instructionList.add(speculativeMove);
+                    }
+                }
+
+                var virtualMoves = opRAVInstr.getVirtualMoveList();
+                instructionList.addAll(virtualMoves);
+
+                preallocMap.remove(instruction);
+            }
+
+            blockInstructions.put(block, instructionList);
+        }
+
+        state.deleteInstructionMap(lirGenRes);
+        return blockInstructions;
+    }
+
+    /**
+     * Create Register Verifier Instruction that was created by the Register Allocator.
+     * Generally speaking, it's always a move instruction, other ones return null.
+     *
+     * @param instruction LIRInstruction newly created by Register Allocator
+     * @return Spill, Reload, Move or null if instruction is not a move
+     */
+    protected RAVInstruction.Base getRAVMoveInstruction(LIRInstruction instruction) {
+        if (!instruction.isValueMoveOp()) {
+            if (instruction.isLoadConstantOp()) {
+                var constatLoad = StandardOp.LoadConstantOp.asLoadConstantOp(instruction);
+                var constant = constatLoad.getConstant();
+                var result = constatLoad.getResult(); // Can be RegisterValue or VirtualStackSlot
+
+                // This isn't really a virtual move, but it currently acts the same, so we keep it,
+                // we take constants as variables. TODO: maybe remove virtual move altogether for Move(reg, var/constant)
+                return new RAVInstruction.VirtualMove(instruction, new ConstantValue(result.getValueKind(), constant), result);
+            }
+
+            return null;
+        }
+        var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
+
+        var input = valueMov.getInput();
+        var result = valueMov.getResult();
+
+        if (input instanceof VirtualStackSlot stackSlot && result instanceof RegisterValue reg) {
+            return new RAVInstruction.Reload(instruction, reg, stackSlot);
+        } else if (result instanceof VirtualStackSlot stackSlot && input instanceof RegisterValue reg) {
+            return new RAVInstruction.Spill(instruction, stackSlot, reg);
+        } else if (input instanceof RegisterValue reg1 && result instanceof RegisterValue reg2) {
+            return new RAVInstruction.Move(instruction, reg1, reg2);
+        } else if (input instanceof StackSlot stackSlot && result instanceof RegisterValue reg) {
+            return new RAVInstruction.Reload(instruction, reg, stackSlot);
+        } else if (input instanceof RegisterValue reg && result instanceof StackSlot stackSlot) {
+            return new RAVInstruction.Spill(instruction, stackSlot, reg);
+        }
+
+        if (input instanceof StackSlot stackSlot1 && result instanceof StackSlot stackSlot2) {
+            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
+        } else if (input instanceof VirtualStackSlot stackSlot1 && result instanceof VirtualStackSlot stackSlot2) {
+            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
+        } else if (input instanceof StackSlot stackSlot1 && result instanceof VirtualStackSlot stackSlot2) {
+            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
+        } else if (input instanceof VirtualStackSlot stackSlot1 && result instanceof StackSlot stackSlot2) {
+            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
+        }
+
+        return null;
     }
 }
