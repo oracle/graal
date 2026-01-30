@@ -45,6 +45,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinTask;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -58,10 +59,12 @@ import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
+import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -80,6 +83,7 @@ import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.VMAccessHelper;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.graal.compiler.vmaccess.VMAccess;
@@ -89,6 +93,7 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.riscv64.RISCV64;
 import jdk.vm.ci.runtime.JVMCI;
@@ -308,13 +313,21 @@ public class NativeImageGeneratorRunner {
         }
     }
 
-    private static VMAccess getVmAccess(String[] classpath, String[] modulepath) {
+    private static VMAccess getVmAccess(String[] classpath, String[] modulepath, HostedOptionParser parser) {
         VMAccess.Builder builder = GraalAccess.getVmAccessBuilder();
         builder.classPath(List.of(classpath));
         builder.modulePath(List.of(modulepath));
+
         if ("espresso".equals(builder.getVMAccessName())) {
             // Needed to resolve types in org.graalvm.nativeimage.guest
             builder.addModule("org.graalvm.nativeimage.guest");
+
+            // Propagate --add-exports into the Espresso guest.
+            // GR-73131 will make this non-Espresso specific.
+            EconomicMap<OptionKey<?>, Object> options = parser.getHostedValues();
+            @SuppressWarnings("unchecked")
+            List<String> addExports = ((LocatableMultiOptionValue<String>) options.get(NativeImageClassLoaderOptions.AddExports)).values();
+            builder.vmOption("java.AddExports=" + String.join(File.pathSeparator, addExports));
         }
         return builder.build();
     }
@@ -336,11 +349,11 @@ public class NativeImageGeneratorRunner {
      *         via {@link NativeImageClassLoaderSupport#getClassLoader()}.
      */
     public static ImageClassLoader installNativeImageClassLoader(String[] classpath, String[] modulepath, List<String> arguments) {
-        VMAccess vmAccess = getVmAccess(classpath, modulepath);
-        GraalAccess.plantConfiguration(vmAccess);
         NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
         NativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath);
-        nativeImageClassLoaderSupport.setupHostedOptionParser(arguments);
+        HostedOptionParser parser = nativeImageClassLoaderSupport.setupHostedOptionParser(arguments);
+        VMAccess vmAccess = getVmAccess(classpath, modulepath, parser);
+        GraalAccess.plantConfiguration(vmAccess);
         nativeImageClassLoaderSupport.setupLibGraalClassLoader();
         /* Perform additional post-processing with the created nativeImageClassLoaderSupport */
         for (NativeImageClassLoaderPostProcessing postProcessing : ServiceLoader.load(NativeImageClassLoaderPostProcessing.class)) {

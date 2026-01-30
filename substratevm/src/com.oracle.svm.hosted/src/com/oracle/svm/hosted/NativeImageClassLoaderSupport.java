@@ -441,7 +441,7 @@ public final class NativeImageClassLoaderSupport {
     private OptionValues parsedHostedOptions;
     private List<String> remainingArguments;
 
-    public void setupHostedOptionParser(List<String> arguments) {
+    public HostedOptionParser setupHostedOptionParser(List<String> arguments) {
         var optionParser = new HostedOptionParser(getClassLoader(), arguments);
         // Explicitly set the default value of Optimize as it can modify the default values of other
         // options
@@ -472,6 +472,7 @@ public final class NativeImageClassLoaderSupport {
             }
         }
         this.hostedOptionParser = optionParser;
+        return optionParser;
     }
 
     public HostedOptionParser getHostedOptionParser() {

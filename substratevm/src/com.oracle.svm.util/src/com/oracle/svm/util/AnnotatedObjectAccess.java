@@ -346,7 +346,7 @@ public class AnnotatedObjectAccess {
             if (!annotationValues.isEmpty()) {
                 result = new EconomicHashMap<>(annotationValues.size());
                 for (AnnotationValue a : annotationValues) {
-                    ResolvedJavaType annotationType = a.isError() ? ANNOTATION_FORMAT_ERROR_TYPE : a.getAnnotationType();
+                    ResolvedJavaType annotationType = a.isError() ? getAnnotationFormatErrorType() : a.getAnnotationType();
                     result.put(annotationType, a);
                 }
             }
@@ -405,9 +405,12 @@ public class AnnotatedObjectAccess {
     }
 
     /**
-     * Annotation type for a {@link AnnotationValue#isError() value representing a parse error}.
+     * Gets the annotation type for a {@link AnnotationValue#isError() value representing a parse
+     * error}.
      */
-    public static final ResolvedJavaType ANNOTATION_FORMAT_ERROR_TYPE = GraalAccess.lookupType(Void.TYPE);
+    private static ResolvedJavaType getAnnotationFormatErrorType() {
+        return GraalAccess.lookupType(Void.TYPE);
+    }
 
     /**
      * Annotation parser function stored as a singleton as recommended by
@@ -421,9 +424,9 @@ public class AnnotatedObjectAccess {
         try {
             return AnnotationValueParser.parseAnnotations(info.bytes(), info.constPool(), container);
         } catch (AnnotationFormatError e) {
-            return Map.of(ANNOTATION_FORMAT_ERROR_TYPE, new AnnotationValue(e));
+            return Map.of(getAnnotationFormatErrorType(), new AnnotationValue(e));
         } catch (IllegalArgumentException | BufferUnderflowException | GenericSignatureFormatError e) {
-            return Map.of(ANNOTATION_FORMAT_ERROR_TYPE, new AnnotationValue(new AnnotationFormatError(e)));
+            return Map.of(getAnnotationFormatErrorType(), new AnnotationValue(new AnnotationFormatError(e)));
         }
     };
 
