@@ -8,6 +8,7 @@ import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.vm.ci.meta.Value;
 
 import java.util.List;
+import java.util.Set;
 
 public class FromJumpResolver {
     public LIR lir;
@@ -20,77 +21,76 @@ public class FromJumpResolver {
         this.blockStates = blockStates;
     }
 
-    /**
-     * Resolve phi registers from this jump point, can only be done if
-     * the phi variables/constants only have one location.
-     *
-     * <p>
-     * This way we can handle phi arguments before we reach said block.
-     * But cannot really be done for loops, if their initial values
-     * are the same and there are multiple ones.
-     * </p>
-     *
-     * @param block From whom we are jumping from
-     */
-    public void resolvePhiFromJump(BasicBlock<?> block) {
-        var state = this.blockStates.get(block);
-        var jumpInstr = (RAVInstruction.Op) this.blockInstructions.get(block).getLast();
+    public void resolvePhi(BasicBlock<?> block) {
+        var labelInstr = (RAVInstruction.Op) this.blockInstructions.get(block).getFirst();
+        for (int i = 0; i < labelInstr.dests.count; i++) {
+            Set<Value> locations = null;
+            for (int j = 0; j < block.getPredecessorCount(); j++) {
+                var pred = block.getPredecessorAt(j);
+                var state = this.blockStates.get(pred);
+                if (state == null) {
+                    continue;
+                }
 
-        for (int i = 0; i < jumpInstr.alive.count; i++) {
-            if (jumpInstr.alive.curr[i] != null) {
+                var jump = (RAVInstruction.Op) blockInstructions.get(pred).getLast();
+                var inputValue = jump.alive.orig[i];
+
+                var varLoc = state.values.getValueLocations(inputValue);
+                if (locations == null) {
+                    locations = varLoc;
+                    continue;
+                }
+
+                locations.retainAll(varLoc);
+            }
+
+            if (locations == null) {
                 continue;
             }
 
-            var inputValue = jumpInstr.alive.orig[i];
-            if (!LIRValueUtil.isVariable(inputValue) && !(inputValue instanceof ConstantValue)) {
-                continue;
-            }
+            Value location = null;
+            if (locations.size() != 1) {
+                if (locations.isEmpty()) {
+                    return;
+                }
 
-            var registerValue = this.getRegisterBeforeJump(state, inputValue);
-            if (registerValue == null) {
-                return;
-            }
+                for (int j = 0; j < block.getPredecessorCount(); j++) {
+                    int time = -1;
+                    Value blockReg = null;
+                    for (var loc : locations) {
+                        var pred = block.getPredecessorAt(j);
+                        var state = this.blockStates.get(pred);
+                        if (state == null) {
+                            continue;
+                        }
 
-            jumpInstr.alive.curr[i] = registerValue;
-            for (int j = 0; j < block.getSuccessorCount(); j++) {
-                var succ = block.getSuccessorAt(j);
-                var labelInstr = (RAVInstruction.Op) this.blockInstructions.get(succ).getFirst();
-
-                labelInstr.dests.curr[i] = jumpInstr.alive.curr[i];
-
-                for (int k = 0; k < succ.getPredecessorCount(); k++) {
-                    // Sibling jumps need to be updated as well in order to pass input checks.
-                    var sibling = succ.getPredecessorAt(k);
-                    if (sibling.equals(block)) {
-                        continue;
+                        var regTime = state.values.getKeyTime(loc);
+                        if (regTime > time) {
+                            time = regTime; // Max time
+                            blockReg = loc;
+                        }
                     }
 
-                    var siblingJumpInstr = (RAVInstruction.Op) this.blockInstructions.get(sibling).getLast();
-                    siblingJumpInstr.alive.curr[i] = jumpInstr.alive.curr[i];
+                    if (location == null) {
+                        location = blockReg;
+                    } else if (!location.equals(blockReg)) {
+                        // Not same for all blocks, so none choosen.
+                        return;
+                    }
                 }
+            } else {
+                location = locations.stream().findFirst().get();
+            }
+
+            var registerValue = location;
+            // var registerValue = location.asValue(labelInstr.dests.orig[i].getValueKind());
+
+            labelInstr.dests.curr[i] = registerValue;
+            for (int j = 0; j < block.getPredecessorCount(); j++) {
+                var pred = block.getPredecessorAt(j);
+                var jump = (RAVInstruction.Op) blockInstructions.get(pred).getLast();
+                jump.alive.curr[i] = registerValue;
             }
         }
-    }
-
-    private Value getRegisterBeforeJump(MergedBlockVerifierState state, Value inputValue) {
-        // Does not work for constants if there is more of them
-        var locations = state.values.getValueLocations(inputValue);
-        if (locations.isEmpty()) {
-            return null;
-        }
-
-        var register = locations.stream().findFirst().get();
-        if (locations.size() != 1) {
-            int time = -1;
-            for (var location : locations) {
-                var locTime = state.values.getKeyTime(location);
-                if (locTime > time) {
-                    register = location;
-                    time = locTime;
-                }
-            }
-        }
-
-        return register;
     }
 }

@@ -60,53 +60,6 @@ public class RegisterAllocationVerifier {
         return true;
     }
 
-    public BlockMap<DefinitionSet> getDefinitionSets() {
-        BlockMap<DefinitionSet> blockDefinitions = new BlockMap<>(this.lir.getControlFlowGraph());
-        for (var blockId : lir.getBlocks()) {
-            var block = lir.getBlockById(blockId);
-            var instructions = blockInstructions.get(block);
-            var definitions = new DefinitionSet();
-
-            for (var instruction : instructions) {
-                switch (instruction) {
-                    case RAVInstruction.Op op -> {
-                        for (int i = 0; i < op.dests.count; i++) {
-                            var location = op.dests.curr[i];
-                            if (location == null) {
-                                continue;
-                            }
-
-                            definitions.add(location);
-                        }
-
-                        for (int i = 0; i < op.temp.count; i++) {
-                            var location = op.temp.curr[i];
-                            if (location == null || Value.ILLEGAL.equals(location)) {
-                                continue;
-                            }
-
-                            definitions.add(location);
-                        }
-                    }
-                    case RAVInstruction.Move move -> definitions.add(move.to);
-                    case RAVInstruction.Reload reload -> definitions.add(reload.to);
-                    case RAVInstruction.Spill spill -> definitions.add(spill.to);
-                    case RAVInstruction.StackMove stackMove -> definitions.add(stackMove.to);
-                    case RAVInstruction.VirtualMove virtMove -> {
-                        if (!LIRValueUtil.isVariable(virtMove.location)) {
-                            definitions.add(virtMove.location);
-                        }
-                    }
-                    default -> GraalError.shouldNotReachHere("Invalid RAV instruction " + instruction);
-                }
-            }
-
-            blockDefinitions.put(block, definitions);
-        }
-
-        return blockDefinitions;
-    }
-
     private boolean hasMissingRegistersInLabel(RAVInstruction.Op op) {
         return op.hasMissingDefinitions();
     }
@@ -135,10 +88,21 @@ public class RegisterAllocationVerifier {
             }
 
             if (this.phiResolution == PhiResolution.FromJump && this.hasMissingRegistersInLabel(labelInstr)) {
-                if (!doPrecessorsHaveStates(block)) {
-                    // A hot fix, if not all predecessors have state, then we wait until all of them do
+                boolean skip = false;
+                for (int i = 0; i < block.getPredecessorCount(); i++) {
+                    var pred = block.getPredecessorAt(i);
+                    if (worklist.contains(pred)) {
+                        skip = true;
+                        worklist.add(block);
+                        break;
+                    }
+                }
+
+                if (skip) {
                     continue;
                 }
+
+                this.fromJumpResolver.resolvePhi(block);
             }
 
             // Create new entry state for successor blocks out of current block state
@@ -148,10 +112,9 @@ public class RegisterAllocationVerifier {
             }
             this.blockStates.put(block, state);
 
-            if (this.phiResolution == PhiResolution.FromJump) {
-                // TODO: Sibling in worklist, then process and select resolut in cooperation
-                this.fromJumpResolver.resolvePhiFromJump(block);
-            }
+            // if (this.phiResolution == PhiResolution.FromJump) {
+            //     this.fromJumpResolver.resolvePhiFromJump(block);
+            // }
 
             if (resolvedPhi) {
                 this.fromPredecessorsResolver.propagateLabelChangeFromPredecessors(block);
