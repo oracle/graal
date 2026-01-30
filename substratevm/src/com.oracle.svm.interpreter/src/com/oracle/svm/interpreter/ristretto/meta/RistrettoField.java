@@ -36,6 +36,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * JVMCI representation of a {@link ResolvedJavaField} used by Ristretto for compilation. Exists
@@ -55,6 +56,10 @@ public final class RistrettoField extends SubstrateField {
 
     public static RistrettoField create(InterpreterResolvedJavaField interpreterField) {
         return (RistrettoField) interpreterField.getRistrettoField(RISTRETTO_FIELD_FUNCTION);
+    }
+
+    public InterpreterResolvedJavaField getInterpreterField() {
+        return interpreterField;
     }
 
     @Override
@@ -87,12 +92,26 @@ public final class RistrettoField extends SubstrateField {
     }
 
     @Override
-    public SubstrateType getType() {
+    public JavaType getType() {
         JavaType fieldType = interpreterField.getType();
         if (fieldType instanceof InterpreterResolvedJavaType iType) {
             return RistrettoType.create(iType);
         }
-        throw GraalError.shouldNotReachHere("Must have a ristretto type available at this point");
+        if (fieldType instanceof UnresolvedJavaType unresolvedJavaType) {
+            throw GraalError.shouldNotReachHere("Cannot have unresolved fields for resolved types " + getDeclaringClass() + " -> " + unresolvedJavaType);
+        }
+        throw GraalError.shouldNotReachHere("Must have a ristretto type available at this point for " + interpreterField + " but is " + fieldType);
+    }
+
+    @Override
+    public JavaKind getStorageKind() {
+        JavaType fieldType = getType();
+        if (fieldType instanceof UnresolvedJavaType) {
+            throw GraalError.shouldNotReachHere("Trying to get storage kind of unresolved field " + fieldType);
+        } else {
+            GraalError.guarantee(fieldType instanceof RistrettoType, "Must have a ristretto field or an unresolved one but found %s", fieldType);
+            return ((RistrettoType) fieldType).getStorageKind();
+        }
     }
 
     @Override
@@ -129,15 +148,13 @@ public final class RistrettoField extends SubstrateField {
     @Override
     public Object getStaticFieldBaseForRuntimeLoadedClass() {
         if (interpreterField.isStatic()) {
-            CremaResolvedObjectType declaringClass = (CremaResolvedObjectType) interpreterField.getDeclaringClass();
-            return declaringClass.getStaticStorage(interpreterField.getJavaKind().isPrimitive(), interpreterField.getInstalledLayerNum());
+            InterpreterResolvedJavaType iType = interpreterField.getDeclaringClass();
+            if (iType instanceof CremaResolvedObjectType declaringClass) {
+                return declaringClass.getStaticStorage(interpreterField.getJavaKind().isPrimitive(), interpreterField.getInstalledLayerNum());
+            }
+            return null;
         }
         throw GraalError.shouldNotReachHere("Only static fields should end up here");
     }
 
-    @Override
-    public JavaKind getStorageKind() {
-        SubstrateType fieldType = getType();
-        return fieldType.getStorageKind();
-    }
 }

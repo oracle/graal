@@ -74,6 +74,8 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.PhaseSuite;
+import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
@@ -207,6 +209,11 @@ public class SubstrateGraalUtils {
     }
 
     public static CompilationResult compileGraph(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, final SharedMethod method, final StructuredGraph graph) {
+        return compileGraph(runtimeConfig, null, suites, lirSuites, method, graph);
+    }
+
+    public static CompilationResult compileGraph(RuntimeConfiguration runtimeConfig, PhaseSuite<HighTierContext> graphBuilderSuite, Suites suites, LIRSuites lirSuites, final SharedMethod method,
+                    final StructuredGraph graph) {
         assert runtimeConfig != null : "no runtime";
         if (Options.ForceDumpGraphsBeforeCompilation.getValue()) {
             /*
@@ -233,7 +240,7 @@ public class SubstrateGraalUtils {
                                 method,
                                 providers,
                                 backend,
-                                null,
+                                graphBuilderSuite,
                                 optimisticOpts,
                                 null,
                                 suites,

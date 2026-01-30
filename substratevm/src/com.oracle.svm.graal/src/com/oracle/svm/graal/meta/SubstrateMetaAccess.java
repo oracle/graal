@@ -31,9 +31,9 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog.SubstrateSpeculation;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -58,10 +58,13 @@ public class SubstrateMetaAccess implements MetaAccessProvider {
         return ImageSingletons.lookup(SubstrateMetaAccess.class);
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("this-escape")
     public SubstrateMetaAccess() {
-        ImageSingletons.add(SubstrateMetaAccess.class, this);
+        if (SubstrateUtil.HOSTED) {
+            ImageSingletons.add(SubstrateMetaAccess.class, this);
+        } else {
+            assert SubstrateOptions.useRistretto();
+        }
     }
 
     @Override

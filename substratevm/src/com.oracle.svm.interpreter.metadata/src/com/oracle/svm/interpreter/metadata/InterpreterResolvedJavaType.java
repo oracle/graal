@@ -292,7 +292,31 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public final Assumptions.AssumptionResult<ResolvedJavaType> findLeafConcreteSubtype() {
-        throw VMError.intentionallyUnimplemented();
+        if (isLeaf()) {
+            // No assumptions are required.
+            return new Assumptions.AssumptionResult<>(this);
+        }
+
+        if (isArray()) {
+            ResolvedJavaType elementalType = getElementalType();
+            Assumptions.AssumptionResult<ResolvedJavaType> elementType = elementalType.findLeafConcreteSubtype();
+            if (elementType != null && elementType.getResult().equals(elementalType)) {
+                /*
+                 * If the elementType is leaf then the array is leaf under the same assumptions but
+                 * only if the element type is exactly the leaf type. The element type can be
+                 * abstract even if there is only one implementor of the abstract type.
+                 */
+                Assumptions.AssumptionResult<ResolvedJavaType> result = new Assumptions.AssumptionResult<>(this);
+                result.add(elementType);
+                return result;
+            }
+            return null;
+        } else {
+            /*
+             * TODO GR-72446 - add single implementor class hierarchy analysis to ristretto
+             */
+            return null;
+        }
     }
 
     @Override
@@ -317,7 +341,8 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public final InterpreterResolvedObjectType getArrayClass() {
-        throw VMError.intentionallyUnimplemented();
+        DynamicHub arrayHub = DynamicHub.fromClass(clazz).getOrCreateArrayHub();
+        return (InterpreterResolvedObjectType) arrayHub.getInterpreterType();
     }
 
     @Override

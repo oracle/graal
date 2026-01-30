@@ -34,16 +34,21 @@ import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
 import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
+import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfilingInfo;
 
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
+import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
@@ -61,6 +66,11 @@ import jdk.vm.ci.meta.Signature;
 public final class RistrettoMethod extends SubstrateMethod {
     private final InterpreterResolvedJavaMethod interpreterMethod;
     private RistrettoConstantPool ristrettoConstantPool;
+    /**
+     * Cached exception handlers for this method. Propagated the first time
+     * {@link #getExceptionHandlers()} is called.
+     */
+    private volatile ExceptionHandler[] rHandlers;
 
     // JIT COMPILER SUPPORT START
     /**
@@ -120,6 +130,17 @@ public final class RistrettoMethod extends SubstrateMethod {
         return profile;
     }
 
+    @Override
+    public ProfilingInfo getProfilingInfo() {
+        return new RistrettoProfilingInfo(getProfile());
+    }
+
+    @Override
+    public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
+        // TODO GR-71494 - OSR support
+        return getProfilingInfo();
+    }
+
     /**
      * Allocate the profile once per method. Apart from test scenarios the profile is never set to
      * null again. Thus, the heavy locking code below is normally not run in a fast path.
@@ -146,6 +167,11 @@ public final class RistrettoMethod extends SubstrateMethod {
             return RistrettoUtils.runtimeBytecodesAvailable(this.getInterpreterMethod());
         }
         return false;
+    }
+
+    @Override
+    public boolean canBeStaticallyBound() {
+        return interpreterMethod.canBeStaticallyBound();
     }
 
     @Override
@@ -193,7 +219,28 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     @Override
     public ExceptionHandler[] getExceptionHandlers() {
-        return interpreterMethod.getExceptionHandlers();
+        if (rHandlers == null) {
+            synchronized (this) {
+                if (rHandlers == null) {
+                    ExceptionHandler[] iHandlers = interpreterMethod.getExceptionHandlers();
+                    ExceptionHandler[] effectiveRHandlers = new ExceptionHandler[iHandlers.length];
+                    for (int i = 0; i < iHandlers.length; i++) {
+                        final ExceptionHandler iHandler = iHandlers[i];
+                        final JavaType catchType = iHandler.getCatchType();
+                        if (catchType instanceof ResolvedJavaType) {
+                            assert catchType instanceof InterpreterResolvedJavaType;
+                            InterpreterResolvedJavaType iCatchType = (InterpreterResolvedJavaType) catchType;
+                            RistrettoType rType = RistrettoType.create(iCatchType);
+                            effectiveRHandlers[i] = new ExceptionHandler(iHandler.getStartBCI(), iHandler.getEndBCI(), iHandler.getHandlerBCI(), iHandler.catchTypeCPI(), rType);
+                        } else {
+                            effectiveRHandlers[i] = iHandler;
+                        }
+                    }
+                    rHandlers = effectiveRHandlers;
+                }
+            }
+        }
+        return rHandlers;
     }
 
     @Override

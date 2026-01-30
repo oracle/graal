@@ -47,6 +47,7 @@ import com.oracle.svm.util.OriginalFieldProvider;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
@@ -136,7 +137,7 @@ public class SubstrateField implements SharedField {
 
     @Override
     public JavaKind getStorageKind() {
-        return getType().getStorageKind();
+        return ((SubstrateType) getType()).getStorageKind();
     }
 
     @Override
@@ -145,7 +146,7 @@ public class SubstrateField implements SharedField {
     }
 
     @Override
-    public SubstrateType getType() {
+    public JavaType getType() {
         return type;
     }
 

@@ -71,21 +71,31 @@ public class RuntimeInstanceReferenceMapSupport {
      * @return a compressed offset, relative to the heap base, that points to an
      *         {@link InstanceReferenceMap}.
      */
-    public int getOrCreateReferenceMap(DynamicHub superHub, int... declaredInstanceReferenceFieldsOffsets) {
-        /* Create a bitmap and mark where there are declared object fields. */
+    public int getOrCreateReferenceMap(DynamicHub superHub, int monitorOffset, int... declaredInstanceReferenceFieldsOffsets) {
+        /* If there are no declared object fields, reuse the reference map from the super class. */
+        if (declaredInstanceReferenceFieldsOffsets.length == 0 && monitorOffset == superHub.getMonitorOffset()) {
+            return superHub.getReferenceMapCompressedOffset();
+        }
+
         SubstrateReferenceMap map = new SubstrateReferenceMap();
+
+        /*
+         * Add the object fields that are declared and inherited in the super class to the bitmap,
+         * except for the monitor field, which is not inherited by subclasses.
+         */
+        MarkInheritedFieldsInBitmapVisitor markInheritedFields = new MarkInheritedFieldsInBitmapVisitor(map, superHub.getMonitorOffset());
+        InstanceReferenceMap superMap = DynamicHubSupport.getInstanceReferenceMap(superHub);
+        InstanceReferenceMapDecoder.walkReferences(Word.nullPointer(), superMap, markInheritedFields, null);
+
+        /* Mark object fields declared in this class. */
         for (int offset : declaredInstanceReferenceFieldsOffsets) {
             map.markReferenceAtOffset(offset, true);
         }
 
-        /* If there are no declared object fields, reuse the reference map from the super class. */
-        if (map.isEmpty()) {
-            return superHub.getReferenceMapCompressedOffset();
+        assert monitorOffset >= 0 : "Monitor offset must not be negative " + monitorOffset;
+        if (monitorOffset > 0) {
+            map.markReferenceAtOffset(monitorOffset, true);
         }
-
-        /* Add the object fields from all super classes to the bitmap. */
-        InstanceReferenceMap superMap = DynamicHubSupport.getInstanceReferenceMap(superHub);
-        InstanceReferenceMapDecoder.walkReferences(Word.nullPointer(), superMap, new MarkBitmapVisitor(map), null);
 
         /*
          * Encode the bitmap as a reference map and check if there is already a matching one. If
@@ -137,7 +147,7 @@ public class RuntimeInstanceReferenceMapSupport {
         }
     }
 
-    private record MarkBitmapVisitor(SubstrateReferenceMap map) implements ObjectReferenceVisitor {
+    public record MarkInheritedFieldsInBitmapVisitor(SubstrateReferenceMap map, int monitorOffset) implements ObjectReferenceVisitor {
         @Override
         public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
             Pointer pos = firstObjRef;
@@ -150,7 +160,9 @@ public class RuntimeInstanceReferenceMapSupport {
 
         private void visitObjectReference(Pointer objRef, boolean compressed) {
             int offset = NumUtil.safeToInt(objRef.rawValue());
-            map.markReferenceAtOffset(offset, compressed);
+            if (monitorOffset == 0 || offset != monitorOffset) {
+                map.markReferenceAtOffset(offset, compressed);
+            }
         }
     }
 }
