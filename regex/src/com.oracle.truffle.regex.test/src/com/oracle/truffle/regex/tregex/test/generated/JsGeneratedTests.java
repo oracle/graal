@@ -54,7 +54,7 @@ public class JsGeneratedTests {
         // @formatter:off
         /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
 
-        // Generated using V8 version 13.9.205.15-rusty
+        // Generated using V8 version 14.5.201.2-rusty
         testCase("((A|){7,10}?){10,17}", "", UTF_16, match("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 0, 0, 86, 84, 86, 86, 86)),
         testCase("(a{1,30}){1,4}", "", UTF_16, match("a", 0, 0, 1, 0, 1)),
         testCase("((a|){4,6}){4,6}", "", UTF_16,
@@ -319,6 +319,12 @@ public class JsGeneratedTests {
         testCase("^block($|(?=__|_))", "", UTF_16, match("block_baz", 0, 0, 5, 5, 5)),
         testCase("^foo($|(?=__|_))", "", UTF_16, match("foo", 0, 0, 3, 3, 3)),
         testCase("^(.{80})(.*\\s.*)$", "", UTF_16, match("1. Currying `operators` and `selectors` by binding the `Store` to them for maximum convenience.", 0, 0, 95, 0, 80, 80, 95)),
+        testCase("[a-\\", "", UTF_16, syntaxError(ErrorCode.InvalidEscape)),
+        testCase("[a-\\D", "", UTF_16, syntaxError(ErrorCode.UnmatchedBracket)),
+        testCase("[\\D-a", "", UTF_16, syntaxError(ErrorCode.UnmatchedBracket)),
+        testCase("[a-\\", "v", UTF_16, syntaxError(ErrorCode.InvalidEscape)),
+        testCase("[a-\\D", "v", UTF_16, syntaxError(ErrorCode.InvalidCharacterClass)),
+        testCase("[\\D-a", "v", UTF_16, syntaxError(ErrorCode.InvalidCharacterClass)),
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
         // @formatter:on

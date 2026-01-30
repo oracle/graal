@@ -156,6 +156,9 @@ public class JavaGeneratedTests {
         testCase("(?:^\\1|$){10,11}bc", "", UTF_16, noMatch("aaaaaabc", 0)),
         testCase("a(?:|[0-9]+?a|[0-9a]){11,13}?[ab]", "", UTF_16, match("a372a466a109585878b", 0, 0, 19)),
         testCase("\\Z", "", UTF_16, match("\r\n", 0, 0, 0)),
+        testCase("[a-\\", "", UTF_16, syntaxError(ErrorCode.InvalidCharacterClass)),
+        testCase("[a-\\D", "", UTF_16, syntaxError(ErrorCode.InvalidCharacterClass)),
+        testCase("[\\D-a", "", UTF_16, syntaxError(ErrorCode.UnmatchedBracket)),
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
         // @formatter:on
