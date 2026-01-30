@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.DowncallStubsHolder;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
@@ -46,6 +45,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.util.GuestTypes;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -106,7 +106,7 @@ class DowncallStub extends NonBytecodeMethod {
     }
 
     private static final List<AnnotationValue> INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS = List.of(
-                    newAnnotationValue(Uninterruptible.class,
+                    newAnnotationValue(GuestTypes.UNINTERRUPTIBLE_TYPE,
                                     "reason", "See DowncallStub.getInjectedAnnotations.",
                                     "calleeMustBe", false));
 

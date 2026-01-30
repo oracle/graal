@@ -37,7 +37,6 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.util.AnnotationUtil;
@@ -74,7 +73,7 @@ public abstract class HostedPLTGOTConfiguration extends PLTGOTConfiguration {
         if (AnnotationUtil.isAnnotationPresent(method, StubCallingConvention.class)) {
             return false;
         }
-        if (AnnotationUtil.isAnnotationPresent(method, Uninterruptible.class)) {
+        if (AnnotationUtil.isAnnotationPresent(method, GuestTypes.UNINTERRUPTIBLE_TYPE)) {
             return false;
         }
         if (AnnotationUtil.isAnnotationPresent(method, SubstrateForeignCallTarget.class)) {

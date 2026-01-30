@@ -24,37 +24,34 @@
  */
 package com.oracle.svm.core;
 
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestTypes;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class UninterruptibleAnnotationUtils {
 
     /**
      * Wraps a guest-level {@code com.oracle.svm.guest.staging.Uninterruptible} annotation.
      */
-    public record UninterruptibleGuestValue(boolean callerMustBe, boolean calleeMustBe, boolean mayBeInlined, String reason) {
+    public record UninterruptibleGuestValue(String reason, boolean callerMustBe, boolean calleeMustBe, boolean mayBeInlined) {
 
         static UninterruptibleGuestValue fromAnnotationValue(AnnotationValue annotationValue) {
             if (annotationValue == null) {
                 return null;
             }
             return new UninterruptibleGuestValue(
-                    annotationValue.getBoolean("callerMustBe"),
-                    annotationValue.getBoolean("calleeMustBe"),
-                    annotationValue.getBoolean("mayBeInlined"),
-                    annotationValue.getString("reason"));
+                            annotationValue.getString("reason"),
+                            annotationValue.getBoolean("callerMustBe"),
+                            annotationValue.getBoolean("calleeMustBe"),
+                            annotationValue.getBoolean("mayBeInlined"));
         }
     }
 
@@ -88,16 +85,6 @@ public class UninterruptibleAnnotationUtils {
         }
     }
 
-    public static final ResolvedJavaType UNINTERRUPTIBLE_TYPE = Objects.requireNonNull(
-                    GraalAccess.getVMAccess().lookupAppClassLoaderType("com.oracle.svm.guest.staging.Uninterruptible"),
-                    "UNINTERRUPTIBLE_TYPE must not be null");
-    public static final ResolvedJavaType C_FUNCTION_TYPE = Objects.requireNonNull(
-                    GraalAccess.getVMAccess().getProviders().getMetaAccess().lookupJavaType(CFunction.class),
-                    "C_FUNCTION_TYPE must not be null");
-    public static final ResolvedJavaType INVOKE_C_FUNCTION_POINTER_TYPE = Objects.requireNonNull(
-                    GraalAccess.getVMAccess().getProviders().getMetaAccess().lookupJavaType(InvokeCFunctionPointer.class),
-                    "INVOKE_C_FUNCTION_POINTER_TYPE must not be null");
-
     /**
      * The {@code Uninterruptible} annotation returned for C function calls with NO_TRANSITION.
      */
@@ -121,15 +108,15 @@ public class UninterruptibleAnnotationUtils {
             return null;
         }
 
-        UninterruptibleGuestValue annotation = UninterruptibleGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(UNINTERRUPTIBLE_TYPE));
+        UninterruptibleGuestValue annotation = UninterruptibleGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestTypes.UNINTERRUPTIBLE_TYPE));
         if (annotation != null) {
             /* Explicit annotated method. */
             return annotation;
         }
 
-        CFunctionGuestValue cFunctionAnnotation = CFunctionGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(C_FUNCTION_TYPE));
+        CFunctionGuestValue cFunctionAnnotation = CFunctionGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestTypes.C_FUNCTION_TYPE));
         InvokeCFunctionPointerGuestValue cFunctionPointerAnnotation = InvokeCFunctionPointerGuestValue
-                        .fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(INVOKE_C_FUNCTION_POINTER_TYPE));
+                        .fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestTypes.INVOKE_C_FUNCTION_POINTER_TYPE));
         if ((cFunctionAnnotation != null && cFunctionAnnotation.transition() == CFunction.Transition.NO_TRANSITION) ||
                         (cFunctionPointerAnnotation != null && cFunctionPointerAnnotation.transition() == CFunction.Transition.NO_TRANSITION)) {
             /*
@@ -138,7 +125,7 @@ public class UninterruptibleAnnotationUtils {
              * annotations.
              */
             if (NO_TRANSITION.get() == null) {
-                NO_TRANSITION.compareAndExchange(null, new UninterruptibleGuestValue(false, true, false, "@CFunction / @InvokeCFunctionPointer with Transition.NO_TRANSITION"));
+                NO_TRANSITION.compareAndExchange(null, new UninterruptibleGuestValue("@CFunction / @InvokeCFunctionPointer with Transition.NO_TRANSITION", false, true, false));
             }
             return NO_TRANSITION.get();
         }
@@ -178,7 +165,8 @@ public class UninterruptibleAnnotationUtils {
             if (!calleeUninterruptible) {
                 return true;
             }
-            UninterruptibleGuestValue calleeUninterruptibleAnnotation = UninterruptibleGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(callee).get(UNINTERRUPTIBLE_TYPE));
+            UninterruptibleGuestValue calleeUninterruptibleAnnotation = UninterruptibleGuestValue
+                            .fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(callee).get(GuestTypes.UNINTERRUPTIBLE_TYPE));
             if (calleeUninterruptibleAnnotation != null && calleeUninterruptibleAnnotation.mayBeInlined()) {
                 return true;
             }
