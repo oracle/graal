@@ -1,5 +1,6 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
@@ -21,23 +22,28 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
     @Override
     public void prepare(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions) {
         for (var blockId : lir.getBlocks()) {
-            var instructions = blockInstructions.get(blockId);
+            var block = lir.getBlockById(blockId);
+            var instructions = blockInstructions.get(block);
 
             for (var instruction : instructions) {
-                if (instruction instanceof RAVInstruction.Op op && op.lirInstruction.isLoadConstantOp()) {
-                    var loadConstantOp = StandardOp.LoadConstantOp.asLoadConstantOp(op.lirInstruction);
-                    // TODO: loadConstantOp.canRematerializeToStack?
-
-                    if (!LIRValueUtil.isVariable(op.dests.orig[0])) {
-                        continue;
-                    }
-
-                    var variable = LIRValueUtil.asVariable(op.dests.orig[0]);
-                    var constantValue = new ConstantValue(variable.getValueKind(), loadConstantOp.getConstant());
-
-                    constantVariableMap.put(variable, constantValue);
-                }
+                this.prepareFromInstr(instruction, block);
             }
+        }
+    }
+
+    public void prepareFromInstr(RAVInstruction.Base instruction, BasicBlock<?> block) {
+        if (instruction instanceof RAVInstruction.Op op && op.lirInstruction.isLoadConstantOp()) {
+            var loadConstantOp = StandardOp.LoadConstantOp.asLoadConstantOp(op.lirInstruction);
+            // TODO: loadConstantOp.canRematerializeToStack?
+
+            if (!LIRValueUtil.isVariable(op.dests.orig[0])) {
+                return;
+            }
+
+            var variable = LIRValueUtil.asVariable(op.dests.orig[0]);
+            var constantValue = new ConstantValue(variable.getValueKind(), loadConstantOp.getConstant());
+
+            constantVariableMap.put(variable, constantValue);
         }
     }
 
@@ -82,6 +88,10 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
 
     @Override
     public ValueAllocationState resolveValueState(Variable original, ValueAllocationState valueState) {
+        if (!this.constantVariableMap.containsKey(original)) {
+            return null;
+        }
+
         if (valueState.getValue() instanceof ConstantValue constant) {
             if (!this.constantVariableMap.get(original).equals(constant)) {
                 return null;
