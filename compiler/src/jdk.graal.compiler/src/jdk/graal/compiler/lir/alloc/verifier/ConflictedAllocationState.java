@@ -55,7 +55,7 @@ public class ConflictedAllocationState extends AllocationState {
 
     @Override
     public boolean equals(AllocationState other) {
-        return other.isConflicted(); // TODO: handle contents
+        return other.isConflicted();
     }
 
     @Override

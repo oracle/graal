@@ -76,7 +76,6 @@ public class FromPredecessorsResolver {
 
                         var regTime = state.values.getKeyTime(loc);
                         if (regTime > time) {
-                            // TODO: replace time with priority of Moves inserted by the Register Allocator.
                             time = regTime; // Max time
                             blockReg = loc;
                         }
@@ -203,25 +202,13 @@ public class FromPredecessorsResolver {
                 Value toLocation;
 
                 switch (instruction) {
-                    case RAVInstruction.Move move -> {
-                        fromLocation = move.from;
-                        toLocation = move.to;
-                    }
-                    case RAVInstruction.Spill spill -> {
-                        fromLocation = spill.from;
-                        toLocation = spill.to;
-                    }
-                    case RAVInstruction.StackMove stack -> {
-                        fromLocation = stack.from;
-                        toLocation = stack.to;
-                    }
-                    case RAVInstruction.Reload reload -> {
-                        fromLocation = reload.from;
-                        toLocation = reload.to;
-                    }
                     case RAVInstruction.VirtualMove virtMove -> {
                         toLocation = virtMove.location;
                         fromLocation = null;
+                    }
+                    case RAVInstruction.Move move -> {
+                        fromLocation = move.from;
+                        toLocation = move.to;
                     }
                     case RAVInstruction.Op op -> {
                         for (int i = 0; i < op.dests.count; i++) {

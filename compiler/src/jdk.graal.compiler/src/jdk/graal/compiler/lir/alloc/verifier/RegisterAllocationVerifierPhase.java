@@ -204,7 +204,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
         } else if (result instanceof VirtualStackSlot stackSlot && input instanceof RegisterValue reg) {
             return new RAVInstruction.Spill(instruction, stackSlot, reg);
         } else if (input instanceof RegisterValue reg1 && result instanceof RegisterValue reg2) {
-            return new RAVInstruction.Move(instruction, reg1, reg2);
+            return new RAVInstruction.RegMove(instruction, reg1, reg2);
         } else if (input instanceof StackSlot stackSlot && result instanceof RegisterValue reg) {
             return new RAVInstruction.Reload(instruction, reg, stackSlot);
         } else if (input instanceof RegisterValue reg && result instanceof StackSlot stackSlot) {

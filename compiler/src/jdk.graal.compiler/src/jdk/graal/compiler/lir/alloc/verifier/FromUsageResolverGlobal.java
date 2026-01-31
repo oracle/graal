@@ -108,10 +108,8 @@ class FromUsageResolverGlobal {
             var instructions = blockInstructions.get(block);
             for (var instruction : instructions.reversed()) {
                 switch (instruction) {
+                    case RAVInstruction.VirtualMove ignored -> {}
                     case RAVInstruction.Move move -> handleMove(usage, move.from, move.to);
-                    case RAVInstruction.Spill spill -> handleMove(usage, spill.from, spill.to);
-                    case RAVInstruction.Reload reload -> handleMove(usage, reload.from, reload.to);
-                    case RAVInstruction.StackMove stackMove -> handleMove(usage, stackMove.from, stackMove.to);
                     case RAVInstruction.Op op -> {
                         if (op.lirInstruction instanceof StandardOp.LabelOp) {
                             this.resolveLabel(usage, op, block);

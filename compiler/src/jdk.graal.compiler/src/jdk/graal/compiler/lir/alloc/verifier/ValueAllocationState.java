@@ -21,7 +21,6 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
 
             // We use variables as symbols for register validation
             // but real registers can also be used as that, in some cases.
-            // TODO: reconsider handling of StackSlots
             this.value = value;
             this.source = source;
         } else {

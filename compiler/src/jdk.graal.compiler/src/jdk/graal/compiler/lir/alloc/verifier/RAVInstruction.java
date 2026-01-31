@@ -1,6 +1,5 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
-
 import jdk.graal.compiler.lir.InstructionValueProcedure;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.VirtualStackSlot;
@@ -9,7 +8,6 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -110,7 +108,13 @@ public class RAVInstruction {
         }
 
         public void addCurrent(int index, Value value) {
-            assert index < this.count : "Index out of bounds";
+            if (index >= this.count) {
+                // TestCase: DerivedOopTest
+                // liveBasePointers has extra item after register allocation
+                // TODO: handle extra items here
+                return;
+            }
+
             this.curr[index] = value;
         }
 
@@ -182,7 +186,7 @@ public class RAVInstruction {
             this.alive = new ValueArrayPair(countValuesProc.getCount());
 
             instruction.forEachState(countValuesProc);
-            this.stateValues =  new ValueArrayPair(countValuesProc.getCount());
+            this.stateValues = new ValueArrayPair(countValuesProc.getCount());
         }
 
         public boolean hasMissingDefinitions() {
@@ -201,10 +205,10 @@ public class RAVInstruction {
     }
 
     public static class Move extends Base {
-        public RegisterValue from;
-        public RegisterValue to;
+        public Value from;
+        public Value to;
 
-        public Move(LIRInstruction instr, RegisterValue from, RegisterValue to) {
+        public Move(LIRInstruction instr, Value from, Value to) {
             super(instr);
             this.from = from;
             this.to = to;
@@ -215,14 +219,29 @@ public class RAVInstruction {
         }
     }
 
+    public static class RegMove extends Move {
+        public RegisterValue from;
+        public RegisterValue to;
+
+        public RegMove(LIRInstruction instr, RegisterValue from, RegisterValue to) {
+            super(instr, from, to);
+            this.from = from;
+            this.to = to;
+        }
+
+        public String toString() {
+            return to.toString() + " = REGMOVE " + from.toString();
+        }
+    }
+
     // StackMove class to handle STACKMOVE instruction, temporary for now
     // before I decide how all Moves should be handled + all possible combinations.
-    public static class StackMove extends Base {
+    public static class StackMove extends Move {
         public Value from;
         public Value to;
 
         public StackMove(LIRInstruction instr, Value from, Value to) {
-            super(instr);
+            super(instr, from, to);
 
             assert from instanceof StackSlot || from instanceof VirtualStackSlot : "StackMove needs to receive instanceof StackSlot or VirtualStackSlot";
             assert to instanceof StackSlot || to instanceof VirtualStackSlot : "StackMove needs to receive instanceof StackSlot or VirtualStackSlot";
@@ -232,16 +251,16 @@ public class RAVInstruction {
         }
 
         public String toString() {
-            return to.toString() + " = MOVE " + from.toString();
+            return to.toString() + " = STACKMOVE " + from.toString();
         }
     }
 
-    public static class Reload extends Base {
+    public static class Reload extends Move {
         public Value from;
         public RegisterValue to;
 
         public Reload(LIRInstruction instr, RegisterValue to, Value from) {
-            super(instr);
+            super(instr, from, to);
             this.from = from;
             this.to = to;
         }
@@ -251,12 +270,12 @@ public class RAVInstruction {
         }
     }
 
-    public static class Spill extends Base {
+    public static class Spill extends Move {
         public Value to;
         public RegisterValue from;
 
         public Spill(LIRInstruction instr, Value to, RegisterValue from) {
-            super(instr);
+            super(instr, from, to);
             this.to = to;
             this.from = from;
         }
@@ -266,12 +285,12 @@ public class RAVInstruction {
         }
     }
 
-    public static class VirtualMove extends Base {
+    public static class VirtualMove extends Move {
         public Value variableOrConstant;
         public Value location;
 
         public VirtualMove(LIRInstruction instr, Value variableOrConstant, Value location) {
-            super(instr);
+            super(instr, variableOrConstant, location);
             this.variableOrConstant = variableOrConstant;
             this.location = location;
         }

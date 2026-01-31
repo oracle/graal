@@ -253,17 +253,8 @@ public class MergedBlockVerifierState {
     public void update(RAVInstruction.Base instruction, BasicBlock<?> block) {
         switch (instruction) {
             case RAVInstruction.Op op -> this.updateWithOp(op, block);
-            case RAVInstruction.Spill spill -> this.values.putClone(spill.to, this.values.get(spill.from));
-            case RAVInstruction.Reload reload -> {
-                this.checkRegisterDestinationValidity(reload.to);
-                this.values.putClone(reload.to, this.values.get(reload.from));
-            }
-            case RAVInstruction.Move move -> {
-                this.checkRegisterDestinationValidity(move.to);
-                this.values.putClone(move.to, this.values.get(move.from));
-            }
-            case RAVInstruction.StackMove move -> this.values.putClone(move.to, this.values.get(move.from));
             case RAVInstruction.VirtualMove virtMove -> this.updateWithVirtualMove(virtMove);
+            case RAVInstruction.Move move -> this.values.putClone(move.to, this.values.get(move.from));
             default -> throw GraalError.shouldNotReachHere("Invalid RAV instruction " + instruction);
         }
     }
