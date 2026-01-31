@@ -2,6 +2,7 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
@@ -18,6 +19,8 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -60,7 +63,29 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
         var instructions = getVerifierInstructions(lirGenRes);
         var verifier = new RegisterAllocationVerifier(lirGenRes.getLIR(), instructions, this.state.phiResolution, context.registerAllocationConfig);
 
-        verifier.run();
+        // For timers for time spent in pre-alloc and verification phases look for these metric keys:
+        // LIRPhaseTime_PreRegisterAllocationPhase & LIRPhaseTime_RegisterAllocationVerifierPhase
+        try {
+            verifier.run();
+        } catch (RAVException | RAVError e) {
+            var lir = lirGenRes.getLIR();
+            var debugCtx = lir.getDebug();
+
+            if (debugCtx.isDumpEnabled(DebugContext.VERBOSE_LEVEL)) {
+                var debugPath = debugCtx.getDumpPath(".rav.txt", false);
+
+                try {
+                    PrintStream output = new PrintStream(debugPath);
+                    output.println("Register Allocation Verification failure:");
+                    output.println(e.getMessage());
+                    output.println();
+                    VerifierPrinter.print(output, lir, instructions);
+                } catch (FileNotFoundException ignored) {
+                }
+            }
+
+            throw e;
+        }
     }
 
     protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIRGenerationResult lirGenRes) {
