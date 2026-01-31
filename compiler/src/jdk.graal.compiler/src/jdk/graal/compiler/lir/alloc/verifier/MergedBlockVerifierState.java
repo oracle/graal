@@ -24,7 +24,7 @@ public class MergedBlockVerifierState {
     protected ConflictResolver labelConflictResolver;
 
     public MergedBlockVerifierState(RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, ConflictResolver constantConflictResolver, ConflictResolver labelConflictResolver) {
-        this.values = new MergedAllocationStateMap();
+        this.values = new MergedAllocationStateMap(registerAllocationConfig);
         this.phiResolution = phiResolution;
         this.registerAllocationConfig = registerAllocationConfig;
         this.conflictConstantResolver = constantConflictResolver;
@@ -38,7 +38,7 @@ public class MergedBlockVerifierState {
         this.labelConflictResolver = labelConflictResolver;
 
         if (other == null) {
-            this.values = new MergedAllocationStateMap();
+            this.values = new MergedAllocationStateMap(registerAllocationConfig);
             return;
         }
 
@@ -259,18 +259,6 @@ public class MergedBlockVerifierState {
         }
     }
 
-    protected void checkRegisterDestinationValidity(Value location) {
-        if (!ValueUtil.isRegister(location)) {
-            return;
-        }
-
-        // Equality check so we know that this change was made by the register allocator.
-        var register = ValueUtil.asRegister(location);
-        if (!this.registerAllocationConfig.getAllocatableRegisters().contains(register)) {
-            throw new InvalidRegisterUsedException(register);
-        }
-    }
-
     protected void updateWithOp(RAVInstruction.Op op, BasicBlock<?> block) {
         for (int i = 0; i < op.dests.count; i++) {
             if (Value.ILLEGAL.equals(op.dests.orig[i])) {
@@ -290,12 +278,13 @@ public class MergedBlockVerifierState {
             Value location = op.dests.curr[i];
             Value variable = op.dests.orig[i];
 
-            if (!location.equals(variable)) {
-                // Equality check so we know that this change was made by the register allocator.
-                this.checkRegisterDestinationValidity(location);
+            if (location.equals(variable)) {
+                // Only check register validity if it was changed by the register allocator
+                // for example: rbp is used as input to start block and forbidden to be used by the allocator
+                this.values.putWithoutRegCheck(location, new ValueAllocationState(variable, op.lirInstruction));
+            } else {
+                this.values.put(location, new ValueAllocationState(variable, op.lirInstruction));
             }
-
-            this.values.put(location, new ValueAllocationState(variable, op.lirInstruction));
         }
 
         for (int i = 0; i < op.temp.count; i++) {

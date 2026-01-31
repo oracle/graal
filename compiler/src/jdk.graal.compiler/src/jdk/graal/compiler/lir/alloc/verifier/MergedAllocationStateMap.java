@@ -1,7 +1,9 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.Value;
 
 import java.util.HashMap;
@@ -35,12 +37,16 @@ public class MergedAllocationStateMap {
     protected Map<String, Boolean> prioritizedLocations;
     protected int time;
 
-    public MergedAllocationStateMap() {
+    protected RegisterAllocationConfig registerAllocationConfig;
+
+    public MergedAllocationStateMap(RegisterAllocationConfig registerAllocationConfig) {
         valueMap = new HashMap<>();
         internalMap = new HashMap<>();
         locationTimings = new HashMap<>();
         prioritizedLocations = new HashMap<>();
         time = 0;
+
+        this.registerAllocationConfig = registerAllocationConfig;
     }
 
     public MergedAllocationStateMap(MergedAllocationStateMap other) {
@@ -49,6 +55,8 @@ public class MergedAllocationStateMap {
         locationTimings = new HashMap<>(other.locationTimings);
         prioritizedLocations = new HashMap<>(other.prioritizedLocations);
         time = other.time + 1;
+
+        registerAllocationConfig = other.registerAllocationConfig;
     }
 
     public AllocationState get(Value key) {
@@ -78,6 +86,11 @@ public class MergedAllocationStateMap {
     }
 
     public void put(Value key, AllocationState state) {
+        this.checkRegisterDestinationValidity(key);
+        putWithoutRegCheck(key, state);
+    }
+
+    public void putWithoutRegCheck(Value key, AllocationState state) {
         String keyString = this.getValueKeyString(key);
         locationTimings.put(keyString, time++);
         internalMap.put(keyString, state);
@@ -119,8 +132,6 @@ public class MergedAllocationStateMap {
     }
 
     public Set<Value> getValueLocations(Value value) {
-        // TODO: maybe we can just store these in a hash map as well?
-
         Set<Value> locations = new HashSet<>();
         for (var entry : this.internalMap.entrySet()) {
             if (entry.getValue() instanceof ValueAllocationState valState) {
@@ -140,7 +151,7 @@ public class MergedAllocationStateMap {
             if (!this.internalMap.containsKey(entry.getKey())) {
                 changed = true;
 
-                this.put(source.valueMap.get(entry.getKey()), UnknownAllocationState.INSTANCE);
+                this.putWithoutRegCheck(source.valueMap.get(entry.getKey()), UnknownAllocationState.INSTANCE);
             }
 
             var currentValue = this.internalMap.get(entry.getKey());
@@ -149,7 +160,7 @@ public class MergedAllocationStateMap {
                 changed = true;
             }
 
-            this.put(source.valueMap.get(entry.getKey()), result);
+            this.putWithoutRegCheck(source.valueMap.get(entry.getKey()), result);
         }
 
         return changed;
@@ -163,5 +174,17 @@ public class MergedAllocationStateMap {
         assert !Value.ILLEGAL.equals(value) : "Cannot use ILLEGAL as key in AllocationStateMap";
 
         return value.toString();
+    }
+
+    protected void checkRegisterDestinationValidity(Value location) {
+        if (!ValueUtil.isRegister(location)) {
+            return;
+        }
+
+        // Equality check so we know that this change was made by the register allocator.
+        var register = ValueUtil.asRegister(location);
+        if (!this.registerAllocationConfig.getAllocatableRegisters().contains(register)) {
+            throw new InvalidRegisterUsedException(register);
+        }
     }
 }
