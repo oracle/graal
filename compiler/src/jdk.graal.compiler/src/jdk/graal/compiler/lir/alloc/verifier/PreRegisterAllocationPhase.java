@@ -93,8 +93,7 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
-        var compUnitName = lirGenRes.getCompilationUnitName();
-        if (state.filterStr != null && !compUnitName.contains(state.filterStr)) {
+        if (state.shouldBeVerified(lirGenRes)) {
             return;
         }
 

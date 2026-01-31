@@ -3,6 +3,8 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugOptions;
+import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
@@ -52,8 +54,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
-        var compUnitName = lirGenRes.getCompilationUnitName();
-        if (state.filterStr != null && !compUnitName.contains(state.filterStr)) {
+        if (state.shouldBeVerified(lirGenRes)) {
             // Filter for compilation unit substring to run verification only on
             // certain methods, cannot use MethodFilter here because I cannot
             // access JavaMethod here.

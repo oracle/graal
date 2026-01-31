@@ -22,6 +22,14 @@ public class RegisterAllocationVerifierPhaseState {
         this.filterStr = RegisterAllocationVerifierPhase.Options.RAFilter.getValue(options);
     }
 
+    public boolean shouldBeVerified(LIRGenerationResult lirGenRes) {
+        var compUnitName = lirGenRes.getCompilationUnitName();
+        // Filter for compilation unit substring to run verification only on
+        // certain methods, cannot use MethodFilter here because I cannot
+        // access JavaMethod here.
+        return filterStr == null || compUnitName.contains(filterStr);
+    }
+
     public Map<LIRInstruction, RAVInstruction.Base> createInstructionMap(LIRGenerationResult lirGenRes) {
         this.verifierInstructions.put(lirGenRes, new IdentityHashMap<>());
         return this.verifierInstructions.get(lirGenRes);
