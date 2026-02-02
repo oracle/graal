@@ -87,6 +87,6 @@ public final class ConfigurationCommandFileCommand extends ConfigurationCommand 
                                                   tools.
                             <command-file-path>
                                                   specifies the path to a command file
-                        """.replaceAll("\n", System.lineSeparator());
+                        """.replace("\n", System.lineSeparator());
     }
 }

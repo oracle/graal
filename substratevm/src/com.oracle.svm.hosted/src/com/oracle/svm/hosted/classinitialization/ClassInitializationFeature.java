@@ -172,7 +172,7 @@ public class ClassInitializationFeature implements InternalFeature {
                               and that they do not contain any sensitive data that should not become part of the image.
 
                             """
-                            .replaceAll("\n", System.lineSeparator()).formatted(
+                            .replace("\n", System.lineSeparator()).formatted(
                                             typeName,
                                             classInitializationSupport.reasonForClass(obj.getClass()),
                                             typeName,
@@ -197,7 +197,7 @@ public class ClassInitializationFeature implements InternalFeature {
                             If you are seeing this message after upgrading to a new GraalVM release, this means that some objects ended up in the image heap without their type being marked with --initialize-at-build-time.
                             To fix this, include %s in your configuration. If the classes do not originate from your code, it is advised to update all library or framework dependencies to the latest version before addressing this error.
                             """
-                            .replaceAll("\n", System.lineSeparator())
+                            .replace("\n", System.lineSeparator())
                             .formatted(SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, proxyOrLambda ? proxyLambdaInterfaceCSV : typeName,
                                             "initialize-at-build-time", true, false));
 

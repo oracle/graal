@@ -36,6 +36,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.svm.configure.ConfigurationUsageException;
 import com.oracle.svm.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
@@ -48,7 +50,6 @@ import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.phases.common.LazyValue;
-import org.graalvm.collections.EconomicSet;
 
 public class ConfigurationGenerateCommand extends ConfigurationCommand {
     @Override
@@ -137,7 +138,7 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
                             --no-builtin-heuristic-filter
                                                   This option disables builtin heuristics that identify
                                                   further internal JNI, reflection and resource usages.
-                        """.replaceAll("\n", System.lineSeparator());
+                        """.replace("\n", System.lineSeparator());
     }
 
     @SuppressWarnings("fallthrough")

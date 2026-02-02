@@ -393,7 +393,7 @@ public final class NativeImageClassLoaderSupport {
                              The cause is one of the libraries on the classpath does not handle correctly when all elements are included in the image.
                             If this happens, please open an issue for the library whose field was containing forbidden types and correct the '--initialize-at-build-time' configuration for your build.
                             """
-                            .replaceAll("\n", System.lineSeparator())
+                            .replace("\n", System.lineSeparator())
                             .formatted(SubstrateOptionsParser.commandArgument(SubstrateOptions.Preserve, PreserveOptionsSupport.PRESERVE_ALL));
             LogUtils.warning(msg);
 
