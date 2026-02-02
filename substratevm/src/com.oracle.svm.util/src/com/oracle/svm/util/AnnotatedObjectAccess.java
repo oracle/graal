@@ -326,13 +326,12 @@ public class AnnotatedObjectAccess {
         List<AnnotationValue> annotationValues = new ArrayList<>();
         Annotated root = unwrap(element, annotationValues);
         if (root instanceof AnnotationsContainer ac) {
-            List<Annotation> annotations = ac.getContainedAnnotations();
-            if (annotations.isEmpty()) {
+            List<AnnotationValue> containedAnnotations = ac.getContainedAnnotations();
+            if (containedAnnotations.isEmpty()) {
                 return Map.of();
             }
-            result = new EconomicHashMap<>(annotations.size());
-            for (var a : annotations) {
-                AnnotationValue annotationValue = toAnnotationValue(a);
+            result = new EconomicHashMap<>(containedAnnotations.size());
+            for (var annotationValue : containedAnnotations) {
                 result.put(annotationValue.getAnnotationType(), annotationValue);
             }
         } else {

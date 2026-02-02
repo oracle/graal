@@ -221,6 +221,11 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         return classInitKinds.get(clazz);
     }
 
+    public boolean isFailedInitialization(ResolvedJavaType type) {
+        // GR-71807: reverse this so that the Class variant calls the ResolvedJavaType version
+        return isFailedInitialization(OriginalClassProvider.getJavaClass(type));
+    }
+
     public boolean isFailedInitialization(Class<?> clazz) {
         boolean failedInit = requestedAtBuildTimeButFailedInit.contains(clazz);
         VMError.guarantee(!failedInit || specifiedInitKindFor(clazz) == InitKind.BUILD_TIME && computedInitKindFor(clazz) == InitKind.RUN_TIME);
