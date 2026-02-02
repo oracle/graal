@@ -66,6 +66,7 @@ import org.graalvm.wasm.WasmStore;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmTag;
 import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.array.WasmArray;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -83,6 +84,16 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import org.graalvm.wasm.struct.WasmStruct;
+import org.graalvm.wasm.types.AbstractHeapType;
+import org.graalvm.wasm.types.DefinedType;
+import org.graalvm.wasm.types.FunctionType;
+import org.graalvm.wasm.types.NumberType;
+import org.graalvm.wasm.types.RecursiveTypes;
+import org.graalvm.wasm.types.ReferenceType;
+import org.graalvm.wasm.types.SubType;
+import org.graalvm.wasm.types.ValueType;
+import org.graalvm.wasm.types.VectorType;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -103,6 +114,8 @@ public class WebAssembly extends Dictionary {
         addMember("table_size", new Executable(WebAssembly::tableSize));
 
         addMember("func_type", new Executable(WebAssembly::funcType));
+        addMember("is_array", new Executable(WebAssembly::isArray));
+        addMember("is_struct", new Executable(WebAssembly::isStruct));
         addMember("is_func", new Executable(WebAssembly::isFunc));
 
         addMember("mem_alloc", new Executable(WebAssembly::memAlloc));
@@ -116,7 +129,7 @@ public class WebAssembly extends Dictionary {
         addMember("global_read", new Executable(this::globalRead));
         addMember("global_write", new Executable(this::globalWrite));
 
-        addMember("tag_alloc", new Executable(WebAssembly::tagAlloc));
+        addMember("tag_alloc", new Executable(this::tagAlloc));
         addMember("tag_type", new Executable(WebAssembly::tagType));
 
         addMember("exn_alloc", new Executable(this::exnAlloc));
@@ -157,7 +170,7 @@ public class WebAssembly extends Dictionary {
         Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), moduleName).mimeType(WasmLanguage.WASM_MIME_TYPE).build();
         CallTarget parseResult = currentContext.environment().parsePublic(source);
         WasmModule module = WasmLanguage.getParsedModule(parseResult);
-        assert module.limits().equals(JsConstants.JS_LIMITS);
+        assert module.limits().equals(JS_LIMITS);
         return new WasmModuleWithSource(module, source);
     }
 
@@ -263,15 +276,15 @@ public class WebAssembly extends Dictionary {
                 String shared = module.memoryIsShared(memoryIndex) ? "shared" : "single";
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.memory.name(), shared));
             } else if (tableIndex != null) {
-                list.add(new ModuleExportDescriptor(name, ImportExportKind.table.name(), TableKind.toString(module.tableElementType(tableIndex))));
+                list.add(new ModuleExportDescriptor(name, ImportExportKind.table.name(), tableElementTypeToInteropString(module, tableIndex)));
             } else if (f != null) {
-                list.add(new ModuleExportDescriptor(name, ImportExportKind.function.name(), WebAssembly.functionTypeToString(f)));
+                list.add(new ModuleExportDescriptor(name, ImportExportKind.function.name(), WebAssembly.functionInfo(f)));
             } else if (globalIndex != null) {
-                String valueType = ValueType.fromValue(module.globalValueType(globalIndex)).toString();
+                String valueType = globalValueTypeToInteropString(module, globalIndex);
                 String mutability = module.isGlobalMutable(globalIndex) ? "mut" : "con";
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.global.name(), valueType + " " + mutability));
             } else if (tagIndex != null) {
-                list.add(new ModuleExportDescriptor(name, ImportExportKind.tag.name(), WebAssembly.tagTypeToString(module, tagIndex)));
+                list.add(new ModuleExportDescriptor(name, ImportExportKind.tag.name(), WebAssembly.tagTypeToInteropString(module, tagIndex)));
             } else {
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Exported symbol list does not match the actual exports.");
             }
@@ -299,12 +312,14 @@ public class WebAssembly extends Dictionary {
             switch (descriptor.identifier()) {
                 case ImportIdentifier.FUNCTION:
                     final WasmFunction f = module.importedFunction(descriptor);
-                    list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), ImportExportKind.function.name(), WebAssembly.functionTypeToString(f)));
+                    list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), ImportExportKind.function.name(),
+                                    functionTypeToInteropString(f.type().asFunctionType())));
                     break;
                 case ImportIdentifier.TABLE:
                     final Integer tableIndex = importedTableDescriptors.get(descriptor);
                     if (tableIndex != null) {
-                        list.add(new ModuleImportDescriptor(descriptor.moduleName(), descriptor.memberName(), ImportExportKind.table.name(), TableKind.toString(module.tableElementType(tableIndex))));
+                        list.add(new ModuleImportDescriptor(descriptor.moduleName(), descriptor.memberName(), ImportExportKind.table.name(),
+                                        tableElementTypeToInteropString(module, tableIndex)));
                     } else {
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Table import inconsistent.");
                     }
@@ -319,14 +334,18 @@ public class WebAssembly extends Dictionary {
                     break;
                 case ImportIdentifier.GLOBAL:
                     final Integer globalIndex = importedGlobalDescriptors.get(descriptor);
-                    String valueType = ValueType.fromValue(module.globalValueType(globalIndex)).toString();
-                    list.add(new ModuleImportDescriptor(descriptor.moduleName(), descriptor.memberName(), ImportExportKind.global.name(), valueType));
+                    if (globalIndex != null) {
+                        list.add(new ModuleImportDescriptor(descriptor.moduleName(), descriptor.memberName(), ImportExportKind.global.name(),
+                                        globalValueTypeToInteropString(module, globalIndex)));
+                    } else {
+                        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Global import inconsistent.");
+                    }
                     break;
                 case ImportIdentifier.TAG:
                     final Integer tagIndex = importedTagDescriptors.get(descriptor);
                     if (tagIndex != null) {
                         list.add(new ModuleImportDescriptor(descriptor.moduleName(), descriptor.memberName(), ImportExportKind.tag.name(),
-                                        WebAssembly.tagTypeToString(module, tagIndex)));
+                                        tagTypeToInteropString(module, tagIndex)));
                     } else {
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Tag import inconsistent.");
                     }
@@ -369,7 +388,7 @@ public class WebAssembly extends Dictionary {
 
         final int initialSize;
         int maximumSize = -1;
-        TableKind elementKind = TableKind.anyfunc;
+        ValueType elementType = ReferenceType.FUNCREF;
         Object initialValue = WasmConstant.NULL;
         InteropLibrary lib = InteropLibrary.getUncached();
 
@@ -416,8 +435,12 @@ public class WebAssembly extends Dictionary {
                 }
                 case 1: {
                     try {
-                        elementKind = TableKind.valueOf(lib.asString(value));
+                        String elementTypeStr = lib.asString(value);
+                        elementType = parseInteropValueType(elementTypeStr);
                     } catch (UnsupportedMessageException e) {
+                        throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element kind must be convertible to string");
+                    }
+                    if (!ReferenceType.FUNCREF.equals(elementType) && !ReferenceType.EXTERNREF.equals(elementType)) {
                         throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element kind must be one of externref or anyfunc");
                     }
                     // An initial value is expected
@@ -432,24 +455,24 @@ public class WebAssembly extends Dictionary {
                 }
             }
         }
-        return tableAlloc(initialSize, maximumSize, elementKind, initialValue);
+        return tableAlloc(initialSize, maximumSize, elementType, initialValue);
     }
 
-    public WasmTable tableAlloc(int initial, int maximum, TableKind elemKind, Object initialValue) {
-        if (Integer.compareUnsigned(initial, maximum) > 0) {
+    public WasmTable tableAlloc(int initial, int maximum, ValueType elemType, Object initialValue) {
+        if (compareUnsigned(initial, maximum) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds max memory size");
         }
-        if (Integer.compareUnsigned(initial, JS_LIMITS.tableInstanceSizeLimit()) > 0) {
+        if (compareUnsigned(initial, JS_LIMITS.tableInstanceSizeLimit()) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds implementation limit");
         }
-        if (elemKind != TableKind.externref && elemKind != TableKind.anyfunc) {
+        if (!elemType.isReferenceType()) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element type must be a reftype");
         }
-        if (!refTypes && elemKind == TableKind.externref) {
+        if (!refTypes && !ReferenceType.FUNCREF.equals(elemType)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element type must be anyfunc. Enable wasm.BulkMemoryAndRefTypes to support other reference types");
         }
         final int maxAllowedSize = minUnsigned(maximum, JS_LIMITS.tableInstanceSizeLimit());
-        return new WasmTable(initial, maximum, maxAllowedSize, elemKind.value(), initialValue);
+        return new WasmTable(initial, maximum, maxAllowedSize, (ReferenceType) elemType, initialValue);
     }
 
     private static Object tableGrow(Object[] args) {
@@ -508,7 +531,7 @@ public class WebAssembly extends Dictionary {
     }
 
     public Object tableWrite(WasmTable table, int index, Object element) {
-        if (!table.closedElemType().matchesValue(element)) {
+        if (!table.elemType().matchesValue(element)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid table element");
         }
 
@@ -537,10 +560,20 @@ public class WebAssembly extends Dictionary {
         checkArgumentCount(args, 1);
         if (args[0] instanceof WasmFunctionInstance) {
             WasmFunction fn = ((WasmFunctionInstance) args[0]).function();
-            return functionTypeToString(fn);
+            return functionInfo(fn);
         } else {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm function");
         }
+    }
+
+    private static Object isArray(Object[] args) {
+        checkArgumentCount(args, 1);
+        return args[0] instanceof WasmArray;
+    }
+
+    private static Object isStruct(Object[] args) {
+        checkArgumentCount(args, 1);
+        return args[0] instanceof WasmStruct;
     }
 
     private static Object isFunc(Object[] args) {
@@ -548,39 +581,116 @@ public class WebAssembly extends Dictionary {
         return args[0] instanceof WasmFunctionInstance;
     }
 
-    public static String functionTypeToString(WasmFunction f) {
-        CompilerAsserts.neverPartOfCompilation();
-        StringBuilder typeInfo = new StringBuilder();
-
-        typeInfo.append(f.index());
-
-        typeInfo.append('(');
-        int paramCount = f.paramCount();
-        for (int i = 0; i < paramCount; i++) {
-            if (i != 0) {
-                typeInfo.append(' ');
-            }
-            typeInfo.append(ValueType.fromValue(f.paramTypeAt(i)));
-        }
-        typeInfo.append(')');
-
-        int resultCount = f.resultCount();
-        for (int i = 0; i < resultCount; i++) {
-            if (i != 0) {
-                typeInfo.append(' ');
-            }
-            typeInfo.append(ValueType.fromValue(f.resultTypeAt(i)));
-        }
-        return typeInfo.toString();
+    public static ValueType parseInteropValueType(String valueTypeString) {
+        return switch (valueTypeString) {
+            case "i32" -> NumberType.I32;
+            case "i64" -> NumberType.I64;
+            case "f32" -> NumberType.F32;
+            case "f64" -> NumberType.F64;
+            case "v128" -> VectorType.V128;
+            case "funcref" -> ReferenceType.FUNCREF;
+            case "externref" -> ReferenceType.EXTERNREF;
+            case "exnref" -> ReferenceType.EXNREF;
+            case "anyref" -> ReferenceType.ANYREF;
+            default -> throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type string: %s", valueTypeString);
+        };
     }
 
-    private static String tagTypeToString(WasmModule module, int tagIndex) {
+    private static FunctionType parseInteropFunctionType(String functionTypeString) {
+        final int leftPar = functionTypeString.indexOf('(');
+        final int rightPar = functionTypeString.indexOf(')');
+        if (leftPar == -1 || rightPar == -1) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid function type format");
+        }
+        final ValueType[] params = parseInteropValueTypeSequence(functionTypeString, leftPar + 1, rightPar);
+        final ValueType[] results = parseInteropValueTypeSequence(functionTypeString, rightPar + 1, functionTypeString.length());
+        return new FunctionType(params, results);
+    }
+
+    private static ValueType[] parseInteropValueTypeSequence(String typesString, int start, int end) {
+        if (start >= end) {
+            return ValueType.EMPTY;
+        } else {
+            String[] typeNames = typesString.substring(start, end).split(" ");
+            ValueType[] types = new ValueType[typeNames.length];
+            for (int i = 0; i < typeNames.length; i++) {
+                types[i] = parseInteropValueType(typeNames[i]);
+            }
+            return types;
+        }
+    }
+
+    private static String valueTypeToInteropString(ValueType type) {
+        return switch (type.valueKind()) {
+            case Number, Vector -> type.toString();
+            case Reference -> {
+                ReferenceType refType = (ReferenceType) type;
+                yield switch (refType.heapType().heapKind()) {
+                    case Abstract -> {
+                        AbstractHeapType abstractHeapType = (AbstractHeapType) refType.heapType();
+                        yield switch (abstractHeapType) {
+                            case NOFUNC, FUNC -> "funcref";
+                            case NOEXTERN, EXTERN -> "externref";
+                            case NOEXN, EXN -> "exnref";
+                            case NONE, ARRAY, STRUCT, I31, EQ, ANY -> "anyref";
+                        };
+                    }
+                    case DefinedType -> {
+                        DefinedType definedType = (DefinedType) refType.heapType();
+                        if (definedType.isFunctionType()) {
+                            yield "funcref";
+                        } else {
+                            yield "anyref";
+                        }
+                    }
+                };
+            }
+        };
+    }
+
+    public static String functionInfo(WasmFunction f) {
+        CompilerAsserts.neverPartOfCompilation();
+        return f.index() + functionTypeToInteropString(f.type().asFunctionType());
+    }
+
+    private static String functionTypeToInteropString(FunctionType functionType) {
+        CompilerAsserts.neverPartOfCompilation();
+        StringBuilder typeString = new StringBuilder();
+
+        typeString.append('(');
+        int paramCount = functionType.paramTypes().length;
+        for (int i = 0; i < paramCount; i++) {
+            if (i != 0) {
+                typeString.append(' ');
+            }
+            typeString.append(valueTypeToInteropString(functionType.paramTypes()[i]));
+        }
+        typeString.append(')');
+
+        int resultCount = functionType.resultTypes().length;
+        for (int i = 0; i < resultCount; i++) {
+            if (i != 0) {
+                typeString.append(' ');
+            }
+            typeString.append(valueTypeToInteropString(functionType.resultTypes()[i]));
+        }
+        return typeString.toString();
+    }
+
+    private static String tableElementTypeToInteropString(WasmModule module, int tableIndex) {
+        return valueTypeToInteropString(module.closedTypeOf(module.tableElementType(tableIndex)));
+    }
+
+    private static String globalValueTypeToInteropString(WasmModule module, int globalIndex) {
+        return valueTypeToInteropString(module.closedTypeOf(module.globalValueType(globalIndex)));
+    }
+
+    private static String tagTypeToInteropString(WasmModule module, int tagIndex) {
         CompilerAsserts.neverPartOfCompilation();
         final int attribute = module.tagAttribute(tagIndex);
         assert attribute == WasmTag.Attribute.EXCEPTION;
         final int typeIndex = module.tagTypeIndex(tagIndex);
-
-        return FuncType.fromDefinedType(module.closedTypeAt(typeIndex)).toString();
+        return functionTypeToInteropString(module.closedTypeAt(typeIndex).asFunctionType());
     }
 
     private static Object memAlloc(Object[] args) {
@@ -756,7 +866,7 @@ public class WebAssembly extends Dictionary {
         final ValueType valueType;
         try {
             String valueTypeString = lib.asString(args[0]);
-            valueType = ValueType.valueOf(valueTypeString);
+            valueType = parseInteropValueType(valueTypeString);
         } catch (UnsupportedMessageException e) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument (value type) must be convertible to String.");
         } catch (IllegalArgumentException ex) {
@@ -772,22 +882,26 @@ public class WebAssembly extends Dictionary {
     }
 
     public WasmGlobal globalAlloc(ValueType valueType, boolean mutable, Object value) {
-        if (!valueType.asClosedValueType().matchesValue(value)) {
+        if (!valueType.matchesValue(value)) {
             throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
         }
-        return switch (valueType) {
-            case i32 -> WasmGlobal.alloc32(valueType, mutable, (int) value);
-            case i64 -> WasmGlobal.alloc64(valueType, mutable, (long) value);
-            case f32 -> WasmGlobal.alloc32(valueType, mutable, Float.floatToRawIntBits((float) value));
-            case f64 -> WasmGlobal.alloc64(valueType, mutable, Double.doubleToRawLongBits((double) value));
-            case v128 -> throw WasmJsApiException.invalidValueType(WasmType.V128_TYPE);
-            case anyfunc, externref -> {
+        return switch (valueType.valueKind()) {
+            case Number -> switch ((NumberType) valueType) {
+                case I32 -> WasmGlobal.alloc32(valueType, mutable, (int) value);
+                case I64 -> WasmGlobal.alloc64(valueType, mutable, (long) value);
+                case F32 -> WasmGlobal.alloc32(valueType, mutable, Float.floatToRawIntBits((float) value));
+                case F64 -> WasmGlobal.alloc64(valueType, mutable, Double.doubleToRawLongBits((double) value));
+            };
+            case Vector -> throw WasmJsApiException.invalidValueType(WasmType.V128_TYPE);
+            case Reference -> {
                 if (!refTypes) {
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
                 }
+                if (valueType.isSubtypeOf(SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null))) {
+                    throw WasmJsApiException.invalidValueType(WasmType.EXNREF_TYPE);
+                }
                 yield WasmGlobal.allocRef(valueType, mutable, value);
             }
-            case exnref -> throw WasmJsApiException.invalidValueType(WasmType.EXNREF_TYPE);
         };
     }
 
@@ -800,18 +914,19 @@ public class WebAssembly extends Dictionary {
     }
 
     public Object globalRead(WasmGlobal global) {
-        return switch (global.getType()) {
-            case WasmType.I32_TYPE -> global.loadAsInt();
-            case WasmType.I64_TYPE -> global.loadAsLong();
-            case WasmType.F32_TYPE -> Float.intBitsToFloat(global.loadAsInt());
-            case WasmType.F64_TYPE -> Double.longBitsToDouble(global.loadAsLong());
-            case WasmType.V128_TYPE -> throw WasmJsApiException.invalidValueType(WasmType.V128_TYPE);
-            default -> {
-                assert WasmType.isReferenceType(global.getType());
+        return switch (global.getValueType().valueKind()) {
+            case Number -> switch ((NumberType) global.getValueType()) {
+                case I32 -> global.loadAsInt();
+                case I64 -> global.loadAsLong();
+                case F32 -> Float.intBitsToFloat(global.loadAsInt());
+                case F64 -> Double.longBitsToDouble(global.loadAsLong());
+            };
+            case Vector -> throw WasmJsApiException.invalidValueType(WasmType.V128_TYPE);
+            case Reference -> {
                 if (!refTypes) {
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
                 }
-                if (global.getClosedType().isSubtypeOf(SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null))) {
+                if (global.getValueType().isSubtypeOf(SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null))) {
                     throw WasmJsApiException.invalidValueType(WasmType.EXNREF_TYPE);
                 }
                 yield global.loadAsReference();
@@ -831,21 +946,24 @@ public class WebAssembly extends Dictionary {
         if (!global.isMutable()) {
             throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global is not mutable.");
         }
-        if (!global.getClosedType().matchesValue(value)) {
-            throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", ValueType.fromValue(global.getType()), value);
+        if (!global.getValueType().matchesValue(value)) {
+            throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", global.getValueType(), value);
         }
-        switch (global.getType()) {
-            case WasmType.I32_TYPE -> global.storeInt((int) value);
-            case WasmType.I64_TYPE -> global.storeLong((long) value);
-            case WasmType.F32_TYPE -> global.storeInt(Float.floatToRawIntBits((float) value));
-            case WasmType.F64_TYPE -> global.storeLong(Double.doubleToRawLongBits((double) value));
-            case WasmType.V128_TYPE -> throw WasmJsApiException.invalidValueType(WasmType.V128_TYPE);
-            default -> {
-                assert WasmType.isReferenceType(global.getType());
+        switch (global.getValueType().valueKind()) {
+            case Number -> {
+                switch ((NumberType) global.getValueType()) {
+                    case I32 -> global.storeInt((int) value);
+                    case I64 -> global.storeLong((long) value);
+                    case F32 -> global.storeInt(Float.floatToRawIntBits((float) value));
+                    case F64 -> global.storeLong(Double.doubleToRawLongBits((double) value));
+                }
+            }
+            case Vector -> throw WasmJsApiException.invalidValueType(WasmType.V128_TYPE);
+            case Reference -> {
                 if (!refTypes) {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
                 }
-                if (global.getClosedType().isSubtypeOf(SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null))) {
+                if (global.getValueType().isSubtypeOf(SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null))) {
                     throw WasmJsApiException.invalidValueType(WasmType.EXNREF_TYPE);
                 }
                 global.storeReference(value);
@@ -854,13 +972,13 @@ public class WebAssembly extends Dictionary {
         return WasmConstant.VOID;
     }
 
-    public static Object tagAlloc(Object[] args) {
+    public Object tagAlloc(Object[] args) {
         checkArgumentCount(args, 1);
         final InteropLibrary lib = InteropLibrary.getUncached();
-        final FuncType type;
+        final FunctionType type;
         try {
             final String typeString = lib.asString(args[0]);
-            type = FuncType.fromString(typeString);
+            type = parseInteropFunctionType(typeString);
         } catch (UnsupportedMessageException e) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument (func type) must be convertible to String");
         } catch (IllegalArgumentException e) {
@@ -869,8 +987,14 @@ public class WebAssembly extends Dictionary {
         return tagAlloc(type);
     }
 
-    public static WasmTag tagAlloc(FuncType type) {
-        return new WasmTag(type.toDefinedType());
+    public WasmTag tagAlloc(FunctionType functionType) {
+        SubType subType = new SubType(true, null, functionType);
+        RecursiveTypes recursiveTypeGroup = new RecursiveTypes(new SubType[]{subType});
+        DefinedType definedType = DefinedType.makeTopLevelType(recursiveTypeGroup, 0);
+        int equivalenceClass = currentContext.language().equivalenceClassFor(definedType);
+        definedType.setTypeEquivalenceClass(equivalenceClass);
+
+        return new WasmTag(definedType);
     }
 
     public static Object tagType(Object[] args) {
@@ -878,7 +1002,7 @@ public class WebAssembly extends Dictionary {
         if (!(args[0] instanceof WasmTag tag)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be a wasm tag");
         }
-        return FuncType.fromDefinedType(tag.type()).toString();
+        return functionTypeToInteropString(tag.type().asFunctionType());
     }
 
     public WasmRuntimeException exnAlloc(Object[] args) {
@@ -886,18 +1010,18 @@ public class WebAssembly extends Dictionary {
         if (!(args[0] instanceof WasmTag tag)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be a wasm tag");
         }
-        final FuncType type = FuncType.fromDefinedType(tag.type());
-        final int paramCount = type.paramCount();
+        final FunctionType type = tag.type().asFunctionType();
+        final int paramCount = type.paramTypes().length;
         checkArgumentCount(args, paramCount + 1);
         final Object[] fields = new Object[paramCount];
         for (int i = 0; i < paramCount; i++) {
-            final ValueType paramType = type.paramTypeAt(i);
+            final ValueType paramType = type.paramTypes()[i];
             final Object value = args[i + 1];
 
-            if (!paramType.asClosedValueType().matchesValue(value)) {
-                throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Param type %s, value: %s", paramType, value);
+            if (!paramType.matchesValue(value)) {
+                throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Param type %s, value: %s", valueTypeToInteropString(paramType), value);
             }
-            if (ValueType.isReferenceType(paramType) && !refTypes) {
+            if (paramType.isReferenceType() && !refTypes) {
                 throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
             }
             fields[i] = value;

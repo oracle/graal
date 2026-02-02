@@ -94,7 +94,7 @@ public abstract class BytecodeParser {
             if (module.globalExternal(i)) {
                 final WasmGlobal global = instance.externalGlobal(i);
                 try {
-                    switch (global.getClosedType().valueKind()) {
+                    switch (global.getValueType().valueKind()) {
                         case Number, Vector -> {
                             InteropLibrary interop = InteropLibrary.getUncached(global);
                             if (!global.isMutable()) {

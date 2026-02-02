@@ -62,6 +62,9 @@ public enum AbstractHeapType implements HeapType {
     ARRAY(WasmType.ARRAY_HEAPTYPE),
     EXN(WasmType.EXN_HEAPTYPE);
 
+    private static final int I31_MIN_VALUE = -(1 << 30);
+    private static final int I31_MAX_VALUE = (1 << 30) - 1;
+
     private final int value;
 
     AbstractHeapType(int value) {
@@ -117,7 +120,7 @@ public enum AbstractHeapType implements HeapType {
             case FUNC -> val instanceof WasmFunctionInstance;
             case EXTERN, ANY -> val != WasmConstant.NULL;
             case EQ -> val instanceof WasmArray || val instanceof WasmStruct || (val instanceof Integer integer && integer >= 0);
-            case I31 -> val instanceof Integer integer && integer >= 0;
+            case I31 -> val instanceof Integer integer && integer >= I31_MIN_VALUE && integer <= I31_MAX_VALUE;
             case STRUCT -> val instanceof WasmStruct;
             case ARRAY -> val instanceof WasmArray;
             case EXN -> val instanceof WasmRuntimeException;
