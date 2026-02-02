@@ -368,7 +368,7 @@ public class RistrettoUtils {
         return new RistrettoGraphBuilderPhase(gpc);
     }
 
-    private static GraphBuilderConfiguration createRistrettoGraphBuilderConfiguration() {
+    public static GraphBuilderConfiguration createRistrettoGraphBuilderConfiguration() {
         // init fresh graph builder plugins
         GraphBuilderConfiguration.Plugins runtimeParseGraphBuilderPlugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
         RistrettoGraphBuilderPlugins.setRuntimeGraphBuilderPlugins(runtimeParseGraphBuilderPlugins);
