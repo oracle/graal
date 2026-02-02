@@ -1346,7 +1346,15 @@ public abstract class RegexLexer {
                 if (curChar() == ']') {
                     throw handleUnfinishedRangeInClassSet();
                 }
-                int secondCodePoint = parseCharClassAtomCodePoint(consumeChar());
+                char c2 = consumeChar();
+                if (c2 == '\\') {
+                    if (atEnd()) {
+                        handleUnfinishedEscape();
+                    } else if (isEscapeCharClass(curChar())) {
+                        throw syntaxError(JsErrorMessages.INVALID_CHARACTER_CLASS, ErrorCode.InvalidCharacterClass);
+                    }
+                }
+                int secondCodePoint = parseCharClassAtomCodePoint(c2);
                 if (secondCodePoint < firstCodePoint) {
                     throw handleCCRangeOutOfOrder(startPos);
                 }
@@ -1521,7 +1529,7 @@ public abstract class RegexLexer {
         return ret;
     }
 
-    private boolean isEscapeCharClass(char c) {
+    protected boolean isEscapeCharClass(char c) {
         return isPredefCharClass(c) || (featureEnabledUnicodePropertyEscapes() && (c == 'p' || c == 'P'));
     }
 
