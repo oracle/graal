@@ -10,7 +10,7 @@ redirect_from: /reference-manual/native-image/Agent/
 
 The Native Image tool relies on the static analysis of an application's reachable code at runtime. 
 However, the analysis cannot always completely predict all usages of the Java Native Interface (JNI), Foreign Function and Memory (FFM) API, Java Reflection, Dynamic Proxy objects, or class path resources. 
-Undetected usages of these dynamic features must be provided to the `native-image` tool in the form of [metadata](ReachabilityMetadata.md) (precomputed in code or as JSON configuration files).
+Undetected usages of these dynamic features must be provided to the `native-image` tool in the form of [metadata](ReachabilityMetadata.md) (precomputed in code or as JSON configuration files). For a complete reference of JSON field configurations, see [Reachability Metadata JSON Format Reference](ReachabilityMetadata.md#reachability-metadata-json-format-reference).
 
 Here you will find information how to automatically collect metadata for an application and write JSON configuration files.
 To learn how to compute dynamic feature calls in code, see [Reachability Metadata](ReachabilityMetadata.md#computing-metadata-in-code).
