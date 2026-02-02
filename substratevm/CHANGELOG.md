@@ -21,6 +21,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-71607) Deprecated and deleted the FallbackFeature. The flag `--no-fallback` is deprecated and has no effect any longer, other related options are removed.
 * (GR-71698) Introduced `--future-defaults=class-for-name-respects-class-loader` that changes 'Class.forName' and 'ClassLoader#loadClass' to respect the class loader arguments. 
 * (GR-72689) The context class loader seen during build-time context initialization is now part of the native image module layer. This means that by default, service loaders will now see some extra service providers definition coming from the native image module path.
+* (GR-52538) (GR-69523) (GR-73129) Introduce new SerialGC policy `Adaptive2` and default to mark-compact collection in the old generation. On average, this reduces memory usage and often improves throughput and latency. Restore the old behavior with: `-H:-CompactingOldGen -H:InitialCollectionPolicy=Adaptive`.
 
 ## GraalVM 25
 * (GR-52276) (GR-61959) Add support for Arena.ofShared().
