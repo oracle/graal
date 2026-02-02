@@ -397,8 +397,15 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             // This is a degenerate merge which will go away on its own.
             return false;
         }
-        if (merge.getUsageCount() != merge.phis().count()) {
+        if (merge.getUsageCount() != merge.usages().filter(ValuePhiNode.class).count()) {
             // This merge might have InputType.Anchor or InputType.Guard usages.
+            return false;
+        }
+        if (ifNode.graph().getGraphState().isAfterStage(StageFlag.VALUE_PROXY_REMOVAL)) {
+            /*
+             * The value proxy accelerates the coloring process. We anticipate limited optimization
+             * opportunities after value proxy removal.
+             */
             return false;
         }
 
@@ -485,7 +492,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
          */
         coloredNodes.put(loopExitNode.loopBegin(), loopBodyBranch);
 
-        EconomicMap<PhiNode, ValueNode> phiReplacements = EconomicMap.create(merge.phis().count());
+        EconomicMap<ValuePhiNode, ValueNode> phiReplacements = EconomicMap.create(merge.phis().count());
 
         for (PhiNode existingPhi : merge.phis()) {
             for (Node usage : existingPhi.usages()) {
@@ -495,18 +502,14 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     return false;
                 }
             }
-            phiReplacements.put(existingPhi, existingPhi.valueAt(forwardEndRewiredToLoopExit));
+            phiReplacements.put((ValuePhiNode) existingPhi, existingPhi.valueAt(forwardEndRewiredToLoopExit));
         }
 
         // Start modifying the graph
         ifNode.graph().removeSplit(ifNode, survivingSuccessor);
 
-        for (PhiNode existingPhi : phiReplacements.getKeys()) {
-            for (Node usage : existingPhi.usages().snapshot()) {
-                if (coloredNodes.get(usage) == loopExitBranch) {
-                    usage.replaceAllInputs(existingPhi, phiReplacements.get(existingPhi));
-                }
-            }
+        for (ValuePhiNode existingPhi : phiReplacements.getKeys()) {
+            replaceNodesInBranch(coloredNodes, loopExitBranch, existingPhi, phiReplacements.get(existingPhi));
         }
 
         merge.removeEnd(forwardEndRewiredToLoopExit);
