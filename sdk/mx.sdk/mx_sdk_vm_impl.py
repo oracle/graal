@@ -2336,10 +2336,14 @@ def _get_jvm_cfg_contents(cfgs_to_add):
     }
 
     new_lines = []
+    added_lines = set()
     for _, cfg in sorted(all_cfgs.items()):
         for config in cfg['configs']:
             validate_cfg_line(config, cfg['source'])
-            new_lines.append(config.strip() + os.linesep)
+            line_to_add = config.strip()
+            if line_to_add not in added_lines:
+                new_lines.append(line_to_add + os.linesep)
+                added_lines.add(line_to_add)
     # escape things that look like string substitutions
     return re.sub(r'<[\w\-]+?(:(.+?))?>', lambda m: '<esc:' + m.group(0)[1:], ''.join(new_lines))
 

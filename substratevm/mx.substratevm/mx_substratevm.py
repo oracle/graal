@@ -1888,6 +1888,28 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jlink=False,
 ))
 
+if os.environ.get('LIBJVM_IMAGE_AS_DEFAULT') == 'true':
+    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+        suite=suite,
+        name='SubstrateVM java as default',
+        short_name='svmjavad',
+        dir_name='svm',
+        license_files=[],
+        third_party_license_files=[],
+        dependencies=[],
+        jar_distributions=[],
+        builder_jar_distributions=[],
+        support_distributions=[],
+        priority=0,
+        jvm_configs=[{
+            'configs': ['-svm KNOWN'],
+            'priority': -1,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
+        }],
+        support_libraries_distributions=[],
+        stability="experimental",
+        jlink=False,
+    ))
+
 def _native_image_utils_extra_jvm_args():
     packages = ['jdk.graal.compiler/jdk.graal.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.graal.compiler/jdk.graal.compiler.core.common.util']
     args = ['--add-exports=' + packageName + '=ALL-UNNAMED' for packageName in packages]
