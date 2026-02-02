@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -55,7 +56,6 @@ import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
-import org.graalvm.word.impl.Word;
 
 public class WindowsUtils {
 
@@ -163,26 +163,27 @@ public class WindowsUtils {
         return FileAPI.NoTransition.FlushFileBuffers(handle) != 0;
     }
 
-    private static long performanceFrequency = 0L;
+    private static double nanosPerCount = 0L;
     public static final long NANOSECS_PER_SEC = 1000000000L;
     public static final int NANOSECS_PER_MILLISEC = 1000000;
 
     /** Retrieve a nanosecond counter for elapsed time measurement. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+26/src/hotspot/os/windows/os_windows.cpp#L1089-L1096")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+26/src/hotspot/os/windows/os_windows.cpp#L1194-L1200")
     public static long getNanoCounter() {
-        if (performanceFrequency == 0L) {
-            CLongPointer count = StackValue.get(CLongPointer.class);
-            WinBase.QueryPerformanceFrequency(count);
-            performanceFrequency = count.read();
+        CLongPointer count = StackValue.get(CLongPointer.class);
+        if (nanosPerCount == 0d) {
+            int code = WinBase.QueryPerformanceFrequency(count);
+            assert code != 0 : "QueryPerformanceFrequency failed.";
+            long performanceFrequency = count.read();
+            nanosPerCount = NANOSECS_PER_SEC / (double) performanceFrequency;
         }
 
-        CLongPointer currentCount = StackValue.get(CLongPointer.class);
-        WinBase.QueryPerformanceCounter(currentCount);
-        double current = currentCount.read();
-        double freq = performanceFrequency;
-        return (long) ((current / freq) * NANOSECS_PER_SEC);
+        int code = WinBase.QueryPerformanceCounter(count);
+        assert code != 0 : "QueryPerformanceCounter failed.";
+        double current = count.read();
+        return (long) (current * nanosPerCount);
     }
 
     /** Sentinel value denoting the uninitialized kernel handle. */
