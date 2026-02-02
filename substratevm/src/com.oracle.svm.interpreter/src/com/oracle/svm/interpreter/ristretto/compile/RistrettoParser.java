@@ -33,6 +33,9 @@ import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * Ristretto (native image bytecode based JIT) specific implementation of the bytecode parser.
+ */
 public class RistrettoParser extends BytecodeParser {
     private MetaAccessProvider cachedMetaAccess;
 

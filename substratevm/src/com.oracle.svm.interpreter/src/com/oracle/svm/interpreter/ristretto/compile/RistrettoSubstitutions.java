@@ -29,6 +29,7 @@ import static com.oracle.svm.interpreter.ristretto.RistrettoFeature.RistrettoEna
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
@@ -36,6 +37,13 @@ import jdk.graal.compiler.replacements.ReplacementsImpl;
 @TargetClass(value = ReplacementsImpl.class, onlyWith = RistrettoEnabled.class)
 final class Target_jdk_graal_compiler_replacements_ReplacementsImpl {
 
+    /**
+     * Plugins are initialized hosted with various graph builder plugins used for svm hosted
+     * intrinsics, compiler intrinsics and node intrinsics. At ristretto runtime we only need the
+     * compiler JIT portion of it. Stripping the correct plugins out is not feasible. Thus,
+     * ristretto will allocate fresh plugins at runtime in
+     * {@link RistrettoUtils#createRistrettoGraphBuilderConfiguration()}.
+     */
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private GraphBuilderConfiguration.Plugins graphBuilderPlugins;
