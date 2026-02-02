@@ -50,7 +50,7 @@ public final class RistrettoUnresolvedSignature extends SubstrateSignature {
         InterpreterResolvedJavaType accessingTypeResolved = accessingClass == null ? null : ((RistrettoType) accessingClass).getInterpreterType();
         JavaType returnType = interpreterSignature.getReturnType(accessingTypeResolved);
         if (returnType instanceof InterpreterResolvedJavaType iType) {
-            return RistrettoType.create(iType);
+            return RistrettoType.getOrCreate(iType);
         }
         return returnType;
     }
@@ -60,7 +60,7 @@ public final class RistrettoUnresolvedSignature extends SubstrateSignature {
         InterpreterResolvedJavaType accessingTypeResolved = accessingClass == null ? null : ((RistrettoType) accessingClass).getInterpreterType();
         JavaType parameterType = interpreterSignature.getParameterType(index, accessingTypeResolved);
         if (parameterType instanceof InterpreterResolvedJavaType iType) {
-            return RistrettoType.create(iType);
+            return RistrettoType.getOrCreate(iType);
         }
         return parameterType;
     }

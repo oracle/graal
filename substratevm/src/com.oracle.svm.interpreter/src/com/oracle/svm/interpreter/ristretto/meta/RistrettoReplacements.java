@@ -59,7 +59,7 @@ public class RistrettoReplacements extends DelegatingReplacements {
                     NodeSourcePosition replaceePosition, OptionValues options) {
         Function<Object, Object> t = o -> {
             if (o instanceof SubstrateType substrateType) {
-                return RistrettoType.create((InterpreterResolvedJavaType) substrateType.getHub().getInterpreterType());
+                return RistrettoType.getOrCreate((InterpreterResolvedJavaType) substrateType.getHub().getInterpreterType());
             } else if (o instanceof SubstrateMethod substrateMethod &&
                             /*
                              * Note that we exclude native methods and other snippets here. If we
@@ -89,7 +89,7 @@ public class RistrettoReplacements extends DelegatingReplacements {
         InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) substrateMethod.getDeclaringClass().getHub().getInterpreterType();
         for (var iMeth : iType.getDeclaredMethods()) {
             if (iMeth.getName().equals(substrateMethod.getName()) && iMeth.getSignature().toMethodDescriptor().equals(substrateMethod.getSignature().toMethodDescriptor())) {
-                return RistrettoMethod.create(iMeth);
+                return RistrettoMethod.getOrCreate(iMeth);
             }
         }
         return null;
@@ -100,13 +100,13 @@ public class RistrettoReplacements extends DelegatingReplacements {
         if (substrateField.isStatic()) {
             for (var iField : iType.getStaticFields()) {
                 if (iField.getName().equals(substrateField.getName())) {
-                    return RistrettoField.create((InterpreterResolvedJavaField) iField);
+                    return RistrettoField.getOrCreate((InterpreterResolvedJavaField) iField);
                 }
             }
         } else {
             for (var iField : iType.getInstanceFields(true)) {
                 if (iField.getName().equals(substrateField.getName())) {
-                    return RistrettoField.create((InterpreterResolvedJavaField) iField);
+                    return RistrettoField.getOrCreate((InterpreterResolvedJavaField) iField);
                 }
             }
         }

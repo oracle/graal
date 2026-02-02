@@ -60,7 +60,7 @@ public class RistrettoConstantReflectionProvider extends SubstrateConstantReflec
         if (sType == null) {
             return null;
         }
-        return RistrettoType.create((InterpreterResolvedJavaType) sType.getHub().getInterpreterType());
+        return RistrettoType.getOrCreate((InterpreterResolvedJavaType) sType.getHub().getInterpreterType());
     }
 
     @Override

@@ -58,13 +58,13 @@ public final class RistrettoMetaAccess extends SubstrateMetaAccess {
     @Override
     public SubstrateType lookupJavaType(Class<?> clazz) {
         InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) DynamicHub.fromClass(clazz).getInterpreterType();
-        return RistrettoType.create(iType);
+        return RistrettoType.getOrCreate(iType);
     }
 
     @Override
     public ResolvedJavaMethod lookupJavaMethod(Executable reflectionMethod) {
         // we directly go over crema here
-        return RistrettoMethod.create(CremaMethodAccess.toJVMCI(reflectionMethod));
+        return RistrettoMethod.getOrCreate(CremaMethodAccess.toJVMCI(reflectionMethod));
     }
 
     @Override
@@ -73,13 +73,13 @@ public final class RistrettoMetaAccess extends SubstrateMetaAccess {
         if (Modifier.isStatic(reflectionField.getModifiers())) {
             for (var iField : iType.getStaticFields()) {
                 if (iField.getName().equals(reflectionField.getName())) {
-                    return RistrettoField.create((InterpreterResolvedJavaField) iField);
+                    return RistrettoField.getOrCreate((InterpreterResolvedJavaField) iField);
                 }
             }
         } else {
             for (var iField : iType.getInstanceFields(true)) {
                 if (iField.getName().equals(reflectionField.getName())) {
-                    return RistrettoField.create((InterpreterResolvedJavaField) iField);
+                    return RistrettoField.getOrCreate((InterpreterResolvedJavaField) iField);
                 }
             }
         }
@@ -96,7 +96,7 @@ public final class RistrettoMetaAccess extends SubstrateMetaAccess {
         SubstrateType substrateType = (SubstrateType) svmType;
         DynamicHub hub = substrateType.getHub();
         InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) hub.getInterpreterType();
-        return RistrettoType.create(iType);
+        return RistrettoType.getOrCreate(iType);
     }
 
     @Override

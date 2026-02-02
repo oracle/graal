@@ -486,7 +486,7 @@ public class RistrettoUtils {
     public static RistrettoField[] toRFields(ResolvedJavaField[] iFields) {
         ArrayList<RistrettoField> rFields = new ArrayList<>();
         for (int i = 0; i < iFields.length; i++) {
-            RistrettoField rField = RistrettoField.create((InterpreterResolvedJavaField) iFields[i]);
+            RistrettoField rField = RistrettoField.getOrCreate((InterpreterResolvedJavaField) iFields[i]);
             if (rField.getOffset() < 0) {
                 /*
                  * TODO GR-73029: Hosted fields that are not needed at runtime might still have

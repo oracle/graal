@@ -54,7 +54,7 @@ public final class RistrettoField extends SubstrateField {
 
     private static final Function<InterpreterResolvedJavaField, ResolvedJavaField> RISTRETTO_FIELD_FUNCTION = RistrettoField::new;
 
-    public static RistrettoField create(InterpreterResolvedJavaField interpreterField) {
+    public static RistrettoField getOrCreate(InterpreterResolvedJavaField interpreterField) {
         return (RistrettoField) interpreterField.getRistrettoField(RISTRETTO_FIELD_FUNCTION);
     }
 
@@ -95,7 +95,7 @@ public final class RistrettoField extends SubstrateField {
     public JavaType getType() {
         JavaType fieldType = interpreterField.getType();
         if (fieldType instanceof InterpreterResolvedJavaType iType) {
-            return RistrettoType.create(iType);
+            return RistrettoType.getOrCreate(iType);
         }
         if (fieldType instanceof UnresolvedJavaType unresolvedJavaType) {
             throw GraalError.shouldNotReachHere("Cannot have unresolved fields for resolved types " + getDeclaringClass() + " -> " + unresolvedJavaType);
@@ -126,7 +126,7 @@ public final class RistrettoField extends SubstrateField {
 
     @Override
     public SubstrateType getDeclaringClass() {
-        return RistrettoType.create(interpreterField.getDeclaringClass());
+        return RistrettoType.getOrCreate(interpreterField.getDeclaringClass());
     }
 
     @Override

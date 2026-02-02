@@ -58,7 +58,7 @@ public final class RistrettoType extends SubstrateType {
         return interpreterType;
     }
 
-    public static RistrettoType create(InterpreterResolvedJavaType interpreterType) {
+    public static RistrettoType getOrCreate(InterpreterResolvedJavaType interpreterType) {
         return (RistrettoType) interpreterType.getRistrettoType(RISTRETTO_TYPE_FUNCTION);
     }
 
@@ -72,7 +72,7 @@ public final class RistrettoType extends SubstrateType {
         if (isArray()) {
             InterpreterResolvedJavaType iComponentType = (InterpreterResolvedJavaType) interpreterType.getComponentType();
             GraalError.guarantee(iComponentType != null, "Must find component type if we are dealing with an array, this %s component type %s", this, iComponentType);
-            return create(iComponentType);
+            return getOrCreate(iComponentType);
         } else {
             return null;
         }
@@ -113,19 +113,19 @@ public final class RistrettoType extends SubstrateType {
     public ResolvedJavaType getArrayClass() {
         InterpreterResolvedJavaType iArrayType = interpreterType.getArrayClass();
         assert iArrayType != null;
-        return RistrettoType.create(iArrayType);
+        return RistrettoType.getOrCreate(iArrayType);
     }
 
     @Override
     public SubstrateType getSuperclass() {
         DynamicHub superHub = getHub().getSuperHub();
-        return RistrettoType.create((InterpreterResolvedJavaType) superHub.getInterpreterType());
+        return RistrettoType.getOrCreate((InterpreterResolvedJavaType) superHub.getInterpreterType());
     }
 
     @Override
     protected SubstrateType getSuperType() {
         if (isArray() || isInterface()) {
-            return RistrettoType.create((InterpreterResolvedJavaType) DynamicHub.fromClass(Object.class).getInterpreterType());
+            return RistrettoType.getOrCreate((InterpreterResolvedJavaType) DynamicHub.fromClass(Object.class).getInterpreterType());
         } else {
             return getSuperclass();
         }

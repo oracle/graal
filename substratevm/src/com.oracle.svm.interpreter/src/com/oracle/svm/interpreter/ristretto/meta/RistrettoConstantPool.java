@@ -79,7 +79,7 @@ public final class RistrettoConstantPool implements ConstantPool {
     public JavaType lookupReferencedType(int rawIndex, int opcode) {
         JavaType lookupType = interpreterConstantPool.lookupReferencedType(rawIndex, opcode);
         if (lookupType instanceof InterpreterResolvedJavaType iType) {
-            return RistrettoType.create(iType);
+            return RistrettoType.getOrCreate(iType);
         }
         return lookupType;
     }
@@ -96,7 +96,7 @@ public final class RistrettoConstantPool implements ConstantPool {
          * fields (also those that are not crema resolved, i.e., AOT fields).
          */
         if (javaField instanceof InterpreterResolvedJavaField iField) {
-            return RistrettoField.create(iField);
+            return RistrettoField.getOrCreate(iField);
         }
         return javaField;
     }
@@ -109,7 +109,7 @@ public final class RistrettoConstantPool implements ConstantPool {
         if (iMethod.getConstantPool().peekCachedEntry(cpi) instanceof UnresolvedJavaMethod unresolvedJavaMethod) {
             return unresolvedJavaMethod;
         }
-        return RistrettoMethod.create(Interpreter.resolveMethod(iMethod, opcode, (char) cpi));
+        return RistrettoMethod.getOrCreate(Interpreter.resolveMethod(iMethod, opcode, (char) cpi));
     }
 
     @Override
@@ -121,7 +121,7 @@ public final class RistrettoConstantPool implements ConstantPool {
     public JavaType lookupType(int cpi, int opcode) {
         JavaType lookupType = interpreterConstantPool.lookupType(cpi, opcode);
         if (lookupType instanceof InterpreterResolvedJavaType iType) {
-            return RistrettoType.create(iType);
+            return RistrettoType.getOrCreate(iType);
         }
         return lookupType;
     }
@@ -155,7 +155,7 @@ public final class RistrettoConstantPool implements ConstantPool {
         } else if (retVal instanceof JavaType) {
             if (retVal instanceof ResolvedJavaType) {
                 GraalError.guarantee(retVal instanceof InterpreterResolvedJavaType, "Must be an interpreter resolved java type but is %s", retVal);
-                return RistrettoType.create((InterpreterResolvedJavaType) retVal);
+                return RistrettoType.getOrCreate((InterpreterResolvedJavaType) retVal);
             } else {
                 // unresolved entry, just return it
                 return retVal;
