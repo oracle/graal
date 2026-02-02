@@ -5,7 +5,6 @@
   local top_level_ci = utils.top_level_ci,
   local devkits = common.devkits,
 
-  local darwin_amd64 = common.darwin_amd64,
   local darwin_aarch64 = common.darwin_aarch64,
   local linux_amd64 = common.linux_amd64,
   local windows_amd64 = common.windows_amd64,
@@ -150,7 +149,6 @@
   local _builds = std.flattenArrays([
       [
         linux_amd64  + jdk + sigtest + guard,
-        darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
         darwin_aarch64 + jdk + truffle_weekly + gate_lite + guard,
       ] for jdk in [common.oraclejdk21, common.oraclejdkLatest]
     ]) +

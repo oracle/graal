@@ -1412,9 +1412,9 @@ suite = {
               "PLATFORM" : "aarch64",
             },
           },
-          "amd64": {
+          "<others>": {
             "buildEnv" : {
-              "PLATFORM" : "x86_64",
+              "PLATFORM" : "unknown_platform",
             },
           },
         },
@@ -2189,7 +2189,6 @@ suite = {
       "platforms" : [
           "linux-amd64",
           "linux-aarch64",
-          "darwin-amd64",
           "darwin-aarch64",
           "windows-amd64",
       ],
@@ -2212,7 +2211,6 @@ suite = {
       "platforms" : [
           "linux-amd64",
           "linux-aarch64",
-          "darwin-amd64",
           "darwin-aarch64",
           "windows-amd64",
       ],

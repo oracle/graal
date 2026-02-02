@@ -6,7 +6,6 @@ local sulong_deps = common.deps.sulong;
 {
   local linux_amd64 = common.linux_amd64,
   local linux_aarch64 = common.linux_aarch64,
-  local darwin_amd64 = common.darwin_amd64,
   local darwin_aarch64 = common.darwin_aarch64,
   local windows_amd64 = common.windows_amd64,
 
@@ -78,7 +77,6 @@ local sulong_deps = common.deps.sulong;
 
   linux_amd64:: linux_amd64 + sulong_deps,
   linux_aarch64:: linux_aarch64 + sulong_deps,
-  darwin_amd64:: darwin_amd64 + sulong_deps,
   darwin_aarch64:: darwin_aarch64 + sulong_deps,
   windows_amd64:: windows_amd64 + sulong_deps + {
     local jdk = if self.jdk_name == "jdk-latest" then "jdkLatest" else self.jdk_name,

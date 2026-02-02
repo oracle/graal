@@ -700,7 +700,6 @@ def register_espresso_runtime_resource(java_home_dep, llvm_java_home_dep, regist
         platforms=[
             "linux-amd64",
             "linux-aarch64",
-            "darwin-amd64",
             "darwin-aarch64",
             "windows-amd64",
         ],

@@ -14,10 +14,6 @@
             },
             {
                 "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
                 "arch": "aarch64"
             },
             {
@@ -57,11 +53,6 @@
             },
             {
                 "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-{version}-macos-{arch}"
-            },
-            {
-                "os": "darwin",
                 "arch": "aarch64",
                 "name_template": "{name}-community-{version}-macos-{arch}"
             },
@@ -87,11 +78,6 @@
                 "os": "linux",
                 "arch": "aarch64",
                 "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
             },
             {
                 "os": "darwin",
@@ -123,11 +109,6 @@
             },
             {
                 "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-{version}-macos-{arch}"
-            },
-            {
-                "os": "darwin",
                 "arch": "aarch64",
                 "name_template": "{name}-community-{version}-macos-{arch}"
             },
@@ -153,11 +134,6 @@
                 "os": "linux",
                 "arch": "aarch64",
                 "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
             },
             {
                 "os": "darwin",
@@ -189,11 +165,6 @@
             },
             {
                 "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-{version}-macos-{arch}"
-            },
-            {
-                "os": "darwin",
                 "arch": "aarch64",
                 "name_template": "{name}-community-{version}-macos-{arch}"
             },
@@ -219,11 +190,6 @@
                 "os": "linux",
                 "arch": "aarch64",
                 "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
             },
             {
                 "os": "darwin",
@@ -255,11 +221,6 @@
             },
             {
                 "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-{version}-macos-{arch}"
-            },
-            {
-                "os": "darwin",
                 "arch": "aarch64",
                 "name_template": "{name}-community-{version}-macos-{arch}"
             },
@@ -285,11 +246,6 @@
                 "os": "linux",
                 "arch": "aarch64",
                 "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
             },
             {
                 "os": "darwin",

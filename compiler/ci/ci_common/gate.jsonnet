@@ -224,12 +224,10 @@
   local gate_jobs = {
     "gate-compiler-test-labsjdk-latest-linux-amd64": t("1:00:00"),
     "gate-compiler-test-labsjdk-latest-linux-aarch64": t("1:50:00") + s.avoid_xgene3,
-    "gate-compiler-test-labsjdk-latest-darwin-amd64": t("1:00:00") + s.ram16gb,
     "gate-compiler-test-labsjdk-latest-darwin-aarch64": t("1:00:00"),
     "gate-compiler-test-labsjdk-latest-windows-amd64": t("1:30:00"),
     "gate-compiler-test_zgc-labsjdk-latest-linux-amd64": t("1:00:00"),
     "gate-compiler-test_zgc-labsjdk-latest-linux-aarch64": t("1:50:00") + s.avoid_xgene3,
-    "gate-compiler-test_zgc-labsjdk-latest-darwin-amd64": t("1:00:00") + s.ram16gb,
     "gate-compiler-test_zgc-labsjdk-latest-darwin-aarch64": t("1:00:00"),
 
     # Style jobs need to stay on a JDK compatible with all the style
@@ -263,14 +261,11 @@
   # fields of the denoted build.
   local dailies = {
     "daily-compiler-ctw-labsjdk-latest-linux-aarch64": {},
-    "daily-compiler-ctw-labsjdk-latest-darwin-amd64": {},
     "daily-compiler-ctw-labsjdk-latest-darwin-aarch64": {},
 
     "daily-compiler-ctw_economy-labsjdk-latest-linux-aarch64": {},
-    "daily-compiler-ctw_economy-labsjdk-latest-darwin-amd64": {},
     "daily-compiler-ctw_economy-labsjdk-latest-darwin-aarch64": {},
 
-    "daily-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": {},
 
     "daily-compiler-bootstrap_full-labsjdk-latest-linux-amd64": s.many_cores,
     "daily-compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": s.many_cores
@@ -304,7 +299,6 @@
 
     "weekly-compiler-test_serialgc-labsjdk-latest-linux-amd64": {},
     "weekly-compiler-test_serialgc-labsjdk-latest-linux-aarch64": {},
-    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-amd64": {},
     "weekly-compiler-test_serialgc-labsjdk-latest-darwin-aarch64": {},
 
     "weekly-compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-amd64": {},
@@ -401,7 +395,6 @@
   local all_os_arches = [
     "linux-amd64",
     "linux-aarch64",
-    "darwin-amd64",
     "darwin-aarch64",
     "windows-amd64"
   ],
@@ -450,7 +443,6 @@
       for os_arch in [
         "linux-amd64",
         "linux-aarch64",
-        "darwin-amd64",
         "darwin-aarch64"
       ]
       for task in [
@@ -467,7 +459,6 @@
     for os_arch in [
       "linux-amd64",
       "linux-aarch64",
-      "darwin-amd64",
       "darwin-aarch64"
     ]
     for task in [

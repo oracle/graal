@@ -1828,7 +1828,6 @@ suite = {
       "platforms" : [
           "linux-amd64",
           "linux-aarch64",
-          "darwin-amd64",
           "darwin-aarch64",
           "windows-amd64",
           "windows-aarch64",
@@ -1931,7 +1930,6 @@ suite = {
       "platforms" : [
           "linux-amd64",
           "linux-aarch64",
-          "darwin-amd64",
           "darwin-aarch64",
       ],
       "layout" : {
@@ -1954,7 +1952,6 @@ suite = {
       "platforms" : [
           "linux-amd64",
           "linux-aarch64",
-          "darwin-amd64",
           "darwin-aarch64",
           "windows-amd64",
           "windows-aarch64",

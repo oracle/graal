@@ -92,9 +92,6 @@
 
     common.windows_amd64 + common.oraclejdkLatest + tools_weekly + devkits["windows-jdkLatest"],
     common.windows_amd64 + common.oraclejdk21 + tools_weekly + devkits["windows-jdk21"],
-
-    common.darwin_amd64  + common.oraclejdkLatest + tools_weekly,
-    common.darwin_amd64  + common.oraclejdk21 + tools_weekly,
   ],
 
   builds: utils.add_defined_in(_builds, std.thisFile),

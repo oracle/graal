@@ -55,8 +55,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       'post-merge-deploy-vm-standalones-java-latest-linux-amd64',
       'post-merge-deploy-vm-base-java-latest-linux-aarch64',
       'post-merge-deploy-vm-standalones-java-latest-linux-aarch64',
-      'post-merge-deploy-vm-base-java-latest-darwin-amd64',
-      'post-merge-deploy-vm-standalones-java-latest-darwin-amd64',
       'post-merge-deploy-vm-base-java-latest-darwin-aarch64',
       'post-merge-deploy-vm-standalones-java-latest-darwin-aarch64',
       'post-merge-deploy-vm-base-java-latest-windows-amd64',
@@ -131,16 +129,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       timelimit: '1:00:00',
       notify_groups:: ['deploy'],
     },
-    # Darwin/AMD64
-    vm_common.graalvm_complete_build_deps('ce', 'darwin', 'amd64', java_version='latest') + vm_common.darwin_deploy + vm_common.vm_base('darwin', 'amd64', 'gate', jdk_hint='Latest') + vm_common.maven_deploy_base_functions.base_object('darwin', 'amd64', dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
-      name: 'gate-vm-maven-dry-run-darwin-amd64',
-      timelimit: '1:00:00',
-    },
-    vm_common.graalvm_complete_build_deps('ce', 'darwin', 'amd64', java_version='latest') + vm_common.darwin_deploy + vm_common.vm_base('darwin', 'amd64', 'post-merge', deploy=true, jdk_hint='Latest') + vm_common.maven_deploy_base_functions.base_object('darwin', 'amd64', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
-      name: 'post-merge-deploy-vm-maven-darwin-amd64',
-      timelimit: '1:00:00',
-      notify_groups:: ['deploy'],
-    },
     # Darwin/AARCH64
     vm_common.graalvm_complete_build_deps('ce', 'darwin', 'aarch64', java_version='latest') + vm_common.darwin_deploy + vm_common.vm_base('darwin', 'aarch64', 'gate') + vm_common.maven_deploy_base_functions.base_object('darwin', 'aarch64', dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
       name: 'gate-vm-maven-dry-run-darwin-aarch64',
@@ -184,8 +172,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     vm_common.deploy_vm_standalones_javaLatest_linux_amd64,
     # Linux/AARCH64
     vm_common.deploy_vm_standalones_javaLatest_linux_aarch64,
-    # Darwin/AMD64
-    vm_common.deploy_vm_standalones_javaLatest_darwin_amd64,
     # Darwin/AARCH64
     vm_common.deploy_vm_standalones_javaLatest_darwin_aarch64,
     # Windows/AMD64
