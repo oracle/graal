@@ -1060,7 +1060,7 @@ public class CompileQueue {
     }
 
     private boolean makeSingleCallsiteInlineDecision(HostedMethod caller, HostedMethod callee) {
-        if (!isCalleeGraphAvailable(caller, callee)) {
+        if (!isCalleeGraphAvailable(caller, callee) || !callee.getWrapped().canBeInlined()) {
             return false;
         }
 
