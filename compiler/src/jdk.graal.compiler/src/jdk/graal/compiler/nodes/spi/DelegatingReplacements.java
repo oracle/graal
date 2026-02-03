@@ -125,7 +125,7 @@ public class DelegatingReplacements<T extends Replacements> implements Replaceme
     }
 
     @Override
-    public <T extends SnippetTemplateCache> T getSnippetTemplateCache(Class<T> templatesClass) {
+    public <S extends SnippetTemplateCache> S getSnippetTemplateCache(Class<S> templatesClass) {
         return delegate.getSnippetTemplateCache(templatesClass);
     }
 
