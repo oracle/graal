@@ -95,16 +95,6 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
-    public boolean isLocal() {
-        return false;
-    }
-
-    @Override
-    public boolean isMember() {
-        return false;
-    }
-
-    @Override
     public Klass getEnclosingType() {
         return null;
     }

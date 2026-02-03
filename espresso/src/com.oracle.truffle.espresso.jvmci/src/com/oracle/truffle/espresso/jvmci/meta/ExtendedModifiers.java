@@ -32,6 +32,7 @@ final class ExtendedModifiers {
     static final int FINALIZER = 0x00010000;
     static final int STABLE_FIELD = 0x00010000;
     static final int SCOPED_METHOD = 0x00200000;
+    static final int HIDDEN_CLASS = 0x04000000;
 
     private ExtendedModifiers() {
     }

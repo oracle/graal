@@ -78,7 +78,7 @@ public class InteropConstantPoolWrapper implements TruffleObject {
                         InvokeMember.LOOKUP_NAME,
                         InvokeMember.LOOKUP_APPENDIX,
                         InvokeMember.LOOKUP_CONSTANT,
-                        InvokeMember.LOOKUP_DYNAMIC_KIND,
+                        InvokeMember.LOOKUP_RESOLVED_DYNAMIC_KIND,
                         InvokeMember.GET_TAG_BYTE_AT,
                         InvokeMember.LOOKUP_REFERENCED_TYPE,
                         InvokeMember.LOOKUP_TYPE,
@@ -138,7 +138,7 @@ public class InteropConstantPoolWrapper implements TruffleObject {
         static final String LOOKUP_NAME = "lookupName";
         static final String LOOKUP_APPENDIX = "lookupAppendix";
         static final String LOOKUP_CONSTANT = "lookupConstant";
-        static final String LOOKUP_DYNAMIC_KIND = "lookupDynamicKind";
+        static final String LOOKUP_RESOLVED_DYNAMIC_KIND = "lookupResolvedDynamicKind";
         static final String GET_TAG_BYTE_AT = "getTagByteAt";
         static final String LOOKUP_REFERENCED_TYPE = "lookupReferencedType";
         static final String LOOKUP_TYPE = "lookupType";
@@ -299,8 +299,8 @@ public class InteropConstantPoolWrapper implements TruffleObject {
             return JVMCIConstantPoolUtils.lookupAppendix(receiver.constantPool, index, opcode, context);
         }
 
-        @Specialization(guards = "LOOKUP_DYNAMIC_KIND.equals(member)")
-        static int lookupDynamicKind(InteropConstantPoolWrapper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+        @Specialization(guards = "LOOKUP_RESOLVED_DYNAMIC_KIND.equals(member)")
+        static int lookupResolvedDynamicKind(InteropConstantPoolWrapper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
                         @Bind Node node,
                         @Cached @Exclusive InlinedBranchProfile typeError,
                         @Cached @Exclusive InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
@@ -312,6 +312,11 @@ public class InteropConstantPoolWrapper implements TruffleObject {
             if (!(arguments[0] instanceof Integer cpi)) {
                 typeError.enter(node);
                 throw UnsupportedTypeException.create(arguments);
+            }
+            Meta meta = EspressoContext.get(node).getMeta();
+            ResolvedConstant resolvedConstant = receiver.constantPool.peekResolvedOrNull(cpi, meta);
+            if (resolvedConstant == null) {
+                return '-';
             }
             return TypeSymbols.getJavaKind(receiver.constantPool.dynamicType(cpi)).getTypeChar();
         }
@@ -333,11 +338,11 @@ public class InteropConstantPoolWrapper implements TruffleObject {
             }
             boolean resolve = false;
             if (arguments.length > 1) {
-                if (!(arguments[1] instanceof Boolean shouldDesolve)) {
+                if (!(arguments[1] instanceof Boolean shouldResolve)) {
                     typeError.enter(node);
                     throw UnsupportedTypeException.create(arguments);
                 }
-                resolve = shouldDesolve;
+                resolve = shouldResolve;
             }
             if (cpi < 0 || cpi >= receiver.constantPool.length()) {
                 indexError.enter(node);
@@ -365,7 +370,12 @@ public class InteropConstantPoolWrapper implements TruffleObject {
                 }
                 case DYNAMIC -> {
                     Meta meta = EspressoContext.get(node).getMeta();
-                    ResolvedConstant resolvedConstant = receiver.constantPool.peekResolvedOrNull(cpi, meta);
+                    ResolvedConstant resolvedConstant;
+                    if (resolve) {
+                        resolvedConstant = receiver.constantPool.resolvedAt(receiver.constantPool.getHolder(), cpi);
+                    } else {
+                        resolvedConstant = receiver.constantPool.peekResolvedOrNull(cpi, meta);
+                    }
                     if (resolvedConstant == null) {
                         yield StaticObject.NULL;
                     }
@@ -471,7 +481,7 @@ public class InteropConstantPoolWrapper implements TruffleObject {
                 arityError.enter(node);
                 throw ArityException.create(2, 2, arguments.length);
             }
-            if (!(arguments[0] instanceof Integer index)) {
+            if (!(arguments[0] instanceof Integer cpi)) {
                 typeError.enter(node);
                 throw UnsupportedTypeException.create(arguments);
             }
@@ -480,8 +490,8 @@ public class InteropConstantPoolWrapper implements TruffleObject {
                 throw UnsupportedTypeException.create(arguments);
             }
             EspressoContext context = EspressoContext.get(node);
-            InteropBootstrapMethodInvocation builder = new InteropBootstrapMethodInvocation();
-            JVMCIConstantPoolUtils.lookupBootstrapMethodInvocation(receiver.constantPool, index, opcode, context, builder);
+            InteropBootstrapMethodInvocation builder = new InteropBootstrapMethodInvocation(cpi);
+            JVMCIConstantPoolUtils.lookupBootstrapMethodInvocation(receiver.constantPool, cpi, opcode, context, builder);
             if (builder.isInitialised()) {
                 return builder;
             }
@@ -498,17 +508,17 @@ public class InteropConstantPoolWrapper implements TruffleObject {
                 arityError.enter(node);
                 throw ArityException.create(1, 1, arguments.length);
             }
-            if (!(arguments[0] instanceof Integer index)) {
+            if (!(arguments[0] instanceof Integer siteIndex)) {
                 typeError.enter(node);
                 throw UnsupportedTypeException.create(arguments);
             }
             EspressoContext context = EspressoContext.get(node);
             JVMCIIndyData indyData = JVMCIIndyData.getExisting(receiver.constantPool.getHolder(), context.getMeta());
-            if (index < 0 || index >= indyData.getLocationCount()) {
-                context.getMeta().throwIndexOutOfBoundsExceptionBoundary("Invalid site index", index, indyData.getLocationCount());
+            if (siteIndex < 0 || siteIndex >= indyData.getLocationCount()) {
+                context.getMeta().throwIndexOutOfBoundsExceptionBoundary("Invalid site index", siteIndex, indyData.getLocationCount());
             }
-            int indyCpi = indyData.recoverFullCpi(index);
-            InteropBootstrapMethodInvocation builder = new InteropBootstrapMethodInvocation();
+            int indyCpi = indyData.recoverFullCpi(siteIndex);
+            InteropBootstrapMethodInvocation builder = new InteropBootstrapMethodInvocation(indyCpi);
             JVMCIConstantPoolUtils.lookupBootstrapMethodInvocation(receiver.constantPool, indyCpi, INVOKEDYNAMIC, context, builder);
             assert builder.isInitialised();
             return builder;

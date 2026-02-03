@@ -118,7 +118,9 @@ public final class RuntimeConstantPool extends ConstantPool {
     public ResolvedConstant resolvedAt(ObjectKlass accessingKlass, int index, boolean allowStickyFailures) {
         ResolvedConstant c = resolvedConstants[index];
         if (c == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
             synchronized (this) {
                 c = resolvedConstants[index];
                 if (c == null) {
@@ -291,6 +293,7 @@ public final class RuntimeConstantPool extends ConstantPool {
         return args;
     }
 
+    @TruffleBoundary
     private ResolvedConstant resolve(int thisIndex, ObjectKlass accessingKlass) {
         return switch (tagAt(thisIndex)) {
             case STRING -> resolveStringConstant(thisIndex, accessingKlass);

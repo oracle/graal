@@ -22,8 +22,11 @@
  */
 package com.oracle.truffle.espresso.vmaccess;
 
+import static com.oracle.truffle.espresso.vmaccess.EspressoExternalVMAccess.throwHostException;
+
 import java.util.List;
 
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedArrayType;
@@ -96,6 +99,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
 
     @Override
     protected AbstractEspressoResolvedJavaRecordComponent[] getRecordComponents0() {
+        // GR-73163
         throw JVMCIError.unimplemented();
     }
 
@@ -137,7 +141,13 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
 
     @Override
     protected EspressoExternalResolvedJavaMethod resolveMethod0(AbstractEspressoResolvedJavaMethod method, AbstractEspressoResolvedInstanceType callerType) {
-        throw JVMCIError.unimplemented();
+        EspressoExternalResolvedJavaMethod espressoMethod = (EspressoExternalResolvedJavaMethod) method;
+        EspressoExternalResolvedInstanceType espressoCallerType = (EspressoExternalResolvedInstanceType) callerType;
+        Value result = access.invokeJVMCIHelper("resolveMethod", getMetaObject(), espressoMethod.getMirror(), espressoCallerType.getMetaObject());
+        if (result.isNull()) {
+            return null;
+        }
+        return new EspressoExternalResolvedJavaMethod(result, access);
     }
 
     @Override
@@ -266,17 +276,16 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
 
     @Override
     public void link() {
-        access.invokeJVMCIHelper("link", metaObject);
+        try {
+            access.invokeJVMCIHelper("link", metaObject);
+        } catch (PolyglotException e) {
+            throw throwHostException(e);
+        }
     }
 
     @Override
     public boolean declaresDefaultMethods() {
         return access.invokeJVMCIHelper("declaresDefaultMethods", getMetaObject()).asBoolean();
-    }
-
-    @Override
-    public boolean isHidden() {
-        throw JVMCIError.unimplemented();
     }
 
     @Override
@@ -286,7 +295,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
 
     @Override
     public boolean isRecord() {
-        throw JVMCIError.unimplemented();
+        return access.invokeJVMCIHelper("isRecord", getMetaObject()).asBoolean();
     }
 
     @Override
@@ -296,7 +305,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
 
     @Override
     public String getSourceFileName() {
-        return access.invokeJVMCIHelper("getSourceFileName", metaObject).asString();
+        return access.invokeJVMCIHelper("getSourceFileName", getMetaObject()).asString();
     }
 
     private boolean isLocalOrAnonymousClass() {
@@ -360,7 +369,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
 
     @Override
     protected int getVtableLength() {
-        throw JVMCIError.unimplemented();
+        return access.invokeJVMCIHelper("getVTableLength", getMetaObject()).asInt();
     }
 
     @Override

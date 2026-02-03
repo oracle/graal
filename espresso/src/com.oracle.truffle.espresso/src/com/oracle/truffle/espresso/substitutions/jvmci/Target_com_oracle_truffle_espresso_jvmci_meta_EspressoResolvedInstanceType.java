@@ -89,11 +89,6 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     }
 
     @Substitution
-    public static boolean isHidden(@JavaType(Class.class) StaticObject self, @Inject EspressoContext context) {
-        return context.getVM().JVM_IsHiddenClass(self);
-    }
-
-    @Substitution
     public static @JavaType(Class[].class) StaticObject getPermittedSubclasses0(@JavaType(Class.class) StaticObject self, @Inject EspressoContext context) {
         return context.getVM().JVM_GetPermittedSubclasses(self);
     }
@@ -489,6 +484,9 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        if (selfKlass.isInterface()) {
+            return 0;
+        }
         return selfKlass.getVTable().length;
     }
 

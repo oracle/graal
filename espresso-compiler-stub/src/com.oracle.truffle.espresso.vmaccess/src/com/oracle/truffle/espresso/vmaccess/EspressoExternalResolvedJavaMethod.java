@@ -27,9 +27,9 @@ import java.lang.reflect.Type;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
+import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceType;
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaMethod;
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoSignature;
-import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType;
 
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.vm.ci.common.JVMCIError;
@@ -48,6 +48,10 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
 
     private final Value methodMirror;
     private final int flags;
+
+    EspressoExternalResolvedJavaMethod(Value methodMirror, EspressoExternalVMAccess access) {
+        this(new EspressoExternalResolvedInstanceType(access, methodMirror.getMember("holder")), methodMirror);
+    }
 
     EspressoExternalResolvedJavaMethod(EspressoExternalResolvedInstanceType holder, Value methodMirror) {
         super(holder, methodMirror.getMember("hasPoison").asBoolean());
@@ -93,13 +97,13 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
     }
 
     @Override
-    protected int getVtableIndexForInterfaceMethod(EspressoResolvedInstanceType resolved) {
-        return 0;
+    protected int getVtableIndexForInterfaceMethod(AbstractEspressoResolvedInstanceType resolved) {
+        return getAccess().invokeJVMCIHelper("getVtableIndexForInterfaceMethod", getMirror(), ((EspressoExternalResolvedInstanceType) resolved).getMetaObject()).asInt();
     }
 
     @Override
     protected int getVtableIndex() {
-        return 0;
+        return methodMirror.getMember("vtableIndex").asInt();
     }
 
     @Override
@@ -204,10 +208,19 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
 
     @Override
     public Parameter[] getParameters() {
-        if (getSignature().getParameterCount(false) == 0) {
+        Value table = methodMirror.getMember("parameters");
+        if (table.isNull()) {
             return NO_PARAMETERS;
         }
-        throw JVMCIError.unimplemented();
+        int size = Math.toIntExact(table.getArraySize());
+        Parameter[] result = new Parameter[size];
+        for (int i = 0; i < size; i++) {
+            Value parameter = table.getArrayElement(i);
+            String name = parameter.getMember("name").asString();
+            int modifiers = parameter.getMember("modifiers").asInt();
+            result[i] = new Parameter(name, modifiers, this, i);
+        }
+        return result;
     }
 
     @Override

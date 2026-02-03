@@ -42,6 +42,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class JVMCIUtils {
     public static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, "JVMCI");
@@ -171,5 +172,67 @@ public final class JVMCIUtils {
             return null;
         }
         return annotations.getData();
+    }
+
+    public static Method resolveMethod(ObjectKlass receiverKlass, Method method, ObjectKlass accessingKlass) {
+        if (method.isDeclaredSignaturePolymorphic() || !receiverKlass.isLinked() || receiverKlass.isInterface() || method.isStatic()) {
+            return null;
+        }
+
+        ObjectKlass declaringKlass = method.getDeclaringKlass();
+        if (!checkAccess(accessingKlass, declaringKlass, method)) {
+            return null;
+        }
+
+        Method resolved;
+        if (method.isPrivate()) {
+            resolved = method;
+        } else if (declaringKlass.isInterface()) {
+            if (!declaringKlass.isAssignableFrom(receiverKlass)) {
+                return null;
+            }
+            assert method.getITableIndex() >= 0 : method;
+            resolved = receiverKlass.itableLookupOrNull(declaringKlass, method.getITableIndex());
+            if (resolved != null && !resolved.isPublic()) {
+                return null;
+            }
+        } else {
+            assert method.getVTableIndex() >= 0 : method;
+            resolved = receiverKlass.vtableLookup(method.getVTableIndex());
+        }
+        return resolved;
+    }
+
+    @TruffleBoundary
+    private static boolean checkAccess(ObjectKlass accessingKlass, ObjectKlass declaringKlass, Method method) {
+        return RuntimeConstantPool.memberCheckAccess(accessingKlass, declaringKlass, method);
+    }
+
+    public static int getVtableIndexForInterfaceMethod(Method method, ObjectKlass klass) {
+        Method found = klass.itableLookupOrNull(method.getDeclaringKlass(), method.getITableIndex());
+        if (found != null && !found.getDeclaringKlass().isInterface()) {
+            return found.getVTableIndex();
+        }
+        return -1;
+    }
+
+    public static Method resolveInvokeBasicTarget(StaticObject methodHandle, boolean forceBytecodeGeneration, Meta meta) {
+        if (!InterpreterToVM.instanceOf(methodHandle, meta.java_lang_invoke_MethodHandle)) {
+            return null;
+        }
+        StaticObject form = meta.java_lang_invoke_MethodHandle_form.getObject(methodHandle);
+        if (StaticObject.isNull(form)) {
+            return null;
+        }
+        StaticObject memberName = meta.java_lang_invoke_LambdaForm_vmentry.getObject(form);
+        if (StaticObject.isNull(memberName)) {
+            if (forceBytecodeGeneration) {
+                meta.java_lang_invoke_LambdaForm_compileToBytecode.invokeDirectVirtual(form);
+                memberName = meta.java_lang_invoke_LambdaForm_vmentry.getObject(form);
+            } else {
+                return null;
+            }
+        }
+        return (Method) meta.HIDDEN_VMTARGET.getHiddenObject(memberName);
     }
 }

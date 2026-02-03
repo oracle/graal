@@ -113,6 +113,7 @@ import com.oracle.truffle.espresso.classfile.attributes.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
+import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
@@ -141,6 +142,7 @@ import com.oracle.truffle.espresso.impl.jvmci.JVMCIIndyData;
 import com.oracle.truffle.espresso.impl.jvmci.external.ExceptionHandlerInteropWrapper;
 import com.oracle.truffle.espresso.impl.jvmci.external.InteropLineNumberTableHelper;
 import com.oracle.truffle.espresso.impl.jvmci.external.LocalInteropWrapper;
+import com.oracle.truffle.espresso.impl.jvmci.external.ParameterInteropWrapper;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
@@ -2183,6 +2185,9 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                         ReadMember.LEAF_METHOD,
                         ReadMember.HAS_POISON,
                         ReadMember.HOLDER,
+                        ReadMember.PARAMETERS,
+                        ReadMember.VTABLE_INDEX,
+                        ReadMember.METHOD_HANDLE_INTRINSIC,
         };
         ALL_MEMBERS = new KeysArray<>(readableMembers);
         ALL_MEMBERS_SET = Set.of(readableMembers);
@@ -2205,6 +2210,9 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         static final String LEAF_METHOD = "leafMethod";
         static final String HAS_POISON = "hasPoison";
         static final String HOLDER = "holder";
+        static final String PARAMETERS = "parameters";
+        static final String VTABLE_INDEX = "vtableIndex";
+        static final String METHOD_HANDLE_INTRINSIC = "methodHandleIntrinsic";
 
         @Specialization(guards = "FLAGS.equals(member)")
         static int getFlags(Method receiver, @SuppressWarnings("unused") String member) {
@@ -2349,6 +2357,47 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         static ObjectKlass holder(Method receiver, @SuppressWarnings("unused") String member) {
             assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
             return receiver.getDeclaringKlass();
+        }
+
+        @Specialization(guards = "PARAMETERS.equals(member)")
+        static Object parameters(Method receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            MethodParametersAttribute methodParameters = receiver.getAttribute(MethodParametersAttribute.NAME, MethodParametersAttribute.class);
+            if (methodParameters == null) {
+                return StaticObject.NULL;
+            }
+            MethodParametersAttribute.Entry[] entries = methodParameters.getEntries();
+            ParameterInteropWrapper[] parameters = new ParameterInteropWrapper[entries.length];
+            ConstantPool constantPool = receiver.getConstantPool();
+            for (int i = 0; i < entries.length; i++) {
+                MethodParametersAttribute.Entry entry = entries[i];
+                parameters[i] = new ParameterInteropWrapper(constantPool.utf8At(entry.getNameIndex()), entry.getAccessFlags());
+            }
+            return new KeysArray<>(parameters);
+        }
+
+        @Specialization(guards = "VTABLE_INDEX.equals(member)")
+        static int getVTableIndex(Method receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            return receiver.getVTableIndex();
+        }
+
+        @Specialization(guards = "METHOD_HANDLE_INTRINSIC.equals(member)")
+        static Object getMethodHandleIntrinsic(Method receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            SignaturePolymorphicIntrinsic id = SignaturePolymorphicIntrinsic.getId(receiver);
+            if (id == null) {
+                return StaticObject.NULL;
+            }
+            return switch (id) {
+                case InvokeBasic -> "INVOKE_BASIC";
+                case LinkToStatic -> "LINK_TO_STATIC";
+                case LinkToSpecial -> "LINK_TO_SPECIAL";
+                case LinkToVirtual -> "LINK_TO_VIRTUAL";
+                case LinkToInterface -> "LINK_TO_INTERFACE";
+                case LinkToNative -> "LINK_TO_NATIVE";
+                case InvokeGeneric -> StaticObject.NULL;
+            };
         }
 
         @Fallback

@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.vmaccess;
 
-import static com.oracle.truffle.espresso.vmaccess.EspressoExternalConstantReflectionProvider.asObjectConstant;
 import static com.oracle.truffle.espresso.vmaccess.EspressoExternalVMAccess.throwHostException;
 
 import org.graalvm.polyglot.PolyglotException;
@@ -34,8 +33,8 @@ import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaField;
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaMethod;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoBootstrapMethodInvocation;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -67,7 +66,9 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
         if (resolved.isNull()) {
             return null;
         }
-        return new EspressoExternalResolvedJavaField(holder, resolved);
+        Value fieldHolderMeta = resolved.getMember("holder");
+        EspressoExternalResolvedInstanceType fieldHolder = new EspressoExternalResolvedInstanceType(holder.getAccess(), fieldHolderMeta);
+        return new EspressoExternalResolvedJavaField(fieldHolder, resolved);
     }
 
     @Override
@@ -167,19 +168,29 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
                 case CONSTANT_Float -> JavaConstant.forFloat(cpMirror.invokeMember("lookupConstant", cpi).asFloat());
                 case CONSTANT_Double -> JavaConstant.forDouble(cpMirror.invokeMember("lookupConstant", cpi).asDouble());
                 case CONSTANT_Class -> lookupType(cpi, 0);
-                case CONSTANT_String, CONSTANT_MethodHandle, CONSTANT_MethodType -> new EspressoExternalObjectConstant(holder.getAccess(), cpMirror.invokeMember("lookupConstant", cpi));
-                case CONSTANT_Dynamic -> switch (cpMirror.invokeMember("lookupDynamicKind", cpi).asInt()) {
-                    case 'Z' -> JavaConstant.forBoolean(cpMirror.invokeMember("lookupConstant", cpi).asBoolean());
-                    case 'B' -> JavaConstant.forByte(cpMirror.invokeMember("lookupConstant", cpi).asByte());
-                    case 'C' -> JavaConstant.forChar((char) cpMirror.invokeMember("lookupConstant", cpi).asInt());
-                    case 'S' -> JavaConstant.forShort(cpMirror.invokeMember("lookupConstant", cpi).asShort());
-                    case 'I' -> JavaConstant.forInt(cpMirror.invokeMember("lookupConstant", cpi).asInt());
-                    case 'J' -> JavaConstant.forLong(cpMirror.invokeMember("lookupConstant", cpi).asLong());
-                    case 'F' -> JavaConstant.forFloat(cpMirror.invokeMember("lookupConstant", cpi).asFloat());
-                    case 'D' -> JavaConstant.forDouble(cpMirror.invokeMember("lookupConstant", cpi).asDouble());
-                    case 'L' -> new EspressoExternalObjectConstant(holder.getAccess(), cpMirror.invokeMember("lookupConstant", cpi));
-                    default -> throw JVMCIError.shouldNotReachHere(cpMirror.invokeMember("lookupDynamicKind", cpi).toString());
-                };
+                case CONSTANT_String -> new EspressoExternalObjectConstant(holder.getAccess(), cpMirror.invokeMember("lookupConstant", cpi, true));
+                case CONSTANT_MethodHandle, CONSTANT_MethodType -> {
+                    Value constant = cpMirror.invokeMember("lookupConstant", cpi, resolve);
+                    if (constant.isNull()) {
+                        yield null;
+                    } else {
+                        yield new EspressoExternalObjectConstant(holder.getAccess(), constant);
+                    }
+                }
+                case CONSTANT_Dynamic -> {
+                    Value constant = cpMirror.invokeMember("lookupConstant", cpi, resolve);
+                    char kindChar = (char) cpMirror.invokeMember("lookupResolvedDynamicKind", cpi).asInt();
+                    JavaKind kind;
+                    if (kindChar == 'A') {
+                        kind = JavaKind.Object;
+                    } else if (kindChar == '-') {
+                        // this marks an unresolved entry
+                        yield null;
+                    } else {
+                        kind = JavaKind.fromPrimitiveOrVoidTypeChar(kindChar);
+                    }
+                    yield EspressoExternalConstantReflectionProvider.asJavaConstant(constant, kind, holder.getAccess());
+                }
                 default -> throw new IllegalArgumentException("Unsupported tag: " + getTagByteAt(cpi) + " (" + getTagByteAt(cpi) + ")");
             };
         } catch (PolyglotException e) {
@@ -195,7 +206,10 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
         } catch (PolyglotException e) {
             throw throwHostException(e);
         }
-        return asObjectConstant(value, holder.getAccess());
+        if (value.isNull()) {
+            return null;
+        }
+        return new EspressoExternalObjectConstant(holder.getAccess(), value);
     }
 
     @Override
@@ -212,7 +226,32 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
             throw throwHostException(e);
         }
         assert !value.isNull();
-        throw JVMCIError.unimplemented();
+        return asEspressoBootstrapMethodInvocation(value);
+    }
+
+    private EspressoBootstrapMethodInvocation asEspressoBootstrapMethodInvocation(Value value) {
+        boolean isIndy = value.getMember("isIndy").asBoolean();
+        int cpi = value.getMember("cpi").asInt();
+        Value methodMirror = value.getMember("bootstrapMethod");
+        EspressoExternalVMAccess access = holder.getAccess();
+        EspressoExternalResolvedJavaMethod method = new EspressoExternalResolvedJavaMethod(methodMirror, access);
+        String name = value.getMember("name").asString();
+        EspressoExternalObjectConstant type = new EspressoExternalObjectConstant(access, value.getMember("type"));
+        int staticArgCount = (int) value.getArraySize() / 2;
+        JavaConstant[] staticArguments = new JavaConstant[staticArgCount];
+        for (int i = 0; i < staticArgCount; i++) {
+            Value maybeEntryCPI = value.getArrayElement(2 * i + 1);
+            JavaConstant staticArgument;
+            if (maybeEntryCPI.isNull()) {
+                staticArgument = new EspressoExternalObjectConstant(access, value.getArrayElement(2 * i));
+            } else {
+                // unresolved dynamic entry
+                int entryCpi = maybeEntryCPI.asInt();
+                staticArgument = JavaConstant.forInt(entryCpi);
+            }
+            staticArguments[i] = staticArgument;
+        }
+        return new EspressoBootstrapMethodInvocation(isIndy, method, name, type, staticArguments, cpi, this);
     }
 
     @Override
@@ -226,7 +265,7 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
         if (value.isNull()) {
             return null;
         }
-        throw JVMCIError.unimplemented();
+        return asEspressoBootstrapMethodInvocation(value);
     }
 
     @Override
