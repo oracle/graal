@@ -58,7 +58,7 @@ public class DelegatingReplacements<T extends Replacements> implements Replaceme
     }
 
     @Override
-    public <T> T getInjectedArgument(Class<T> type) {
+    public <S> S getInjectedArgument(Class<S> type) {
         return delegate.getInjectedArgument(type);
     }
 
