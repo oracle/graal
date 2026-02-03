@@ -109,13 +109,15 @@ final class Target_jdk_graal_compiler_nodes_graphbuilderconf_InvocationPlugins {
 
     @Substitute
     private void flushDeferrables() {
-        /*
-         * Ristretto allocates plugins at runtime.
-         */
-        if (allocatedAtBuildTime && deferredRegistrations != null) {
-            throw VMError.shouldNotReachHere("not initialized during image generation");
-        } else {
-            assert SubstrateOptions.useRistretto();
+        if (deferredRegistrations != null) {
+            if (allocatedAtBuildTime) {
+                throw VMError.shouldNotReachHere("not initialized during image generation");
+            } else {
+                /*
+                 * Ristretto allocates plugins at runtime.
+                 */
+                assert SubstrateOptions.useRistretto();
+            }
         }
     }
 
