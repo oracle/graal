@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.hosted.runtimecompilation;
 
-import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
+import static com.oracle.svm.common.meta.MethodVariant.ORIGINAL_METHOD;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
 
 import java.util.ArrayList;
@@ -66,10 +66,10 @@ public final class CallTreeInfo {
     public static CallTreeInfo create(AnalysisUniverse aUniverse, Map<AnalysisMethod, String> invalidForRuntimeCompilation) {
         Map<AnalysisMethod, RuntimeCompiledMethod> runtimeCompilations = new HashMap<>();
         for (var method : aUniverse.getMethods()) {
-            var rMethod = method.getMultiMethod(RUNTIME_COMPILED_METHOD);
+            var rMethod = method.getMethodVariant(RUNTIME_COMPILED_METHOD);
             if (rMethod != null && rMethod.isReachable() && !invalidForRuntimeCompilation.containsKey(rMethod) && rMethod.getAnalyzedGraph() != null) {
                 var origInlinedMethods = rMethod.getAnalyzedGraph().getInlinedMethods().stream().map(inlinedMethod -> {
-                    AnalysisMethod orig = ((AnalysisMethod) inlinedMethod).getMultiMethod(ORIGINAL_METHOD);
+                    AnalysisMethod orig = ((AnalysisMethod) inlinedMethod).getMethodVariant(ORIGINAL_METHOD);
                     assert orig != null;
                     return orig;
                 }).collect(Collectors.toUnmodifiableSet());
@@ -94,7 +94,7 @@ public final class CallTreeInfo {
                 boolean deoptInvokeTypeFlow = invokeInfo.isDeoptInvokeTypeFlow();
                 if (deoptInvokeTypeFlow) {
                     assert SubstrateCompilationDirectives.isRuntimeCompiledMethod(invokeTarget);
-                    invokeTarget = invokeTarget.getMultiMethod(ORIGINAL_METHOD);
+                    invokeTarget = invokeTarget.getMethodVariant(ORIGINAL_METHOD);
                 }
                 assert invokeTarget.isOriginalMethod();
                 for (AnalysisMethod callee : invokeInfo.getAllCallees()) {
@@ -103,14 +103,14 @@ public final class CallTreeInfo {
                      * the deopt method variant as a callee.
                      */
                     if (deoptInvokeTypeFlow || SubstrateCompilationDirectives.isRuntimeCompiledMethod(callee)) {
-                        MethodNode calleeMethodNode = analysisMethodMap.computeIfAbsent(callee.getMultiMethod(RUNTIME_COMPILED_METHOD), MethodNode::new);
+                        MethodNode calleeMethodNode = analysisMethodMap.computeIfAbsent(callee.getMethodVariant(RUNTIME_COMPILED_METHOD), MethodNode::new);
                         InvokeNode invoke = new InvokeNode(callerMethodNode, invokeInfo.getPosition());
                         calleeMethodNode.addCaller(invoke);
 
-                        var origCallee = callee.getMultiMethod(ORIGINAL_METHOD);
+                        var origCallee = callee.getMethodVariant(ORIGINAL_METHOD);
                         assert origCallee != null;
                         runtimeCandidateMap.putIfAbsent(new RuntimeCompilationCandidate(origCallee, invokeTarget), invoke);
-                    } else if (callee.isOriginalMethod() && callee.getMultiMethod(RUNTIME_COMPILED_METHOD) == null) {
+                    } else if (callee.isOriginalMethod() && callee.getMethodVariant(RUNTIME_COMPILED_METHOD) == null) {
                         /*
                          * Recording that this call was reachable, but not converted to a runtime
                          * compiled method.
@@ -140,7 +140,7 @@ public final class CallTreeInfo {
          * First initialize all nodes which are registered roots
          */
         for (var methodNode : analysisMethodMap.values()) {
-            if (registeredRoots.contains(methodNode.method.getMultiMethod(ORIGINAL_METHOD))) {
+            if (registeredRoots.contains(methodNode.method.getMethodVariant(ORIGINAL_METHOD))) {
                 worklist.add(methodNode);
                 methodNode.trace = new TraceInfo(0, new BytecodePosition(null, methodNode.method, BytecodeFrame.UNKNOWN_BCI), null);
             }

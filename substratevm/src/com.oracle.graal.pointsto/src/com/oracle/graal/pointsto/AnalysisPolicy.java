@@ -50,7 +50,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
@@ -198,18 +198,18 @@ public abstract class AnalysisPolicy {
 
     /** Provides implementation for the virtual invoke type flow. */
     public abstract AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MethodVariant.MethodVariantKey callerMethodVariantKey);
 
     /** Provides implementation for the special invoke type flow. */
     public abstract AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MethodVariant.MethodVariantKey callerMethodVariantKey);
 
     /** Provides implementation for the static invoke type flow. */
     public abstract AbstractStaticInvokeTypeFlow createStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MethodVariant.MethodVariantKey callerMethodVariantKey);
 
     public abstract InvokeTypeFlow createDeoptInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MethodVariant.MethodVariantKey callerMethodVariantKey);
 
     /** Get the method flows graph; trigger parsing and create the flows graph if necessary. */
     public abstract MethodFlowsGraphInfo getOrCreateMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod method);

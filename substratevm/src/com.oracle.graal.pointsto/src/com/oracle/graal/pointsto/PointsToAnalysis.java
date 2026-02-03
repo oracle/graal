@@ -70,7 +70,7 @@ import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -352,12 +352,12 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     @Override
-    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MethodVariant.MethodVariantKey... otherRoots) {
         return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial, reason, otherRoots);
     }
 
     @Override
-    public AnalysisMethod forcedAddRootMethod(AnalysisMethod method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+    public AnalysisMethod forcedAddRootMethod(AnalysisMethod method, boolean invokeSpecial, Object reason, MethodVariant.MethodVariantKey... otherRoots) {
         registerConcreteMethodInAbstractType(method, reason);
         PointsToAnalysisMethod analysisMethod = assertPointsToAnalysisMethod(method);
         /* Trigger method analysis when the analysis engine starts. */
@@ -396,7 +396,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @Override
     @SuppressWarnings("try")
-    public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+    public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, Object reason, MethodVariant.MethodVariantKey... otherRoots) {
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
         validateRootMethodRegistration(aMethod, invokeSpecial);
         AnalysisError.guarantee(aMethod.isOriginalMethod());
@@ -428,9 +428,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 });
             };
             triggerAnalysis.accept(originalPTAMethod);
-            for (MultiMethod.MultiMethodKey key : otherRoots) {
-                assert key != MultiMethod.ORIGINAL_METHOD : key;
-                PointsToAnalysisMethod ptaMethod = assertPointsToAnalysisMethod(originalPTAMethod.getMultiMethod(key));
+            for (MethodVariant.MethodVariantKey key : otherRoots) {
+                assert key != MethodVariant.ORIGINAL_METHOD : key;
+                PointsToAnalysisMethod ptaMethod = assertPointsToAnalysisMethod(originalPTAMethod.getMethodVariant(key));
                 triggerAnalysis.accept(ptaMethod);
             }
         } else {
@@ -465,7 +465,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 } else {
                     originalPTAMethod.registerAsVirtualRootMethod(reason);
                 }
-                InvokeTypeFlow invoke = originalPTAMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, overrideInvokeSpecial, MultiMethod.ORIGINAL_METHOD);
+                InvokeTypeFlow invoke = originalPTAMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, overrideInvokeSpecial, MethodVariant.ORIGINAL_METHOD);
                 /*
                  * Initialize the type flow of the invoke's actual parameters with the corresponding
                  * parameter declared type. Thus, when the invoke links callees it will propagate

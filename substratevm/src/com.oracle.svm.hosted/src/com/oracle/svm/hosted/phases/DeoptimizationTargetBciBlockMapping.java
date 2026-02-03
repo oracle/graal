@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.phases;
 
 import java.util.Set;
 
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
@@ -281,14 +281,14 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
      */
     private boolean isDeoptEntry(int bci, FrameState.StackState stackState) {
         ResolvedJavaMethod method = code.getMethod();
-        return SubstrateCompilationDirectives.singleton().isDeoptEntry((MultiMethod) method, bci, stackState);
+        return SubstrateCompilationDirectives.singleton().isDeoptEntry((MethodVariant) method, bci, stackState);
     }
 
     /**
      * Checking whether this bci corresponds to a deopt entry point.
      */
     private boolean isRegisteredDeoptEntry(int bci, FrameState.StackState stackState) {
-        return SubstrateCompilationDirectives.singleton().isRegisteredDeoptEntry((MultiMethod) code.getMethod(), bci, stackState);
+        return SubstrateCompilationDirectives.singleton().isRegisteredDeoptEntry((MethodVariant) code.getMethod(), bci, stackState);
     }
 
     /* A new block must be created for all places where a DeoptEntryNode will be inserted. */

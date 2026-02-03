@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.graal.hosted.runtimecompilation;
 
-import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
+import static com.oracle.svm.common.meta.MethodVariant.ORIGINAL_METHOD;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -42,14 +42,14 @@ public class RuntimeCompiledMethod {
 
     /**
      * Collection of all methods inlined into this method. All methods contained here are of the
-     * {@link MultiMethod#ORIGINAL_METHOD} type.
+     * {@link MethodVariant#ORIGINAL_METHOD} type.
      */
     final Collection<AnalysisMethod> inlinedMethods;
 
     RuntimeCompiledMethod(AnalysisMethod runtimeMethod, Collection<AnalysisMethod> inlinedMethods) {
         this.runtimeMethod = runtimeMethod;
         assert SubstrateCompilationDirectives.isRuntimeCompiledMethod(runtimeMethod) : runtimeMethod;
-        this.originalMethod = runtimeMethod.getMultiMethod(ORIGINAL_METHOD);
+        this.originalMethod = runtimeMethod.getMethodVariant(ORIGINAL_METHOD);
         assert originalMethod != null;
         this.inlinedMethods = inlinedMethods;
     }

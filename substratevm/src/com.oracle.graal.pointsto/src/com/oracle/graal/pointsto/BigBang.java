@@ -36,7 +36,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
@@ -73,10 +73,10 @@ public interface BigBang extends ReachabilityAnalysis {
     OptionValues getOptions();
 
     default HostedProviders getProviders(AnalysisMethod method) {
-        return getProviders(method.getMultiMethodKey());
+        return getProviders(method.getMethodVariantKey());
     }
 
-    HostedProviders getProviders(MultiMethod.MultiMethodKey key);
+    HostedProviders getProviders(MethodVariant.MethodVariantKey key);
 
     List<DebugDumpHandlersFactory> getDebugHandlerFactories();
 

@@ -61,8 +61,8 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
     public SVMMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
         super(bb, method, flowsGraph, graphKind);
         /*
-         * We only add these filters for runtime compiled methods, as other multi-method variants
-         * require explicit null checks.
+         * We only add these filters for runtime compiled methods, as other method variants require
+         * explicit null checks.
          */
         addImplicitNullCheckFilters = SubstrateCompilationDirectives.isRuntimeCompiledMethod(method);
     }

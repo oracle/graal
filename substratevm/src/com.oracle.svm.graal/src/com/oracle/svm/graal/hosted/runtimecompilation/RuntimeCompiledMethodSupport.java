@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.hosted.runtimecompilation;
 
-import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
+import static com.oracle.svm.common.meta.MethodVariant.ORIGINAL_METHOD;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
 
@@ -194,7 +194,7 @@ public class RuntimeCompiledMethodSupport {
             }
         };
 
-        hUniverse.getMethods().stream().map(method -> method.getMultiMethod(DEOPT_TARGET_METHOD)).filter(method -> {
+        hUniverse.getMethods().stream().map(method -> method.getMethodVariant(DEOPT_TARGET_METHOD)).filter(method -> {
             if (method != null) {
                 return compileQueue.isRegisteredDeoptTarget(method);
             }
@@ -241,7 +241,7 @@ public class RuntimeCompiledMethodSupport {
         }
 
         private void compileRuntimeCompiledMethod(DebugContext debug) {
-            assert method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
+            assert method.getMethodVariantKey() == RUNTIME_COMPILED_METHOD;
 
             /*
              * The availability of NodeSourcePosition for JIT compilation is controlled by a
@@ -283,10 +283,10 @@ public class RuntimeCompiledMethodSupport {
              * Registering all deopt entries seen within the optimized graph. This should be
              * strictly a subset of the deopt entrypoints seen during evaluation.
              */
-            AnalysisMethod origMethod = method.getMultiMethod(ORIGINAL_METHOD).getWrapped();
+            AnalysisMethod origMethod = method.getMethodVariant(ORIGINAL_METHOD).getWrapped();
             DeoptimizationUtils.registerDeoptEntries(graph, compilationState.registeredRuntimeCompilations.contains(origMethod),
                             (deoptEntryMethod -> {
-                                PointsToAnalysisMethod deoptMethod = (PointsToAnalysisMethod) ((PointsToAnalysisMethod) deoptEntryMethod).getMultiMethod(DEOPT_TARGET_METHOD);
+                                PointsToAnalysisMethod deoptMethod = (PointsToAnalysisMethod) ((PointsToAnalysisMethod) deoptEntryMethod).getMethodVariant(DEOPT_TARGET_METHOD);
                                 VMError.guarantee(deoptMethod != null, "New deopt target method seen: %s", deoptEntryMethod);
                                 return deoptMethod;
                             }));

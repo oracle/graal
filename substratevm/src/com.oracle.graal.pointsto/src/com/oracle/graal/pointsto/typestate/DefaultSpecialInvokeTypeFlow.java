@@ -35,7 +35,7 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.LightImmutableCollection;
-import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
+import com.oracle.svm.common.meta.MethodVariant;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -45,13 +45,13 @@ final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
     private final boolean isDeoptInvokeTypeFlow;
 
     DefaultSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
-        this(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey, false);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MethodVariant.MethodVariantKey callerMethodVariantKey) {
+        this(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMethodVariantKey, false);
     }
 
     DefaultSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey, boolean isDeoptInvokeTypeFlow) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MethodVariant.MethodVariantKey callerMethodVariantKey, boolean isDeoptInvokeTypeFlow) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMethodVariantKey);
         this.isDeoptInvokeTypeFlow = isDeoptInvokeTypeFlow;
     }
 

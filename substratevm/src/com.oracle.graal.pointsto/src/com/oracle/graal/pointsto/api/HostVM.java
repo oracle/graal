@@ -51,7 +51,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -386,7 +386,7 @@ public abstract class HostVM {
     }
 
     @SuppressWarnings("unused")
-    public HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
+    public HostedProviders getProviders(MethodVariant.MethodVariantKey key) {
         return providers;
     }
 
@@ -498,90 +498,91 @@ public abstract class HostVM {
     }
 
     /**
-     * Helpers to determine what analysis actions should be taken for a given Multi-Method version.
+     * Helpers to determine what analysis actions should be taken for a given method variant.
      */
-    public interface MultiMethodAnalysisPolicy {
+    public interface MethodVariantsAnalysisPolicy {
 
         /**
          * Determines what versions of a method are reachable from the call.
          *
-         * @param implementation The resolved destination. {@link MultiMethod#ORIGINAL_METHOD}.
-         * @param target The original target. This should be a {@link MultiMethod#ORIGINAL_METHOD}.
-         * @param callerMultiMethodKey The context in which the call is being made.
+         * @param implementation The resolved destination. {@link MethodVariant#ORIGINAL_METHOD}.
+         * @param target The original target. This should be a
+         *            {@link MethodVariant#ORIGINAL_METHOD}.
+         * @param callerMethodVariantKey The context in which the call is being made.
          * @return Collection of possible targets for a given implementation, target, and caller
-         *         multi-method key. This method is expected to return a consistent value when
+         *         method variant key. This method is expected to return a consistent value when
          *         called multiple times with the same parameters; hence, values returned by this
          *         method are allowed to be cached
          */
-        <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MultiMethod.MultiMethodKey callerMultiMethodKey, InvokeTypeFlow invokeFlow);
+        <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MethodVariant.MethodVariantKey callerMethodVariantKey, InvokeTypeFlow invokeFlow);
 
         /**
          * Decides whether the caller's flows should be linked to callee's parameters flows.
          */
-        boolean performParameterLinking(MultiMethod.MultiMethodKey callerMultiMethodKey, MultiMethod.MultiMethodKey calleeMultiMethodKey);
+        boolean performParameterLinking(MethodVariant.MethodVariantKey callerMethodVariantKey, MethodVariant.MethodVariantKey calleeMethodVariantKey);
 
         /**
          * Decides whether the callee's return flow should be linked to caller's flows.
          */
-        boolean performReturnLinking(MultiMethod.MultiMethodKey callerMultiMethodKey, MultiMethod.MultiMethodKey calleeMultiMethodKey);
+        boolean performReturnLinking(MethodVariant.MethodVariantKey callerMethodVariantKey, MethodVariant.MethodVariantKey calleeMethodVariantKey);
 
         /**
          * Decides whether analysis should compute the returned parameter index.
          */
-        boolean canComputeReturnedParameterIndex(MultiMethod.MultiMethodKey multiMethodKey);
+        boolean canComputeReturnedParameterIndex(MethodVariant.MethodVariantKey methodVariantKey);
 
         /**
          * Decides whether placeholder flows should be inserted for missing object parameter and
          * return values.
          */
-        boolean insertPlaceholderParamAndReturnFlows(MultiMethod.MultiMethodKey multiMethodKey);
+        boolean insertPlaceholderParamAndReturnFlows(MethodVariant.MethodVariantKey methodVariantKey);
 
         /**
          * Some methods can be transformed after analysis; in these cases we do not know what the
          * returned value will be.
          */
-        boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation);
+        boolean unknownReturnValue(BigBang bb, MethodVariant.MethodVariantKey callerMethodVariantKey, AnalysisMethod implementation);
 
     }
 
     /**
      * The default policy does not alter the typical analysis behavior.
      */
-    protected static final MultiMethodAnalysisPolicy DEFAULT_MULTIMETHOD_ANALYSIS_POLICY = new MultiMethodAnalysisPolicy() {
+    protected static final MethodVariantsAnalysisPolicy DEFAULT_METHOD_VARIANTS_ANALYSIS_POLICY = new MethodVariantsAnalysisPolicy() {
 
         @Override
-        public <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MultiMethod.MultiMethodKey callerMultiMethodKey, InvokeTypeFlow invokeFlow) {
+        public <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MethodVariant.MethodVariantKey callerMethodVariantKey, InvokeTypeFlow invokeFlow) {
             return List.of(implementation);
         }
 
         @Override
-        public boolean performParameterLinking(MultiMethod.MultiMethodKey callerMultiMethodKey, MultiMethod.MultiMethodKey calleeMultiMethodKey) {
+        public boolean performParameterLinking(MethodVariant.MethodVariantKey callerMethodVariantKey, MethodVariant.MethodVariantKey calleeMethodVariantKey) {
             return true;
         }
 
         @Override
-        public boolean performReturnLinking(MultiMethod.MultiMethodKey callerMultiMethodKey, MultiMethod.MultiMethodKey calleeMultiMethodKey) {
+        public boolean performReturnLinking(MethodVariant.MethodVariantKey callerMethodVariantKey, MethodVariant.MethodVariantKey calleeMethodVariantKey) {
             return true;
         }
 
         @Override
-        public boolean canComputeReturnedParameterIndex(MultiMethod.MultiMethodKey multiMethodKey) {
+        public boolean canComputeReturnedParameterIndex(MethodVariant.MethodVariantKey methodVariantKey) {
             return true;
         }
 
         @Override
-        public boolean insertPlaceholderParamAndReturnFlows(MultiMethod.MultiMethodKey multiMethodKey) {
+        public boolean insertPlaceholderParamAndReturnFlows(MethodVariant.MethodVariantKey methodVariantKey) {
             return false;
         }
 
         @Override
-        public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation) {
+        public boolean unknownReturnValue(BigBang bb, MethodVariant.MethodVariantKey callerMethodVariantKey, AnalysisMethod implementation) {
             return false;
         }
     };
 
-    public MultiMethodAnalysisPolicy getMultiMethodAnalysisPolicy() {
-        return DEFAULT_MULTIMETHOD_ANALYSIS_POLICY;
+    public MethodVariantsAnalysisPolicy getMethodVariantsAnalysisPolicy() {
+        return DEFAULT_METHOD_VARIANTS_ANALYSIS_POLICY;
     }
 
     public boolean ignoreInstanceOfTypeDisallowed() {
@@ -591,7 +592,7 @@ public abstract class HostVM {
     /**
      * Returns the function Strengthen Graphs should use to improve types based on analysis results.
      */
-    public Predicate<AnalysisType> getStrengthenGraphsTypePredicate(@SuppressWarnings("unused") MultiMethod.MultiMethodKey key) {
+    public Predicate<AnalysisType> getStrengthenGraphsTypePredicate(@SuppressWarnings("unused") MethodVariant.MethodVariantKey key) {
         return (t) -> true;
     }
 

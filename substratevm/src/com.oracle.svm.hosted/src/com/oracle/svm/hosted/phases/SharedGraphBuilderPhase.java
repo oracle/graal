@@ -50,7 +50,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
 import com.oracle.svm.core.bootstrap.BootstrapMethodInfo.ExceptionWrapper;
@@ -1228,8 +1228,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * Only methods which can deoptimize need to consider live locals from asynchronous
              * exception handlers.
              */
-            if (method instanceof MultiMethod) {
-                return ((MultiMethod) method).getMultiMethodKey() == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
+            if (method instanceof MethodVariant) {
+                return ((MethodVariant) method).getMethodVariantKey() == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
             }
 
             /*
@@ -1517,7 +1517,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
                 /* Step 1: Initialize the BootstrapMethodInfo. */
 
-                BootstrapMethodRecord bootstrapMethodRecord = new BootstrapMethodRecord(bci, cpi, ((AnalysisMethod) method).getMultiMethod(MultiMethod.ORIGINAL_METHOD));
+                BootstrapMethodRecord bootstrapMethodRecord = new BootstrapMethodRecord(bci, cpi, ((AnalysisMethod) method).getMethodVariant(MethodVariant.ORIGINAL_METHOD));
                 BootstrapMethodInfo bootstrapMethodInfo = BootstrapMethodInfoCache.singleton().getBootstrapMethodInfoCache().computeIfAbsent(bootstrapMethodRecord,
                                 _ -> new BootstrapMethodInfo());
                 ConstantNode bootstrapMethodInfoNode = ConstantNode.forConstant(getSnippetReflection().forObject(bootstrapMethodInfo), getMetaAccess(), getGraph());

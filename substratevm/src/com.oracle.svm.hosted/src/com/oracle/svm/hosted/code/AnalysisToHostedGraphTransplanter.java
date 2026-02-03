@@ -36,7 +36,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
@@ -227,10 +227,10 @@ public class AnalysisToHostedGraphTransplanter {
                 /*
                  * Queries to the HostedUniverse must be made on the original method.
                  */
-                AnalysisMethod aOrig = aMethod.getMultiMethod(MultiMethod.ORIGINAL_METHOD);
+                AnalysisMethod aOrig = aMethod.getMethodVariant(MethodVariant.ORIGINAL_METHOD);
                 assert aOrig != null;
                 HostedMethod hOrig = universe.lookup(aOrig);
-                HostedMethod hMethod = hOrig.getMultiMethod(aMethod.getMultiMethodKey());
+                HostedMethod hMethod = hOrig.getMethodVariant(aMethod.getMethodVariantKey());
                 assert hMethod != null;
                 return hMethod;
             }

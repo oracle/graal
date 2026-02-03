@@ -41,7 +41,7 @@ import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.vm.ci.code.BytecodePosition;
@@ -56,9 +56,9 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
 
     private Set<InvokeTypeFlow> implementationInvokedBy;
     /**
-     * Unique, per method, per multi-method key, context insensitive invoke. The context insensitive
-     * invoke uses the receiver type of the method, i.e., its declaring-class. Therefore, this
-     * invoke will link with all possible callees.
+     * Unique, per method, per method variant key, context insensitive invoke. The context
+     * insensitive invoke uses the receiver type of the method, i.e., its declaring-class.
+     * Therefore, this invoke will link with all possible callees.
      */
     @SuppressWarnings("unused") private volatile Object contextInsensitiveVirtualInvoke;
     @SuppressWarnings("unused") private volatile Object contextInsensitiveSpecialInvoke;
@@ -70,18 +70,18 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
                     "contextInsensitiveSpecialInvoke");
 
     public PointsToAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
-        super(universe, wrapped, MultiMethod.ORIGINAL_METHOD, null);
+        super(universe, wrapped, MethodVariant.ORIGINAL_METHOD, null);
         typeFlow = declaringClass.universe.analysisPolicy().createMethodTypeFlow(this);
     }
 
-    private PointsToAnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
-        super(original, multiMethodKey);
+    private PointsToAnalysisMethod(AnalysisMethod original, MethodVariantKey methodVariantKey) {
+        super(original, methodVariantKey);
         typeFlow = declaringClass.universe.analysisPolicy().createMethodTypeFlow(this);
     }
 
     @Override
-    protected AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey) {
-        return new PointsToAnalysisMethod(analysisMethod, newMultiMethodKey);
+    protected AnalysisMethod createMethodVariant(AnalysisMethod analysisMethod, MethodVariantKey newMethodVariantKey) {
+        return new PointsToAnalysisMethod(analysisMethod, newMethodVariantKey);
     }
 
     @Override
@@ -163,9 +163,9 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
         return parsingReason;
     }
 
-    public InvokeTypeFlow initAndGetContextInsensitiveInvoke(PointsToAnalysis bb, BytecodePosition originalLocation, boolean isSpecial, MultiMethodKey callerMultiMethodKey) {
+    public InvokeTypeFlow initAndGetContextInsensitiveInvoke(PointsToAnalysis bb, BytecodePosition originalLocation, boolean isSpecial, MethodVariantKey callerMethodVariantKey) {
         var invokeUpdater = isSpecial ? SPECIAL_INVOKE_UPDATER : VIRTUAL_INVOKE_UPDATER;
-        InvokeTypeFlow flow = ConcurrentLightHashMap.computeIfAbsent(this, invokeUpdater, callerMultiMethodKey, key -> {
+        InvokeTypeFlow flow = ConcurrentLightHashMap.computeIfAbsent(this, invokeUpdater, callerMethodVariantKey, key -> {
             InvokeTypeFlow result = createContextInsensitiveInvoke(bb, this, originalLocation, isSpecial, key);
             initContextInsensitiveInvoke(bb, this, result);
             return result;
@@ -179,7 +179,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
      * this invoke will link with all possible callees.
      */
     private static InvokeTypeFlow createContextInsensitiveInvoke(PointsToAnalysis bb, PointsToAnalysisMethod method, BytecodePosition originalLocation, boolean isSpecial,
-                    MultiMethodKey callerMultiMethodKey) {
+                    MethodVariantKey callerMethodVariantKey) {
         assert !method.isStatic() : method;
         /*
          * The context insensitive invoke has actual parameters and return flows that will be linked
@@ -210,10 +210,10 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
         InvokeTypeFlow invoke;
         if (isSpecial) {
             invoke = bb.analysisPolicy().createSpecialInvokeTypeFlow(originalLocation, receiverType, method, actualParameters,
-                            actualReturn, callerMultiMethodKey);
+                            actualReturn, callerMethodVariantKey);
         } else {
             invoke = bb.analysisPolicy().createVirtualInvokeTypeFlow(originalLocation, receiverType, method, actualParameters,
-                            actualReturn, callerMultiMethodKey);
+                            actualReturn, callerMethodVariantKey);
         }
         invoke.enableFlow(bb);
         invoke.markAsContextInsensitive();
@@ -232,8 +232,8 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
         receiverFlow.addObserver(bb, invoke);
     }
 
-    public InvokeTypeFlow getContextInsensitiveVirtualInvoke(MultiMethodKey callerMultiMethodKey) {
-        InvokeTypeFlow invoke = ConcurrentLightHashMap.get(this, VIRTUAL_INVOKE_UPDATER, callerMultiMethodKey);
+    public InvokeTypeFlow getContextInsensitiveVirtualInvoke(MethodVariantKey callerMethodVariantKey) {
+        InvokeTypeFlow invoke = ConcurrentLightHashMap.get(this, VIRTUAL_INVOKE_UPDATER, callerMethodVariantKey);
         AnalysisError.guarantee(invoke != null);
         return invoke;
     }

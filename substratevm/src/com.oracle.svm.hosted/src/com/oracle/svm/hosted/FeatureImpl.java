@@ -75,7 +75,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -559,15 +559,15 @@ public class FeatureImpl {
             return aField.registerAsUnsafeAccessed(reason);
         }
 
-        public void registerAsRoot(Executable method, boolean invokeSpecial, String reason, MultiMethod.MultiMethodKey... otherRoots) {
+        public void registerAsRoot(Executable method, boolean invokeSpecial, String reason, MethodVariant.MethodVariantKey... otherRoots) {
             bb.addRootMethod(method, invokeSpecial, reason, otherRoots);
         }
 
-        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, String reason, MultiMethod.MultiMethodKey... otherRoots) {
+        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, String reason, MethodVariant.MethodVariantKey... otherRoots) {
             bb.addRootMethod(aMethod, invokeSpecial, reason, otherRoots);
         }
 
-        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, ScanReason reason, MultiMethod.MultiMethodKey... otherRoots) {
+        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, ScanReason reason, MethodVariant.MethodVariantKey... otherRoots) {
             bb.addRootMethod(aMethod, invokeSpecial, reason, otherRoots);
         }
 
@@ -687,7 +687,7 @@ public class FeatureImpl {
          */
         public void registerOpaqueMethodReturn(Method method) {
             AnalysisMethod aMethod = bb.getMetaAccess().lookupJavaMethod(method);
-            VMError.guarantee(aMethod.getAllMultiMethods().size() == 1, "Opaque method return called for method with >1 multimethods: %s ", method);
+            VMError.guarantee(aMethod.getAllMethodVariants().size() == 1, "Opaque method return called for method with >1 method variants: %s ", method);
             aMethod.setOpaqueReturn();
         }
 
