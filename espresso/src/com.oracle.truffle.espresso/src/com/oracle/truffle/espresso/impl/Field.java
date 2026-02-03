@@ -1110,6 +1110,7 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
                         ReadMember.OFFSET,
                         ReadMember.NAME,
                         ReadMember.TYPE,
+                        ReadMember.HOLDER,
                         ReadMember.CONSTANT_VALUE_INDEX,
         };
         String[] invocableMembers = {
@@ -1129,6 +1130,7 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
         static final String OFFSET = "offset";
         static final String NAME = "name";
         static final String TYPE = "type";
+        static final String HOLDER = "holder";
         static final String CONSTANT_VALUE_INDEX = "constantValueIndex";
 
         @Specialization(guards = "FLAGS.equals(member)")
@@ -1154,6 +1156,12 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
         static String getType(Field receiver, @SuppressWarnings("unused") String member) {
             assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
             return receiver.getType().toString();
+        }
+
+        @Specialization(guards = "HOLDER.equals(member)")
+        static ObjectKlass holder(Field receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            return receiver.getDeclaringKlass();
         }
 
         @Specialization(guards = "CONSTANT_VALUE_INDEX.equals(member)")
