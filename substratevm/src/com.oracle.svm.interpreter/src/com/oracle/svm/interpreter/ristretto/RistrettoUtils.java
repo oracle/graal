@@ -48,9 +48,11 @@ import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.meta.RuntimeCodeInstaller;
+import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMetaAccess;
 import com.oracle.svm.graal.meta.SubstrateMethod;
+import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -64,6 +66,7 @@ import com.oracle.svm.interpreter.ristretto.meta.RistrettoField;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMetaAccess;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoReplacements;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoType;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.code.CompilationResult;
@@ -504,4 +507,37 @@ public class RistrettoUtils {
         return rFields.toArray(new RistrettoField[0]);
     }
 
+    public static RistrettoMethod toRMethodOrNull(SubstrateMethod substrateMethod) {
+        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) substrateMethod.getDeclaringClass().getHub().getInterpreterType();
+        for (var iMeth : iType.getDeclaredMethods()) {
+            if (iMeth.getName().equals(substrateMethod.getName()) && iMeth.getSignature().toMethodDescriptor().equals(substrateMethod.getSignature().toMethodDescriptor())) {
+                RistrettoMethod rMethod = RistrettoMethod.getOrCreate(iMeth);
+                rMethod.setOriginalRuntimeMethod(substrateMethod);
+                return rMethod;
+            }
+        }
+        return null;
+    }
+
+    public static RistrettoField toRFieldOrNull(SubstrateField substrateField) {
+        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) substrateField.getDeclaringClass().getHub().getInterpreterType();
+        if (substrateField.isStatic()) {
+            for (var iField : iType.getStaticFields()) {
+                if (iField.getName().equals(substrateField.getName())) {
+                    return RistrettoField.getOrCreate((InterpreterResolvedJavaField) iField);
+                }
+            }
+        } else {
+            for (var iField : iType.getInstanceFields(true)) {
+                if (iField.getName().equals(substrateField.getName())) {
+                    return RistrettoField.getOrCreate((InterpreterResolvedJavaField) iField);
+                }
+            }
+        }
+        return null;
+    }
+
+    public static RistrettoType toRType(SubstrateType substrateType) {
+        return RistrettoType.getOrCreate((InterpreterResolvedJavaType) substrateType.getHub().getInterpreterType());
+    }
 }

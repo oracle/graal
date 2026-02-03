@@ -72,6 +72,12 @@ public final class RistrettoMethod extends SubstrateMethod {
      */
     private volatile ExceptionHandler[] rHandlers;
 
+    /**
+     * Link to the original SubstrateMethod built at image-build time, if it exists. Can be
+     * {@code null}.
+     */
+    private volatile SubstrateMethod originalRuntimeMethod;
+
     // JIT COMPILER SUPPORT START
     /**
      * Field exposed for profiling support for this method. Initialized once upon first profiling
@@ -349,5 +355,20 @@ public final class RistrettoMethod extends SubstrateMethod {
         assert SubstrateOptions.useRistretto();
         assert interpreterMethod.hasNativeEntryPoint();
         return interpreterMethod.getNativeEntryPoint();
+    }
+
+    public SubstrateMethod getOriginalRuntimeMethod() {
+        return originalRuntimeMethod;
+    }
+
+    public void setOriginalRuntimeMethod(SubstrateMethod sMethod) {
+        assert originalRuntimeMethod == null;
+        if (originalRuntimeMethod == null) {
+            synchronized (this) {
+                if (originalRuntimeMethod == null) {
+                    originalRuntimeMethod = sMethod;
+                }
+            }
+        }
     }
 }

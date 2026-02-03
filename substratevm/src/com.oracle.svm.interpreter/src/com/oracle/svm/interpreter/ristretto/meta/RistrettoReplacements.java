@@ -31,12 +31,13 @@ import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
+import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.spi.DelegatingReplacements;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -48,33 +49,53 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link jdk.vm.ci.meta.ResolvedJavaType} and {@link jdk.vm.ci.meta.ResolvedJavaField}) from the
  * snippet graphs are replaced with their Ristretto counterparts.
  */
-public class RistrettoReplacements extends DelegatingReplacements {
+public class RistrettoReplacements extends DelegatingReplacements<SubstrateReplacements> {
+
+    private final InvocationPlugins rSnippetPlugins;
 
     public RistrettoReplacements(SubstrateReplacements svmReplacements) {
         super(svmReplacements);
+        this.rSnippetPlugins = new RistrettoResolvedKeyPlugins(svmReplacements.getSnippetInvocationPlugins());
+    }
+
+    private static final class RistrettoResolvedKeyPlugins extends InvocationPlugins {
+        private final InvocationPlugins source;
+
+        RistrettoResolvedKeyPlugins(InvocationPlugins source) {
+            super(null, null);
+            this.source = source;
+        }
+
+        @Override
+        public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, boolean allowDisable, OptionValues options) {
+            if (method instanceof RistrettoMethod rMethod) {
+                var originalSVMMethod = rMethod.getOriginalRuntimeMethod();
+                assert originalSVMMethod != null;
+                return source.lookupInvocation(rMethod.getOriginalRuntimeMethod(), allowDecorators, allowDisable, options);
+            }
+            return source.lookupInvocation(method, allowDecorators, allowDisable, options);
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return source.isEmpty();
+        }
     }
 
     @Override
     public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
                     NodeSourcePosition replaceePosition, OptionValues options) {
-        Function<Object, Object> t = o -> {
+        Function<Object, Object> objectTransformer = o -> {
             if (o instanceof SubstrateType substrateType) {
-                return RistrettoType.getOrCreate((InterpreterResolvedJavaType) substrateType.getHub().getInterpreterType());
-            } else if (o instanceof SubstrateMethod substrateMethod &&
-                            /*
-                             * Note that we exclude native methods and other snippets here. If we
-                             * call a native methods, it's normally a node intrinsic. If we call
-                             * another snippet method we also will not have interpreter methods for
-                             * it.
-                             */
-                            !isSnippet(substrateMethod) && !substrateMethod.isNative()) {
-                RistrettoMethod rMethod = replaceWithRistrettoMethod(substrateMethod);
+                return RistrettoUtils.toRType(substrateType);
+            } else if (o instanceof SubstrateMethod substrateMethod) {
+                RistrettoMethod rMethod = RistrettoUtils.toRMethodOrNull(substrateMethod);
                 if (rMethod != null) {
                     return rMethod;
                 }
                 throw GraalError.shouldNotReachHere("Cannot find iMethod for " + substrateMethod.getName());
             } else if (o instanceof SubstrateField substrateField) {
-                RistrettoField rField = replaceWithRistrettoField(substrateField);
+                RistrettoField rField = RistrettoUtils.toRFieldOrNull(substrateField);
                 if (rField != null) {
                     return rField;
                 }
@@ -82,35 +103,7 @@ public class RistrettoReplacements extends DelegatingReplacements {
             }
             return o;
         };
-        return ((SubstrateReplacements) delegate).getSnippet(method, args, trackNodeSourcePosition, options, t);
-    }
-
-    private static RistrettoMethod replaceWithRistrettoMethod(SubstrateMethod substrateMethod) {
-        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) substrateMethod.getDeclaringClass().getHub().getInterpreterType();
-        for (var iMeth : iType.getDeclaredMethods()) {
-            if (iMeth.getName().equals(substrateMethod.getName()) && iMeth.getSignature().toMethodDescriptor().equals(substrateMethod.getSignature().toMethodDescriptor())) {
-                return RistrettoMethod.getOrCreate(iMeth);
-            }
-        }
-        return null;
-    }
-
-    private static RistrettoField replaceWithRistrettoField(SubstrateField substrateField) {
-        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) substrateField.getDeclaringClass().getHub().getInterpreterType();
-        if (substrateField.isStatic()) {
-            for (var iField : iType.getStaticFields()) {
-                if (iField.getName().equals(substrateField.getName())) {
-                    return RistrettoField.getOrCreate((InterpreterResolvedJavaField) iField);
-                }
-            }
-        } else {
-            for (var iField : iType.getInstanceFields(true)) {
-                if (iField.getName().equals(substrateField.getName())) {
-                    return RistrettoField.getOrCreate((InterpreterResolvedJavaField) iField);
-                }
-            }
-        }
-        return null;
+        return delegate.getSnippet(method, args, trackNodeSourcePosition, options, objectTransformer, rSnippetPlugins);
     }
 
 }
