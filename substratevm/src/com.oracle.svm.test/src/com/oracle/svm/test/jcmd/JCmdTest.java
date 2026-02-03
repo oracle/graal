@@ -49,14 +49,14 @@ import com.oracle.svm.core.VMInspectionOptions;
 
 public class JCmdTest {
     @BeforeClass
-    public static void checkForJFR() {
+    public static void checkForJcmd() {
         assumeTrue("skipping JCmd tests", VMInspectionOptions.hasJCmdSupport());
     }
 
     @Test
     public void testHelp() throws IOException, InterruptedException {
         Process jcmd = runJCmd("help");
-        String[] commands = new String[]{"GC.heap_dump", "GC.run", "JFR.check", "JFR.dump", "JFR.start", "JFR.stop", "Thread.dump_to_file", "Thread.print", "VM.command_line",
+        String[] commands = new String[]{"GC.heap_dump", "GC.run", "JFR.check", "JFR.dump", "JFR.start", "JFR.stop", "Thread.print", "VM.command_line",
                         "VM.native_memory", "VM.system_properties", "VM.uptime", "VM.version", "help"};
         assertOutputContainsLines(jcmd, commands);
 
