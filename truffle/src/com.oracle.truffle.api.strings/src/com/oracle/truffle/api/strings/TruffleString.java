@@ -2397,6 +2397,15 @@ public final class TruffleString extends AbstractTruffleString {
          * life time, convert it to a managed string via {@link AsManagedNode} <b>before the native
          * pointer is freed</b>.
          * </p>
+         *
+         * <p>
+         * Since GraalVM version 25.1, the native pointer may also be passed as a boxed long value
+         * in place of {@code pointerObject}. Note that in this case, the resulting
+         * {@link TruffleString} cannot keep a reference an associated object for life-time
+         * tracking. The user is responsible for making sure the native buffer is not freed as long
+         * as the {@link TruffleString} object is alive.
+         * </p>
+         *
          * <p>
          * If {@code copy} is {@code true}, the pointer's contents are copied to a Java byte array,
          * and the pointer can be freed safely after the operation completes.
@@ -2411,12 +2420,13 @@ public final class TruffleString extends AbstractTruffleString {
         @Specialization
         final TruffleString fromNativePointer(Object pointerObject, int byteOffset, int byteLength, Encoding enc, boolean copy,
                         @Cached(value = "createInteropLibrary()", uncached = "getUncachedInteropLibrary()") Node interopLibrary,
+                        @Cached InlinedConditionProfile rawPointerProfile,
                         @Cached InlinedConditionProfile utf8BrokenProfile,
                         @Cached InlinedConditionProfile utf16CompactProfile,
                         @Cached InlinedConditionProfile utf32Compact0Profile,
                         @Cached InlinedConditionProfile utf32Compact1Profile,
                         @Cached InlinedConditionProfile singleByteProfile) {
-            NativePointer pointer = NativePointer.create(this, pointerObject, interopLibrary);
+            NativePointer pointer = NativePointer.create(this, pointerObject, interopLibrary, rawPointerProfile);
             if (copy) {
                 return fromBufferWithStringCompaction(this, pointer, byteOffset, byteLength, enc, true,
                                 utf8BrokenProfile,
@@ -7363,6 +7373,12 @@ public final class TruffleString extends AbstractTruffleString {
          * <p>
          * This operation requires native access permissions
          * ({@code TruffleLanguage.Env#isNativeAccessAllowed()}).
+         * </p>
+         *
+         * <p>
+         * Since GraalVM version 25.1, the native pointer may also be passed as a primitive long
+         * value in place of {@code pointerObject}.
+         * </p>
          *
          * @since 22.1
          */
@@ -7371,6 +7387,7 @@ public final class TruffleString extends AbstractTruffleString {
         @Specialization
         void doCopy(AbstractTruffleString a, int byteFromIndexA, Object pointerObject, int byteFromIndexB, int byteLength, Encoding expectedEncoding,
                         @Cached(value = "createInteropLibrary()", uncached = "getUncachedInteropLibrary()") Node interopLibrary,
+                        @Cached InlinedConditionProfile rawPointerProfile,
                         @Cached InlinedConditionProfile managedProfileA,
                         @Cached InlinedConditionProfile nativeProfileA,
                         @Cached InlinedConditionProfile utf16Profile,
@@ -7378,8 +7395,16 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached InlinedConditionProfile utf32Profile,
                         @Cached InlinedConditionProfile utf32S0Profile,
                         @Cached InlinedConditionProfile utf32S1Profile) {
-            NativePointer nativePointer = NativePointer.create(this, pointerObject, interopLibrary);
-            InternalCopyToByteArrayNode.doCopyInternal(this, a, byteFromIndexA, null, nativePointer.pointer, byteFromIndexB,
+            if (!TStringAccessor.isNativeAccessAllowed(this)) {
+                throw InternalErrors.nativeAccessRequired();
+            }
+            final long nativePointer;
+            if (rawPointerProfile.profile(this, pointerObject instanceof Long)) {
+                nativePointer = (long) pointerObject;
+            } else {
+                nativePointer = TStringAccessor.INTEROP.unboxPointer(interopLibrary, pointerObject);
+            }
+            InternalCopyToByteArrayNode.doCopyInternal(this, a, byteFromIndexA, null, nativePointer, byteFromIndexB,
                             byteLength,
                             expectedEncoding, managedProfileA, nativeProfileA, utf16Profile, utf16S0Profile, utf32Profile, utf32S0Profile, utf32S1Profile);
             Reference.reachabilityFence(pointerObject);
@@ -7630,6 +7655,7 @@ public final class TruffleString extends AbstractTruffleString {
         static TruffleString asNative(TruffleString a, NativeAllocator allocator, Encoding encoding, boolean useCompaction, boolean cacheResult,
                         @Bind Node node,
                         @Cached(value = "createInteropLibrary()", uncached = "getUncachedInteropLibrary()") Node interopLibrary,
+                        @Cached InlinedConditionProfile rawPointerProfile,
                         @Cached InlinedConditionProfile isNativeProfile,
                         @Cached InlinedConditionProfile cacheHit,
                         @Cached InlinedIntValueProfile inflateStrideProfile,
@@ -7676,7 +7702,7 @@ public final class TruffleString extends AbstractTruffleString {
                 int stride = useCompaction ? Stride.fromCodeRange(codeRangeA, encoding) : encoding.naturalStride;
                 int byteSize = lengthA << stride;
                 Object buffer = allocator.allocate(byteSize + NULL_TERMINATION_BYTES);
-                NativePointer nativePointer = NativePointer.create(node, buffer, interopLibrary);
+                NativePointer nativePointer = NativePointer.create(node, buffer, interopLibrary, rawPointerProfile);
                 try {
                     if (useCompaction) {
                         TStringOps.arraycopyWithStride(node, arrayA, offsetA, strideA, 0, null, nativePointer.pointer, stride, 0, lengthA);

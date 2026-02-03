@@ -43,6 +43,7 @@ package com.oracle.truffle.api.strings.test.ops;
 
 import static org.junit.runners.Parameterized.Parameter;
 
+import java.lang.ref.Reference;
 import java.util.Arrays;
 
 import org.junit.Assert;
@@ -70,6 +71,13 @@ public class TStringCopyToNativeMemoryTest extends TStringTestBase {
             PointerObject pointerObject = PointerObject.create(array.length);
             node.execute(a, 0, pointerObject, 0, array.length, encoding);
             Assert.assertTrue(pointerObject.contentEquals(array));
+            PointerObject pointerObject2 = PointerObject.create(array.length);
+            try {
+                node.execute(a, 0, pointerObject2.asPointer(), 0, array.length, encoding);
+                Assert.assertTrue(pointerObject2.contentEquals(array));
+            } finally {
+                Reference.reachabilityFence(pointerObject2);
+            }
         });
     }
 
