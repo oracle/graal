@@ -288,7 +288,7 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
         // stored in the image heap.
         // Also take into account WordBase types, which have an Object kind, but the constantValue
         // is a long.
-        assert (isWordStorage()) || constantValue.equals(JavaConstant.ILLEGAL) || getJavaKind() == constantValue.getJavaKind();
+        assert (isWordStorage()) || constantValue == null || constantValue.equals(JavaConstant.ILLEGAL) || getJavaKind() == constantValue.getJavaKind();
         return constantValue;
     }
 
