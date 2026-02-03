@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
+import jdk.graal.compiler.word.Word;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
@@ -60,7 +61,6 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.graal.compiler.word.Word;
 
 /**
  * Implements operations on {@linkplain Target_java_lang_Thread Java threads}, which are on a higher
@@ -212,6 +212,15 @@ public final class JavaThreads {
     public static boolean isCurrentThreadVirtualAndPinned() {
         Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
         return carrier != null && carrier.vthread != null && Target_jdk_internal_vm_Continuation.isPinned(carrier.cont.getScope());
+    }
+
+    /**
+     * Returns the carrier thread. Note that this method may only be called for the current thread
+     * or during a VM operation. Otherwise, the result could be stale.
+     */
+    public static Thread getVirtualThreadCarrier(Target_java_lang_VirtualThread thread) {
+        assert SubstrateUtil.cast(thread, Thread.class) == Thread.currentThread() || VMOperation.isInProgressAtSafepoint() : "otherwise, this information could change at any time";
+        return thread.carrierThread;
     }
 
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
