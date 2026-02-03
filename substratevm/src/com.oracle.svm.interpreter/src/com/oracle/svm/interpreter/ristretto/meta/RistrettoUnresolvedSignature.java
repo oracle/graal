@@ -25,9 +25,12 @@
 package com.oracle.svm.interpreter.ristretto.meta;
 
 import com.oracle.svm.graal.meta.SubstrateSignature;
+import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
+import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -47,10 +50,20 @@ public final class RistrettoUnresolvedSignature extends SubstrateSignature {
 
     @Override
     public JavaType getReturnType(ResolvedJavaType accessingClass) {
-        InterpreterResolvedJavaType accessingTypeResolved = accessingClass == null ? null : ((RistrettoType) accessingClass).getInterpreterType();
+        InterpreterResolvedJavaType accessingTypeResolved = null;
+        if (accessingClass != null) {
+            if (accessingClass instanceof RistrettoType rType) {
+                accessingTypeResolved = rType.getInterpreterType();
+            } else if (accessingClass instanceof SubstrateType sType) {
+                accessingTypeResolved = RistrettoUtils.toRType(sType).getInterpreterType();
+            } else {
+                throw GraalError.shouldNotReachHere("Unknown JVMCI type accessing signature " + accessingClass);
+            }
+        }
+
         JavaType returnType = interpreterSignature.getReturnType(accessingTypeResolved);
         if (returnType instanceof InterpreterResolvedJavaType iType) {
-            return RistrettoType.create(iType);
+            return RistrettoType.getOrCreate(iType);
         }
         return returnType;
     }
@@ -60,7 +73,7 @@ public final class RistrettoUnresolvedSignature extends SubstrateSignature {
         InterpreterResolvedJavaType accessingTypeResolved = accessingClass == null ? null : ((RistrettoType) accessingClass).getInterpreterType();
         JavaType parameterType = interpreterSignature.getParameterType(index, accessingTypeResolved);
         if (parameterType instanceof InterpreterResolvedJavaType iType) {
-            return RistrettoType.create(iType);
+            return RistrettoType.getOrCreate(iType);
         }
         return parameterType;
     }
@@ -82,9 +95,7 @@ public final class RistrettoUnresolvedSignature extends SubstrateSignature {
 
     @Override
     public String toString() {
-        return "RistrettoSignature{" +
-                        "interpreterSignature=" + interpreterSignature +
-                        '}';
+        return "RistrettoSignature{" + "interpreterSignature=" + interpreterSignature + '}';
     }
 
 }

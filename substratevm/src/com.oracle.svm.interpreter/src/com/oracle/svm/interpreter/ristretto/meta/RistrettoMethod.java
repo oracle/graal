@@ -72,6 +72,12 @@ public final class RistrettoMethod extends SubstrateMethod {
      */
     private volatile ExceptionHandler[] rHandlers;
 
+    /**
+     * Link to the original SubstrateMethod built at image-build time, if it exists. Can be
+     * {@code null}.
+     */
+    private volatile SubstrateMethod originalRuntimeMethod;
+
     // JIT COMPILER SUPPORT START
     /**
      * Field exposed for profiling support for this method. Initialized once upon first profiling
@@ -98,7 +104,7 @@ public final class RistrettoMethod extends SubstrateMethod {
     private RistrettoMethod(InterpreterResolvedJavaMethod interpreterMethod) {
         super(0, null, 0, null, 0, null);
         this.interpreterMethod = interpreterMethod;
-        this.declaringClass = RistrettoType.create(interpreterMethod.getDeclaringClass());
+        this.declaringClass = RistrettoType.getOrCreate(interpreterMethod.getDeclaringClass());
         this.signature = new RistrettoUnresolvedSignature(interpreterMethod.getSignature());
         /*
          * TODO GR-34928 / GR-70938 - Setup indirectCallTarget for miranda and overpass methods.
@@ -119,7 +125,7 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     private static final Function<InterpreterResolvedJavaMethod, ResolvedJavaMethod> RISTRETTO_METHOD_FUNCTION = RistrettoMethod::new;
 
-    public static RistrettoMethod create(InterpreterResolvedJavaMethod interpreterMethod) {
+    public static RistrettoMethod getOrCreate(InterpreterResolvedJavaMethod interpreterMethod) {
         return (RistrettoMethod) interpreterMethod.getRistrettoMethod(RISTRETTO_METHOD_FUNCTION);
     }
 
@@ -230,7 +236,7 @@ public final class RistrettoMethod extends SubstrateMethod {
                         if (catchType instanceof ResolvedJavaType) {
                             assert catchType instanceof InterpreterResolvedJavaType;
                             InterpreterResolvedJavaType iCatchType = (InterpreterResolvedJavaType) catchType;
-                            RistrettoType rType = RistrettoType.create(iCatchType);
+                            RistrettoType rType = RistrettoType.getOrCreate(iCatchType);
                             effectiveRHandlers[i] = new ExceptionHandler(iHandler.getStartBCI(), iHandler.getEndBCI(), iHandler.getHandlerBCI(), iHandler.catchTypeCPI(), rType);
                         } else {
                             effectiveRHandlers[i] = iHandler;
@@ -255,7 +261,7 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     @Override
     public SubstrateType getDeclaringClass() {
-        return RistrettoType.create(interpreterMethod.getDeclaringClass());
+        return RistrettoType.getOrCreate(interpreterMethod.getDeclaringClass());
     }
 
     @Override
@@ -349,5 +355,20 @@ public final class RistrettoMethod extends SubstrateMethod {
         assert SubstrateOptions.useRistretto();
         assert interpreterMethod.hasNativeEntryPoint();
         return interpreterMethod.getNativeEntryPoint();
+    }
+
+    public SubstrateMethod getOriginalRuntimeMethod() {
+        return originalRuntimeMethod;
+    }
+
+    public void setOriginalRuntimeMethod(SubstrateMethod sMethod) {
+        assert originalRuntimeMethod == null;
+        if (originalRuntimeMethod == null) {
+            synchronized (this) {
+                if (originalRuntimeMethod == null) {
+                    originalRuntimeMethod = sMethod;
+                }
+            }
+        }
     }
 }

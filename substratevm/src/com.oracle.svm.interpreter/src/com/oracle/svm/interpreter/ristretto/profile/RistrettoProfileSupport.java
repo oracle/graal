@@ -99,7 +99,7 @@ public class RistrettoProfileSupport {
         }
 
         assert iMethod instanceof CremaResolvedJavaMethodImpl;
-        final RistrettoMethod rMethod = RistrettoMethod.create(iMethod);
+        final RistrettoMethod rMethod = RistrettoMethod.getOrCreate(iMethod);
 
         int oldState = COMPILATION_STATE_UPDATER.get(rMethod);
         if (!RistrettoCompileStateMachine.shouldEnterProfiling(oldState)) {

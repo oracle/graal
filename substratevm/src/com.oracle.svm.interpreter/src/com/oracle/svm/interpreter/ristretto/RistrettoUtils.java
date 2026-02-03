@@ -41,27 +41,34 @@ import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.meta.RuntimeCodeInstaller;
+import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMetaAccess;
 import com.oracle.svm.graal.meta.SubstrateMethod;
+import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPhase;
+import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPlugins;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoNoDeoptPhase;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoConstantReflectionProvider;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoField;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMetaAccess;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoReplacements;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoType;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationWatchDog;
 import jdk.graal.compiler.core.CompilationWrapper;
@@ -75,8 +82,8 @@ import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
-import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -90,6 +97,7 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -183,7 +191,7 @@ public class RistrettoUtils {
             StructuredGraph graph = new StructuredGraph.Builder(options, debug, allowAssumptions).method(method).speculationLog(speculationLog)
                             .profileProvider(profileProvider).compilationId(compilationId).build();
             assert graph != null;
-            PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite(runtimeConfig);
+            PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite();
             HighTierContext hc = new HighTierContext(runtimeConfig.getProviders(), null, OptimisticOptimizations.ALL);
             parseFromBytecode(graph, ristrettoGraphBuilderSuite, hc);
             return graph;
@@ -274,7 +282,7 @@ public class RistrettoUtils {
                                 graph.getGraphState().configureExplicitExceptionsNoDeopt();
                             }
                             assert graph != null;
-                            PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite(runtimeConfig);
+                            PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite();
                             suites = adaptSuitesForRistretto(RuntimeCompilationSupport.getMatchingSuitesForGraph(graph));
                             if (TestingBackdoor.shouldRememberGraph()) {
                                 // override the suites with graph capturing phases
@@ -305,6 +313,8 @@ public class RistrettoUtils {
 
                             // and the ristretto constant reflection
                             providers = providers.copyWith(new RistrettoConstantReflectionProvider((SubstrateMetaAccess) providers.getMetaAccess(), providers.getSnippetReflection()));
+
+                            providers = providers.copyWith(new RistrettoReplacements((SubstrateReplacements) providers.getReplacements()));
                         }
 
                         GraalCompiler.compile(new GraalCompiler.Request<>(graph,
@@ -351,9 +361,9 @@ public class RistrettoUtils {
         return effectiveSuites;
     }
 
-    private static PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite(RuntimeConfiguration runtimeConfig) {
+    private static PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite() {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
-        suite.appendPhase(createRistrettoGraphBuilder(createRistrettoGraphBuilderConfiguration(runtimeConfig)));
+        suite.appendPhase(createRistrettoGraphBuilder(createRistrettoGraphBuilderConfiguration()));
         return suite;
     }
 
@@ -361,11 +371,15 @@ public class RistrettoUtils {
         return new RistrettoGraphBuilderPhase(gpc);
     }
 
-    private static GraphBuilderConfiguration createRistrettoGraphBuilderConfiguration(RuntimeConfiguration runtimeConfig) {
-        Providers runtimeProviders = runtimeConfig.getProviders();
-        Replacements runtimeReplacements = runtimeProviders.getReplacements();
-        GraphBuilderConfiguration.Plugins gbp = runtimeReplacements.getGraphBuilderPlugins();
-        GraphBuilderConfiguration gpc = GraphBuilderConfiguration.getDefault(gbp);
+    public static GraphBuilderConfiguration createRistrettoGraphBuilderConfiguration() {
+        // init fresh graph builder plugins
+        GraphBuilderConfiguration.Plugins runtimeParseGraphBuilderPlugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
+        RistrettoGraphBuilderPlugins.setRuntimeGraphBuilderPlugins(runtimeParseGraphBuilderPlugins);
+        SnippetReflectionProvider srp = RuntimeCompilationSupport.getRuntimeConfig().getProviders().getSnippetReflection();
+        StandardGraphBuilderPlugins.registerInvocationPlugins(srp, runtimeParseGraphBuilderPlugins.getInvocationPlugins(), true, true, false);
+        runtimeParseGraphBuilderPlugins.getInvocationPlugins().closeRegistration();
+
+        GraphBuilderConfiguration gpc = GraphBuilderConfiguration.getDefault(runtimeParseGraphBuilderPlugins);
         if (!RistrettoOptions.getJITUseDeoptimization()) {
             gpc = gpc.withBytecodeExceptionMode(GraphBuilderConfiguration.BytecodeExceptionMode.CheckAll);
         }
@@ -475,7 +489,7 @@ public class RistrettoUtils {
     public static RistrettoField[] toRFields(ResolvedJavaField[] iFields) {
         ArrayList<RistrettoField> rFields = new ArrayList<>();
         for (int i = 0; i < iFields.length; i++) {
-            RistrettoField rField = RistrettoField.create((InterpreterResolvedJavaField) iFields[i]);
+            RistrettoField rField = RistrettoField.getOrCreate((InterpreterResolvedJavaField) iFields[i]);
             if (rField.getOffset() < 0) {
                 /*
                  * TODO GR-73029: Hosted fields that are not needed at runtime might still have
@@ -493,4 +507,37 @@ public class RistrettoUtils {
         return rFields.toArray(new RistrettoField[0]);
     }
 
+    public static RistrettoMethod toRMethodOrNull(SubstrateMethod substrateMethod) {
+        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) substrateMethod.getDeclaringClass().getHub().getInterpreterType();
+        for (var iMeth : iType.getDeclaredMethods()) {
+            if (iMeth.getName().equals(substrateMethod.getName()) && iMeth.getSignature().toMethodDescriptor().equals(substrateMethod.getSignature().toMethodDescriptor())) {
+                RistrettoMethod rMethod = RistrettoMethod.getOrCreate(iMeth);
+                rMethod.setOriginalRuntimeMethod(substrateMethod);
+                return rMethod;
+            }
+        }
+        return null;
+    }
+
+    public static RistrettoField toRFieldOrNull(SubstrateField substrateField) {
+        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) substrateField.getDeclaringClass().getHub().getInterpreterType();
+        if (substrateField.isStatic()) {
+            for (var iField : iType.getStaticFields()) {
+                if (iField.getName().equals(substrateField.getName())) {
+                    return RistrettoField.getOrCreate((InterpreterResolvedJavaField) iField);
+                }
+            }
+        } else {
+            for (var iField : iType.getInstanceFields(true)) {
+                if (iField.getName().equals(substrateField.getName())) {
+                    return RistrettoField.getOrCreate((InterpreterResolvedJavaField) iField);
+                }
+            }
+        }
+        return null;
+    }
+
+    public static RistrettoType toRType(SubstrateType substrateType) {
+        return RistrettoType.getOrCreate((InterpreterResolvedJavaType) substrateType.getHub().getInterpreterType());
+    }
 }
