@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,8 @@ import jdk.graal.compiler.phases.common.FloatingReadPhase;
 import jdk.graal.compiler.phases.common.GuardLoweringPhase;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.common.MidTierLoweringPhase;
+import jdk.graal.compiler.phases.common.RemoveValueProxyPhase;
+import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 
 /**
@@ -312,5 +314,56 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         canonicalizer.apply(graph, getEagerHighTierContext());
         assertTrue(graph.getNodes().filter(IfNode.class).count() == 0);
+    }
+
+    static Object staticObj = null;
+
+    public static Object test14Snippet(Object a, boolean cond, boolean cond1) {
+        Object obj = null;
+        while (true) {
+            int i;
+            obj = staticObj;
+            if (obj == null) {
+                if (cond) {
+                    obj = GraalDirectives.guardingNonNull(staticObj);
+                    i = 0;
+                } else {
+                    obj = null;
+                    i = 1;
+                }
+            } else {
+                obj = GraalDirectives.guardingNonNull(obj);
+                i = 2;
+            }
+            if (obj == null) {
+                break;
+            }
+            if (i != 2) {
+                break;
+            }
+            if (cond1) {
+                obj = staticObj;
+                break;
+            }
+        }
+        return obj;
+    }
+
+    @Test
+    public void test14() {
+        StructuredGraph graph = parseEager("test14Snippet", AllowAssumptions.YES);
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        canonicalizer.apply(graph, getEagerHighTierContext());
+        new SchedulePhase(getInitialOptions()).apply(graph, getDefaultMidTierContext());
+        assertTrue(graph.getNodes().filter(IfNode.class).count() == 3);
+    }
+
+    @Test
+    public void test14AfterProxyRemoval() {
+        StructuredGraph graph = parseEager("test14Snippet", AllowAssumptions.YES);
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        new RemoveValueProxyPhase(canonicalizer).apply(graph, getDefaultMidTierContext());
+        new SchedulePhase(getInitialOptions()).apply(graph, getDefaultMidTierContext());
+        assertTrue(graph.getNodes().filter(IfNode.class).count() == 5);
     }
 }
