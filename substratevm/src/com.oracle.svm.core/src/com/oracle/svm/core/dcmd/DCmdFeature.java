@@ -61,7 +61,6 @@ public class DCmdFeature implements InternalFeature {
             dcmdSupport.registerCommand(new JfrDumpDCmd());
         }
 
-        dcmdSupport.registerCommand(new ThreadDumpToFileDCmd());
         dcmdSupport.registerCommand(new ThreadPrintDCmd());
 
         if (ImageSingletons.contains(JavaMainSupport.class)) {
