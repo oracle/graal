@@ -46,14 +46,13 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
     static final int MAX_HEAP_FREE_RATIO = 70;
     static final boolean SHRINK_HEAP_IN_STEPS = true;
     static final int SURVIVOR_RATIO = 8;
-    static final int MAX_TENURING_THRESHOLD = 15;
     static final int TARGET_SURVIVOR_RATIO = 50;
 
     private boolean oldSizeExceededInPreviousCollection;
     private int shrinkFactor;
 
     ProportionateSpacesPolicy() {
-        super(NEW_RATIO, MAX_TENURING_THRESHOLD);
+        super(NEW_RATIO, HeapParameters.getMaxSurvivorSpaces());
     }
 
     @Override
@@ -108,17 +107,17 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
         // AgeTable::compute_tenuring_threshold
         YoungGeneration youngGen = HeapImpl.getHeapImpl().getYoungGeneration();
         UnsignedWord total = Word.zero();
-        int i;
-        for (i = 0; i < HeapParameters.getMaxSurvivorSpaces(); i++) {
-            Space space = youngGen.getSurvivorFromSpaceAt(0);
+        int age = 1;
+        while (age <= HeapParameters.getMaxSurvivorSpaces()) {
+            Space space = youngGen.getSurvivorFromSpaceAt(age - 1);
             total = total.add(space.getChunkBytes());
             if (total.aboveThan(desiredSurvivorSize)) {
                 break;
             }
-            i++;
+            age++;
         }
 
-        tenuringThreshold = Math.min(i + 1, MAX_TENURING_THRESHOLD);
+        tenuringThreshold = Math.min(age, HeapParameters.getMaxSurvivorSpaces());
     }
 
     private void computeNewOldGenSize(boolean resizeOnlyForPromotions) { // TenuredGeneration::compute_new_size_inner
@@ -196,8 +195,8 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
         UnsignedWord desiredNewSize = sizes.getOldSize().unsignedDivide(NEW_RATIO);
         desiredNewSize = UnsignedUtils.clamp(desiredNewSize, sizes.getInitialYoungSize(), sizes.getMaxYoungSize());
 
-        // DefNewGeneration::compute_space_boundaries, DefNewGeneration::compute_survivor_size
-        UnsignedWord newSurvivorSize = minSpaceSize(alignDown(desiredNewSize.unsignedDivide(SURVIVOR_RATIO)));
+        // DefNewGeneration::compute_space_boundaries
+        UnsignedWord newSurvivorSize = computeSurvivorSize(desiredNewSize);
         sizes.setSurvivorSize(newSurvivorSize);
 
         UnsignedWord desiredEdenSize = Word.zero();
@@ -207,5 +206,11 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
         UnsignedWord newEdenSize = minSpaceSize(alignDown(desiredEdenSize));
         sizes.setEdenSize(newEdenSize);
         assert newEdenSize.aboveThan(0) && newSurvivorSize.belowOrEqual(newEdenSize);
+    }
+
+    private UnsignedWord computeSurvivorSize(UnsignedWord genSize) { // DefNewGeneration::compute_survivor_size
+        UnsignedWord targetSurvivorSize = minSpaceSize(alignDown(genSize.unsignedDivide(SURVIVOR_RATIO)));
+        // Note that maxSurvivorSize is 0 when survivor spaces are disabled.
+        return UnsignedUtils.min(targetSurvivorSize, sizes.getMaxSurvivorSize());
     }
 }

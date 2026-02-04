@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.guest.staging.Uninterruptible;
@@ -35,7 +36,6 @@ import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.ReflectionUtil;
-import org.graalvm.word.impl.Word;
 
 /** The interface for a garbage collection policy. All sizes are in bytes. */
 public interface CollectionPolicy {
@@ -66,6 +66,8 @@ public interface CollectionPolicy {
     @Platforms(Platform.HOSTED_ONLY.class)
     static Class<? extends CollectionPolicy> getPolicyClass(String name) {
         switch (name) {
+            case "Adaptive2":
+                return AdaptiveCollectionPolicy2.class;
             case "Adaptive":
                 return AdaptiveCollectionPolicy.class;
             case "LibGraal":
@@ -146,8 +148,7 @@ public interface CollectionPolicy {
      * The current limit for the size of the entire heap, which is less than or equal to
      * {@link #getMaximumHeapSize}.
      *
-     * NOTE: this can currently be exceeded during a collection while copying objects in the old
-     * generation.
+     * NOTE: this can currently be exceeded during a collection with {@link CopyingOldGeneration}.
      */
     UnsignedWord getCurrentHeapCapacity();
 
@@ -160,8 +161,7 @@ public interface CollectionPolicy {
      * The hard limit for the size of the entire heap. Exceeding this limit triggers an
      * {@link OutOfMemoryError}.
      *
-     * NOTE: this can currently be exceeded during a collection while copying objects in the old
-     * generation.
+     * NOTE: this can currently be exceeded during a collection with {@link CopyingOldGeneration}.
      */
     UnsignedWord getMaximumHeapSize();
 
@@ -217,6 +217,10 @@ public interface CollectionPolicy {
 
     /** Can be overridden to recover from OOM. */
     default boolean isOutOfMemory(UnsignedWord usedBytes) {
+        /*
+         * GR-72932: collections can tenure objects beyond the old generation's current or maximum
+         * size, and the following allocations can exceed the current or maximum heap size.
+         */
         return usedBytes.aboveThan(getMaximumHeapSize());
     }
 

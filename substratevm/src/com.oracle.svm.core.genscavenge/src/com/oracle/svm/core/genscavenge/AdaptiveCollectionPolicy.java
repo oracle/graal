@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoungGenSeparately;
 
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.heap.GCCause;
@@ -35,7 +36,6 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.core.util.UnsignedUtils;
-import org.graalvm.word.impl.Word;
 
 /**
  * A garbage collection policy that balances throughput and memory footprint.
@@ -132,7 +132,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private final AdaptivePaddedAverage avgMinorPause = new AdaptivePaddedAverage(ADAPTIVE_TIME_WEIGHT, PAUSE_PADDING);
     private final AdaptivePaddedAverage avgSurvived = new AdaptivePaddedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT, SURVIVOR_PADDING);
     private final AdaptivePaddedAverage avgPromoted = new AdaptivePaddedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT, PROMOTED_PADDING, true);
-    private final ReciprocalLeastSquareFit minorCostEstimator = new ReciprocalLeastSquareFit(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
+    private final ReciprocalLeastSquareFit minorCostEstimator = ReciprocalLeastSquareFit.createWithEffectiveHistoryLength(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
     private long minorCount;
     private long latestMinorMutatorIntervalNanos;
     private boolean youngGenPolicyIsReady;
@@ -145,7 +145,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private final AdaptivePaddedAverage avgMajorPause = new AdaptivePaddedAverage(ADAPTIVE_TIME_WEIGHT, PAUSE_PADDING);
     private final AdaptiveWeightedAverage avgMajorIntervalSeconds = new AdaptiveWeightedAverage(ADAPTIVE_TIME_WEIGHT);
     private final AdaptiveWeightedAverage avgOldLive = new AdaptiveWeightedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT);
-    private final ReciprocalLeastSquareFit majorCostEstimator = new ReciprocalLeastSquareFit(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
+    private final ReciprocalLeastSquareFit majorCostEstimator = ReciprocalLeastSquareFit.createWithEffectiveHistoryLength(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
     private long majorCount;
     private UnsignedWord oldGenSizeIncrementSupplement = Word.unsigned(TENURED_GENERATION_SIZE_SUPPLEMENT);
     private long latestMajorMutatorIntervalNanos;
@@ -180,10 +180,14 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         }
         if (followingIncrementalCollection && oldSizeExceededInPreviousCollection) {
             /*
-             * In the preceding incremental collection, we promoted objects to the old generation
-             * beyond its current capacity to avoid a promotion failure, but due to the chunked
-             * nature of our heap, we should still be within the maximum heap size. Follow up with a
-             * full collection during which we reclaim enough space or expand the old generation.
+             * In the preceding incremental collection, to avoid a promotion failure, we promoted
+             * objects to the old generation beyond its current capacity. We might have temporarily
+             * exceeded the maximum heap size, but due to the chunked nature of our heap, should
+             * currently be within limits.
+             *
+             * Follow up with a full collection during which we reclaim enough space or expand the
+             * old generation. However, when tenuring all objects, we might exceed the old
+             * generation's maximum size and potentially later maximum heap size (GR-72932).
              */
             return true;
         }
@@ -257,9 +261,10 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         sizes.setSurvivorSize(targetSize);
 
         if (decrTenuringThreshold) {
-            tenuringThreshold = Math.max(tenuringThreshold - 1, 1);
+            // Note: we allow 0 to promote from eden to the old gen, but the original code uses >=1.
+            tenuringThreshold = Math.max(tenuringThreshold - 1, 0);
         } else if (incrTenuringThreshold) {
-            tenuringThreshold = Math.min(tenuringThreshold + 1, HeapParameters.getMaxSurvivorSpaces() + 1);
+            tenuringThreshold = Math.min(tenuringThreshold + 1, HeapParameters.getMaxSurvivorSpaces());
         }
     }
 
@@ -318,6 +323,13 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         if (deltax == 0 || totalSize == 0) { // division by zero below
             return true; // general assumption for space expansion
         }
+
+        /*
+         * Note: prior to using the estimator, we should check whether its current model is
+         * plausible (e.g., increasing size results in strictly decreasing predicted cost, and
+         * predicted costs are non-negative), and fall back to a conservative behavior if not.
+         */
+
         double y0 = estimator.estimate(x0) + otherCost;
         double y1 = y0 * (1 - deltax / totalSize * ADAPTIVE_SIZE_ESTIMATOR_MIN_TOTAL_SIZE_COST_TRADEOFF);
         double minSlope = (y1 - y0) / deltax;
@@ -431,8 +443,10 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         super.onCollectionBegin(completeCollection, beginNanoTime);
     }
 
+    // PSParallelCompact::invoke_no_policy + major_collection_end
+    // or PSScavenge::invoke + minor_collection_end
     @Override
-    public void onCollectionEnd(boolean completeCollection, GCCause cause) { // {major,minor}_collection_end
+    public void onCollectionEnd(boolean completeCollection, GCCause cause) {
         Timer timer = completeCollection ? majorTimer : minorTimer;
         timer.stop();
 
@@ -600,6 +614,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
                     intervalSeconds.sample(intervalInSeconds);
                 }
             }
+            // Note: we should probably discard the sample if an interval is 0 or negative above.
             costEstimator.sample(UnsignedUtils.toDouble(sizeBytes), cost);
         }
     }

@@ -103,6 +103,10 @@ public final class GCAccounting {
         return allocatedObjectBytes;
     }
 
+    UnsignedWord getOldGenerationBeforeChunkBytes() {
+        return oldChunkBytesBefore;
+    }
+
     UnsignedWord getOldGenerationAfterChunkBytes() {
         return oldChunkBytesAfter;
     }
