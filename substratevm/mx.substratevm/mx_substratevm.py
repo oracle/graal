@@ -1418,10 +1418,13 @@ svm = mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     # Use short name for Truffle Runtime SVM to select by priority
     dependencies=['GraalVM compiler', 'SubstrateVM Static Libraries', 'Graal SDK Native Image', 'svmt'],
-    jar_distributions=['substratevm:LIBRARY_SUPPORT', 'substratevm:SVM_GUEST'],
+    # Note that SVM_GUEST_STAGING is loaded by guest (`jar_distributions`) and the builder (`builder_jar_distributions`).
+    # It is a transitional module will be merged to SVM_GUEST once all dependencies from the builder are removed.
+    jar_distributions=['substratevm:LIBRARY_SUPPORT', 'substratevm:SVM_GUEST', 'substratevm:SVM_GUEST_STAGING'],
     builder_jar_distributions=[
         'substratevm:SVM',
         'substratevm:SVM_CONFIGURE',
+        'substratevm:SVM_GUEST_STAGING',
         'espresso-shared:ESPRESSO_SVM',
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',

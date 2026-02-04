@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_NATIVE;
@@ -53,7 +53,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.SubstrateMetadata;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.RuntimeClassLoading;

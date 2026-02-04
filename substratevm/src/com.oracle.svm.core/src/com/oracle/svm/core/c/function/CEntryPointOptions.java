@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterPrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveEpilogue;
 import org.graalvm.word.impl.Word;

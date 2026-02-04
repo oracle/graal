@@ -25,7 +25,7 @@
 package com.oracle.svm.interpreter;
 
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 import jdk.graal.compiler.api.replacements.Fold;

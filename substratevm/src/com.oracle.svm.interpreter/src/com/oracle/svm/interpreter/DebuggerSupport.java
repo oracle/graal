@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.interpreter;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.interpreter.InterpreterUtil.traceInterpreter;
 
 import java.io.IOException;
@@ -47,7 +47,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.FunctionPointerHolder;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.heap.UnknownObjectField;

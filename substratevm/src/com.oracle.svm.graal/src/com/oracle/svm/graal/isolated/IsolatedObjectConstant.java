@@ -26,7 +26,7 @@ package com.oracle.svm.graal.isolated;
 
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.graal.isolated.ClientHandle;
 import com.oracle.svm.core.graal.isolated.ClientIsolateThread;

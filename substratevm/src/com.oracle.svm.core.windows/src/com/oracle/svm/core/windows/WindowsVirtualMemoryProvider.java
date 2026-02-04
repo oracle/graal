@@ -41,7 +41,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;

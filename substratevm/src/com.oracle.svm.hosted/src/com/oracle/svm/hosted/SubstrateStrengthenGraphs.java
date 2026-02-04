@@ -34,7 +34,7 @@ import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.TrackDynamicAccessEnabled;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
@@ -135,7 +135,7 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
          * deopt for testing because it would require us to preserve additional graph state.
          */
         boolean insertMessage = SubstrateUtil.assertionsEnabled() &&
-                        !Uninterruptible.Utils.isUninterruptible(graph.method()) &&
+                        !UninterruptibleAnnotationUtils.isUninterruptible(graph.method()) &&
                         !SubstrateCompilationDirectives.isRuntimeCompiledMethod(graph.method()) &&
                         !SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(graph.method());
         if (insertMessage) {

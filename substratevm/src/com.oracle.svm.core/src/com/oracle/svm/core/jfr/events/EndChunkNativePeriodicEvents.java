@@ -29,7 +29,7 @@ import java.util.Properties;
 
 import org.graalvm.nativeimage.StackValue;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrEventWriteStatus;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;

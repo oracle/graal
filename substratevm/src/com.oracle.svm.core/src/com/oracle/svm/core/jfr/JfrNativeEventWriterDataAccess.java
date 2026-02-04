@@ -26,7 +26,7 @@ package com.oracle.svm.core.jfr;
 
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import org.graalvm.word.impl.Word;
 
 /**

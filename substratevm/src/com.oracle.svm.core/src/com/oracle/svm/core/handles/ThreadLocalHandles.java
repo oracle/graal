@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.handles;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.Arrays;
 
@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.word.SignedWord;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.word.impl.Word;
 

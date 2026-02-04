@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.graal.isolated.ClientHandle;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 

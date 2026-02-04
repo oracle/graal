@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import com.oracle.svm.guest.staging.Uninterruptible;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;

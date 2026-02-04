@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.RegisterDumper;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.aarch64.AArch64ReservedRegisters;
 import com.oracle.svm.core.log.Log;

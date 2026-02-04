@@ -110,7 +110,7 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -133,6 +133,7 @@ import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationCandidat
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethod;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethodSupport;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -558,8 +559,8 @@ public class TruffleFeature implements InternalFeature {
     private static boolean runtimeCompilationForbidden(ResolvedJavaMethod method) {
         if (AnnotationUtil.getAnnotation(method, TruffleBoundary.class) != null) {
             return true;
-        } else if (Uninterruptible.Utils.isUninterruptible(method)) {
-            Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
+        } else if (UninterruptibleAnnotationUtils.isUninterruptible(method)) {
+            Uninterruptible uninterruptibleAnnotation = UninterruptibleAnnotationUtils.getAnnotation(method);
             if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
                 /* The semantics of Uninterruptible would get lost during partial evaluation. */
                 return true;

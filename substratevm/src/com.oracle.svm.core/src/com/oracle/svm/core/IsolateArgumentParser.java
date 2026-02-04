@@ -29,7 +29,7 @@ import static com.oracle.svm.core.IsolateArgumentAccess.readLong;
 import static com.oracle.svm.core.IsolateArgumentAccess.writeBoolean;
 import static com.oracle.svm.core.IsolateArgumentAccess.writeCCharPointer;
 import static com.oracle.svm.core.IsolateArgumentAccess.writeLong;
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -38,6 +38,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import com.oracle.svm.guest.staging.Uninterruptible;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

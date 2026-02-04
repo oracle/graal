@@ -32,11 +32,13 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
@@ -90,7 +92,6 @@ import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.collections.EconomicSet;
 
 public class DeoptimizationUtils {
 
@@ -165,7 +166,7 @@ public class DeoptimizationUtils {
         if (method.isIntrinsicMethod()) {
             return false;
         }
-        if (Uninterruptible.Utils.isUninterruptible(method)) {
+        if (UninterruptibleAnnotationUtils.isUninterruptible(method)) {
             return false;
         }
         if (AnnotationUtil.getAnnotation(method, RestrictHeapAccess.class) != null) {
