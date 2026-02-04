@@ -469,6 +469,40 @@ public class TStringTestBase {
                 }
                 test.runWithErrorDecorator(fromJavaString, array, codeRange, isValid, encoding, codepoints, byteIndices);
             }
+            if (encoding == UTF_32) {
+                for (boolean copy : new boolean[]{true, false}) {
+                    test.runWithErrorDecorator(
+                                    TruffleString.fromByteArrayWithCompactionUTF32Uncached(array, 0, array.length, TruffleString.CompactionLevel.S4, copy),
+                                    array, codeRange, isValid, encoding, codepoints, byteIndices);
+                    test.runWithErrorDecorator(
+                                    TruffleString.fromNativePointerWithCompactionUTF32Uncached(PointerObject.create(array), 0, array.length, TruffleString.CompactionLevel.S4, copy),
+                                    array, codeRange, isValid, encoding, codepoints, byteIndices);
+                    if (codeRange.isSubsetOf(TruffleString.CodeRange.BMP)) {
+                        byte[] compact = new byte[array.length >> 1];
+                        for (int i = 0; i < codepoints.length; i++) {
+                            TStringTestUtil.writeValue(compact, 1, i, codepoints[i]);
+                        }
+                        test.runWithErrorDecorator(
+                                        TruffleString.fromByteArrayWithCompactionUTF32Uncached(compact, 0, compact.length, TruffleString.CompactionLevel.S2, copy),
+                                        array, codeRange, isValid, encoding, codepoints, byteIndices);
+                        test.runWithErrorDecorator(
+                                        TruffleString.fromNativePointerWithCompactionUTF32Uncached(PointerObject.create(compact), 0, compact.length, TruffleString.CompactionLevel.S2, copy),
+                                        array, codeRange, isValid, encoding, codepoints, byteIndices);
+                    }
+                    if (codeRange.isSubsetOf(TruffleString.CodeRange.LATIN_1)) {
+                        byte[] compact = new byte[array.length >> 2];
+                        for (int i = 0; i < codepoints.length; i++) {
+                            TStringTestUtil.writeValue(compact, 0, i, codepoints[i]);
+                        }
+                        test.runWithErrorDecorator(
+                                        TruffleString.fromByteArrayWithCompactionUTF32Uncached(compact, 0, compact.length, TruffleString.CompactionLevel.S1, copy),
+                                        array, codeRange, isValid, encoding, codepoints, byteIndices);
+                        test.runWithErrorDecorator(
+                                        TruffleString.fromNativePointerWithCompactionUTF32Uncached(PointerObject.create(compact), 0, compact.length, TruffleString.CompactionLevel.S1, copy),
+                                        array, codeRange, isValid, encoding, codepoints, byteIndices);
+                    }
+                }
+            }
             if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding)) {
                 byte[] bytesUTF16 = new byte[(codepoints.length + 1) * 2];
                 for (int i = 0; i < codepoints.length; i++) {

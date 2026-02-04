@@ -2474,6 +2474,226 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
+     * Node to create a new {@link TruffleString} from a byte array. See {@link #execute} for
+     * details.
+     *
+     * @since 25.1
+     */
+    public abstract static class FromByteArrayWithCompactionUTF32Node extends AbstractPublicNode {
+
+        FromByteArrayWithCompactionUTF32Node() {
+        }
+
+        /**
+         * UTF-32-specific version of {@link FromByteArrayNode} that accepts compacted buffers.
+         * Passing {@link CompactionLevel#S1} means that the string is compacted to single bytes,
+         * i.e. it is equivalent to a {@link Encoding#ISO_8859_1} string. Analogously, passing
+         * {@link CompactionLevel#S2} means that the buffer is equivalent to a {@code UCS-2} string.
+         *
+         * <p>
+         * Examples:
+         *
+         * <pre>
+         * byte[] array = {'a', 'b', 'c'};
+         * TruffleString str = fromByteArrayWithCompactionUTF32Node.execute(array, 0, array.length, CompactionLevel.S1, false);
+         * // returns a UTF-32 string "abc", re-using the byte array without copy
+         * </pre>
+         *
+         * <pre>
+         * byte[] array = {0x34, 0x12, 0x78, 0x56};
+         * TruffleString str = fromByteArrayWithCompactionUTF32Node.execute(array, 0, array.length, CompactionLevel.S2, false);
+         * // returns a UTF-32 string "\u1234\u5678", re-using the byte array without copy
+         * </pre>
+         *
+         * <pre>
+         * byte[] array = {0x45, 0x23, 0x01, 0x00};
+         * TruffleString str = fromByteArrayWithCompactionUTF32Node.execute(array, 0, array.length, CompactionLevel.S4, false);
+         * // returns a UTF-32 string containing the single codepoint 0x12345, re-using the byte array
+         * // without copy
+         * </pre>
+         *
+         * </p>
+         *
+         * Note that this node may further compact (and therefore copy) the array if possible, or
+         * inflate if it contains illegal codepoints (i.e. surrogate values):
+         *
+         * <pre>
+         * byte[] array = {'a', 0x00, 'b', 0x00};
+         * TruffleString str = fromByteArrayWithCompactionUTF32Node.execute(array, 0, array.length, CompactionLevel.S2, false);
+         * // returns a UTF-32 string "ab", copying and further compacting the given array despite
+         * // copy=false
+         * </pre>
+         *
+         *
+         * @param compactionLevel describes the given string's compaction level.
+         *            {@link CompactionLevel#S1} means one byte per codepoint,
+         *            {@link CompactionLevel#S2} means two bytes per codepoint, and
+         *            {@link CompactionLevel#S4} corresponds to four bytes per codepoint. Not
+         *            strictly required to be
+         *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
+         *            constant}, but still recommended, since this parameter being constant avoids
+         *            two branches and associated stub calls.
+         * @param copy analogous to the {@code copy} parameter of {@link FromByteArrayNode}. Must be
+         *            {@link CompilerAsserts#partialEvaluationConstant(boolean) partial evaluation
+         *            constant}.
+         *
+         * @since 25.1
+         */
+        public abstract TruffleString execute(byte[] array, int byteOffset, int byteLength, CompactionLevel compactionLevel, boolean copy);
+
+        @Specialization
+        final TruffleString fromByteArray(byte[] value, int byteOffset, int byteLength, CompactionLevel compactionLevel, boolean copy,
+                        @Cached InlinedConditionProfile mustCopyProfile) {
+            CompilerAsserts.partialEvaluationConstant(copy);
+            checkArrayRange(value, byteOffset, byteLength);
+            int length = byteLength >> compactionLevel.log2;
+            int offset = byteOffset + byteArrayBaseOffset();
+            int codeRange = calcCodeRange(this, value, offset, length, compactionLevel);
+            int stride = Stride.fromCodeRangeUTF32(codeRange);
+            final byte[] arrayA;
+            final int offsetA;
+            if (copy || mustCopyProfile.profile(this, compactionLevel.log2 != stride)) {
+                arrayA = new byte[length << stride];
+                offsetA = 0;
+                TStringOps.arraycopyWithStride(this, value, offset, compactionLevel.log2, 0, arrayA, byteArrayBaseOffset(), stride, 0, length);
+            } else {
+                arrayA = value;
+                offsetA = byteOffset;
+            }
+            return TruffleString.createFromArray(arrayA, offsetA, length, stride, Encoding.UTF_32, length, codeRange, true);
+        }
+
+        private static int calcCodeRange(Node node, byte[] arrayA, long offsetA, int lengthA, CompactionLevel compactionLevel) {
+            switch (compactionLevel) {
+                case S1 -> {
+                    return TStringOps.calcStringAttributesLatin1(node, arrayA, offsetA, lengthA);
+                }
+                case S2 -> {
+                    int codeRange = StringAttributes.getCodeRange(TStringOps.calcStringAttributesUTF16(node, arrayA, offsetA, lengthA, false));
+                    if (TSCodeRange.isMoreGeneralThan(codeRange, TSCodeRange.get16Bit())) {
+                        // calcStringAttributesUTF16 returned VALID or BROKEN, therefore the string
+                        // must contain surrogate chars, which is considered invalid in UTF-32.
+                        return TSCodeRange.getBrokenFixedWidth();
+                    } else {
+                        return codeRange;
+                    }
+                }
+                case S4 -> {
+                    return TStringOps.calcStringAttributesUTF32(node, arrayA, offsetA, lengthA);
+                }
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        /**
+         * Create a new {@link FromByteArrayWithCompactionUTF32Node}.
+         *
+         * @since 25.1
+         */
+        @NeverDefault
+        public static FromByteArrayWithCompactionUTF32Node create() {
+            return TruffleStringFactory.FromByteArrayWithCompactionUTF32NodeGen.create();
+        }
+
+        /**
+         * Get the uncached version of {@link FromByteArrayWithCompactionUTF32Node}.
+         *
+         * @since 25.1
+         */
+        public static FromByteArrayWithCompactionUTF32Node getUncached() {
+            return TruffleStringFactory.FromByteArrayWithCompactionUTF32NodeGen.getUncached();
+        }
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link FromByteArrayWithCompactionUTF32Node}.
+     *
+     * @since 25.1
+     */
+    @TruffleBoundary
+    public static TruffleString fromByteArrayWithCompactionUTF32Uncached(byte[] array, int byteOffset, int byteLength, CompactionLevel compactionLevel, boolean copy) {
+        return FromByteArrayWithCompactionUTF32Node.getUncached().execute(array, byteOffset, byteLength, compactionLevel, copy);
+    }
+
+    /**
+     * Node to create a new {@link TruffleString} from an interop object representing a native
+     * pointer. See {@link #execute} for details.
+     *
+     * @since 25.1
+     */
+    public abstract static class FromNativePointerWithCompactionUTF32Node extends AbstractPublicNode {
+
+        FromNativePointerWithCompactionUTF32Node() {
+        }
+
+        /**
+         * Native buffer variant of {@link FromByteArrayWithCompactionUTF32Node}. See
+         * {@link FromByteArrayWithCompactionUTF32Node#execute} for more details.
+         *
+         * @param pointerObject native buffer, analogous to the {@code pointerObject} parameter of
+         *            {@link FromNativePointerNode}.
+         *
+         * @since 25.1
+         */
+        public abstract TruffleString execute(Object pointerObject, int byteOffset, int byteLength, CompactionLevel compactionLevel, boolean copy);
+
+        @Specialization
+        final TruffleString fromNativePointer(Object pointerObject, int byteOffset, int byteLength, CompactionLevel compactionLevel, boolean copy,
+                        @Cached(value = "createInteropLibrary()", uncached = "getUncachedInteropLibrary()") Node interopLibrary,
+                        @Cached InlinedConditionProfile rawPointerProfile,
+                        @Cached InlinedConditionProfile mustCopyProfile) {
+            CompilerAsserts.partialEvaluationConstant(copy);
+            NativePointer pointer = NativePointer.create(this, pointerObject, interopLibrary, rawPointerProfile);
+            long nativePointer = pointer.pointer + byteOffset;
+            int length = byteLength >> compactionLevel.log2;
+            final int codeRange = FromByteArrayWithCompactionUTF32Node.calcCodeRange(this, null, nativePointer, length, compactionLevel);
+            int stride = Stride.fromCodeRangeUTF32(codeRange);
+            final Object arrayA;
+            final int offsetA;
+            if (copy || mustCopyProfile.profile(this, compactionLevel.log2 != stride)) {
+                byte[] array = new byte[length << stride];
+                arrayA = array;
+                offsetA = 0;
+                TStringOps.arraycopyWithStride(this, null, nativePointer, compactionLevel.log2, 0, array, byteArrayBaseOffset(), stride, 0, length);
+            } else {
+                arrayA = pointer;
+                offsetA = byteOffset;
+            }
+            return TruffleString.createFromArray(arrayA, offsetA, length, stride, Encoding.UTF_32, length, codeRange, true);
+        }
+
+        /**
+         * Create a new {@link FromNativePointerWithCompactionUTF32Node}.
+         *
+         * @since 25.1
+         */
+        @NeverDefault
+        public static FromNativePointerWithCompactionUTF32Node create() {
+            return TruffleStringFactory.FromNativePointerWithCompactionUTF32NodeGen.create();
+        }
+
+        /**
+         * Get the uncached version of {@link FromNativePointerWithCompactionUTF32Node}.
+         *
+         * @since 25.1
+         */
+        public static FromNativePointerWithCompactionUTF32Node getUncached() {
+            return TruffleStringFactory.FromNativePointerWithCompactionUTF32NodeGen.getUncached();
+        }
+    }
+
+    /**
+     * Shorthand for calling the uncached version of
+     * {@link FromNativePointerWithCompactionUTF32Node}.
+     *
+     * @since 25.1
+     */
+    @TruffleBoundary
+    public static TruffleString fromNativePointerWithCompactionUTF32Uncached(Object pointerObject, int byteOffset, int byteLength, CompactionLevel compactionLevel, boolean copy) {
+        return FromNativePointerWithCompactionUTF32Node.getUncached().execute(pointerObject, byteOffset, byteLength, compactionLevel, copy);
+    }
+
+    /**
      * Node to get the given {@link AbstractTruffleString} as a {@link TruffleString}. See
      * {@link #execute(AbstractTruffleString, TruffleString.Encoding)} for details.
      *
@@ -7707,10 +7927,8 @@ public final class TruffleString extends AbstractTruffleString {
                     if (useCompaction) {
                         TStringOps.arraycopyWithStride(node, arrayA, offsetA, strideA, 0, null, nativePointer.pointer, stride, 0, lengthA);
                     } else {
-                        if (isUTF16(encoding)) {
-                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, strideA, 0, null, nativePointer.pointer, 1, 0, lengthA);
-                        } else if (isUTF32(encoding)) {
-                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, strideA, 0, null, nativePointer.pointer, 2, 0, lengthA);
+                        if (isUTF16Or32(encoding)) {
+                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, strideA, 0, null, nativePointer.pointer, stride, 0, lengthA);
                         } else {
                             TStringOps.arraycopyWithStride(node, arrayA, offsetA, 0, 0, null, nativePointer.pointer, 0, 0, byteSize);
                         }

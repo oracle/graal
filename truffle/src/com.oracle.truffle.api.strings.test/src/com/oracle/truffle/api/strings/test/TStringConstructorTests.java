@@ -306,4 +306,13 @@ public class TStringConstructorTests extends TStringTestBase {
             Assert.assertEquals(array[i], internalByteArray.getArray()[internalByteArray.getOffset() + i]);
         }
     }
+
+    @Test
+    public void testFromCompactUTF32SurrogatePair() {
+        byte[] array = {0, (byte) 0xd8, 0, (byte) 0xdc};
+        TruffleString s = TruffleString.fromByteArrayWithCompactionUTF32Uncached(array, 0, 4, TruffleString.CompactionLevel.S2, false);
+        Assert.assertFalse(s.isValidUncached(TruffleString.Encoding.UTF_32));
+        TruffleString s2 = TruffleString.fromNativePointerWithCompactionUTF32Uncached(PointerObject.create(array), 0, 4, TruffleString.CompactionLevel.S2, false);
+        Assert.assertFalse(s2.isValidUncached(TruffleString.Encoding.UTF_32));
+    }
 }
