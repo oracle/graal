@@ -47,8 +47,8 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithReceiverBasedAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithReceiverBasedAvailability;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.layered.LayeredFieldValue;
@@ -299,7 +299,7 @@ public final class FieldValueInterceptionSupport {
         var interceptor = lookupFieldValueInterceptor(field);
         if (interceptor instanceof FieldValueTransformation transformation) {
             var transformer = transformation.getFieldValueTransformer();
-            if (transformer instanceof FieldValueTransformerWithReceiverBasedAvailability transformerWithReceiver) {
+            if (transformer instanceof JVMCIFieldValueTransformerWithReceiverBasedAvailability transformerWithReceiver) {
                 assert unknownReceiver || (!field.isStatic() && receiver != null) : Assertions.errorMessage("Missing receiver", field, receiver);
                 if (unknownReceiver) {
                     // Receiver is unknown - we cannot resolve this query

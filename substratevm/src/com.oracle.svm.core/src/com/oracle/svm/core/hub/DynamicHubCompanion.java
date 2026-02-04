@@ -39,8 +39,8 @@ import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layered.LayeredFieldValue;
-import com.oracle.svm.core.layered.LayeredFieldValueTransformer;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
 
 import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.ResolvedJavaType;

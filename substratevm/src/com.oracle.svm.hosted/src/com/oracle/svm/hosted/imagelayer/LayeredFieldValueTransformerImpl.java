@@ -34,27 +34,40 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithReceiverBasedAvailability;
-import com.oracle.svm.core.layered.LayeredFieldValueTransformer;
+import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithReceiverBasedAvailability;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
 import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Provides logic for representing a {@link LayeredFieldValueTransformer} as a
- * {@link FieldValueTransformerWithReceiverBasedAvailability} and keeping track of all needed state
+ * {@link JVMCIFieldValueTransformerWithAvailability} and keeping track of all needed state
  * information. Because we cannot perform constant folding of updatable values, upon any call to
  * {@link #isAvailable(JavaConstant)} we must also eagerly perform the transformation to see if we
  * can expose the result. Hence, logic is needed for caching the result of updated. This logic is
  * contained with {@link TransformedValueState}.
  */
-public class LayeredFieldValueTransformerImpl extends FieldValueTransformerWithReceiverBasedAvailability {
-    // JVMCI migration blocked by GR-72530: migrate LayeredFieldValueTransformerImpl to JVMCI
+public class LayeredFieldValueTransformerImpl extends JVMCIFieldValueTransformerWithReceiverBasedAvailability {
+    private static final ResolvedJavaType OBJECT = GraalAccess.lookupType(Object.class);
+    private static final ResolvedJavaType LAYERED_FIELD_VALUE_TRANSFORMER = GraalAccess.lookupType(LayeredFieldValueTransformer.class);
+    private static final ResolvedJavaMethod IS_VALUE_AVAILABLE = JVMCIReflectionUtil.getUniqueDeclaredMethod(LAYERED_FIELD_VALUE_TRANSFORMER, "isValueAvailable", OBJECT);
+    private static final ResolvedJavaMethod IS_UPDATE_AVAILABLE = JVMCIReflectionUtil.getUniqueDeclaredMethod(LAYERED_FIELD_VALUE_TRANSFORMER, "isUpdateAvailable", OBJECT);
+    private static final ResolvedJavaMethod TRANSFORM = JVMCIReflectionUtil.getUniqueDeclaredMethod(LAYERED_FIELD_VALUE_TRANSFORMER, "transform", OBJECT);
+    private static final ResolvedJavaMethod UPDATE = JVMCIReflectionUtil.getUniqueDeclaredMethod(LAYERED_FIELD_VALUE_TRANSFORMER, "update", OBJECT);
+
+    private static final ResolvedJavaType LAYERED_FIELD_VALUE_TRANSFORMER_RESULT = GraalAccess.lookupType(LayeredFieldValueTransformer.Result.class);
+    private static final ResolvedJavaMethod VALUE = JVMCIReflectionUtil.getUniqueDeclaredMethod(LAYERED_FIELD_VALUE_TRANSFORMER_RESULT, "value");
+    private static final ResolvedJavaMethod UPDATABLE = JVMCIReflectionUtil.getUniqueDeclaredMethod(LAYERED_FIELD_VALUE_TRANSFORMER_RESULT, "updatable");
+
     final AnalysisField aField;
-    final LayeredFieldValueTransformer<?> layerTransformer;
+    final JavaConstant layerTransformer;
 
     /**
      * Set of ConstantID for which this field is updatable. We are using the integer ids, instead of
@@ -64,18 +77,18 @@ public class LayeredFieldValueTransformerImpl extends FieldValueTransformerWithR
      **/
     final Set<Integer> priorLayerReceiversWithUpdatableValues;
 
-    final Map<Object, TransformedValueState> receiverToValueStateMap = new ConcurrentHashMap<>();
+    final Map<JavaConstant, TransformedValueState> receiverToValueStateMap = new ConcurrentHashMap<>();
 
     boolean currentLayerHasUpdatableValues = false;
 
-    LayeredFieldValueTransformerImpl(AnalysisField aField, LayeredFieldValueTransformer<?> layerTransformer, Set<Integer> priorLayerReceiversWithUpdatableValues) {
+    LayeredFieldValueTransformerImpl(AnalysisField aField, JavaConstant layerTransformer, Set<Integer> priorLayerReceiversWithUpdatableValues) {
         this.aField = aField;
         this.layerTransformer = layerTransformer;
         this.priorLayerReceiversWithUpdatableValues = priorLayerReceiversWithUpdatableValues;
     }
 
-    boolean isUpdatableReceiver(Object receiver) {
-        var valueState = receiverToValueStateMap.get(computeCanonicalReceiver(receiver));
+    boolean isUpdatableReceiver(JavaConstant receiver) {
+        var valueState = receiverToValueStateMap.get(getHostedObject(receiver));
         return valueState.isUpdatable();
     }
 
@@ -87,23 +100,6 @@ public class LayeredFieldValueTransformerImpl extends FieldValueTransformerWithR
     }
 
     /**
-     * Used to get the canonical representation of a receiver. This is needed because the receiver
-     * can be represented as a {@link ImageHeapConstant}, {@link JavaConstant}, or a plain object,
-     * but they all refer to the same underlying value.
-     *
-     * Note in extension layers we expect base layer {@link ImageHeapConstant}s to be relinked to
-     * their Hosted Object.
-     */
-    private static Object computeCanonicalReceiver(Object receiver) {
-        if (receiver instanceof ImageHeapConstant ihc) {
-            return GraalAccess.getOriginalSnippetReflection().asObject(Object.class, Objects.requireNonNull(ihc.getHostedObject()));
-        } else if (receiver instanceof JavaConstant jc) {
-            return GraalAccess.getOriginalSnippetReflection().asObject(Object.class, jc);
-        }
-        return receiver;
-    }
-
-    /**
      * This method is called during image heap layouting. At this point all compiler optimization
      * have already been performed and so it is now legal to expose all values.
      *
@@ -111,7 +107,7 @@ public class LayeredFieldValueTransformerImpl extends FieldValueTransformerWithR
      */
     boolean finalizeFieldValue(ImageHeapConstant ihc) {
         // We assume this is single threaded
-        var info = receiverToValueStateMap.get(computeCanonicalReceiver(ihc));
+        var info = receiverToValueStateMap.get(ihc.getHostedObject());
         info.maybeTransform();
         VMError.guarantee(!info.isUnresolved() && !info.exposeUpdatableResults);
 
@@ -134,17 +130,20 @@ public class LayeredFieldValueTransformerImpl extends FieldValueTransformerWithR
      * {@link LayeredFieldValueTransformer#update} should be called instead of
      * {@link LayeredFieldValueTransformer#transform}.
      */
-    private TransformedValueState createValueStatue(Object canonicalReceiver, Object receiver) {
+    private TransformedValueState createValueStatue(JavaConstant receiver) {
         boolean useUpdate = false;
-        if (receiver instanceof ImageHeapConstant ihc && ihc.isInSharedLayer()) {
-            useUpdate = priorLayerReceiversWithUpdatableValues.contains(ImageHeapConstant.getConstantID(ihc));
+        JavaConstant finalReceiver = receiver;
+        if (receiver instanceof ImageHeapConstant ihc) {
+            finalReceiver = ihc.getHostedObject();
+            if (ihc.isInSharedLayer()) {
+                useUpdate = priorLayerReceiversWithUpdatableValues.contains(ImageHeapConstant.getConstantID(ihc));
+            }
         }
-        return new TransformedValueState(canonicalReceiver, useUpdate);
+        return new TransformedValueState(finalReceiver, useUpdate);
     }
 
-    TransformedValueState maybeUpdateState(Object receiver) {
-        Object canonicalReceiver = computeCanonicalReceiver(receiver);
-        var valueState = receiverToValueStateMap.computeIfAbsent(canonicalReceiver, _ -> createValueStatue(canonicalReceiver, receiver));
+    TransformedValueState maybeUpdateState(JavaConstant receiver) {
+        var valueState = receiverToValueStateMap.computeIfAbsent(getHostedObject(receiver), _ -> createValueStatue(receiver));
         valueState.maybeTransform();
         return valueState;
     }
@@ -154,10 +153,10 @@ public class LayeredFieldValueTransformerImpl extends FieldValueTransformerWithR
      *
      * @return the result of the update or {@code null} if an updated result is not available.
      */
-    LayeredFieldValueTransformer.Result updateAndGetResult(ImageHeapConstant receiver) {
+    LayeredFieldValueTransformerImpl.TransformedValueState updateAndGetResult(ImageHeapConstant receiver) {
         var state = maybeUpdateState(receiver);
         assert state.useUpdate : Assertions.errorMessage("Wrong behavior associated with transformer", receiver);
-        return state.transformerResult;
+        return state;
     }
 
     @Override
@@ -166,10 +165,14 @@ public class LayeredFieldValueTransformerImpl extends FieldValueTransformerWithR
     }
 
     @Override
-    public Object transform(Object receiver, Object originalValue) {
-        var valueState = receiverToValueStateMap.get(computeCanonicalReceiver(Objects.requireNonNull(receiver)));
+    public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
+        var valueState = receiverToValueStateMap.get(Objects.requireNonNull(getHostedObject(receiver)));
         VMError.guarantee(valueState.isAvailableAndExposed());
-        return valueState.transformerResult.value();
+        return valueState.transformerResultValue;
+    }
+
+    private static JavaConstant getHostedObject(JavaConstant receiver) {
+        return receiver instanceof ImageHeapConstant ihc ? ihc.getHostedObject() : receiver;
     }
 
     /**
@@ -177,13 +180,12 @@ public class LayeredFieldValueTransformerImpl extends FieldValueTransformerWithR
      * {@link LayeredFieldValueTransformer} for a given receiver value. In addition, it performs
      * caching of results and maintains logic for determining when to expose transformed values.
      */
-    private class TransformedValueState {
+    public class TransformedValueState {
         /**
          * This is the value stored as a key within {@link #priorLayerReceiversWithUpdatableValues}
-         * and is passed to the transformation. This value is calculated via
-         * {@link #computeCanonicalReceiver}.
+         * and is passed to the transformation.
          */
-        final Object canonicalReceiver;
+        final JavaConstant receiver;
         /**
          * Flag indicating whether use to the update logic (e.g.
          * {@link LayeredFieldValueTransformer#isUpdateAvailable} and
@@ -196,30 +198,29 @@ public class LayeredFieldValueTransformerImpl extends FieldValueTransformerWithR
         final boolean useUpdate;
 
         ImageHeapConstant ihcReceiver;
-        private LayeredFieldValueTransformer.Result transformerResult;
+        private JavaConstant transformerResultValue;
+        private boolean transformerResultUpdatable;
         /**
          * Because we cannot allow updatable results to be constant folded, we must wait to show
          * updatable results until {@link #finalizeFieldValue} is triggered.
          */
         private boolean exposeUpdatableResults = false;
 
-        TransformedValueState(Object canonicalReceiver, boolean useUpdate) {
-            this.canonicalReceiver = canonicalReceiver;
+        TransformedValueState(JavaConstant receiver, boolean useUpdate) {
+            this.receiver = receiver;
             this.useUpdate = useUpdate;
         }
 
         /**
          * If the result is not yet cached, do the transformation if it is available.
          */
-        @SuppressWarnings("unchecked")
         void maybeTransform() {
             if (isUnresolved()) {
-                var transformer = SubstrateUtil.cast(layerTransformer, LayeredFieldValueTransformer.class);
                 boolean transformAvailable;
                 if (useUpdate) {
-                    transformAvailable = transformer.isUpdateAvailable(canonicalReceiver);
+                    transformAvailable = GraalAccess.getVMAccess().invoke(IS_UPDATE_AVAILABLE, layerTransformer, receiver).asBoolean();
                 } else {
-                    transformAvailable = transformer.isValueAvailable(canonicalReceiver);
+                    transformAvailable = GraalAccess.getVMAccess().invoke(IS_VALUE_AVAILABLE, layerTransformer, receiver).asBoolean();
                 }
                 if (transformAvailable) {
                     doTransform();
@@ -227,22 +228,29 @@ public class LayeredFieldValueTransformerImpl extends FieldValueTransformerWithR
             }
         }
 
-        @SuppressWarnings("unchecked")
         synchronized void doTransform() {
             if (isUnresolved()) {
-                LayeredFieldValueTransformer.Result result;
-                var transformer = SubstrateUtil.cast(layerTransformer, LayeredFieldValueTransformer.class);
+                JavaConstant resultConstant;
                 if (useUpdate) {
-                    result = transformer.update(canonicalReceiver);
+                    resultConstant = GraalAccess.getVMAccess().invoke(UPDATE, layerTransformer, receiver);
                 } else {
-                    result = transformer.transform(canonicalReceiver);
+                    resultConstant = GraalAccess.getVMAccess().invoke(TRANSFORM, layerTransformer, receiver);
                 }
-                transformerResult = result;
+                transformerResultValue = getResultValue(resultConstant);
+                transformerResultUpdatable = getResultUpdatable(resultConstant);
             }
         }
 
-        boolean isUnresolved() {
-            return transformerResult == null;
+        private JavaConstant getResultValue(JavaConstant resultConstant) {
+            return GraalAccess.getVMAccess().invoke(VALUE, resultConstant);
+        }
+
+        private boolean getResultUpdatable(JavaConstant resultConstant) {
+            return GraalAccess.getVMAccess().invoke(UPDATABLE, resultConstant).asBoolean();
+        }
+
+        public boolean isUnresolved() {
+            return transformerResultValue == null;
         }
 
         /**
@@ -250,8 +258,8 @@ public class LayeredFieldValueTransformerImpl extends FieldValueTransformerWithR
          *         result.
          */
         boolean isAvailableAndExposed() {
-            if (transformerResult != null) {
-                return !transformerResult.updatable() || exposeUpdatableResults;
+            if (transformerResultValue != null) {
+                return !transformerResultUpdatable || exposeUpdatableResults;
             }
             return false;
         }
@@ -259,9 +267,17 @@ public class LayeredFieldValueTransformerImpl extends FieldValueTransformerWithR
         /**
          * @return true if the result may be updated by a subsequent layer.
          */
-        boolean isUpdatable() {
+        public boolean isUpdatable() {
             assert isAvailableAndExposed();
-            return transformerResult.updatable();
+            return transformerResultUpdatable;
+        }
+
+        /**
+         * @return the result value in the current layer.
+         */
+        public JavaConstant getResultValue() {
+            assert isAvailableAndExposed();
+            return transformerResultValue;
         }
     }
 }
