@@ -699,6 +699,9 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     @CompilationFinal //
     private ArrayKlass arrayKlass;
 
+    /**
+     * The guest {@link Class} mirror associated with this {@link Klass} instance.
+     */
     @CompilationFinal //
     private StaticObject espressoClass;
 

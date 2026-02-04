@@ -176,7 +176,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProv
             if (StaticObject.isNull(reflectionField)) {
                 throw meta.throwNullPointerExceptionBoundary();
             }
-            Field field = Field.getReflectiveFieldRoot(reflectionField, meta);
+            Field field = Field.getVMField(reflectionField, meta);
             StaticObject holderMirror = toJVMCIInstanceType(field.getDeclaringKlass(), objectTypeConstructor, context, meta);
             return toJVMCIField(field, holderMirror, fieldConstructor, context, meta);
         }

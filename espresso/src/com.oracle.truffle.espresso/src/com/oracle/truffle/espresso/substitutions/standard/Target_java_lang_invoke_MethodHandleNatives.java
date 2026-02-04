@@ -104,7 +104,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             plantResolvedMethod(self, target, target.getRefKind(), meta);
         } else if (targetKlass.getType() == Types.java_lang_reflect_Field) {
             // Actual planting
-            Field field = Field.getReflectiveFieldRoot(ref, meta);
+            Field field = Field.getVMField(ref, meta);
             plantResolvedField(self, field, getRefKind(meta.java_lang_invoke_MemberName_flags.getInt(self)), meta, language);
         } else if (targetKlass.getType() == Types.java_lang_reflect_Constructor) {
             Method target = Method.getHostReflectiveConstructorRoot(ref, meta);

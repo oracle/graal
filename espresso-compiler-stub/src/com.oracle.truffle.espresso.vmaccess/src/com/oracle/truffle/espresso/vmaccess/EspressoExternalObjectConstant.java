@@ -87,7 +87,7 @@ final class EspressoExternalObjectConstant implements JavaConstant {
 
     @Override
     public String toValueString() {
-        return "Instance<" + getType().toJavaName() + ">";
+        return "Instance<" + getType().toJavaName() + ":" + value + ">";
     }
 
     public EspressoResolvedObjectType getType() {

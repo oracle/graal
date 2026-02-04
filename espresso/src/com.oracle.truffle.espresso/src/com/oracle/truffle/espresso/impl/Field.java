@@ -223,8 +223,15 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
         }
     }
 
-    public static Field getReflectiveFieldRoot(StaticObject seed, Meta meta) {
-        StaticObject curField = seed;
+    /**
+     * Gets the {@link Field} value backing the {@link java.lang.reflect.Field} value in
+     * {@code reflectField}. This value is obtained by reading {@code reflectField.<key>} (a hidden
+     * field described by {@link Meta#HIDDEN_FIELD_KEY}). If it's null, then this method follows the
+     * {@code reflectField.root.<key>} chain until a non-null {@code reflectField.<key>} value is
+     * found.
+     */
+    public static Field getVMField(StaticObject reflectField, Meta meta) {
+        StaticObject curField = reflectField;
         Field target = null;
         while (target == null) {
             target = (Field) meta.HIDDEN_FIELD_KEY.getHiddenObject(curField);

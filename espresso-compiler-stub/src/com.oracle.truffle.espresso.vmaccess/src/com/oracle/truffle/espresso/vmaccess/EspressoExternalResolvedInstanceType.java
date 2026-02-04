@@ -167,7 +167,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
         EspressoExternalResolvedJavaField[] result = new EspressoExternalResolvedJavaField[size];
         for (int i = 0; i < size; i++) {
             Value fieldMirror = value.getArrayElement(i);
-            result[i] = new EspressoExternalResolvedJavaField(this, fieldMirror);
+            result[i] = new EspressoExternalResolvedJavaField(this, fieldMirror, null);
         }
         return result;
     }
@@ -198,7 +198,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
         EspressoExternalResolvedJavaMethod[] result = new EspressoExternalResolvedJavaMethod[size];
         for (int i = 0; i < size; i++) {
             assert value.getArrayElement(i).getMember("holder").equals(getMetaObject());
-            result[i] = new EspressoExternalResolvedJavaMethod(this, value.getArrayElement(i));
+            result[i] = new EspressoExternalResolvedJavaMethod(this, value.getArrayElement(i), null);
         }
         return result;
     }
@@ -218,7 +218,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
             } else {
                 methodHolder = new EspressoExternalResolvedInstanceType(getAccess(), methodHolderMeta);
             }
-            result[i] = new EspressoExternalResolvedJavaMethod(methodHolder, methodMeta);
+            result[i] = new EspressoExternalResolvedJavaMethod(methodHolder, methodMeta, null);
         }
         return result;
     }
@@ -359,7 +359,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
         if (value.isNull()) {
             return null;
         }
-        return new EspressoExternalResolvedJavaMethod(this, value);
+        return new EspressoExternalResolvedJavaMethod(this, value, null);
     }
 
     @Override

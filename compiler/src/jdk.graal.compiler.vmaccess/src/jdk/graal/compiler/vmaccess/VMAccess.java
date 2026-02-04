@@ -82,6 +82,9 @@ public interface VMAccess {
      * {@linkplain ResolvedJavaMethod#getDeclaringClass() declaring class} will be created and
      * doesn't need to be prepended.</li>
      * </ul>
+     * Note that if the implementation is backed by an {@link Executable} object, this call will
+     * ensure it is {@linkplain Executable#setAccessible(boolean) accessible} before attempting the
+     * invocation.
      *
      * @param method the method to invoke.
      * @param receiver for non-static, non-constructor methods, the receiver of the invocation
@@ -109,17 +112,41 @@ public interface VMAccess {
     JavaConstant asArrayConstant(ResolvedJavaType componentType, JavaConstant... elements);
 
     /**
-     * Returns the {@link ResolvedJavaMethod} for an {@link Executable} object encapsulated in
-     * {@code constant}. Returns {@code null} if the constant does not encapsulate an
+     * Gets a {@link ResolvedJavaMethod} for an {@link Executable} object encapsulated in
+     * {@code constant}. Returns {@code null} if {@code constant} does not encapsulate an
      * {@link Executable}.
      */
     ResolvedJavaMethod asResolvedJavaMethod(Constant constant);
 
     /**
-     * Returns the {@link ResolvedJavaField} for a {@link Field} object encapsulated in
-     * {@code constant}. Returns {@code null} if the constant does not encapsulate a {@link Field}.
+     * Gets a {@link ResolvedJavaField} for a {@link Field} object encapsulated in {@code constant}.
+     * Returns {@code null} if {@code constant} does not encapsulate a {@link Field}.
      */
     ResolvedJavaField asResolvedJavaField(Constant constant);
+
+    /**
+     * Gets the runtime representation of an {@link Executable} object for {@code method}. This is
+     * the inverse of {@link #asResolvedJavaMethod(Constant)}. Not all VM methods (such as
+     * {@linkplain ResolvedJavaMethod#isClassInitializer()} <clint>) have a reflection object, in
+     * which case {@code null} is returned.
+     * <p>
+     * Multiple calls to this method for the same {@code ResolvedJavaMethod} instance can return the
+     * same {@link Executable} object. This is worth keeping in mind since {@link Executable}
+     * objects are {@linkplain Executable#setAccessible(boolean) mutable}.
+     */
+    JavaConstant asExecutableConstant(ResolvedJavaMethod method);
+
+    /**
+     * Gets the runtime representation of a {@link Field} object for {@code field}. This is the
+     * inverse of {@link #asResolvedJavaField}. Not all VM fields (such as
+     * {@linkplain ResolvedJavaField#isInternal() injected} fields) have a reflection object, in
+     * which case {@code null} is returned.
+     * <p>
+     * Multiple calls to this method for the same {@code ResolvedJavaField} instance can return the
+     * same {@link Field} object. This is worth keeping in mind since {@link Field} objects are
+     * {@linkplain Field#setAccessible(boolean) mutable}.
+     */
+    JavaConstant asFieldConstant(ResolvedJavaField field);
 
     /**
      * Lookup a type by name in the {@linkplain ClassLoader#getSystemClassLoader() system/app} class
@@ -149,15 +176,15 @@ public interface VMAccess {
 
     /**
      * Gets the {@link ResolvedJavaModule} of the given {@link ResolvedJavaType}.
-     *
+     * <p>
      * If {@code type.isArray()}, this method returns the {@link ResolvedJavaModule} for
      * {@code type.getElementalType()}. for the element type. If this class represents a primitive
      * type or void, then the {@link ResolvedJavaModule} object for the {@code java.base} module is
      * returned.
-     *
+     * <p>
      * If this class is in an unnamed module then the {@linkplain ClassLoader#getUnnamedModule()
      * unnamed module} of the class loader for {@code type} is returned.
-     *
+     * <p>
      * This method never returns {@code null}.
      */
     ResolvedJavaModule getModule(ResolvedJavaType type);

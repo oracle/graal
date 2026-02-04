@@ -232,7 +232,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static long objectFieldOffset(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(java.lang.reflect.Field.class) StaticObject field,
                     @Inject Meta meta, @Inject EspressoLanguage language) {
-        Field target = Field.getReflectiveFieldRoot(field, meta);
+        Field target = Field.getVMField(field, meta);
         if (target.isStatic()) {
             meta.throwIllegalArgumentExceptionBoundary();
         }
@@ -664,7 +664,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static long staticFieldOffset(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(java.lang.reflect.Field.class) StaticObject fieldMirror,
                     @Inject Meta meta, @Inject EspressoLanguage language) {
-        Field field = Field.getReflectiveFieldRoot(fieldMirror, meta);
+        Field field = Field.getVMField(fieldMirror, meta);
         if (!field.isStatic()) {
             meta.throwIllegalArgumentExceptionBoundary();
         }
@@ -683,7 +683,7 @@ public final class Target_sun_misc_Unsafe {
     public static @JavaType(Object.class) StaticObject staticFieldBase(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                     @JavaType(java.lang.reflect.Field.class) StaticObject field,
                     @Inject Meta meta) {
-        Field target = Field.getReflectiveFieldRoot(field, meta);
+        Field target = Field.getVMField(field, meta);
         if (!target.isStatic()) {
             meta.throwIllegalArgumentExceptionBoundary();
         }
@@ -4393,7 +4393,7 @@ public final class Target_sun_misc_Unsafe {
      * double-register addressing mode. When the object reference is null, the offset supplies an
      * absolute base address. If the object reference is a Java array, copying occurs within (or
      * from/to) the array at the given offset.
-     * 
+     *
      * @see NativeMemory#copyMemory(long, long, long)
      */
     @GenerateInline(false) // not available in substitutions

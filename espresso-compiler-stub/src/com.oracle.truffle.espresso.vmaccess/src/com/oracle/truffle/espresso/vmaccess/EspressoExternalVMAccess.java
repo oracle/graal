@@ -532,6 +532,36 @@ final class EspressoExternalVMAccess implements VMAccess {
         return null;
     }
 
+    @Override
+    public JavaConstant asFieldConstant(ResolvedJavaField field) {
+        if (!(field instanceof EspressoExternalResolvedJavaField espressoField)) {
+            throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaMethod, got " + safeGetClass(field));
+        }
+        if (field.isInternal()) {
+            return null;
+        }
+        Value value = espressoField.getReflectFieldMirror();
+        if (value.isNull()) {
+            return null;
+        }
+        return new EspressoExternalObjectConstant(this, value);
+    }
+
+    @Override
+    public JavaConstant asExecutableConstant(ResolvedJavaMethod method) {
+        if (!(method instanceof EspressoExternalResolvedJavaMethod espressoMethod)) {
+            throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaMethod, got " + safeGetClass(method));
+        }
+        if (espressoMethod.isClassInitializer()) {
+            return null;
+        }
+        Value value = espressoMethod.getReflectExecutableMirror();
+        if (value.isNull()) {
+            return null;
+        }
+        return new EspressoExternalObjectConstant(this, value);
+    }
+
     static RuntimeException throwHostException(PolyglotException e) {
         throw sneakyThrow(asHostException(e));
     }

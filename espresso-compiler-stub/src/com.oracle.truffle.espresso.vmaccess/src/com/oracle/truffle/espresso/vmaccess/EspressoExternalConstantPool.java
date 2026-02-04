@@ -68,7 +68,7 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
         }
         Value fieldHolderMeta = resolved.getMember("holder");
         EspressoExternalResolvedInstanceType fieldHolder = new EspressoExternalResolvedInstanceType(holder.getAccess(), fieldHolderMeta);
-        return new EspressoExternalResolvedJavaField(fieldHolder, resolved);
+        return new EspressoExternalResolvedJavaField(fieldHolder, resolved, null);
     }
 
     @Override
@@ -113,7 +113,7 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
         } else {
             methodHolder = new EspressoExternalResolvedInstanceType(holder.getAccess(), methodHolderMeta);
         }
-        return new EspressoExternalResolvedJavaMethod(methodHolder, resolved);
+        return new EspressoExternalResolvedJavaMethod(methodHolder, resolved, null);
     }
 
     @Override
