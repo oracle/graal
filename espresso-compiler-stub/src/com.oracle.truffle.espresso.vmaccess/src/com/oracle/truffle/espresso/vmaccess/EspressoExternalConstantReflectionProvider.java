@@ -30,6 +30,7 @@ import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceTy
 import com.oracle.truffle.espresso.jvmci.meta.ConstantReflectionProviderWithStaticsBase;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedJavaType;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedObjectType;
+import com.oracle.truffle.espresso.jvmci.meta.KlassConstant;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
