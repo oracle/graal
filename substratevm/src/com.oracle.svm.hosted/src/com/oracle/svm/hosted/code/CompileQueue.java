@@ -40,17 +40,17 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.svm.common.meta.MethodVariant;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.deopt.Specialize;
@@ -1228,7 +1228,7 @@ public class CompileQueue {
             return false;
         }
 
-        if (!Uninterruptible.Utils.inliningAllowed(caller, callee)) {
+        if (!UninterruptibleAnnotationUtils.inliningAllowed(caller, callee)) {
             return false;
         }
         if (!mustNotAllocateCallee(caller) && mustNotAllocate(callee)) {

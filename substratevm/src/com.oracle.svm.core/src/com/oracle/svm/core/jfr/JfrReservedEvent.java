@@ -25,7 +25,7 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 public enum JfrReservedEvent {
     METADATA(0),

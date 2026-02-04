@@ -27,7 +27,7 @@ package com.oracle.svm.core.graal.stackvalue;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * {@link StackValue} without runtime checks for virtual threads.

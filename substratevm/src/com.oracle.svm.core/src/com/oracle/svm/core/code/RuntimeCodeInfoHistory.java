@@ -32,7 +32,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoAccess.HasInstalledCode;
 import com.oracle.svm.core.collections.RingBuffer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;

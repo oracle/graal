@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * Only the GC may have subclasses and only one subclass may be in an image at a time. Otherwise, we

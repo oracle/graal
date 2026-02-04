@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrGCWhen;

@@ -29,7 +29,7 @@ import static com.oracle.svm.core.pltgot.ExitMethodAddressResolutionNode.exitMet
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.pltgot.MethodAddressResolutionDispatcher;

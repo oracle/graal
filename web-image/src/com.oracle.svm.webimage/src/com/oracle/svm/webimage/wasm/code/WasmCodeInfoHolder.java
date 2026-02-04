@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;

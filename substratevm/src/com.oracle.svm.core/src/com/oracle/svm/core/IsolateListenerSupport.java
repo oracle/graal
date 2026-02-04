@@ -26,6 +26,7 @@ package com.oracle.svm.core;
 
 import java.util.Arrays;
 
+import com.oracle.svm.guest.staging.Uninterruptible;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;

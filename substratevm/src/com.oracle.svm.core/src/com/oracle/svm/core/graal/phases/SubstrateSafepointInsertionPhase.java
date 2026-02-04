@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
 import com.oracle.svm.core.SkipEpilogueSafepointCheck;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.util.AnnotationUtil;
@@ -50,7 +50,7 @@ public class SubstrateSafepointInsertionPhase extends LoopSafepointInsertionPhas
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean needSafepointCheck(ResolvedJavaMethod method) {
-        if (Uninterruptible.Utils.isUninterruptible(method)) {
+        if (UninterruptibleAnnotationUtils.isUninterruptible(method)) {
             /* Uninterruptible methods must not have a safepoint inserted. */
             return false;
         }

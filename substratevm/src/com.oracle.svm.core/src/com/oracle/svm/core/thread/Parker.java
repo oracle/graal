@@ -27,7 +27,7 @@ package com.oracle.svm.core.thread;
 import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * Per-thread blocking support. An instance is owned by at most one thread at a time for blocking

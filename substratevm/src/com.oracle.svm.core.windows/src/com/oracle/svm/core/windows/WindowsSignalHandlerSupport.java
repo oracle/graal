@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.SignalHandlerSupport;

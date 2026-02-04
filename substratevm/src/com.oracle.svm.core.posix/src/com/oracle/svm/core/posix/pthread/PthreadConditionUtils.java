@@ -27,7 +27,7 @@ package com.oracle.svm.core.posix.pthread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_cond_t;

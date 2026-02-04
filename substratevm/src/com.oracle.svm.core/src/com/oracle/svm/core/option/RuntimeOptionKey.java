@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.option;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.collections.EnumBitmask;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.util.VMError;

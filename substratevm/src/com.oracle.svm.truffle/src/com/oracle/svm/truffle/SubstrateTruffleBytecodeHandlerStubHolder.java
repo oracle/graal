@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer.DeoptStub;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.snippets.SnippetRuntime;

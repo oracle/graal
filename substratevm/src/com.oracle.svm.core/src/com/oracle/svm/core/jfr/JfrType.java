@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * Maps JFR types against their IDs in the JDK.

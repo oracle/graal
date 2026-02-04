@@ -27,7 +27,7 @@ package com.oracle.svm.core.util.coder;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import org.graalvm.word.impl.Word;
 
 /** Uses the native, architecture-specific byte order to access {@link ByteStream} data. */

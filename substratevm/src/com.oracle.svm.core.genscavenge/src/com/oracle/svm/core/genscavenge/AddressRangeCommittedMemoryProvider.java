@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.util.PointerUtils.roundDown;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 import static com.oracle.svm.core.util.VMError.guarantee;
@@ -50,7 +50,7 @@ import com.oracle.svm.core.IsolateArguments;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;

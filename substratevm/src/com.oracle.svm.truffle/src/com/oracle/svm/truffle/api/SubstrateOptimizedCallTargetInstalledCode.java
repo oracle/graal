@@ -28,7 +28,7 @@ import java.lang.ref.WeakReference;
 
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;

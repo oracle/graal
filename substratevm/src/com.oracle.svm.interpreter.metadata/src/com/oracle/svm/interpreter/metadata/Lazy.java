@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * Represents a lazily computed value. Ensures that a single thread runs the computation.

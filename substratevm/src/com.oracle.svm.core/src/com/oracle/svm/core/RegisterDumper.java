@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import com.oracle.svm.guest.staging.Uninterruptible;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.PointerBase;
 

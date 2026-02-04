@@ -27,7 +27,7 @@ package com.oracle.svm.core.c.enums;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CodeUtil;
 import org.graalvm.word.impl.Word;
 

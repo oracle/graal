@@ -28,7 +28,7 @@ import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
 
 import java.util.List;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.ConstantPool;

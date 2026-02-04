@@ -28,7 +28,7 @@ import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /** Read Pack200 encoded values from a {@link ByteStream} or a raw {@link Pointer}. */
 public class Pack200Coder {

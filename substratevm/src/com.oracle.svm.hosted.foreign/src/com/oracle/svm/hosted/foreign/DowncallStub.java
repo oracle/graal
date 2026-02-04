@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.DowncallStubsHolder;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;

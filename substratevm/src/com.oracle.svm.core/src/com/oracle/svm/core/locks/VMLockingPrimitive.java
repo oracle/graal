@@ -25,7 +25,7 @@
 
 package com.oracle.svm.core.locks;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
 public abstract class VMLockingPrimitive {
