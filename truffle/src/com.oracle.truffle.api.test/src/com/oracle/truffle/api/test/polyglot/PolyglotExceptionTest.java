@@ -42,9 +42,13 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.evalTestLanguage;
 import static com.oracle.truffle.api.test.common.TestUtils.getDefaultLanguageId;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -937,6 +941,30 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                     out.writeObject(polyglotExceptionHolder.get());
                     return null;
                 }, NotSerializableException.class);
+            }
+        }
+    }
+
+    @Test
+    public void testCause() {
+        try (Context ctx = Context.create()) {
+            try {
+                ctx.eval(ITL_ID, "ROOT(THROW(a,\"an error with no cause\"))");
+            } catch (PolyglotException e) {
+                assertTrue("Expected a guest exception", e.isGuestException());
+                assertThat(e.getMessage(), containsString("an error with no cause"));
+                assertNull(e.getCause());
+            }
+
+            try {
+                ctx.eval(ITL_ID, "ROOT(THROW(with_cause,\"an error with cause\"))");
+            } catch (PolyglotException e) {
+                assertTrue("Expected a guest exception", e.isGuestException());
+                assertThat(e.getMessage(), containsString("an error with cause"));
+                Throwable cause = e.getCause();
+                assertThat(cause, instanceOf(PolyglotException.class));
+                PolyglotException polyglotCause = (PolyglotException) cause;
+                assertTrue("Expected a guest cause", polyglotCause.isGuestException());
             }
         }
     }

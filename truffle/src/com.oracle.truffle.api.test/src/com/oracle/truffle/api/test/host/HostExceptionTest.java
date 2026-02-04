@@ -63,7 +63,6 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.truffle.api.interop.HeapIsolationException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
@@ -88,6 +87,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -446,10 +446,15 @@ public class HostExceptionTest {
             runner.execute(throwerOuterWrap);
             shouldHaveThrown(PolyglotException.class);
         } catch (PolyglotException outer) {
-            assertNull("cause must be null", outer.getCause());
+            assertNotNull("there must be a cause", outer.getCause());
+            assertThat(outer.getCause(), instanceOf(PolyglotException.class));
+
             assertTrue(outer.isHostException());
             assertThat(outer.asHostException(), instanceOf(expectedException));
             assertThat(outer.asHostException().getCause(), instanceOf(PolyglotException.class));
+
+            assertEquals(((PolyglotException) outer.getCause()).asHostException(), outer.asHostException().getCause());
+
             PolyglotException inner = (PolyglotException) outer.asHostException().getCause();
             assertTrue(inner.isHostException());
             assertThat(inner.asHostException(), instanceOf(expectedException));
