@@ -27,7 +27,6 @@ package com.oracle.svm.jdwp.server;
 import java.io.IOException;
 import java.nio.file.Path;
 
-import com.oracle.svm.jdwp.bridge.nativebridge.NativeIsolate;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.VMRuntime;
 
@@ -39,6 +38,7 @@ import com.oracle.svm.jdwp.bridge.DebugOptions;
 import com.oracle.svm.jdwp.bridge.HSToNativeJDWPBridge;
 import com.oracle.svm.jdwp.bridge.JDWPEventHandlerBridge;
 import com.oracle.svm.jdwp.bridge.JDWPJNIConfig;
+import com.oracle.svm.jdwp.bridge.nativebridge.NativeIsolate;
 import com.oracle.svm.jdwp.server.impl.ServerJDWP;
 
 @SuppressWarnings("unused")
@@ -72,7 +72,7 @@ public class JDWPServer implements JDWPEventHandlerBridge {
                     -----
                       - A timeout value of 0 (the default) is no timeout.
 
-                    """.replaceAll("\n", System.lineSeparator());
+                    """.replace("\n", System.lineSeparator());
 
     private JDWPHandler jdwpHandler = null;
 

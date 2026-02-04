@@ -1287,9 +1287,7 @@ public class NativeImage {
         LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageClasspath);
 
         LinkedHashSet<Path> finalImageProvidedJars = new LinkedHashSet<>(this.imageProvidedJars);
-        if (!finalImageModulePath.isEmpty() || !finalImageClasspath.isEmpty()) {
-            finalImageProvidedJars.addAll(config.getImageProvidedModulePath());
-        }
+        finalImageProvidedJars.addAll(config.getImageProvidedModulePath());
         finalImageModulePath.addAll(finalImageProvidedJars);
         finalImageProvidedJars.forEach(this::processClasspathNativeImageMetaInf);
         imageBuilderJavaArgs.add("-D" + SharedConstants.IMAGE_PROVIDED_JARS_ENV_VARIABLE + "=" + String.join(File.pathSeparator, finalImageProvidedJars.stream().map(Path::toString).toList()));

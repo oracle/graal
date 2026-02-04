@@ -19,6 +19,14 @@
       <property name="idFormat" value="getSimpleNameCall"/>
       <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable Class.getSimpleName calls"/>
     </module>
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="stringReplaceAll"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Avoid regex replacement."/>
+      <property name="severity" value="error"/>
+      <property name="format" value="\.replaceAll\(&quot;\\n&quot;, System\.lineSeparator\(\)\)"/>
+      <property name="message" value="Use String.replace() instead of String.replaceAll() to replace \n with the platform dependent line separator."/>
+      <property name="ignoreComments" value="true"/>
+    </module>
 
     <module name="RegexpSinglelineJava">
       <property name="id" value="systemErr"/>
