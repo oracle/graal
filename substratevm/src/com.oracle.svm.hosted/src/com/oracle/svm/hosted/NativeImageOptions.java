@@ -36,6 +36,7 @@ import java.util.concurrent.ForkJoinPool;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -45,10 +46,12 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
+import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
@@ -301,4 +304,38 @@ public class NativeImageOptions {
             }
         }
     };
+
+    @Option(help = """
+                    This mode disables all implementation-specific behavior of Native Image.
+                    
+                    It disables build-time initialization on the classpath, custom system properties, classpath substitutions, and user features, while enabling all future defaults.
+                    
+                    This mode does not modify key Native Image restrictions related to dynamic access (reachability metadata) and runtime class loading as those are accepted limitations of native image.
+
+                    To overcome restrictions related to dynamic access (reachability metadata) and runtime class loading, and achieve the same behavior as the underlying language, it is recommended to use this flag with:
+
+                      native-image -H:+CompatibilityMode -H:Preserve=all -H:+RuntimeClassLoading App
+
+                    And run the executable with:
+
+                      ./app -Djava.home=<path-to-java-home> -XX:Classpath=<cp> -XX:ModulePath=<module-path> <args>
+                    """, stability = OptionStability.EXPERIMENTAL)//
+    public static final HostedOptionKey<Boolean> CompatibilityMode = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            super.onValueUpdate(values, oldValue, newValue);
+            if (!newValue) {
+                throw UserError.abort("CompatibilityMode can not be unset. Please remove " + SubstrateOptionsParser.commandArgument(NativeImageOptions.CompatibilityMode, "-", true, false));
+            }
+
+            FutureDefaultsOptions.FutureDefaults.update(values, "all");
+            PreserveOptionsSupport.enableAllJDKFeatures(values);
+        }
+    };
+
+    @Fold
+    public static boolean compatibilityMode() {
+        return CompatibilityMode.getValue();
+    }
+
 }

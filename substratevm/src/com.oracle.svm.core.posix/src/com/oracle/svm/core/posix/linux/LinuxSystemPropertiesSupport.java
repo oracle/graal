@@ -43,9 +43,14 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.hosted.NativeImageOptions;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
+
+    public LinuxSystemPropertiesSupport(boolean compatibilityMode) {
+        super(compatibilityMode);
+    }
 
     @Override
     protected String javaIoTmpdirValue() {
@@ -110,7 +115,7 @@ class LinuxSystemPropertiesFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        LinuxSystemPropertiesSupport singleton = new LinuxSystemPropertiesSupport();
+        LinuxSystemPropertiesSupport singleton = new LinuxSystemPropertiesSupport(NativeImageOptions.compatibilityMode());
         ImageSingletons.add(RuntimeSystemPropertiesSupport.class, singleton);
         ImageSingletons.add(SystemPropertiesSupport.class, singleton);
     }

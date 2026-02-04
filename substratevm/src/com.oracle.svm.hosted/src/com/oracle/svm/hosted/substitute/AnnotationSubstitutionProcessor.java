@@ -396,6 +396,11 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             return;
         }
 
+        boolean userSubstitution = !builderModules.contains(annotatedClass.getModule());
+        if (NativeImageOptions.compatibilityMode() && userSubstitution) {
+            return;
+        }
+
         TargetClass targetClassAnnotation = lookupAnnotation(annotatedClass, TargetClass.class);
         Class<?> originalClass = findTargetClass(annotatedClass, targetClassAnnotation);
         if (originalClass == null) {
@@ -414,7 +419,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         int numAnnotations = (deleteAnnotation != null ? 1 : 0) + (substituteAnnotation != null ? 1 : 0);
         guarantee(numAnnotations <= 1, "Only one of @Delete or @Substitute can be used: %s", annotatedClass);
 
-        boolean userSubstitution = !builderModules.contains(annotatedClass.getModule());
         if (deleteAnnotation != null) {
             handleDeletedClass(originalClass, deleteAnnotation);
         } else if (substituteAnnotation != null) {
