@@ -122,11 +122,7 @@ final class GuestToHostCodeCache extends GuestToHostCodeCacheBase {
         @Override
         @TruffleBoundary
         protected Object executeImpl(Object proxy, Object[] arguments) throws UnsupportedMessageException {
-            try {
-                return api.callProxyExecutableExecute(proxy, (Object[]) arguments[ARGUMENT_OFFSET]);
-            } catch (UnsupportedOperationException e) {
-                throw UnsupportedMessageException.create();
-            }
+            return api.callProxyExecutableExecute(proxy, (Object[]) arguments[ARGUMENT_OFFSET]);
         }
     }.getCallTarget();
 
