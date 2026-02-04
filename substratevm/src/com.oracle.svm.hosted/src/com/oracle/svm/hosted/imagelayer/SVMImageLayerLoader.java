@@ -29,7 +29,9 @@ import static com.oracle.svm.core.classinitialization.ClassInitializationInfo.In
 import static com.oracle.svm.core.classinitialization.ClassInitializationInfo.InitState.InitializationError;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.CLASS_INIT_NAME;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.CONSTRUCTOR_NAME;
+import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.ENUM;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.PERSISTED;
+import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.STRING;
 import static com.oracle.svm.hosted.lambda.LambdaParser.createMethodGraph;
 import static com.oracle.svm.hosted.lambda.LambdaParser.getLambdaClassFromConstantNode;
 
@@ -161,6 +163,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SVMImageLayerLoader extends ImageLayerLoader {
+    private static final ResolvedJavaType SVM_IMAGE_LAYER_LOADER = GraalAccess.lookupType(SVMImageLayerLoader.class);
+    private static final ResolvedJavaMethod CHECK_STRING_METHOD = JVMCIReflectionUtil.getUniqueDeclaredMethod(SVM_IMAGE_LAYER_LOADER, "checkString", STRING);
+    private static final ResolvedJavaMethod INTERN_METHOD = JVMCIReflectionUtil.getUniqueDeclaredMethod(STRING, "intern");
+    private static final ResolvedJavaMethod VALUE_OF_METHOD = JVMCIReflectionUtil.getUniqueDeclaredMethod(ENUM, "valueOf", GraalAccess.lookupType(Class.class), STRING);
+
     private final boolean useSharedLayerGraphs;
     private final SVMImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private final HostedImageLayerBuildingSupport imageLayerBuildingSupport;
@@ -184,8 +191,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     protected final Set<DebugContextRunnable> futureBigbangTasks = ConcurrentHashMap.newKeySet();
     protected final Map<Integer, Integer> typeToConstant = new ConcurrentHashMap<>();
-    protected final Map<String, Integer> stringToConstant = new ConcurrentHashMap<>();
-    protected final Map<Enum<?>, Integer> enumToConstant = new ConcurrentHashMap<>();
+    protected final Map<JavaConstant, Integer> stringToConstant = new ConcurrentHashMap<>();
+    protected final Map<JavaConstant, Integer> enumToConstant = new ConcurrentHashMap<>();
     protected final Map<Integer, Long> objectOffsets = new ConcurrentHashMap<>();
     private final Map<ResolvedJavaType, Boolean> capturingClasses = new ConcurrentHashMap<>();
     private final Map<ResolvedJavaMethod, Boolean> methodHandleCallers = new ConcurrentHashMap<>();
@@ -344,14 +351,20 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             typeToConstant.put(typeId, id);
         } else if (relinking.isStringConstant()) {
             String value = relinking.getStringConstant().getValue().toString();
-            injectIdentityHashCode(value.intern(), identityHashCode);
-            stringToConstant.put(value, id);
+            JavaConstant constant = getStringConstant(value);
+            constant = GraalAccess.getVMAccess().invoke(INTERN_METHOD, constant);
+            injectIdentityHashCode(constant, identityHashCode);
+            stringToConstant.put(constant, id);
         } else if (relinking.isEnumConstant()) {
             EnumConstant.Reader enumConstant = relinking.getEnumConstant();
-            Enum<?> enumValue = getEnumValue(enumConstant.getEnumClass(), enumConstant.getEnumName());
+            JavaConstant enumValue = getEnumValue(enumConstant.getEnumClass(), enumConstant.getEnumName());
             injectIdentityHashCode(enumValue, identityHashCode);
             enumToConstant.put(enumValue, id);
         }
+    }
+
+    private static JavaConstant getStringConstant(String value) {
+        return GraalAccess.getVMAccessHelper().asGuestString(value);
     }
 
     public void cleanupAfterCompilation() {
@@ -1371,34 +1384,66 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     @Override
     public boolean hasValueForConstant(JavaConstant javaConstant) {
-        Object object = hostedValuesProvider.asObject(Object.class, javaConstant);
-        return hasValueForObject(object);
+        if (SVMImageLayerSnapshotUtil.DYNAMIC_HUB.isInstance(javaConstant)) {
+            ConstantReflectionProvider constantReflectionProvider = universe.getBigbang().getConstantReflectionProvider();
+            return hasValueForType((AnalysisType) constantReflectionProvider.asJavaType(javaConstant));
+        } else if (STRING.isInstance(javaConstant)) {
+            return stringToConstant.containsKey(javaConstant) && GraalAccess.getVMAccess().invoke(CHECK_STRING_METHOD, null, javaConstant).asBoolean();
+        } else if (ENUM.isInstance(javaConstant)) {
+            return enumToConstant.containsKey(javaConstant);
+        } else {
+            return false;
+        }
     }
 
     @SuppressFBWarnings(value = "ES", justification = "Reference equality check needed to detect intern status")
-    private boolean hasValueForObject(Object object) {
-        return switch (object) {
-            case DynamicHub dynamicHub -> typeToConstant.containsKey(((SVMHost) universe.hostVM()).lookupType(dynamicHub).getId());
-            case String string -> stringToConstant.containsKey(string) && string.intern() == string;
-            case Enum<?> e -> enumToConstant.containsKey(e);
-            default -> false;
-        };
+    @SuppressWarnings("unused")
+    private static boolean checkString(String string) {
+        return string.intern() == string;
+    }
+
+    private boolean hasValueForType(AnalysisType type) {
+        return typeToConstant.containsKey(type.getId());
+    }
+
+    private boolean hasValueForHub(DynamicHub hub) {
+        return hasValueForType(hubToType(hub));
     }
 
     @Override
     public ImageHeapConstant getValueForConstant(JavaConstant javaConstant) {
-        Object object = hostedValuesProvider.asObject(Object.class, javaConstant);
-        return getValueForObject(object);
+        int constantId;
+        if (SVMImageLayerSnapshotUtil.DYNAMIC_HUB.isInstance(javaConstant)) {
+            ConstantReflectionProvider constantReflectionProvider = universe.getBigbang().getConstantReflectionProvider();
+            constantId = getConstantIdForType((AnalysisType) constantReflectionProvider.asJavaType(javaConstant));
+        } else if (STRING.isInstance(javaConstant)) {
+            constantId = stringToConstant.get(javaConstant);
+        } else if (ENUM.isInstance(javaConstant)) {
+            constantId = enumToConstant.get(javaConstant);
+        } else {
+            throw AnalysisError.shouldNotReachHere("The constant was not in the persisted heap.");
+        }
+        return getOrCreateConstant(constantId);
     }
 
-    private ImageHeapConstant getValueForObject(Object object) {
-        return switch (object) {
-            case DynamicHub dynamicHub ->
-                getOrCreateConstant(typeToConstant.get(((SVMHost) universe.hostVM()).lookupType(dynamicHub).getId()));
-            case String string -> getOrCreateConstant(stringToConstant.get(string));
-            case Enum<?> e -> getOrCreateConstant(enumToConstant.get(e));
-            default -> throw AnalysisError.shouldNotReachHere("The constant was not in the persisted heap.");
-        };
+    private int getConstantIdForType(AnalysisType type) {
+        return typeToConstant.get(type.getId());
+    }
+
+    private ImageHeapConstant getValueForType(AnalysisType type) {
+        return getOrCreateConstant(getConstantIdForType(type));
+    }
+
+    private ImageHeapConstant getValueForHub(DynamicHub hub) {
+        return getValueForType(hubToType(hub));
+    }
+
+    private AnalysisType hubToType(DynamicHub hub) {
+        return ((SVMHost) universe.hostVM()).lookupType(hub);
+    }
+
+    private DynamicHub typeToHub(AnalysisType type) {
+        return ((SVMHost) universe.hostVM()).dynamicHub(type);
     }
 
     @Override
@@ -1471,7 +1516,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
              * Also, for DynamicHub constants, the identity hash code persisted is the hash code of
              * the Class object, which we do not want to inject in the DynamicHub.
              */
-            injectIdentityHashCode(hostedValuesProvider.asObject(Object.class, parentReachableHostedObject), identityHashCode);
+            injectIdentityHashCode(parentReachableHostedObject, identityHashCode);
         }
         switch (baseLayerConstant.which()) {
             case OBJECT -> {
@@ -1480,10 +1525,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                         StructList.Reader<ConstantReference.Reader> instanceData = baseLayerConstant.getObject().getData();
                         JavaConstant foundHostedObject = lookupHostedObject(baseLayerConstant, type);
                         if (foundHostedObject != null && parentReachableHostedObject != null) {
-                            Object foundObject = hostedValuesProvider.asObject(Object.class, foundHostedObject);
-                            Object reachableObject = hostedValuesProvider.asObject(Object.class, parentReachableHostedObject);
-                            guarantee(foundObject == reachableObject, "Found discrepancy between recipe-found hosted value %s and parent-reachable hosted value %s.", foundObject,
-                                            reachableObject);
+                            guarantee(foundHostedObject.equals(parentReachableHostedObject), "Found discrepancy between recipe-found hosted value %s and parent-reachable hosted value %s.",
+                                            foundHostedObject, parentReachableHostedObject);
                         }
 
                         addBaseLayerObject(id, objectOffset, () -> {
@@ -1716,14 +1759,13 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             StringConstant.Reader stringConstant = relinking.getStringConstant();
             if (stringConstant.hasValue()) {
                 String value = stringConstant.getValue().toString();
-                Object object = value.intern();
-                return hostedValuesProvider.forObject(object);
+                JavaConstant stringValue = getStringConstant(value);
+                return GraalAccess.getVMAccess().invoke(INTERN_METHOD, stringValue);
             }
         } else if (universe.getBigbang().getMetaAccess().lookupJavaType(Enum.class).isAssignableFrom(analysisType)) {
             assert relinking.isEnumConstant();
             EnumConstant.Reader enumConstant = relinking.getEnumConstant();
-            Enum<?> enumValue = getEnumValue(enumConstant.getEnumClass(), enumConstant.getEnumName());
-            return hostedValuesProvider.forObject(enumValue);
+            return getEnumValue(enumConstant.getEnumClass(), enumConstant.getEnumName());
         }
         return null;
     }
@@ -1733,11 +1775,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return !(field.getWrapped() instanceof BaseLayerField) && !AnnotationUtil.isAnnotationPresent(field, Delete.class);
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private Enum<?> getEnumValue(Text.Reader className, Text.Reader name) {
-        Class<?> enumClass = imageLayerBuildingSupport.lookupClass(false, className.toString());
-        /* asSubclass produces an "unchecked" warning */
-        return Enum.valueOf((Class<? extends Enum>) enumClass, name.toString());
+    private JavaConstant getEnumValue(Text.Reader className, Text.Reader name) {
+        ResolvedJavaType enumType = imageLayerBuildingSupport.lookupType(false, className.toString());
+        return GraalAccess.getVMAccess().invoke(VALUE_OF_METHOD, null, getClassConstant(enumType), getStringConstant(name.toString()));
     }
 
     private EnumElement getEnumElement(Text.Reader className, Text.Reader name) {
@@ -1762,9 +1802,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return;
         }
 
-        if (constant.getType().getJavaClass().equals(Class.class)) {
-            DynamicHub hub = universe.getHostedValuesProvider().asObject(DynamicHub.class, constant.getHostedObject());
-            AnalysisType type = ((SVMHost) universe.hostVM()).lookupType(hub);
+        if (metaAccess.isInstanceOf(constant, DynamicHub.class)) {
+            AnalysisType type = (AnalysisType) universe.getBigbang().getConstantReflectionProvider().asJavaType(constant);
             ensureHubInitialized(type);
             /*
              * If the persisted hub has a non-null arrayHub, the corresponding DynamicHub must be
@@ -1817,49 +1856,50 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     private JavaConstant getDynamicHub(int tid) {
         AnalysisType type = getAnalysisTypeForBaseLayerId(tid);
-        DynamicHub hub = ((SVMHost) universe.hostVM()).dynamicHub(type);
-        return hostedValuesProvider.forObject(hub);
+        return hostedValuesProvider.forObject(typeToHub(type));
     }
 
-    private static void injectIdentityHashCode(Object object, Integer identityHashCode) {
-        if (object == null || identityHashCode == null) {
+    private static JavaConstant getClassConstant(ResolvedJavaType type) {
+        return GraalAccess.getOriginalProviders().getConstantReflection().asJavaClass(OriginalClassProvider.getOriginalType(type));
+    }
+
+    private static void injectIdentityHashCode(JavaConstant constant, Integer identityHashCode) {
+        if (constant == null || identityHashCode == null) {
             return;
         }
 
         ConstantReflectionProvider constantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
-        JavaConstant constant = GraalAccess.getOriginalSnippetReflection().forObject(object);
         int actualHashCode = constantReflection.makeIdentityHashCode(constant, identityHashCode);
         if (actualHashCode != identityHashCode) {
             if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogHashCodeInjectionFailure.getValue()) {
-                LogUtils.warning("Object of %s already has identity hash code %d when trying to set it to %d: %s",
-                                object.getClass(), actualHashCode, identityHashCode, object);
+                LogUtils.warning("Object %s already has identity hash code %d when trying to set it to %d", constant, actualHashCode, identityHashCode);
             }
         }
     }
 
     public void rescanHub(AnalysisType type, DynamicHub hub) {
-        if (hasValueForObject(hub)) {
+        if (hasValueForHub(hub)) {
             ScanReason reason = new OtherReason("Manual hub rescan for " + hub.getName() + " triggered from " + SVMImageLayerLoader.class);
             universe.getHeapScanner().rescanObject(hub, reason);
             scanCompanionField(hub);
-            universe.getHeapScanner().rescanField(hub.getCompanion(), universe.lookup(SVMImageLayerSnapshotUtil.classInitializationInfo), reason);
+            universe.getHeapScanner().rescanField(hub.getCompanion(), universe.lookup(SVMImageLayerSnapshotUtil.CLASS_INITIALIZATION_INFO), reason);
             if (type.getJavaKind() == JavaKind.Object) {
                 if (type.isArray()) {
                     DynamicHub componentHub = hub.getComponentHub();
                     scanCompanionField(componentHub);
-                    universe.getHeapScanner().rescanField(componentHub.getCompanion(), universe.lookup(SVMImageLayerSnapshotUtil.arrayHub), reason);
+                    universe.getHeapScanner().rescanField(componentHub.getCompanion(), universe.lookup(SVMImageLayerSnapshotUtil.ARRAY_HUB), reason);
                 }
-                universe.getHeapScanner().rescanField(hub.getCompanion(), universe.lookup(SVMImageLayerSnapshotUtil.interfacesEncoding), reason);
+                universe.getHeapScanner().rescanField(hub.getCompanion(), universe.lookup(SVMImageLayerSnapshotUtil.INTERFACES_ENCODING), reason);
                 if (type.isEnum()) {
-                    universe.getHeapScanner().rescanField(hub.getCompanion(), universe.lookup(SVMImageLayerSnapshotUtil.enumConstantsReference), reason);
+                    universe.getHeapScanner().rescanField(hub.getCompanion(), universe.lookup(SVMImageLayerSnapshotUtil.ENUM_CONSTANTS_REFERENCE), reason);
                 }
             }
         }
     }
 
     private void scanCompanionField(DynamicHub hub) {
-        var instance = (ImageHeapInstance) getValueForObject(hub);
-        instance.readFieldValue(universe.lookup(SVMImageLayerSnapshotUtil.companion));
+        var instance = (ImageHeapInstance) getValueForHub(hub);
+        instance.readFieldValue(universe.lookup(SVMImageLayerSnapshotUtil.COMPANION));
     }
 
     public boolean isReachableInPreviousLayer(AnalysisType type) {

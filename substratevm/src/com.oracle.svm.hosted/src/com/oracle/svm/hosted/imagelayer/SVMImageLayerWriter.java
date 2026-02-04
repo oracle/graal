@@ -25,7 +25,10 @@
 package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.CONSTRUCTOR_NAME;
+import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.DYNAMIC_HUB;
+import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.ENUM;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.GENERATED_SERIALIZATION;
+import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.STRING;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.UNDEFINED_CONSTANT_ID;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.UNDEFINED_FIELD_INDEX;
 import static com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ClassInitializationInfo.Builder;
@@ -66,7 +69,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import com.oracle.svm.util.GraalAccess;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -171,6 +173,7 @@ import com.oracle.svm.shaded.org.capnproto.Text;
 import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.shaded.org.capnproto.Void;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -880,12 +883,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             Relinking.Builder relinkingBuilder = builder.getObject().getRelinking();
             int id = ImageHeapConstant.getConstantID(imageHeapConstant);
             boolean tryStaticFinalFieldRelink = true;
-            if (bb.getMetaAccess().lookupJavaType(Class.class).equals(type)) {
+            if (aUniverse.lookup(DYNAMIC_HUB).equals(type)) {
                 AnalysisType constantType = (AnalysisType) bb.getConstantReflectionProvider().asJavaType(hostedObject);
                 relinkingBuilder.initClassConstant().setTypeId(constantType.getId());
                 constantsToRelink.add(id);
                 tryStaticFinalFieldRelink = false;
-            } else if (bb.getMetaAccess().lookupJavaType(String.class).equals(type)) {
+            } else if (aUniverse.lookup(STRING).equals(type)) {
                 StringConstant.Builder stringConstantBuilder = relinkingBuilder.initStringConstant();
                 String value = bb.getSnippetReflectionProvider().asObject(String.class, hostedObject);
                 if (internedStringsIdentityMap.containsKey(value)) {
@@ -896,7 +899,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                     constantsToRelink.add(id);
                     tryStaticFinalFieldRelink = false;
                 }
-            } else if (bb.getMetaAccess().lookupJavaType(Enum.class).isAssignableFrom(type)) {
+            } else if (aUniverse.lookup(ENUM).isAssignableFrom(type)) {
                 EnumConstant.Builder enumBuilder = relinkingBuilder.initEnumConstant();
                 Enum<?> value = bb.getSnippetReflectionProvider().asObject(Enum.class, hostedObject);
                 enumBuilder.setEnumClass(value.getDeclaringClass().getName());

@@ -118,23 +118,26 @@ public class SVMImageLayerSnapshotUtil {
 
     public static final String GENERATED_SERIALIZATION = "jdk.internal.reflect.GeneratedSerializationConstructorAccessor";
 
-    static final ResolvedJavaType dynamicHub = GraalAccess.lookupType(DynamicHub.class);
-    static final ResolvedJavaField companion = JVMCIReflectionUtil.getUniqueDeclaredField(dynamicHub, "companion");
-    static final ResolvedJavaField name = JVMCIReflectionUtil.getUniqueDeclaredField(dynamicHub, "name");
-    static final ResolvedJavaField componentType = JVMCIReflectionUtil.getUniqueDeclaredField(dynamicHub, "componentType");
+    static final ResolvedJavaType DYNAMIC_HUB = GraalAccess.lookupType(DynamicHub.class);
+    static final ResolvedJavaField COMPANION = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB, "companion");
+    static final ResolvedJavaField NAME = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB, "name");
+    static final ResolvedJavaField COMPONENT_TYPE = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB, "componentType");
 
-    static final ResolvedJavaType dynamicHubCompanion = GraalAccess.lookupType(DynamicHubCompanion.class);
-    static final ResolvedJavaField classInitializationInfo = JVMCIReflectionUtil.getUniqueDeclaredField(dynamicHubCompanion, "classInitializationInfo");
-    static final ResolvedJavaField superHub = JVMCIReflectionUtil.getUniqueDeclaredField(dynamicHubCompanion, "superHub");
-    static final ResolvedJavaField interfacesEncoding = JVMCIReflectionUtil.getUniqueDeclaredField(dynamicHubCompanion, "interfacesEncoding");
-    static final ResolvedJavaField enumConstantsReference = JVMCIReflectionUtil.getUniqueDeclaredField(dynamicHubCompanion, "enumConstantsReference");
-    static final ResolvedJavaField arrayHub = JVMCIReflectionUtil.getUniqueDeclaredField(dynamicHubCompanion, "arrayHub");
+    static final ResolvedJavaType DYNAMIC_HUB_COMPANION = GraalAccess.lookupType(DynamicHubCompanion.class);
+    static final ResolvedJavaField CLASS_INITIALIZATION_INFO = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "classInitializationInfo");
+    static final ResolvedJavaField SUPER_HUB = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "superHub");
+    static final ResolvedJavaField INTERFACES_ENCODING = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "interfacesEncoding");
+    static final ResolvedJavaField ENUM_CONSTANTS_REFERENCE = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "enumConstantsReference");
+    static final ResolvedJavaField ARRAY_HUB = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "arrayHub");
 
-    protected static final Set<ResolvedJavaField> dynamicHubRelinkedFields = Set.of(companion, name, componentType);
-    protected static final Set<ResolvedJavaField> dynamicHubCompanionRelinkedFields = Set.of(classInitializationInfo, superHub, arrayHub);
+    static final ResolvedJavaType STRING = GraalAccess.lookupType(String.class);
+    static final ResolvedJavaType ENUM = GraalAccess.lookupType(Enum.class);
 
-    private static final Class<?> sourceRoots = ReflectionUtil.lookupClass("com.oracle.svm.hosted.image.sources.SourceCache$SourceRoots");
-    private static final Class<?> completableFuture = ReflectionUtil.lookupClass("com.oracle.svm.core.jdk.CompletableFutureFieldHolder");
+    protected static final Set<ResolvedJavaField> DYNAMIC_HUB_RELINKED_FIELDS = Set.of(COMPANION, NAME, COMPONENT_TYPE);
+    protected static final Set<ResolvedJavaField> DYNAMIC_HUB_COMPANION_RELINKED_FIELDS = Set.of(CLASS_INITIALIZATION_INFO, SUPER_HUB, ARRAY_HUB);
+
+    private static final Class<?> SOURCE_ROOTS = ReflectionUtil.lookupClass("com.oracle.svm.hosted.image.sources.SourceCache$SourceRoots");
+    private static final Class<?> COMPLETABLE_FUTURE = ReflectionUtil.lookupClass("com.oracle.svm.core.jdk.CompletableFutureFieldHolder");
 
     /**
      * This map stores the field indexes that should be relinked using the hosted value of a
@@ -219,7 +222,7 @@ public class SVMImageLayerSnapshotUtil {
 
     private static boolean shouldScanClass(Class<?> clazz) {
         /* This class should not be scanned because it needs to be initialized after the analysis */
-        return !clazz.equals(sourceRoots) && !clazz.equals(completableFuture);
+        return !clazz.equals(SOURCE_ROOTS) && !clazz.equals(COMPLETABLE_FUTURE);
     }
 
     /**
@@ -228,10 +231,10 @@ public class SVMImageLayerSnapshotUtil {
      */
     public Set<Integer> getRelinkedFields(AnalysisType type, AnalysisUniverse universe) {
         Set<Integer> result = fieldsToRelink.computeIfAbsent(type, _ -> {
-            if (type.equals(universe.lookup(dynamicHub))) {
-                return getRelinkedFields(type, dynamicHubRelinkedFields, universe);
-            } else if (type.equals(universe.lookup(dynamicHubCompanion))) {
-                return getRelinkedFields(type, dynamicHubCompanionRelinkedFields, universe);
+            if (type.equals(universe.lookup(DYNAMIC_HUB))) {
+                return getRelinkedFields(type, DYNAMIC_HUB_RELINKED_FIELDS, universe);
+            } else if (type.equals(universe.lookup(DYNAMIC_HUB_COMPANION))) {
+                return getRelinkedFields(type, DYNAMIC_HUB_COMPANION_RELINKED_FIELDS, universe);
             }
             return null;
         });
@@ -449,7 +452,7 @@ public class SVMImageLayerSnapshotUtil {
     public static class SVMGraphDecoder extends AbstractSVMGraphDecoder {
         @SuppressWarnings("this-escape")
         public SVMGraphDecoder(Class<?> clazz, SVMImageLayerLoader svmImageLayerLoader, AnalysisMethod analysisMethod,
-                               SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
+                        SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
             super(clazz, svmImageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
             addBuiltin(new HostedTypeBuiltIn(svmImageLayerLoader));
             addBuiltin(new HostedMethodBuiltIn(svmImageLayerLoader));
