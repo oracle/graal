@@ -122,7 +122,7 @@ class GraalWasmDefaultTags:
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     if register_project and register_distribution:
-        isolate_build_options = []
+        isolate_build_options = libwasmvm_build_args()
         meta_pom = [p for p in _suite.dists if p.name == 'WASM_POM'][0]
         mx_truffle.register_polyglot_isolate_distributions(_suite, register_project, register_distribution,'wasm',
                                         'src', meta_pom.name, meta_pom.maven_group_id(), meta_pom.theLicense,
