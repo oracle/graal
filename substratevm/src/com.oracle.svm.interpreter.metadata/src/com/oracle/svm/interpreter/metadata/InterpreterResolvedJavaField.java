@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
+import static com.oracle.svm.espresso.classfile.Constants.ACC_HIDDEN;
+import static com.oracle.svm.espresso.classfile.Constants.ACC_STABLE;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_RECOGNIZED_FIELD_MODIFIERS;
+
 import java.lang.reflect.Modifier;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
@@ -44,6 +48,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.JavaConstant;
@@ -60,7 +65,7 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
     private static final int FIELD_UNMATERIALIZED = -10;
     private static final int OFFSET_UNINITIALIZED = -11;
 
-    private final int modifiers;
+    private final int flags;
     private final Symbol<Name> name;
     private final Symbol<Type> typeSymbol;
 
@@ -92,14 +97,14 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
                     .newUpdater(InterpreterResolvedJavaField.class, ResolvedJavaField.class, "ristrettoField");
 
     protected InterpreterResolvedJavaField(
-                    Symbol<Name> name, Symbol<Type> typeSymbol, int modifiers,
+                    Symbol<Name> name, Symbol<Type> typeSymbol, int flags,
                     InterpreterResolvedJavaType resolvedType, InterpreterResolvedObjectType declaringClass,
                     int offset,
                     JavaConstant constant,
                     boolean isWordStorage) {
         this.name = MetadataUtil.requireNonNull(name);
         this.typeSymbol = MetadataUtil.requireNonNull(typeSymbol);
-        this.modifiers = modifiers;
+        this.flags = flags;
         this.declaringClass = MetadataUtil.requireNonNull(declaringClass);
         this.offset = offset;
         this.constantValue = constant;
@@ -109,7 +114,7 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
             // Primitive types are trivially resolved.
             this.resolvedType = InterpreterResolvedPrimitiveType.fromKind(CremaTypeAccess.symbolToJvmciKind(typeSymbol));
         }
-        this.layerNum = NumUtil.safeToByte(Modifier.isStatic(modifiers) /*- Prevents 'this-escape' warning. */
+        this.layerNum = NumUtil.safeToByte(Modifier.isStatic(flags) /*- Prevents 'this-escape' warning. */
                         ? MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED
                         : MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER);
     }
@@ -118,8 +123,11 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
     public static InterpreterResolvedJavaField createAtBuildTime(AnalysisField originalField, InterpreterResolvedObjectType declaringClass) {
         Symbol<Name> nameSymbol = SymbolsSupport.getNames().getOrCreate(originalField.getName());
         Symbol<Type> typeSymbol = CremaTypeAccess.jvmciNameToType(originalField.getType().getName());
+        boolean isStable = AnnotationUtil.isAnnotationPresent(originalField, jdk.internal.vm.annotation.Stable.class);
+        boolean isHidden = AnnotationUtil.isAnnotationPresent(originalField, jdk.internal.vm.annotation.Hidden.class);
+        int flags = createFlags(originalField.getModifiers(), isStable, isHidden);
         InterpreterResolvedJavaField field = new InterpreterResolvedJavaField(
-                        nameSymbol, typeSymbol, originalField.getModifiers(),
+                        nameSymbol, typeSymbol, flags,
                         /*- resolvedType */ null,
                         declaringClass,
                         OFFSET_UNINITIALIZED,
@@ -129,7 +137,11 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
         return field;
     }
 
-    public static InterpreterResolvedJavaField createForInterpreter(String name, int modifiers,
+    private static int createFlags(int modifiers, boolean isStable, boolean isHidden) {
+        return modifiers | (isStable ? ACC_STABLE : 0) | (isHidden ? ACC_HIDDEN : 0);
+    }
+
+    public static InterpreterResolvedJavaField createForInterpreter(String name, int flags,
                     JavaType type, InterpreterResolvedObjectType declaringClass,
                     int offset,
                     JavaConstant constant,
@@ -140,7 +152,7 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
         Symbol<Name> nameSymbol = SymbolsSupport.getNames().getOrCreate(name);
         InterpreterResolvedJavaType resolvedType = type instanceof InterpreterResolvedJavaType ? (InterpreterResolvedJavaType) type : null;
         Symbol<Type> symbolicType = resolvedType == null ? CremaTypeAccess.jvmciNameToType(type.getName()) : resolvedType.getSymbolicType();
-        InterpreterResolvedJavaField result = new InterpreterResolvedJavaField(nameSymbol, symbolicType, modifiers, resolvedType, declaringClass, offset, constant, isWordStorage);
+        InterpreterResolvedJavaField result = new InterpreterResolvedJavaField(nameSymbol, symbolicType, flags, resolvedType, declaringClass, offset, constant, isWordStorage);
         if (result.isStatic()) {
             result.layerNum = NumUtil.safeToByte(layerNum);
         }
@@ -222,7 +234,7 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
 
     @Override
     public final int getModifiers() {
-        return modifiers;
+        return flags & JVM_RECOGNIZED_FIELD_MODIFIERS;
     }
 
     @Override
@@ -351,7 +363,7 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
 
     @Override
     public final boolean isSynthetic() {
-        return (modifiers & Constants.ACC_SYNTHETIC) != 0;
+        return (flags & Constants.ACC_SYNTHETIC) != 0;
     }
 
     // endregion Unimplemented methods
