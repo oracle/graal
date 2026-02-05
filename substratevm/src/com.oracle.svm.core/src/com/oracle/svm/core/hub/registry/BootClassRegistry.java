@@ -27,9 +27,11 @@ package com.oracle.svm.core.hub.registry;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.FileSystem;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.ProviderNotFoundException;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -45,7 +47,8 @@ import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
  * supported.
  */
 public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
-    private volatile FileSystem jrtFS;
+    private static final Object NO_JRT_FS = new Object();
+    private volatile Object jrtFS;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public BootClassRegistry() {
@@ -53,15 +56,22 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
 
     private FileSystem getFileSystem() {
         // jrtFS is lazily initialized to avoid having this FileSystem in the image heap.
-        FileSystem fs = jrtFS;
-        if (fs == null) {
+        Object maybeFs = jrtFS;
+        if (maybeFs == null) {
             synchronized (this) {
-                if ((fs = jrtFS) == null) {
-                    jrtFS = fs = FileSystems.getFileSystem(URI.create("jrt:/"));
+                if ((maybeFs = jrtFS) == null) {
+                    try {
+                        jrtFS = maybeFs = FileSystems.getFileSystem(URI.create("jrt:/"));
+                    } catch (ProviderNotFoundException | FileSystemNotFoundException e) {
+                        jrtFS = NO_JRT_FS;
+                    }
                 }
             }
         }
-        return fs;
+        if (maybeFs == NO_JRT_FS) {
+            return null;
+        }
+        return (FileSystem) maybeFs;
     }
 
     // synchronized until parallel class loading is implemented (GR-62338)
@@ -78,8 +88,12 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
             if (moduleName == null) {
                 return null;
             }
+            FileSystem fileSystem = getFileSystem();
+            if (fileSystem == null) {
+                return null;
+            }
             var jrtTypePath = TypeSymbols.typeToName(type);
-            Path classPath = getFileSystem().getPath("/modules/" + moduleName + "/" + jrtTypePath + ".class");
+            Path classPath = fileSystem.getPath("/modules/" + moduleName + "/" + jrtTypePath + ".class");
             if (!Files.exists(classPath)) {
                 return null;
             }
