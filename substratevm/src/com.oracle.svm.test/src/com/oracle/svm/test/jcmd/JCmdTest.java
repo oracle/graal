@@ -128,6 +128,42 @@ public class JCmdTest {
         assertOutputContainsLines(jcmd, "Stopped recording \"JCmdTest\".");
     }
 
+    @Test
+    public void testThread() throws IOException, InterruptedException {
+        Process jcmd = runJCmd("Thread.print");
+        assertOutputContainsStrings(jcmd, "Threads dumped.");
+    }
+
+    @Test
+    public void testVM() throws IOException, InterruptedException {
+        Process jcmd = runJCmd("VM.command_line");
+        assertOutputContainsStrings(jcmd, "VM Arguments:", "java_command:");
+
+        jcmd = runJCmd("VM.native_memory");
+        assertOutputContainsStrings(jcmd, "Native memory tracking");
+
+        jcmd = runJCmd("VM.system_properties");
+        assertOutputContainsStrings(jcmd, ":");
+
+        jcmd = runJCmd("VM.uptime");
+        assertOutputContainsStrings(jcmd, ":");
+
+        jcmd = runJCmd("VM.version");
+        assertOutputContainsStrings(jcmd, "GraalVM");
+    }
+
+    @Test
+    public void testGC() throws IOException, InterruptedException {
+        String tempDir = System.getProperty("java.io.tmpdir");
+        Path dumpFile = Paths.get(tempDir, "JCmdTest");
+        Process jcmd = runJCmd("GC.heap_dump", dumpFile.toString());
+        assertOutputContainsStrings(jcmd, "Dumped to:");
+        assertTrue(Files.deleteIfExists(dumpFile));
+
+        jcmd = runJCmd("GC.run");
+        assertOutputContainsStrings(jcmd, "Command executed successfully");
+    }
+
     private static void checkJCmdConnection() throws IOException, InterruptedException {
         Process jcmd = runJCmd("help");
         assertOutputContainsLines(jcmd, "help");

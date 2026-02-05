@@ -41,7 +41,8 @@ public class HelpDCmd extends AbstractDCmd {
         super("help", "For more information about a specific command use 'help <command>'. With no argument this will show a list of available commands. 'help -all' will show help for all commands.",
                         Impact.Low, new DCmdOption<?>[]{COMMAND_NAME}, new DCmdOption<?>[]{PRINT_ALL},
                         new String[]{
-                                        "$ jcmd <pid> help Thread.dump_to_file"
+                                        "$ jcmd <pid> help " +
+                                                "JFR.start"
                         });
     }
 
