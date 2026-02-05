@@ -45,6 +45,7 @@ import java.math.BigInteger;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 
 /**
@@ -115,7 +116,7 @@ final class HostUtil {
                     return delegate;
                 }
             }
-            if (value instanceof Number) {
+            if (value instanceof Number && !(value instanceof TruffleObject)) {
                 return value;
             } else if (interop.fitsInByte(value)) {
                 return interop.asByte(value);
