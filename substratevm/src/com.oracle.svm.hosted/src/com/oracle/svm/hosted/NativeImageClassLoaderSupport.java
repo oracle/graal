@@ -62,6 +62,7 @@ import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -441,7 +442,7 @@ public final class NativeImageClassLoaderSupport {
     private OptionValues parsedHostedOptions;
     private List<String> remainingArguments;
 
-    public void setupHostedOptionParser(List<String> arguments) {
+    public HostedOptionParser setupHostedOptionParser(List<String> arguments) {
         var optionParser = new HostedOptionParser(getClassLoader(), arguments);
         // Explicitly set the default value of Optimize as it can modify the default values of other
         // options
@@ -472,6 +473,7 @@ public final class NativeImageClassLoaderSupport {
             }
         }
         this.hostedOptionParser = optionParser;
+        return optionParser;
     }
 
     public HostedOptionParser getHostedOptionParser() {
@@ -864,11 +866,6 @@ public final class NativeImageClassLoaderSupport {
         }
     }
 
-    static Optional<String> getMainClassFromModule(Object module) {
-        assert module instanceof Module : "Argument `module` is not an instance of java.lang.Module";
-        return ((Module) module).getDescriptor().mainClass();
-    }
-
     private static UnmodifiableEconomicSet<Path> parseImageProvidedJarsProperty() {
         EconomicSet<Path> imageProvidedJars = EconomicSet.create();
         String args = System.getProperty(SharedConstants.IMAGE_PROVIDED_JARS_ENV_VARIABLE, "");
@@ -1008,11 +1005,34 @@ public final class NativeImageClassLoaderSupport {
             }
         }
 
+        /**
+         * Determines if {@code moduleReference} refers to a module that is visible to the guest
+         * context. This is a temporary measure for Terminus to limit scanning of classes to only
+         * those visible to the guest context when it differs from the host context.
+         */
+        private boolean isVisibleToGuest(ModuleReference moduleReference) {
+            if (imageClassLoader.vmAccess.getClass().getName().toLowerCase(Locale.ROOT).contains("host")) {
+                // Guest and host see the same paths
+                return true;
+            }
+            URI uri = moduleReference.location().get();
+            for (var jar : imageProvidedJars) {
+                if (jar.toUri().equals(uri)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private void initModule(ModuleReference moduleReference, boolean moduleRequiresInit) {
             String moduleReferenceLocation = moduleReference.location().map(URI::toString).orElse("UnknownModuleReferenceLocation");
             currentlyProcessedEntry = moduleReferenceLocation;
             Optional<Module> optionalModule = findModule(moduleReference.descriptor().name());
             if (optionalModule.isEmpty()) {
+                return;
+            }
+
+            if (!isVisibleToGuest(moduleReference)) {
                 return;
             }
             try (ModuleReader moduleReader = moduleReference.open()) {

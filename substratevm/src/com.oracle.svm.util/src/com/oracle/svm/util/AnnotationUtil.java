@@ -111,6 +111,14 @@ public final class AnnotationUtil {
     }
 
     /**
+     * Gets the annotation of type {@code annotationType} from {@code element} as an
+     * {@link AnnotationValue} object if such an annotation is present, else null.
+     */
+    public static <T extends Annotation> AnnotationValue getAnnotationValue(Annotated element, Class<T> annotationType) {
+        return instance().getAnnotationValue(element, annotationType);
+    }
+
+    /**
      * Gets the annotation of type {@code annotationType} from {@code element} if such an annotation
      * is present, else null.
      */

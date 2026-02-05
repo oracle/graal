@@ -46,17 +46,16 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.oracle.svm.common.meta.MethodVariant;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -220,6 +219,7 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
+import com.oracle.svm.hosted.code.CEntryPointValue;
 import com.oracle.svm.hosted.code.CFunctionSubstitutionProcessor;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.HostedRuntimeConfigurationBuilder;
@@ -352,9 +352,9 @@ public class NativeImageGenerator {
     protected AbstractImage image;
     protected AtomicBoolean buildStarted = new AtomicBoolean();
 
-    protected Pair<Method, CEntryPointData> mainEntryPoint;
+    protected MainEntryPoint mainEntryPoint;
 
-    public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter) {
+    public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, MainEntryPoint mainEntryPoint, ProgressReporter reporter) {
         this.loader = loader;
         this.mainEntryPoint = mainEntryPoint;
         this.featureHandler = new FeatureHandler();
@@ -454,6 +454,18 @@ public class NativeImageGenerator {
         return false;
     }
 
+    /**
+     * Returns whether {@code platform} is assignable to at least one entry in {@code platforms}.
+     */
+    public static boolean includedIn(ResolvedJavaType platform, List<ResolvedJavaType> platforms) {
+        for (ResolvedJavaType platformGroup : platforms) {
+            if (platformGroup.isAssignableFrom(platform)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     protected SubstrateTargetDescription createTarget() {
         return createTarget(loader.platform);
     }
@@ -500,7 +512,7 @@ public class NativeImageGenerator {
     /**
      * Executes the image build. Only one image can be built with this generator.
      */
-    public void run(Map<Method, CEntryPointData> entryPoints,
+    public void run(Map<ResolvedJavaMethod, CEntryPointData> entryPoints,
                     JavaMainSupport javaMainSupport, String imageName,
                     NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions,
@@ -577,7 +589,7 @@ public class NativeImageGenerator {
         System.clearProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY);
     }
 
-    protected void doRun(Map<Method, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport, String imageName, NativeImageKind k, SubstitutionProcessor harnessSubstitutions) {
+    protected void doRun(Map<ResolvedJavaMethod, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport, String imageName, NativeImageKind k, SubstitutionProcessor harnessSubstitutions) {
         List<HostedMethod> hostedEntryPoints = new ArrayList<>();
 
         OptionValues options = HostedOptionValues.singleton();
@@ -950,7 +962,7 @@ public class NativeImageGenerator {
         }
     }
 
-    protected void setupNativeImage(OptionValues options, Map<Method, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport,
+    protected void setupNativeImage(OptionValues options, Map<ResolvedJavaMethod, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport,
                     String imageName, SubstitutionProcessor harnessSubstitutions, DebugContext debug) {
         try (Indent _ = debug.logAndIndent("setup native-image builder")) {
             try (StopTimer _ = TimerCollection.createTimerAndStart(TimerCollection.Registry.SETUP)) {
@@ -1017,8 +1029,9 @@ public class NativeImageGenerator {
                 featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
                 DynamicAccessSupport.setRegistrationSealed();
                 setDefaultLibCIfMissing();
-                if (!Pair.<Method, CEntryPointData> empty().equals(access.getMainEntryPoint())) {
-                    setAndVerifyMainEntryPoint(access, entryPoints);
+                MainEntryPoint accessMainEntryPoint = access.getMainEntryPoint();
+                if (accessMainEntryPoint != null) {
+                    setAndVerifyMainEntryPoint(accessMainEntryPoint, entryPoints);
                 }
                 registerEntryPoints(entryPoints);
 
@@ -1198,7 +1211,7 @@ public class NativeImageGenerator {
         System.exit(ExitStatus.BUILDER_ERROR.getValue());
     }
 
-    protected void registerEntryPointStubs(Map<Method, CEntryPointData> entryPoints) {
+    protected void registerEntryPointStubs(Map<ResolvedJavaMethod, CEntryPointData> entryPoints) {
         entryPoints.forEach((method, entryPointData) -> CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> entryPointData));
     }
 
@@ -1221,9 +1234,9 @@ public class NativeImageGenerator {
         }
     }
 
-    private void setAndVerifyMainEntryPoint(AfterRegistrationAccessImpl access, Map<Method, CEntryPointData> entryPoints) {
-        mainEntryPoint = access.getMainEntryPoint();
-        entryPoints.put(mainEntryPoint.getLeft(), mainEntryPoint.getRight());
+    private void setAndVerifyMainEntryPoint(MainEntryPoint accessMainEntryPoint, Map<ResolvedJavaMethod, CEntryPointData> entryPoints) {
+        mainEntryPoint = Objects.requireNonNull(accessMainEntryPoint);
+        entryPoints.put(mainEntryPoint.method(), mainEntryPoint.getCEntryPointData());
     }
 
     public static AnalysisUniverse createAnalysisUniverse(OptionValues options, TargetDescription target, ImageClassLoader loader, MetaAccessProvider originalMetaAccess,
@@ -1474,14 +1487,13 @@ public class NativeImageGenerator {
         }
     }
 
-    protected void registerEntryPoints(Map<Method, CEntryPointData> entryPoints) {
-        for (Method m : loader.findAnnotatedMethods(CEntryPoint.class)) {
-            if (!Modifier.isStatic(m.getModifiers())) {
-                throw UserError.abort("Entry point method %s.%s is not static. Add a static modifier to the method.", m.getDeclaringClass().getName(), m.getName());
+    protected void registerEntryPoints(Map<ResolvedJavaMethod, CEntryPointData> entryPoints) {
+        for (ResolvedJavaMethod m : loader.findAnnotatedResolvedJavaMethods(CEntryPoint.class)) {
+            if (!m.isStatic()) {
+                throw UserError.abort("Entry point method %s.%s is not static. Add a static modifier to the method.", m.format("%H.%n"));
             }
-
-            Class<? extends BooleanSupplier> cEntryPointIncludeClass = m.getAnnotation(CEntryPoint.class).include();
-            if (ReflectionUtil.newInstance(cEntryPointIncludeClass).getAsBoolean()) {
+            CEntryPointValue cEntryPoint = CEntryPointValue.from(AnnotationUtil.getAnnotationValue(m, CEntryPoint.class));
+            if (GraalAccess.getVMAccessHelper().callBooleanSupplier(cEntryPoint.include())) {
                 entryPoints.put(m, CEntryPointData.create(m));
             }
         }

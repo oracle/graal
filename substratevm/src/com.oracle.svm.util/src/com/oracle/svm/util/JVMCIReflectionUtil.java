@@ -203,6 +203,7 @@ public final class JVMCIReflectionUtil {
             if (!p1.getName().equals(p2.getName())) {
                 return false;
             }
+            p2 = p2.resolve(declaringClass);
             if (!p1.equals(p2)) {
                 // Handles case of p2 being unresolved or being resolved
                 // but with a different class loader.

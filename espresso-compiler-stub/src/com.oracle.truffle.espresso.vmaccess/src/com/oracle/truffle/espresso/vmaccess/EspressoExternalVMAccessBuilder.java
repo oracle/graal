@@ -50,7 +50,7 @@ public final class EspressoExternalVMAccessBuilder implements VMAccess.Builder {
 
     private List<String> classpath;
     private List<String> modulepath;
-    private List<String> addModules = new ArrayList<>();
+    private final List<String> addModules = new ArrayList<>();
     private boolean enableAssertions;
     private boolean enableSystemAssertions;
     private Map<String, String> systemProperties;
@@ -58,7 +58,7 @@ public final class EspressoExternalVMAccessBuilder implements VMAccess.Builder {
 
     @Override
     public String getVMAccessName() {
-        return "espresso-context";
+        return "espresso";
     }
 
     @Override

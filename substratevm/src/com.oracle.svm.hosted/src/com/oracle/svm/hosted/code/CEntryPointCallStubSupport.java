@@ -46,6 +46,7 @@ import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -79,9 +80,9 @@ public final class CEntryPointCallStubSupport {
         return getStubForMethod(method);
     }
 
-    public AnalysisMethod registerStubForMethod(Executable reflectionMethod, Supplier<CEntryPointData> entryPointDataSupplier) {
-        AnalysisMethod method = bb.getMetaAccess().lookupJavaMethod(reflectionMethod);
-        return registerStubForMethod(method, entryPointDataSupplier);
+    public void registerStubForMethod(ResolvedJavaMethod originalMethod, Supplier<CEntryPointData> entryPointDataSupplier) {
+        AnalysisMethod method = bb.getUniverse().lookup(originalMethod);
+        registerStubForMethod(method, entryPointDataSupplier);
     }
 
     public AnalysisMethod getStubForMethod(AnalysisMethod method) {

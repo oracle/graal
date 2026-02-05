@@ -64,6 +64,22 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 public class AnnotatedObjectAccess {
 
     /**
+     * Gets the annotation of type {@code annotationType} from {@code element} as an
+     * {@link AnnotationValue} object.
+     *
+     * @param element the annotated element to retrieve the annotation value from
+     * @param annotationType the type of annotation to retrieve
+     * @return the annotation value of the specified type, or null if no such annotation exists
+     */
+    public <T extends Annotation> AnnotationValue getAnnotationValue(Annotated element, Class<T> annotationType) {
+        // Checkstyle: allow direct annotation access
+        Inherited inherited = annotationType.getAnnotation(Inherited.class);
+        // Checkstyle: disallow direct annotation access
+        Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, inherited == null);
+        return annotationValues.get(GraalAccess.lookupType(annotationType));
+    }
+
+    /**
      * Gets the annotation of type {@code annotationType} from {@code element}.
      *
      * @param element the annotated element to retrieve the annotation value from
@@ -71,11 +87,7 @@ public class AnnotatedObjectAccess {
      * @return the annotation value of the specified type, or null if no such annotation exists
      */
     public <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType) {
-        // Checkstyle: allow direct annotation access
-        Inherited inherited = annotationType.getAnnotation(Inherited.class);
-        // Checkstyle: disallow direct annotation access
-        Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, inherited == null);
-        AnnotationValue annotationValue = annotationValues.get(GraalAccess.lookupType(annotationType));
+        AnnotationValue annotationValue = getAnnotationValue(element, annotationType);
         if (annotationValue != null) {
             return asAnnotation(annotationValue, annotationType);
         }
@@ -334,7 +346,7 @@ public class AnnotatedObjectAccess {
             if (!annotationValues.isEmpty()) {
                 result = new EconomicHashMap<>(annotationValues.size());
                 for (AnnotationValue a : annotationValues) {
-                    ResolvedJavaType annotationType = a.isError() ? ANNOTATION_FORMAT_ERROR_TYPE : a.getAnnotationType();
+                    ResolvedJavaType annotationType = a.isError() ? getAnnotationFormatErrorType() : a.getAnnotationType();
                     result.put(annotationType, a);
                 }
             }
@@ -393,9 +405,12 @@ public class AnnotatedObjectAccess {
     }
 
     /**
-     * Annotation type for a {@link AnnotationValue#isError() value representing a parse error}.
+     * Gets the annotation type for a {@link AnnotationValue#isError() value representing a parse
+     * error}.
      */
-    public static final ResolvedJavaType ANNOTATION_FORMAT_ERROR_TYPE = GraalAccess.lookupType(Void.TYPE);
+    private static ResolvedJavaType getAnnotationFormatErrorType() {
+        return GraalAccess.lookupType(Void.TYPE);
+    }
 
     /**
      * Annotation parser function stored as a singleton as recommended by
@@ -409,9 +424,9 @@ public class AnnotatedObjectAccess {
         try {
             return AnnotationValueParser.parseAnnotations(info.bytes(), info.constPool(), container);
         } catch (AnnotationFormatError e) {
-            return Map.of(ANNOTATION_FORMAT_ERROR_TYPE, new AnnotationValue(e));
+            return Map.of(getAnnotationFormatErrorType(), new AnnotationValue(e));
         } catch (IllegalArgumentException | BufferUnderflowException | GenericSignatureFormatError e) {
-            return Map.of(ANNOTATION_FORMAT_ERROR_TYPE, new AnnotationValue(new AnnotationFormatError(e)));
+            return Map.of(getAnnotationFormatErrorType(), new AnnotationValue(new AnnotationFormatError(e)));
         }
     };
 

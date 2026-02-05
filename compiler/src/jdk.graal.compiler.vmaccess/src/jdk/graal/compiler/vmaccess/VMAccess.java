@@ -196,7 +196,7 @@ public interface VMAccess {
         String getVMAccessName();
 
         /**
-         * The module path to use. This has the semantics of the {@code --class-path} java launcher
+         * The class path to use. This has the semantics of the {@code --class-path} java launcher
          * option.
          */
         Builder classPath(List<String> paths);

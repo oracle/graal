@@ -26,9 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -47,7 +45,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinTask;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.Pair;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -61,13 +59,13 @@ import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
-import com.oracle.svm.core.JavaVersionUtil;
+import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -77,17 +75,26 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.AnnotatedObjectAccess;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
+import com.oracle.svm.util.OriginalMethodProvider;
+import com.oracle.svm.util.VMAccessHelper;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.riscv64.RISCV64;
 import jdk.vm.ci.runtime.JVMCI;
 
@@ -306,10 +313,27 @@ public class NativeImageGeneratorRunner {
         }
     }
 
-    private static VMAccess getVmAccess(String[] classpath, String[] modulepath) {
+    private static VMAccess getVmAccess(String[] classpath, String[] modulepath, HostedOptionParser parser) {
         VMAccess.Builder builder = GraalAccess.getVmAccessBuilder();
         builder.classPath(List.of(classpath));
         builder.modulePath(List.of(modulepath));
+
+        if ("espresso".equals(builder.getVMAccessName())) {
+            // Needed to resolve types in org.graalvm.nativeimage.guest
+            builder.addModule("org.graalvm.nativeimage.guest");
+
+            // Propagate --add-exports into the Espresso guest.
+            // GR-73131 will make this non-Espresso specific.
+            EconomicMap<OptionKey<?>, Object> options = parser.getHostedValues();
+            @SuppressWarnings("unchecked")
+            List<String> addExports = ((LocatableMultiOptionValue<String>) options.get(NativeImageClassLoaderOptions.AddExports)).values();
+            builder.vmOption("java.AddExports=" + String.join(File.pathSeparator, addExports));
+
+            // Guest version of -XX:+EnableJVMCI that is currently passed by
+            // the driver to the builder VM as part of the "graal compiler flags".
+            // See `mx_substratevm.py:compute_graal_compiler_flags_map`
+            builder.vmOption("java.EnableJVMCI=true");
+        }
         return builder.build();
     }
 
@@ -318,7 +342,7 @@ public class NativeImageGeneratorRunner {
      * {@code classpath} and {@code modulepath}. The parent for the installed {@code ClassLoader} is
      * the default system class loader (jdk.internal.loader.ClassLoaders.AppClassLoader and
      * sun.misc.Launcher.AppClassLoader for JDK11, 8 respectively).
-     *
+     * <p>
      * We use a custom system class loader {@link NativeImageSystemClassLoader} that delegates to
      * the {@code ClassLoader} that {@link NativeImageClassLoaderSupport} creates, thus allowing the
      * resolution of classes in {@code classpath} and {@code modulepath} via system class loader.
@@ -330,11 +354,11 @@ public class NativeImageGeneratorRunner {
      *         via {@link NativeImageClassLoaderSupport#getClassLoader()}.
      */
     public static ImageClassLoader installNativeImageClassLoader(String[] classpath, String[] modulepath, List<String> arguments) {
-        VMAccess vmAccess = getVmAccess(classpath, modulepath);
-        GraalAccess.plantConfiguration(vmAccess);
         NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
         NativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath);
-        nativeImageClassLoaderSupport.setupHostedOptionParser(arguments);
+        HostedOptionParser parser = nativeImageClassLoaderSupport.setupHostedOptionParser(arguments);
+        VMAccess vmAccess = getVmAccess(classpath, modulepath, parser);
+        GraalAccess.plantConfiguration(vmAccess);
         nativeImageClassLoaderSupport.setupLibGraalClassLoader();
         /* Perform additional post-processing with the created nativeImageClassLoaderSupport */
         for (NativeImageClassLoaderPostProcessing postProcessing : ServiceLoader.load(NativeImageClassLoaderPostProcessing.class)) {
@@ -481,12 +505,12 @@ public class NativeImageGeneratorRunner {
             try (StopTimer _ = classlistTimer.start()) {
                 classLoader.loadAllClasses();
             }
-            if (imageName.length() == 0) {
+            if (imageName.isEmpty()) {
                 throw UserError.abort("No output file name specified. Use '%s'", SubstrateOptionsParser.commandArgument(SubstrateOptions.Name, "<output-file>"));
             }
             try {
-                Map<Method, CEntryPointData> entryPoints = new HashMap<>();
-                Pair<Method, CEntryPointData> mainEntryPointData = Pair.empty();
+                Map<ResolvedJavaMethod, CEntryPointData> entryPoints = new HashMap<>();
+                MainEntryPoint mainEntryPoint = null;
                 JavaMainSupport javaMainSupport = null;
 
                 NativeImageKind imageKind = null;
@@ -519,101 +543,43 @@ public class NativeImageGeneratorRunner {
                 reporter.printStart(imageName, imageKind);
 
                 if (!className.isEmpty() || !moduleName.isEmpty()) {
-                    Method mainEntryPoint;
-                    Class<?> mainClass;
-                    try {
-                        Module mainModule = null;
-                        if (!moduleName.isEmpty()) {
-                            mainModule = classLoader.findModule(moduleName)
-                                            .orElseThrow(() -> UserError.abort("Module " + moduleName + " for mainclass not found."));
-                        }
-                        if (className.isEmpty()) {
-                            className = ImageClassLoader.getMainClassFromModule(mainModule)
-                                            .orElseThrow(() -> UserError.abort("Module %s does not have a ModuleMainClass attribute, use -m <module>/<main-class>", moduleName));
-                        }
-                        mainClass = classLoader.forName(className, mainModule);
-                        if (mainClass == null) {
-                            throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));
-                        }
-                    } catch (ClassNotFoundException ex) {
-                        throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));
-                    } catch (UnsupportedClassVersionError ex) {
-                        if (ex.getMessage().contains("compiled by a more recent version of the Java Runtime")) {
-                            throw UserError.abort("Unable to load '%s' due to a Java version mismatch.%n" +
-                                            "Please take one of the following actions:%n" +
-                                            " 1) Recompile the source files for your application using Java %s, then try running native-image again%n" +
-                                            " 2) Use a version of native-image corresponding to the version of Java with which you compiled the source files for your application%n%n" +
-                                            "Root cause: %s",
-                                            className, JavaVersionUtil.JAVA_SPEC, ex);
-                        } else {
-                            throw UserError.abort(ex.getMessage());
-                        }
-                    }
                     String mainEntryPointName = SubstrateOptions.Method.getValue(parsedHostedOptions);
                     if (mainEntryPointName.isEmpty()) {
                         throw UserError.abort("Must specify main entry point method when building %s native image. Use '%s'.", imageKind,
                                         SubstrateOptionsParser.commandArgument(SubstrateOptions.Method, "<method-name>"));
                     }
+                    ResolvedJavaMethod mainEntryMethod;
+                    VMAccess vmAccess = classLoader.vmAccess;
                     try {
-                        /*
-                         * First look for a main method with the C-level signature for arguments.
-                         */
-                        mainEntryPoint = mainClass.getDeclaredMethod(mainEntryPointName, int.class, CCharPointerPointer.class);
-                    } catch (NoSuchMethodException ignored2) {
-                        Method javaMainMethod;
-                        /*
-                         * If no C-level main method was found, look for a Java-level main method
-                         * and use our wrapper to invoke it.
-                         */
-                        if ("main".equals(mainEntryPointName)) {
-                            try {
-                                javaMainMethod = findDefaultJavaMainMethod(mainClass);
-                            } catch (InvocationTargetException ex) {
-                                assert ex.getTargetException() instanceof NoSuchMethodException;
-                                throw UserError.abort(ex.getCause(),
-                                                "Method '%s.%s' is declared as the main entry point but it can not be found. " +
-                                                                "Make sure that class '%s' is on the classpath and that non-private " +
-                                                                "method '%s()' or '%s(String[])'.",
-                                                mainClass.getName(),
-                                                mainEntryPointName,
-                                                mainClass.getName(),
-                                                mainEntryPointName,
-                                                mainEntryPointName);
-                            }
-                        } else {
-                            try {
-                                javaMainMethod = ReflectionUtil.lookupMethod(mainClass, mainEntryPointName, String[].class);
-                                final int mainMethodModifiers = javaMainMethod.getModifiers();
-                                if (!Modifier.isStatic(mainMethodModifiers)) {
-                                    throw UserError.abort("Java main method '%s.%s(String[])' is not static.", mainClass.getName(), mainEntryPointName);
-                                }
-                                if (!Modifier.isPublic(mainMethodModifiers)) {
-                                    throw UserError.abort("Java main method '%s.%s(String[])' is not public.", mainClass.getName(), mainEntryPointName);
-                                }
-                            } catch (ReflectionUtilError ex) {
-                                throw UserError.abort(ex.getCause(),
-                                                "Method '%s.%s' is declared as the main entry point but it can not be found. " +
-                                                                "Make sure that class '%s' is on the classpath and that method '%s(String[])' exists in that class.",
-                                                mainClass.getName(),
-                                                mainEntryPointName,
-                                                mainClass.getName(),
-                                                mainEntryPointName);
-                            }
+                        VMAccessHelper h = GraalAccess.getVMAccessHelper();
+                        ResolvedJavaType buildTimeSupport = h.lookupType("com.oracle.svm.guest.hosted.BuildTimeSupport");
+                        ResolvedJavaMethod getMainClassFromModule = h.lookupMethod(buildTimeSupport, "getMainEntryPointMethod",
+                                        String.class,
+                                        String.class,
+                                        String.class);
+                        JavaConstant res = h.invokeStatic(getMainClassFromModule,
+                                        h.asGuestString(className),
+                                        h.asGuestString(moduleName),
+                                        h.asGuestString(mainEntryPointName));
+                        mainEntryMethod = vmAccess.asResolvedJavaMethod(res);
+                    } catch (InvocationException ex) {
+                        if (ex.getCause() instanceof ClassNotFoundException cnfe && cnfe.getMessage().equals(className)) {
+                            throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));
                         }
-
-                        if (javaMainMethod.getReturnType() != void.class) {
-                            throw UserError.abort("Java main method '%s.%s(%s)' does not have the return type 'void'.", mainClass.getName(), mainEntryPointName,
-                                            javaMainMethod.getParameterCount() == 1 ? "String[]" : "");
-                        }
-                        javaMainSupport = createJavaMainSupport(javaMainMethod, classLoader);
-                        mainEntryPoint = getMainEntryMethod(classLoader);
+                        throw UserError.abort(ex, "Error in guest");
                     }
-                    verifyMainEntryPoint(mainEntryPoint);
 
-                    mainEntryPointData = createMainEntryPointData(imageKind, mainEntryPoint);
+                    String cEntryFunctionSig = "(I" + MetaUtil.toInternalName(CCharPointerPointer.class.getName()) + ";)";
+                    if (!mainEntryMethod.getSignature().toMethodDescriptor().startsWith(cEntryFunctionSig)) {
+                        javaMainSupport = createJavaMainSupport((Method) OriginalMethodProvider.getJavaMethod(mainEntryMethod), classLoader);
+                        mainEntryMethod = GraalAccess.lookupMethod(getMainEntryMethod(classLoader));
+                    }
+
+                    verifyMainEntryPoint(mainEntryMethod, classLoader.classLoaderSupport.annotationExtractor);
+                    mainEntryPoint = createMainEntryPoint(imageKind, mainEntryMethod);
                 }
 
-                generator = createImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
+                generator = createImageGenerator(classLoader, optionParser, mainEntryPoint, reporter);
                 generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY, optionParser.getRuntimeOptionNames(), timerCollection);
                 buildOutcome = BuildOutcome.SUCCESSFUL;
             } finally {
@@ -665,25 +631,11 @@ public class NativeImageGeneratorRunner {
         return ExitStatus.OK.getValue();
     }
 
-    /*
-     * Finds the main method using the {@code jdk.internal.misc.MethodFinder}.
-     *
-     * The {@code MethodFinder} was introduced by JDK-8344706 (Implement JEP 512: Compact Source
-     * Files and Instance Main Methods) and will perform all the necessary checks.
-     */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+24/src/java.base/share/classes/jdk/internal/misc/MethodFinder.java#L45-L106")
-    private static Method findDefaultJavaMainMethod(Class<?> mainClass) throws IllegalAccessException, InvocationTargetException {
-        Class<?> mainMethodFinder = ReflectionUtil.lookupClass(false, "jdk.internal.misc.MethodFinder");
-        Method findMainMethod = ReflectionUtil.lookupMethod(mainMethodFinder, "findMainMethod", Class.class);
-        /*
-         * We are using Method.invoke and throwing checked exceptions on purpose instead of
-         * ReflectionUtil to issue a proper error message.
-         */
-        Method invoke = (Method) findMainMethod.invoke(null, mainClass);
-        /*
-         * Use ReflectionUtil get a Method object with the right accessibility.
-         */
-        return ReflectionUtil.lookupMethod(invoke.getDeclaringClass(), invoke.getName(), invoke.getParameterTypes());
+    protected void verifyMainEntryPoint(ResolvedJavaMethod mainEntryPoint, AnnotatedObjectAccess annotationAccess) {
+        AnnotationValue cEntryPoint = annotationAccess.getAnnotationValue(mainEntryPoint, CEntryPoint.class);
+        if (cEntryPoint == null) {
+            throw UserError.abort("Entry point '%s' must have the '@%s' annotation", mainEntryPoint.format("%R %H.%n(%P)"), CEntryPoint.class.getSimpleName());
+        }
     }
 
     private static void reportConflictingOptions(HostedOptionKey<Boolean> o1, HostedOptionKey<?> o2) {
@@ -694,18 +646,19 @@ public class NativeImageGeneratorRunner {
         reporter.printEpilog(Optional.ofNullable(imageName), Optional.ofNullable(generator), classLoader, buildOutcome, Optional.ofNullable(unhandledThrowable), parsedHostedOptions);
     }
 
-    protected NativeImageGenerator createImageGenerator(ImageClassLoader classLoader, HostedOptionParser optionParser, Pair<Method, CEntryPointData> mainEntryPointData, ProgressReporter reporter) {
-        return new NativeImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
+    protected NativeImageGenerator createImageGenerator(ImageClassLoader classLoader, HostedOptionParser optionParser, MainEntryPoint mainEntryPoint,
+                    ProgressReporter reporter) {
+        return new NativeImageGenerator(classLoader, optionParser, mainEntryPoint, reporter);
     }
 
-    protected Pair<Method, CEntryPointData> createMainEntryPointData(NativeImageKind imageKind, Method mainEntryPoint) {
-        Pair<Method, CEntryPointData> mainEntryPointData;
-        Class<?>[] pt = mainEntryPoint.getParameterTypes();
-        if (pt.length != 2 || pt[0] != int.class || pt[1] != CCharPointerPointer.class || mainEntryPoint.getReturnType() != int.class) {
-            throw UserError.abort("Main entry point must have signature 'int main(int argc, CCharPointerPointer argv)'.");
+    protected MainEntryPoint createMainEntryPoint(NativeImageKind imageKind, ResolvedJavaMethod mainEntryMethod) {
+        Signature sig = mainEntryMethod.getSignature();
+        String expect = "(I%s)I".formatted(MetaUtil.toInternalName(CCharPointerPointer.class.getName()));
+        String actual = sig.toMethodDescriptor();
+        if (!actual.equals(expect)) {
+            throw UserError.abort("Main entry point must have signature '%s', not '%s'.", expect, actual);
         }
-        mainEntryPointData = Pair.create(mainEntryPoint, CEntryPointData.create(mainEntryPoint, imageKind.mainEntryPointName));
-        return mainEntryPointData;
+        return new MainEntryPoint(mainEntryMethod, () -> CEntryPointData.create(mainEntryMethod, imageKind.mainEntryPointName));
     }
 
     protected Method getMainEntryMethod(@SuppressWarnings("unused") ImageClassLoader classLoader) throws NoSuchMethodException {
@@ -714,13 +667,6 @@ public class NativeImageGeneratorRunner {
 
     protected JavaMainSupport createJavaMainSupport(Method javaMainMethod, @SuppressWarnings("unused") ImageClassLoader classLoader) throws IllegalAccessException {
         return new JavaMainSupport(javaMainMethod);
-    }
-
-    protected void verifyMainEntryPoint(Method mainEntryPoint) {
-        CEntryPoint annotation = mainEntryPoint.getAnnotation(CEntryPoint.class);
-        if (annotation == null) {
-            throw UserError.abort("Entry point must have the '@%s' annotation", CEntryPoint.class.getSimpleName());
-        }
     }
 
     public static boolean verifyValidJavaVersionAndPlatform() {

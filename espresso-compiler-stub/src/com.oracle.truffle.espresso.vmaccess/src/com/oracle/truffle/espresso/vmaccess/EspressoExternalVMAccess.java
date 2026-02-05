@@ -414,6 +414,9 @@ final class EspressoExternalVMAccess implements VMAccess {
             if (java_lang_ClassNotFoundException.isInstance(exceptionObject)) {
                 return null;
             }
+            if (e.getCause() instanceof PolyglotException pe) {
+                throw throwHostException(pe);
+            }
             throw e;
         }
         return constantReflection.asJavaType(cls);
@@ -533,6 +536,16 @@ final class EspressoExternalVMAccess implements VMAccess {
         throw sneakyThrow(asHostException(e));
     }
 
+    /**
+     * Attempts to convert {@code e} into an equivalent host-side Java exception. This allows
+     * host-side {@code catch} statements to work as expected instead of being by-passed due to
+     * exception wrapping. Conversion fails if {@code !e.isGuestException()} or the type of the
+     * guest exception is missing or is not one of the handled conversion types.
+     * <p>
+     * Conversion is applied recursively to {@code e.getCause()} if it's non-null.
+     *
+     * @return the converted exception if conversion was possible, {@code e} otherwise
+     */
     private static Throwable asHostException(PolyglotException e) {
         if (!e.isGuestException()) {
             return e;
@@ -546,30 +559,48 @@ final class EspressoExternalVMAccess implements VMAccess {
             return e;
         }
         String guestExceptionQualifiedType = guestExceptionMetaobject.getMetaQualifiedName();
+        final String message = e.getMessage();
         Throwable t = switch (guestExceptionQualifiedType) {
-            case "java.lang.IndexOutOfBoundsException" -> new IndexOutOfBoundsException(e.getMessage());
-            case "java.lang.IllegalArgumentException" -> new IllegalArgumentException(e.getMessage());
-            case "java.lang.ClassNotFoundException" -> new ClassNotFoundException(e.getMessage());
+            // Exceptions
+            case "java.lang.ArithmeticException" -> new ArithmeticException(message);
+            case "java.lang.ArrayIndexOutOfBoundsException" -> new ArrayIndexOutOfBoundsException(message);
+            case "java.lang.ArrayStoreException" -> new ArrayStoreException(message);
+            case "java.lang.ClassCastException" -> new ClassCastException(message);
+            case "java.lang.ClassNotFoundException" -> new ClassNotFoundException(message);
+            case "java.lang.CloneNotSupportedException" -> new CloneNotSupportedException(message);
+            case "java.lang.IllegalAccessException" -> new IllegalAccessException(message);
+            case "java.lang.IllegalArgumentException" -> new IllegalArgumentException(message);
+            case "java.lang.IndexOutOfBoundsException" -> new IndexOutOfBoundsException(message);
+            case "java.lang.InstantiationException" -> new InstantiationException(message);
+            case "java.lang.NegativeArraySizeException" -> new NegativeArraySizeException(message);
+            case "java.lang.NoSuchFieldException" -> new NoSuchFieldException(message);
+            case "java.lang.NoSuchMethodException" -> new NoSuchMethodException(message);
+            case "java.lang.NullPointerException" -> new NullPointerException(message);
+            case "java.lang.RuntimeException" -> new RuntimeException(message);
+            case "java.lang.StringIndexOutOfBoundsException" -> new StringIndexOutOfBoundsException(message);
+            case "java.lang.UnsupportedOperationException" -> new UnsupportedOperationException(message);
 
-            // LinkageError and its sub-classes
-            case "java.lang.LinkageError" -> new LinkageError(e.getMessage());
-            case "java.lang.ClassCircularityError" -> new ClassCircularityError(e.getMessage());
-            case "java.lang.UnsatisfiedLinkError" -> new UnsatisfiedLinkError(e.getMessage());
-            case "java.lang.ExceptionInInitializerError" -> new ExceptionInInitializerError(e.getMessage());
-            case "java.lang.NoClassDefFoundError" -> new NoClassDefFoundError(e.getMessage());
-            case "java.lang.VerifyError" -> new VerifyError(e.getMessage());
-            case "java.lang.BootstrapMethodError" -> new BootstrapMethodError(e.getMessage());
-            // -> IncompatibleClassChangeError and its sub-classes
-            case "java.lang.IncompatibleClassChangeError" -> new IncompatibleClassChangeError(e.getMessage());
-            case "java.lang.AbstractMethodError" -> new AbstractMethodError(e.getMessage());
-            case "java.lang.IllegalAccessError" -> new IllegalAccessError(e.getMessage());
-            case "java.lang.InstantiationError" -> new InstantiationError(e.getMessage());
-            case "java.lang.NoSuchFieldError" -> new NoSuchFieldError(e.getMessage());
-            case "java.lang.NoSuchMethodError" -> new NoSuchMethodError(e.getMessage());
-            // -> ClassFormatError and its sub-classes
-            case "java.lang.ClassFormatError" -> new ClassFormatError(e.getMessage());
-            case "java.lang.UnsupportedClassVersionError" -> new UnsupportedClassVersionError(e.getMessage());
-            default -> e;
+            // Errors
+            case "java.lang.AbstractMethodError" -> new AbstractMethodError(message);
+            case "java.lang.BootstrapMethodError" -> new BootstrapMethodError(message);
+            case "java.lang.ClassCircularityError" -> new ClassCircularityError(message);
+            case "java.lang.ClassFormatError" -> new ClassFormatError(message);
+            case "java.lang.IllegalAccessError" -> new IllegalAccessError(message);
+            case "java.lang.IncompatibleClassChangeError" -> new IncompatibleClassChangeError(message);
+            case "java.lang.InstantiationError" -> new InstantiationError(message);
+            case "java.lang.InternalError" -> new InternalError(message);
+            case "java.lang.LinkageError" -> new LinkageError(message);
+            case "java.lang.NoClassDefFoundError" -> new NoClassDefFoundError(message);
+            case "java.lang.NoSuchFieldError" -> new NoSuchFieldError(message);
+            case "java.lang.NoSuchMethodError" -> new NoSuchMethodError(message);
+            case "java.lang.OutOfMemoryError" -> new OutOfMemoryError(message);
+            case "java.lang.StackOverflowError" -> new StackOverflowError(message);
+            case "java.lang.UnsatisfiedLinkError" -> new UnsatisfiedLinkError(message);
+            default -> {
+                // All exceptions in the `java.` namespace should be converted.
+                assert !guestExceptionQualifiedType.startsWith("java.") : "missing conversion for " + guestExceptionQualifiedType;
+                yield e;
+            }
         };
         if (t != e) {
             t.setStackTrace(e.getStackTrace());
@@ -701,7 +732,11 @@ final class EspressoExternalVMAccess implements VMAccess {
     }
 
     Value invokeJVMCIHelper(String method, Object... args) {
-        return jvmciHelper.invokeMember(method, args);
+        try {
+            return jvmciHelper.invokeMember(method, args);
+        } catch (PolyglotException e) {
+            throw throwHostException(e);
+        }
     }
 
     JavaType toJavaType(Value value) {

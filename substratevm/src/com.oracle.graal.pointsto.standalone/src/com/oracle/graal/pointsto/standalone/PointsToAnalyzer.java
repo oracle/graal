@@ -261,7 +261,7 @@ public final class PointsToAnalyzer {
     }
 
     private static VMAccess.Builder getVmAccessBuilder() {
-        String requestedAccessName = GraalServices.getSavedProperty("com.oracle.graal.pointsto.standalone.vmaccessname", "host");
+        String requestedAccessName = GraalServices.getSavedProperty("com.oracle.graal.pointsto.standalone.vmaccess.name", "host");
         ServiceLoader<VMAccess.Builder> loader = ServiceLoader.load(VMAccess.Builder.class);
         VMAccess.Builder selected = null;
         for (VMAccess.Builder builder : loader) {
