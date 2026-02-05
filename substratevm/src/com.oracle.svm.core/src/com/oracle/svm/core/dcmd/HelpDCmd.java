@@ -42,7 +42,7 @@ public class HelpDCmd extends AbstractDCmd {
                         Impact.Low, new DCmdOption<?>[]{COMMAND_NAME}, new DCmdOption<?>[]{PRINT_ALL},
                         new String[]{
                                         "$ jcmd <pid> help " +
-                                                "JFR.start"
+                                                        "JFR.start"
                         });
     }
 
