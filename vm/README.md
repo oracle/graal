@@ -1,148 +1,200 @@
-# VM Suite
+# VM Suite: Building GraalVM from Source
 
-The VM suite allows you to build custom GraalVM distributions, as well as installable components.
-It defines a base GraalVM distribution that contains the JVMCI-enabled JDK, the GraalVM SDK, Truffle, and the GraalVM component installer.
-More components are added by dynamically importing additional suites.
-This can be done either by:
-1. running `mx --dynamicimports <suite...> build`
-2. setting the `DEFAULT_DYNAMIC_IMPORTS` or `DYNAMIC_IMPORTS` environment variables before running `mx build`
-3. running `mx --env <env file> build`
+The VM suite provides the tooling required to build GraalVM from source.
+It defines a base GraalVM package that contains the GraalVM SDK, the Graal JIT compiler, SubstrateVM (without the `native-image` tool), and the Truffle framework.
 
-After the compilation:
-- the `latest_graalvm` symbolic link points to the latest built GraalVM
-- `mx [build-time arguments] graalvm-home` prints the path to the GraalVM home directory
+Here you will find instructions on how to build a custom GraalVM Community Edition (CE) distribution from source.
+
+## Prepare the Environment
+
+- Python version as defined in the [Graal CI](https://github.com/oracle/graal/blob/master/ci/common.jsonnet#L147) (currently Python 3.8). Install the required version and set the `MX_PYTHON` environment variable.
+- Developer packages for your operating system are required. The following versions are tested by the Oracle-internal Graal CI but newer versions might also work.
+  - **Linux**: [`devtoolset` 12](https://docs.redhat.com/en/documentation/red_hat_developer_toolset/12/html-single/user_guide/index) which includes
+    - `gcc` 12.2 (the minimum accepted version is 10.0; version 14.2 is also known to compile successfully)
+    - `make` 4.3
+    - `binutils` 2.36
+  - **macOS**: Sonoma and XCode 15
+  - **Windows**: Visual Studio 2022 17.13
+- OpenJDK or Oracle JDK on your system to be used as the "boot" image. Say you want to build a GraalVM version 25, you need to set `JAVA_HOME` to OpenJDK or Oracle JDK 25 or 24. You can install it with SDKMAN!.
+
+## Build GraalVM from Source
+
+GraalVM Community Edition (CE) is an open-source project based on OpenJDK.
+The base package includes:
+- SubstrateVM (without the `native-image` tool)
+- Graal JIT compiler
+- Truffle framework
+
+You can build a custom GraalVM distribution from source.
+You can divide the process into three main parts.
+
+### Setting `mx`
+
+`mx` is a special tool for developing Graal projects. It is [available on GitHub](https://github.com/graalvm/mx).
+For more details, see [What is `mx`?](#what-is-mx) below.
+
+1. Create a workspace directory, and enter it:
+    ```bash
+    mkdir workspace; cd workspace
+    ```
+2. Clone the `mx` repository:
+    ```bash
+    git clone https://github.com/graalvm/mx
+    ```
+3. Add `mx` to your `PATH` environment variable:
+    ```bash
+    export PATH=/path/to/mx:$PATH
+    ```
+
+### Creating a JVMCI-Enabled JDK
+
+To be able to build a GraalVM CE distribution, you need to have a **JVMCI-enabled JDK**, built on top of [LabsJDK](https://github.com/graalvm/labs-openjdk).
+You can download the latest [pre-built release](https://github.com/graalvm/labs-openjdk/releases), but we recommend building it yourself.
+
+1. Clone the [LabsJDK repository](https://github.com/graalvm/labs-openjdk):
+    ```bash
+    git clone https://github.com/graalvm/labs-openjdk.git
+    ```
+
+2. Enter the directory and check out the required tag. The tag is derived from the definition of `jdks.labsjdk-ce-latest.version` in [common.json](https://github.com/oracle/graal/blob/master/common.json).
+    ```bash
+    cd labs-openjdk
+    git checkout `cat /path/to/graal/common.json | grep '"labsjdk-ce-latest"' | sed 's:.*\(jvmci-[^"]*\)".*:\1:g'`
+    ```
+    For example, at the time of writing this guide, the tag is `jvmci-25.1-b14`:
+    ```
+    git status
+    HEAD detached at jvmci-25.1-b14
+    ```
+3. Build a JVMCI-enabled JDK. First configure the build and then build the image with `make`:
+    ```bash
+    bash configure --disable-dtrace
+    ```
+    ```bash
+    make graal-builder-image
+    ```
+    As a result, you get the `graal-builder-jdk` image in the  _build/your-platform/images/_ directory.
+    The contents of `graal-builder-jdk` will have the layout of `$JAVA_HOME`.
+
+4. Point the `JAVA_HOME` environment variable to the newly built image:
+    ```bash
+    export JAVA_HOME="$HOME/workspace/labs-openjdk/build/your-platform/images/graal-builder-jdk"
+    ```
+    (For more details, see [LabsJDK build instructions](https://github.com/graalvm/labs-openjdk/blob/master/doc/building.md#tldr-instructions-for-the-impatient)).
+
+    Now you are all set to build your custom GraalVM distribution.
+
+### Building GraalVM
+
+1. Return back to the _workspace_ directory and clone the [Graal repository](https://github.com/oracle/graal):
+    ```bash
+    git clone https://github.com/oracle/graal.git
+    ```
+ 2. Enter the _graal/vm_ directory:
+    ```bash
+    cd graal/vm
+    ```
+3. Build the base GraalVM:
+    ```bash
+    mx --env ce --sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM --debuginfo-dists --base-jdk-info=labsjdk:25 build --targets=GRAALVM
+    ```
+    The build will be available at:
+    ```bash
+    mx --env ce graalvm-home
+    ```
+    The uncompressed archive of the build will be available at:
+    ```bash
+    mx --env ce paths $(mx --env ce graalvm-dist-name)
+    ```
+    Since additional processing may occur during archiving, you should use the uncompressed archive.
+
+## Frequently Asked Questions
+
+### What is `mx`?
+
+`mx` is a CLI tool for building and testing Graal projects.
+It is developed and maintained by the Graal team, publicly available on [Github](https://github.com/graalvm/mx).
+`mx` works with suites. A **suite** is an `mx` construct that defines:
+  - what are the dependencies of a project
+  - where are the source files
+  - how they are built
+  - what are the results of the build process
+  - how to execute tests and programs
+
+Some Graal projects contain only one suite, while others contain multiple suites.
+
+_How do you check how many suites a Graal project repository contains?_
+Search for files defining a suite named _suite.py_ in the root directory, using `mx` or `find`:
+```bash
+mx suites
+```
+```bash
+find . -type d -maxdepth 2 -name "mx\.*"
+```
+You should see several suites.
+
+_What is a primary suite?_
+A **primary suite** is the one in the current directory, or the one passed as an `mx` argument.
+Only the commands defined by the primary suite (and all its dependencies) are available.
+For example, running:
+```bash
+mx -p ../graal/compiler
+```
+from the [graal-js](https://github.com/oracle/graaljs/tree/master/graal-js) directory uses the compiler suite as the primary suite.
+
+### Can I point `JAVA_HOME` to the `graal-builder-jdk` at build time instead of hardcoding it in the system configuration?
+
+Yes, `mx` supports the `--java-home` option.
+Pass `--java-home=<path to build/<platform>/images/graal-builder-jdk/>` when invoking `mx`.
+
+### Can more components be added to the build?
+
+More components can be added to the build by dynamically importing additional suites.
+This can be achieved either by:
+1. Running `mx build` with the `--dynamicimports <suite...>` option.
+2. Setting the `DEFAULT_DYNAMIC_IMPORTS` or `DYNAMIC_IMPORTS` environment variables before running `mx build`.
+3. Providing the file with environment variables: `mx --env <env file> build`.
 
 Note that the build dependencies of each component are specified in the README file of the corresponding repository.
-A common requirement is that the `JAVA_HOME` environment variable must point to the latest JVMCI-enabled JDK8 ([pre-built archives](https://github.com/graalvm/openjdk8-jvmci-builder/releases); [build instructions](https://github.com/graalvm/openjdk8-jvmci-builder)).
-
-### Showing what will be built
-
-In any of the build commands, replace `build` with `graalvm-show`:
+Before building a GraalVM image, you can validate imports with:
 ```bash
-$ mx ... graalvm-show
+mx --env ce sforceimports
+mx --env ce build
 ```
 
-This will show a list of components, launchers and libraries to be built.
-It is recommended to verify this output before running `build`.
+Find examples and learn more in the [Dynamic Imports documentation](https://github.com/graalvm/mx/blob/master/docs/dynamic-imports.md).
 
-### Example: build the base GraalVM CE image
-The base GraalVM CE image includes:
-- SubstrateVM (without the `native-image` tool)
-- GraalVM compiler & the Truffle partial evaluator (imported as a dependency of `substratevm`)
-- The VisualVM, AgentScript, GraalVM Chrome Inspector, GraalVM Profiler, GraalVM Coverage, and GraalVM Language Server tools
-- Sulong
-- Graal.nodejs
-- Graal.js (imported as a dependency of `graal-nodejs`)
+### Can I see the expected result before building?
 
-In our CI, we build it using:
-- the latest JVMCI-enabled JDK8 ([pre-built archives](https://github.com/graalvm/openjdk8-jvmci-builder/releases); [build instructions](https://github.com/graalvm/openjdk8-jvmci-builder)). The `JAVA_HOME` environment variable must point to it.
-- `gcc`: `4.9.2`
-- `make`: `3.83`
-- `cmake`: `3.15.2`
-
-Newer versions might also work. For more details, please check the README file of each component.
-
-To start the build, you can either run:
-
-1.
+Before starting the build, we recommend to verify what will end up in that custom distribution of yours.
 ```bash
-$ mx --env ce build
+mx --env ce graalvm-show
 ```
-Which uses the settings in the env file in `mx.vm/ce`. Note that you can add custom env files to your `mx.vm` directory, and call `mx --env <env file name> build`.
+This command lists the components, launchers, and libraries that will be built.
 
-2.
+### Minimal configuration script example
+
+Below is an example of a minimal configuration script for Linux:
+
 ```bash
-$ mx --dynamicimports /substratevm,/tools,/sulong,/graal-nodejs --exclude-components=nju,nic,ni,nil,llp build
+if [ -f /etc/bashrc ]; then
+    . /etc/bashrc
+fi
+export PATH=/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/bin
+
+# Graal builder JDK (JVMCI-enabled)
+export JAVA_HOME="$HOME/workspace/labs-openjdk/build/linux-x86_64-server-release/images/graal-builder-jdk"
+export PATH="$JAVA_HOME/bin:$PATH"
+
+# mx configuration
+export PATH="$HOME/workspace/mx:$PATH"
+export MX_PYTHON=python3.8
+
+# gcc toolset 12
+source /opt/rh/gcc-toolset-12/enable
 ```
 
-3.
-```bash
-$ export DEFAULT_DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-nodejs
-$ export EXCLUDE_COMPONENTS=nju,nic,ni,nil,llp
-$ mx build
-```
-or:
-```bash
-$ export DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-nodejs
-$ export EXCLUDE_COMPONENTS=nju,nic,ni,nil,llp
-$ mx build
-```
-Note that the suites listed in:
-- `DYNAMIC_IMPORTS` are always imported
-- `DEFAULT_DYNAMIC_IMPORTS` are imported only if no other dynamic import is specified (via command line, env file, or environment variable)
+### Related Documentation
 
-
-## Installable components
-Installable components for the Graal Updater (`gu`) are built alongside the GraalVM for languages other than JS.
-For example:
-```bash
-$ env FASTR_RELEASE=true mx --dynamicimports fastr,truffleruby,graalpython,/substratevm build
-```
-creates:
-- a GraalVM image which includes the base CE components plus FastR, TruffleRuby, and Graal.Python
-- the installables for FastR, TruffleRuby, and Graal.Python
-
-
-## Native images
-When `substratevm` is imported, the build system creates native launchers for the supported languages.
-Otherwise, it creates bash launchers for the languages.
-
-To override the default behavior, the `vm` suite defines the following `mx` arguments:
-```
-  --native-images=...           Comma-separated list of launchers and libraries (syntax: lib:jsvm) to build with Native Image.
-  --force-bash-launchers=...    Force the use of bash launchers instead of native images.
-                                This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.
-```
-And the following environment variables:
-```
-  NATIVE_IMAGES                 Same as '--native-images'
-  FORCE_BASH_LAUNCHERS          Same as '--force-bash-launchers'
-```
-
-### Example: force bash launchers
-```bash
-$ mx --force-bash-launchers=true --dynamicimports /substratevm,/tools,/sulong,/graal-nodejs build
-```
-builds the native SubstrateVM launcher for native-image, and creates bash launchers for Sulong and Graal.js
-
-### Example: build only TruffleRuby with bash launchers
-```bash
-$ mx --dy truffleruby --components='TruffleRuby' build
-```
-
-### Example: build only the TruffleRuby launcher
-```bash
-$ mx --dy truffleruby,/substratevm,/tools --components='TruffleRuby,Native Image,suite:tools' --native-images=lib:rubyvm build
-```
-or as env file (e.g., in `mx.vm/ruby`):
-```
-DYNAMIC_IMPORTS=truffleruby,/substratevm,/tools
-COMPONENTS=TruffleRuby,Native Image,suite:tools
-NATIVE_IMAGES=lib:rubyvm
-```
-```bash
-$ mx --env ruby build
-```
-
-This also include all tools, which is of course optional.
-
-## Versioned dynamic imports
-Dynamic imports typically require the user to locate and clone the dynamically imported suites.
-There is also no indication of which version of those suites would work.
-To avoid this issue, the `vm` suite uses "versioned dynamic imports".
-
-The `mx.vm/suite.py` file contains references to all the suites that might be imported to compose a GraalVM.
-Unlike usual suite imports, they are marked as `dynamic`, which means they are only considered if they are part of the dynamically imported suites.
-However, when they are included, they have URLs and versions which allow mx to automatically clone the correct version.
-
-More details can be found in `docs/dynamic-imports.md` in the `mx` repository.
-
-
-### Example: checkout the correct imports of Graal.js and Sulong, then build a GraalVM CE image
-```bash
-$ mx --env ce sforceimports
-$ mx --env ce build
-```
-
-## Registering custom components
-Suites can register new, custom components calling`mx_sdk.register_graalvm_component()`.
+- [Static, Dynamic, and Versioned Imports in mx](https://github.com/graalvm/mx/blob/master/docs/dynamic-imports.md)
+- [Building the JDK](https://github.com/graalvm/labs-openjdk/blob/master/doc/building.md)
