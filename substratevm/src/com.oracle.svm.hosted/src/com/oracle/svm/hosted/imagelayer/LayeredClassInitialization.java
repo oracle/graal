@@ -26,7 +26,9 @@ package com.oracle.svm.hosted.imagelayer;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
+import com.oracle.graal.pointsto.infrastructure.Universe;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class LayeredClassInitialization {
 
@@ -34,5 +36,5 @@ public abstract class LayeredClassInitialization {
         return ImageSingletons.lookup(LayeredClassInitialization.class);
     }
 
-    abstract void initializeClassInAppLayer(Class<?> c, MetaAccessProvider meta);
+    abstract void initializeClassInAppLayer(ResolvedJavaType type, Universe universe);
 }

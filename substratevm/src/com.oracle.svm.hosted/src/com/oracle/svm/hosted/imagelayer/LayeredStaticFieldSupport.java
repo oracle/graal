@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -39,6 +37,7 @@ import java.util.function.Supplier;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
+import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -71,8 +70,8 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This class keeps track of the location of static fields assigned in previous layers as well as
@@ -180,9 +179,8 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
         assert priorInstalledLocation.equals(result);
     }
 
-    private void installFieldInAppLayer(Field field, MetaAccessProvider meta) {
-        AnalysisField aField = (AnalysisField) meta.lookupJavaField(field);
-        installFieldInAppLayer(aField);
+    private void installFieldInAppLayer(ResolvedJavaField field, Universe universe) {
+        installFieldInAppLayer((AnalysisField) universe.lookup(field));
     }
 
     void installFieldInAppLayer(AnalysisField aField) {
@@ -231,11 +229,9 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
     }
 
     @Override
-    void initializeClassInAppLayer(Class<?> c, MetaAccessProvider meta) {
-        for (var field : c.getDeclaredFields()) {
-            if (Modifier.isStatic(field.getModifiers())) {
-                installFieldInAppLayer(field, meta);
-            }
+    void initializeClassInAppLayer(ResolvedJavaType type, Universe universe) {
+        for (var field : type.getStaticFields()) {
+            installFieldInAppLayer(field, universe);
         }
     }
 
