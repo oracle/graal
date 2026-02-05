@@ -411,7 +411,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         }
         assert Modifier.isNative(newModifiers);
         InterpreterUnresolvedSignature jvmciSignature = CremaMethodAccess.toJVMCI(newSignature, SymbolsSupport.getTypes());
-        return new InterpreterResolvedJavaMethod(name, jvmciSignature.getParameterCount(true), newModifiers, declaringClass, jvmciSignature, newSignature,
+        return new InterpreterResolvedJavaMethod(name, jvmciSignature.slotsForParameters(true), newModifiers, declaringClass, jvmciSignature, newSignature,
                         vtableIndex, gotOffset, enterStubOffset, methodId, iid);
     }
 
