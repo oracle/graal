@@ -26,7 +26,6 @@ package com.oracle.svm.core.config;
 
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
@@ -50,6 +49,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
@@ -60,6 +60,7 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
@@ -370,7 +371,7 @@ public final class ObjectLayout {
                     List<Integer> currentValues = singleton.getCurrentValues();
                     List<Integer> priorValues = loader.readIntList("priorValues");
 
-                    var numFields = Arrays.stream(ObjectLayout.class.getDeclaredFields()).filter(Predicate.not(Field::isSynthetic)).count();
+                    var numFields = Arrays.stream(GuestAccess.get().lookupType(ObjectLayout.class).getInstanceFields(false)).filter(Predicate.not(ResolvedJavaField::isSynthetic)).count();
                     VMError.guarantee(numFields - 1 == currentValues.size(), "Missing fields");
 
                     VMError.guarantee(currentValues.equals(priorValues),
