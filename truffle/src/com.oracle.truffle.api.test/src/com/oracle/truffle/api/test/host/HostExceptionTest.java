@@ -967,9 +967,35 @@ public class HostExceptionTest {
     }
 
     @Test
-    public void testHideHostStackFrames() {
+    public void testHideHostStackFramesInHostAccessExplicit() {
+        testHostStackFrames(HostAccess.EXPLICIT, false);
+    }
+
+    @Test
+    public void testShowHostStackFramesInHostAccessAll() {
+        testHostStackFrames(HostAccess.ALL, true);
+    }
+
+    @Test
+    public void testDisabledStackFramesInHostAccessAll() {
+        HostAccess baseHostAccess = HostAccess.newBuilder(HostAccess.ALL).//
+                        allowAccessAnnotatedBy(HostAccess.Export.class).//
+                        allowPublicAccess(false).//
+                        build();
+        testHostStackFrames(baseHostAccess, false);
+    }
+
+    @Test
+    public void testEnabledStackFramesInHostAccessExplicit() {
+        HostAccess baseHostAccess = HostAccess.newBuilder(HostAccess.EXPLICIT).//
+                        allowPublicAccess(true).//
+                        build();
+        testHostStackFrames(baseHostAccess, true);
+    }
+
+    private void testHostStackFrames(HostAccess baseHostAccess, boolean interopIncludesHostFrames) {
         TruffleTestAssumptions.assumeWeakEncapsulation();
-        hostAccess = HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build();
+        hostAccess = HostAccess.newBuilder(baseHostAccess).allowAccessInheritance(true).build();
         before();
 
         String expectedMessage = "oh";
@@ -985,16 +1011,30 @@ public class HostExceptionTest {
         customExceptionVerifier = (guestEx) -> {
             assertFalse(guestEx.toString(), INTEROP.isHostObject(guestEx) && INTEROP.isException(guestEx));
             assertTrue(guestEx.toString(), INTEROP.isException(guestEx));
-
-            List<String> expectedStack = List.of(expectedMessage,
-                            THROW_EXCEPTION,
-                            RUNNER,
-                            RUNNER,
-                            RUNNER,
-                            CATCHER);
-
-            assertEquals(expectedStack, formatInteropExceptionStackTrace(guestEx, true, true));
-            assertEquals(expectedStack, formatInteropExceptionStackTrace(guestEx, false, true));
+            List<String> expectedStackFromInterop;
+            if (interopIncludesHostFrames) {
+                expectedStackFromInterop = List.of(expectedMessage,
+                                THROW_EXCEPTION,
+                                RUNNER,
+                                VALUE_EXECUTE,
+                                hostQualify("hostApply"),
+                                RUNNER,
+                                VALUE_EXECUTE,
+                                hostQualify("hostApply"),
+                                RUNNER,
+                                CATCHER);
+            } else {
+                expectedStackFromInterop = List.of(expectedMessage,
+                                THROW_EXCEPTION,
+                                RUNNER,
+                                RUNNER,
+                                RUNNER,
+                                CATCHER);
+            }
+            if (!interopIncludesHostFrames) {
+                assertEquals(expectedStackFromInterop, formatInteropExceptionStackTrace(guestEx, true, true));
+            }
+            assertEquals(expectedStackFromInterop, formatInteropExceptionStackTrace(guestEx, false, true));
         };
 
         Value result = catcher.execute(runner, proxyRunner, runner, hostRunner, runner, throwException, expectedMessage);

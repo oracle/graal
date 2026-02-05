@@ -117,6 +117,8 @@ public final class PolyglotException extends RuntimeException {
         dispatch.onCreate(receiver, this);
         // we need to materialize the stack if this exception is printed as cause of another error.
         // unfortunately we cannot detect this easily
+        // We require eager materialization also for polyglot isolates because the isolate
+        // may be disposed by a try-with-resources block before the exception handler runs.
         super.setStackTrace(getStackTrace());
         if (causeDepth < MAX_CAUSE_DEPTH) {
             Object causeImpl = dispatch.getCauseImpl(impl);

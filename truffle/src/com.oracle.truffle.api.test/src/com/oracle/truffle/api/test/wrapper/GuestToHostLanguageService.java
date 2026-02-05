@@ -134,7 +134,7 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
+    public int findNextHostToGuestStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
         return -1;
     }
 
@@ -152,5 +152,4 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     public boolean allowsPublicAccess() {
         return false;
     }
-
 }

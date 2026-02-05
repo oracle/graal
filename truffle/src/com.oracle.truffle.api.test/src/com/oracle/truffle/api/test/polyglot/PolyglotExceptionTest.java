@@ -530,10 +530,8 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                             assertEquals("testRootName", frame.getRootName());
                         }
                     }
-                    if (TruffleTestAssumptions.isNoIsolateEncapsulation()) { // GR-35913
-                        // No guest stack trace injected into OutOfMemoryError.
-                        assertFalse(foundFrame);
-                    }
+                    // No guest stack trace injected into OutOfMemoryError.
+                    assertFalse(foundFrame);
                 });
             }
         };
@@ -697,9 +695,6 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                         break;
                     }
                     prev = element;
-                    if (TruffleTestAssumptions.isIsolateEncapsulation()) { // GR-35913
-                        break;
-                    }
                 }
                 assertNotNull("No host frame found.", prev);
                 assertEquals(BrokenList.class.getName(), prev.getClassName());

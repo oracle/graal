@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -316,6 +316,14 @@ public final class JNIExceptionWrapper extends RuntimeException {
                     StackTraceElement[] hotSpotStackTrace,
                     StackTraceElement[] nativeStackTrace,
                     boolean originatedInHotSpot) {
+        return mergeStackTraces(hotSpotStackTrace, nativeStackTrace, ExceptionKind.THROWN, originatedInHotSpot);
+    }
+
+    public static StackTraceElement[] mergeStackTraces(
+                    StackTraceElement[] hotSpotStackTrace,
+                    StackTraceElement[] nativeStackTrace,
+                    ExceptionKind exceptionKind,
+                    boolean originatedInHotSpot) {
         if (originatedInHotSpot) {
             if (containsJNIHostCall(hotSpotStackTrace)) {
                 // Already merged
@@ -327,8 +335,12 @@ public final class JNIExceptionWrapper extends RuntimeException {
                 return nativeStackTrace;
             }
         }
-        return mergeStackTraces(hotSpotStackTrace, nativeStackTrace, originatedInHotSpot ? 0 : getIndexOfTransitionToNativeFrame(hotSpotStackTrace),
-                        getIndexOfPropagateJNIExceptionFrame(nativeStackTrace), originatedInHotSpot);
+        int hotSpotStackStartIndex = originatedInHotSpot ? 0 : getIndexOfTransitionToNativeFrame(hotSpotStackTrace);
+        int nativeStackStartIndex = switch (exceptionKind) {
+            case THROWN -> getIndexOfPropagateJNIExceptionFrame(nativeStackTrace);
+            case RETURNED -> 0;
+        };
+        return mergeStackTraces(hotSpotStackTrace, nativeStackTrace, hotSpotStackStartIndex, nativeStackStartIndex, originatedInHotSpot);
     }
 
     /**
@@ -660,5 +672,22 @@ public final class JNIExceptionWrapper extends RuntimeException {
         JNI_TRANSITION_CLASS = JNICalls.class.getName();
         JNI_TRANSITION_METHODS = Set.copyOf(entryPoints.keySet());
         JNI_FUNCTION_POINTER_CLASS_PREFIX = JNI.class.getName() + '$';
+    }
+
+    /**
+     * Describes how an exception was delivered to the caller.
+     * <p>
+     * An exception may either be:
+     * <ul>
+     * <li>{@link #THROWN} - the exception is propagated using the Java {@code throw} statement and
+     * normal exception-handling semantics.</li>
+     * <li>{@link #RETURNED} - the exception is not thrown but instead returned as a regular
+     * value.</li>
+     * </ul>
+     * <p>
+     */
+    public enum ExceptionKind {
+        RETURNED,
+        THROWN
     }
 }

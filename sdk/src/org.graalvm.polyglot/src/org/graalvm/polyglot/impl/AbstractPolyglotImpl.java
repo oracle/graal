@@ -1011,6 +1011,17 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract static class AbstractHostLanguageService extends AbstractDispatchClass {
 
+        private static final String POLYGLOT_PACKAGE = "org.graalvm.polyglot.";
+        private static final String HOST_INTEROP_PACKAGE = "com.oracle.truffle.polyglot.";
+        private static final String[] JAVA_INTEROP_HOST_TO_GUEST = {
+                        HOST_INTEROP_PACKAGE + "PolyglotMap",
+                        HOST_INTEROP_PACKAGE + "PolyglotList",
+                        HOST_INTEROP_PACKAGE + "PolyglotFunction",
+                        HOST_INTEROP_PACKAGE + "PolyglotMapAndFunction",
+                        HOST_INTEROP_PACKAGE + "PolyglotFunctionProxyHandler",
+                        HOST_INTEROP_PACKAGE + "PolyglotObjectProxyHandler"
+        };
+
         protected AbstractHostLanguageService(AbstractPolyglotImpl polyglot) {
             Objects.requireNonNull(polyglot);
         }
@@ -1046,8 +1057,6 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isHostProxy(Object value);
 
-        public abstract int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
-
         public abstract Object migrateValue(Object hostContext, Object value, Object valueContext);
 
         public abstract void pin(Object receiver);
@@ -1060,6 +1069,71 @@ public abstract class AbstractPolyglotImpl {
             return allowsPublicAccess();
         }
 
+        // Overridden by polyglot isolate
+        public int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
+            StackTraceElement element = firstElement;
+            int index = nextElementIndex;
+            while (isGuestToHostReflectiveCall(element) && index < hostStack.length) {
+                element = hostStack[index++];
+            }
+            if (isGuestToHostCallFromHostInterop(element)) {
+                return index - nextElementIndex;
+            } else {
+                return -1;
+            }
+        }
+
+        private static boolean isGuestToHostReflectiveCall(StackTraceElement element) {
+            return switch (element.getClassName()) {
+                case "sun.reflect.NativeMethodAccessorImpl", "sun.reflect.DelegatingMethodAccessorImpl",
+                                "jdk.internal.reflect.NativeMethodAccessorImpl", "jdk.internal.reflect.DelegatingMethodAccessorImpl",
+                                "java.lang.reflect.Method" ->
+                    element.getMethodName().startsWith("invoke");
+                default -> false;
+            };
+        }
+
+        private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {
+            return switch (element.getClassName()) {
+                case "com.oracle.truffle.host.HostMethodDesc$SingleMethod$MHBase" ->
+                    element.getMethodName().equals("invokeHandle");
+                case "com.oracle.truffle.host.HostMethodDesc$SingleMethod$MethodReflectImpl" ->
+                    element.getMethodName().equals("reflectInvoke");
+                case "com.oracle.truffle.host.HostObject$GuestToHostCalls" -> true;
+                case "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeReflect",
+                                "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeHandle" ->
+                    element.getMethodName().equals("executeImpl");
+                case "org.graalvm.polyglot.Engine$APIAccessImpl" -> element.getMethodName().startsWith("callProxy");
+                default -> false;
+            };
+        }
+
+        // Overridden by polyglot isolate
+        public int findNextHostToGuestStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
+            StackTraceElement element = firstElement;
+            int index = nextElementIndex;
+            if (!isHostToGuest(element)) {
+                return -1;
+            }
+            while (isHostToGuest(element) && index < hostStack.length) {
+                element = hostStack[index++];
+            }
+            return index - nextElementIndex - 1;
+        }
+
+        // Used by polyglot isolate findNextHostToGuestStackTraceElement implementation
+        protected static boolean isHostToGuest(StackTraceElement element) {
+            if (element.getClassName().startsWith(POLYGLOT_PACKAGE) && element.getClassName().indexOf('.', POLYGLOT_PACKAGE.length()) < 0) {
+                return !element.getClassName().equals("org.graalvm.polyglot.Engine$APIAccessImpl");
+            } else if (element.getClassName().startsWith(HOST_INTEROP_PACKAGE)) {
+                for (String hostToGuestClassName : JAVA_INTEROP_HOST_TO_GUEST) {
+                    if (element.getClassName().equals(hostToGuestClassName)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
     }
 
     public abstract static class AbstractValueDispatch extends AbstractDispatchClass {
@@ -1447,6 +1521,14 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public void validateVirtualThreadCreation(OptionValues engineOptions) {
+    }
+
+    public <T extends Throwable> T mergeHostStackTrace(Throwable forException, T hostException) {
+        return getNext().mergeHostStackTrace(forException, hostException);
+    }
+
+    public Object getEmbedderExceptionStackTrace(Object engine, Throwable exception, boolean inHost) {
+        return getNext().getEmbedderExceptionStackTrace(engine, exception, inHost);
     }
 
     /**

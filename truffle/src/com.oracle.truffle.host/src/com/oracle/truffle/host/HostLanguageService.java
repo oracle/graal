@@ -55,13 +55,9 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.host.GuestToHostCodeCache.GuestToHostInvokeHandle;
-import com.oracle.truffle.host.GuestToHostCodeCache.GuestToHostInvokeReflect;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.host.HostLanguage.HostLanguageException;
-import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
 import com.oracle.truffle.host.HostMethodScope.ScopedObject;
-import com.oracle.truffle.host.HostObject.GuestToHostCalls;
 
 public class HostLanguageService extends AbstractHostLanguageService {
 
@@ -236,20 +232,6 @@ public class HostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
-        StackTraceElement element = firstElement;
-        int index = nextElementIndex;
-        while (isGuestToHostReflectiveCall(element) && index < hostStack.length) {
-            element = hostStack[index++];
-        }
-        if (isGuestToHostCallFromHostInterop(element)) {
-            return index - nextElementIndex;
-        } else {
-            return -1;
-        }
-    }
-
-    @Override
     public void pin(Object receiver) {
         HostMethodScope.pin(receiver);
     }
@@ -263,49 +245,4 @@ public class HostLanguageService extends AbstractHostLanguageService {
     public boolean allowsPublicAccess() {
         return api.allowsPublicAccess(language.hostClassCache.hostAccess);
     }
-
-    private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {
-        assert assertClassNameUnchanged(GuestToHostCalls.class, "com.oracle.truffle.host.HostObject$GuestToHostCalls");
-        assert assertClassNameUnchanged(GuestToHostCodeCache.class, "com.oracle.truffle.host.GuestToHostCodeCache");
-        assert assertClassNameUnchanged(SingleMethod.class, "com.oracle.truffle.host.HostMethodDesc$SingleMethod");
-        assert assertClassNameUnchanged(GuestToHostInvokeReflect.class, "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeReflect");
-        assert assertClassNameUnchanged(GuestToHostInvokeHandle.class, "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeHandle");
-
-        switch (element.getClassName()) {
-            case "com.oracle.truffle.host.HostMethodDesc$SingleMethod$MHBase":
-                return element.getMethodName().equals("invokeHandle");
-            case "com.oracle.truffle.host.HostMethodDesc$SingleMethod$MethodReflectImpl":
-                return element.getMethodName().equals("reflectInvoke");
-            case "com.oracle.truffle.host.HostObject$GuestToHostCalls":
-                return true;
-            case "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeReflect":
-            case "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeHandle":
-                return element.getMethodName().equals("executeImpl");
-            case "org.graalvm.polyglot.Engine$APIAccessImpl":
-                return element.getMethodName().startsWith("callProxy");
-            default:
-                return false;
-        }
-    }
-
-    private static boolean assertClassNameUnchanged(Class<?> c, String name) {
-        if (c.getName().equals(name)) {
-            return true;
-        }
-        throw new AssertionError("Class name is outdated. Expected " + name + " but got " + c.getName());
-    }
-
-    private static boolean isGuestToHostReflectiveCall(StackTraceElement element) {
-        switch (element.getClassName()) {
-            case "sun.reflect.NativeMethodAccessorImpl":
-            case "sun.reflect.DelegatingMethodAccessorImpl":
-            case "jdk.internal.reflect.NativeMethodAccessorImpl":
-            case "jdk.internal.reflect.DelegatingMethodAccessorImpl":
-            case "java.lang.reflect.Method":
-                return element.getMethodName().startsWith("invoke");
-            default:
-                return false;
-        }
-    }
-
 }

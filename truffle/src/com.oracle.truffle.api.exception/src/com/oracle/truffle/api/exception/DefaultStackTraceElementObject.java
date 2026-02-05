@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.exception;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -54,10 +55,12 @@ final class DefaultStackTraceElementObject implements TruffleObject {
 
     private final RootNode rootNode;
     private final SourceSection sourceSection;
+    private final int byteCodeIndex;
 
-    DefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection) {
+    DefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection, int byteCodeIndex) {
         this.rootNode = rootNode;
         this.sourceSection = sourceSection;
+        this.byteCodeIndex = byteCodeIndex;
     }
 
     @ExportMessage
@@ -101,5 +104,66 @@ final class DefaultStackTraceElementObject implements TruffleObject {
     @SuppressWarnings("static-method")
     Object getDeclaringMetaObject() throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasLanguageId() {
+        return true;
+    }
+
+    @ExportMessage
+    String getLanguageId() {
+        return rootNode.getLanguageInfo().getId();
+    }
+
+    @ExportMessage
+    @SuppressWarnings({"unused", "static-method"})
+    @TruffleBoundary
+    Object toDisplayString(boolean allowSideEffects) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("<").append(getLanguageId()).append("> ");
+        try {
+            if (hasExecutableName()) {
+                builder.append(getExecutableName());
+            } else {
+                builder.append("Unknown");
+            }
+            if (hasSourceLocation()) {
+                SourceSection section = getSourceLocation();
+                builder.append('(');
+                builder.append(section.getSource().getName());
+                builder.append(':');
+                builder.append(section.getStartLine());
+                builder.append(')');
+            }
+        } catch (UnsupportedMessageException unsupportedMessage) {
+            throw CompilerDirectives.shouldNotReachHere(unsupportedMessage);
+        }
+        return builder.toString();
+    }
+
+    @ExportMessage
+    boolean hasBytecodeIndex() {
+        return byteCodeIndex != -1;
+    }
+
+    @ExportMessage
+    int getBytecodeIndex() throws UnsupportedMessageException {
+        if (hasBytecodeIndex()) {
+            return byteCodeIndex;
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    boolean isInternal() {
+        return rootNode.isInternal();
+    }
+
+    @Override
+    public String toString() {
+        return (String) toDisplayString(true);
     }
 }

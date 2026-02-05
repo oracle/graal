@@ -136,6 +136,16 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
+        public boolean isEmptyStackTrace(Throwable t) {
+            if (t instanceof TruffleStackTrace.LazyStackTrace lazyStackTrace) {
+                return lazyStackTrace.getInternalStackTrace() == TruffleStackTrace.EMPTY;
+            } else {
+                throw new IllegalArgumentException(t);
+            }
+
+        }
+
+        @Override
         public InstrumentInfo createInstrument(Object polyglotInstrument, String id, String name, String version) {
             return new InstrumentInfo(polyglotInstrument, id, name, version);
         }
