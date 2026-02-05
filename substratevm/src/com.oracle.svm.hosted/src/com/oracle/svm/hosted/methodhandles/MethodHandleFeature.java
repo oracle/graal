@@ -50,6 +50,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.NewEmptyArrayFieldValueTransformer;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -463,6 +464,15 @@ public class MethodHandleFeature implements InternalFeature {
         access.getBigBang().postTask(unused -> {
             Field bmhSpeciesField = ReflectionUtil.lookupField(true, bmhSubtype, "BMH_SPECIES");
             if (bmhSpeciesField != null) {
+                if (RuntimeClassLoading.isSupported()) {
+                    /*
+                     * When crema is enabled, the method handle code will read this field
+                     * "reflectively" through a member name. It is not enough to preserve
+                     * java.lang.invoke since the BoundMethodHandle subclasses can be dynamically
+                     * generated at build time.
+                     */
+                    access.registerAsAccessed(bmhSpeciesField);
+                }
                 access.rescanRoot(bmhSpeciesField, new ObjectScanner.OtherReason("Manual rescan triggered from a subtype reachability handler in " + MethodHandleFeature.class));
             }
         });
