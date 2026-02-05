@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub.registry;
 
+import static com.oracle.svm.core.jdk.JRTSupport.Options.AllowJRTFileSystem;
+
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.FileSystem;
@@ -37,16 +39,29 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.svm.util.LogUtils;
 
 /**
  * This class registry corresponds to the {@code null} class loader when runtime class loading is
  * supported.
  */
 public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
+    private static final String JRTFS_UNAVAILABLE_MESSAGE = String.format("""
+                    The boot class loader is unavailable. In order to allow loading classes from the boot class loader, you must:
+                    - Build the image with %s
+                    - Set the `java.home` system property at run-time.
+                      This can be done as a run-time command line argument `-Djava.home=`, or programmatically with `System.setProperty("java.home", ...`""",
+                    SubstrateOptionsParser.commandArgument(AllowJRTFileSystem, "+")).replace("\n", System.lineSeparator());
+
+    private static final String JAVA_HOME_UNAVAILABLE_MESSAGE = """
+                    The boot class loader is unavailable. In order to allow loading classes from the boot class loader, you must:
+                    - Set the `java.home` system property at run-time.
+                      This can be done as a run-time command line argument `-Djava.home=`, or programmatically with `System.setProperty("java.home", ...`""".replace("\n", System.lineSeparator());
     private static final Object NO_JRT_FS = new Object();
     private volatile Object jrtFS;
 
@@ -63,6 +78,13 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
                     try {
                         jrtFS = maybeFs = FileSystems.getFileSystem(URI.create("jrt:/"));
                     } catch (ProviderNotFoundException | FileSystemNotFoundException e) {
+                        if (!AllowJRTFileSystem.getValue()) {
+                            LogUtils.warning(JRTFS_UNAVAILABLE_MESSAGE);
+                        } else if (System.getProperty("java.home") == null) {
+                            LogUtils.warning(JAVA_HOME_UNAVAILABLE_MESSAGE);
+                        } else {
+                            LogUtils.warning("The boot class loader is unavailable: " + e);
+                        }
                         jrtFS = NO_JRT_FS;
                     }
                 }
