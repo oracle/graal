@@ -331,7 +331,7 @@ public class SVMHost extends HostVM {
      */
     @Override
     public boolean isCoreType(ResolvedJavaType type) {
-        return loader.getBuilderModules().contains(OriginalClassProvider.getJavaClass(type).getModule());
+        return loader.getBuilderModules().contains(GuestAccess.get().getModule(OriginalClassProvider.getOriginalType(type)));
     }
 
     @Override

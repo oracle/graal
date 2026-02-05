@@ -59,6 +59,7 @@ import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -107,7 +108,7 @@ public final class ImageClassLoader {
     /**
      * Modules containing all {@code svm.core} and {@code svm.hosted} classes.
      */
-    private Set<Module> builderModules;
+    private Set<ResolvedJavaModule> builderModules;
 
     ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport, VMAccess vmAccess) {
         this.platform = platform;
@@ -232,7 +233,8 @@ public final class ImageClassLoader {
     }
 
     public boolean isCoreType(Class<?> clazz) {
-        return getBuilderModules().contains(clazz.getModule());
+        GuestAccess guestAccess = GuestAccess.get();
+        return getBuilderModules().contains(guestAccess.getModule(guestAccess.lookupType(clazz)));
     }
 
     /**
@@ -618,7 +620,7 @@ public final class ImageClassLoader {
         return classLoaderSupport.noEntryForURI(set);
     }
 
-    public Set<Module> getBuilderModules() {
+    public Set<ResolvedJavaModule> getBuilderModules() {
         assert builderModules != null : "Builder modules not yet initialized.";
         return builderModules;
     }
@@ -626,8 +628,9 @@ public final class ImageClassLoader {
     public void initBuilderModules() {
         VMError.guarantee(BuildPhaseProvider.isFeatureRegistrationFinished() && ImageSingletons.contains(VMFeature.class),
                         "Querying builder modules is only possible after feature registration is finished.");
-        Module m0 = ImageSingletons.lookup(VMFeature.class).getClass().getModule();
-        Module m1 = SVMHost.class.getModule();
+        GuestAccess guestAccess = GuestAccess.get();
+        ResolvedJavaModule m0 = guestAccess.getModule(guestAccess.lookupType(ImageSingletons.lookup(VMFeature.class).getClass()));
+        ResolvedJavaModule m1 = guestAccess.getModule(guestAccess.lookupType(SVMHost.class));
         builderModules = m0.equals(m1) ? Set.of(m0) : Set.of(m0, m1);
     }
 
