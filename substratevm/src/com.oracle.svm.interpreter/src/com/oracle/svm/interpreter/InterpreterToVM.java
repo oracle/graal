@@ -39,8 +39,8 @@ import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.impl.ClassLoading;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
@@ -335,8 +335,11 @@ public final class InterpreterToVM {
 
     public static boolean getFieldBoolean(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        if (field.isUndefined()) {
+            throw VMError.shouldNotReachHere("Cannot load undefined field: " + field);
+        }
         if (field.isUnmaterializedConstant()) {
-            return getUnmaterializedConstant(field).asBoolean();
+            return field.getUnmaterializedConstant().asBoolean();
         }
         if (field.isVolatile()) {
             return U.getBooleanVolatile(obj, field.getOffset());
@@ -347,8 +350,11 @@ public final class InterpreterToVM {
 
     public static int getFieldInt(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        if (field.isUndefined()) {
+            throw VMError.shouldNotReachHere("Cannot load undefined field: " + field);
+        }
         if (field.isUnmaterializedConstant()) {
-            return getUnmaterializedConstant(field).asInt();
+            return field.getUnmaterializedConstant().asInt();
         }
         if (field.isVolatile()) {
             return U.getIntVolatile(obj, field.getOffset());
@@ -359,8 +365,11 @@ public final class InterpreterToVM {
 
     public static long getFieldLong(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        if (field.isUndefined()) {
+            throw VMError.shouldNotReachHere("Cannot load undefined field: " + field);
+        }
         if (field.isUnmaterializedConstant()) {
-            return getUnmaterializedConstant(field).asLong();
+            return field.getUnmaterializedConstant().asLong();
         }
         if (field.isVolatile()) {
             return U.getLongVolatile(obj, field.getOffset());
@@ -371,8 +380,11 @@ public final class InterpreterToVM {
 
     public static byte getFieldByte(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        if (field.isUndefined()) {
+            throw VMError.shouldNotReachHere("Cannot load undefined field: " + field);
+        }
         if (field.isUnmaterializedConstant()) {
-            return (byte) getUnmaterializedConstant(field).asInt();
+            return (byte) field.getUnmaterializedConstant().asInt();
         }
         if (field.isVolatile()) {
             return U.getByteVolatile(obj, field.getOffset());
@@ -383,8 +395,11 @@ public final class InterpreterToVM {
 
     public static short getFieldShort(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        if (field.isUndefined()) {
+            throw VMError.shouldNotReachHere("Cannot load undefined field: " + field);
+        }
         if (field.isUnmaterializedConstant()) {
-            return (short) getUnmaterializedConstant(field).asInt();
+            return (short) field.getUnmaterializedConstant().asInt();
         }
         if (field.isVolatile()) {
             return U.getShortVolatile(obj, field.getOffset());
@@ -395,8 +410,11 @@ public final class InterpreterToVM {
 
     public static float getFieldFloat(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        if (field.isUndefined()) {
+            throw VMError.shouldNotReachHere("Cannot load undefined field: " + field);
+        }
         if (field.isUnmaterializedConstant()) {
-            return getUnmaterializedConstant(field).asFloat();
+            return field.getUnmaterializedConstant().asFloat();
         }
         if (field.isVolatile()) {
             return U.getFloatVolatile(obj, field.getOffset());
@@ -407,8 +425,11 @@ public final class InterpreterToVM {
 
     public static double getFieldDouble(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        if (field.isUndefined()) {
+            throw VMError.shouldNotReachHere("Cannot load undefined field: " + field);
+        }
         if (field.isUnmaterializedConstant()) {
-            return getUnmaterializedConstant(field).asDouble();
+            return field.getUnmaterializedConstant().asDouble();
         }
         if (field.isVolatile()) {
             return U.getDoubleVolatile(obj, field.getOffset());
@@ -419,8 +440,11 @@ public final class InterpreterToVM {
 
     public static Object getFieldObject(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        if (field.isUndefined()) {
+            throw VMError.shouldNotReachHere("Cannot load undefined field: " + field);
+        }
         if (field.isUnmaterializedConstant()) {
-            JavaConstant constant = getUnmaterializedConstant(field);
+            JavaConstant constant = field.getUnmaterializedConstant();
             if (JavaConstant.NULL_POINTER.equals(constant)) {
                 return null;
             }
@@ -437,22 +461,17 @@ public final class InterpreterToVM {
 
     public static char getFieldChar(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        if (field.isUndefined()) {
+            throw VMError.shouldNotReachHere("Cannot load undefined field: " + field);
+        }
         if (field.isUnmaterializedConstant()) {
-            return (char) getUnmaterializedConstant(field).asInt();
+            return (char) field.getUnmaterializedConstant().asInt();
         }
         if (field.isVolatile()) {
             return U.getCharVolatile(obj, field.getOffset());
         } else {
             return U.getChar(obj, field.getOffset());
         }
-    }
-
-    private static JavaConstant getUnmaterializedConstant(InterpreterResolvedJavaField field) {
-        JavaConstant constant = field.getUnmaterializedConstant();
-        if (constant == null) {
-            throw VMError.shouldNotReachHere("Cannot load unmaterialized field " + field);
-        }
-        return constant;
     }
 
     public static void setFieldBoolean(boolean value, Object obj, InterpreterResolvedJavaField field) {
@@ -558,8 +577,8 @@ public final class InterpreterToVM {
     }
 
     private static void ensureMaterialized(InterpreterResolvedJavaField field) {
-        if (RuntimeClassLoading.isSupported() && field.isUnmaterializedConstant()) {
-            throw VMError.shouldNotReachHere("Cannot set unmaterialized field " + field);
+        if (RuntimeClassLoading.isSupported() && field.isUndefined()) {
+            throw VMError.shouldNotReachHere("Cannot set undefined field " + field);
         } else {
             InterpreterUtil.assertion(field.getOffset() >= 0, "Bad field offset");
         }

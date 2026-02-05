@@ -42,6 +42,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
@@ -62,6 +63,13 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
     public static final InterpreterResolvedJavaField[] EMPTY_ARRAY = new InterpreterResolvedJavaField[0];
 
     // Special offset values
+    private static final int FIELD_NOT_INCLUDED = SharedField.LOC_UNINITIALIZED;
+    /**
+     * Typically used as offset for static fields that are part of the image but are not
+     * materialized because all their usages have been inlined.
+     * <p>
+     * This must be synchronized with {@code HostedField.LOC_UNMATERIALIZED_STATIC_CONSTANT}.
+     */
     private static final int FIELD_UNMATERIALIZED = -10;
     private static final int OFFSET_UNINITIALIZED = -11;
 
@@ -203,12 +211,18 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
 
     /**
      * A field is undefined when it is unmaterialized, and the value is not preserved for the
-     * interpreter. Examples of undefined fields include: {@link Word} subtypes,
-     * {@link DynamicHub}'s vtable.
+     * interpreter, or if the field is otherwise not part of the image. Examples of undefined fields
+     * include: {@link Word} subtypes, {@link DynamicHub}'s vtable.
      */
     public final boolean isUndefined() {
-        return this.isUnmaterializedConstant() &&
-                        this.getUnmaterializedConstant().getJavaKind() == JavaKind.Illegal;
+        if (offset == FIELD_NOT_INCLUDED) {
+            return true;
+        }
+        if (isUnmaterializedConstant()) {
+            JavaConstant constant = getUnmaterializedConstant();
+            return constant == null || constant.getJavaKind() == JavaKind.Illegal;
+        }
+        return false;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
