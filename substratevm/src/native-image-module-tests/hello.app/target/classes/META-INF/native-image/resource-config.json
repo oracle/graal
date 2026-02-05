@@ -1,0 +1,10 @@
+{
+  "resources":{
+      "includes":[
+          {
+              "pattern": "^resource-file.txt$"
+          }
+      ]
+  },
+  "bundles":[]
+}
