@@ -98,7 +98,7 @@ def graalwasm_standalone_deps():
     include_truffle_runtime = not mx.env_var_to_bool("EXCLUDE_TRUFFLE_RUNTIME")
     return mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=include_truffle_runtime)
 
-def libwasmvm_build_args():
+def libwasmvm_dynamic_build_args():
     image_build_args = []
     if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() >= mx.VersionSpec("25"):
         image_build_args.extend([
@@ -122,7 +122,7 @@ class GraalWasmDefaultTags:
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     if register_project and register_distribution:
-        isolate_build_options = libwasmvm_build_args()
+        isolate_build_options = libwasmvm_dynamic_build_args()
         meta_pom = [p for p in _suite.dists if p.name == 'WASM_POM'][0]
         mx_truffle.register_polyglot_isolate_distributions(_suite, register_project, register_distribution,'wasm',
                                         'src', meta_pom.name, meta_pom.maven_group_id(), meta_pom.theLicense,
@@ -622,7 +622,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             launchers=["bin/<exe:wasm>"],
             jar_distributions=["wasm:WASM_LAUNCHER"],
             main_class="org.graalvm.wasm.launcher.WasmLauncher",
-            build_args=[],
+            build_args=libwasmvm_dynamic_build_args(),
             language="wasm",
         ),
     ],
