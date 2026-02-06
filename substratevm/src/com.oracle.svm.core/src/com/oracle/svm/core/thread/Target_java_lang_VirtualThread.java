@@ -208,7 +208,7 @@ public final class Target_java_lang_VirtualThread {
     private static void postPinnedEvent(String op) {
     }
 
-    @Alias volatile Thread carrierThread;
+    @Alias public volatile Thread carrierThread;
 
     @Alias volatile Target_sun_nio_ch_Interruptible nioBlocker;
 

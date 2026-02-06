@@ -1,6 +1,7 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2026, 2026, IBM Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,7 +57,7 @@ public class JCmdTest {
     @Test
     public void testHelp() throws IOException, InterruptedException {
         Process jcmd = runJCmd("help");
-        String[] commands = new String[]{"GC.heap_dump", "GC.run", "JFR.check", "JFR.dump", "JFR.start", "JFR.stop", "Thread.print", "VM.command_line",
+        String[] commands = new String[]{"GC.heap_dump", "GC.run", "JFR.check", "JFR.dump", "JFR.start", "JFR.stop", "Thread.dump_to_file", "Thread.print", "VM.command_line",
                         "VM.native_memory", "VM.system_properties", "VM.uptime", "VM.version", "help"};
         assertOutputContainsLines(jcmd, commands);
 
@@ -132,6 +133,12 @@ public class JCmdTest {
     public void testThread() throws IOException, InterruptedException {
         Process jcmd = runJCmd("Thread.print");
         assertOutputContainsStrings(jcmd, "Threads dumped.");
+
+        String tempDir = System.getProperty("java.io.tmpdir");
+        Path dumpFile = Paths.get(tempDir, "test_thread_dump");
+        jcmd = runJCmd("Thread.dump_to_file", dumpFile.toString());
+        assertOutputContainsStrings(jcmd, "Created");
+        assertTrue(Files.deleteIfExists(dumpFile));
     }
 
     @Test

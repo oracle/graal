@@ -1143,6 +1143,7 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.misc",
+                    "jdk.internal.vm",
                     "sun.security.jca",
                 ],
             },
