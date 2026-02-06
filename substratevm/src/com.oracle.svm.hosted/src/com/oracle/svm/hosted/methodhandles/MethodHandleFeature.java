@@ -45,6 +45,8 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -56,9 +58,11 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.vmaccess.VMAccess;
 import sun.invoke.util.ValueConversions;
 import sun.invoke.util.Wrapper;
 
@@ -322,6 +326,26 @@ public class MethodHandleFeature implements InternalFeature {
         // species, which are subsequently referenced by java.lang.invoke.LambdaForm$Holder.
         MethodHandles.constant(long.class, 0L);
         MethodHandles.constant(float.class, 0.0f);
+
+        if (RuntimeClassLoading.isSupported()) {
+            /*
+             * When crema is enabled, the standard, class-generating, method handle code paths are
+             * used. This requires some methods to always be available to be called by such
+             * generated code.
+             */
+            // MethodHandles.classData(Class)
+            AnalysisType methodHandlesType = metaAccess.lookupJavaType(MethodHandles.class);
+            AnalysisMethod classDataMethod = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, methodHandlesType, "classData", Class.class);
+            access.registerAsRoot(classDataMethod, true, "This can be accessed by generated code when crema is enabled");
+
+            // BoundMethodHandle(MethodType, LambdaForm)
+            VMAccess vmAccess = GraalAccess.getVMAccess();
+            AnalysisType boundMHType = metaAccess.getUniverse().lookup(vmAccess.lookupBootClassLoaderType("java.lang.invoke.BoundMethodHandle"));
+            AnalysisType methodTypeType = metaAccess.getUniverse().lookup(vmAccess.lookupBootClassLoaderType("java.lang.invoke.MethodType"));
+            AnalysisType lambdaFormType = metaAccess.getUniverse().lookup(vmAccess.lookupBootClassLoaderType("java.lang.invoke.LambdaForm"));
+            AnalysisMethod bmhCtor = (AnalysisMethod) JVMCIReflectionUtil.getDeclaredConstructor(boundMHType, methodTypeType, lambdaFormType);
+            access.registerAsRoot(bmhCtor, true, "This can be accessed by generated code when crema is enabled");
+        }
     }
 
     private static void eagerlyInitializeMHImplFunctions() {
