@@ -41,17 +41,17 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * @param include {@link CEntryPoint#include()}
  * @param publishAs {@link CEntryPoint#publishAs()}
  */
-public record CEntryPointValue(String name,
+public record CEntryPointGuestValue(String name,
                 List<String> documentation,
                 ResolvedJavaType exceptionHandler,
                 CEntryPoint.Builtin builtin,
                 ResolvedJavaType include,
                 CEntryPoint.Publish publishAs) {
-    public static CEntryPointValue from(AnnotationValue av) {
+    public static CEntryPointGuestValue from(AnnotationValue av) {
         if (av == null) {
             return null;
         }
-        return new CEntryPointValue(
+        return new CEntryPointGuestValue(
                         av.getString("name"),
                         av.getList("documentation", String.class),
                         av.getType("exceptionHandler"),
