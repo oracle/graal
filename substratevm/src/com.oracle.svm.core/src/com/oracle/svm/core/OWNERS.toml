@@ -6,6 +6,7 @@ all = [
 ]
 any = [
 ]
+
 [[rule]]
 files = "ClassLoaderSupport.java"
 all = [
@@ -14,4 +15,10 @@ all = [
     "christian.wirth@oracle.com"
 ]
 any = [
+]
+
+[[rule]]
+files = ["Substrate*", "*Isolate*", "*MemoryUtil*", "*FrameAccess*", "*MainWrapper*", "*Register*", "*Foreign*"]
+all = [
+    "peter.hofer@oracle.com",
 ]
