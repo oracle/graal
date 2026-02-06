@@ -79,7 +79,7 @@ final class Target_jdk_internal_vm_ThreadSnapshot {
         // Setting the blocker info in cases other than PARK_BLOCKER is non-trivial.
         Object blocker = LockSupport.getBlocker(thread);
         if (blocker != null && !(blocker instanceof JavaMonitor) && !(blocker instanceof JavaMonitorQueuedSynchronizer.JavaMonitorConditionObject)) {
-            snapshot.blockerTypeOrdinal = ((Enum<?>) (Object) Target_jdk_internal_vm_ThreadSnapshot_BlockerLockType.parkBlocker).ordinal();
+            snapshot.blockerTypeOrdinal = SubstrateUtil.cast(Target_jdk_internal_vm_ThreadSnapshot_BlockerLockType.PARK_BLOCKER, Enum.class).ordinal();
             snapshot.blockerObject = blocker;
         }
 
@@ -94,6 +94,8 @@ final class Target_jdk_internal_vm_ThreadSnapshot {
 
 @TargetClass(className = "jdk.internal.vm.ThreadSnapshot", innerClass = "BlockerLockType")
 final class Target_jdk_internal_vm_ThreadSnapshot_BlockerLockType {
+    // Checkstyle: stop
     @Alias //
-    static Target_jdk_internal_vm_ThreadSnapshot_BlockerLockType parkBlocker;
+    static Target_jdk_internal_vm_ThreadSnapshot_BlockerLockType PARK_BLOCKER;
+    // Checkstyle: resume
 }
