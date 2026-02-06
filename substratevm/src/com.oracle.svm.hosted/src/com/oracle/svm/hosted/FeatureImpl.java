@@ -293,7 +293,7 @@ public class FeatureImpl {
         }
 
         public List<AnalysisType> findSubtypes(AnalysisType baseClass) {
-            return imageClassLoader.findSubclasses(baseClass.getJavaClass(), false).stream().map(getMetaAccess()::lookupJavaType).toList();
+            return imageClassLoader.findSubtypes(baseClass, false).stream().map(t -> getMetaAccess().getUniverse().lookup(t)).toList();
         }
 
         public boolean isReachable(Class<?> clazz) {

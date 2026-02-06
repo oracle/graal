@@ -489,13 +489,22 @@ public final class ImageClassLoader {
         return classLoaderSupport.applicationModulePath();
     }
 
-    public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass, boolean includeHostedOnly) {
-        ResolvedJavaType baseType = GuestAccess.get().lookupType(baseClass);
+    public List<ResolvedJavaType> findSubtypes(Class<?> baseClass, boolean includeHostedOnly) {
+        return findSubtypes(GuestAccess.get().lookupType(baseClass), includeHostedOnly);
+    }
+
+    public List<ResolvedJavaType> findSubtypes(ResolvedJavaType baseType, boolean includeHostedOnly) {
         ArrayList<ResolvedJavaType> subtypes = new ArrayList<>();
         addSubclasses(applicationTypes, baseType, subtypes);
         if (includeHostedOnly) {
             addSubclasses(hostedOnlyTypes, baseType, subtypes);
         }
+
+        return subtypes;
+    }
+
+    public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass, boolean includeHostedOnly) {
+        List<ResolvedJavaType> subtypes = findSubtypes(baseClass, includeHostedOnly);
         ArrayList<Class<? extends T>> result = new ArrayList<>(subtypes.size());
         for (ResolvedJavaType subtype : subtypes) {
             result.add(OriginalClassProvider.getJavaClass(subtype).asSubclass(baseClass));
@@ -511,12 +520,18 @@ public final class ImageClassLoader {
         }
     }
 
-    public List<Class<?>> findAnnotatedClasses(Class<? extends Annotation> annotationClass, boolean includeHostedOnly) {
+    public List<ResolvedJavaType> findAnnotatedResolvedJavaTypes(Class<? extends Annotation> annotationClass, boolean includeHostedOnly) {
         ArrayList<ResolvedJavaType> types = new ArrayList<>();
         addAnnotatedClasses(applicationTypes, annotationClass, types);
         if (includeHostedOnly) {
             addAnnotatedClasses(hostedOnlyTypes, annotationClass, types);
         }
+
+        return types;
+    }
+
+    public List<Class<?>> findAnnotatedClasses(Class<? extends Annotation> annotationClass, boolean includeHostedOnly) {
+        List<ResolvedJavaType> types = findAnnotatedResolvedJavaTypes(annotationClass, includeHostedOnly);
         ArrayList<Class<?>> result = new ArrayList<>(types.size());
         for (ResolvedJavaType type : types) {
             result.add(OriginalClassProvider.getJavaClass(type));
