@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.webimage.hightiercodegen;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
@@ -412,15 +410,9 @@ public abstract class CodeGenTool {
 
     public abstract void genFieldName(ResolvedJavaField field);
 
-    public abstract void genFieldName(Field field);
-
     public abstract void genTypeName(ResolvedJavaType type);
 
-    public abstract void genTypeName(Class<?> type);
-
     public abstract void genMethodName(ResolvedJavaMethod method);
-
-    public abstract void genMethodName(Method type);
 
     public void genPropertyAccess(IEmitter receiver, IEmitter prop) {
         if (receiver != null) {

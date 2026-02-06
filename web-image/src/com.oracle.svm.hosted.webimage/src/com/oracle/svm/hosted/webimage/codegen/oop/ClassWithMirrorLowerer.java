@@ -46,6 +46,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
 import com.oracle.svm.hosted.webimage.Labeler;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
+import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
 import com.oracle.svm.hosted.webimage.codegen.WebImageTypeControl;
 import com.oracle.svm.hosted.webimage.js.JSKeyword;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
@@ -246,6 +247,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
         buffer.emitNewLine();
         buffer.emitConstDeclPrefix(internalMirrorClassName(codeGenTool, type));
         HostedClass superclass = type.getSuperclass();
+        WebImageProviders providers = codeGenTool.getProviders();
         if (isImportedClass) {
             // The mirror class is the imported JavaScript class.
             String importedName = importedName(type);
@@ -255,11 +257,11 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
 
             if (needExternDeclaration()) {
                 // We need to mark the fields in the externs file.
-                for (HostedField field : getOwnFieldOnJSSide(codeGenTool.getProviders().getMetaAccess(), type)) {
+                for (HostedField field : getOwnFieldOnJSSide(providers.getMetaAccess(), type)) {
                     externClassDescriptor.addProperty(field.getName());
                 }
             }
-        } else if (type.getJavaClass().equals(JSObject.class)) {
+        } else if (type.equals(providers.getMetaAccess().lookupJavaType(JSObject.class))) {
             // JSObject does not have fields, nor superclasses.
             suppressClassWarnings(buffer);
             buffer.emitText("class ");

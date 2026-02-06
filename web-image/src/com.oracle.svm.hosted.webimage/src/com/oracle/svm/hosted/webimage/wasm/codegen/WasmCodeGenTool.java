@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,6 @@
 
 package com.oracle.svm.hosted.webimage.wasm.codegen;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.List;
 
 import com.oracle.svm.hosted.webimage.options.WebImageOptions.CommentVerbosity;
@@ -334,27 +332,12 @@ public abstract class WasmCodeGenTool extends CodeGenTool {
     }
 
     @Override
-    public void genFieldName(Field field) {
-        throw GraalError.unimplementedOverride();
-    }
-
-    @Override
     public void genTypeName(ResolvedJavaType type) {
         throw GraalError.unimplementedOverride();
     }
 
     @Override
-    public void genTypeName(Class<?> type) {
-        throw GraalError.unimplementedOverride();
-    }
-
-    @Override
     public void genMethodName(ResolvedJavaMethod resolvedJavaMethod) {
-        throw GraalError.unimplementedOverride();
-    }
-
-    @Override
-    public void genMethodName(Method type) {
         throw GraalError.unimplementedOverride();
     }
 

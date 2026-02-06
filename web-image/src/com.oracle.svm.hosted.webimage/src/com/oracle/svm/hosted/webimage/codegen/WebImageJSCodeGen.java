@@ -82,7 +82,6 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class WebImageJSCodeGen extends WebImageCodeGen {
 
@@ -96,6 +95,8 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
     protected final Map<HostedMethod, StructuredGraph> methodGraphs;
     private final ImageClassLoader imageClassLoader;
 
+    private final HostedType jsObjectType;
+
     public WebImageJSCodeGen(WebImageCodeCache codeCache, List<HostedMethod> hostedEntryPoints, HostedMethod mainEntryPoint,
                     WebImageProviders providers, DebugContext debug, WebImageHostedConfiguration config, ImageClassLoader imageClassLoader) {
         super(codeCache, null, hostedEntryPoints, mainEntryPoint, providers, debug, config);
@@ -103,6 +104,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
         this.typeControl = ((WebImageJSProviders) providers).typeControl();
         this.methodGraphs = compilations.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getGraph()));
         this.imageClassLoader = imageClassLoader;
+        this.jsObjectType = providers.getMetaAccess().lookupJavaType(JSObject.class);
     }
 
     private static void lowerJavaScriptCode(CodeBuffer codeBuffer, String titleComment, String content) {
@@ -290,7 +292,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
             }
             var code = AnnotationUtil.getAnnotation(type, JS.Code.class);
             if (code != null) {
-                String titleComment = "// Class file: " + type.getJavaClass().getName();
+                String titleComment = "// Class file: " + type.toClassName();
                 lowerJavaScriptCode(codeBuffer, titleComment, code.value());
             }
         }
@@ -333,13 +335,12 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
             }
         }
 
-        HostedType jsObjectType = getProviders().getMetaAccess().lookupJavaType(JSObject.class);
         requestJSObjectSubclasses(jsObjectType);
     }
 
     private void requestJSObjectSubclasses(HostedType type) {
         // Only explicitly exported classes must be emitted.
-        if (type.getJavaClass().equals(JSObject.class) || AnnotationUtil.getAnnotation(type, JS.Export.class) != null) {
+        if (type.equals(jsObjectType) || AnnotationUtil.getAnnotation(type, JS.Export.class) != null) {
             typeControl.requestTypeName(type);
         }
         for (HostedType subtype : type.getSubTypes()) {
@@ -449,7 +450,6 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
      */
     @SuppressWarnings("try")
     private void lowerType(HostedType type) {
-        ResolvedJavaType jsObjectType = getProviders().getMetaAccess().lookupJavaType(JSObject.class);
         // new bytecode semantic
         ClassLowerer classLowerer;
         if (jsObjectType.isAssignableFrom(type)) {

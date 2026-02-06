@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 
 package com.oracle.svm.webimage.thirdparty;
 
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.function.Function;
 
@@ -40,6 +39,7 @@ import com.oracle.svm.hosted.webimage.codegen.JSIntrinsifyFile;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.js.JSBodyWithExceptionNode;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
 
 import jdk.graal.compiler.core.common.calc.FloatConvert;
@@ -238,13 +238,9 @@ public class JSBodyStubMethod extends CustomSubstitutionMethod {
             // when the return type is void.
             return null;
         }
-        try {
-            Method convertObjectToJava = JavaScriptBodyConversion.class.getDeclaredMethod("convertObjectToJavaForJavaScriptBody", Object.class);
-            AnalysisMethod conversionMethod = kit.getMetaAccess().lookupJavaMethod(convertObjectToJava);
-            javaValue = kit.createInvokeWithExceptionAndUnwind(conversionMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), returnValue);
-        } catch (NoSuchMethodException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
+
+        ResolvedJavaMethod conversionMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(kit.getMetaAccess(), JavaScriptBodyConversion.class, "convertObjectToJavaForJavaScriptBody", Object.class);
+        javaValue = kit.createInvokeWithExceptionAndUnwind(conversionMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), returnValue);
 
         // Step 2: Perform the static-return-type-driven check-cast.
         //

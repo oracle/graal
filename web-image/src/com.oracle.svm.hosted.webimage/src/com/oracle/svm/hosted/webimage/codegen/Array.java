@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,11 +49,13 @@ public class Array {
         JSGenericFunctionDefinition[] constructors = new JSGenericFunctionDefinition[]{Runtime.JsArray, Runtime.Int8Array, Runtime.Uint8Array, Runtime.Int16Array, Runtime.Uint16Array,
                         Runtime.Int32Array, Runtime.BigInt64Array, Runtime.Float32Array, Runtime.Float64Array};
 
+        HostedType objectType = jsLTools.getProviders().getMetaAccess().lookupJavaType(Object.class);
+
         jsLTools.getCodeBuffer().emitNewLine();
 
         for (JSGenericFunctionDefinition constructor : constructors) {
             jsLTools.getCodeBuffer().emitNewLine();
-            Runtime.arrayVTableInitialization.emitCall(jsLTools, Emitter.of(constructor.getFunctionName()), Emitter.of("\"" + TypeVtableLowerer.VTAB_PROP + "\""), Emitter.of(Object.class));
+            Runtime.arrayVTableInitialization.emitCall(jsLTools, Emitter.of(constructor.getFunctionName()), Emitter.of("\"" + TypeVtableLowerer.VTAB_PROP + "\""), Emitter.of(objectType));
         }
 
         jsLTools.getCodeBuffer().emitNewLine();
