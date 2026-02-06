@@ -24,13 +24,18 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+<<<<<<< HEAD
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+=======
+import static com.oracle.svm.core.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
+>>>>>>> c3570141e29 (Ensure that all isolates see a consistent global state.)
 import static com.oracle.svm.core.graal.nodes.WriteCodeBaseNode.writeCurrentVMCodeBase;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_BEGIN;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
 import java.util.Map;
@@ -60,8 +65,11 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
+<<<<<<< HEAD
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+=======
+>>>>>>> c3570141e29 (Ensure that all isolates see a consistent global state.)
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -109,6 +117,7 @@ import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -460,7 +469,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         LocaleSupport.checkForError();
 
         if (!firstIsolate) {
-            int state = Unsafe.getUnsafe().getInt(initStateAddr);
+            /*
+             * Always do a volatile read so that memory barriers are emitted. Together with the
+             * volatile write to initStateAddr below, this guarantees that subsequently created
+             * isolates see consistent values for the process-global state that was initialized by
+             * the first isolate.
+             */
+            int state = Unsafe.getUnsafe().getIntVolatile(null, initStateAddr);
             if (state != FirstIsolateInitStates.SUCCESSFUL) {
                 while (state == FirstIsolateInitStates.IN_PROGRESS) { // spin-wait for first isolate
                     PauseNode.pause();
@@ -517,6 +532,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         boolean success = PlatformNativeLibrarySupport.singleton().initializeBuiltinLibraries();
         if (firstIsolate) { // let other isolates (if any) initialize now
             int state = success ? FirstIsolateInitStates.SUCCESSFUL : FirstIsolateInitStates.FAILED;
+            /* Do a volatile write to ensure that other threads see a consistent state. */
             Unsafe.getUnsafe().putIntVolatile(null, initStateAddr, state);
         }
 
