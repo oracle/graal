@@ -1404,7 +1404,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.util",
+                "sdk:NATIVEIMAGE",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "21+",
@@ -1532,8 +1532,8 @@ suite = {
                     "jdk.vm.ci.meta.annotation",
                 ],
             },
-            "generatedDependencies": [
-                "com.oracle.svm.graal",
+            "dependencies": [
+                "sdk:NATIVEIMAGE"
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "24+",
@@ -2041,7 +2041,7 @@ suite = {
                 "com.oracle.svm.jvmtiagentbase",
             ],
             "distDependencies": [
-                "LIBRARY_SUPPORT",
+                "SVM",
                 "SVM_DRIVER",
             ],
             "moduleInfo" : {
@@ -2059,14 +2059,13 @@ suite = {
 
         "LIBRARY_SUPPORT": {
             "subDir": "src",
-            "description" : "Native Image feature-based support for important non-JDK libraries and languages (e.g. gson, Scala, Groovy)",
+            "description" : "Native Image feature-based support for important non-JDK libraries and languages (e.g. gson, Groovy)",
             "dependencies": [
                 "com.oracle.svm.polyglot",
                 "com.oracle.svm.thirdparty",
             ],
             "distDependencies": [
                 "sdk:NATIVEIMAGE",
-                "SVM",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.librarysupport",
@@ -2304,7 +2303,7 @@ suite = {
                 "svm-compiler-flags-builder",
             ],
             "distDependencies": [
-                "LIBRARY_SUPPORT",
+                "SVM",
             ],
             "moduleInfo" : {
               "name" : "org.graalvm.nativeimage.driver",
@@ -2335,7 +2334,7 @@ suite = {
             ],
             "distDependencies": [
                 "JVMTI_AGENT_BASE",
-                "LIBRARY_SUPPORT",
+                "SVM",
                 "SVM_DRIVER",
                 "SVM_CONFIGURE",
                 "NATIVE_IMAGE_BASE",
@@ -2373,7 +2372,7 @@ suite = {
             ],
             "distDependencies": [
                 "JVMTI_AGENT_BASE",
-                "LIBRARY_SUPPORT",
+                "SVM",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.agent.diagnostics",

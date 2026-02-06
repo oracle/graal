@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.polyglot.scala;
+package com.oracle.svm.hosted.scala;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
