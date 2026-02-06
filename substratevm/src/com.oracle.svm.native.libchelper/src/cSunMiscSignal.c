@@ -37,6 +37,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+typedef void(*sig_t)(int);
+
 /**
  * The Java signal handler mechanism may only be used by a single isolate at a time. The signal handler
  * itself, cSunMiscSignal_signalHandler(int), runs on a borrowed thread stack and will not have access
@@ -69,7 +71,7 @@ static volatile long cSunMiscSignal_table[NSIG];
 
 /* A semaphore to notify of increments to the map. */
 static sem_t* cSunMiscSignal_semaphore = NULL;
-#ifdef __linux__
+#if defined(__linux__) || defined(__COSMOPOLITAN__)
 static sem_t cSunMiscSignal_semaphore_value;
 #endif
 
@@ -97,7 +99,7 @@ int cSunMiscSignal_open() {
 	  cSunMiscSignal_table[i] = 0;
 	}
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__COSMOPOLITAN__)
 	/* Linux supports unnamed semaphore. */
 	cSunMiscSignal_semaphore = &cSunMiscSignal_semaphore_value;
 	if (sem_init(cSunMiscSignal_semaphore, 0, 0) != 0) {
@@ -132,7 +134,7 @@ int cSunMiscSignal_open() {
 
 /* Close the Java signal handler mechanism. Returns 0 on success, or some non-zero value if an error occurred. */
 int cSunMiscSignal_close() {
-#ifdef __linux__
+#if defined(__linux__) || defined(__COSMOPOLITAN_)
 	int semCloseResult = sem_destroy(cSunMiscSignal_semaphore);
 #else // __linux__
 	int semCloseResult = sem_close(cSunMiscSignal_semaphore);

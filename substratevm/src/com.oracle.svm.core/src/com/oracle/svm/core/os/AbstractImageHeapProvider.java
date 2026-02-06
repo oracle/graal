@@ -150,7 +150,7 @@ public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static UnsignedWord getImageHeapAddressSpaceSize() {
+    public static UnsignedWord getImageHeapAddressSpaceSize() {
         if (!ImageLayerBuildingSupport.buildingImageLayer()) {
             return getImageHeapSizeInFile();
         }

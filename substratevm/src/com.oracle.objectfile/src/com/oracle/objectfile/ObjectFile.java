@@ -219,7 +219,7 @@ public abstract class ObjectFile {
         }
     }
 
-    private static ObjectFile getNativeObjectFile(int pageSize, boolean runtimeDebugInfoGeneration) {
+    public static ObjectFile getNativeObjectFile(int pageSize, boolean runtimeDebugInfoGeneration) {
         return switch (ObjectFile.getNativeFormat()) {
             case ELF -> new ELFObjectFile(pageSize, runtimeDebugInfoGeneration);
             case MACH_O -> new MachOObjectFile(pageSize);

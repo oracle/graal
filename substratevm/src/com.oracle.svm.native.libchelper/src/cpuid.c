@@ -706,10 +706,12 @@ void determineCPUFeatures(CPUFeatures* features) {
  * The corresponding HotSpot code can be found in vm_version_aarch64 and
  * vm_version_linux_aarch64.
  */
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__COSMOPOLITAN__)
 
 #include <sys/auxv.h>
+#if !defined(__COSMOPOLITAN__)
 #include <asm/hwcap.h>
+#endif
 #include "aarch64cpufeatures.h"
 
 #ifndef HWCAP_FP
@@ -808,6 +810,7 @@ void determineCPUFeatures(CPUFeatures* features) {
   int _variant = -1;
   int _cpu_lines = 0;
 
+#if !defined(__COSMOPOLITAN__)
   FILE *f = fopen("/proc/cpuinfo", "r");
   if (f) {
     // need a large buffer as the flags line may include lots of text
@@ -831,6 +834,7 @@ void determineCPUFeatures(CPUFeatures* features) {
   } else {
     return;
   }
+#endif
 
   if (_cpu == CPU_ARM && _cpu_lines == 1 && _model == 0xd07)
     features->fA53MAC = 1;
