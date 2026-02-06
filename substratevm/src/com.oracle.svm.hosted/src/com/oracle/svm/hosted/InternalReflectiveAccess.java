@@ -27,13 +27,14 @@ package com.oracle.svm.hosted;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
-import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
 import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
-import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
+
+import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 
 public final class InternalReflectiveAccess implements ReflectiveAccess {
 
@@ -55,7 +56,6 @@ public final class InternalReflectiveAccess implements ReflectiveAccess {
     public void register(AccessCondition condition, Class<?>... classes) {
         for (Class<?> clazz : classes) {
             rrsInstance.register(condition, clazz);
-            rrsInstance.registerClassMetadata(condition, clazz, false);
         }
     }
 
@@ -72,7 +72,7 @@ public final class InternalReflectiveAccess implements ReflectiveAccess {
                         .toArray(Class<?>[]::new);
 
         register(condition, uniqueDeclaringClasses);
-        rrsInstance.register(condition, false, false, executables);
+        rrsInstance.register(condition, false, executables);
     }
 
     @Override
@@ -89,7 +89,7 @@ public final class InternalReflectiveAccess implements ReflectiveAccess {
     public void registerForSerialization(AccessCondition condition, Class<?>... classes) {
         RuntimeSerializationSupport.singleton().register(condition, classes);
         for (Class<?> clazz : classes) {
-            rrsInstance.registerClassMetadata(condition, clazz, false);
+            rrsInstance.register(condition, false, clazz);
         }
     }
 

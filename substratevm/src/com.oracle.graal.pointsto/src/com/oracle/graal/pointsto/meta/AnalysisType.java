@@ -173,6 +173,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private final AnalysisType elementalType;
 
     private final AnalysisType[] interfaces;
+    private AnalysisType[] declaredTypes;
     private AnalysisMethod[] declaredMethods;
 
     /* isArray is an expensive operation so we eagerly compute it */
@@ -1356,12 +1357,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public ResolvedJavaType[] getDeclaredTypes() {
-        ResolvedJavaType[] declaredTypes = wrapped.getDeclaredTypes();
-        for (int i = 0; i < declaredTypes.length; i++) {
-            declaredTypes[i] = universe.lookup(declaredTypes[i]);
+    public AnalysisType[] getDeclaredTypes() {
+        AnalysisType[] result = declaredTypes;
+        if (result == null) {
+            result = universe.lookup(wrapped.getDeclaredTypes());
+            /* Ensure array element initializations are published before publishing the array. */
+            VarHandle.storeStoreFence();
+            declaredTypes = result;
         }
-        return declaredTypes;
+        return result;
     }
 
     @Override

@@ -39,6 +39,7 @@ import java.util.function.Function;
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
@@ -171,7 +172,13 @@ public class AnnotationValueSupport {
             return null;
         }
         ResolvedJavaType container = info.container();
-        ResolvedJavaType memberType = method.getSignature().getReturnType(container).resolve(container);
+        JavaType returnType = method.getSignature().getReturnType(container);
+        ResolvedJavaType memberType;
+        try {
+            memberType = returnType.resolve(container);
+        } catch (NoClassDefFoundError e) {
+            return new MissingType(returnType.getName(), e);
+        }
         return AnnotationValueParser.parseMemberValue(memberType, ByteBuffer.wrap(info.bytes()), info.constPool(), container);
     }
 

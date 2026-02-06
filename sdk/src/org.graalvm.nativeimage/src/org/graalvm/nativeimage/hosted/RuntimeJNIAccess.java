@@ -46,9 +46,9 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
 import org.graalvm.nativeimage.impl.APIDeprecationSupport;
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 
 /**
@@ -89,7 +89,7 @@ public final class RuntimeJNIAccess {
      */
     public static void register(Executable... methods) {
         deprecationFlag.printDeprecationWarning();
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), false, false, methods);
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), false, methods);
     }
 
     /**
