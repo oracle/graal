@@ -28,6 +28,7 @@ import static com.oracle.svm.hosted.webimage.codegen.RuntimeConstants.RUNTIME_SY
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -460,14 +461,46 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
         return importedName.equals(UNSPECIFIED_IMPORTED_NAME_VALUE) ? computeImportedName(type) : importedName;
     }
 
-    private static String computeImportedName(HostedType type) {
-        // Checkstyle: allow Class.getSimpleName
-        String simpleName = type.getJavaClass().getSimpleName();
-        // Checkstyle: disallow Class.getSimpleName
+    /**
+     * Computes the name of the referenced imported JS class with inner classes separated by a
+     * period.
+     * <p>
+     * The imported name of a type is a JS value that references the JS class that is imported. For
+     * top-level types, this is simply the name of the JS class. Nested imported types import a JS
+     * class nested in some other object(s); there the imported name is a series of property
+     * accesses. For example for the following {@code Inner} class, the imported name would be
+     * {@code Outer.Inner}, referencing the JS class that is accessible as the {@code "Inner"}
+     * property on the {@code Outer} object.
+     *
+     * <pre>
+     * public class Outer {
+     *     &#064;JS.Import
+     *     static class Inner extends JSObject {
+     *     }
+     * }
+     * </pre>
+     */
+    public static String computeImportedName(ResolvedJavaType type) {
         if (type.getEnclosingType() == null) {
-            return simpleName;
+            return type.toJavaName(false);
         } else {
-            return computeImportedName(type.getEnclosingType()) + "." + simpleName;
+            List<String> components = new LinkedList<>();
+
+            String prevName = type.toJavaName(false);
+            ResolvedJavaType current = type.getEnclosingType();
+
+            while (current != null) {
+                String currentName = current.toJavaName(false);
+                assert prevName.startsWith(currentName + "$");
+                components.addFirst(prevName.substring(currentName.length() + 1));
+
+                prevName = currentName;
+                current = current.getEnclosingType();
+            }
+
+            components.addFirst(prevName);
+
+            return String.join(".", components);
         }
     }
 
