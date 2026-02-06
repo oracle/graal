@@ -29,12 +29,15 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.jni.access.JNIAccessibleField;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.internal.misc.Unsafe;
 
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class JNIObjectFieldAccess {
-    @Fold
     public static JNIObjectFieldAccess singleton() {
         return ImageSingletons.lookup(JNIObjectFieldAccess.class);
     }

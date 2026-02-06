@@ -28,6 +28,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 /**
  * {@code com.oracle.svm.hosted.VMFeature} registers an instance of this class in
@@ -47,6 +50,7 @@ import com.oracle.svm.core.jdk.SystemPropertiesSupport;
  * <li>{@link VM#vendorVersion} as {@code java.vendor.version}</li>
  * </ul>
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class VM {
 
     public final String info;

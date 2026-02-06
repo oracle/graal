@@ -42,6 +42,9 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.hosted.DeadlockWatchdog;
@@ -56,6 +59,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Construct a list of all the methods that are, or are called from, methods annotated with
  * {@link RestrictHeapAccess} or {@link Uninterruptible}.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees {
 
     /**
@@ -261,6 +265,7 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
 }
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class RestrictHeapAccessCalleesFeature implements InternalFeature {
 
     /** This is called early, to register in the VMConfiguration. */

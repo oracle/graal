@@ -30,14 +30,11 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.guest.staging.Uninterruptible;
 
-import jdk.graal.compiler.api.replacements.Fold;
-
 /**
  * Platform dependent time related utils. See also {@link TimeUtils} for platform independent utils.
  */
 public abstract class PlatformTimeUtils {
 
-    @Fold
     public static PlatformTimeUtils singleton() {
         return ImageSingletons.lookup(PlatformTimeUtils.class);
     }

@@ -34,10 +34,15 @@ import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 
 @AutomaticallyRegisteredImageSingleton(RuntimeCodeInstallerPlatformHelper.class)
 @Platforms(Platform.AARCH64.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class AArch64RuntimeCodeInstallerPlatformHelper implements RuntimeCodeInstallerPlatformHelper {
     AArch64RuntimeCodeInstallerPlatformHelper() {
         RuntimeOptionKey<Boolean> writeableCodeOption = RuntimeCodeCache.Options.WriteableCodeCache;

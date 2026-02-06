@@ -28,15 +28,20 @@ import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRU
 import static com.oracle.svm.core.windows.headers.SysinfoAPI.GetSystemTimeAsFileTime;
 
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.PlatformTimeUtils;
 import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
-import org.graalvm.word.impl.Word;
 
 @AutomaticallyRegisteredImageSingleton(PlatformTimeUtils.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public final class WindowsPlatformTimeUtils extends PlatformTimeUtils {
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/windows/os_windows.cpp#L1123") //

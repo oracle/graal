@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import com.oracle.svm.core.util.BasedOnJDKFile;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
@@ -37,9 +36,15 @@ import com.oracle.svm.core.posix.headers.darwin.DarwinThreadInfo;
 import com.oracle.svm.core.posix.headers.darwin.DarwinThreadInfo.thread_basic_info_data_t;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
 
 @AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     @Override

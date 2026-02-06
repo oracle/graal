@@ -39,9 +39,13 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.FileSystemProvidersInitializedAtRunTime;
 import com.oracle.svm.core.jdk.buildtimeinit.FileSystemProviderBuildTimeInitSupport;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -55,11 +59,12 @@ public final class FileSystemProviderRunTimeInitSupport {
 }
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 final class FileSystemProviderRunTimeInitFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime();
+        return FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime() && ImageLayerBuildingSupport.firstImageBuild();
     }
 
     @Override
