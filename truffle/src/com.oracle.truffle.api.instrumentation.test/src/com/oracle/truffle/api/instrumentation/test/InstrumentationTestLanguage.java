@@ -190,7 +190,7 @@ import com.oracle.truffle.api.test.TestAPIAccessor;
 @Registration(id = InstrumentationTestLanguage.ID, name = InstrumentationTestLanguage.NAME, version = "2.0", services = {SpecialService.class}, contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
 @ProvidedTags({StandardTags.ExpressionTag.class, DefineTag.class, LoopTag.class,
                 StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class,
-                StandardTags.TryBlockTag.class, BlockTag.class, ConstantTag.class})
+                StandardTags.TryBlockTag.class, BlockTag.class, ConstantTag.class, StandardTags.ReadVariableTag.class, StandardTags.WriteVariableTag.class})
 public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentContext> {
 
     public static final String ID = "instrumentation-test-language";
@@ -867,6 +867,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
             if (this instanceof ConstantNode) {
                 return new KeysObject(new String[]{"simpleName", "constant"});
+            } else if (this instanceof ReadVariableNode) {
+                return new KeysObject(new String[]{"simpleName", StandardTags.ReadVariableTag.NAME});
+            } else if (this instanceof ArgumentNode) {
+                return new KeysObject(new String[]{"simpleName", StandardTags.WriteVariableTag.NAME});
             } else {
                 return new KeysObject(new String[]{"simpleName"});
             }
@@ -889,6 +893,18 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                         return ((ConstantNode) this).constant;
                 }
             }
+            if (this instanceof ReadVariableNode) {
+                switch (key) {
+                    case StandardTags.ReadVariableTag.NAME:
+                        return ((ReadVariableNode) this).name;
+                }
+            }
+            if (this instanceof ArgumentNode) {
+                switch (key) {
+                    case StandardTags.WriteVariableTag.NAME:
+                        return ((ArgumentNode) this).name;
+                }
+            }
             throw UnknownIdentifierException.create(key);
         }
 
@@ -906,6 +922,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 return this instanceof ExpressionNode;
             } else if (tag == StandardTags.TryBlockTag.class) {
                 return this instanceof TryNode;
+            } else if (tag == StandardTags.ReadVariableTag.class) {
+                return this instanceof ReadVariableNode;
+            } else if (tag == StandardTags.WriteVariableTag.class) {
+                return this instanceof ArgumentNode;
             } else if (tag == LOOP) {
                 return this instanceof WhileLoopNode;
             } else if (tag == BLOCK) {
