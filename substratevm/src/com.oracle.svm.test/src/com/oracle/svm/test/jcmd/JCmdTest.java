@@ -1,6 +1,7 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2026, 2026, IBM Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,7 +50,7 @@ import com.oracle.svm.core.VMInspectionOptions;
 
 public class JCmdTest {
     @BeforeClass
-    public static void checkForJFR() {
+    public static void checkForJcmd() {
         assumeTrue("skipping JCmd tests", VMInspectionOptions.hasJCmdSupport());
     }
 
@@ -126,6 +127,48 @@ public class JCmdTest {
 
         jcmd = runJCmd("JFR.stop", "name=JCmdTest");
         assertOutputContainsLines(jcmd, "Stopped recording \"JCmdTest\".");
+    }
+
+    @Test
+    public void testThread() throws IOException, InterruptedException {
+        Process jcmd = runJCmd("Thread.print");
+        assertOutputContainsStrings(jcmd, "Threads dumped.");
+
+        String tempDir = System.getProperty("java.io.tmpdir");
+        Path dumpFile = Paths.get(tempDir, "test_thread_dump");
+        jcmd = runJCmd("Thread.dump_to_file", dumpFile.toString());
+        assertOutputContainsStrings(jcmd, "Created");
+        assertTrue(Files.deleteIfExists(dumpFile));
+    }
+
+    @Test
+    public void testVM() throws IOException, InterruptedException {
+        Process jcmd = runJCmd("VM.command_line");
+        assertOutputContainsStrings(jcmd, "VM Arguments:", "java_command:");
+
+        jcmd = runJCmd("VM.native_memory");
+        assertOutputContainsStrings(jcmd, "Native memory tracking");
+
+        jcmd = runJCmd("VM.system_properties");
+        assertOutputContainsStrings(jcmd, ":");
+
+        jcmd = runJCmd("VM.uptime");
+        assertOutputContainsStrings(jcmd, ":");
+
+        jcmd = runJCmd("VM.version");
+        assertOutputContainsStrings(jcmd, "GraalVM");
+    }
+
+    @Test
+    public void testGC() throws IOException, InterruptedException {
+        String tempDir = System.getProperty("java.io.tmpdir");
+        Path dumpFile = Paths.get(tempDir, "JCmdTest");
+        Process jcmd = runJCmd("GC.heap_dump", dumpFile.toString());
+        assertOutputContainsStrings(jcmd, "Dumped to:");
+        assertTrue(Files.deleteIfExists(dumpFile));
+
+        jcmd = runJCmd("GC.run");
+        assertOutputContainsStrings(jcmd, "Command executed successfully");
     }
 
     private static void checkJCmdConnection() throws IOException, InterruptedException {
