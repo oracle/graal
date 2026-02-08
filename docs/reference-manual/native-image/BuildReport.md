@@ -207,7 +207,7 @@ This section of the report highlights code that may require review to ensure you
 
 - If no dynamic calls are detected for a class or module path entry, no further action is needed.
 - If another entry provides metadata for this entry, no further investigation is needed.
-- If the entry includes `native-image.properties` or `reachability-metadata.json`, or these files are provided externally, no further investigation is required.
+- If the entry includes _native-image.properties_ or _reachability-metadata.json_, or these files are provided externally, no further investigation is required. For detailed information about _reachability-metadata.json_ field configurations, see [Reachability Metadata JSON Format Reference](ReachabilityMetadata.md#reachability-metadata-json-format-reference).
 - If integrated configuration or external metadata (such as `reflect-config.json`) exists for each detected call type, no further investigation is required.
 - If none of the above apply, the entry may require further investigation.
 
