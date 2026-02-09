@@ -1327,6 +1327,11 @@ public class SubstrateOptions {
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error) //
         public static final HostedOptionKey<Boolean> UseCompressedReferenceShift = new HostedOptionKey<>(true);
 
+        @APIOption(name = "exact-reachability-metadata", defaultValue = "")//
+        @Option(help = "file:doc-files/ExactReachabilityMetadataHelp.txt")//
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrors = new HostedOptionKey<>(
+                        AccumulatingLocatableMultiOptionValue.Strings.build());
+
         /** Use {@link SubstrateOptions#getPageSize()} instead. */
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
         @Option(help = "The largest page size of machines that can run the image. The default of 0 automatically selects a typically suitable value.")//
@@ -1583,10 +1588,6 @@ public class SubstrateOptions {
     @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = OptionType.Debug, //
                     deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.0 and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
-
-    @APIOption(name = "exact-reachability-metadata", defaultValue = "")//
-    @Option(help = "file:doc-files/ExactReachabilityMetadataHelp.txt")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrors = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @APIOption(name = "exact-reachability-metadata-path")//
     @Option(help = "file:doc-files/ExactReachabilityMetadataPathHelp.txt")//

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.hub.registry;
 
-import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
+import static com.oracle.svm.core.MissingRegistrationUtils.exactReachabilityMetadata;
 import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
 import java.lang.ref.ReferenceQueue;
@@ -327,7 +327,7 @@ public final class ClassRegistries implements ParsingContext {
     }
 
     private static void maybeThrowMissingRegistrationError(DynamicHub result, String name) {
-        if (throwMissingRegistrationErrors() && shouldFollowReflectionConfiguration() && ClassNameSupport.isValidReflectionName(name) && shouldThrowMissingRegistrationError(result)) {
+        if (exactReachabilityMetadata() && shouldFollowReflectionConfiguration() && ClassNameSupport.isValidReflectionName(name) && shouldThrowMissingRegistrationError(result)) {
             MissingReflectionRegistrationUtils.reportClassAccess(name);
         }
     }
@@ -405,10 +405,8 @@ public final class ClassRegistries implements ParsingContext {
         // name can use either dot or slash package separators.
         assert RuntimeClassLoading.isSupported();
         String reflectionName = toReflectionName(name);
-        if (throwMissingRegistrationErrors() && shouldFollowReflectionConfiguration() && !isRegisteredClassName(reflectionName)) {
-            MissingReflectionRegistrationUtils.reportClassAccess(reflectionName);
-            // The defineClass path usually can't throw ClassNotFoundException
-            throw sneakyThrow(new ClassNotFoundException(name));
+        if (exactReachabilityMetadata() && shouldFollowReflectionConfiguration() && !isRegisteredClassName(reflectionName)) {
+            throw MissingReflectionRegistrationUtils.reportDefineClass(reflectionName);
         }
         AbstractRuntimeClassRegistry registry = (AbstractRuntimeClassRegistry) runtimeLastLayer().getRegistry(loader);
         if (name != null) {
@@ -434,11 +432,6 @@ public final class ClassRegistries implements ParsingContext {
             }
         }
         return false;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T extends Throwable> RuntimeException sneakyThrow(Throwable ex) throws T {
-        throw (T) ex;
     }
 
     public static String loaderNameAndId(ClassLoader loader) {

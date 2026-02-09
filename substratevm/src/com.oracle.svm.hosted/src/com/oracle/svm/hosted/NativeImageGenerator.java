@@ -1077,7 +1077,7 @@ public class NativeImageGenerator {
                 ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
                 ClassInitializationFeature.processClassInitializationOptions(classInitializationSupport);
 
-                OptionClassFilter missingRegistrationClassFilter = OptionClassFilterBuilder.createFilter(loader, SubstrateOptions.ThrowMissingRegistrationErrors,
+                OptionClassFilter missingRegistrationClassFilter = OptionClassFilterBuilder.createFilter(loader, SubstrateOptions.ConcealedOptions.ThrowMissingRegistrationErrors,
                                 SubstrateOptions.ThrowMissingRegistrationErrorsPaths);
                 MissingRegistrationSupport missingRegistrationSupport = new MissingRegistrationSupport(missingRegistrationClassFilter);
                 ImageSingletons.add(MissingRegistrationSupport.class, missingRegistrationSupport);
